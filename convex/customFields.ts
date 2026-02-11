@@ -7,9 +7,23 @@ export const getDefinitions = query({
   args: {
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,
+    activityTypeKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+
+    if (args.activityTypeKey !== undefined) {
+      return await ctx.db
+        .query("customFieldDefinitions")
+        .withIndex("by_orgEntityAndActivityType", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("entityType", args.entityType)
+            .eq("activityTypeKey", args.activityTypeKey)
+        )
+        .collect();
+    }
+
     return await ctx.db
       .query("customFieldDefinitions")
       .withIndex("by_orgAndEntity", (q) =>
@@ -30,6 +44,7 @@ export const createDefinition = mutation({
     isRequired: v.optional(v.boolean()),
     order: v.number(),
     group: v.optional(v.string()),
+    activityTypeKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
@@ -139,6 +154,36 @@ export const getValues = query({
         q.eq("entityType", args.entityType).eq("entityId", args.entityId)
       )
       .collect();
+  },
+});
+
+export const getValuesBulk = query({
+  args: {
+    organizationId: v.id("organizations"),
+    entityType: entityTypeValidator,
+    entityIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const results: Record<string, Record<string, unknown>> = {};
+    for (const entityId of args.entityIds) {
+      const values = await ctx.db
+        .query("customFieldValues")
+        .withIndex("by_orgEntityField", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("entityType", args.entityType)
+            .eq("entityId", entityId)
+        )
+        .collect();
+      if (values.length > 0) {
+        results[entityId] = {};
+        for (const v of values) {
+          results[entityId][v.fieldDefinitionId] = v.value;
+        }
+      }
+    }
+    return results;
   },
 });
 

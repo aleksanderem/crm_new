@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +56,7 @@ interface CompanyFormProps {
   ) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  extraFields?: React.ReactNode;
 }
 
 export function CompanyForm({
@@ -64,7 +66,9 @@ export function CompanyForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  extraFields,
 }: CompanyFormProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
   const [domain, setDomain] = useState(initialData?.domain ?? "");
   const [industry, setIndustry] = useState(initialData?.industry ?? "");
@@ -115,7 +119,7 @@ export function CompanyForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label>
-            Company Name <span className="text-destructive">*</span>
+            {t('companies.form.name')} <span className="text-destructive">*</span>
           </Label>
           <input
             className={inputClasses}
@@ -125,16 +129,16 @@ export function CompanyForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Domain</Label>
+          <Label>{t('companies.form.domain')}</Label>
           <input
             className={inputClasses}
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
-            placeholder="example.com"
+            placeholder={t('companies.form.domainPlaceholder')}
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Industry</Label>
+          <Label>{t('companies.form.industry')}</Label>
           <input
             className={inputClasses}
             value={industry}
@@ -142,13 +146,13 @@ export function CompanyForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Size</Label>
+          <Label>{t('companies.form.size')}</Label>
           <select
             className={inputClasses}
             value={size}
             onChange={(e) => setSize(e.target.value)}
           >
-            <option value="">Select...</option>
+            <option value="">{t('companies.form.sizePlaceholder')}</option>
             <option value="1-10">1-10</option>
             <option value="11-50">11-50</option>
             <option value="51-200">51-200</option>
@@ -158,7 +162,7 @@ export function CompanyForm({
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label>Website</Label>
+          <Label>{t('companies.form.website')}</Label>
           <input
             type="url"
             className={inputClasses}
@@ -167,7 +171,7 @@ export function CompanyForm({
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Phone</Label>
+          <Label>{t('companies.form.phone')}</Label>
           <input
             type="tel"
             className={inputClasses}
@@ -178,10 +182,10 @@ export function CompanyForm({
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-medium text-muted-foreground">Address</h4>
+        <h4 className="text-sm font-medium text-muted-foreground">{t('companies.form.address')}</h4>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Street</Label>
+            <Label>{t('companies.form.street')}</Label>
             <input
               className={inputClasses}
               value={street}
@@ -189,7 +193,7 @@ export function CompanyForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>City</Label>
+            <Label>{t('companies.form.city')}</Label>
             <input
               className={inputClasses}
               value={city}
@@ -197,7 +201,7 @@ export function CompanyForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>State</Label>
+            <Label>{t('companies.form.state')}</Label>
             <input
               className={inputClasses}
               value={state}
@@ -205,7 +209,7 @@ export function CompanyForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Zip</Label>
+            <Label>{t('companies.form.zip')}</Label>
             <input
               className={inputClasses}
               value={zip}
@@ -213,7 +217,7 @@ export function CompanyForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Country</Label>
+            <Label>{t('companies.form.country')}</Label>
             <input
               className={inputClasses}
               value={country}
@@ -224,13 +228,19 @@ export function CompanyForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Notes</Label>
+        <Label>{t('companies.form.notes')}</Label>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
         />
       </div>
+
+      {extraFields && (
+        <div className="space-y-4 border-t pt-4">
+          {extraFields}
+        </div>
+      )}
 
       {customFieldDefinitions.length > 0 && (
         <div className="border-t pt-6">
@@ -246,14 +256,14 @@ export function CompanyForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" disabled={!name.trim() || isSubmitting}>
           {isSubmitting
-            ? "Saving..."
+            ? t('common.saving')
             : initialData
-              ? "Update Company"
-              : "Create Company"}
+              ? t('common.save')
+              : t('companies.createCompany')}
         </Button>
       </div>
     </form>

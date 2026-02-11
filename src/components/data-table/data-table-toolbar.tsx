@@ -1,7 +1,9 @@
 import { Table } from "@tanstack/react-table";
 import { X, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
+import { DataTableViewOptions } from "./data-table-view-options";
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -12,6 +14,8 @@ interface DataTableToolbarProps<TData> {
     title: string;
     options: { label: string; value: string }[];
   }[];
+  showViewOptions?: boolean;
+  actions?: React.ReactNode;
 }
 
 export function DataTableToolbar<TData>({
@@ -19,7 +23,10 @@ export function DataTableToolbar<TData>({
   searchKey,
   searchPlaceholder = "Search...",
   filterableColumns = [],
+  showViewOptions = false,
+  actions,
 }: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation();
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
@@ -57,10 +64,14 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-9 px-2 lg:px-3"
           >
-            Reset
+            {t('common.reset')}
             <X className="ml-2 h-4 w-4" />
           </Button>
         )}
+      </div>
+      <div className="flex items-center gap-2">
+        {actions}
+        {showViewOptions && <DataTableViewOptions table={table} />}
       </div>
     </div>
   );

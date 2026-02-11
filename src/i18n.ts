@@ -3,7 +3,7 @@ import Backend from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
-const languages = ["es", "en"] as const;
+const languages = ["pl", "en"] as const;
 
 // List of languages your application supports.
 export const supportedLangs = [...languages];
@@ -20,8 +20,13 @@ i18n
   // init i18next
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
-    fallbackLng: "en",
+    fallbackLng: "pl",
+    lng: "pl",
+    supportedLngs: [...languages],
     debug: true,
+    backend: {
+      queryStringParams: { v: Date.now().toString() },
+    },
   });
 
 export default i18n;

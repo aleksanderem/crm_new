@@ -243,3 +243,54 @@ export const removeMember = mutation({
     return args.membershipId;
   },
 });
+
+export const getUsageStats = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+
+    const [members, contacts, companies, leads, documents, products, emails] =
+      await Promise.all([
+        ctx.db
+          .query("teamMemberships")
+          .withIndex("by_organizationId", (q) =>
+            q.eq("organizationId", args.organizationId)
+          )
+          .collect(),
+        ctx.db
+          .query("contacts")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("companies")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("leads")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("documents")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("products")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("emails")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+      ]);
+
+    return {
+      memberCount: members.length,
+      contactCount: contacts.length,
+      companyCount: companies.length,
+      leadCount: leads.length,
+      documentCount: documents.length,
+      productCount: products.length,
+      emailCount: emails.length,
+    };
+  },
+});

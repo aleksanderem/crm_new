@@ -27,7 +27,63 @@ export const getForEntity = query({
         .collect(),
     ]);
 
-    return [...asSource, ...asTarget];
+    const allRels = [...asSource, ...asTarget];
+
+    // Resolve entity names for each relationship
+    const resolved = await Promise.all(
+      allRels.map(async (rel) => {
+        // For asSource records, the "other" entity is target; for asTarget, it's source
+        const isSource = rel.sourceType === args.entityType && rel.sourceId === args.entityId;
+        const otherType = isSource ? rel.targetType : rel.sourceType;
+        const otherId = isSource ? rel.targetId : rel.sourceId;
+
+        let targetName = otherId;
+        let targetSublabel: string | undefined;
+
+        try {
+          if (otherType === "contact") {
+            const contact = await ctx.db.get(otherId as any);
+            if (contact) {
+              targetName = `${(contact as any).firstName}${(contact as any).lastName ? ` ${(contact as any).lastName}` : ""}`;
+              targetSublabel = (contact as any).email;
+            }
+          } else if (otherType === "company") {
+            const company = await ctx.db.get(otherId as any);
+            if (company) {
+              targetName = (company as any).name;
+              targetSublabel = (company as any).domain;
+            }
+          } else if (otherType === "lead" || otherType === "deal") {
+            const lead = await ctx.db.get(otherId as any);
+            if (lead) {
+              targetName = (lead as any).title;
+              targetSublabel = (lead as any).value
+                ? `$${(lead as any).value.toLocaleString()}`
+                : undefined;
+            }
+          } else if (otherType === "document") {
+            const doc = await ctx.db.get(otherId as any);
+            if (doc) {
+              targetName = (doc as any).name;
+              targetSublabel = (doc as any).category;
+            }
+          }
+        } catch {
+          // Entity may have been deleted — keep the raw ID
+        }
+
+        return {
+          ...rel,
+          // Normalize: always expose the "other" side as target for the frontend
+          targetType: otherType,
+          targetId: otherId,
+          targetName,
+          targetSublabel,
+        };
+      })
+    );
+
+    return resolved;
   },
 });
 
@@ -43,19 +99,33 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
 
-    // Prevent duplicate relationships
-    const existing = await ctx.db
-      .query("objectRelationships")
-      .withIndex("by_sourceAndTarget", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sourceType", args.sourceType)
-          .eq("sourceId", args.sourceId)
-          .eq("targetType", args.targetType)
-      )
-      .collect();
+    // Prevent duplicate relationships (check both directions)
+    const [forward, reverse] = await Promise.all([
+      ctx.db
+        .query("objectRelationships")
+        .withIndex("by_sourceAndTarget", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("sourceType", args.sourceType)
+            .eq("sourceId", args.sourceId)
+            .eq("targetType", args.targetType)
+        )
+        .collect(),
+      ctx.db
+        .query("objectRelationships")
+        .withIndex("by_sourceAndTarget", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("sourceType", args.targetType)
+            .eq("sourceId", args.targetId)
+            .eq("targetType", args.sourceType)
+        )
+        .collect(),
+    ]);
 
-    const duplicate = existing.find((r) => r.targetId === args.targetId);
+    const duplicate =
+      forward.find((r) => r.targetId === args.targetId) ||
+      reverse.find((r) => r.targetId === args.sourceId);
     if (duplicate) throw new Error("Relationship already exists");
 
     const relId = await ctx.db.insert("objectRelationships", {

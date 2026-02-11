@@ -71,6 +71,29 @@ export const completeOnboarding = mutation({
       return;
     }
     await ctx.db.patch(userId, { username: args.username });
+
+    // Auto-create a default organization for new users
+    const existingMemberships = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (!existingMemberships) {
+      const now = Date.now();
+      const orgId = await ctx.db.insert("organizations", {
+        name: `${args.username}'s Workspace`,
+        slug: args.username.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+        ownerId: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("teamMemberships", {
+        userId,
+        organizationId: orgId,
+        role: "owner",
+        joinedAt: now,
+      });
+    }
+
     if (user.customerId) {
       return;
     }

@@ -36,6 +36,7 @@ const fieldTypes: { value: CustomFieldType; label: string }[] = [
   { value: "url", label: "URL" },
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
+  { value: "file", label: "File" },
 ];
 
 export function CustomFieldDefinitionForm({

@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 interface StageData {
   name: string;
@@ -20,10 +21,12 @@ interface PipelineChartProps {
 }
 
 export function PipelineChart({ data }: PipelineChartProps) {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Deals by Stage</CardTitle>
+        <CardTitle className="text-base">{t("dashboard.dealsByStage")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>

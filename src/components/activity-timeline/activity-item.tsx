@@ -9,6 +9,8 @@ import {
   Unlink,
   Upload,
   RefreshCw,
+  Mail,
+  MailOpen,
 } from "lucide-react";
 import type { ActivityAction } from "@cvx/schema";
 
@@ -23,6 +25,8 @@ const actionIcons: Record<ActivityAction, typeof Plus> = {
   relationship_removed: Unlink,
   document_uploaded: Upload,
   status_changed: RefreshCw,
+  email_sent: Mail,
+  email_received: MailOpen,
 };
 
 const actionColors: Record<ActivityAction, string> = {
@@ -36,6 +40,8 @@ const actionColors: Record<ActivityAction, string> = {
   relationship_removed: "bg-orange-100 text-orange-700",
   document_uploaded: "bg-teal-100 text-teal-700",
   status_changed: "bg-pink-100 text-pink-700",
+  email_sent: "bg-sky-100 text-sky-700",
+  email_received: "bg-emerald-100 text-emerald-700",
 };
 
 export interface Activity {

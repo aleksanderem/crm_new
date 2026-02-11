@@ -181,6 +181,17 @@ export const getStages = query({
   },
 });
 
+export const getAllStages = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+  },
+});
+
 export const addStage = mutation({
   args: {
     organizationId: v.id("organizations"),

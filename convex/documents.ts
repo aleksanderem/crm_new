@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
-import { documentCategoryValidator } from "@cvx/schema";
+import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
 
 export const list = query({
   args: {
@@ -78,6 +78,8 @@ export const create = mutation({
     fileSize: v.optional(v.number()),
     category: v.optional(documentCategoryValidator),
     tags: v.optional(v.array(v.string())),
+    status: v.optional(documentStatusValidator),
+    amount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -111,6 +113,8 @@ export const update = mutation({
     description: v.optional(v.string()),
     category: v.optional(documentCategoryValidator),
     tags: v.optional(v.array(v.string())),
+    status: v.optional(documentStatusValidator),
+    amount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -167,6 +171,48 @@ export const remove = mutation({
       entityId: args.documentId,
       action: "deleted",
       description: `Deleted document "${doc.name}"`,
+      performedBy: user._id,
+    });
+
+    return args.documentId;
+  },
+});
+
+export const updateStatus = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.id("documents"),
+    status: documentStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.organizationId !== args.organizationId) {
+      throw new Error("Document not found");
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = {
+      status: args.status,
+      updatedAt: now,
+    };
+
+    if (args.status === "sent") {
+      updateData.sentAt = now;
+    } else if (args.status === "accepted") {
+      updateData.acceptedAt = now;
+    }
+
+    await ctx.db.patch(args.documentId, updateData);
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "document",
+      entityId: args.documentId,
+      action: "status_changed",
+      description: `Changed document "${doc.name}" status to "${args.status}"`,
+      metadata: { oldStatus: doc.status, newStatus: args.status },
       performedBy: user._id,
     });
 

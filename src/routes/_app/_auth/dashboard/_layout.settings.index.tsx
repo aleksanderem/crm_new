@@ -12,6 +12,7 @@ import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import * as validators from "@/utils/validators";
 import { useSignOut } from "@/utils/misc";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/settings/")(
   {
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/settings/")(
 );
 
 export default function DashboardSettings() {
+  const { t } = useTranslation();
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   const signOut = useSignOut();
   const { mutateAsync: updateUsername } = useMutation({
@@ -79,9 +81,9 @@ export default function DashboardSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full items-start justify-between rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">Your Avatar</h2>
+            <h2 className="text-xl font-medium text-primary">{t("profile.avatar.title")}</h2>
             <p className="text-sm font-normal text-primary/60">
-              This is your avatar. It will be displayed on your profile.
+              {t("profile.avatar.description")}
             </p>
           </div>
           <label
@@ -123,7 +125,7 @@ export default function DashboardSettings() {
         </div>
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 dark:bg-card">
           <p className="text-sm font-normal text-primary/60">
-            Click on the avatar to upload a custom one from your files.
+            {t("profile.avatar.uploadHint")}
           </p>
           {user.avatarUrl && (
             <Button
@@ -134,7 +136,7 @@ export default function DashboardSettings() {
                 removeUserImage({});
               }}
             >
-              Reset
+              {t("profile.avatar.reset")}
             </Button>
           )}
         </div>
@@ -151,9 +153,9 @@ export default function DashboardSettings() {
       >
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">Your Username</h2>
+            <h2 className="text-xl font-medium text-primary">{t("profile.username.title")}</h2>
             <p className="text-sm font-normal text-primary/60">
-              This is your username. It will be displayed on your profile.
+              {t("profile.username.description")}
             </p>
           </div>
           <usernameForm.Field
@@ -163,7 +165,7 @@ export default function DashboardSettings() {
             }}
             children={(field) => (
               <Input
-                placeholder="Username"
+                placeholder={t("profile.username.placeholder")}
                 autoComplete="off"
                 required
                 value={field.state.value}
@@ -184,10 +186,10 @@ export default function DashboardSettings() {
         </div>
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 dark:bg-card">
           <p className="text-sm font-normal text-primary/60">
-            Please use 32 characters at maximum.
+            {t("profile.username.maxChars")}
           </p>
           <Button type="submit" size="sm">
-            Save
+            {t("profile.username.save")}
           </Button>
         </div>
       </form>
@@ -195,15 +197,14 @@ export default function DashboardSettings() {
       {/* Delete Account */}
       <div className="flex w-full flex-col items-start rounded-lg border border-destructive bg-card">
         <div className="flex flex-col gap-2 p-6">
-          <h2 className="text-xl font-medium text-primary">Delete Account</h2>
+          <h2 className="text-xl font-medium text-primary">{t("profile.deleteAccount.title")}</h2>
           <p className="text-sm font-normal text-primary/60">
-            Permanently delete your Convex SaaS account, all of your projects,
-            links and their respective stats.
+            {t("profile.deleteAccount.description")}
           </p>
         </div>
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-red-500/10 px-6 dark:bg-red-500/10">
           <p className="text-sm font-normal text-primary/60">
-            This action cannot be undone, proceed with caution.
+            {t("profile.deleteAccount.warning")}
           </p>
           <Button
             size="sm"
@@ -212,7 +213,7 @@ export default function DashboardSettings() {
               onClick: doubleCheck ? handleDeleteAccount : undefined,
             })}
           >
-            {doubleCheck ? "Are you sure?" : "Delete Account"}
+            {doubleCheck ? t("profile.deleteAccount.confirm") : t("profile.deleteAccount.button")}
           </Button>
         </div>
       </div>

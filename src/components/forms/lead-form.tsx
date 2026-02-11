@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +56,7 @@ interface LeadFormProps {
   ) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  extraFields?: React.ReactNode;
 }
 
 const statusOptions: LeadStatus[] = ["open", "won", "lost", "archived"];
@@ -69,7 +71,9 @@ export function LeadForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  extraFields,
 }: LeadFormProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(initialData?.title ?? "");
   const [value, setValue] = useState<string>(
     initialData?.value?.toString() ?? ""
@@ -126,7 +130,7 @@ export function LeadForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label>
-            Title <span className="text-destructive">*</span>
+            {t('leadForm.title')} <span className="text-destructive">*</span>
           </Label>
           <input
             className={inputClasses}
@@ -136,7 +140,7 @@ export function LeadForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Value</Label>
+          <Label>{t('leadForm.value')}</Label>
           <input
             type="number"
             className={inputClasses}
@@ -147,7 +151,7 @@ export function LeadForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Status</Label>
+          <Label>{t('leadForm.status')}</Label>
           <select
             className={inputClasses}
             value={status}
@@ -155,39 +159,39 @@ export function LeadForm({
           >
             {statusOptions.map((s) => (
               <option key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+                {t(`leadForm.statusOptions.${s}`)}
               </option>
             ))}
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label>Priority</Label>
+          <Label>{t('leadForm.priority')}</Label>
           <select
             className={inputClasses}
             value={priority}
             onChange={(e) => setPriority(e.target.value as LeadPriority | "")}
           >
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {priorityOptions.map((p) => (
               <option key={p} value={p}>
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {t(`leadForm.priorityOptions.${p}`)}
               </option>
             ))}
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label>Source</Label>
+          <Label>{t('leadForm.source')}</Label>
           <input
             className={inputClasses}
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            placeholder="e.g. Website, Referral"
+            placeholder={t('leadForm.sourcePlaceholder')}
           />
         </div>
         {pipelines.length > 0 && (
           <>
             <div className="space-y-1.5">
-              <Label>Pipeline</Label>
+              <Label>{t('leadForm.pipeline')}</Label>
               <select
                 className={inputClasses}
                 value={selectedPipeline}
@@ -204,13 +208,13 @@ export function LeadForm({
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label>Stage</Label>
+              <Label>{t('leadForm.stage')}</Label>
               <select
                 className={inputClasses}
                 value={stageId}
                 onChange={(e) => setStageId(e.target.value)}
               >
-                <option value="">Select stage...</option>
+                <option value="">{t('leadForm.selectStage')}</option>
                 {filteredStages.map((s) => (
                   <option key={s._id} value={s._id}>
                     {s.name}
@@ -221,7 +225,7 @@ export function LeadForm({
           </>
         )}
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Notes</Label>
+          <Label>{t('leadForm.notes')}</Label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -229,6 +233,12 @@ export function LeadForm({
           />
         </div>
       </div>
+
+      {extraFields && (
+        <div className="space-y-4 border-t pt-4">
+          {extraFields}
+        </div>
+      )}
 
       {customFieldDefinitions.length > 0 && (
         <div className="border-t pt-6">
@@ -244,14 +254,14 @@ export function LeadForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" disabled={!title.trim() || isSubmitting}>
           {isSubmitting
-            ? "Saving..."
+            ? t('common.saving')
             : initialData
-              ? "Update Lead"
-              : "Create Lead"}
+              ? t('common.save')
+              : t('leadForm.createLead')}
         </Button>
       </div>
     </form>

@@ -64,7 +64,7 @@ export function KanbanCard({ lead, isDragging, onClick }: KanbanCardProps) {
       )}
 
       <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {lead.value != null && lead.value > 0 && (
             <Badge variant="secondary" className="text-xs font-normal">
               {formatCurrency(lead.value)}
@@ -96,6 +96,12 @@ export function KanbanCard({ lead, isDragging, onClick }: KanbanCardProps) {
           </Avatar>
         )}
       </div>
+
+      {lead.expectedCloseDate && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Close: {new Date(lead.expectedCloseDate).toLocaleDateString()}
+        </p>
+      )}
     </div>
   );
 }

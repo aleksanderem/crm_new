@@ -82,6 +82,7 @@ export const entityTypeValidator = v.union(
   v.literal("company"),
   v.literal("lead"),
   v.literal("document"),
+  v.literal("activity"),
 );
 export type EntityType = Infer<typeof entityTypeValidator>;
 
@@ -95,6 +96,7 @@ export const customFieldTypeValidator = v.union(
   v.literal("url"),
   v.literal("email"),
   v.literal("phone"),
+  v.literal("file"),
 );
 export type CustomFieldType = Infer<typeof customFieldTypeValidator>;
 
@@ -109,8 +111,44 @@ export const activityActionValidator = v.union(
   v.literal("relationship_removed"),
   v.literal("document_uploaded"),
   v.literal("status_changed"),
+  v.literal("email_sent"),
+  v.literal("email_received"),
 );
 export type ActivityAction = Infer<typeof activityActionValidator>;
+
+export const emailDirectionValidator = v.union(
+  v.literal("inbound"),
+  v.literal("outbound"),
+);
+export type EmailDirection = Infer<typeof emailDirectionValidator>;
+
+export const invitationStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
+  v.literal("declined"),
+  v.literal("expired"),
+);
+export type InvitationStatus = Infer<typeof invitationStatusValidator>;
+
+export const callOutcomeValidator = v.union(
+  v.literal("busy"),
+  v.literal("leftVoiceMessage"),
+  v.literal("movedConversationForward"),
+  v.literal("wrongNumber"),
+  v.literal("noAnswer"),
+);
+export type CallOutcome = Infer<typeof callOutcomeValidator>;
+
+export const activityTypeValidator = v.string();
+export type ActivityType = Infer<typeof activityTypeValidator>;
+
+export const documentStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("accepted"),
+  v.literal("lost"),
+);
+export type DocumentStatus = Infer<typeof documentStatusValidator>;
 
 const schema = defineSchema({
   ...authTables,
@@ -190,6 +228,7 @@ const schema = defineSchema({
     avatarUrl: v.optional(v.string()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    source: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -271,12 +310,17 @@ const schema = defineSchema({
     fileSize: v.optional(v.number()),
     category: v.optional(documentCategoryValidator),
     tags: v.optional(v.array(v.string())),
+    status: v.optional(documentStatusValidator),
+    amount: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndCategory", ["organizationId", "category"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
     .searchIndex("search_documents", {
       searchField: "name",
       filterFields: ["organizationId"],
@@ -318,11 +362,13 @@ const schema = defineSchema({
     isRequired: v.optional(v.boolean()),
     order: v.number(),
     group: v.optional(v.string()),
+    activityTypeKey: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_orgAndEntity", ["organizationId", "entityType", "order"])
-    .index("by_orgAndKey", ["organizationId", "entityType", "fieldKey"]),
+    .index("by_orgAndKey", ["organizationId", "entityType", "fieldKey"])
+    .index("by_orgEntityAndActivityType", ["organizationId", "entityType", "activityTypeKey", "order"]),
 
   customFieldValues: defineTable({
     organizationId: v.id("organizations"),
@@ -336,6 +382,20 @@ const schema = defineSchema({
     .index("by_entity", ["entityType", "entityId"])
     .index("by_fieldDef", ["fieldDefinitionId"])
     .index("by_orgEntityField", ["organizationId", "entityType", "entityId", "fieldDefinitionId"]),
+
+  activityTypeDefinitions: defineTable({
+    organizationId: v.id("organizations"),
+    key: v.string(),
+    name: v.string(),
+    icon: v.string(),
+    color: v.optional(v.string()),
+    isSystem: v.boolean(),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "order"])
+    .index("by_orgAndKey", ["organizationId", "key"]),
 
   objectRelationships: defineTable({
     organizationId: v.id("organizations"),
@@ -365,6 +425,244 @@ const schema = defineSchema({
     .index("by_entity", ["entityType", "entityId"])
     .index("by_org", ["organizationId", "createdAt"])
     .index("by_user", ["performedBy", "createdAt"]),
+
+  // --- Products ---
+
+  products: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    sku: v.string(),
+    unitPrice: v.number(),
+    taxRate: v.number(),
+    isActive: v.boolean(),
+    description: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndSku", ["organizationId", "sku"])
+    .searchIndex("search_products", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
+
+  dealProducts: defineTable({
+    organizationId: v.id("organizations"),
+    dealId: v.id("leads"),
+    productId: v.id("products"),
+    quantity: v.number(),
+    unitPrice: v.number(),
+    discount: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_deal", ["dealId"])
+    .index("by_product", ["productId"]),
+
+  // --- Calls ---
+
+  calls: defineTable({
+    organizationId: v.id("organizations"),
+    outcome: callOutcomeValidator,
+    callDate: v.number(),
+    note: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDate", ["organizationId", "callDate"])
+    .index("by_orgAndOutcome", ["organizationId", "outcome"]),
+
+  // --- Scheduled Activities ---
+
+  scheduledActivities: defineTable({
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    activityType: activityTypeValidator,
+    dueDate: v.number(),
+    endDate: v.optional(v.number()),
+    isCompleted: v.boolean(),
+    completedAt: v.optional(v.number()),
+    ownerId: v.id("users"),
+    description: v.optional(v.string()),
+    linkedEntityType: v.optional(v.string()),
+    linkedEntityId: v.optional(v.string()),
+    googleEventId: v.optional(v.string()),
+    googleCalendarId: v.optional(v.string()),
+    lastGoogleSyncAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDueDate", ["organizationId", "dueDate"])
+    .index("by_owner", ["ownerId"])
+    .index("by_orgAndType", ["organizationId", "activityType"])
+    .index("by_orgAndCompleted", ["organizationId", "isCompleted"]),
+
+  // --- Saved Views ---
+
+  savedViews: defineTable({
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    name: v.string(),
+    filters: v.any(),
+    columns: v.optional(v.array(v.string())),
+    sortField: v.optional(v.string()),
+    sortDirection: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+    isSystem: v.boolean(),
+    createdBy: v.id("users"),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_orgAndEntityType", ["organizationId", "entityType"]),
+
+  // --- Lost Reasons ---
+
+  lostReasons: defineTable({
+    organizationId: v.id("organizations"),
+    label: v.string(),
+    order: v.number(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
+  // --- Org Settings ---
+
+  orgSettings: defineTable({
+    organizationId: v.id("organizations"),
+    allowCustomLostReason: v.boolean(),
+    lostReasonRequired: v.boolean(),
+    defaultCurrency: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
+  // --- Sources ---
+
+  sources: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    order: v.number(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
+  // --- Emails ---
+
+  emails: defineTable({
+    organizationId: v.id("organizations"),
+    threadId: v.string(),
+    messageId: v.string(),
+    inReplyTo: v.optional(v.string()),
+    direction: emailDirectionValidator,
+    from: v.string(),
+    to: v.array(v.string()),
+    cc: v.optional(v.array(v.string())),
+    bcc: v.optional(v.array(v.string())),
+    subject: v.string(),
+    bodyHtml: v.optional(v.string()),
+    bodyText: v.optional(v.string()),
+    snippet: v.optional(v.string()),
+    isRead: v.boolean(),
+    isStarred: v.optional(v.boolean()),
+    contactId: v.optional(v.id("contacts")),
+    companyId: v.optional(v.id("companies")),
+    leadId: v.optional(v.id("leads")),
+    provider: v.optional(v.union(v.literal("resend"), v.literal("gmail"))),
+    gmailMessageId: v.optional(v.string()),
+    gmailThreadId: v.optional(v.string()),
+    sentBy: v.optional(v.id("users")),
+    sentAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "sentAt"])
+    .index("by_thread", ["organizationId", "threadId"])
+    .index("by_gmailMessageId", ["gmailMessageId"])
+    .index("by_contact", ["contactId", "sentAt"])
+    .index("by_company", ["companyId", "sentAt"])
+    .index("by_lead", ["leadId", "sentAt"])
+    .index("by_messageId", ["messageId"])
+    .searchIndex("search_emails", {
+      searchField: "subject",
+      filterFields: ["organizationId", "direction"],
+    }),
+
+  emailAccounts: defineTable({
+    organizationId: v.id("organizations"),
+    fromName: v.string(),
+    fromEmail: v.string(),
+    isDefault: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
+  // --- Invitations ---
+
+  invitations: defineTable({
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    role: orgRoleValidator,
+    token: v.string(),
+    status: invitationStatusValidator,
+    invitedBy: v.id("users"),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_token", ["token"])
+    .index("by_email", ["email", "organizationId"]),
+
+  // --- OAuth Connections ---
+
+  oauthConnections: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.literal("google"),
+    providerAccountId: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.string(),
+    expiresAt: v.number(),
+    scope: v.string(),
+    tokenType: v.string(),
+    isActive: v.boolean(),
+    lastSyncedAt: v.optional(v.number()),
+    connectedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndProvider", ["organizationId", "provider", "isActive"]),
+
+  // --- Notes ---
+
+  notes: defineTable({
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    content: v.string(),
+    createdBy: v.id("users"),
+    isPinned: v.optional(v.boolean()),
+    parentNoteId: v.optional(v.id("notes")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_entity", ["entityType", "entityId"])
+    .index("by_org", ["organizationId"]),
 });
 
 export default schema;

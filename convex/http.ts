@@ -238,6 +238,115 @@ http.route({
   }),
 });
 
+/**
+ * Resend inbound email webhook.
+ * Parses inbound payload, matches to org via emailAccounts,
+ * auto-links to contact by from address, threads via In-Reply-To.
+ */
+http.route({
+  path: "/resend/inbound",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const {
+        from,
+        to,
+        subject,
+        html,
+        text,
+        headers,
+      } = body as {
+        from: string;
+        to: string | string[];
+        subject: string;
+        html?: string;
+        text?: string;
+        headers?: Record<string, string>;
+      };
+
+      const toAddresses = Array.isArray(to) ? to : [to];
+      const fromEmail = from.includes("<")
+        ? from.match(/<(.+)>/)?.[1] ?? from
+        : from;
+
+      // Match to address to an email account to find the org
+      const emailAccount = await ctx.runQuery(
+        internal.emails_internal.findEmailAccountByAddress,
+        { addresses: toAddresses }
+      );
+
+      if (!emailAccount) {
+        console.log("No matching email account for inbound:", toAddresses);
+        return new Response("No matching account", { status: 200 });
+      }
+
+      const organizationId = emailAccount.organizationId;
+
+      // Find existing thread via In-Reply-To header
+      const inReplyTo = headers?.["In-Reply-To"] ?? headers?.["in-reply-to"];
+      let threadId: string | undefined;
+      if (inReplyTo) {
+        const existingEmail = await ctx.runQuery(
+          internal.emails_internal.findByMessageId,
+          { messageId: inReplyTo }
+        );
+        if (existingEmail) {
+          threadId = existingEmail.threadId;
+        }
+      }
+
+      // Auto-link to contact by from email
+      const contact = await ctx.runQuery(
+        internal.emails_internal.findContactByEmail,
+        { organizationId, email: fromEmail }
+      );
+
+      const messageId =
+        headers?.["Message-ID"] ??
+        headers?.["message-id"] ??
+        `<${crypto.randomUUID()}@inbound>`;
+      const finalThreadId = threadId ?? messageId;
+
+      const snippet = text ? text.slice(0, 200) : html ? html.replace(/<[^>]*>/g, "").slice(0, 200) : undefined;
+
+      await ctx.runMutation(internal.emails_internal.insertInbound, {
+        organizationId,
+        threadId: finalThreadId,
+        messageId,
+        inReplyTo,
+        from: fromEmail,
+        to: toAddresses,
+        subject: subject ?? "(no subject)",
+        bodyHtml: html,
+        bodyText: text,
+        snippet,
+        contactId: contact?._id,
+      });
+
+      return new Response("OK", { status: 200 });
+    } catch (err) {
+      console.error("Inbound email error:", err);
+      return new Response("Error", { status: 500 });
+    }
+  }),
+});
+
+// --- Google OAuth routes ---
+import { initiate as googleOAuthInitiate, callback as googleOAuthCallback } from "./google/oauth";
+
+http.route({
+  path: "/google/oauth/initiate",
+  method: "GET",
+  handler: googleOAuthInitiate,
+});
+
+http.route({
+  path: "/google/oauth/callback",
+  method: "GET",
+  handler: googleOAuthCallback,
+});
+
 auth.addHttpRoutes(http);
 
 export default http;

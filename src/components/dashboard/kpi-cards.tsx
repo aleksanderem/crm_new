@@ -1,5 +1,7 @@
 import { Users, Building2, TrendingUp, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 
 interface KpiCardsProps {
   totalContacts: number;
@@ -10,9 +12,9 @@ interface KpiCardsProps {
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("pl-PL", {
     style: "currency",
-    currency: "USD",
+    currency: "PLN",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
@@ -25,28 +27,34 @@ export function KpiCards({
   pipelineValue,
   winRate,
 }: KpiCardsProps) {
-  const cards = [
-    {
-      title: "Total Contacts",
-      value: totalContacts.toLocaleString(),
-      icon: Users,
-    },
-    {
-      title: "Companies",
-      value: totalCompanies.toLocaleString(),
-      icon: Building2,
-    },
-    {
-      title: "Open Deals",
-      value: openDeals.toLocaleString(),
-      icon: TrendingUp,
-    },
-    {
-      title: "Pipeline Value",
-      value: formatCurrency(pipelineValue),
-      icon: DollarSign,
-    },
-  ];
+  const { t } = useTranslation();
+
+  const cards = useMemo(
+    () => [
+      {
+        title: t("dashboard.totalContacts"),
+        value: totalContacts.toLocaleString(),
+        icon: Users,
+      },
+      {
+        title: t("dashboard.companies"),
+        value: totalCompanies.toLocaleString(),
+        icon: Building2,
+      },
+      {
+        title: t("dashboard.openDeals"),
+        value: openDeals.toLocaleString(),
+        icon: TrendingUp,
+        subtitle: t("dashboard.winRate", { rate: (winRate * 100).toFixed(0) }),
+      },
+      {
+        title: t("dashboard.pipelineValue"),
+        value: formatCurrency(pipelineValue),
+        icon: DollarSign,
+      },
+    ],
+    [t, totalContacts, totalCompanies, openDeals, pipelineValue, winRate]
+  );
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -60,9 +68,9 @@ export function KpiCards({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{card.value}</div>
-            {card.title === "Open Deals" && (
+            {card.subtitle && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {winRate.toFixed(0)}% win rate
+                {card.subtitle}
               </p>
             )}
           </CardContent>

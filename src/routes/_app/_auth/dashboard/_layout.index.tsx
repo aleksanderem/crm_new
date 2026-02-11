@@ -1,75 +1,78 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, ExternalLink } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { cn } from "@/utils/misc.js";
-import { buttonVariants } from "@/ui/button-util";
-import siteConfig from "~/site.config";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@cvx/_generated/api";
+import { useOrganization } from "@/components/org-context";
+import { PageHeader } from "@/components/layout/page-header";
+import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { PipelineChart } from "@/components/dashboard/pipeline-chart";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/")({
-  component: Dashboard,
-  beforeLoad: () => ({
-    title: `${siteConfig.siteTitle} - Dashboard`,
-    headerTitle: "Dashboard",
-    headerDescription: "Manage your Apps and view your usage.",
-  }),
+  component: DashboardIndex,
 });
 
-export default function Dashboard() {
-  const { t } = useTranslation();
+function DashboardIndex() {
+  const { organizationId } = useOrganization();
+
+  const { data: stats, isLoading: statsLoading } = useQuery(
+    convexQuery(api.dashboard.getStats, { organizationId })
+  );
+  const { data: stageData } = useQuery(
+    convexQuery(api.dashboard.getLeadsByStage, { organizationId })
+  );
+  const { data: recentActivity } = useQuery(
+    convexQuery(api.activities.getRecentForOrg, { organizationId })
+  );
 
   return (
-    <div className="flex h-full w-full bg-secondary px-6 py-8 dark:bg-black">
-      <div className="z-10 mx-auto flex h-full w-full max-w-screen-xl gap-12">
-        <div className="flex w-full flex-col rounded-lg border border-border bg-card dark:bg-black">
-          <div className="flex w-full flex-col rounded-lg p-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-xl font-medium text-primary">Get Started</h2>
-              <p className="text-sm font-normal text-primary/60">
-                Explore the Dashboard and get started with your first app.
-              </p>
-            </div>
-          </div>
-          <div className="flex w-full px-6">
-            <div className="w-full border-b border-border" />
-          </div>
-          <div className="relative mx-auto flex w-full  flex-col items-center p-6">
-            <div className="relative flex w-full flex-col items-center justify-center gap-6 overflow-hidden rounded-lg border border-border bg-secondary px-6 py-24 dark:bg-card">
-              <div className="z-10 flex max-w-[460px] flex-col items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-card hover:border-primary/40">
-                  <Plus className="h-8 w-8 stroke-[1.5px] text-primary/60" />
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-base font-medium text-primary">
-                    {t("title")}
-                  </p>
-                  <p className="text-center text-base font-normal text-primary/60">
-                    {t("description")}
-                  </p>
-                  <span className="hidden select-none items-center rounded-full bg-green-500/5 px-3 py-1 text-xs font-medium tracking-tight text-green-700 ring-1 ring-inset ring-green-600/20 backdrop-blur-md dark:bg-green-900/40 dark:text-green-100 md:flex">
-                    TIP: Try changing the language!
-                  </span>
-                </div>
-              </div>
-              <div className="z-10 flex items-center justify-center">
-                <a
-                  target="_blank"
-                  rel="noreferrer"
-                  href="https://github.com/get-convex/convex-saas/tree/main/docs"
-                  className={cn(
-                    `${buttonVariants({ variant: "ghost", size: "sm" })} gap-2`,
-                  )}
-                >
-                  <span className="text-sm font-medium text-primary/60 group-hover:text-primary">
-                    Explore Documentation
-                  </span>
-                  <ExternalLink className="h-4 w-4 stroke-[1.5px] text-primary/60 group-hover:text-primary" />
-                </a>
-              </div>
-              <div className="base-grid absolute h-full w-full opacity-40" />
-              <div className="absolute bottom-0 h-full w-full bg-gradient-to-t from-[hsl(var(--card))] to-transparent" />
-            </div>
-          </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your CRM pipeline and activity."
+      />
+
+      {statsLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-lg" />
+          ))}
         </div>
+      ) : (
+        <KpiCards
+          totalContacts={stats?.totalContacts ?? 0}
+          totalCompanies={stats?.totalCompanies ?? 0}
+          openDeals={stats?.openDeals ?? 0}
+          pipelineValue={stats?.pipelineValue ?? 0}
+          winRate={stats?.winRate ?? 0}
+        />
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <PipelineChart data={stageData ?? []} />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActivityTimeline
+              activities={
+                recentActivity?.map((a) => ({
+                  _id: a._id,
+                  action: a.action,
+                  description: a.description,
+                  performedByName: a.performedByName,
+                  createdAt: a.createdAt,
+                })) ?? []
+              }
+              maxHeight="350px"
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

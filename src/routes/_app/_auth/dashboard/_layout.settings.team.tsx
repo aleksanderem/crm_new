@@ -41,16 +41,16 @@ function TeamSettings() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback>
-                    {(member.name ?? member.email ?? "U")[0].toUpperCase()}
+                    {(member.user?.name ?? member.user?.email ?? "U")[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">
-                    {member.name ?? member.email}
+                    {member.user?.name ?? member.user?.email}
                   </p>
-                  {member.email && (
+                  {member.user?.email && (
                     <p className="text-xs text-muted-foreground">
-                      {member.email}
+                      {member.user.email}
                     </p>
                   )}
                 </div>

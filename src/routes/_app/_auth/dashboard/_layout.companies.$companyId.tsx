@@ -36,12 +36,15 @@ function CompanyDetail() {
     })
   );
 
-  const { data: activities } = useQuery(
+  const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {
+      organizationId,
       entityType: "company",
       entityId: companyId,
+      paginationOpts: { numItems: 20, cursor: null },
     })
   );
+  const activities = activitiesData?.page;
 
   const { data: relationships } = useQuery(
     convexQuery(api.relationships.getForEntity, {
@@ -111,12 +114,30 @@ function CompanyDetail() {
               <CompanyForm
                 initialData={company}
                 customFieldDefinitions={customFieldDefs}
-                customFieldValues={customFieldValues ?? {}}
+                customFieldValues={(customFieldValues ?? []).reduce<Record<string, unknown>>(
+                  (acc, v) => {
+                    const def = customFieldDefs?.find((d) => d._id === v.fieldDefinitionId);
+                    if (def) acc[def.fieldKey] = v.value;
+                    return acc;
+                  },
+                  {}
+                )}
                 isSubmitting={isSubmitting}
                 onCancel={() => navigate({ to: "/dashboard/companies" })}
-                onSubmit={async (data, customFields) => {
+                onSubmit={async (data, customFieldRecord) => {
                   setIsSubmitting(true);
                   try {
+                    const customFields = customFieldDefs
+                      ? Object.entries(customFieldRecord)
+                          .filter(([, v]) => v !== undefined && v !== "")
+                          .map(([key, value]) => {
+                            const def = customFieldDefs.find((d) => d.fieldKey === key);
+                            return def
+                              ? { fieldDefinitionId: def._id as Id<"customFieldDefinitions">, value }
+                              : null;
+                          })
+                          .filter((f): f is NonNullable<typeof f> => f !== null)
+                      : undefined;
                     await updateCompany({
                       organizationId,
                       companyId: companyId as Id<"companies">,
@@ -144,7 +165,7 @@ function CompanyDetail() {
                     _id: r._id,
                     targetType: r.targetType,
                     targetId: r.targetId,
-                    targetName: r.targetName ?? r.targetId,
+                    targetName: r.targetId,
                     relationshipType: r.relationshipType,
                   })) ?? []
                 }
@@ -159,11 +180,10 @@ function CompanyDetail() {
             <CardContent>
               <ActivityTimeline
                 activities={
-                  activities?.map((a) => ({
+                  activities?.map((a: typeof activities[number]) => ({
                     _id: a._id,
                     action: a.action,
                     description: a.description,
-                    performedByName: a.performedByName,
                     createdAt: a.createdAt,
                   })) ?? []
                 }

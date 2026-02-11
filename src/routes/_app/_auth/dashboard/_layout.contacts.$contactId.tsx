@@ -36,12 +36,15 @@ function ContactDetail() {
     })
   );
 
-  const { data: activities } = useQuery(
+  const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {
+      organizationId,
       entityType: "contact",
       entityId: contactId,
+      paginationOpts: { numItems: 20, cursor: null },
     })
   );
+  const activities = activitiesData?.page;
 
   const { data: relationships } = useQuery(
     convexQuery(api.relationships.getForEntity, {
@@ -58,12 +61,22 @@ function ContactDetail() {
     })
   );
 
-  const { data: customFieldValues } = useQuery(
+  const { data: rawCustomFieldValues } = useQuery(
     convexQuery(api.customFields.getValues, {
       organizationId,
       entityType: "contact",
       entityId: contactId,
     })
+  );
+
+  // Transform value[] into Record<fieldKey, value> for the form
+  const customFieldValues = (rawCustomFieldValues ?? []).reduce<Record<string, unknown>>(
+    (acc, cfv) => {
+      const def = customFieldDefs?.find((d) => d._id === cfv.fieldDefinitionId);
+      if (def) acc[def.fieldKey] = cfv.value;
+      return acc;
+    },
+    {}
   );
 
   if (isLoading) {
@@ -109,12 +122,23 @@ function ContactDetail() {
               <ContactForm
                 initialData={contact}
                 customFieldDefinitions={customFieldDefs}
-                customFieldValues={customFieldValues ?? {}}
+                customFieldValues={customFieldValues}
                 isSubmitting={isSubmitting}
                 onCancel={() => navigate({ to: "/dashboard/contacts" })}
-                onSubmit={async (data, customFields) => {
+                onSubmit={async (data, customFieldRecord) => {
                   setIsSubmitting(true);
                   try {
+                    const customFields = customFieldDefs
+                      ? Object.entries(customFieldRecord)
+                          .filter(([, v]) => v !== undefined && v !== "")
+                          .map(([key, value]) => {
+                            const def = customFieldDefs.find((d) => d.fieldKey === key);
+                            return def
+                              ? { fieldDefinitionId: def._id as Id<"customFieldDefinitions">, value }
+                              : null;
+                          })
+                          .filter((f): f is NonNullable<typeof f> => f !== null)
+                      : undefined;
                     await updateContact({
                       organizationId,
                       contactId: contactId as Id<"contacts">,
@@ -142,7 +166,7 @@ function ContactDetail() {
                     _id: r._id,
                     targetType: r.targetType,
                     targetId: r.targetId,
-                    targetName: r.targetName ?? r.targetId,
+                    targetName: r.targetId,
                     relationshipType: r.relationshipType,
                   })) ?? []
                 }
@@ -157,11 +181,10 @@ function ContactDetail() {
             <CardContent>
               <ActivityTimeline
                 activities={
-                  activities?.map((a) => ({
+                  activities?.map((a: typeof activities[number]) => ({
                     _id: a._id,
                     action: a.action,
                     description: a.description,
-                    performedByName: a.performedByName,
                     createdAt: a.createdAt,
                   })) ?? []
                 }

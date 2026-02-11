@@ -14,15 +14,27 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as _helpers_activities from "../_helpers/activities.js";
+import type * as _helpers_auth from "../_helpers/auth.js";
+import type * as activities from "../activities.js";
 import type * as app from "../app.js";
 import type * as auth from "../auth.js";
+import type * as companies from "../companies.js";
+import type * as contacts from "../contacts.js";
+import type * as customFields from "../customFields.js";
+import type * as dashboard from "../dashboard.js";
+import type * as documents from "../documents.js";
 import type * as email_index from "../email/index.js";
 import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
 import type * as env from "../env.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
+import type * as leads from "../leads.js";
+import type * as organizations from "../organizations.js";
 import type * as otp_ResendOTP from "../otp/ResendOTP.js";
 import type * as otp_VerificationCodeEmail from "../otp/VerificationCodeEmail.js";
+import type * as pipelines from "../pipelines.js";
+import type * as relationships from "../relationships.js";
 import type * as stripe from "../stripe.js";
 
 /**
@@ -34,15 +46,27 @@ import type * as stripe from "../stripe.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "_helpers/activities": typeof _helpers_activities;
+  "_helpers/auth": typeof _helpers_auth;
+  activities: typeof activities;
   app: typeof app;
   auth: typeof auth;
+  companies: typeof companies;
+  contacts: typeof contacts;
+  customFields: typeof customFields;
+  dashboard: typeof dashboard;
+  documents: typeof documents;
   "email/index": typeof email_index;
   "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
   env: typeof env;
   http: typeof http;
   init: typeof init;
+  leads: typeof leads;
+  organizations: typeof organizations;
   "otp/ResendOTP": typeof otp_ResendOTP;
   "otp/VerificationCodeEmail": typeof otp_VerificationCodeEmail;
+  pipelines: typeof pipelines;
+  relationships: typeof relationships;
   stripe: typeof stripe;
 }>;
 export declare const api: FilterApi<

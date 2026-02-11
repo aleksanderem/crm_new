@@ -38,37 +38,32 @@ function PipelinesIndex() {
     pipelines?.find((p) => p.isDefault) ??
     pipelines?.[0];
 
-  const { data: stages } = useQuery(
-    convexQuery(
-      api.pipelines.getStages,
-      activePipeline
-        ? { organizationId, pipelineId: activePipeline._id }
-        : "skip"
-    )
-  );
+  const { data: stagesWithLeads } = useQuery({
+    ...convexQuery(api.leads.getByPipeline, {
+      organizationId,
+      pipelineId: activePipeline?._id ?? ("" as Id<"pipelines">),
+    }),
+    enabled: !!activePipeline,
+  });
 
-  const { data: leadsData } = useQuery(
-    convexQuery(
-      api.leads.getByPipeline,
-      activePipeline
-        ? { organizationId, pipelineId: activePipeline._id }
-        : "skip"
-    )
-  );
+  const stages = (stagesWithLeads ?? []).map((s) => ({
+    _id: s._id,
+    name: s.name,
+    color: s.color,
+    order: s.order,
+  }));
 
-  const kanbanLeads: KanbanLead[] =
-    leadsData?.map((l) => ({
+  const kanbanLeads: KanbanLead[] = (stagesWithLeads ?? []).flatMap((stage) =>
+    stage.leads.map((l) => ({
       _id: l._id,
       title: l.title,
       value: l.value,
       currency: l.currency,
       pipelineStageId: l.pipelineStageId,
       stageOrder: l.stageOrder,
-      companyName: l.companyName,
-      assigneeName: l.assigneeName,
-      assigneeAvatar: l.assigneeAvatar,
       priority: l.priority,
-    })) ?? [];
+    }))
+  );
 
   const handleMoveToStage = async (
     leadId: Id<"leads">,

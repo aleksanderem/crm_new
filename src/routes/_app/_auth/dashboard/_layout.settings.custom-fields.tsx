@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { EntityType, CustomFieldType } from "@cvx/schema";
+import type { EntityType } from "@cvx/schema";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(

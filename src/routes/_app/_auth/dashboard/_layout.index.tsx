@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { Id } from "@cvx/_generated/dataModel";
 import { PageHeader } from "@/components/layout/page-header";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { PipelineChart } from "@/components/dashboard/pipeline-chart";
@@ -20,9 +21,17 @@ function DashboardIndex() {
   const { data: stats, isLoading: statsLoading } = useQuery(
     convexQuery(api.dashboard.getStats, { organizationId })
   );
-  const { data: stageData } = useQuery(
-    convexQuery(api.dashboard.getLeadsByStage, { organizationId })
+  const { data: pipelines } = useQuery(
+    convexQuery(api.pipelines.list, { organizationId })
   );
+  const defaultPipeline = pipelines?.find((p) => p.isDefault) ?? pipelines?.[0];
+  const { data: stageData } = useQuery({
+    ...convexQuery(api.dashboard.getLeadsByStage, {
+      organizationId,
+      pipelineId: defaultPipeline?._id ?? ("" as Id<"pipelines">),
+    }),
+    enabled: !!defaultPipeline,
+  });
   const { data: recentActivity } = useQuery(
     convexQuery(api.activities.getRecentForOrg, { organizationId })
   );
@@ -44,7 +53,7 @@ function DashboardIndex() {
         <KpiCards
           totalContacts={stats?.totalContacts ?? 0}
           totalCompanies={stats?.totalCompanies ?? 0}
-          openDeals={stats?.openDeals ?? 0}
+          openDeals={stats?.openLeads ?? 0}
           pipelineValue={stats?.pipelineValue ?? 0}
           winRate={stats?.winRate ?? 0}
         />
@@ -52,7 +61,15 @@ function DashboardIndex() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <PipelineChart data={stageData ?? []} />
+          <PipelineChart
+            data={
+              stageData?.map((s) => ({
+                name: s.stageName,
+                count: s.count,
+                value: s.totalValue,
+              })) ?? []
+            }
+          />
         </div>
         <Card>
           <CardHeader>
@@ -65,7 +82,7 @@ function DashboardIndex() {
                   _id: a._id,
                   action: a.action,
                   description: a.description,
-                  performedByName: a.performedByName,
+                  performedByName: a.user?.name ?? undefined,
                   createdAt: a.createdAt,
                 })) ?? []
               }

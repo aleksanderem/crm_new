@@ -37,7 +37,7 @@ function NewDocument() {
                 let fileSize: number | undefined;
 
                 if (data.file) {
-                  const uploadUrl = await generateUploadUrl();
+                  const uploadUrl = await generateUploadUrl({ organizationId });
                   const result = await fetch(uploadUrl, {
                     method: "POST",
                     headers: { "Content-Type": data.file.type },

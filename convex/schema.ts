@@ -83,6 +83,15 @@ export const entityTypeValidator = v.union(
   v.literal("lead"),
   v.literal("document"),
   v.literal("activity"),
+  v.literal("gabinetPatient"),
+  v.literal("gabinetTreatment"),
+  v.literal("gabinetAppointment"),
+  v.literal("gabinetPackage"),
+  v.literal("gabinetDocument"),
+  v.literal("gabinetEmployee"),
+  v.literal("product"),
+  v.literal("call"),
+  v.literal("pipeline"),
 );
 export type EntityType = Infer<typeof entityTypeValidator>;
 
@@ -129,6 +138,90 @@ export const invitationStatusValidator = v.union(
   v.literal("expired"),
 );
 export type InvitationStatus = Infer<typeof invitationStatusValidator>;
+
+export const gabinetGenderValidator = v.union(
+  v.literal("male"),
+  v.literal("female"),
+  v.literal("other"),
+);
+export type GabinetGender = Infer<typeof gabinetGenderValidator>;
+
+export const gabinetLeaveTypeValidator = v.union(
+  v.literal("vacation"),
+  v.literal("sick"),
+  v.literal("personal"),
+  v.literal("training"),
+  v.literal("other"),
+);
+export type GabinetLeaveType = Infer<typeof gabinetLeaveTypeValidator>;
+
+export const gabinetEmployeeRoleValidator = v.union(
+  v.literal("doctor"),
+  v.literal("nurse"),
+  v.literal("therapist"),
+  v.literal("receptionist"),
+  v.literal("admin"),
+  v.literal("other"),
+);
+export type GabinetEmployeeRole = Infer<typeof gabinetEmployeeRoleValidator>;
+
+export const gabinetLeaveStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("rejected"),
+);
+export type GabinetLeaveStatus = Infer<typeof gabinetLeaveStatusValidator>;
+
+export const gabinetAppointmentStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("confirmed"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+  v.literal("no_show"),
+);
+export type GabinetAppointmentStatus = Infer<typeof gabinetAppointmentStatusValidator>;
+
+export const gabinetDocTypeValidator = v.union(
+  v.literal("consent"),
+  v.literal("medical_record"),
+  v.literal("prescription"),
+  v.literal("referral"),
+  v.literal("custom"),
+);
+export type GabinetDocType = Infer<typeof gabinetDocTypeValidator>;
+
+export const gabinetDocStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("pending_signature"),
+  v.literal("signed"),
+  v.literal("archived"),
+);
+export type GabinetDocStatus = Infer<typeof gabinetDocStatusValidator>;
+
+export const gabinetPackageUsageStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("completed"),
+  v.literal("expired"),
+  v.literal("cancelled"),
+);
+export type GabinetPackageUsageStatus = Infer<typeof gabinetPackageUsageStatusValidator>;
+
+export const gabinetLoyaltyTierValidator = v.union(
+  v.literal("bronze"),
+  v.literal("silver"),
+  v.literal("gold"),
+  v.literal("platinum"),
+);
+export type GabinetLoyaltyTier = Infer<typeof gabinetLoyaltyTierValidator>;
+
+export const gabinetLoyaltyTxTypeValidator = v.union(
+  v.literal("earn"),
+  v.literal("spend"),
+  v.literal("adjust"),
+  v.literal("expire"),
+);
+export type GabinetLoyaltyTxType = Infer<typeof gabinetLoyaltyTxTypeValidator>;
 
 export const callOutcomeValidator = v.union(
   v.literal("busy"),
@@ -192,6 +285,45 @@ const schema = defineSchema({
   })
     .index("userId", ["userId"])
     .index("stripeId", ["stripeId"]),
+
+  // --- Product Subscriptions (per organization, per product) ---
+
+  platformProducts: defineTable({
+    productId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    isActive: v.boolean(),
+    prices: v.object({
+      month: v.object({ usd: v.number(), eur: v.number() }),
+      year: v.object({ usd: v.number(), eur: v.number() }),
+    }),
+    stripeProductId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_productId", ["productId"])
+    .index("by_stripeProductId", ["stripeProductId"]),
+
+  productSubscriptions: defineTable({
+    organizationId: v.id("organizations"),
+    productId: v.string(),
+    stripeSubscriptionId: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("trialing"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+      v.literal("incomplete"),
+    ),
+    currentPeriodStart: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndProduct", ["organizationId", "productId"])
+    .index("by_stripeSubscriptionId", ["stripeSubscriptionId"]),
 
   // --- CRM Tables ---
 
@@ -491,6 +623,14 @@ const schema = defineSchema({
     googleEventId: v.optional(v.string()),
     googleCalendarId: v.optional(v.string()),
     lastGoogleSyncAt: v.optional(v.number()),
+    // Link to module extension record (e.g. gabinetAppointment)
+    moduleRef: v.optional(v.object({
+      moduleId: v.string(),
+      entityType: v.string(),
+      entityId: v.string(),
+    })),
+    // Resource performing the work (distinct from ownerId who created the event)
+    resourceId: v.optional(v.id("users")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -499,7 +639,41 @@ const schema = defineSchema({
     .index("by_orgAndDueDate", ["organizationId", "dueDate"])
     .index("by_owner", ["ownerId"])
     .index("by_orgAndType", ["organizationId", "activityType"])
-    .index("by_orgAndCompleted", ["organizationId", "isCompleted"]),
+    .index("by_orgAndCompleted", ["organizationId", "isCompleted"])
+    .index("by_orgAndResource", ["organizationId", "resourceId"])
+    .index("by_orgAndResourceAndDueDate", ["organizationId", "resourceId", "dueDate"]),
+
+  // --- Payments ---
+
+  payments: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.optional(v.id("gabinetPatients")),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    amount: v.number(),
+    currency: v.string(),
+    paymentMethod: v.union(
+      v.literal("cash"),
+      v.literal("card"),
+      v.literal("transfer"),
+      v.literal("other"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("refunded"),
+      v.literal("cancelled"),
+    ),
+    paidAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_appointment", ["appointmentId"]),
 
   // --- Saved Views ---
 
@@ -662,6 +836,379 @@ const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_entity", ["entityType", "entityId"])
+    .index("by_org", ["organizationId"]),
+
+  // --- Gabinet (Medical Office) ---
+
+  gabinetPatients: defineTable({
+    organizationId: v.id("organizations"),
+    contactId: v.optional(v.id("contacts")),
+    firstName: v.string(),
+    lastName: v.string(),
+    pesel: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      postalCode: v.optional(v.string()),
+    })),
+    medicalNotes: v.optional(v.string()),
+    allergies: v.optional(v.string()),
+    bloodType: v.optional(v.string()),
+    emergencyContactName: v.optional(v.string()),
+    emergencyContactPhone: v.optional(v.string()),
+    referralSource: v.optional(v.string()),
+    referredByPatientId: v.optional(v.id("gabinetPatients")),
+    isActive: v.boolean(),
+    tags: v.optional(v.array(v.string())),
+    customFields: v.optional(v.any()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndEmail", ["organizationId", "email"])
+    .index("by_orgAndPesel", ["organizationId", "pesel"])
+    .index("by_orgAndContact", ["organizationId", "contactId"])
+    .searchIndex("search_patients", {
+      searchField: "firstName",
+      filterFields: ["organizationId"],
+    }),
+
+  gabinetTreatments: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    duration: v.number(),
+    price: v.number(),
+    currency: v.optional(v.string()),
+    taxRate: v.optional(v.number()),
+    requiredEquipment: v.optional(v.array(v.string())),
+    contraindications: v.optional(v.string()),
+    preparationInstructions: v.optional(v.string()),
+    aftercareInstructions: v.optional(v.string()),
+    isActive: v.boolean(),
+    requiresApproval: v.optional(v.boolean()),
+    color: v.optional(v.string()),
+    sortOrder: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndCategory", ["organizationId", "category"])
+    .index("by_orgAndActive", ["organizationId", "isActive"])
+    .searchIndex("search_treatments", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
+
+  // --- Gabinet: Employee Scheduling (Phase 2) ---
+
+  gabinetWorkingHours: defineTable({
+    organizationId: v.id("organizations"),
+    dayOfWeek: v.number(), // 0-6
+    startTime: v.string(), // "HH:MM"
+    endTime: v.string(),
+    isOpen: v.boolean(),
+    breakStart: v.optional(v.string()),
+    breakEnd: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDay", ["organizationId", "dayOfWeek"]),
+
+  gabinetEmployeeSchedules: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    dayOfWeek: v.number(),
+    startTime: v.string(),
+    endTime: v.string(),
+    isWorking: v.boolean(),
+    breakStart: v.optional(v.string()),
+    breakEnd: v.optional(v.string()),
+    effectiveFrom: v.optional(v.string()),
+    effectiveTo: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgUserAndDay", ["organizationId", "userId", "dayOfWeek"]),
+
+  gabinetLeaves: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    type: gabinetLeaveTypeValidator,
+    leaveTypeId: v.optional(v.id("gabinetLeaveTypes")),
+    startDate: v.string(),
+    endDate: v.string(),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    status: gabinetLeaveStatusValidator,
+    reason: v.optional(v.string()),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndDate", ["organizationId", "startDate"]),
+
+  gabinetOvertime: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    date: v.string(),
+    hours: v.number(),
+    reason: v.optional(v.string()),
+    status: gabinetLeaveStatusValidator, // reuse pending/approved/rejected
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"]),
+
+  // --- Gabinet: Employees (HR) ---
+
+  gabinetEmployees: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    role: gabinetEmployeeRoleValidator,
+    specialization: v.optional(v.string()),
+    qualifiedTreatmentIds: v.array(v.id("gabinetTreatments")),
+    licenseNumber: v.optional(v.string()),
+    hireDate: v.optional(v.string()),
+    isActive: v.boolean(),
+    color: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgAndActive", ["organizationId", "isActive"])
+    .index("by_orgAndRole", ["organizationId", "role"]),
+
+  // --- Gabinet: Leave Types & Balances (HR) ---
+
+  gabinetLeaveTypes: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    color: v.optional(v.string()),
+    isPaid: v.boolean(),
+    annualQuotaDays: v.optional(v.number()),
+    requiresApproval: v.boolean(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndActive", ["organizationId", "isActive"]),
+
+  gabinetLeaveBalances: defineTable({
+    organizationId: v.id("organizations"),
+    employeeId: v.id("gabinetEmployees"),
+    leaveTypeId: v.id("gabinetLeaveTypes"),
+    year: v.number(),
+    totalDays: v.number(),
+    usedDays: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndEmployee", ["organizationId", "employeeId"])
+    .index("by_orgEmployeeTypeYear", ["organizationId", "employeeId", "leaveTypeId", "year"]),
+
+  // --- Gabinet: Appointments (Phase 3) ---
+
+  gabinetAppointments: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    treatmentId: v.id("gabinetTreatments"),
+    employeeId: v.id("users"),
+    date: v.string(), // YYYY-MM-DD
+    startTime: v.string(), // HH:MM
+    endTime: v.string(),
+    status: gabinetAppointmentStatusValidator,
+    notes: v.optional(v.string()),
+    internalNotes: v.optional(v.string()),
+    color: v.optional(v.string()),
+    isRecurring: v.boolean(),
+    recurringRule: v.optional(v.object({
+      frequency: v.string(), // daily, weekly, biweekly, monthly
+      count: v.optional(v.number()),
+      until: v.optional(v.string()),
+    })),
+    recurringGroupId: v.optional(v.string()),
+    recurringIndex: v.optional(v.number()),
+    prepaymentRequired: v.optional(v.boolean()),
+    prepaymentAmount: v.optional(v.number()),
+    prepaymentStatus: v.optional(v.string()),
+    prepaymentPaidAt: v.optional(v.number()),
+    packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    scheduledActivityId: v.optional(v.id("scheduledActivities")),
+    cancelledAt: v.optional(v.number()),
+    cancelledBy: v.optional(v.id("users")),
+    cancellationReason: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDate", ["organizationId", "date"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_orgAndEmployee", ["organizationId", "employeeId"])
+    .index("by_orgAndEmployeeAndDate", ["organizationId", "employeeId", "date"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"]),
+
+  // --- Gabinet: Packages & Loyalty (Phase 4) ---
+
+  gabinetTreatmentPackages: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    treatments: v.array(v.object({
+      treatmentId: v.id("gabinetTreatments"),
+      quantity: v.number(),
+    })),
+    totalPrice: v.number(),
+    currency: v.optional(v.string()),
+    discountPercent: v.optional(v.number()),
+    validityDays: v.optional(v.number()),
+    isActive: v.boolean(),
+    loyaltyPointsAwarded: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndActive", ["organizationId", "isActive"]),
+
+  gabinetPackageUsage: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    packageId: v.id("gabinetTreatmentPackages"),
+    purchasedAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    status: gabinetPackageUsageStatusValidator,
+    treatmentsUsed: v.array(v.object({
+      treatmentId: v.id("gabinetTreatments"),
+      usedCount: v.number(),
+      totalCount: v.number(),
+    })),
+    paidAmount: v.number(),
+    paymentMethod: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_orgAndStatus", ["organizationId", "status"]),
+
+  gabinetLoyaltyPoints: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    balance: v.number(),
+    lifetimeEarned: v.number(),
+    lifetimeSpent: v.number(),
+    tier: v.optional(gabinetLoyaltyTierValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"]),
+
+  gabinetLoyaltyTransactions: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    type: gabinetLoyaltyTxTypeValidator,
+    points: v.number(),
+    reason: v.string(),
+    referenceType: v.optional(v.string()),
+    referenceId: v.optional(v.string()),
+    balanceAfter: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"]),
+
+  // --- Gabinet: Documents & Signatures (Phase 5) ---
+
+  gabinetDocumentTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    type: gabinetDocTypeValidator,
+    content: v.string(),
+    requiresSignature: v.boolean(),
+    isActive: v.boolean(),
+    sortOrder: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndType", ["organizationId", "type"]),
+
+  gabinetDocuments: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    templateId: v.optional(v.id("gabinetDocumentTemplates")),
+    title: v.string(),
+    type: gabinetDocTypeValidator,
+    content: v.string(),
+    status: gabinetDocStatusValidator,
+    signatureData: v.optional(v.string()),
+    signedAt: v.optional(v.number()),
+    signedByPatient: v.optional(v.boolean()),
+    signedByEmployee: v.optional(v.id("users")),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileMimeType: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_appointment", ["appointmentId"]),
+
+  // --- Gabinet: Patient Portal (Phase 6) ---
+
+  gabinetPortalSessions: defineTable({
+    patientId: v.id("gabinetPatients"),
+    organizationId: v.id("organizations"),
+    tokenHash: v.string(),
+    otpHash: v.optional(v.string()),
+    otpExpiresAt: v.optional(v.number()),
+    isActive: v.boolean(),
+    lastAccessedAt: v.number(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["tokenHash"])
+    .index("by_patient", ["patientId"])
     .index("by_org", ["organizationId"]),
 });
 

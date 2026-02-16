@@ -167,6 +167,37 @@ async function seedOrganizationDefaultsHandler(
       updatedAt: now,
     });
   }
+
+  // --- Platform Products (global, not per-org) ---
+  const existingProducts = await ctx.db
+    .query("platformProducts")
+    .first();
+
+  if (!existingProducts) {
+    const products = [
+      {
+        productId: "crm",
+        name: "CRM",
+        description: "Contact management, leads, pipelines, deals, documents, email",
+        prices: { month: { usd: 29, eur: 27 }, year: { usd: 290, eur: 270 } },
+      },
+      {
+        productId: "gabinet",
+        name: "Gabinet",
+        description: "Patient management, appointments, treatments, scheduling, billing",
+        prices: { month: { usd: 49, eur: 45 }, year: { usd: 490, eur: 450 } },
+      },
+    ];
+
+    for (const prod of products) {
+      await ctx.db.insert("platformProducts", {
+        ...prod,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
 }
 
 /**

@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { OrgProvider } from "@/components/org-context";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,17 +22,14 @@ import { useSignOut } from "@/utils/misc";
 import {
   Settings,
   LogOut,
-  Search,
   Users,
   Building2,
   TrendingUp,
   FileText,
   Package,
-  ActivityIcon,
-  LanguagesIcon,
   SearchIcon,
 } from "@/lib/ez-icons";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -227,6 +225,10 @@ function DashboardLayout() {
     [createLead, firstOrg]
   );
 
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const showDatePicker = /^\/(dashboard)\/?$/.test(pathname)
+    || /^\/dashboard\/(activities|calls|leads|pipelines)/.test(pathname);
+
   const sidebarActionsValue = useMemo(
     () => ({
       openQuickCreate: (type: string) => handleCreateEntity(type as QuickCreateEntityType),
@@ -259,7 +261,8 @@ function DashboardLayout() {
             <div className="flex flex-1 flex-col">
               <header className="bg-card sticky top-0 z-50 flex items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
-                  <SidebarTrigger className="md:hidden [&_svg]:!size-5 [&_easier-icon]:!size-5" />
+                  <SidebarTrigger className="[&_svg]:!size-5 [&_easier-icon]:!size-5" />
+                  <Separator orientation="vertical" className="hidden !h-4 sm:block" />
                   <Button
                     variant="ghost"
                     className="hidden !bg-transparent px-1 py-0 font-normal sm:block"
@@ -280,23 +283,16 @@ function DashboardLayout() {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-6">
-                  <div className="flex items-center gap-1.5">
-                    <DateRangePicker />
+                <div className="flex items-center gap-1.5">
+                  {showDatePicker && <DateRangePicker />}
 
-                    {/* Quick create */}
-                    <QuickCreateMenu onCreateEntity={handleCreateEntity} />
+                  <QuickCreateMenu onCreateEntity={handleCreateEntity} />
+                  <NotificationBell />
+                  <ThemeSwitcher />
 
-                    {/* Notification bell */}
-                    <NotificationBell />
-
-                    <ThemeSwitcher />
-                  </div>
-
-                  {/* Profile dropdown */}
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-9.5">
+                      <Button variant="ghost" className="h-full gap-2 p-0 font-normal sm:pr-1">
                         {user.avatarUrl ? (
                           <Avatar className="size-9.5 rounded-md">
                             <AvatarImage
@@ -304,37 +300,27 @@ function DashboardLayout() {
                               alt={user.username ?? user.email}
                             />
                             <AvatarFallback>
-                              {(
-                                user.username ??
-                                user.email ??
-                                "U"
-                              )[0].toUpperCase()}
+                              {(user.username ?? user.email ?? "U")[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         ) : (
                           <span className="flex size-9.5 items-center justify-center rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
-                            {(
-                              user.username ??
-                              user.email ??
-                              "U"
-                            )[0].toUpperCase()}
+                            {(user.username ?? user.email ?? "U")[0].toUpperCase()}
                           </span>
                         )}
+                        <div className="hidden flex-col items-start gap-0.5 sm:flex">
+                          <span className="text-sm font-medium">{user.username ?? user.name ?? user.email}</span>
+                          <span className="text-muted-foreground text-xs">{user.email}</span>
+                        </div>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-48">
-                      <div className="px-2 py-1.5">
-                        <p className="text-sm font-medium">{user.username}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
+                      <div className="px-2 py-1.5 sm:hidden">
+                        <p className="text-sm font-medium">{user.username ?? user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() =>
-                          navigate({ to: "/dashboard/settings" })
-                        }
-                      >
+                      <DropdownMenuSeparator className="sm:hidden" />
+                      <DropdownMenuItem onClick={() => navigate({ to: "/dashboard/settings" })}>
                         <Settings className="mr-2 h-4 w-4" />
                         {t("layout.settings")}
                       </DropdownMenuItem>

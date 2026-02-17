@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,7 @@ import {
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { BulkActionsBar } from "@/components/crm/bulk-actions";
-import { MoreHorizontal, Pencil, Inbox } from "lucide-react";
+import { MoreHorizontal, Pencil, Inbox } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import type { BulkAction } from "./types";
 
@@ -226,30 +227,28 @@ export function CrmDataTable<TData>({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
+      <Card className="py-0">
+        <div className="flex items-center gap-2 px-4 pt-4 sm:px-6">
           <Skeleton className="h-9 w-[280px]" />
           <Skeleton className="h-9 w-[100px]" />
         </div>
-        <div className="rounded-md border">
-          <div className="p-4 space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex gap-4">
-                <Skeleton className="h-5 w-5" />
-                <Skeleton className="h-5 flex-1" />
-                <Skeleton className="h-5 flex-1" />
-                <Skeleton className="h-5 w-[120px]" />
-              </div>
-            ))}
-          </div>
+        <div className="p-4 space-y-3 sm:px-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-5 flex-1" />
+              <Skeleton className="h-5 flex-1" />
+              <Skeleton className="h-5 w-[120px]" />
+            </div>
+          ))}
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <Card className="py-0">
+      <div className="flex items-center justify-between px-4 pt-4 sm:px-6">
         <DataTableToolbar
           table={table}
           searchKey={searchKey}
@@ -264,18 +263,20 @@ export function CrmDataTable<TData>({
       </div>
 
       {enableBulkSelect && bulkActions && bulkActions.length > 0 && (
-        <BulkActionsBar
-          selectedCount={selectedRows.length}
-          actions={bulkActions}
-          onAction={(actionValue) => {
-            onBulkAction?.(actionValue, selectedRows);
-            setRowSelection({});
-          }}
-          onClearSelection={() => setRowSelection({})}
-        />
+        <div className="px-4 sm:px-6">
+          <BulkActionsBar
+            selectedCount={selectedRows.length}
+            actions={bulkActions}
+            onAction={(actionValue) => {
+              onBulkAction?.(actionValue, selectedRows);
+              setRowSelection({});
+            }}
+            onClearSelection={() => setRowSelection({})}
+          />
+        </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="mt-4">
         <div className="relative w-full overflow-auto">
           <table className="w-full caption-bottom text-sm">
             <thead className="[&_tr]:border-b">
@@ -344,7 +345,9 @@ export function CrmDataTable<TData>({
           </table>
         </div>
       </div>
-      <DataTablePagination table={table} />
-    </div>
+      <div className="px-4 pb-4 pt-2 sm:px-6">
+        <DataTablePagination table={table} />
+      </div>
+    </Card>
   );
 }

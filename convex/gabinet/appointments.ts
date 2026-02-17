@@ -9,6 +9,8 @@ import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetAppointmentStatusValidator } from "../schema";
 import { checkConflict, getAvailableSlots, checkEmployeeQualification } from "./_availability";
 import { Id } from "../_generated/dataModel";
+import { logAudit } from "../auditLog";
+import { createNotificationDirect } from "../notifications";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   scheduled: ["confirmed", "cancelled", "no_show"],
@@ -580,6 +582,35 @@ export const updateStatus = mutation({
       performedBy: user._id,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "status_changed",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+      details: JSON.stringify({ oldStatus: appt.status, newStatus: args.status }),
+    });
+
+    // Notify appointment creator and employee about status change
+    if (appt.createdBy !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: appt.createdBy,
+        type: "appointment_status_changed",
+        title: "Appointment status changed",
+        message: `Appointment status changed to "${args.status}"`,
+      });
+    }
+    if (appt.employeeId !== user._id && appt.employeeId !== appt.createdBy) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: appt.employeeId,
+        type: "appointment_status_changed",
+        title: "Appointment status changed",
+        message: `Appointment status changed to "${args.status}"`,
+      });
+    }
+
     return args.appointmentId;
   },
 });
@@ -633,6 +664,34 @@ export const cancel = mutation({
       description: `Cancelled appointment${args.reason ? `: ${args.reason}` : ""}`,
       performedBy: user._id,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "entity_cancelled",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+    });
+
+    // Notify appointment creator and employee about cancellation
+    if (appt.createdBy !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: appt.createdBy,
+        type: "appointment_status_changed",
+        title: "Appointment cancelled",
+        message: `An appointment has been cancelled${args.reason ? `: ${args.reason}` : ""}`,
+      });
+    }
+    if (appt.employeeId !== user._id && appt.employeeId !== appt.createdBy) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: appt.employeeId,
+        type: "appointment_status_changed",
+        title: "Appointment cancelled",
+        message: `An appointment has been cancelled${args.reason ? `: ${args.reason}` : ""}`,
+      });
+    }
   },
 });
 

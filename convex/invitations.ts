@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { orgRoleValidator } from "@cvx/schema";
+import { logAudit } from "./auditLog";
+import { createNotificationDirect } from "./notifications";
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -119,6 +121,15 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "member_invited",
+      entityType: "invitation",
+      entityId: invitationId,
+      details: JSON.stringify({ email: args.email, role: args.role }),
+    });
+
     return invitationId;
   },
 });
@@ -162,6 +173,27 @@ export const accept = mutation({
       description: `${user.email} accepted invitation and joined as "${invitation.role}"`,
       performedBy: user._id,
     });
+
+    await logAudit(ctx, {
+      organizationId: invitation.organizationId,
+      userId: user._id,
+      action: "member_joined",
+      entityType: "invitation",
+      entityId: invitation._id,
+      details: JSON.stringify({ email: user.email }),
+    });
+
+    // Notify org owner about the new team member
+    const org = await ctx.db.get(invitation.organizationId);
+    if (org && org.ownerId !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId: invitation.organizationId,
+        userId: org.ownerId,
+        type: "member_joined",
+        title: "New team member",
+        message: `${user.name ?? user.email ?? "A user"} joined your organization as "${invitation.role}"`,
+      });
+    }
 
     return invitation.organizationId;
   },

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { logAudit } from "./auditLog";
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -89,6 +90,15 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "payment_created",
+      entityType: "payment",
+      entityId: paymentId,
+      details: JSON.stringify({ amount: args.amount, currency: args.currency }),
+    });
+
     return paymentId;
   },
 });
@@ -128,6 +138,15 @@ export const markPaid = mutation({
       performedBy: user._id,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "payment_completed",
+      entityType: "payment",
+      entityId: args.paymentId,
+      details: JSON.stringify({ amount: payment.amount }),
+    });
+
     return args.paymentId;
   },
 });
@@ -156,6 +175,15 @@ export const refund = mutation({
         ? `${payment.notes ? payment.notes + "\n" : ""}Refund: ${args.reason}`
         : payment.notes,
       updatedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "payment_refunded",
+      entityType: "payment",
+      entityId: args.paymentId,
+      details: JSON.stringify({ amount: payment.amount, reason: args.reason }),
     });
 
     return args.paymentId;

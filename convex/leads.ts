@@ -5,6 +5,8 @@ import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
+import { logAudit } from "./auditLog";
+import { createNotificationDirect } from "./notifications";
 
 export const list = query({
   args: {
@@ -162,6 +164,18 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Notify assigned user if different from creator
+    if (args.assignedTo && args.assignedTo !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: args.assignedTo,
+        type: "assigned",
+        title: "Lead assigned",
+        message: `You have been assigned to lead "${args.title}"`,
+        link: `/leads/${leadId}`,
+      });
+    }
+
     return leadId;
   },
 });
@@ -252,6 +266,41 @@ export const update = mutation({
         metadata: { oldStatus: lead.status, newStatus: updates.status },
         performedBy: user._id,
       });
+
+      // Audit log for status changes to won/lost
+      if (updates.status === "won" || updates.status === "lost") {
+        await logAudit(ctx, {
+          organizationId,
+          userId: user._id,
+          action: "status_changed",
+          entityType: "lead",
+          entityId: leadId,
+          details: JSON.stringify({ oldStatus: lead.status, newStatus: updates.status }),
+        });
+      }
+
+      // Notify lead owner on won/lost
+      const leadOwner = lead.assignedTo ?? lead.createdBy;
+      if (updates.status === "won" && leadOwner !== user._id) {
+        await createNotificationDirect(ctx, {
+          organizationId,
+          userId: leadOwner,
+          type: "deal_won",
+          title: "Deal won!",
+          message: `Lead "${lead.title}" has been marked as won`,
+          link: `/leads/${leadId}`,
+        });
+      }
+      if (updates.status === "lost" && leadOwner !== user._id) {
+        await createNotificationDirect(ctx, {
+          organizationId,
+          userId: leadOwner,
+          type: "deal_lost",
+          title: "Deal lost",
+          message: `Lead "${lead.title}" has been marked as lost`,
+          link: `/leads/${leadId}`,
+        });
+      }
     } else {
       await logActivity(ctx, {
         organizationId,
@@ -260,6 +309,18 @@ export const update = mutation({
         action: "updated",
         description: `Updated lead "${lead.title}"`,
         performedBy: user._id,
+      });
+    }
+
+    // Notify when assignedTo changes to someone other than the current user
+    if (updates.assignedTo && updates.assignedTo !== lead.assignedTo && updates.assignedTo !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId,
+        userId: updates.assignedTo,
+        type: "assigned",
+        title: "Lead assigned",
+        message: `You have been assigned to lead "${lead.title}"`,
+        link: `/leads/${leadId}`,
       });
     }
 
@@ -304,6 +365,15 @@ export const remove = mutation({
       action: "deleted",
       description: `Deleted lead "${lead.title}"`,
       performedBy: user._id,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "entity_deleted",
+      entityType: "lead",
+      entityId: args.leadId,
+      details: JSON.stringify({ title: lead.title }),
     });
 
     return args.leadId;
@@ -407,6 +477,42 @@ export const moveToStage = mutation({
       },
       performedBy: user._id,
     });
+
+    // Audit + notify on auto-status changes from stage moves
+    if (updateData.status && updateData.status !== lead.status) {
+      if (updateData.status === "won" || updateData.status === "lost") {
+        await logAudit(ctx, {
+          organizationId: args.organizationId,
+          userId: user._id,
+          action: "status_changed",
+          entityType: "lead",
+          entityId: args.leadId,
+          details: JSON.stringify({ oldStatus: lead.status, newStatus: updateData.status }),
+        });
+
+        const leadOwner = lead.assignedTo ?? lead.createdBy;
+        if (updateData.status === "won" && leadOwner !== user._id) {
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: leadOwner,
+            type: "deal_won",
+            title: "Deal won!",
+            message: `Lead "${lead.title}" has been marked as won`,
+            link: `/leads/${args.leadId}`,
+          });
+        }
+        if (updateData.status === "lost" && leadOwner !== user._id) {
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: leadOwner,
+            type: "deal_lost",
+            title: "Deal lost",
+            message: `Lead "${lead.title}" has been marked as lost`,
+            link: `/leads/${args.leadId}`,
+          });
+        }
+      }
+    }
 
     return args.leadId;
   },

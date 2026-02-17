@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { getEffectivePermissions } from "./_helpers/permissions";
+import { logAudit } from "./auditLog";
 
 export const getMyPermissions = query({
   args: { organizationId: v.id("organizations") },
@@ -76,6 +77,13 @@ export const updateOrgPermissions = mutation({
         updatedAt: now,
       });
     }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "permission_changed",
+      details: JSON.stringify({ role: args.role, changes: args.permissions }),
+    });
   },
 });
 

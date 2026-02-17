@@ -76,6 +76,7 @@ const crmNav: NavItem[] = [
   { label: "nav.insights", href: "/dashboard", icon: BarChart3 },
   { label: "nav.deals", href: "/dashboard/leads", icon: TrendingUp },
   { label: "nav.activities", href: "/dashboard/activities", icon: CalendarCheck },
+  { label: "nav.calendar", href: "/dashboard/calendar", icon: Calendar },
   { label: "nav.inbox", href: "/dashboard/inbox", icon: Mail },
   { label: "nav.contacts", href: "/dashboard/contacts", icon: Users },
   { label: "nav.companies", href: "/dashboard/companies", icon: Building2 },
@@ -185,6 +186,7 @@ interface SettingsNavItem {
 
 const settingsNav: SettingsNavItem[] = [
   { labelKey: "settings.general", to: "/dashboard/settings" },
+  { labelKey: "settings.profile", to: "/dashboard/settings/profile" },
   { labelKey: "settings.billing", to: "/dashboard/settings/billing" },
   { labelKey: "settings.pipelines", to: "/dashboard/settings/pipelines" },
   { labelKey: "settings.customFields", to: "/dashboard/settings/custom-fields" },
@@ -193,6 +195,7 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settingsNav.sources", to: "/dashboard/settings/sources" },
   { labelKey: "settings.team", to: "/dashboard/settings/team" },
   { labelKey: "settings.permissions", to: "/dashboard/settings/permissions" },
+  { labelKey: "settings.auditLog", to: "/dashboard/settings/audit-log" },
   { labelKey: "settings.email", to: "/dashboard/settings/email" },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
@@ -256,6 +259,7 @@ export function AppSidebar() {
                       !matchRoute({ to: "/dashboard/documents", fuzzy: true }) &&
                       !matchRoute({ to: "/dashboard/products", fuzzy: true }) &&
                       !matchRoute({ to: "/dashboard/calls", fuzzy: true }) &&
+                      !matchRoute({ to: "/dashboard/calendar", fuzzy: true }) &&
                       !matchRoute({ to: "/dashboard/settings", fuzzy: true }) &&
                       !matchRoute({ to: "/dashboard/gabinet", fuzzy: true })
                     : !!matchRoute({ to: item.href, fuzzy: true });

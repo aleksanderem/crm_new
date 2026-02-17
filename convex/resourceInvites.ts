@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireUser } from "./_helpers/auth";
 import { createNotificationDirect } from "./notifications";
+import { logAudit } from "./auditLog";
 
 export const listByResource = query({
   args: {
@@ -70,6 +71,15 @@ export const create = mutation({
       });
     }
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "resource_shared",
+      entityType: args.resourceType,
+      entityId: args.resourceId,
+      details: JSON.stringify({ email: args.email, resourceType: args.resourceType, accessLevel: args.accessLevel }),
+    });
+
     return { inviteId, token };
   },
 });
@@ -105,7 +115,7 @@ export const revoke = mutation({
     inviteId: v.id("resourceInvites"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
 
     const invite = await ctx.db.get(args.inviteId);
     if (!invite || invite.organizationId !== args.organizationId) {
@@ -115,6 +125,15 @@ export const revoke = mutation({
     await ctx.db.patch(args.inviteId, {
       status: "revoked",
       updatedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: user._id,
+      action: "resource_invite_revoked",
+      entityType: invite.resourceType,
+      entityId: invite.resourceId,
+      details: JSON.stringify({ email: invite.email, resourceType: invite.resourceType }),
     });
 
     return args.inviteId;

@@ -6,6 +6,7 @@ import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { activityTypeValidator } from "@cvx/schema";
+import { createNotificationDirect } from "./notifications";
 
 export const list = query({
   args: {
@@ -111,6 +112,17 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Notify owner if different from creator
+    if (args.ownerId !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: args.ownerId,
+        type: "assigned",
+        title: "Activity assigned",
+        message: `You have been assigned to ${args.activityType} "${args.title}"`,
+      });
+    }
+
     // Schedule Google Calendar sync if connected
     await ctx.scheduler.runAfter(0, internal.google.calendar.createEvent, {
       organizationId: args.organizationId,
@@ -158,6 +170,17 @@ export const update = mutation({
       description: `Updated ${activity.activityType} "${activity.title}"`,
       performedBy: user._id,
     });
+
+    // Notify new owner if ownerId changed to someone other than the current user
+    if (updates.ownerId && updates.ownerId !== activity.ownerId && updates.ownerId !== user._id) {
+      await createNotificationDirect(ctx, {
+        organizationId,
+        userId: updates.ownerId,
+        type: "assigned",
+        title: "Activity assigned",
+        message: `You have been assigned to ${activity.activityType} "${activity.title}"`,
+      });
+    }
 
     // Sync to Google Calendar if linked
     if (activity.googleEventId) {
@@ -370,6 +393,82 @@ export const listDueToday = query({
       return results.filter((a) => a.createdBy === user._id);
     }
     return results;
+  },
+});
+
+export const listForCalendar = query({
+  args: {
+    organizationId: v.id("organizations"),
+    startDate: v.number(),
+    endDate: v.number(),
+    moduleFilter: v.optional(
+      v.union(v.literal("all"), v.literal("gabinet"), v.literal("crm"))
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "activities",
+      "view"
+    );
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const activities = await ctx.db
+      .query("scheduledActivities")
+      .withIndex("by_orgAndDueDate", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .gte("dueDate", args.startDate)
+          .lte("dueDate", args.endDate)
+      )
+      .collect();
+
+    let filtered = activities;
+    if (args.moduleFilter === "gabinet") {
+      filtered = activities.filter(
+        (a) => a.moduleRef?.moduleId === "gabinet"
+      );
+    } else if (args.moduleFilter === "crm") {
+      filtered = activities.filter(
+        (a) => !a.moduleRef || a.moduleRef.moduleId !== "gabinet"
+      );
+    }
+
+    if (perm.scope === "own") {
+      filtered = filtered.filter((a) => a.createdBy === user._id);
+    }
+
+    const enriched = await Promise.all(
+      filtered.map(async (activity) => {
+        let metadata: Record<string, unknown> = {};
+        if (
+          activity.moduleRef?.moduleId === "gabinet" &&
+          activity.moduleRef.entityType === "gabinetAppointment"
+        ) {
+          const appt = await ctx.db.get(
+            activity.moduleRef.entityId as any
+          );
+          if (appt) {
+            const patient = await ctx.db.get((appt as any).patientId);
+            const treatment = await ctx.db.get((appt as any).treatmentId);
+            metadata = {
+              patientName: patient
+                ? `${(patient as any).firstName} ${(patient as any).lastName}`
+                : "Unknown",
+              treatmentName: (treatment as any)?.name ?? "Unknown",
+              status: (appt as any).status,
+              employeeId: (appt as any).employeeId,
+              appointmentId: appt._id,
+            };
+          }
+        }
+        return { ...activity, metadata };
+      })
+    );
+
+    return enriched;
   },
 });
 

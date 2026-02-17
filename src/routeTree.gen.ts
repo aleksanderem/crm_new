@@ -31,6 +31,7 @@ import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutCheckoutImport } from './routes/_app/_auth/dashboard/_layout.checkout'
+import { Route as AppAuthDashboardLayoutCalendarImport } from './routes/_app/_auth/dashboard/_layout.calendar'
 import { Route as AppAuthDashboardLayoutSettingsIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutProductsIndexImport } from './routes/_app/_auth/dashboard/_layout.products.index'
 import { Route as AppAuthDashboardLayoutPipelinesIndexImport } from './routes/_app/_auth/dashboard/_layout.pipelines.index'
@@ -44,6 +45,7 @@ import { Route as AppAuthDashboardLayoutCallsIndexImport } from './routes/_app/_
 import { Route as AppAuthDashboardLayoutActivitiesIndexImport } from './routes/_app/_auth/dashboard/_layout.activities.index'
 import { Route as AppAuthDashboardLayoutSettingsTeamImport } from './routes/_app/_auth/dashboard/_layout.settings.team'
 import { Route as AppAuthDashboardLayoutSettingsSourcesImport } from './routes/_app/_auth/dashboard/_layout.settings.sources'
+import { Route as AppAuthDashboardLayoutSettingsProfileImport } from './routes/_app/_auth/dashboard/_layout.settings.profile'
 import { Route as AppAuthDashboardLayoutSettingsPipelinesImport } from './routes/_app/_auth/dashboard/_layout.settings.pipelines'
 import { Route as AppAuthDashboardLayoutSettingsPermissionsImport } from './routes/_app/_auth/dashboard/_layout.settings.permissions'
 import { Route as AppAuthDashboardLayoutSettingsOrganizationImport } from './routes/_app/_auth/dashboard/_layout.settings.organization'
@@ -52,6 +54,7 @@ import { Route as AppAuthDashboardLayoutSettingsIntegrationsImport } from './rou
 import { Route as AppAuthDashboardLayoutSettingsEmailImport } from './routes/_app/_auth/dashboard/_layout.settings.email'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
+import { Route as AppAuthDashboardLayoutSettingsAuditLogImport } from './routes/_app/_auth/dashboard/_layout.settings.audit-log'
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
 import { Route as AppAuthDashboardLayoutLeadsNewImport } from './routes/_app/_auth/dashboard/_layout.leads.new'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
@@ -200,6 +203,12 @@ const AppAuthDashboardLayoutCheckoutRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutCalendarRoute =
+  AppAuthDashboardLayoutCalendarImport.update({
+    path: '/calendar',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsIndexRoute =
   AppAuthDashboardLayoutSettingsIndexImport.update({
     path: '/',
@@ -278,6 +287,12 @@ const AppAuthDashboardLayoutSettingsSourcesRoute =
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsProfileRoute =
+  AppAuthDashboardLayoutSettingsProfileImport.update({
+    path: '/profile',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsPipelinesRoute =
   AppAuthDashboardLayoutSettingsPipelinesImport.update({
     path: '/pipelines',
@@ -323,6 +338,12 @@ const AppAuthDashboardLayoutSettingsCustomFieldsRoute =
 const AppAuthDashboardLayoutSettingsBillingRoute =
   AppAuthDashboardLayoutSettingsBillingImport.update({
     path: '/billing',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsAuditLogRoute =
+  AppAuthDashboardLayoutSettingsAuditLogImport.update({
+    path: '/audit-log',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -594,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientLayoutIndexImport
       parentRoute: typeof AppPatientLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/calendar': {
+      id: '/_app/_auth/dashboard/_layout/calendar'
+      path: '/calendar'
+      fullPath: '/dashboard/calendar'
+      preLoaderRoute: typeof AppAuthDashboardLayoutCalendarImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/checkout': {
       id: '/_app/_auth/dashboard/_layout/checkout'
       path: '/checkout'
@@ -692,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsActivityTypesImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/audit-log': {
+      id: '/_app/_auth/dashboard/_layout/settings/audit-log'
+      path: '/audit-log'
+      fullPath: '/dashboard/settings/audit-log'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAuditLogImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/billing': {
       id: '/_app/_auth/dashboard/_layout/settings/billing'
       path: '/billing'
@@ -746,6 +781,13 @@ declare module '@tanstack/react-router' {
       path: '/pipelines'
       fullPath: '/dashboard/settings/pipelines'
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsPipelinesImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/profile': {
+      id: '/_app/_auth/dashboard/_layout/settings/profile'
+      path: '/profile'
+      fullPath: '/dashboard/settings/profile'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsProfileImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
     '/_app/_auth/dashboard/_layout/settings/sources': {
@@ -941,10 +983,12 @@ export const routeTree = rootRoute.addChildren({
     AppAuthRoute: AppAuthRoute.addChildren({
       AppAuthDashboardRoute: AppAuthDashboardRoute.addChildren({
         AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRoute.addChildren({
+          AppAuthDashboardLayoutCalendarRoute,
           AppAuthDashboardLayoutCheckoutRoute,
           AppAuthDashboardLayoutSettingsRoute:
             AppAuthDashboardLayoutSettingsRoute.addChildren({
               AppAuthDashboardLayoutSettingsActivityTypesRoute,
+              AppAuthDashboardLayoutSettingsAuditLogRoute,
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
               AppAuthDashboardLayoutSettingsEmailRoute,
@@ -953,6 +997,7 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsOrganizationRoute,
               AppAuthDashboardLayoutSettingsPermissionsRoute,
               AppAuthDashboardLayoutSettingsPipelinesRoute,
+              AppAuthDashboardLayoutSettingsProfileRoute,
               AppAuthDashboardLayoutSettingsSourcesRoute,
               AppAuthDashboardLayoutSettingsTeamRoute,
               AppAuthDashboardLayoutSettingsIndexRoute,
@@ -1099,6 +1144,7 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.tsx",
       "parent": "/_app/_auth/dashboard",
       "children": [
+        "/_app/_auth/dashboard/_layout/calendar",
         "/_app/_auth/dashboard/_layout/checkout",
         "/_app/_auth/dashboard/_layout/settings",
         "/_app/_auth/dashboard/_layout/",
@@ -1170,6 +1216,10 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/patient/_layout.index.tsx",
       "parent": "/_app/patient/_layout"
     },
+    "/_app/_auth/dashboard/_layout/calendar": {
+      "filePath": "_app/_auth/dashboard/_layout.calendar.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
     "/_app/_auth/dashboard/_layout/checkout": {
       "filePath": "_app/_auth/dashboard/_layout.checkout.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
@@ -1179,6 +1229,7 @@ export const routeTree = rootRoute.addChildren({
       "parent": "/_app/_auth/dashboard/_layout",
       "children": [
         "/_app/_auth/dashboard/_layout/settings/activity-types",
+        "/_app/_auth/dashboard/_layout/settings/audit-log",
         "/_app/_auth/dashboard/_layout/settings/billing",
         "/_app/_auth/dashboard/_layout/settings/custom-fields",
         "/_app/_auth/dashboard/_layout/settings/email",
@@ -1187,6 +1238,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/organization",
         "/_app/_auth/dashboard/_layout/settings/permissions",
         "/_app/_auth/dashboard/_layout/settings/pipelines",
+        "/_app/_auth/dashboard/_layout/settings/profile",
         "/_app/_auth/dashboard/_layout/settings/sources",
         "/_app/_auth/dashboard/_layout/settings/team",
         "/_app/_auth/dashboard/_layout/settings/"
@@ -1240,6 +1292,10 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.settings.activity-types.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
+    "/_app/_auth/dashboard/_layout/settings/audit-log": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.audit-log.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
     "/_app/_auth/dashboard/_layout/settings/billing": {
       "filePath": "_app/_auth/dashboard/_layout.settings.billing.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
@@ -1270,6 +1326,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/settings/pipelines": {
       "filePath": "_app/_auth/dashboard/_layout.settings.pipelines.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/profile": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.profile.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/sources": {

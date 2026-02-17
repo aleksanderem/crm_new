@@ -50,6 +50,7 @@ import {
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
+import Logo from "@/assets/svg/logo";
 
 type Workspace = "crm" | "gabinet";
 
@@ -295,7 +296,22 @@ export function AppSidebar() {
     <>
       {/* Column 1: Narrow icon sidebar */}
       <Sidebar collapsible="icon" className="[&_[data-slot=sidebar-inner]]:bg-card">
-        <SidebarHeader />
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                className="gap-2.5 !bg-transparent group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>svg]:size-8"
+                asChild
+              >
+                <Link to="/dashboard">
+                  <Logo className="[&_rect]:fill-card [&_rect:first-child]:fill-primary" />
+                  <span className="text-xl font-semibold">CRM</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>

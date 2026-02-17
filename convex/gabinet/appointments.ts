@@ -2,7 +2,9 @@ import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { verifyProductAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
+import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetAppointmentStatusValidator } from "../schema";
 import { checkConflict, getAvailableSlots, checkEmployeeQualification } from "./_availability";
 import { Id } from "../_generated/dataModel";
@@ -224,6 +226,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
     const now = Date.now();
 
     // Check employee qualification for treatment
@@ -385,6 +388,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
@@ -455,6 +459,7 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
@@ -521,6 +526,7 @@ export const cancel = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
@@ -676,6 +682,7 @@ export const cancelRecurringSeries = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const appointments = await ctx.db
       .query("gabinetAppointments")

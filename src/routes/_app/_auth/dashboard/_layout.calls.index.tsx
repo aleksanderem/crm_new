@@ -10,16 +10,26 @@ import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
 import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { Phone } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
@@ -37,9 +47,6 @@ const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> =
   wrongNumber: { color: "bg-gray-100 text-gray-700", labelKey: "calls.outcomes.wrongNumber" },
   noAnswer: { color: "bg-orange-100 text-orange-700", labelKey: "calls.outcomes.noAnswer" },
 };
-
-const inputClasses =
-  "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 function CallsPage() {
   const { t } = useTranslation();
@@ -218,6 +225,18 @@ function CallsPage() {
         filterableFields={filterableFields}
       />
 
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.logCall'),
+            icon: <Phone className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: openCreatePanel,
+            feature: "calls",
+            action: "create",
+          },
+        ]}
+      />
+
       <CrmDataTable
         columns={columns}
         data={calls}
@@ -242,26 +261,26 @@ function CallsPage() {
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>{t('calls.outcome')}</Label>
-            <select
-              className={inputClasses}
-              value={outcome}
-              onChange={(e) => setOutcome(e.target.value as CallOutcome)}
-            >
-              <option value="busy">{t('calls.outcomes.busy')}</option>
-              <option value="leftVoiceMessage">{t('calls.outcomes.leftVoiceMessage')}</option>
-              <option value="movedConversationForward">{t('calls.outcomes.movedConversationForward')}</option>
-              <option value="wrongNumber">{t('calls.outcomes.wrongNumber')}</option>
-              <option value="noAnswer">{t('calls.outcomes.noAnswer')}</option>
-            </select>
+            <Select value={outcome} onValueChange={(val) => setOutcome(val as CallOutcome)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="busy">{t('calls.outcomes.busy')}</SelectItem>
+                <SelectItem value="leftVoiceMessage">{t('calls.outcomes.leftVoiceMessage')}</SelectItem>
+                <SelectItem value="movedConversationForward">{t('calls.outcomes.movedConversationForward')}</SelectItem>
+                <SelectItem value="wrongNumber">{t('calls.outcomes.wrongNumber')}</SelectItem>
+                <SelectItem value="noAnswer">{t('calls.outcomes.noAnswer')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <Label>
               {t('calls.callDate')} <span className="text-destructive">*</span>
             </Label>
-            <input
+            <Input
               type="datetime-local"
-              className={inputClasses}
               value={callDate}
               onChange={(e) => setCallDate(e.target.value)}
             />

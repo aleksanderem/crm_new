@@ -18,6 +18,14 @@ import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -53,11 +61,12 @@ import {
   Link2,
   Building2,
   Package,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
+import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/leads/$leadId"
@@ -151,9 +160,6 @@ function LostReasonDialog({
     }
   };
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
@@ -161,22 +167,21 @@ function LostReasonDialog({
           <DialogTitle>{t('detail.lostDialog.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <select
-            className={inputClasses}
-            value={selectedReason}
-            onChange={(e) => setSelectedReason(e.target.value)}
-          >
-            <option value="">{t('detail.lostDialog.selectReason')}</option>
-            {lostReasons?.map((r) => (
-              <option key={r._id} value={r.label}>
-                {r.label}
-              </option>
-            ))}
-            <option value="__custom__">{t('detail.lostDialog.customReason')}</option>
-          </select>
+          <Select value={selectedReason} onValueChange={setSelectedReason}>
+            <SelectTrigger>
+              <SelectValue placeholder={t('detail.lostDialog.selectReason')} />
+            </SelectTrigger>
+            <SelectContent>
+              {lostReasons?.map((r) => (
+                <SelectItem key={r._id} value={r.label}>
+                  {r.label}
+                </SelectItem>
+              ))}
+              <SelectItem value="__custom__">{t('detail.lostDialog.customReason')}</SelectItem>
+            </SelectContent>
+          </Select>
           {selectedReason === "__custom__" && (
-            <input
-              className={inputClasses}
+            <Input
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder={t('detail.lostDialog.customPlaceholder')}
@@ -1051,9 +1056,9 @@ function LeadDetail() {
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
                         <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        <input
+                        <Input
                           type="text"
-                          className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+                          className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
                           placeholder={t('detail.relationships.searchContacts')}
                           value={sidebarContactSearch}
                           onChange={(e) => setSidebarContactSearch(e.target.value)}
@@ -1171,9 +1176,9 @@ function LeadDetail() {
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
                         <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        <input
+                        <Input
                           type="text"
-                          className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+                          className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
                           placeholder={t('detail.relationships.searchCompanies')}
                           value={sidebarCompanySearch}
                           onChange={(e) => setSidebarCompanySearch(e.target.value)}
@@ -1307,6 +1312,11 @@ function LeadDetail() {
 
           {/* --- Right content area with tabs --- */}
           <div className="flex flex-1 flex-col overflow-hidden bg-background">
+            <EntityQuickActions entityType="lead" entityId={leadId} onAction={(action) => {
+              switch (action) {
+                case "scheduleActivity": setShowActivityForm(true); break;
+              }
+            }} />
             <Tabs defaultValue="all" className="flex flex-1 flex-col">
               <div className="shrink-0 border-b px-6 pt-2">
                 <TabsList className="h-10 bg-transparent p-0 gap-0">

@@ -13,9 +13,10 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Building2, Trash2, Upload } from "lucide-react";
+import { Plus, Building2, Trash2, Upload } from "@/lib/ez-icons";
 import { CsvExportButton } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
@@ -443,6 +444,26 @@ function CompaniesIndex() {
           timeRange: rightTimeRange,
           onTimeRangeChange: setRightTimeRange,
         }}
+      />
+
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.newCompany'),
+            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: () => setPanelOpen(true),
+            feature: "companies",
+            action: "create",
+          },
+          {
+            label: t('quickActions.importCsv'),
+            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: () => setImportOpen(true),
+            feature: "companies",
+            action: "create",
+          },
+        ]}
+        extra={<CsvExportButton organizationId={organizationId} entityType="companies" />}
       />
 
       {!isLoading && filteredCompanies.length === 0 ? (

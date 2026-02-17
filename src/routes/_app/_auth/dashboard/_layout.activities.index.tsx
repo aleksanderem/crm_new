@@ -13,11 +13,19 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
   Plus,
@@ -25,12 +33,13 @@ import {
   Trash2,
   Check,
   RotateCcw,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/activities/"
@@ -40,9 +49,6 @@ export const Route = createFileRoute(
 
 type ScheduledActivity = Doc<"scheduledActivities">;
 type ActivityRow = ScheduledActivity & { __cfValues: Record<string, unknown> };
-
-const inputClasses =
-  "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 function ActivitiesPage() {
   const { t } = useTranslation();
@@ -336,6 +342,18 @@ function ActivitiesPage() {
         filterableFields={filterableFields}
       />
 
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.newActivity'),
+            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: openCreatePanel,
+            feature: "activities",
+            action: "create",
+          },
+        ]}
+      />
+
       <CrmDataTable
         columns={columns}
         data={tableData}
@@ -364,8 +382,7 @@ function ActivitiesPage() {
             <Label>
               {t('common.title')} <span className="text-destructive">*</span>
             </Label>
-            <input
-              className={inputClasses}
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('activities.activityTitle')}
@@ -374,33 +391,33 @@ function ActivitiesPage() {
 
           <div className="space-y-1.5">
             <Label>{t('activities.activityType')}</Label>
-            <select
-              className={inputClasses}
-              value={activityType}
-              onChange={(e) => setActivityType(e.target.value)}
-            >
-              {activityTypeDefs?.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.name}
-                </option>
-              )) ?? (
-                <>
-                  <option value="meeting">{t('activities.types.meeting')}</option>
-                  <option value="call">{t('activities.types.call')}</option>
-                  <option value="email">{t('activities.types.email')}</option>
-                  <option value="task">{t('activities.types.task')}</option>
-                </>
-              )}
-            </select>
+            <Select value={activityType} onValueChange={setActivityType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {activityTypeDefs?.map((td) => (
+                  <SelectItem key={td.key} value={td.key}>
+                    {td.name}
+                  </SelectItem>
+                )) ?? (
+                  <>
+                    <SelectItem value="meeting">{t('activities.types.meeting')}</SelectItem>
+                    <SelectItem value="call">{t('activities.types.call')}</SelectItem>
+                    <SelectItem value="email">{t('activities.types.email')}</SelectItem>
+                    <SelectItem value="task">{t('activities.types.task')}</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <Label>
               {t('activities.dueDate')} <span className="text-destructive">*</span>
             </Label>
-            <input
+            <Input
               type="datetime-local"
-              className={inputClasses}
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
             />
@@ -408,8 +425,7 @@ function ActivitiesPage() {
 
           <div className="space-y-1.5">
             <Label>{t('common.owner')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={currentUser?.name ?? currentUser?.email ?? "Current User"}
               disabled
             />

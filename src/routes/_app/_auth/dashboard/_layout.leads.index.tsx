@@ -15,6 +15,13 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   TrendingUp,
   TableIcon,
@@ -23,9 +30,11 @@ import {
   XCircle,
   Trash2,
   Upload,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import { CsvExportButton } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import type { QuickAction } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -474,15 +483,16 @@ function LeadsIndex() {
         actions={
           <div className="flex items-center gap-2">
             {pipelines && pipelines.length > 0 && (
-              <select
-                className="h-9 rounded-md border bg-transparent px-3 text-sm"
-                value={activePipeline?._id ?? ""}
-                onChange={(e) => setSelectedPipelineId(e.target.value)}
-              >
-                {pipelines.map((p) => (
-                  <option key={p._id} value={p._id}>{p.name}</option>
-                ))}
-              </select>
+              <Select value={activePipeline?._id ?? ""} onValueChange={setSelectedPipelineId}>
+                <SelectTrigger className="h-9 w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             <div className="flex rounded-md border">
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none bg-accent">
@@ -532,6 +542,26 @@ function LeadsIndex() {
           onTimeRangeChange: setChartTimeRange,
           isLoading,
         }}
+      />
+
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.newLead'),
+            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: () => setCreateOpen(true),
+            feature: "leads",
+            action: "create",
+          },
+          {
+            label: t('quickActions.importCsv'),
+            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: () => setImportOpen(true),
+            feature: "leads",
+            action: "create",
+          },
+        ]}
+        extra={<CsvExportButton organizationId={organizationId} entityType="leads" />}
       />
 
       {!isLoading && filteredLeads.length === 0 ? (

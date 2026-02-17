@@ -14,17 +14,27 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw } from "@/lib/ez-icons";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { Upload } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/"
@@ -43,9 +53,6 @@ const STATUS_CONFIG: Record<DocumentStatus, { color: string; labelKey: string }>
   accepted: { color: "bg-green-100 text-green-700", labelKey: "documents.status.accepted" },
   lost: { color: "bg-red-100 text-red-700", labelKey: "documents.status.lost" },
 };
-
-const inputClasses =
-  "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 function formatCurrency(amount?: number): string {
   if (amount == null) return "—";
@@ -367,6 +374,18 @@ function DocumentsIndex() {
         }}
       />
 
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.uploadDocument'),
+            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: openCreatePanel,
+            feature: "documents",
+            action: "create",
+          },
+        ]}
+      />
+
       <SavedViewsTabs
         views={views}
         activeViewId={activeViewId}
@@ -413,16 +432,17 @@ function DocumentsIndex() {
             <p className="text-sm text-muted-foreground">
               {statusChangeDoc.name}
             </p>
-            <select
-              className={inputClasses}
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as DocumentStatus)}
-            >
-              <option value="draft">{t('documents.status.draft')}</option>
-              <option value="sent">{t('documents.status.sent')}</option>
-              <option value="accepted">{t('documents.status.accepted')}</option>
-              <option value="lost">{t('documents.status.lost')}</option>
-            </select>
+            <Select value={newStatus} onValueChange={(val) => setNewStatus(val as DocumentStatus)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t('documents.status.draft')}</SelectItem>
+                <SelectItem value="sent">{t('documents.status.sent')}</SelectItem>
+                <SelectItem value="accepted">{t('documents.status.accepted')}</SelectItem>
+                <SelectItem value="lost">{t('documents.status.lost')}</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -466,8 +486,7 @@ function DocumentsIndex() {
             <Label>
               {t('common.name')} <span className="text-destructive">*</span>
             </Label>
-            <input
-              className={inputClasses}
+            <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('documents.documentName')}
@@ -486,42 +505,42 @@ function DocumentsIndex() {
 
           <div className="space-y-1.5">
             <Label>{t('common.category')}</Label>
-            <select
-              className={inputClasses}
-              value={category}
-              onChange={(e) => setCategory(e.target.value as DocumentCategory | "")}
-            >
-              <option value="">{t('common.none')}</option>
-              <option value="proposal">{t('documents.category.proposal')}</option>
-              <option value="contract">{t('documents.category.contract')}</option>
-              <option value="invoice">{t('documents.category.invoice')}</option>
-              <option value="presentation">{t('documents.category.presentation')}</option>
-              <option value="report">{t('documents.category.report')}</option>
-              <option value="other">{t('documents.category.other')}</option>
-            </select>
+            <Select value={category} onValueChange={(val) => setCategory(val as DocumentCategory | "")}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('common.none')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="proposal">{t('documents.category.proposal')}</SelectItem>
+                <SelectItem value="contract">{t('documents.category.contract')}</SelectItem>
+                <SelectItem value="invoice">{t('documents.category.invoice')}</SelectItem>
+                <SelectItem value="presentation">{t('documents.category.presentation')}</SelectItem>
+                <SelectItem value="report">{t('documents.category.report')}</SelectItem>
+                <SelectItem value="other">{t('documents.category.other')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <Label>{t('common.status')}</Label>
-            <select
-              className={inputClasses}
-              value={status}
-              onChange={(e) => setStatus(e.target.value as DocumentStatus)}
-            >
-              <option value="draft">{t('documents.status.draft')}</option>
-              <option value="sent">{t('documents.status.sent')}</option>
-              <option value="accepted">{t('documents.status.accepted')}</option>
-              <option value="lost">{t('documents.status.lost')}</option>
-            </select>
+            <Select value={status} onValueChange={(val) => setStatus(val as DocumentStatus)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t('documents.status.draft')}</SelectItem>
+                <SelectItem value="sent">{t('documents.status.sent')}</SelectItem>
+                <SelectItem value="accepted">{t('documents.status.accepted')}</SelectItem>
+                <SelectItem value="lost">{t('documents.status.lost')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <Label>{t('common.amount')}</Label>
-            <input
+            <Input
               type="number"
               step="0.01"
               min="0"
-              className={inputClasses}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"

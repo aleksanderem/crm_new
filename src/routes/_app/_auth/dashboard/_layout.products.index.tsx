@@ -10,18 +10,20 @@ import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
 import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Pencil, Trash2, Power, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Upload } from "@/lib/ez-icons";
 import { CsvExportButton } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -30,9 +32,6 @@ export const Route = createFileRoute(
 });
 
 type Product = Doc<"products">;
-
-const inputClasses =
-  "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 function generateSku(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -255,6 +254,18 @@ function ProductsPage() {
         filterableFields={filterableFields}
       />
 
+      <QuickActionBar
+        actions={[
+          {
+            label: t('quickActions.newProduct'),
+            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            onClick: openCreatePanel,
+            feature: "products",
+            action: "create",
+          },
+        ]}
+      />
+
       <CrmDataTable
         columns={columns}
         data={products}
@@ -298,8 +309,7 @@ function ProductsPage() {
             <Label>
               {t('common.name')} <span className="text-destructive">*</span>
             </Label>
-            <input
-              className={inputClasses}
+            <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('products.productName')}
@@ -310,8 +320,7 @@ function ProductsPage() {
             <Label>
               {t('products.sku')} <span className="text-destructive">*</span>
             </Label>
-            <input
-              className={inputClasses}
+            <Input
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               placeholder="PRD-XXXXXX"
@@ -323,11 +332,10 @@ function ProductsPage() {
               <Label>
                 {t('products.unitPrice')} <span className="text-destructive">*</span>
               </Label>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
-                className={inputClasses}
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
                 placeholder="0.00"
@@ -336,12 +344,11 @@ function ProductsPage() {
 
             <div className="space-y-1.5">
               <Label>{t('products.taxRate')}</Label>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
                 max="100"
-                className={inputClasses}
                 value={taxRate}
                 onChange={(e) => setTaxRate(e.target.value)}
                 placeholder="0"

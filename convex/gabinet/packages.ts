@@ -292,6 +292,28 @@ export const usePackageTreatment = mutation({
   },
 });
 
+export const getActiveUsageCounts = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const activeUsages = await ctx.db
+      .query("gabinetPackageUsage")
+      .withIndex("by_orgAndStatus", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "active")
+      )
+      .collect();
+
+    const counts: Record<string, number> = {};
+    for (const u of activeUsages) {
+      counts[u.packageId] = (counts[u.packageId] ?? 0) + 1;
+    }
+    return counts;
+  },
+});
+
 export const getPatientPackages = query({
   args: {
     organizationId: v.id("organizations"),

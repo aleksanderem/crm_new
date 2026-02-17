@@ -41,11 +41,18 @@
     "record": "record",
     "records": "records",
     "of": "of",
-    "selected": "selected"
+    "selected": "selected",
+    "required": "Required",
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "confirmDelete": "Are you sure you want to delete?",
+    "all": "All",
+    "notFound": "Not found"
   },
   "nav": {
     "deals": "Deals",
     "activities": "Activities",
+    "calendar": "Calendar",
     "inbox": "Inbox",
     "documents": "Documents",
     "contacts": "Contacts",
@@ -53,6 +60,60 @@
     "insights": "Insights",
     "products": "Products",
     "calls": "Calls",
+    "sections": {
+      "main": "Main",
+      "database": "Database",
+      "communication": "Communication",
+      "admin": "Administration",
+      "gabinetSettings": "Clinic Settings",
+      "pages": "Pages",
+      "settingsProfile": "Settings & Profile",
+      "actions": "Actions",
+      "workspace": "Workspace"
+    },
+    "actions": {
+      "addContact": "Add Contact",
+      "addCompany": "Add Company",
+      "addDeal": "Add Deal",
+      "addProduct": "Add Product",
+      "uploadDocument": "Upload Document",
+      "addActivity": "Add Activity",
+      "logCall": "Log Call",
+      "composeEmail": "Compose Email",
+      "importCsv": "Import CSV",
+      "exportCsv": "Export CSV",
+      "viewKanban": "Kanban View",
+      "markWon": "Mark as Won",
+      "markLost": "Mark as Lost",
+      "markComplete": "Mark Complete",
+      "dueToday": "Due Today",
+      "overdue": "Overdue",
+      "changeStatus": "Change Status",
+      "syncGmail": "Sync Gmail",
+      "viewUnread": "Unread",
+      "activate": "Activate/Deactivate"
+    },
+    "workspace": {
+      "crm": "CRM",
+      "crmDesc": "Sales & contacts",
+      "gabinet": "Gabinet",
+      "gabinetDesc": "Clinic & patients"
+    },
+    "gabinet": {
+      "dashboard": "Gabinet",
+      "patients": "Patients",
+      "treatments": "Treatments",
+      "calendar": "Calendar",
+      "packages": "Packages",
+      "documents": "Documents",
+      "employees": "HR / Employees",
+      "reports": "Reports",
+      "scheduling": "Working Hours",
+      "leaves": "Leaves",
+      "leaveTypes": "Leave Types",
+      "leaveBalances": "Leave Balances",
+      "documentTemplates": "Doc Templates"
+    },
     "settings": "Settings"
   },
   "sidebar": {
@@ -349,6 +410,7 @@
   "settings": {
     "title": "Settings",
     "general": "General",
+    "profile": "Profile",
     "billing": "Billing",
     "pipelines": "Pipelines",
     "customFields": "Custom Fields",
@@ -356,7 +418,8 @@
     "team": "Team",
     "email": "Email",
     "organization": "Organization",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "gabinetSection": "Gabinet"
   },
   "leadForm": {
     "title": "Title",
@@ -628,6 +691,7 @@
     "title": "Dashboard",
     "subtitle": "Overview of your CRM pipeline and activity.",
     "recentActivity": "Recent Activity",
+    "noActivity": "No activity yet.",
     "totalContacts": "Total Contacts",
     "companies": "Companies",
     "openDeals": "Open Deals",
@@ -635,6 +699,8 @@
     "winRate": "{{rate}}% win rate",
     "dealsByStage": "Deals by Stage",
     "wonDealsByDay": "Won Deals",
+    "wonDeals": "Won Deals",
+    "wonRevenue": "Won Revenue",
     "revenueByMonth": "Revenue",
     "contactsByDay": "New Contacts",
     "contactsBySource": "Contacts by Source",
@@ -651,10 +717,21 @@
     "noPerformers": "No won deals in this period."
   },
   "timeRange": {
+    "today": "Today",
     "last7days": "Last 7 days",
     "last30days": "Last 30 days",
     "thisMonth": "This month",
     "last3months": "Last 3 months",
+    "thisYear": "This year",
+    "all": "All time"
+  },
+  "dateRange": {
+    "today": "Today",
+    "last7days": "Last 7 days",
+    "last30days": "Last 30 days",
+    "thisMonth": "This month",
+    "last3months": "Last 3 months",
+    "thisYear": "This year",
     "all": "All time"
   },
   "settingsNav": {
@@ -668,7 +745,9 @@
     "description": "Manage reasons for losing deals.",
     "addReason": "Add Reason",
     "emptyReasons": "No lost reasons defined.",
-    "confirmDelete": "Delete this reason?"
+    "confirmDelete": "Delete this reason?",
+    "reasonRequired": "Require a reason when losing a deal",
+    "allowCustom": "Allow custom (free-text) reasons"
   },
   "sources": {
     "title": "Sources",
@@ -696,10 +775,37 @@
     "call": "Log Call",
     "document": "Create Document"
   },
+  "quickActions": {
+    "newLead": "New Lead",
+    "newContact": "New Contact",
+    "newCompany": "New Company",
+    "newActivity": "New Activity",
+    "newProduct": "New Product",
+    "uploadDocument": "Upload Document",
+    "logCall": "Log Call",
+    "importCsv": "Import CSV",
+    "exportCsv": "Export CSV",
+    "newPatient": "New Patient",
+    "newAppointment": "New Appointment",
+    "newTreatment": "New Treatment",
+    "newPackage": "New Package",
+    "newEmployee": "New Employee"
+  },
+  "entityActions": {
+    "scheduleActivity": "Schedule Activity",
+    "sendEmail": "Send Email",
+    "addNote": "Add Note",
+    "logCall": "Log Call",
+    "share": "Share",
+    "bookAppointment": "Book Appointment",
+    "addDocument": "Add Document",
+    "download": "Download"
+  },
   "layout": {
     "search": "Search...",
     "settings": "Settings",
-    "logOut": "Log Out"
+    "logOut": "Log Out",
+    "openDeals": "Open Deals"
   },
   "profile": {
     "title": "Settings",
@@ -868,6 +974,432 @@
     "startImport": "Start Import",
     "next": "Next",
     "back": "Back"
+  },
+  "gabinet": {
+    "patients": {
+      "title": "Patients",
+      "description": "Manage your clinic patients",
+      "addPatient": "Add Patient",
+      "createPatient": "Create Patient",
+      "createDescription": "Add a new patient to your clinic",
+      "searchPlaceholder": "Search patients...",
+      "emptyTitle": "No patients yet",
+      "emptyDescription": "Add your first patient to get started",
+      "confirmDelete": "Are you sure you want to deactivate this patient?",
+      "views": {
+        "all": "All Patients",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "contact": "Patient",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "pesel": "PESEL",
+      "dateOfBirth": "Date of Birth",
+      "gender": "Gender",
+      "genderOptions": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other"
+      },
+      "medicalNotes": "Medical Notes",
+      "allergies": "Allergies",
+      "bloodType": "Blood Type",
+      "emergencyContact": "Emergency Contact",
+      "emergencyContactName": "Emergency Contact Name",
+      "emergencyContactPhone": "Emergency Contact Phone",
+      "referralSource": "Referral Source",
+      "referredBy": "Referred By",
+      "linkedContact": "Linked CRM Contact",
+      "address": "Address",
+      "street": "Street",
+      "city": "City",
+      "postalCode": "Postal Code",
+      "tabs": {
+        "overview": "Overview",
+        "appointments": "Appointments",
+        "documents": "Documents",
+        "loyalty": "Loyalty",
+        "activity": "Activity"
+      },
+      "byDay": "Patients by Day",
+      "bySource": "Patients by Source"
+    },
+    "treatments": {
+      "title": "Treatments",
+      "description": "Manage your treatment catalog",
+      "addTreatment": "Add Treatment",
+      "createTreatment": "Create Treatment",
+      "createDescription": "Add a new treatment to your catalog",
+      "searchPlaceholder": "Search treatments...",
+      "emptyTitle": "No treatments yet",
+      "emptyDescription": "Add your first treatment to get started",
+      "confirmDelete": "Are you sure you want to deactivate this treatment?",
+      "name": "Name",
+      "duration": "Duration",
+      "durationMinutes": "Duration (minutes)",
+      "price": "Price",
+      "currency": "Currency",
+      "taxRate": "Tax Rate",
+      "category": "Category",
+      "color": "Color",
+      "sortOrder": "Sort Order",
+      "requiredEquipment": "Required Equipment",
+      "contraindications": "Contraindications",
+      "preparationInstructions": "Preparation Instructions",
+      "aftercareInstructions": "Aftercare Instructions",
+      "requiresApproval": "Requires Approval",
+      "views": {
+        "all": "All Treatments",
+        "active": "Active",
+        "inactive": "Inactive"
+      }
+    },
+    "scheduling": {
+      "title": "Working Hours",
+      "description": "Set clinic opening hours and employee schedules",
+      "day": "Day",
+      "open": "Open",
+      "start": "Start",
+      "end": "End",
+      "breakStart": "Break Start",
+      "breakEnd": "Break End"
+    },
+    "leaves": {
+      "title": "Leave Management",
+      "description": "Manage employee leaves and time off",
+      "requestLeave": "Request Leave",
+      "type": "Type",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "reason": "Reason",
+      "status": "Status",
+      "submit": "Submit Request",
+      "created": "Leave request created",
+      "approved": "Leave approved",
+      "rejected": "Leave rejected",
+      "pending": "Pending",
+      "approvedStatus": "Approved",
+      "rejectedStatus": "Rejected",
+      "empty": "No leave requests",
+      "types": {
+        "vacation": "Vacation",
+        "sick": "Sick Leave",
+        "personal": "Personal",
+        "training": "Training",
+        "other": "Other"
+      }
+    },
+    "employees": {
+      "title": "Employees",
+      "description": "Manage clinic staff, roles, and treatment qualifications",
+      "add": "Add Employee",
+      "empty": "No employees registered yet. Add your team members to manage schedules and qualifications.",
+      "selectUser": "Select team member",
+      "role": "Role",
+      "specialization": "Specialization",
+      "license": "License Number",
+      "color": "Calendar Color",
+      "qualifiedTreatments": "Qualified Treatments",
+      "noTreatments": "No treatments defined yet",
+      "deactivate": "Deactivate Employee",
+      "confirmDeactivate": "Are you sure you want to deactivate this employee?",
+      "deactivated": "Employee deactivated",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "hireDate": "Hire Date",
+      "notes": "Notes",
+      "editEmployee": "Edit Employee",
+      "details": "Details",
+      "activity": "Activity",
+      "qualifications": "Treatment Qualifications",
+      "addTreatment": "Add treatment...",
+      "noQualifications": "No treatment qualifications assigned yet.",
+      "showMore": "Show {{count}} more",
+      "showLess": "Show less",
+      "tabs": {
+        "appointments": "Appointments",
+        "patients": "Patients",
+        "activities": "Activities",
+        "schedule": "Schedule",
+        "noPatients": "No patients seen yet."
+      },
+      "schedule": {
+        "hasOverrides": "This employee has a custom schedule defined.",
+        "usingClinicDefaults": "Using clinic default hours. Customize to set individual schedule."
+      },
+      "roles": {
+        "doctor": "Doctor",
+        "nurse": "Nurse",
+        "therapist": "Therapist",
+        "receptionist": "Receptionist",
+        "admin": "Administrator",
+        "other": "Other"
+      }
+    },
+    "leaveTypes": {
+      "title": "Leave Types",
+      "description": "Define configurable leave types with annual quotas",
+      "add": "Add Leave Type",
+      "edit": "Edit Leave Type",
+      "empty": "No leave types defined yet. Create leave types to track employee absences.",
+      "annualQuota": "Annual Quota (days)",
+      "unlimitedPlaceholder": "Leave empty for unlimited",
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "requiresApproval": "Requires Approval",
+      "quotaDays": "{{count}} days/year",
+      "unlimited": "Unlimited",
+      "confirmDelete": "Are you sure you want to deactivate this leave type?",
+      "initBalances": "Initialize Balances {{year}}",
+      "balancesInitialized": "Initialized {{count}} balance(s)"
+    },
+    "leaveBalances": {
+      "title": "Leave Balances",
+      "description": "View and manage employee leave balances per year",
+      "noBalances": "No balances initialized for this year",
+      "days": "days",
+      "remaining": "remaining"
+    },
+    "appointments": {
+      "createAppointment": "New Appointment",
+      "patient": "Patient",
+      "treatment": "Treatment",
+      "employee": "Employee",
+      "date": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "notes": "Notes",
+      "recurring": "Recurring",
+      "frequency": "Frequency",
+      "count": "Occurrences",
+      "selectPatient": "Select patient...",
+      "selectTreatment": "Select treatment...",
+      "selectEmployee": "Select employee...",
+      "frequencies": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "biweekly": "Biweekly",
+        "monthly": "Monthly"
+      },
+      "created": "Appointment created",
+      "updated": "Appointment updated",
+      "noAppointments": "No appointments",
+      "availableSlots": "Available slots",
+      "noAvailableSlots": "No available slots for this employee on this date.",
+      "statuses": {
+        "scheduled": "Scheduled",
+        "confirmed": "Confirmed",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No Show"
+      }
+    },
+    "appointmentDetail": {
+      "title": "Appointment Details",
+      "time": "Time",
+      "changeStatus": "Change status",
+      "statusChanged": "Appointment status changed",
+      "cancelAppointment": "Cancel appointment",
+      "cancelConfirm": "Are you sure you want to cancel this appointment?",
+      "cancelReason": "Cancellation reason",
+      "cancelReasonPlaceholder": "Optionally provide a reason...",
+      "confirmCancel": "Cancel appointment",
+      "cancelled": "Appointment cancelled",
+      "recurringInfo": "This appointment is part of a recurring series"
+    },
+    "calendar": {
+      "today": "Today",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "appointments": "appointments",
+      "dayDetail": "Day details"
+    },
+    "packages": {
+      "title": "Treatment Packages",
+      "description": "Manage treatment bundles and packages",
+      "addPackage": "Add Package",
+      "name": "Name",
+      "descriptionField": "Description",
+      "totalPrice": "Total Price",
+      "validityDays": "Validity (days)",
+      "discountPercent": "Discount %",
+      "loyaltyPoints": "Loyalty Points",
+      "treatments": "treatments",
+      "days": "days",
+      "discount": "discount",
+      "active": "Active",
+      "inactive": "Inactive",
+      "created": "Package created",
+      "editPackage": "Edit Package",
+      "confirmDeleteDescription": "The package will be deactivated. It can be reactivated later.",
+      "emptyTitle": "No packages yet",
+      "emptyDescription": "Create treatment packages to offer bundles"
+    },
+    "documents": {
+      "title": "Medical Documents",
+      "description": "Manage patient documents, consents, and records",
+      "createDocument": "New Document",
+      "titleField": "Title",
+      "type": "Type",
+      "status": "Status",
+      "date": "Date",
+      "patient": "Patient",
+      "template": "Template",
+      "content": "Content",
+      "noTemplate": "No template",
+      "signature": "Signature",
+      "signedOn": "Signed on",
+      "signDocument": "Sign Document",
+      "clearSignature": "Clear",
+      "confirmSign": "Confirm Signature",
+      "created": "Document created",
+      "signatureRequested": "Signature requested",
+      "signed": "Document signed",
+      "emptyTitle": "No documents",
+      "emptyDescription": "Create medical documents for your patients",
+      "noDocuments": "No documents for this patient",
+      "types": {
+        "consent": "Consent",
+        "medical_record": "Medical Record",
+        "prescription": "Prescription",
+        "referral": "Referral",
+        "custom": "Custom"
+      },
+      "statuses": {
+        "draft": "Draft",
+        "pending_signature": "Pending Signature",
+        "signed": "Signed",
+        "archived": "Archived"
+      }
+    },
+    "documentTemplates": {
+      "title": "Document Templates",
+      "description": "Manage templates for medical documents",
+      "addTemplate": "Add Template",
+      "editTemplate": "Edit Template",
+      "requiresSignature": "Requires Signature",
+      "contentLabel": "Template Content",
+      "placeholderHint": "Use {{patient.firstName}}, {{patient.lastName}}, {{patient.pesel}} as placeholders",
+      "emptyTitle": "No templates",
+      "emptyDescription": "Create document templates to speed up document creation"
+    },
+    "loyalty": {
+      "balance": "Points Balance",
+      "totalEarned": "Total Earned",
+      "totalSpent": "Total Spent",
+      "tier": "Tier",
+      "tiers": {
+        "bronze": "Bronze",
+        "silver": "Silver",
+        "gold": "Gold",
+        "platinum": "Platinum"
+      },
+      "transactionHistory": "Transaction History",
+      "noTransactions": "No point transactions"
+    },
+    "dashboard": {
+      "title": "Gabinet Dashboard",
+      "description": "Overview of your clinic operations",
+      "todayAppointments": "Today's Appointments",
+      "totalPatients": "Total Patients",
+      "totalTreatments": "Treatments",
+      "pendingLeaves": "Pending Leaves",
+      "todaySchedule": "Today's Schedule",
+      "noAppointmentsToday": "No appointments scheduled today",
+      "pendingLeaveRequests": "Pending Leave Requests",
+      "noPendingLeaves": "No pending leave requests",
+      "goToCalendar": "Open Calendar",
+      "goToPatients": "View Patients",
+      "goToPackages": "View Packages",
+      "goToDocuments": "View Documents"
+    },
+    "reports": {
+      "title": "Gabinet Reports",
+      "description": "Analyze your clinic performance",
+      "totalAppointments": "Total Appointments",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "totalPatients": "Total Patients",
+      "last30days": "Last 30 days",
+      "completionRate": "completion rate",
+      "treatmentPopularity": "Treatment Popularity",
+      "statusDistribution": "Appointment Status Distribution",
+      "dailyVolume": "Daily Appointment Volume"
+    }
+  },
+  "customFields": {
+    "title": "Custom Fields",
+    "description": "Define custom fields for all your entity types.",
+    "addField": "Add Field",
+    "newFieldFor": "New {{entity}} field",
+    "noFields": "No custom fields for {{entity}} yet.",
+    "confirmDelete": "Delete field \"{{name}}\"?",
+    "entityTypes": {
+      "contact": "Contacts",
+      "company": "Companies",
+      "lead": "Deals",
+      "document": "Documents",
+      "activity": "Activities",
+      "product": "Products",
+      "call": "Calls",
+      "pipeline": "Pipelines",
+      "gabinetPatient": "Patients",
+      "gabinetTreatment": "Treatments",
+      "gabinetAppointment": "Appointments",
+      "gabinetPackage": "Packages",
+      "gabinetDocument": "Medical Documents",
+      "gabinetEmployee": "Employees"
+    }
+  },
+  "patientPortal": {
+    "title": "Patient Portal",
+    "logout": "Log Out",
+    "nav": {
+      "dashboard": "Home",
+      "appointments": "Appointments",
+      "documents": "Documents",
+      "profile": "Profile"
+    },
+    "login": {
+      "title": "Patient Portal",
+      "description": "Sign in to access your medical records",
+      "emailPlaceholder": "your@email.com",
+      "sendCode": "Send Code",
+      "otpSent": "Verification code sent to your email",
+      "otpDescription": "Enter the 6-digit code sent to {{email}}",
+      "code": "Verification Code",
+      "verify": "Verify",
+      "changeEmail": "Use a different email"
+    },
+    "dashboard": {
+      "welcome": "Welcome, {{name}}",
+      "subtitle": "Your health overview",
+      "upcomingAppointments": "Upcoming Appointments",
+      "loyaltyPoints": "Loyalty Points",
+      "nextAppointments": "Next Appointments",
+      "noUpcoming": "No upcoming appointments"
+    },
+    "appointments": {
+      "title": "My Appointments",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "noUpcoming": "No upcoming appointments",
+      "noPast": "No past appointments"
+    },
+    "documents": {
+      "title": "My Documents",
+      "empty": "No documents available",
+      "signDocument": "Sign Document",
+      "signed": "Document signed successfully"
+    },
+    "profile": {
+      "title": "My Profile",
+      "name": "Name",
+      "editableFields": "Editable Information"
+    }
   },
   "invite": {
     "title": "Team Invitation",

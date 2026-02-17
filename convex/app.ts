@@ -92,6 +92,13 @@ export const completeOnboarding = mutation({
         role: "owner",
         joinedAt: now,
       });
+
+      // Seed default reference data (sources, pipelines, lost reasons, etc.)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.seedDefaults.seedOrganizationDefaults,
+        { organizationId: orgId, userId },
+      );
     }
 
     if (user.customerId) {
@@ -162,6 +169,36 @@ export const getActivePlans = query({
       throw new Error("Plan not found");
     }
     return { free, pro };
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    language: v.optional(v.string()),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
+    ),
+    timezone: v.optional(v.string()),
+    imageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    const updates: Record<string, unknown> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.language !== undefined) updates.language = args.language;
+    if (args.theme !== undefined) updates.theme = args.theme;
+    if (args.timezone !== undefined) updates.timezone = args.timezone;
+    if (args.imageId !== undefined) {
+      updates.imageId = args.imageId;
+      const url = await ctx.storage.getUrl(args.imageId);
+      if (url) updates.image = url;
+    }
+    await ctx.db.patch(userId, updates);
+    return userId;
   },
 });
 

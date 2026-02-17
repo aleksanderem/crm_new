@@ -41,11 +41,18 @@
     "record": "rekord",
     "records": "rekordy",
     "of": "z",
-    "selected": "zaznaczono"
+    "selected": "zaznaczono",
+    "required": "Wymagane",
+    "saved": "Zapisano",
+    "deleted": "Usunięto",
+    "confirmDelete": "Czy na pewno chcesz usunąć?",
+    "all": "Wszystkie",
+    "notFound": "Nie znaleziono"
   },
   "nav": {
     "deals": "Transakcje",
     "activities": "Aktywności",
+    "calendar": "Kalendarz",
     "inbox": "Skrzynka",
     "documents": "Dokumenty",
     "contacts": "Kontakty",
@@ -53,6 +60,60 @@
     "insights": "Statystyki",
     "products": "Produkty",
     "calls": "Połączenia",
+    "sections": {
+      "main": "Główne",
+      "database": "Baza danych",
+      "communication": "Komunikacja",
+      "admin": "Administracja",
+      "gabinetSettings": "Ustawienia kliniki",
+      "pages": "Strony",
+      "settingsProfile": "Ustawienia i profil",
+      "actions": "Akcje",
+      "workspace": "Przestrzeń robocza"
+    },
+    "actions": {
+      "addContact": "Dodaj kontakt",
+      "addCompany": "Dodaj firmę",
+      "addDeal": "Dodaj transakcję",
+      "addProduct": "Dodaj produkt",
+      "uploadDocument": "Dodaj dokument",
+      "addActivity": "Dodaj aktywność",
+      "logCall": "Zarejestruj połączenie",
+      "composeEmail": "Napisz wiadomość",
+      "importCsv": "Importuj CSV",
+      "exportCsv": "Eksportuj CSV",
+      "viewKanban": "Widok Kanban",
+      "markWon": "Oznacz wygraną",
+      "markLost": "Oznacz przegraną",
+      "markComplete": "Oznacz gotowe",
+      "dueToday": "Na dziś",
+      "overdue": "Zaległe",
+      "changeStatus": "Zmień status",
+      "syncGmail": "Synchronizuj Gmail",
+      "viewUnread": "Nieprzeczytane",
+      "activate": "Aktywuj/Dezaktywuj"
+    },
+    "workspace": {
+      "crm": "CRM",
+      "crmDesc": "Sprzedaż i kontakty",
+      "gabinet": "Gabinet",
+      "gabinetDesc": "Klinika i pacjenci"
+    },
+    "gabinet": {
+      "dashboard": "Gabinet",
+      "patients": "Pacjenci",
+      "treatments": "Zabiegi",
+      "calendar": "Kalendarz",
+      "packages": "Pakiety",
+      "documents": "Dokumenty",
+      "employees": "HR / Pracownicy",
+      "reports": "Raporty",
+      "scheduling": "Godziny pracy",
+      "leaves": "Urlopy",
+      "leaveTypes": "Typy urlopów",
+      "leaveBalances": "Salda urlopów",
+      "documentTemplates": "Szablony dok."
+    },
     "settings": "Ustawienia"
   },
   "sidebar": {
@@ -349,6 +410,7 @@
   "settings": {
     "title": "Ustawienia",
     "general": "Ogólne",
+    "profile": "Profil",
     "billing": "Rozliczenia",
     "pipelines": "Pipeline",
     "customFields": "Pola niestandardowe",
@@ -356,7 +418,8 @@
     "team": "Zespół",
     "email": "E-mail",
     "organization": "Organizacja",
-    "integrations": "Integracje"
+    "integrations": "Integracje",
+    "gabinetSection": "Gabinet"
   },
   "leadForm": {
     "title": "Tytuł",
@@ -628,6 +691,7 @@
     "title": "Dashboard",
     "subtitle": "Przegląd pipeline CRM i aktywności.",
     "recentActivity": "Ostatnia aktywność",
+    "noActivity": "Brak aktywności.",
     "totalContacts": "Kontakty",
     "companies": "Firmy",
     "openDeals": "Otwarte deale",
@@ -635,6 +699,8 @@
     "winRate": "{{rate}}% wsp. wygranych",
     "dealsByStage": "Deale wg etapów",
     "wonDealsByDay": "Wygrane deale",
+    "wonDeals": "Wygrane deale",
+    "wonRevenue": "Wygrane przychody",
     "revenueByMonth": "Przychód",
     "contactsByDay": "Nowe kontakty",
     "contactsBySource": "Kontakty wg źródła",
@@ -651,10 +717,21 @@
     "noPerformers": "Brak wygranych deali w tym okresie."
   },
   "timeRange": {
+    "today": "Dzisiaj",
     "last7days": "Ostatnie 7 dni",
     "last30days": "Ostatnie 30 dni",
     "thisMonth": "Ten miesiąc",
     "last3months": "Ostatnie 3 miesiące",
+    "thisYear": "Ten rok",
+    "all": "Cały okres"
+  },
+  "dateRange": {
+    "today": "Dzisiaj",
+    "last7days": "Ostatnie 7 dni",
+    "last30days": "Ostatnie 30 dni",
+    "thisMonth": "Ten miesiąc",
+    "last3months": "Ostatnie 3 miesiące",
+    "thisYear": "Ten rok",
     "all": "Cały okres"
   },
   "settingsNav": {
@@ -668,7 +745,9 @@
     "description": "Zarządzaj powodami przegrania transakcji.",
     "addReason": "Dodaj powód",
     "emptyReasons": "Brak zdefiniowanych powodów przegrania.",
-    "confirmDelete": "Usunąć ten powód?"
+    "confirmDelete": "Usunąć ten powód?",
+    "reasonRequired": "Wymagaj podania powodu przy przegrywaniu transakcji",
+    "allowCustom": "Zezwalaj na własne (tekstowe) powody"
   },
   "sources": {
     "title": "Źródła",
@@ -696,10 +775,37 @@
     "call": "Zarejestruj połączenie",
     "document": "Utwórz dokument"
   },
+  "quickActions": {
+    "newLead": "Nowa transakcja",
+    "newContact": "Nowy kontakt",
+    "newCompany": "Nowa firma",
+    "newActivity": "Nowa aktywność",
+    "newProduct": "Nowy produkt",
+    "uploadDocument": "Prześlij dokument",
+    "logCall": "Zarejestruj połączenie",
+    "importCsv": "Importuj CSV",
+    "exportCsv": "Eksportuj CSV",
+    "newPatient": "Nowy pacjent",
+    "newAppointment": "Nowa wizyta",
+    "newTreatment": "Nowy zabieg",
+    "newPackage": "Nowy pakiet",
+    "newEmployee": "Nowy pracownik"
+  },
+  "entityActions": {
+    "scheduleActivity": "Zaplanuj aktywność",
+    "sendEmail": "Wyślij email",
+    "addNote": "Dodaj notatkę",
+    "logCall": "Zarejestruj połączenie",
+    "share": "Udostępnij",
+    "bookAppointment": "Zarezerwuj wizytę",
+    "addDocument": "Dodaj dokument",
+    "download": "Pobierz"
+  },
   "layout": {
     "search": "Szukaj...",
     "settings": "Ustawienia",
-    "logOut": "Wyloguj"
+    "logOut": "Wyloguj",
+    "openDeals": "Otwarte transakcje"
   },
   "profile": {
     "title": "Ustawienia",
@@ -868,6 +974,432 @@
     "startImport": "Rozpocznij import",
     "next": "Dalej",
     "back": "Wstecz"
+  },
+  "gabinet": {
+    "patients": {
+      "title": "Pacjenci",
+      "description": "Zarządzaj pacjentami kliniki",
+      "addPatient": "Dodaj pacjenta",
+      "createPatient": "Utwórz pacjenta",
+      "createDescription": "Dodaj nowego pacjenta do kliniki",
+      "searchPlaceholder": "Szukaj pacjentów...",
+      "emptyTitle": "Brak pacjentów",
+      "emptyDescription": "Dodaj pierwszego pacjenta, aby rozpocząć",
+      "confirmDelete": "Czy na pewno chcesz dezaktywować tego pacjenta?",
+      "views": {
+        "all": "Wszyscy pacjenci",
+        "active": "Aktywni",
+        "inactive": "Nieaktywni"
+      },
+      "contact": "Pacjent",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "pesel": "PESEL",
+      "dateOfBirth": "Data urodzenia",
+      "gender": "Płeć",
+      "genderOptions": {
+        "male": "Mężczyzna",
+        "female": "Kobieta",
+        "other": "Inna"
+      },
+      "medicalNotes": "Notatki medyczne",
+      "allergies": "Alergie",
+      "bloodType": "Grupa krwi",
+      "emergencyContact": "Kontakt awaryjny",
+      "emergencyContactName": "Imię kontaktu awaryjnego",
+      "emergencyContactPhone": "Telefon kontaktu awaryjnego",
+      "referralSource": "Źródło skierowania",
+      "referredBy": "Skierowany przez",
+      "linkedContact": "Powiązany kontakt CRM",
+      "address": "Adres",
+      "street": "Ulica",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "tabs": {
+        "overview": "Przegląd",
+        "appointments": "Wizyty",
+        "documents": "Dokumenty",
+        "loyalty": "Lojalność",
+        "activity": "Aktywność"
+      },
+      "byDay": "Pacjenci wg dnia",
+      "bySource": "Pacjenci wg źródła"
+    },
+    "treatments": {
+      "title": "Zabiegi",
+      "description": "Zarządzaj katalogiem zabiegów",
+      "addTreatment": "Dodaj zabieg",
+      "createTreatment": "Utwórz zabieg",
+      "createDescription": "Dodaj nowy zabieg do katalogu",
+      "searchPlaceholder": "Szukaj zabiegów...",
+      "emptyTitle": "Brak zabiegów",
+      "emptyDescription": "Dodaj pierwszy zabieg, aby rozpocząć",
+      "confirmDelete": "Czy na pewno chcesz dezaktywować ten zabieg?",
+      "name": "Nazwa",
+      "duration": "Czas trwania",
+      "durationMinutes": "Czas trwania (minuty)",
+      "price": "Cena",
+      "currency": "Waluta",
+      "taxRate": "Stawka podatku",
+      "category": "Kategoria",
+      "color": "Kolor",
+      "sortOrder": "Kolejność",
+      "requiredEquipment": "Wymagany sprzęt",
+      "contraindications": "Przeciwwskazania",
+      "preparationInstructions": "Instrukcje przygotowania",
+      "aftercareInstructions": "Instrukcje po zabiegu",
+      "requiresApproval": "Wymaga zatwierdzenia",
+      "views": {
+        "all": "Wszystkie zabiegi",
+        "active": "Aktywne",
+        "inactive": "Nieaktywne"
+      }
+    },
+    "scheduling": {
+      "title": "Godziny pracy",
+      "description": "Ustaw godziny otwarcia kliniki i harmonogramy pracowników",
+      "day": "Dzień",
+      "open": "Otwarte",
+      "start": "Start",
+      "end": "Koniec",
+      "breakStart": "Początek przerwy",
+      "breakEnd": "Koniec przerwy"
+    },
+    "leaves": {
+      "title": "Zarządzanie urlopami",
+      "description": "Zarządzaj urlopami i dniami wolnymi pracowników",
+      "requestLeave": "Złóż wniosek",
+      "type": "Typ",
+      "startDate": "Data rozpoczęcia",
+      "endDate": "Data zakończenia",
+      "reason": "Powód",
+      "status": "Status",
+      "submit": "Wyślij wniosek",
+      "created": "Wniosek urlopowy utworzony",
+      "approved": "Urlop zatwierdzony",
+      "rejected": "Urlop odrzucony",
+      "pending": "Oczekujący",
+      "approvedStatus": "Zatwierdzony",
+      "rejectedStatus": "Odrzucony",
+      "empty": "Brak wniosków urlopowych",
+      "types": {
+        "vacation": "Urlop wypoczynkowy",
+        "sick": "Zwolnienie lekarskie",
+        "personal": "Osobisty",
+        "training": "Szkolenie",
+        "other": "Inne"
+      }
+    },
+    "employees": {
+      "title": "Pracownicy",
+      "description": "Zarządzaj personelem kliniki, rolami i kwalifikacjami zabiegowymi",
+      "add": "Dodaj pracownika",
+      "empty": "Brak zarejestrowanych pracowników. Dodaj członków zespołu, aby zarządzać grafikami i kwalifikacjami.",
+      "selectUser": "Wybierz członka zespołu",
+      "role": "Rola",
+      "specialization": "Specjalizacja",
+      "license": "Numer licencji",
+      "color": "Kolor w kalendarzu",
+      "qualifiedTreatments": "Kwalifikacje zabiegowe",
+      "noTreatments": "Brak zdefiniowanych zabiegów",
+      "deactivate": "Dezaktywuj pracownika",
+      "confirmDeactivate": "Czy na pewno chcesz dezaktywować tego pracownika?",
+      "deactivated": "Pracownik dezaktywowany",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "hireDate": "Data zatrudnienia",
+      "notes": "Notatki",
+      "editEmployee": "Edytuj pracownika",
+      "details": "Szczegóły",
+      "activity": "Aktywność",
+      "qualifications": "Kwalifikacje zabiegowe",
+      "addTreatment": "Dodaj zabieg...",
+      "noQualifications": "Brak przypisanych kwalifikacji zabiegowych.",
+      "showMore": "Pokaż {{count}} więcej",
+      "showLess": "Pokaż mniej",
+      "tabs": {
+        "appointments": "Wizyty",
+        "patients": "Pacjenci",
+        "activities": "Aktywności",
+        "schedule": "Grafik",
+        "noPatients": "Brak obsługiwanych pacjentów."
+      },
+      "schedule": {
+        "hasOverrides": "Ten pracownik ma zdefiniowany indywidualny grafik.",
+        "usingClinicDefaults": "Używane domyślne godziny kliniki. Dostosuj, aby ustawić indywidualny grafik."
+      },
+      "roles": {
+        "doctor": "Lekarz",
+        "nurse": "Pielęgniarka",
+        "therapist": "Terapeuta",
+        "receptionist": "Recepcjonista",
+        "admin": "Administrator",
+        "other": "Inny"
+      }
+    },
+    "leaveTypes": {
+      "title": "Typy urlopów",
+      "description": "Definiuj konfigurowalne typy urlopów z rocznymi limitami",
+      "add": "Dodaj typ urlopu",
+      "edit": "Edytuj typ urlopu",
+      "empty": "Brak zdefiniowanych typów urlopów. Utwórz typy urlopów, aby śledzić nieobecności.",
+      "annualQuota": "Roczny limit (dni)",
+      "unlimitedPlaceholder": "Pozostaw puste dla nielimitowanego",
+      "paid": "Płatny",
+      "unpaid": "Bezpłatny",
+      "requiresApproval": "Wymaga zatwierdzenia",
+      "quotaDays": "{{count}} dni/rok",
+      "unlimited": "Bez limitu",
+      "confirmDelete": "Czy na pewno chcesz dezaktywować ten typ urlopu?",
+      "initBalances": "Inicjalizuj salda {{year}}",
+      "balancesInitialized": "Zainicjalizowano {{count}} saldo(a)"
+    },
+    "leaveBalances": {
+      "title": "Salda urlopów",
+      "description": "Przeglądaj i zarządzaj saldami urlopowymi pracowników",
+      "noBalances": "Brak zainicjalizowanych sald na ten rok",
+      "days": "dni",
+      "remaining": "pozostało"
+    },
+    "appointments": {
+      "createAppointment": "Nowa wizyta",
+      "patient": "Pacjent",
+      "treatment": "Zabieg",
+      "employee": "Pracownik",
+      "date": "Data",
+      "startTime": "Godzina rozpoczęcia",
+      "endTime": "Godzina zakończenia",
+      "notes": "Notatki",
+      "recurring": "Cykliczna",
+      "frequency": "Częstotliwość",
+      "count": "Powtórzenia",
+      "selectPatient": "Wybierz pacjenta...",
+      "selectTreatment": "Wybierz zabieg...",
+      "selectEmployee": "Wybierz pracownika...",
+      "frequencies": {
+        "daily": "Codziennie",
+        "weekly": "Tygodniowo",
+        "biweekly": "Co dwa tygodnie",
+        "monthly": "Miesięcznie"
+      },
+      "created": "Wizyta utworzona",
+      "updated": "Wizyta zaktualizowana",
+      "noAppointments": "Brak wizyt",
+      "availableSlots": "Dostępne terminy",
+      "noAvailableSlots": "Brak dostępnych terminów dla tego pracownika w tym dniu.",
+      "statuses": {
+        "scheduled": "Zaplanowana",
+        "confirmed": "Potwierdzona",
+        "in_progress": "W trakcie",
+        "completed": "Zakończona",
+        "cancelled": "Anulowana",
+        "no_show": "Nieobecność"
+      }
+    },
+    "appointmentDetail": {
+      "title": "Szczegóły wizyty",
+      "time": "Godzina",
+      "changeStatus": "Zmień status",
+      "statusChanged": "Status wizyty zmieniony",
+      "cancelAppointment": "Anuluj wizytę",
+      "cancelConfirm": "Czy na pewno chcesz anulować tę wizytę?",
+      "cancelReason": "Powód anulowania",
+      "cancelReasonPlaceholder": "Opcjonalnie podaj powód...",
+      "confirmCancel": "Anuluj wizytę",
+      "cancelled": "Wizyta anulowana",
+      "recurringInfo": "Ta wizyta jest częścią serii cyklicznej"
+    },
+    "calendar": {
+      "today": "Dziś",
+      "day": "Dzień",
+      "week": "Tydzień",
+      "month": "Miesiąc",
+      "appointments": "wizyt",
+      "dayDetail": "Szczegóły dnia"
+    },
+    "packages": {
+      "title": "Pakiety zabiegów",
+      "description": "Zarządzaj pakietami i zestawami zabiegów",
+      "addPackage": "Dodaj pakiet",
+      "name": "Nazwa",
+      "descriptionField": "Opis",
+      "totalPrice": "Cena całkowita",
+      "validityDays": "Ważność (dni)",
+      "discountPercent": "Rabat %",
+      "loyaltyPoints": "Punkty lojalnościowe",
+      "treatments": "zabiegi",
+      "days": "dni",
+      "discount": "rabat",
+      "active": "Aktywny",
+      "inactive": "Nieaktywny",
+      "created": "Pakiet utworzony",
+      "editPackage": "Edytuj pakiet",
+      "confirmDeleteDescription": "Pakiet zostanie dezaktywowany. Można go będzie aktywować ponownie.",
+      "emptyTitle": "Brak pakietów",
+      "emptyDescription": "Utwórz pakiety zabiegów, aby oferować zestawy"
+    },
+    "documents": {
+      "title": "Dokumenty medyczne",
+      "description": "Zarządzaj dokumentami pacjentów, zgodami i kartotekami",
+      "createDocument": "Nowy dokument",
+      "titleField": "Tytuł",
+      "type": "Typ",
+      "status": "Status",
+      "date": "Data",
+      "patient": "Pacjent",
+      "template": "Szablon",
+      "content": "Treść",
+      "noTemplate": "Bez szablonu",
+      "signature": "Podpis",
+      "signedOn": "Podpisano dnia",
+      "signDocument": "Podpisz dokument",
+      "clearSignature": "Wyczyść",
+      "confirmSign": "Potwierdź podpis",
+      "created": "Dokument utworzony",
+      "signatureRequested": "Prośba o podpis wysłana",
+      "signed": "Dokument podpisany",
+      "emptyTitle": "Brak dokumentów",
+      "emptyDescription": "Utwórz dokumenty medyczne dla swoich pacjentów",
+      "noDocuments": "Brak dokumentów dla tego pacjenta",
+      "types": {
+        "consent": "Zgoda",
+        "medical_record": "Karta medyczna",
+        "prescription": "Recepta",
+        "referral": "Skierowanie",
+        "custom": "Inny"
+      },
+      "statuses": {
+        "draft": "Szkic",
+        "pending_signature": "Oczekuje na podpis",
+        "signed": "Podpisany",
+        "archived": "Zarchiwizowany"
+      }
+    },
+    "documentTemplates": {
+      "title": "Szablony dokumentów",
+      "description": "Zarządzaj szablonami dokumentów medycznych",
+      "addTemplate": "Dodaj szablon",
+      "editTemplate": "Edytuj szablon",
+      "requiresSignature": "Wymaga podpisu",
+      "contentLabel": "Treść szablonu",
+      "placeholderHint": "Używaj {{patient.firstName}}, {{patient.lastName}}, {{patient.pesel}} jako zmiennych",
+      "emptyTitle": "Brak szablonów",
+      "emptyDescription": "Utwórz szablony dokumentów, aby przyspieszyć tworzenie dokumentów"
+    },
+    "loyalty": {
+      "balance": "Saldo punktów",
+      "totalEarned": "Łącznie zdobyte",
+      "totalSpent": "Łącznie wydane",
+      "tier": "Poziom",
+      "tiers": {
+        "bronze": "Brązowy",
+        "silver": "Srebrny",
+        "gold": "Złoty",
+        "platinum": "Platynowy"
+      },
+      "transactionHistory": "Historia transakcji",
+      "noTransactions": "Brak transakcji punktowych"
+    },
+    "dashboard": {
+      "title": "Panel Gabinetu",
+      "description": "Przegląd operacji kliniki",
+      "todayAppointments": "Dzisiejsze wizyty",
+      "totalPatients": "Pacjenci",
+      "totalTreatments": "Zabiegi",
+      "pendingLeaves": "Oczekujące urlopy",
+      "todaySchedule": "Dzisiejszy harmonogram",
+      "noAppointmentsToday": "Brak zaplanowanych wizyt na dziś",
+      "pendingLeaveRequests": "Oczekujące wnioski urlopowe",
+      "noPendingLeaves": "Brak oczekujących wniosków",
+      "goToCalendar": "Otwórz kalendarz",
+      "goToPatients": "Pacjenci",
+      "goToPackages": "Pakiety",
+      "goToDocuments": "Dokumenty"
+    },
+    "reports": {
+      "title": "Raporty Gabinetu",
+      "description": "Analizuj wydajność kliniki",
+      "totalAppointments": "Wizyty ogółem",
+      "completed": "Zakończone",
+      "cancelled": "Anulowane",
+      "totalPatients": "Pacjenci ogółem",
+      "last30days": "Ostatnie 30 dni",
+      "completionRate": "wskaźnik realizacji",
+      "treatmentPopularity": "Popularność zabiegów",
+      "statusDistribution": "Rozkład statusów wizyt",
+      "dailyVolume": "Dzienny wolumen wizyt"
+    }
+  },
+  "customFields": {
+    "title": "Pola niestandardowe",
+    "description": "Definiuj pola niestandardowe dla wszystkich typów obiektów.",
+    "addField": "Dodaj pole",
+    "newFieldFor": "Nowe pole dla {{entity}}",
+    "noFields": "Brak pól niestandardowych dla {{entity}}.",
+    "confirmDelete": "Usunąć pole \"{{name}}\"?",
+    "entityTypes": {
+      "contact": "Kontakty",
+      "company": "Firmy",
+      "lead": "Szanse sprzedaży",
+      "document": "Dokumenty",
+      "activity": "Aktywności",
+      "product": "Produkty",
+      "call": "Połączenia",
+      "pipeline": "Pipeline",
+      "gabinetPatient": "Pacjenci",
+      "gabinetTreatment": "Zabiegi",
+      "gabinetAppointment": "Wizyty",
+      "gabinetPackage": "Pakiety",
+      "gabinetDocument": "Dokumenty medyczne",
+      "gabinetEmployee": "Pracownicy"
+    }
+  },
+  "patientPortal": {
+    "title": "Portal Pacjenta",
+    "logout": "Wyloguj",
+    "nav": {
+      "dashboard": "Strona główna",
+      "appointments": "Wizyty",
+      "documents": "Dokumenty",
+      "profile": "Profil"
+    },
+    "login": {
+      "title": "Portal Pacjenta",
+      "description": "Zaloguj się, aby uzyskać dostęp do dokumentacji medycznej",
+      "emailPlaceholder": "twoj@email.pl",
+      "sendCode": "Wyślij kod",
+      "otpSent": "Kod weryfikacyjny wysłany na Twój e-mail",
+      "otpDescription": "Wpisz 6-cyfrowy kod wysłany na {{email}}",
+      "code": "Kod weryfikacyjny",
+      "verify": "Weryfikuj",
+      "changeEmail": "Użyj innego e-maila"
+    },
+    "dashboard": {
+      "welcome": "Witaj, {{name}}",
+      "subtitle": "Przegląd Twojego zdrowia",
+      "upcomingAppointments": "Nadchodzące wizyty",
+      "loyaltyPoints": "Punkty lojalnościowe",
+      "nextAppointments": "Najbliższe wizyty",
+      "noUpcoming": "Brak nadchodzących wizyt"
+    },
+    "appointments": {
+      "title": "Moje wizyty",
+      "upcoming": "Nadchodzące",
+      "past": "Historia",
+      "noUpcoming": "Brak nadchodzących wizyt",
+      "noPast": "Brak historii wizyt"
+    },
+    "documents": {
+      "title": "Moje dokumenty",
+      "empty": "Brak dostępnych dokumentów",
+      "signDocument": "Podpisz dokument",
+      "signed": "Dokument podpisany pomyślnie"
+    },
+    "profile": {
+      "title": "Mój profil",
+      "name": "Imię i nazwisko",
+      "editableFields": "Edytowalne informacje"
+    }
   },
   "invite": {
     "title": "Zaproszenie do zespołu",

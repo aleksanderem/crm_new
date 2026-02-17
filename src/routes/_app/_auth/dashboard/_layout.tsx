@@ -5,6 +5,7 @@ import { useConvex, useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppFooter } from "@/components/layout/app-footer";
 import { OrgProvider } from "@/components/org-context";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -351,6 +352,9 @@ function DashboardLayout() {
               <main className="size-full flex-1 px-4 py-6 sm:px-6">
                 <Outlet />
               </main>
+
+              {/* Sticky footer with contextual actions */}
+              <AppFooter />
             </div>
           </SidebarProvider>
         </SidebarActionsContext.Provider>

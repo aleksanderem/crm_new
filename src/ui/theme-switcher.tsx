@@ -1,6 +1,11 @@
-import { Sun, Moon, Monitor } from "lucide-react";
-import { cn } from "@/utils/misc";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/ui/select";
+import { Sun, Moon, Monitor } from "@/lib/ez-icons";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useEffect, useState } from "react";
 
 const themes = ["light", "dark", "system"] as const;
@@ -11,7 +16,6 @@ const useTheme = () => {
   );
   const [initialized, setInitialized] = useState(false);
 
-  // A similar script is inlined in the <head> of index.html.
   useEffect(() => {
     if (!initialized) {
       setInitialized(true);
@@ -38,46 +42,40 @@ const useTheme = () => {
   return [currentTheme, setCurrentTheme] as const;
 };
 
-export function ThemeSwitcher({ triggerClass }: { triggerClass?: string }) {
+export function ThemeSwitcher() {
   const [currentTheme, setCurrentTheme] = useTheme();
   return (
-    <Select
-      value={currentTheme}
-      onValueChange={(theme) =>
-        setCurrentTheme(theme as (typeof themes)[number])
-      }
-    >
-      <SelectTrigger
-        className={cn(
-          "h-6 rounded border-primary/20 bg-secondary !px-2 hover:border-primary/40",
-          triggerClass,
-        )}
-      >
-        <div className="flex items-start gap-2">
-          {currentTheme === "light" ? (
-            <Sun className="h-[14px] w-[14px]" />
-          ) : currentTheme === "dark" ? (
-            <Moon className="h-[14px] w-[14px]" />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="relative">
+          {currentTheme === "dark" ? (
+            <Moon className="h-4 w-4" />
+          ) : currentTheme === "light" ? (
+            <Sun className="h-4 w-4" />
           ) : (
-            <Monitor className="h-[14px] w-[14px]" />
+            <Monitor className="h-4 w-4" />
           )}
-          <span className="text-xs font-medium">
-            {currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)}
-          </span>
-        </div>
-      </SelectTrigger>
-      <SelectContent>
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
         {themes.map((theme) => (
-          <SelectItem
+          <DropdownMenuItem
             key={theme}
-            value={theme}
-            className={`text-sm font-medium text-primary/60 ${theme === currentTheme && "text-primary"}`}
+            onClick={() => setCurrentTheme(theme)}
           >
-            {theme && theme.charAt(0).toUpperCase() + theme.slice(1)}
-          </SelectItem>
+            {theme === "light" ? (
+              <Sun className="mr-2 h-4 w-4" />
+            ) : theme === "dark" ? (
+              <Moon className="mr-2 h-4 w-4" />
+            ) : (
+              <Monitor className="mr-2 h-4 w-4" />
+            )}
+            {theme.charAt(0).toUpperCase() + theme.slice(1)}
+          </DropdownMenuItem>
         ))}
-      </SelectContent>
-    </Select>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

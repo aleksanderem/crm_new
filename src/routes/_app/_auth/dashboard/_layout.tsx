@@ -274,7 +274,7 @@ function DashboardLayout() {
                     </div>
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
                     className="sm:hidden"
                     onClick={() => setSearchOpen(true)}

@@ -6,8 +6,8 @@ import {
   CalendarCheck,
   Phone,
   FileText,
-  Plus,
-} from "lucide-react";
+  CirclePlusIcon,
+} from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,20 +46,31 @@ export function QuickCreateMenu({ onCreateEntity }: QuickCreateMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-          <Plus className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="bg-primary/10 text-primary hover:bg-primary/20 size-9"
+        >
+          <CirclePlusIcon className="size-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-48">
-        {createItems.map((item) => (
-          <DropdownMenuItem
-            key={item.type}
-            onClick={() => onCreateEntity(item.type)}
-          >
-            <item.icon className="mr-2 h-4 w-4" />
-            {t(item.i18nKey)}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="w-64 p-0">
+        <div className="bg-muted grid grid-cols-3 gap-4 rounded-lg px-4 py-5">
+          {createItems.map((item) => (
+            <DropdownMenuItem
+              key={item.type}
+              className="flex flex-col items-center gap-2 rounded-md p-2"
+              onClick={() => onCreateEntity(item.type)}
+            >
+              <div className="bg-background flex size-10 items-center justify-center rounded-lg shadow-sm">
+                <item.icon className="text-foreground size-5" />
+              </div>
+              <span className="text-muted-foreground text-xs font-medium">
+                {t(item.i18nKey)}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

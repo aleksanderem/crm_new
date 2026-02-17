@@ -4,38 +4,56 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
+  totalCount?: number;
 }
 
 export function DataTablePagination<TData>({
   table,
+  totalCount,
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation();
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const displayTotal = totalCount ?? filteredCount;
 
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
-        {t('pagination.rowsSelected', { selected: table.getFilteredSelectedRowModel().rows.length, total: table.getFilteredRowModel().rows.length })}
+        {selectedCount > 0
+          ? t('pagination.rowsSelected', { selected: selectedCount, total: filteredCount })
+          : t('table.recordCount', { count: displayTotal })}
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium whitespace-nowrap">{t('pagination.rowsPerPage')}</p>
-          <select
-            className="h-8 w-[70px] rounded-md border bg-transparent px-2 text-sm"
+          <Select
             value={`${table.getState().pagination.pageSize}`}
-            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            onValueChange={(val) => table.setPageSize(Number(val))}
           >
-            {[10, 25, 50, 100].map((size) => (
-              <option key={size} value={`${size}`}>
-                {size}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 25, 50, 100].map((size) => (
+                <SelectItem key={size} value={`${size}`}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">

@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { DataTableToolbar, type ToolbarDropdownAction } from "@/components/data-table/data-table-toolbar";
 import { BulkActionsBar } from "@/components/crm/bulk-actions";
 import { MoreHorizontal, Pencil, Inbox } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,7 @@ export interface CrmDataTableProps<TData> {
   onSortingChange?: (sort: SortingState) => void;
   defaultColumnVisibility?: VisibilityState;
   toolbarActions?: React.ReactNode;
+  toolbarDropdownActions?: ToolbarDropdownAction[];
 }
 
 export function CrmDataTable<TData>({
@@ -83,6 +84,7 @@ export function CrmDataTable<TData>({
   onSortingChange: controlledSortingChange,
   defaultColumnVisibility,
   toolbarActions,
+  toolbarDropdownActions,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
@@ -248,7 +250,7 @@ export function CrmDataTable<TData>({
 
   return (
     <Card className="py-0">
-      <div className="flex items-center justify-between px-4 pt-4 sm:px-6">
+      <div className="px-4 pt-4 sm:px-6">
         <DataTableToolbar
           table={table}
           searchKey={searchKey}
@@ -256,10 +258,8 @@ export function CrmDataTable<TData>({
           filterableColumns={filterableColumns}
           showViewOptions
           actions={toolbarActions}
+          dropdownActions={toolbarDropdownActions}
         />
-        <p className="text-sm text-muted-foreground whitespace-nowrap ml-4">
-          {t('table.recordCount', { count: displayCount })}
-        </p>
       </div>
 
       {enableBulkSelect && bulkActions && bulkActions.length > 0 && (
@@ -276,7 +276,8 @@ export function CrmDataTable<TData>({
         </div>
       )}
 
-      <div className="mt-4">
+      {/* Table with horizontal border above thead, no vertical borders */}
+      <div className="mt-4 border-t">
         <div className="relative w-full overflow-auto">
           <table className="w-full caption-bottom text-sm">
             <thead className="[&_tr]:border-b">
@@ -290,7 +291,7 @@ export function CrmDataTable<TData>({
                         colSpan={header.colSpan}
                         className={cn(
                           "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-                          isSticky && "sticky left-0 z-10 bg-background after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border"
+                          isSticky && "sticky left-0 z-10 bg-background"
                         )}
                         style={isSticky ? { minWidth: header.getSize() } : undefined}
                       >
@@ -322,7 +323,7 @@ export function CrmDataTable<TData>({
                           key={cell.id}
                           className={cn(
                             "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                            isSticky && "sticky left-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border"
+                            isSticky && "sticky left-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted"
                           )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -345,8 +346,8 @@ export function CrmDataTable<TData>({
           </table>
         </div>
       </div>
-      <div className="px-4 pb-4 pt-2 sm:px-6">
-        <DataTablePagination table={table} />
+      <div className="border-t px-4 pb-4 pt-2 sm:px-6">
+        <DataTablePagination table={table} totalCount={displayCount} />
       </div>
     </Card>
   );

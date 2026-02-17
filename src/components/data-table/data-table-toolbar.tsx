@@ -1,9 +1,22 @@
 import { Table } from "@tanstack/react-table";
-import { X, Search } from "lucide-react";
+import { X, Search, MoreVertical } from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 import { DataTableViewOptions } from "./data-table-view-options";
+
+export interface ToolbarDropdownAction {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+}
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -16,6 +29,7 @@ interface DataTableToolbarProps<TData> {
   }[];
   showViewOptions?: boolean;
   actions?: React.ReactNode;
+  dropdownActions?: ToolbarDropdownAction[];
 }
 
 export function DataTableToolbar<TData>({
@@ -25,6 +39,7 @@ export function DataTableToolbar<TData>({
   filterableColumns = [],
   showViewOptions = false,
   actions,
+  dropdownActions,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const isFiltered = table.getState().columnFilters.length > 0;
@@ -35,7 +50,7 @@ export function DataTableToolbar<TData>({
         {searchKey && (
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
+            <Input
               placeholder={searchPlaceholder}
               value={
                 (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
@@ -43,7 +58,7 @@ export function DataTableToolbar<TData>({
               onChange={(event) =>
                 table.getColumn(searchKey)?.setFilterValue(event.target.value)
               }
-              className="h-9 w-[200px] rounded-md border bg-transparent pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:w-[280px]"
+              className="w-[200px] pl-8 lg:w-[280px]"
             />
           </div>
         )}
@@ -68,10 +83,27 @@ export function DataTableToolbar<TData>({
             <X className="ml-2 h-4 w-4" />
           </Button>
         )}
+        {showViewOptions && <DataTableViewOptions table={table} />}
       </div>
       <div className="flex items-center gap-2">
         {actions}
-        {showViewOptions && <DataTableViewOptions table={table} />}
+        {dropdownActions && dropdownActions.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {dropdownActions.map((action) => (
+                <DropdownMenuItem key={action.label} onClick={action.onClick}>
+                  {action.icon && <span className="mr-2">{action.icon}</span>}
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );

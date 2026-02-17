@@ -16,8 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Pencil, Trash2, Power, Upload } from "@/lib/ez-icons";
-import { CsvExportButton } from "@/components/csv/csv-export-button";
+import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
+import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
@@ -73,6 +73,7 @@ function ProductsPage() {
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const { handleExport } = useCsvExport(organizationId, "products");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form state
@@ -274,15 +275,10 @@ function ProductsPage() {
         searchKey="name"
         searchPlaceholder={t('products.searchPlaceholder')}
         isLoading={isLoading}
-        toolbarActions={
-          <div className="flex items-center gap-2">
-            <CsvExportButton organizationId={organizationId} entityType="products" />
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              {t("csv.import")}
-            </Button>
-          </div>
-        }
+        toolbarDropdownActions={[
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+        ]}
       />
 
       <CsvImportDialog

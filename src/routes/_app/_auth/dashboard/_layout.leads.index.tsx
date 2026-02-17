@@ -31,7 +31,8 @@ import {
   Trash2,
   Upload,
 } from "@/lib/ez-icons";
-import { CsvExportButton } from "@/components/csv/csv-export-button";
+import { useCsvExport } from "@/components/csv/csv-export-button";
+import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import type { QuickAction } from "@/components/crm/quick-action-bar";
@@ -109,6 +110,7 @@ function LeadsIndex() {
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { handleExport } = useCsvExport(organizationId, "leads");
   const [chartTimeRange, setChartTimeRange] = useState<TimeRange>("last30days");
 
   const systemViews = useMemo((): SavedView[] => [
@@ -561,7 +563,7 @@ function LeadsIndex() {
             action: "create",
           },
         ]}
-        extra={<CsvExportButton organizationId={organizationId} entityType="leads" />}
+        extra={null}
       />
 
       {!isLoading && filteredLeads.length === 0 ? (
@@ -637,15 +639,10 @@ function LeadsIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarActions={
-            <div className="flex items-center gap-2">
-              <CsvExportButton organizationId={organizationId} entityType="leads" />
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                {t("csv.import")}
-              </Button>
-            </div>
-          }
+          toolbarDropdownActions={[
+            { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
+            { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+          ]}
         />
       )}
 

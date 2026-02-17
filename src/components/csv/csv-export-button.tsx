@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download } from "@/lib/ez-icons";
 import Papa from "papaparse";
 
 type EntityType = "contacts" | "companies" | "leads" | "products";
@@ -17,24 +17,15 @@ const exportQueries = {
   products: api.csvExport.exportProducts,
 } as const;
 
-interface CsvExportButtonProps {
-  organizationId: Id<"organizations">;
-  entityType: EntityType;
-}
-
-export function CsvExportButton({
-  organizationId,
-  entityType,
-}: CsvExportButtonProps) {
-  const { t } = useTranslation();
+export function useCsvExport(organizationId: Id<"organizations">, entityType: EntityType) {
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data, refetch } = useQuery({
+  const { refetch } = useQuery({
     ...convexQuery(exportQueries[entityType], { organizationId }),
-    enabled: false, // Only fetch on demand
+    enabled: false,
   });
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
       const result = await refetch();
@@ -54,7 +45,22 @@ export function CsvExportButton({
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [refetch, entityType]);
+
+  return { handleExport, isExporting };
+}
+
+interface CsvExportButtonProps {
+  organizationId: Id<"organizations">;
+  entityType: EntityType;
+}
+
+export function CsvExportButton({
+  organizationId,
+  entityType,
+}: CsvExportButtonProps) {
+  const { t } = useTranslation();
+  const { handleExport, isExporting } = useCsvExport(organizationId, entityType);
 
   return (
     <Button

@@ -13,8 +13,8 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Building2, Trash2, Upload } from "@/lib/ez-icons";
-import { CsvExportButton } from "@/components/csv/csv-export-button";
+import { Plus, Building2, Trash2, Upload, Download } from "@/lib/ez-icons";
+import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
@@ -56,6 +56,7 @@ function CompaniesIndex() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const { handleExport } = useCsvExport(organizationId, "companies");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
 
@@ -463,7 +464,7 @@ function CompaniesIndex() {
             action: "create",
           },
         ]}
-        extra={<CsvExportButton organizationId={organizationId} entityType="companies" />}
+        extra={null}
       />
 
       {!isLoading && filteredCompanies.length === 0 ? (
@@ -499,15 +500,10 @@ function CompaniesIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarActions={
-            <div className="flex items-center gap-2">
-              <CsvExportButton organizationId={organizationId} entityType="companies" />
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                {t("csv.import")}
-              </Button>
-            </div>
-          }
+          toolbarDropdownActions={[
+            { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
+            { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+          ]}
         />
       )}
 

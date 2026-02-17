@@ -91,7 +91,9 @@
       "changeStatus": "Change Status",
       "syncGmail": "Sync Gmail",
       "viewUnread": "Unread",
-      "activate": "Activate/Deactivate"
+      "activate": "Activate/Deactivate",
+      "bookAppointment": "Book Appointment",
+      "addPatient": "Add Patient"
     },
     "workspace": {
       "crm": "CRM",
@@ -115,6 +117,10 @@
       "documentTemplates": "Doc Templates"
     },
     "settings": "Settings"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications"
   },
   "sidebar": {
     "todayActivities": "Today's Activities ({{count}})",
@@ -773,7 +779,39 @@
     "lead": "Create Deal",
     "activity": "Create Activity",
     "call": "Log Call",
-    "document": "Create Document"
+    "document": "Create Document",
+    "dialogTitle": "Create new item",
+    "groupGabinet": "Clinic",
+    "items": {
+      "contact": "Contact",
+      "company": "Company",
+      "lead": "Deal",
+      "activity": "Activity",
+      "call": "Call",
+      "document": "Document",
+      "patient": "Patient",
+      "appointment": "Appointment",
+      "treatment": "Treatment"
+    },
+    "itemDesc": {
+      "contact": "Add a person to your CRM",
+      "company": "Add a company to your CRM",
+      "lead": "Create a new sales opportunity",
+      "activity": "Schedule a meeting or task",
+      "call": "Log a phone call",
+      "document": "Upload or create a document",
+      "patient": "Register a new patient",
+      "appointment": "Book an appointment",
+      "treatment": "Add a new treatment type"
+    },
+    "formTitles": {
+      "contact": "New Contact",
+      "company": "New Company",
+      "lead": "New Deal",
+      "patient": "New Patient",
+      "appointment": "New Appointment",
+      "treatment": "New Treatment"
+    }
   },
   "quickActions": {
     "newLead": "New Lead",
@@ -1170,12 +1208,26 @@
       "startTime": "Start Time",
       "endTime": "End Time",
       "notes": "Notes",
+      "notesPlaceholder": "Additional notes for the appointment...",
       "recurring": "Recurring",
       "frequency": "Frequency",
       "count": "Occurrences",
-      "selectPatient": "Select patient...",
-      "selectTreatment": "Select treatment...",
-      "selectEmployee": "Select employee...",
+      "selectPatient": "Select patient",
+      "searchPatient": "Search patient or contact...",
+      "existingPatients": "Patients",
+      "fromCrmContacts": "CRM Contacts (create patient)",
+      "creatingPatient": "Creating patient...",
+      "searchingContacts": "Searching CRM contacts...",
+      "typeToSearch": "Type at least 2 characters to search",
+      "selectTreatment": "Select treatment",
+      "searchTreatment": "Search treatment...",
+      "selectEmployee": "Select employee",
+      "noQualifiedEmployees": "No employees qualified for this treatment",
+      "pickDate": "Pick a date",
+      "loadingSlots": "Checking availability...",
+      "noSlots": "No available slots on this day",
+      "selectedTime": "Selected time",
+      "create": "Create appointment",
       "frequencies": {
         "daily": "Daily",
         "weekly": "Weekly",
@@ -1215,7 +1267,8 @@
       "week": "Week",
       "month": "Month",
       "appointments": "appointments",
-      "dayDetail": "Day details"
+      "dayDetail": "Day details",
+      "noAppointments": "No appointments on this day"
     },
     "packages": {
       "title": "Treatment Packages",
@@ -1236,7 +1289,32 @@
       "editPackage": "Edit Package",
       "confirmDeleteDescription": "The package will be deactivated. It can be reactivated later.",
       "emptyTitle": "No packages yet",
-      "emptyDescription": "Create treatment packages to offer bundles"
+      "emptyDescription": "Create treatment packages to offer bundles",
+      "activeUses": "active uses",
+      "purchased": "Package purchased successfully",
+      "purchasePackage": "Purchase Package",
+      "selectPackage": "Package",
+      "selectPackagePlaceholder": "Select a package...",
+      "validFor": "Valid for",
+      "paymentMethod": "Payment Method",
+      "paymentMethods": {
+        "cash": "Cash",
+        "card": "Card",
+        "transfer": "Transfer"
+      },
+      "purchaseButton": "Purchase",
+      "usePackage": "Use package",
+      "remaining": "remaining",
+      "coveredByPackage": "Covered by package",
+      "patientPackages": "Packages",
+      "noPatientPackages": "No packages purchased",
+      "expires": "Expires",
+      "status": {
+        "active": "Active",
+        "completed": "Completed",
+        "expired": "Expired",
+        "cancelled": "Cancelled"
+      }
     },
     "documents": {
       "title": "Medical Documents",

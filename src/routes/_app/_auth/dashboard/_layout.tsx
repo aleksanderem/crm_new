@@ -40,13 +40,16 @@ import {
 import {
   QuickCreateMenu,
   type QuickCreateEntityType,
+  type FormEntityType,
 } from "@/components/crm/quick-create-menu";
-import { SidePanel } from "@/components/crm/side-panel";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
+import { PatientForm } from "@/components/forms/patient-form";
+import { TreatmentForm } from "@/components/gabinet/treatment-form";
+import { AppointmentForm } from "@/components/gabinet/appointment-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
@@ -74,14 +77,14 @@ function DashboardLayout() {
   const convex = useConvex();
 
   const [searchOpen, setSearchOpen] = useState(false);
-  const [createPanel, setCreatePanel] = useState<
-    "contact" | "company" | "lead" | null
-  >(null);
   const [isCreating, setIsCreating] = useState(false);
 
   const createContact = useMutation(api.contacts.create);
   const createCompany = useMutation(api.companies.create);
   const createLead = useMutation(api.leads.create);
+  const createPatient = useMutation(api.gabinet.patients.create);
+  const createTreatment = useMutation(api.gabinet.treatments.create);
+  const createAppointment = useMutation(api.gabinet.appointments.create);
 
   const firstOrg = orgs?.[0];
 
@@ -113,116 +116,137 @@ function DashboardLayout() {
     [navigate]
   );
 
-  const handleCreateEntity = useCallback(
+  const handleNavigateEntity = useCallback(
     (entityType: QuickCreateEntityType) => {
-      switch (entityType) {
-        case "contact":
-        case "company":
-        case "lead":
-          setCreatePanel(entityType);
-          break;
-        case "activity":
-          navigate({ to: "/dashboard/activities" });
-          break;
-        case "call":
-          navigate({ to: "/dashboard/calls" });
-          break;
-        case "document":
-          navigate({ to: "/dashboard/documents" });
-          break;
-      }
+      const routes: Partial<Record<QuickCreateEntityType, string>> = {
+        activity: "/dashboard/activities",
+        call: "/dashboard/calls",
+        document: "/dashboard/documents",
+      };
+      const route = routes[entityType];
+      if (route) navigate({ to: route });
     },
     [navigate]
   );
 
-  const handleCreateContact = useCallback(
-    async (
-      data: {
-        firstName: string;
-        lastName?: string;
-        email?: string;
-        phone?: string;
-        title?: string;
-        source?: string;
-        tags?: string[];
-        notes?: string;
-      },
-      _customFields: Record<string, unknown>
+  const renderQuickCreateForm = useCallback(
+    (
+      type: FormEntityType,
+      opts: { onSuccess: () => void; onCancel: () => void }
     ) => {
-      if (!firstOrg) return;
-      setIsCreating(true);
-      try {
-        await createContact({ organizationId: firstOrg._id, ...data });
-        setCreatePanel(null);
-      } finally {
-        setIsCreating(false);
-      }
-    },
-    [createContact, firstOrg]
-  );
+      if (!firstOrg) return null;
+      const orgId = firstOrg._id;
 
-  const handleCreateCompany = useCallback(
-    async (
-      data: {
-        name: string;
-        domain?: string;
-        industry?: string;
-        size?: string;
-        website?: string;
-        phone?: string;
-        address?: {
-          street?: string;
-          city?: string;
-          state?: string;
-          zip?: string;
-          country?: string;
-        };
-        notes?: string;
-      },
-      _customFields: Record<string, unknown>
-    ) => {
-      if (!firstOrg) return;
-      setIsCreating(true);
-      try {
-        await createCompany({ organizationId: firstOrg._id, ...data });
-        setCreatePanel(null);
-      } finally {
-        setIsCreating(false);
+      switch (type) {
+        case "contact":
+          return (
+            <ContactForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createContact({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "company":
+          return (
+            <CompanyForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createCompany({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "lead":
+          return (
+            <LeadForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createLead({
+                    organizationId: orgId,
+                    title: data.title,
+                    value: data.value,
+                    status: data.status,
+                    priority: data.priority,
+                    source: data.source,
+                    notes: data.notes,
+                  });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "patient":
+          return (
+            <PatientForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createPatient({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "appointment":
+          return (
+            <AppointmentForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createAppointment({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "treatment":
+          return (
+            <TreatmentForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createTreatment({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        default:
+          return null;
       }
     },
-    [createCompany, firstOrg]
-  );
-
-  const handleCreateLead = useCallback(
-    async (
-      data: {
-        title: string;
-        value?: number;
-        status: "open" | "won" | "lost" | "archived";
-        priority?: "low" | "medium" | "high" | "urgent";
-        source?: string;
-        notes?: string;
-      },
-      _customFields: Record<string, unknown>
-    ) => {
-      if (!firstOrg) return;
-      setIsCreating(true);
-      try {
-        await createLead({
-          organizationId: firstOrg._id,
-          title: data.title,
-          value: data.value,
-          status: data.status,
-          priority: data.priority,
-          source: data.source,
-          notes: data.notes,
-        });
-        setCreatePanel(null);
-      } finally {
-        setIsCreating(false);
-      }
-    },
-    [createLead, firstOrg]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -231,10 +255,10 @@ function DashboardLayout() {
 
   const sidebarActionsValue = useMemo(
     () => ({
-      openQuickCreate: (type: string) => handleCreateEntity(type as QuickCreateEntityType),
+      openQuickCreate: (type: string) => handleNavigateEntity(type as QuickCreateEntityType),
       navigateTo: (href: string) => navigate({ to: href }),
     }),
-    [handleCreateEntity, navigate]
+    [handleNavigateEntity, navigate]
   );
 
   if (!user || !orgs) {
@@ -259,7 +283,7 @@ function DashboardLayout() {
 
             {/* Column 3: Main content */}
             <div className="flex flex-1 flex-col">
-              <header className="bg-card sticky top-0 z-50 flex items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
+              <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger className="[&_svg]:!size-5 [&_easier-icon]:!size-5" />
                   <Separator orientation="vertical" className="hidden !h-4 sm:block" />
@@ -286,28 +310,27 @@ function DashboardLayout() {
                 <div className="flex items-center gap-1.5">
                   {showDatePicker && <DateRangePicker />}
 
-                  <QuickCreateMenu onCreateEntity={handleCreateEntity} />
+                  <QuickCreateMenu
+                    onNavigate={handleNavigateEntity}
+                    renderForm={renderQuickCreateForm}
+                  />
                   <NotificationBell />
                   <ThemeSwitcher />
 
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-full gap-2 p-0 font-normal sm:pr-1">
-                        {user.avatarUrl ? (
-                          <Avatar className="size-9.5 rounded-md">
+                        <Avatar className="size-9.5 rounded-md">
+                          {user.avatarUrl && (
                             <AvatarImage
                               src={user.avatarUrl}
                               alt={user.username ?? user.email}
                             />
-                            <AvatarFallback>
-                              {(user.username ?? user.email ?? "U")[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <span className="flex size-9.5 items-center justify-center rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
+                          )}
+                          <AvatarFallback className="rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
                             {(user.username ?? user.email ?? "U")[0].toUpperCase()}
-                          </span>
-                        )}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="hidden flex-col items-start gap-0.5 sm:flex">
                           <span className="text-sm font-medium">{user.username ?? user.name ?? user.email}</span>
                           <span className="text-muted-foreground text-xs">{user.email}</span>
@@ -354,45 +377,6 @@ function DashboardLayout() {
         onOpenChange={setSearchOpen}
       />
 
-      {/* Quick Create panels */}
-      <SidePanel
-        open={createPanel === "contact"}
-        onOpenChange={(o) => !o && setCreatePanel(null)}
-        title={t("contacts.createContact")}
-        description={t("contacts.createDescription")}
-      >
-        <ContactForm
-          onSubmit={handleCreateContact}
-          onCancel={() => setCreatePanel(null)}
-          isSubmitting={isCreating}
-        />
-      </SidePanel>
-
-      <SidePanel
-        open={createPanel === "company"}
-        onOpenChange={(o) => !o && setCreatePanel(null)}
-        title={t("companies.createCompany")}
-        description={t("companies.createDescription")}
-      >
-        <CompanyForm
-          onSubmit={handleCreateCompany}
-          onCancel={() => setCreatePanel(null)}
-          isSubmitting={isCreating}
-        />
-      </SidePanel>
-
-      <SidePanel
-        open={createPanel === "lead"}
-        onOpenChange={(o) => !o && setCreatePanel(null)}
-        title={t("deals.newDeal")}
-        description={t("deals.createDescription")}
-      >
-        <LeadForm
-          onSubmit={handleCreateLead}
-          onCancel={() => setCreatePanel(null)}
-          isSubmitting={isCreating}
-        />
-      </SidePanel>
     </OrgProvider>
     </DateRangeProvider>
   );

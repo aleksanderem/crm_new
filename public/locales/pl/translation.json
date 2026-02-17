@@ -91,7 +91,9 @@
       "changeStatus": "Zmień status",
       "syncGmail": "Synchronizuj Gmail",
       "viewUnread": "Nieprzeczytane",
-      "activate": "Aktywuj/Dezaktywuj"
+      "activate": "Aktywuj/Dezaktywuj",
+      "bookAppointment": "Umów wizytę",
+      "addPatient": "Dodaj pacjenta"
     },
     "workspace": {
       "crm": "CRM",
@@ -115,6 +117,10 @@
       "documentTemplates": "Szablony dok."
     },
     "settings": "Ustawienia"
+  },
+  "notifications": {
+    "title": "Powiadomienia",
+    "empty": "Brak powiadomień"
   },
   "sidebar": {
     "todayActivities": "Dzisiejsze aktywności ({{count}})",
@@ -773,7 +779,39 @@
     "lead": "Utwórz transakcję",
     "activity": "Utwórz aktywność",
     "call": "Zarejestruj połączenie",
-    "document": "Utwórz dokument"
+    "document": "Utwórz dokument",
+    "dialogTitle": "Utwórz nowy element",
+    "groupGabinet": "Gabinet",
+    "items": {
+      "contact": "Kontakt",
+      "company": "Firma",
+      "lead": "Transakcja",
+      "activity": "Aktywność",
+      "call": "Połączenie",
+      "document": "Dokument",
+      "patient": "Pacjent",
+      "appointment": "Wizyta",
+      "treatment": "Zabieg"
+    },
+    "itemDesc": {
+      "contact": "Dodaj osobę do bazy CRM",
+      "company": "Dodaj firmę do bazy CRM",
+      "lead": "Utwórz nową szansę sprzedaży",
+      "activity": "Zaplanuj spotkanie lub zadanie",
+      "call": "Zarejestruj rozmowę telefoniczną",
+      "document": "Prześlij lub utwórz dokument",
+      "patient": "Zarejestruj nowego pacjenta",
+      "appointment": "Zarezerwuj wizytę w kalendarzu",
+      "treatment": "Dodaj nowy rodzaj zabiegu"
+    },
+    "formTitles": {
+      "contact": "Nowy kontakt",
+      "company": "Nowa firma",
+      "lead": "Nowa transakcja",
+      "patient": "Nowy pacjent",
+      "appointment": "Nowa wizyta",
+      "treatment": "Nowy zabieg"
+    }
   },
   "quickActions": {
     "newLead": "Nowa transakcja",
@@ -1170,12 +1208,26 @@
       "startTime": "Godzina rozpoczęcia",
       "endTime": "Godzina zakończenia",
       "notes": "Notatki",
+      "notesPlaceholder": "Dodatkowe uwagi do wizyty...",
       "recurring": "Cykliczna",
       "frequency": "Częstotliwość",
       "count": "Powtórzenia",
-      "selectPatient": "Wybierz pacjenta...",
-      "selectTreatment": "Wybierz zabieg...",
-      "selectEmployee": "Wybierz pracownika...",
+      "selectPatient": "Wybierz pacjenta",
+      "searchPatient": "Szukaj pacjenta lub kontaktu...",
+      "existingPatients": "Pacjenci",
+      "fromCrmContacts": "Kontakty CRM (utwórz pacjenta)",
+      "creatingPatient": "Tworzenie pacjenta...",
+      "searchingContacts": "Szukam kontaktów CRM...",
+      "typeToSearch": "Wpisz min. 2 znaki aby wyszukać",
+      "selectTreatment": "Wybierz zabieg",
+      "searchTreatment": "Szukaj zabiegu...",
+      "selectEmployee": "Wybierz pracownika",
+      "noQualifiedEmployees": "Brak pracowników z kwalifikacjami do tego zabiegu",
+      "pickDate": "Wybierz datę",
+      "loadingSlots": "Sprawdzanie dostępności...",
+      "noSlots": "Brak wolnych terminów w tym dniu",
+      "selectedTime": "Wybrany termin",
+      "create": "Utwórz wizytę",
       "frequencies": {
         "daily": "Codziennie",
         "weekly": "Tygodniowo",
@@ -1215,7 +1267,8 @@
       "week": "Tydzień",
       "month": "Miesiąc",
       "appointments": "wizyt",
-      "dayDetail": "Szczegóły dnia"
+      "dayDetail": "Szczegóły dnia",
+      "noAppointments": "Brak wizyt w tym dniu"
     },
     "packages": {
       "title": "Pakiety zabiegów",
@@ -1236,7 +1289,32 @@
       "editPackage": "Edytuj pakiet",
       "confirmDeleteDescription": "Pakiet zostanie dezaktywowany. Można go będzie aktywować ponownie.",
       "emptyTitle": "Brak pakietów",
-      "emptyDescription": "Utwórz pakiety zabiegów, aby oferować zestawy"
+      "emptyDescription": "Utwórz pakiety zabiegów, aby oferować zestawy",
+      "activeUses": "aktywnych użyć",
+      "purchased": "Pakiet zakupiony pomyślnie",
+      "purchasePackage": "Kup pakiet",
+      "selectPackage": "Pakiet",
+      "selectPackagePlaceholder": "Wybierz pakiet...",
+      "validFor": "Ważny przez",
+      "paymentMethod": "Metoda płatności",
+      "paymentMethods": {
+        "cash": "Gotówka",
+        "card": "Karta",
+        "transfer": "Przelew"
+      },
+      "purchaseButton": "Kup",
+      "usePackage": "Użyj pakietu",
+      "remaining": "pozostało",
+      "coveredByPackage": "Pokryte pakietem",
+      "patientPackages": "Pakiety",
+      "noPatientPackages": "Brak zakupionych pakietów",
+      "expires": "Wygasa",
+      "status": {
+        "active": "Aktywny",
+        "completed": "Ukończony",
+        "expired": "Wygasły",
+        "cancelled": "Anulowany"
+      }
     },
     "documents": {
       "title": "Dokumenty medyczne",

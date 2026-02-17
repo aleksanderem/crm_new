@@ -64,6 +64,48 @@ export const getById = query({
   },
 });
 
+export const searchUnlinkedContacts = query({
+  args: {
+    organizationId: v.id("organizations"),
+    search: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
+    if (!perm.allowed) return [];
+
+    if (!args.search.trim()) return [];
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withSearchIndex("search_contacts", (q) =>
+        q.search("firstName", args.search).eq("organizationId", args.organizationId)
+      )
+      .take(20);
+
+    const linkedPatients = await ctx.db
+      .query("gabinetPatients")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const linkedContactIds = new Set(
+      linkedPatients
+        .filter((p) => p.contactId)
+        .map((p) => p.contactId!)
+    );
+
+    return contacts
+      .filter((c) => !linkedContactIds.has(c._id))
+      .map((c) => ({
+        _id: c._id,
+        firstName: c.firstName,
+        lastName: c.lastName ?? "",
+        email: c.email ?? "",
+        phone: c.phone ?? "",
+      }));
+  },
+});
+
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),

@@ -176,6 +176,51 @@ const pageContexts: Record<string, PageContext> = {
   },
 };
 
+const gabinetPageContexts: Record<string, PageContext> = {
+  calendar: {
+    titleKey: "nav.gabinet.calendar",
+    actions: [
+      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+    ],
+  },
+  patients: {
+    titleKey: "nav.gabinet.patients",
+    actions: [
+      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/gabinet/patients" },
+      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/gabinet/patients" },
+    ],
+  },
+  treatments: {
+    titleKey: "nav.gabinet.treatments",
+    actions: [
+      { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment" },
+    ],
+  },
+  packages: {
+    titleKey: "nav.gabinet.packages",
+    actions: [
+      { label: "nav.actions.addPackage", icon: PlusCircle, quickCreate: "package" },
+    ],
+  },
+  employees: {
+    titleKey: "nav.gabinet.employees",
+    actions: [
+      { label: "nav.actions.addEmployee", icon: UserPlus, quickCreate: "employee" },
+    ],
+  },
+  documents: {
+    titleKey: "nav.gabinet.documents",
+    actions: [
+      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "gabinetDocument" },
+    ],
+  },
+};
+
+const gabinetRouteKeys = ["calendar", "patients", "treatments", "packages", "employees", "documents"];
+
 const entityRouteKeys = ["contacts", "companies", "leads", "products", "documents", "activities", "calls", "inbox"];
 
 interface SettingsNavItem {
@@ -237,7 +282,14 @@ export function AppSidebar() {
   const activeEntity = activeWorkspace === "crm" && !isSettingsRoute
     ? entityRouteKeys.find((key) => matchRoute({ to: `/dashboard/${key}`, fuzzy: true }))
     : undefined;
-  const pageContext = activeEntity ? pageContexts[activeEntity] : null;
+  const activeGabinetEntity = activeWorkspace === "gabinet" && !isSettingsRoute
+    ? gabinetRouteKeys.find((key) => matchRoute({ to: `/dashboard/gabinet/${key}`, fuzzy: true }))
+    : undefined;
+  const pageContext = activeEntity
+    ? pageContexts[activeEntity]
+    : activeGabinetEntity
+      ? gabinetPageContexts[activeGabinetEntity]
+      : null;
 
   return (
     <>

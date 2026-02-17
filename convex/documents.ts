@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkPermission } from "./_helpers/permissions";
 import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
 
 export const list = query({
@@ -13,7 +14,12 @@ export const list = query({
     category: v.optional(documentCategoryValidator),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const isOwn = perm.scope === "own";
+    const ownFilter = (r: any) => r.createdBy === user._id;
 
     if (args.search) {
       const results = await ctx.db
@@ -22,24 +28,35 @@ export const list = query({
           q.search("name", args.search!).eq("organizationId", args.organizationId)
         )
         .take(50);
+      if (isOwn) {
+        return { page: results.filter(ownFilter), isDone: true, continueCursor: "" };
+      }
       return { page: results, isDone: true, continueCursor: "" };
     }
 
     if (args.category) {
-      return await ctx.db
+      const result = await ctx.db
         .query("documents")
         .withIndex("by_orgAndCategory", (q) =>
           q.eq("organizationId", args.organizationId).eq("category", args.category!)
         )
         .order("desc")
         .paginate(args.paginationOpts);
+      if (isOwn) {
+        return { ...result, page: result.page.filter(ownFilter) };
+      }
+      return result;
     }
 
-    return await ctx.db
+    const result = await ctx.db
       .query("documents")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc")
       .paginate(args.paginationOpts);
+    if (isOwn) {
+      return { ...result, page: result.page.filter(ownFilter) };
+    }
+    return result;
   },
 });
 
@@ -49,11 +66,16 @@ export const getById = query({
     documentId: v.id("documents"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.organizationId !== args.organizationId) {
       throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && doc.createdBy !== user._id) {
+      throw new Error("Permission denied");
     }
 
     const customFieldValues = await ctx.db
@@ -83,6 +105,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const docId = await ctx.db.insert("documents", {
@@ -118,10 +142,15 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.organizationId !== args.organizationId) {
       throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && doc.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, documentId, ...updates } = args;
@@ -147,10 +176,15 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.organizationId !== args.organizationId) {
       throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && doc.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     const customValues = await ctx.db
@@ -186,10 +220,15 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "documents", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.organizationId !== args.organizationId) {
       throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && doc.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const now = Date.now();

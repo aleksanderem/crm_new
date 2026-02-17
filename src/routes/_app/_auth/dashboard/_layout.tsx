@@ -1,10 +1,12 @@
+import type { CSSProperties } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useConvex, useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import { Sidebar } from "@/components/layout/sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { OrgProvider } from "@/components/org-context";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +21,17 @@ import {
   Settings,
   LogOut,
   Search,
-  Bell,
   Users,
   Building2,
   TrendingUp,
   FileText,
   Package,
-} from "lucide-react";
+  ActivityIcon,
+  LanguagesIcon,
+  SearchIcon,
+} from "@/lib/ez-icons";
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GlobalSearch,
@@ -39,9 +43,14 @@ import {
   type QuickCreateEntityType,
 } from "@/components/crm/quick-create-menu";
 import { SidePanel } from "@/components/crm/side-panel";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DateRangeProvider } from "@/components/crm/date-range-context";
+import { DateRangePicker } from "@/components/crm/date-range-picker";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
   component: DashboardLayout,
@@ -76,13 +85,6 @@ function DashboardLayout() {
   const createLead = useMutation(api.leads.create);
 
   const firstOrg = orgs?.[0];
-
-  const { data: unreadCount } = useQuery({
-    ...convexQuery(api.emails.getUnreadCount, {
-      organizationId: firstOrg?._id!,
-    }),
-    enabled: !!firstOrg,
-  });
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {
@@ -224,6 +226,14 @@ function DashboardLayout() {
     [createLead, firstOrg]
   );
 
+  const sidebarActionsValue = useMemo(
+    () => ({
+      openQuickCreate: (type: string) => handleCreateEntity(type as QuickCreateEntityType),
+      navigateTo: (href: string) => navigate({ to: href }),
+    }),
+    [handleCreateEntity, navigate]
+  );
+
   if (!user || !orgs) {
     return null;
   }
@@ -233,145 +243,167 @@ function DashboardLayout() {
   }
 
   return (
+    <DateRangeProvider>
     <OrgProvider initialOrgId={firstOrg?._id}>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
-        <Sidebar orgName={firstOrg?.name} />
+      <div className="flex min-h-dvh w-full">
+        <SidebarActionsContext.Provider value={sidebarActionsValue}>
+          <SidebarProvider
+            defaultOpen={false}
+            style={{ "--sidebar-width-icon": "3.5625rem" } as CSSProperties}
+          >
+            {/* Columns 1 & 2: Icon sidebar + Detail panel */}
+            <AppSidebar />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Top bar */}
-          <header className="flex h-14 shrink-0 items-center border-b px-6">
-            <div className="flex-1" />
-
-            {/* Search trigger */}
-            <Button
-              variant="outline"
-              className="relative h-8 w-60 justify-start rounded-md text-sm text-muted-foreground"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              {t("layout.search")}
-              <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </Button>
-
-            <div className="flex flex-1 items-center justify-end gap-2">
-              {/* Notification bell with unread count */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative h-8 w-8"
-                onClick={() => navigate({ to: "/dashboard/inbox" as string })}
-              >
-                <Bell className="h-4 w-4" />
-                {(unreadCount ?? 0) > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
-                    {unreadCount! > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </Button>
-
-              {/* Quick create */}
-              <QuickCreateMenu onCreateEntity={handleCreateEntity} />
-
-              <ThemeSwitcher />
-
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 rounded-full p-0">
-                    {user.avatarUrl ? (
-                      <img
-                        className="h-8 w-8 rounded-full object-cover"
-                        alt={user.username ?? user.email}
-                        src={user.avatarUrl}
-                      />
-                    ) : (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500 text-xs font-medium text-white">
-                        {(user.username ?? user.email ?? "U")[0].toUpperCase()}
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user.username}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() =>
-                      navigate({ to: "/dashboard/settings" })
-                    }
+            {/* Column 3: Main content */}
+            <div className="flex flex-1 flex-col">
+              <header className="bg-card sticky top-0 z-50 flex items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger className="md:hidden [&_svg]:!size-5 [&_easier-icon]:!size-5" />
+                  <Button
+                    variant="ghost"
+                    className="hidden !bg-transparent px-1 py-0 font-normal sm:block"
+                    onClick={() => setSearchOpen(true)}
                   >
-                    <Settings className="mr-2 h-4 w-4" />
-                    {t("layout.settings")}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {t("layout.logOut")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <div className="text-muted-foreground hidden items-center gap-1.5 text-sm sm:flex">
+                      <SearchIcon />
+                      <span>{t("layout.search")}</span>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="sm:hidden"
+                    onClick={() => setSearchOpen(true)}
+                  >
+                    <SearchIcon />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-1.5 sm:gap-6">
+                  <div className="flex items-center gap-1.5">
+                    <DateRangePicker />
+
+                    {/* Quick create */}
+                    <QuickCreateMenu onCreateEntity={handleCreateEntity} />
+
+                    {/* Notification bell */}
+                    <NotificationBell />
+
+                    <ThemeSwitcher />
+                  </div>
+
+                  {/* Profile dropdown */}
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-9.5">
+                        {user.avatarUrl ? (
+                          <Avatar className="size-9.5 rounded-md">
+                            <AvatarImage
+                              src={user.avatarUrl}
+                              alt={user.username ?? user.email}
+                            />
+                            <AvatarFallback>
+                              {(
+                                user.username ??
+                                user.email ??
+                                "U"
+                              )[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <span className="flex size-9.5 items-center justify-center rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
+                            {(
+                              user.username ??
+                              user.email ??
+                              "U"
+                            )[0].toUpperCase()}
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-48">
+                      <div className="px-2 py-1.5">
+                        <p className="text-sm font-medium">{user.username}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() =>
+                          navigate({ to: "/dashboard/settings" })
+                        }
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        {t("layout.settings")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => signOut()}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        {t("layout.logOut")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </header>
+
+              {/* Main content */}
+              <main className="size-full flex-1 px-4 py-6 sm:px-6">
+                <Outlet />
+              </main>
             </div>
-          </header>
-
-          {/* Main content */}
-          <main className="flex-1 overflow-auto p-6">
-            <Outlet />
-          </main>
-        </div>
-
-        {/* Global search dialog */}
-        <GlobalSearch
-          onSearch={handleSearch}
-          onSelect={handleSearchSelect}
-          isOpen={searchOpen}
-          onOpenChange={setSearchOpen}
-        />
-
-        {/* Quick Create panels */}
-        <SidePanel
-          open={createPanel === "contact"}
-          onOpenChange={(o) => !o && setCreatePanel(null)}
-          title={t("contacts.createContact")}
-          description={t("contacts.createDescription")}
-        >
-          <ContactForm
-            onSubmit={handleCreateContact}
-            onCancel={() => setCreatePanel(null)}
-            isSubmitting={isCreating}
-          />
-        </SidePanel>
-
-        <SidePanel
-          open={createPanel === "company"}
-          onOpenChange={(o) => !o && setCreatePanel(null)}
-          title={t("companies.createCompany")}
-          description={t("companies.createDescription")}
-        >
-          <CompanyForm
-            onSubmit={handleCreateCompany}
-            onCancel={() => setCreatePanel(null)}
-            isSubmitting={isCreating}
-          />
-        </SidePanel>
-
-        <SidePanel
-          open={createPanel === "lead"}
-          onOpenChange={(o) => !o && setCreatePanel(null)}
-          title={t("deals.newDeal")}
-          description={t("deals.createDescription")}
-        >
-          <LeadForm
-            onSubmit={handleCreateLead}
-            onCancel={() => setCreatePanel(null)}
-            isSubmitting={isCreating}
-          />
-        </SidePanel>
+          </SidebarProvider>
+        </SidebarActionsContext.Provider>
       </div>
+
+      {/* Global search dialog */}
+      <GlobalSearch
+        onSearch={handleSearch}
+        onSelect={handleSearchSelect}
+        isOpen={searchOpen}
+        onOpenChange={setSearchOpen}
+      />
+
+      {/* Quick Create panels */}
+      <SidePanel
+        open={createPanel === "contact"}
+        onOpenChange={(o) => !o && setCreatePanel(null)}
+        title={t("contacts.createContact")}
+        description={t("contacts.createDescription")}
+      >
+        <ContactForm
+          onSubmit={handleCreateContact}
+          onCancel={() => setCreatePanel(null)}
+          isSubmitting={isCreating}
+        />
+      </SidePanel>
+
+      <SidePanel
+        open={createPanel === "company"}
+        onOpenChange={(o) => !o && setCreatePanel(null)}
+        title={t("companies.createCompany")}
+        description={t("companies.createDescription")}
+      >
+        <CompanyForm
+          onSubmit={handleCreateCompany}
+          onCancel={() => setCreatePanel(null)}
+          isSubmitting={isCreating}
+        />
+      </SidePanel>
+
+      <SidePanel
+        open={createPanel === "lead"}
+        onOpenChange={(o) => !o && setCreatePanel(null)}
+        title={t("deals.newDeal")}
+        description={t("deals.createDescription")}
+      >
+        <LeadForm
+          onSubmit={handleCreateLead}
+          onCancel={() => setCreatePanel(null)}
+          isSubmitting={isCreating}
+        />
+      </SidePanel>
     </OrgProvider>
+    </DateRangeProvider>
   );
 }

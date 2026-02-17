@@ -192,6 +192,7 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settingsNav.lostReasons", to: "/dashboard/settings/lost-reasons" },
   { labelKey: "settingsNav.sources", to: "/dashboard/settings/sources" },
   { labelKey: "settings.team", to: "/dashboard/settings/team" },
+  { labelKey: "settings.permissions", to: "/dashboard/settings/permissions" },
   { labelKey: "settings.email", to: "/dashboard/settings/email" },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },

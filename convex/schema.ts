@@ -256,6 +256,10 @@ const schema = defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     customerId: v.optional(v.string()),
+    // User preferences (Phase 2)
+    language: v.optional(v.string()),
+    theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("system"))),
+    timezone: v.optional(v.string()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),
@@ -715,10 +719,82 @@ const schema = defineSchema({
     lostReasonRequired: v.boolean(),
     defaultCurrency: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    resourceSharingEnabled: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"]),
+
+  // --- RBAC: Permission Overrides ---
+
+  orgPermissions: defineTable({
+    organizationId: v.id("organizations"),
+    role: v.union(v.literal("member"), v.literal("viewer")),
+    // Record<Feature, Record<Action, Scope>> stored as JSON
+    // Feature: leads, contacts, companies, documents, activities, calls, email, products, pipelines,
+    //          gabinet_patients, gabinet_appointments, gabinet_treatments, gabinet_packages,
+    //          gabinet_employees, settings, team
+    // Action: view, create, edit, delete
+    // Scope: "none" | "own" | "all"
+    permissions: v.any(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndRole", ["organizationId", "role"]),
+
+  // --- RBAC: Resource Invites (External Guests) ---
+
+  resourceInvites: defineTable({
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    userId: v.optional(v.id("users")),
+    resourceType: v.string(),
+    resourceId: v.string(),
+    accessLevel: v.union(v.literal("viewer"), v.literal("editor")),
+    invitedBy: v.id("users"),
+    token: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_resource", ["resourceType", "resourceId"])
+    .index("by_orgAndResource", ["organizationId", "resourceType", "resourceId"]),
+
+  // --- Notifications ---
+
+  notifications: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    type: v.string(),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_userAndRead", ["userId", "isRead", "createdAt"])
+    .index("by_org", ["organizationId"]),
+
+  // --- Audit Log ---
+
+  auditLog: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    action: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    details: v.optional(v.string()),
+    ipAddress: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_orgAndAction", ["organizationId", "action", "createdAt"])
+    .index("by_orgAndUser", ["organizationId", "userId", "createdAt"]),
 
   // --- Sources ---
 

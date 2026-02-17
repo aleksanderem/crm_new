@@ -2,15 +2,76 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkPermission } from "./_helpers/permissions";
+
+export const seed = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("pipelines")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    if (existing.length > 0) return;
+
+    const pipelineId = await ctx.db.insert("pipelines", {
+      organizationId: args.organizationId,
+      name: "Sales Pipeline",
+      description: "Default sales pipeline",
+      isDefault: true,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const stages = [
+      { name: "New", color: "#3b82f6" },
+      { name: "Qualified", color: "#8b5cf6" },
+      { name: "Proposal", color: "#f59e0b" },
+      { name: "Negotiation", color: "#f97316" },
+      { name: "Won", color: "#22c55e", isWonStage: true },
+      { name: "Lost", color: "#ef4444", isLostStage: true },
+    ];
+
+    for (let i = 0; i < stages.length; i++) {
+      await ctx.db.insert("pipelineStages", {
+        pipelineId,
+        organizationId: args.organizationId,
+        name: stages[i].name,
+        color: stages[i].color,
+        order: i,
+        isWonStage: stages[i].isWonStage,
+        isLostStage: stages[i].isLostStage,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return pipelineId;
+  },
+});
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+    const results = await ctx.db
       .query("pipelines")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
+    if (perm.scope === "own") {
+      return results.filter((r) => r.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -20,10 +81,15 @@ export const getById = query({
     pipelineId: v.id("pipelines"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
     const pipeline = await ctx.db.get(args.pipelineId);
     if (!pipeline || pipeline.organizationId !== args.organizationId) {
       throw new Error("Pipeline not found");
+    }
+    if (perm.scope === "own" && pipeline.createdBy !== user._id) {
+      throw new Error("Permission denied");
     }
     return pipeline;
   },
@@ -45,6 +111,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const { stages, ...pipelineData } = args;
 
@@ -95,10 +163,15 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const pipeline = await ctx.db.get(args.pipelineId);
     if (!pipeline || pipeline.organizationId !== args.organizationId) {
       throw new Error("Pipeline not found");
+    }
+    if (perm.scope === "own" && pipeline.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, pipelineId, ...updates } = args;
@@ -124,10 +197,15 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const pipeline = await ctx.db.get(args.pipelineId);
     if (!pipeline || pipeline.organizationId !== args.organizationId) {
       throw new Error("Pipeline not found");
+    }
+    if (perm.scope === "own" && pipeline.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     // Delete all stages
@@ -174,6 +252,8 @@ export const getStages = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
     return await ctx.db
       .query("pipelineStages")
       .withIndex("by_pipeline", (q) => q.eq("pipelineId", args.pipelineId))
@@ -185,6 +265,8 @@ export const getAllStages = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
     return await ctx.db
       .query("pipelineStages")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
@@ -204,11 +286,16 @@ export const addStage = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const pipeline = await ctx.db.get(args.pipelineId);
     if (!pipeline || pipeline.organizationId !== args.organizationId) {
       throw new Error("Pipeline not found");
+    }
+    if (perm.scope === "own" && pipeline.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const stageId = await ctx.db.insert("pipelineStages", {
@@ -248,6 +335,8 @@ export const updateStage = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const stage = await ctx.db.get(args.stageId);
     if (!stage || stage.organizationId !== args.organizationId) {
@@ -278,6 +367,8 @@ export const removeStage = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const stage = await ctx.db.get(args.stageId);
     if (!stage || stage.organizationId !== args.organizationId) {
@@ -328,6 +419,8 @@ export const reorderStages = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     for (let i = 0; i < args.stageIds.length; i++) {

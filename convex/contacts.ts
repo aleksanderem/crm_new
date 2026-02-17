@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkPermission } from "./_helpers/permissions";
 
 export const list = query({
   args: {
@@ -11,7 +12,9 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     if (args.search) {
       const results = await ctx.db
@@ -20,14 +23,21 @@ export const list = query({
           q.search("firstName", args.search!).eq("organizationId", args.organizationId)
         )
         .take(50);
+      if (perm.scope === "own") {
+        return { page: results.filter((r) => r.createdBy === user._id), isDone: true, continueCursor: "" };
+      }
       return { page: results, isDone: true, continueCursor: "" };
     }
 
-    return await ctx.db
+    const result = await ctx.db
       .query("contacts")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc")
       .paginate(args.paginationOpts);
+    if (perm.scope === "own") {
+      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
+    }
+    return result;
   },
 });
 
@@ -37,11 +47,16 @@ export const getById = query({
     contactId: v.id("contacts"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact || contact.organizationId !== args.organizationId) {
       throw new Error("Contact not found");
+    }
+    if (perm.scope === "own" && contact.createdBy !== user._id) {
+      throw new Error("Permission denied");
     }
 
     const [customFieldValues, relationships] = await Promise.all([
@@ -92,6 +107,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const { customFields, ...contactData } = args;
 
@@ -148,11 +165,16 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact || contact.organizationId !== args.organizationId) {
       throw new Error("Contact not found");
+    }
+    if (perm.scope === "own" && contact.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, contactId, customFields, ...updates } = args;
@@ -207,10 +229,15 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "contacts", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact || contact.organizationId !== args.organizationId) {
       throw new Error("Contact not found");
+    }
+    if (perm.scope === "own" && contact.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     // Delete custom field values

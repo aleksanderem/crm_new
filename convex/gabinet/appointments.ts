@@ -2,6 +2,7 @@ import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
 import { GABINET_PRODUCT_ID } from "./_registry";
@@ -50,12 +51,19 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const result = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc")
       .paginate(args.paginationOpts);
+    if (perm.scope === "own") {
+      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
+    }
+    return result;
   },
 });
 
@@ -65,10 +73,16 @@ export const getById = query({
     appointmentId: v.id("gabinetAppointments"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
       throw new Error("Appointment not found");
+    }
+    if (perm.scope === "own" && appt.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only view your own records");
     }
     return appt;
   },
@@ -80,13 +94,20 @@ export const listByDate = query({
     date: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndDate", (q) =>
         q.eq("organizationId", args.organizationId).eq("date", args.date)
       )
       .collect();
+    if (perm.scope === "own") {
+      return results.filter((r) => r.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -98,10 +119,13 @@ export const listByDateRange = query({
     employeeId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
+    let results;
     if (args.employeeId) {
-      return await ctx.db
+      results = await ctx.db
         .query("gabinetAppointments")
         .withIndex("by_orgAndEmployeeAndDate", (q) =>
           q.eq("organizationId", args.organizationId)
@@ -110,16 +134,20 @@ export const listByDateRange = query({
             .lte("date", args.endDate)
         )
         .collect();
+    } else {
+      results = await ctx.db
+        .query("gabinetAppointments")
+        .withIndex("by_orgAndDate", (q) =>
+          q.eq("organizationId", args.organizationId)
+            .gte("date", args.startDate)
+            .lte("date", args.endDate)
+        )
+        .collect();
     }
-
-    return await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId)
-          .gte("date", args.startDate)
-          .lte("date", args.endDate)
-      )
-      .collect();
+    if (perm.scope === "own") {
+      return results.filter((r) => r.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -129,13 +157,20 @@ export const listByPatient = query({
     patientId: v.id("gabinetPatients"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndPatient", (q) =>
         q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
       )
       .collect();
+    if (perm.scope === "own") {
+      return results.filter((r) => r.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -145,13 +180,20 @@ export const listByEmployee = query({
     employeeId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndEmployee", (q) =>
         q.eq("organizationId", args.organizationId).eq("employeeId", args.employeeId)
       )
       .collect();
+    if (perm.scope === "own") {
+      return results.filter((r) => r.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -161,13 +203,19 @@ export const listPatientsForEmployee = query({
     employeeId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const appointments = await ctx.db
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    let appointments = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndEmployee", (q) =>
         q.eq("organizationId", args.organizationId).eq("employeeId", args.employeeId)
       )
       .collect();
+    if (perm.scope === "own") {
+      appointments = appointments.filter((r) => r.createdBy === user._id);
+    }
 
     const uniquePatientIds = [...new Set(appointments.map((a) => a.patientId))];
     const patients = await Promise.all(
@@ -186,6 +234,9 @@ export const getAvailableSlotsQuery = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
     return await getAvailableSlots(ctx, args);
   },
 });
@@ -198,6 +249,9 @@ export const checkQualification = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
     return await checkEmployeeQualification(ctx, args);
   },
 });
@@ -227,6 +281,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     // Check employee qualification for treatment
@@ -389,10 +445,15 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
       throw new Error("Appointment not found");
+    }
+    if (perm.scope === "own" && appt.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     // Check conflict if time changed
@@ -460,10 +521,15 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
       throw new Error("Appointment not found");
+    }
+    if (perm.scope === "own" && appt.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const allowed = VALID_TRANSITIONS[appt.status];
@@ -527,10 +593,15 @@ export const cancel = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
     if (!appt || appt.organizationId !== args.organizationId) {
       throw new Error("Appointment not found");
+    }
+    if (perm.scope === "own" && appt.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     if (appt.status === "cancelled" || appt.status === "completed") {
@@ -683,6 +754,8 @@ export const cancelRecurringSeries = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const appointments = await ctx.db
       .query("gabinetAppointments")

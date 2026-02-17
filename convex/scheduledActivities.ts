@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkPermission } from "./_helpers/permissions";
 import { activityTypeValidator } from "@cvx/schema";
 
 export const list = query({
@@ -14,33 +15,42 @@ export const list = query({
     isCompleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const applyScope = (result: any) => {
+      if (perm.scope === "own") {
+        return { ...result, page: result.page.filter((r: any) => r.createdBy === user._id) };
+      }
+      return result;
+    };
 
     if (args.activityType) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("scheduledActivities")
         .withIndex("by_orgAndType", (q) =>
           q.eq("organizationId", args.organizationId).eq("activityType", args.activityType!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
     if (args.isCompleted !== undefined) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("scheduledActivities")
         .withIndex("by_orgAndCompleted", (q) =>
           q.eq("organizationId", args.organizationId).eq("isCompleted", args.isCompleted!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
-    return await ctx.db
+    return applyScope(await ctx.db
       .query("scheduledActivities")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .paginate(args.paginationOpts));
   },
 });
 
@@ -50,11 +60,16 @@ export const getById = query({
     activityId: v.id("scheduledActivities"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity || activity.organizationId !== args.organizationId) {
       throw new Error("Scheduled activity not found");
+    }
+    if (perm.scope === "own" && activity.createdBy !== user._id) {
+      throw new Error("Permission denied");
     }
 
     return activity;
@@ -75,6 +90,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const activityId = await ctx.db.insert("scheduledActivities", {
@@ -119,10 +136,15 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity || activity.organizationId !== args.organizationId) {
       throw new Error("Scheduled activity not found");
+    }
+    if (perm.scope === "own" && activity.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, activityId, ...updates } = args;
@@ -156,10 +178,15 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity || activity.organizationId !== args.organizationId) {
       throw new Error("Scheduled activity not found");
+    }
+    if (perm.scope === "own" && activity.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     // Delete Google Calendar event before removing the activity
@@ -192,10 +219,15 @@ export const markComplete = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity || activity.organizationId !== args.organizationId) {
       throw new Error("Scheduled activity not found");
+    }
+    if (perm.scope === "own" && activity.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const now = Date.now();
@@ -233,10 +265,15 @@ export const markIncomplete = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity || activity.organizationId !== args.organizationId) {
       throw new Error("Scheduled activity not found");
+    }
+    if (perm.scope === "own" && activity.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     await ctx.db.patch(args.activityId, {
@@ -265,16 +302,22 @@ export const listByEntity = query({
     linkedEntityId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const all = await ctx.db
       .query("scheduledActivities")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    return all.filter(
+    let filtered = all.filter(
       (a) => a.linkedEntityType === args.linkedEntityType && a.linkedEntityId === args.linkedEntityId
     );
+    if (perm.scope === "own") {
+      filtered = filtered.filter((a) => a.createdBy === user._id);
+    }
+    return filtered;
   },
 });
 
@@ -283,7 +326,9 @@ export const listOverdue = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const incomplete = await ctx.db
@@ -293,7 +338,11 @@ export const listOverdue = query({
       )
       .collect();
 
-    return incomplete.filter((a) => a.dueDate < now);
+    let results = incomplete.filter((a) => a.dueDate < now);
+    if (perm.scope === "own") {
+      results = results.filter((a) => a.createdBy === user._id);
+    }
+    return results;
   },
 });
 
@@ -302,7 +351,9 @@ export const listDueToday = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -315,6 +366,9 @@ export const listDueToday = query({
       )
       .collect();
 
+    if (perm.scope === "own") {
+      return results.filter((a) => a.createdBy === user._id);
+    }
     return results;
   },
 });
@@ -324,7 +378,9 @@ export const listDueThisWeek = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -337,6 +393,9 @@ export const listDueThisWeek = query({
       )
       .collect();
 
+    if (perm.scope === "own") {
+      return results.filter((a) => a.createdBy === user._id);
+    }
     return results;
   },
 });

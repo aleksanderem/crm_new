@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkPermission } from "./_helpers/permissions";
 import { callOutcomeValidator } from "@cvx/schema";
 
 export const list = query({
@@ -14,53 +15,62 @@ export const list = query({
     dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "calls", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const applyScope = (result: any) => {
+      if (perm.scope === "own") {
+        return { ...result, page: result.page.filter((r: any) => r.createdBy === user._id) };
+      }
+      return result;
+    };
 
     if (args.outcome) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("calls")
         .withIndex("by_orgAndOutcome", (q) =>
           q.eq("organizationId", args.organizationId).eq("outcome", args.outcome!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
     if (args.dateFrom && args.dateTo) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("calls")
         .withIndex("by_orgAndDate", (q) =>
           q.eq("organizationId", args.organizationId).gte("callDate", args.dateFrom!).lte("callDate", args.dateTo!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
     if (args.dateFrom) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("calls")
         .withIndex("by_orgAndDate", (q) =>
           q.eq("organizationId", args.organizationId).gte("callDate", args.dateFrom!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
     if (args.dateTo) {
-      return await ctx.db
+      return applyScope(await ctx.db
         .query("calls")
         .withIndex("by_orgAndDate", (q) =>
           q.eq("organizationId", args.organizationId).lte("callDate", args.dateTo!)
         )
         .order("desc")
-        .paginate(args.paginationOpts);
+        .paginate(args.paginationOpts));
     }
 
-    return await ctx.db
+    return applyScope(await ctx.db
       .query("calls")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .paginate(args.paginationOpts));
   },
 });
 
@@ -70,11 +80,16 @@ export const getById = query({
     callId: v.id("calls"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "calls", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.organizationId !== args.organizationId) {
       throw new Error("Call not found");
+    }
+    if (perm.scope === "own" && call.createdBy !== user._id) {
+      throw new Error("Permission denied");
     }
 
     // Fetch linked contacts via objectRelationships
@@ -98,6 +113,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "calls", "create");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
     const callId = await ctx.db.insert("calls", {
@@ -130,10 +147,15 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "calls", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.organizationId !== args.organizationId) {
       throw new Error("Call not found");
+    }
+    if (perm.scope === "own" && call.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, callId, ...updates } = args;
@@ -159,10 +181,15 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "calls", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.organizationId !== args.organizationId) {
       throw new Error("Call not found");
+    }
+    if (perm.scope === "own" && call.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
     }
 
     // Clean up relationships

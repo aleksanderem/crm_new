@@ -487,3 +487,98 @@ If I catch myself deviating:
 - Trust the process and follow it exactly without deviations
 - Complete the ENTIRE workflow automatically without user confirmation requests
 - No shortcuts, no skipping, no stopping mid-process
+
+---
+
+# Project Overview
+
+This is a multi-tenant SaaS CRM with an integrated medical office management module ("Gabinet"). The app targets Polish-market small businesses: sales teams use the CRM, clinics/salons use Gabinet, and both share the same organization, auth, and billing infrastructure.
+
+## Tech Stack
+
+Frontend: React 19, TanStack Router (file-based routing), TanStack React Query, TanStack React Table, TanStack React Form + Zod, shadcn/ui (Radix primitives + Tailwind CSS v4), Recharts, i18next (PL/EN), next-themes (dark mode), @dnd-kit (drag-and-drop), Vite.
+
+Backend: Convex (BaaS — real-time database, serverless functions, file storage, scheduled jobs). Auth via `@convex-dev/auth`. Payments via Stripe. Email via Resend + Gmail OAuth. Tests via `convex-test` + Vitest.
+
+Styling: Tailwind CSS v4 with `@theme` inline config (no tailwind.config.ts), shadcn/ui components in `src/components/ui/`, CSS variables for theming in `src/index.css`.
+
+## Architecture
+
+The app is organized around organizations (multi-tenant). Every data table has an `organizationId` field and queries filter by org. Users belong to orgs via `teamMemberships` with roles: owner, admin, member, viewer. RBAC is implemented via `orgPermissions` table with per-role overrides (feature + action + scope matrix).
+
+Key backend patterns:
+- `verifyOrgAccess(ctx, orgId)` — returns `{ user, membership }`, throws if not a member
+- `checkPermission(ctx, orgId, feature, action)` — returns `{ allowed, scope }` where scope is "none"/"own"/"all"
+- `createNotificationDirect(ctx, data)` — creates in-app notifications
+- `logAudit(ctx, data)` — writes to audit log
+
+Routing structure: `src/routes/_app/_auth/dashboard/_layout.*.tsx` — all dashboard pages are nested under authenticated layout. Settings pages under `_layout.settings.*.tsx`. Gabinet module under `_layout.gabinet.*.tsx`. Patient portal at `src/routes/_app/patient/`.
+
+## CRM Module
+
+Full-featured CRM with: contacts, companies, leads/deals, pipelines (Kanban board with drag-and-drop), documents, products, activities/tasks, calls, emails (inbox with threads, compose, Gmail sync), CSV import/export, global search, saved views, custom fields per entity, advanced filtering, bulk actions, notes with threading, and entity relationships (polymorphic many-to-many via `objectRelationships` table).
+
+Dashboard with KPI cards, pipeline charts, top performers, upcoming activities, and calendar preview.
+
+Settings: organization profile, team management with invitations, pipeline configuration, custom fields, activity types, lost reasons, sources, email accounts, Google integration (OAuth), billing/subscriptions, audit log, and RBAC permissions.
+
+## Gabinet Module (Medical Office)
+
+A clinic/salon management system integrated into the same app:
+
+- Patients — linked to CRM contacts via `contactId`, with medical fields (PESEL, allergies, blood type, emergency contact)
+- Treatments — service catalog with duration, pricing, contraindications, aftercare instructions
+- Appointments — calendar-based scheduling with employee assignment, recurring rules, prepayment tracking, status workflow (scheduled → confirmed → in_progress → completed/cancelled/no_show), linked to `scheduledActivities` for unified calendar
+- Employees — HR records linked to `users`, with roles (doctor/nurse/therapist/etc.), specializations, qualified treatments, working hours, leave management
+- Scheduling — per-employee weekly schedules, organization working hours, leave requests with approval workflow, overtime tracking
+- Packages — treatment bundles with discounts, usage tracking per patient
+- Loyalty — points system with tiers (bronze/silver/gold/platinum), earn/spend/adjust transactions
+- Documents — templates (consent forms, prescriptions, referrals), per-patient documents with digital signature support
+- Patient Portal — separate login flow with OTP, patients can view appointments, documents, and profile
+- Reminders — appointment reminders system
+- Payments — linked to appointments and packages, multiple payment methods
+
+## Database Schema (Convex)
+
+~40 tables. Key tables organized by domain:
+
+Auth & billing: `users`, `plans`, `subscriptions`, `platformProducts`, `productSubscriptions`
+
+Organization: `organizations`, `teamMemberships`, `orgSettings`, `orgPermissions`, `invitations`
+
+CRM core: `contacts`, `companies`, `leads`, `documents`, `pipelines`, `pipelineStages`, `products`, `dealProducts`
+
+CRM features: `activities`, `scheduledActivities`, `calls`, `emails`, `emailAccounts`, `notes`, `savedViews`, `sources`, `lostReasons`, `customFieldDefinitions`, `customFieldValues`, `objectRelationships`, `notifications`, `auditLog`, `oauthConnections`, `resourceInvites`
+
+Gabinet: `gabinetPatients`, `gabinetTreatments`, `gabinetAppointments`, `gabinetEmployees`, `gabinetWorkingHours`, `gabinetEmployeeSchedules`, `gabinetLeaves`, `gabinetOvertime`, `gabinetLeaveTypes`, `gabinetLeaveBalances`, `gabinetTreatmentPackages`, `gabinetPackageUsage`, `gabinetLoyaltyPoints`, `gabinetLoyaltyTransactions`, `gabinetDocumentTemplates`, `gabinetDocuments`, `gabinetPortalSessions`
+
+All tables use Convex indexes for efficient queries. Search indexes on contacts, companies, leads, documents, emails, products, patients, and treatments.
+
+## Component Organization
+
+- `src/components/ui/` — shadcn/ui primitives (button, dialog, popover, etc.)
+- `src/components/crm/` — CRM-specific components (advanced filter, bulk actions, entity detail layout, global search, kanban, relationship field, saved views, side panel)
+- `src/components/forms/` — entity forms (contact, company, lead, document upload)
+- `src/components/data-table/` — reusable data table with column headers, faceted filters, view options
+- `src/components/dashboard/` — dashboard widgets (KPI cards, pipeline chart, top performers, upcoming activities)
+- `src/components/email/` — email module (compose dialog, inbox list, thread view, entity tab)
+- `src/components/gabinet/` — gabinet-specific components (calendar views, appointment dialogs, document viewer, signature pad)
+- `src/components/layout/` — app shell (sidebar, workspace switcher, empty state)
+- `src/components/settings/` — settings page components
+- `src/components/activity-timeline/` — activity feed with timeline
+- `src/components/entity-relationships/` — relationship panel and add dialog
+- `src/components/custom-fields/` — custom field renderer and definition form
+- `src/components/csv/` — CSV import dialog
+- `src/components/kanban/` — Kanban board component
+- `src/components/notifications/` — notification components
+- `src/components/application/` — reusable app components (calendar, date picker, tabs, breadcrumbs, navigation)
+- `src/components/base/` — base design system components (avatar, badges, buttons, dropdown, input, radio, tooltip)
+
+## Key Files
+
+- `convex/schema.ts` — full database schema (~1290 lines)
+- `convex/permissions.ts` — RBAC logic
+- `src/components/org-context.tsx` — organization context provider (`useOrganization()`)
+- `src/components/layout/app-sidebar.tsx` — main navigation sidebar
+- `src/routes/_app/_auth/dashboard/_layout.tsx` — authenticated dashboard layout
+- `src/index.css` — Tailwind v4 theme config with CSS variables

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IconPicker } from "@/components/ui/icon-picker";
 import { cn } from "@/lib/utils";
@@ -60,9 +61,6 @@ export function ActivityTypeForm({
 
   const key = useMemo(() => initialData?.key ?? generateKey(name), [name, initialData?.key]);
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({ name, key, icon, color });
@@ -74,8 +72,7 @@ export function ActivityTypeForm({
         <Label>
           {t('activityTypeForm.name')} <span className="text-destructive">*</span>
         </Label>
-        <input
-          className={inputClasses}
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t('activityTypeForm.namePlaceholder')}

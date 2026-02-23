@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import type { CustomFieldType, LeadStatus, LeadPriority } from "@cvx/schema";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -106,9 +114,6 @@ export function LeadForm({
     (s) => s.pipelineId === selectedPipeline
   );
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(
@@ -132,8 +137,7 @@ export function LeadForm({
           <Label>
             {t('leadForm.title')} <span className="text-destructive">*</span>
           </Label>
-          <input
-            className={inputClasses}
+          <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -141,9 +145,8 @@ export function LeadForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t('leadForm.value')}</Label>
-          <input
+          <Input
             type="number"
-            className={inputClasses}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0"
@@ -152,37 +155,37 @@ export function LeadForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t('leadForm.status')}</Label>
-          <select
-            className={inputClasses}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as LeadStatus)}
-          >
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {t(`leadForm.statusOptions.${s}`)}
-              </option>
-            ))}
-          </select>
+          <Select value={status} onValueChange={(val) => setStatus(val as LeadStatus)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {t(`leadForm.statusOptions.${s}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>{t('leadForm.priority')}</Label>
-          <select
-            className={inputClasses}
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as LeadPriority | "")}
-          >
-            <option value="">{t('common.none')}</option>
-            {priorityOptions.map((p) => (
-              <option key={p} value={p}>
-                {t(`leadForm.priorityOptions.${p}`)}
-              </option>
-            ))}
-          </select>
+          <Select value={priority} onValueChange={(val) => setPriority(val as LeadPriority | "")}>
+            <SelectTrigger>
+              <SelectValue placeholder={t('common.none')} />
+            </SelectTrigger>
+            <SelectContent>
+              {priorityOptions.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {t(`leadForm.priorityOptions.${p}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>{t('leadForm.source')}</Label>
-          <input
-            className={inputClasses}
+          <Input
             value={source}
             onChange={(e) => setSource(e.target.value)}
             placeholder={t('leadForm.sourcePlaceholder')}
@@ -192,35 +195,36 @@ export function LeadForm({
           <>
             <div className="space-y-1.5">
               <Label>{t('leadForm.pipeline')}</Label>
-              <select
-                className={inputClasses}
-                value={selectedPipeline}
-                onChange={(e) => {
-                  setSelectedPipeline(e.target.value);
-                  setStageId("");
-                }}
-              >
-                {pipelines.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedPipeline} onValueChange={(val) => {
+                setSelectedPipeline(val);
+                setStageId("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p._id} value={p._id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>{t('leadForm.stage')}</Label>
-              <select
-                className={inputClasses}
-                value={stageId}
-                onChange={(e) => setStageId(e.target.value)}
-              >
-                <option value="">{t('leadForm.selectStage')}</option>
-                {filteredStages.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={stageId} onValueChange={setStageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('leadForm.selectStage')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredStages.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </>
         )}

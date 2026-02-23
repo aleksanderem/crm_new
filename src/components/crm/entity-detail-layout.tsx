@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

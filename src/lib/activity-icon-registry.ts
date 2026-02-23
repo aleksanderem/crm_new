@@ -30,10 +30,10 @@ import {
   Coffee,
   MapPin,
   Briefcase,
-  type LucideIcon,
-} from "lucide-react";
+  type EzIconType,
+} from "@/lib/ez-icons";
 
-export const ACTIVITY_ICON_REGISTRY: Record<string, LucideIcon> = {
+export const ACTIVITY_ICON_REGISTRY: Record<string, EzIconType> = {
   phone: Phone,
   "phone-call": PhoneCall,
   "phone-incoming": PhoneIncoming,
@@ -69,6 +69,6 @@ export const ACTIVITY_ICON_REGISTRY: Record<string, LucideIcon> = {
 
 export const ACTIVITY_ICON_NAMES = Object.keys(ACTIVITY_ICON_REGISTRY);
 
-export function getActivityIcon(name: string): LucideIcon | undefined {
+export function getActivityIcon(name: string): EzIconType | undefined {
   return ACTIVITY_ICON_REGISTRY[name];
 }

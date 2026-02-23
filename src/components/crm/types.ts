@@ -22,10 +22,12 @@ export interface FilterConfig {
 }
 
 export type TimeRange =
+  | "today"
   | "last7days"
   | "last30days"
   | "thisMonth"
   | "last3months"
+  | "thisYear"
   | "all";
 
 export interface QuickFilterDef {

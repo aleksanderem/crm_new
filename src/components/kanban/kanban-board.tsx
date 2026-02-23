@@ -18,7 +18,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
 import { Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { Trophy, XCircle, Trash2 } from "lucide-react";
+import { Trophy, XCircle, Trash2 } from "@/lib/ez-icons";
 
 export interface KanbanStage {
   _id: Id<"pipelineStages">;

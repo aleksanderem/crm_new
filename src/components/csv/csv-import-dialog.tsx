@@ -10,8 +10,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload } from "@/lib/ez-icons";
 import Papa from "papaparse";
 
 type EntityType = "contacts" | "companies" | "leads" | "products";
@@ -244,19 +251,23 @@ export function CsvImportDialog({
                     {header}
                   </span>
                   <span className="text-muted-foreground">→</span>
-                  <select
-                    className="h-8 flex-1 rounded-md border bg-transparent px-2 text-sm"
-                    value={columnMap[header] ?? ""}
-                    onChange={(e) => handleMapChange(header, e.target.value)}
+                  <Select
+                    value={columnMap[header] ?? "skip"}
+                    onValueChange={(val) => handleMapChange(header, val === "skip" ? "" : val)}
                   >
-                    <option value="">— Skip —</option>
-                    {crmFields.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                        {requiredFields.includes(f) ? " *" : ""}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-8 flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="skip">— Skip —</SelectItem>
+                      {crmFields.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                          {requiredFields.includes(f) ? " *" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))}
             </div>

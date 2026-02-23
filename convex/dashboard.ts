@@ -5,16 +5,23 @@ import { verifyOrgAccess } from "./_helpers/auth";
 // --- Helpers ---
 
 const timeRangeValidator = v.union(
+  v.literal("today"),
   v.literal("last7days"),
   v.literal("last30days"),
   v.literal("thisMonth"),
   v.literal("last3months"),
+  v.literal("thisYear"),
   v.literal("all")
 );
 
 function rangeStart(range: string): number {
   const now = Date.now();
   switch (range) {
+    case "today": {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
     case "last7days":
       return now - 7 * 24 * 60 * 60 * 1000;
     case "last30days":
@@ -27,6 +34,12 @@ function rangeStart(range: string): number {
     }
     case "last3months":
       return now - 90 * 24 * 60 * 60 * 1000;
+    case "thisYear": {
+      const d = new Date();
+      d.setMonth(0, 1);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
     default:
       return 0;
   }

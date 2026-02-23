@@ -9,9 +9,10 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -90,9 +91,6 @@ function LostReasonsSettings() {
     }
   };
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader
@@ -111,7 +109,7 @@ function LostReasonsSettings() {
         <CardContent className="flex flex-col gap-4 py-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="lostReasonRequired" className="text-sm">
-              {t('lostReasons.reasonRequired', 'Require a reason when losing a deal')}
+              {t('lostReasons.reasonRequired')}
             </Label>
             <Switch
               id="lostReasonRequired"
@@ -123,7 +121,7 @@ function LostReasonsSettings() {
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="allowCustomLostReason" className="text-sm">
-              {t('lostReasons.allowCustom', 'Allow custom (free-text) reasons')}
+              {t('lostReasons.allowCustom')}
             </Label>
             <Switch
               id="allowCustomLostReason"
@@ -147,8 +145,7 @@ function LostReasonsSettings() {
               }}
               className="flex items-center gap-2"
             >
-              <input
-                className={inputClasses}
+              <Input
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder={t('lostReasons.title')}
@@ -193,8 +190,7 @@ function LostReasonsSettings() {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <input
-                      className={inputClasses}
+                    <Input
                       value={editLabel}
                       onChange={(e) => setEditLabel(e.target.value)}
                       autoFocus

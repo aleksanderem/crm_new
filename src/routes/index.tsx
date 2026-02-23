@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Logo } from "../ui/logo";
 import { cn } from "@/utils/misc";
 import { buttonVariants } from "@/ui/button-util";
-import { Loader2, Star } from "lucide-react";
+import { Loader2, Star } from "@/lib/ez-icons";
 import { Button } from "@/ui/button";
 import siteConfig from "~/site.config";
 import { ThemeSwitcherHome } from "@/ui/theme-switcher";
@@ -605,11 +605,11 @@ function Index() {
             >
               the Open-Source Remix SaaS by&nbsp;
             </a>
-            <p className="flex items-center whitespace-nowrap text-center text-sm font-medium text-primary/60">
+            <span className="flex items-center whitespace-nowrap text-center text-sm font-medium text-primary/60">
               <a href="https://bento.me/danielkanem?utm_source=remixconvexsaas">
                 DanielKanem.
               </a>
-            </p>
+            </span>
           </p>
           <p className="flex items-center whitespace-nowrap text-center text-sm font-medium text-primary/60">
             Source code available on&nbsp;{" "}

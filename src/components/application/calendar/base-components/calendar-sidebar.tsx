@@ -1,138 +1,145 @@
-import type { CalendarDate, ZonedDateTime } from "@internationalized/date";
-import { BellRinging01, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Copy01, Edit01, Trash01 } from "@untitledui/icons";
-import {
-    Calendar as AriaCalendar,
-    CalendarGrid as AriaCalendarGrid,
-    CalendarGridBody as AriaCalendarGridBody,
-    CalendarGridHeader as AriaCalendarGridHeader,
-    CalendarHeaderCell as AriaCalendarHeaderCell,
-    Heading as AriaHeading,
-} from "react-aria-components";
-import { CalendarCell } from "@/components/application/date-picker/cell";
-import { Avatar } from "@/components/base/avatar/avatar";
-import { AvatarAddButton } from "@/components/base/avatar/base-components";
+import { useMemo } from "react";
+import { CalendarDate, CalendarDateTime, type ZonedDateTime, getLocalTimeZone, isSameDay, toCalendarDate, toZoned } from "@internationalized/date";
+import { useDateFormatter, useLocale } from "@react-aria/i18n";
+import { XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/lib/utils/cx";
+import { CalendarDwViewCell } from "./calendar-dw-view-cell";
+import { CalendarDwViewEvent } from "./calendar-dw-view-event";
+import { CalendarRowLabel } from "./calendar-row-label";
+import { CalendarTimeMarker } from "./calendar-time-marker";
+
+type ZonedEvent = {
+    id: string;
+    title: string;
+    start: ZonedDateTime;
+    end: ZonedDateTime;
+    color?: string;
+    dot?: boolean;
+};
+
+const SLOT_HEIGHT = 48;
+
+const getStartOfDay = (date: ZonedDateTime | CalendarDate, timeZone: string): ZonedDateTime => {
+    const zoned = date instanceof CalendarDate ? toZoned(date, timeZone) : date;
+    return zoned.set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+};
+
+const getEndOfDay = (date: ZonedDateTime | CalendarDate, timeZone: string): ZonedDateTime => {
+    const zoned = date instanceof CalendarDate ? toZoned(date, timeZone) : date;
+    return zoned.set({ hour: 23, minute: 59, second: 59, millisecond: 999 });
+};
 
 interface CalendarSidebarProps {
-    selectedDate: CalendarDate | null;
-    onDateChange: (date: CalendarDate) => void;
-    highlightedDates: Set<string>;
+    selectedDate: CalendarDate;
+    zonedEvents: ZonedEvent[];
+    currentTime: ZonedDateTime;
+    onClose?: () => void;
     className?: string;
 }
 
-export const CalendarSidebar = ({ selectedDate, onDateChange, highlightedDates, className }: CalendarSidebarProps) => {
+export const CalendarSidebar = ({ selectedDate, zonedEvents, currentTime, onClose, className }: CalendarSidebarProps) => {
+    const { locale } = useLocale();
+    const timeZone = getLocalTimeZone();
+    const timeFormatter = useDateFormatter({ hour: "numeric", minute: "2-digit", hour12: true });
+    const hourOnlyFormatter = useDateFormatter({ hour: "numeric", hour12: true });
+    const dateFormatter = useDateFormatter({ weekday: "long", month: "long", day: "numeric" });
+
+    const dayEvents = useMemo(() => {
+        const dayStart = getStartOfDay(selectedDate, timeZone);
+        const dayEnd = getEndOfDay(selectedDate, timeZone);
+        return zonedEvents
+            .filter((event) => event.start.compare(dayEnd) < 0 && event.end.compare(dayStart) > 0)
+            .sort((a, b) => a.start.compare(b.start));
+    }, [zonedEvents, selectedDate, timeZone]);
+
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+
+    const showTimeMarker = isSameDay(toCalendarDate(currentTime), selectedDate);
+    let timeMarkerTop = 0;
+    if (showTimeMarker) {
+        timeMarkerTop = ((currentTime.hour * 60 + currentTime.minute) / 30) * SLOT_HEIGHT;
+    }
+
+    const dayStart = useMemo(() => getStartOfDay(selectedDate, timeZone), [selectedDate, timeZone]);
+
     return (
-        <div className={cx("flex flex-col overflow-auto border-l border-border mask-b-from-94%", className)}>
-            <AriaCalendar aria-label="Calendar" className="px-6 py-5" value={selectedDate} onChange={(value) => onDateChange(value)}>
-                <header className="mb-3 flex items-center justify-between">
-                    <Button slot="previous" iconLeading={ChevronLeft} size="sm" color="tertiary" className="size-8" />
-                    <AriaHeading className="text-sm font-semibold text-foreground" />
-                    <Button slot="next" iconLeading={ChevronRight} size="sm" color="tertiary" className="size-8" />
-                </header>
-
-                <AriaCalendarGrid weekdayStyle="short" className="w-max">
-                    <AriaCalendarGridHeader className="border-b-4 border-transparent">
-                        {(day) => (
-                            <AriaCalendarHeaderCell className="p-0">
-                                <div className="flex size-10 items-center justify-center text-sm font-medium text-muted-foreground">{day.slice(0, 2)}</div>
-                            </AriaCalendarHeaderCell>
-                        )}
-                    </AriaCalendarGridHeader>
-                    <AriaCalendarGridBody className="[&_tr]:last-of-type]:border-none [&_td]:p-0 [&_tr]:border-b-4 [&_tr]:border-transparent">
-                        {(date) => <CalendarCell date={date} isHighlighted={highlightedDates.has(date.toString())} />}
-                    </AriaCalendarGridBody>
-                </AriaCalendarGrid>
-            </AriaCalendar>
-
-            <div className="flex flex-col gap-5 border-t border-border px-6 py-5">
-                <div className="flex flex-col gap-2">
-                    <section className="flex w-full justify-between">
-                        <p className="text-md font-semibold text-foreground">Product demo</p>
-                        <div className="-mt-2 -mr-2 flex gap-0.5">
-                            <ButtonUtility size="xs" color="tertiary" tooltip="Copy link" icon={Copy01} />
-                            <ButtonUtility size="xs" color="tertiary" tooltip="Delete" icon={Trash01} />
-                            <ButtonUtility size="xs" color="tertiary" tooltip="Edit" icon={Edit01} />
-                        </div>
-                    </section>
-                    <section className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                            <CalendarIcon className="size-4 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Friday, Jan 10, 2025</p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Clock className="size-4 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">1:30 PM - 3:30 PM</p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <BellRinging01 className="size-4 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">10 min before</p>
-                        </div>
-                    </section>
+        <div className={cx("flex flex-col overflow-hidden border-l border-border", className)}>
+            {/* Day header */}
+            <div className="flex shrink-0 items-start justify-between border-b border-border px-4 py-3">
+                <div>
+                    <p className="text-sm font-semibold text-foreground">
+                        {dateFormatter.format(selectedDate.toDate(timeZone))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {dayEvents.length === 0 ? "No events" : `${dayEvents.length} event${dayEvents.length !== 1 ? "s" : ""}`}
+                    </p>
                 </div>
-                <div className="flex flex-col gap-3">
-                    <section className="flex gap-2">
-                        <section className="flex flex-row -space-x-2">
-                            <Avatar
-                                className="ring-[1.5px] ring-card"
-                                src="https://www.untitledui.com/images/avatars/sienna-hewitt?fm=webp&q=80"
-                                alt="Sienna Hewitt"
-                                size="sm"
-                            />
-                            <Avatar
-                                className="ring-[1.5px] ring-card"
-                                src="https://www.untitledui.com/images/avatars/ammar-foley?fm=webp&q=80"
-                                alt="Ammar Foley"
-                                size="sm"
-                            />
-                            <Avatar
-                                className="ring-[1.5px] ring-card"
-                                src="https://www.untitledui.com/images/avatars/pippa-wilkinson?fm=webp&q=80"
-                                alt="Pippa Wilkinson"
-                                size="sm"
-                            />
-                            <Avatar
-                                className="ring-[1.5px] ring-card"
-                                src="https://www.untitledui.com/images/avatars/olly-schroeder?fm=webp&q=80"
-                                alt="Olly Schroeder"
-                                size="sm"
-                            />
-                            <Avatar
-                                className="ring-[1.5px] ring-card"
-                                src="https://www.untitledui.com/images/avatars/mathilde-lewis?fm=webp&q=80"
-                                alt="Mathilde Lewis"
-                                size="sm"
-                            />
-                            <Avatar className="ring-[1.5px] ring-card" initials="OR" size="sm" />
-                        </section>
-                        <AvatarAddButton size="sm" />
-                    </section>
+                {onClose && (
+                    <Button iconLeading={XClose} size="sm" color="tertiary" className="size-8 shrink-0" onPress={onClose} />
+                )}
+            </div>
 
-                    <section className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground">6 guests</p>
-                        <span className="h-[13px] border-l border-border" />
-                        <p className="text-sm text-muted-foreground">5 yes</p>
-                        <span className="h-[13px] border-l border-border" />
-                        <p className="text-sm text-muted-foreground">1 awaiting</p>
-                    </section>
+            {/* Scrollable day schedule */}
+            <div className="relative flex flex-1 overflow-y-auto">
+                {/* Time gutter */}
+                <div className="flex h-max w-14 shrink-0 flex-col border-r border-border">
+                    {hours.map((hour) => {
+                        const time = new CalendarDateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour);
+                        const timeString = hourOnlyFormatter.format(toZoned(time, timeZone).toDate());
+                        return <CalendarRowLabel key={`sidebar-time-${hour}`}>{timeString}</CalendarRowLabel>;
+                    })}
                 </div>
 
-                <section className="flex flex-col gap-2">
-                    <p className="text-sm font-semibold text-foreground">About this event</p>
-                    <div className="text-sm text-muted-foreground">
-                        <p>Sienna is inviting you to a scheduled Zoom meeting.</p>
-                        <br />
-                        <p>Topic: Product demo for the new dashboard and Q&A session.</p>
-                        <br />
-                        <p className="break-words whitespace-normal">
-                            Join Zoom Meeting:&nbsp;
-                            <span className="break-all underline">https://us02web.zoom.us/j/86341969512</span>&nbsp;
-                        </p>
-                        <br />
-                        <p>Meeting ID: 863 4196 9512</p>
-                    </div>
-                </section>
+                {/* Time slots + events */}
+                <div className="relative flex-1">
+                    {Array.from({ length: 48 }).map((_, slotIndex) => (
+                        <CalendarDwViewCell
+                            key={`sidebar-slot-${slotIndex}`}
+                            className={cx("before:border-r-0", slotIndex === 47 && "before:border-b-0")}
+                        />
+                    ))}
+
+                    {dayEvents.map((event, index) => {
+                        const startZoned = event.start;
+                        const endZoned = event.end;
+                        const dayEnd = getEndOfDay(dayStart, timeZone);
+
+                        const clampedStart = startZoned.compare(dayStart) < 0 ? dayStart : startZoned;
+                        const clampedEnd = endZoned.compare(dayEnd) > 0 ? dayEnd : endZoned;
+
+                        const startMinutes = clampedStart.hour * 60 + clampedStart.minute;
+                        const endMinutes = clampedEnd.hour * 60 + clampedEnd.minute;
+                        const durationMinutes = Math.max(15, endMinutes - startMinutes);
+
+                        const top = (startMinutes / 30) * SLOT_HEIGHT;
+                        const height = Math.max(SLOT_HEIGHT / 2, (durationMinutes / 30) * SLOT_HEIGHT);
+
+                        const displayTime = durationMinutes > 30;
+                        const supportingText = displayTime ? timeFormatter.format(startZoned.toDate()) : undefined;
+
+                        return (
+                            <div
+                                key={event.id}
+                                className="absolute w-full px-1.5 py-1.5"
+                                style={{ top: `${top}px`, height: `${height}px`, zIndex: index }}
+                            >
+                                <CalendarDwViewEvent
+                                    label={event.title}
+                                    supportingText={supportingText}
+                                    color={event.color as any}
+                                    withDot={event.dot}
+                                />
+                            </div>
+                        );
+                    })}
+
+                    {showTimeMarker && (
+                        <CalendarTimeMarker style={{ top: `${timeMarkerTop}px` }}>
+                            {timeFormatter.format(currentTime.toDate())}
+                        </CalendarTimeMarker>
+                    )}
+                </div>
             </div>
         </div>
     );

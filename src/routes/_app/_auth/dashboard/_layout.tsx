@@ -44,6 +44,7 @@ import {
 } from "@/components/crm/quick-create-menu";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarActionsContext } from "@/components/layout/sidebar-context";
+import { MiniCalendarProvider } from "@/components/layout/mini-calendar-context";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -272,6 +273,7 @@ function DashboardLayout() {
   return (
     <DateRangeProvider>
     <OrgProvider initialOrgId={firstOrg?._id}>
+      <MiniCalendarProvider>
       <div className="flex min-h-dvh w-full">
         <SidebarActionsContext.Provider value={sidebarActionsValue}>
           <SidebarProvider
@@ -377,6 +379,7 @@ function DashboardLayout() {
         onOpenChange={setSearchOpen}
       />
 
+    </MiniCalendarProvider>
     </OrgProvider>
     </DateRangeProvider>
   );

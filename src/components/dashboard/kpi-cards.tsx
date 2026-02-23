@@ -1,7 +1,8 @@
-import { Users, Building2, TrendingUp, DollarSign } from "lucide-react";
+import { Users, Building2, TrendingUp, DollarSign } from "@/lib/ez-icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 
 interface KpiCardsProps {
   totalContacts: number;
@@ -35,22 +36,26 @@ export function KpiCards({
         title: t("dashboard.totalContacts"),
         value: totalContacts.toLocaleString(),
         icon: Users,
+        href: "/dashboard/contacts" as const,
       },
       {
         title: t("dashboard.companies"),
         value: totalCompanies.toLocaleString(),
         icon: Building2,
+        href: "/dashboard/companies" as const,
       },
       {
         title: t("dashboard.openDeals"),
         value: openDeals.toLocaleString(),
         icon: TrendingUp,
         subtitle: t("dashboard.winRate", { rate: (winRate * 100).toFixed(0) }),
+        href: "/dashboard/leads" as const,
       },
       {
         title: t("dashboard.pipelineValue"),
         value: formatCurrency(pipelineValue),
         icon: DollarSign,
+        href: "/dashboard/pipelines" as const,
       },
     ],
     [t, totalContacts, totalCompanies, openDeals, pipelineValue, winRate]
@@ -59,22 +64,24 @@ export function KpiCards({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {card.title}
-            </CardTitle>
-            <card.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{card.value}</div>
-            {card.subtitle && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {card.subtitle}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <Link key={card.title} to={card.href} className="block">
+          <Card className="transition-colors hover:bg-muted/50 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {card.title}
+              </CardTitle>
+              <card.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              {card.subtitle && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {card.subtitle}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );

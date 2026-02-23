@@ -6,7 +6,7 @@ import {
   LoaderCircle,
   OctagonX,
   TriangleAlert,
-} from "lucide-react"
+} from "@/lib/ez-icons"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 const Toaster = ({ ...props }: ToasterProps) => {

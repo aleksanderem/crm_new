@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Users, Building2, TrendingUp, FileText, X } from "lucide-react";
+import { Users, Building2, TrendingUp, FileText, X } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 

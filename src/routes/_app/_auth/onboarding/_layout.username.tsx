@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
-import { Input } from "@/ui/input";
+import { Loader2 } from "@/lib/ez-icons";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/ui/button";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";

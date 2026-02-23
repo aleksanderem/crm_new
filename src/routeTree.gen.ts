@@ -31,6 +31,7 @@ import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutCheckoutImport } from './routes/_app/_auth/dashboard/_layout.checkout'
+import { Route as AppAuthDashboardLayoutCalendarPreviewImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
 import { Route as AppAuthDashboardLayoutCalendarImport } from './routes/_app/_auth/dashboard/_layout.calendar'
 import { Route as AppAuthDashboardLayoutSettingsIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutProductsIndexImport } from './routes/_app/_auth/dashboard/_layout.products.index'
@@ -200,6 +201,12 @@ const AppAuthDashboardLayoutSettingsRoute =
 const AppAuthDashboardLayoutCheckoutRoute =
   AppAuthDashboardLayoutCheckoutImport.update({
     path: '/checkout',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutCalendarPreviewRoute =
+  AppAuthDashboardLayoutCalendarPreviewImport.update({
+    path: '/calendar-preview',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
@@ -622,6 +629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutCalendarImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/calendar-preview': {
+      id: '/_app/_auth/dashboard/_layout/calendar-preview'
+      path: '/calendar-preview'
+      fullPath: '/dashboard/calendar-preview'
+      preLoaderRoute: typeof AppAuthDashboardLayoutCalendarPreviewImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/checkout': {
       id: '/_app/_auth/dashboard/_layout/checkout'
       path: '/checkout'
@@ -984,6 +998,7 @@ export const routeTree = rootRoute.addChildren({
       AppAuthDashboardRoute: AppAuthDashboardRoute.addChildren({
         AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRoute.addChildren({
           AppAuthDashboardLayoutCalendarRoute,
+          AppAuthDashboardLayoutCalendarPreviewRoute,
           AppAuthDashboardLayoutCheckoutRoute,
           AppAuthDashboardLayoutSettingsRoute:
             AppAuthDashboardLayoutSettingsRoute.addChildren({
@@ -1145,6 +1160,7 @@ export const routeTree = rootRoute.addChildren({
       "parent": "/_app/_auth/dashboard",
       "children": [
         "/_app/_auth/dashboard/_layout/calendar",
+        "/_app/_auth/dashboard/_layout/calendar-preview",
         "/_app/_auth/dashboard/_layout/checkout",
         "/_app/_auth/dashboard/_layout/settings",
         "/_app/_auth/dashboard/_layout/",
@@ -1218,6 +1234,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/calendar": {
       "filePath": "_app/_auth/dashboard/_layout.calendar.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/calendar-preview": {
+      "filePath": "_app/_auth/dashboard/_layout.calendar-preview.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/checkout": {

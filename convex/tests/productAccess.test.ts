@@ -1,6 +1,4 @@
 import { expect, test, describe } from "vitest";
-import { convexTest } from "convex-test";
-import schema from "../schema";
 import { api } from "../_generated/api";
 import { createTestCtx, seedTestUser } from "../_test_helpers";
 

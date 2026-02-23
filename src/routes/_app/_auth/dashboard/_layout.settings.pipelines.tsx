@@ -7,9 +7,10 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical } from "@/lib/ez-icons";
 import { useState } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -35,9 +36,6 @@ function PipelinesSettings() {
     convexQuery(api.pipelines.list, { organizationId })
   );
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader
@@ -62,8 +60,7 @@ function PipelinesSettings() {
               setNewPipelineName("");
             }}
           >
-            <input
-              className={inputClasses}
+            <Input
               value={newPipelineName}
               onChange={(e) => setNewPipelineName(e.target.value)}
               placeholder="Pipeline name"
@@ -127,9 +124,6 @@ function PipelineCard({
       pipelineId: pipeline._id,
     })
   );
-
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
   return (
     <Card>
@@ -201,8 +195,7 @@ function PipelineCard({
           >
             <div className="flex-1 space-y-1">
               <Label className="text-xs">Stage Name</Label>
-              <input
-                className={inputClasses}
+              <Input
                 value={newStageName}
                 onChange={(e) => setNewStageName(e.target.value)}
                 placeholder="e.g. Qualification"

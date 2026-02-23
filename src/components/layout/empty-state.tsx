@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { LucideIcon } from "lucide-react";
+import type { EzIconType as LucideIcon } from "@/lib/ez-icons";
 
 interface EmptyStateProps {
   icon: LucideIcon;

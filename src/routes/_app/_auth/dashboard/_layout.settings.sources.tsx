@@ -9,8 +9,9 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -84,9 +85,6 @@ function SourcesSettings() {
     }
   };
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader
@@ -111,8 +109,7 @@ function SourcesSettings() {
               }}
               className="flex items-center gap-2"
             >
-              <input
-                className={inputClasses}
+              <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t('common.name')}
@@ -157,8 +154,7 @@ function SourcesSettings() {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <input
-                      className={inputClasses}
+                    <Input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       autoFocus

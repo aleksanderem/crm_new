@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Reply, User, Building2, TrendingUp } from "lucide-react";
+import { Reply, User, Building2, TrendingUp } from "@/lib/ez-icons";
 
 interface ThreadViewProps {
   organizationId: Id<"organizations">;

@@ -140,10 +140,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full items-start justify-between rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profile.avatar.title")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t("profile.avatar.description")}
             </p>
           </div>
@@ -181,7 +181,7 @@ function ProfileSettings() {
           />
         </div>
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 dark:bg-card">
-          <p className="text-sm font-normal text-primary/60">
+          <p className="text-sm font-normal text-muted-foreground">
             {t("profile.avatar.uploadHint")}
           </p>
           {user.avatarUrl && (
@@ -201,10 +201,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profilePage.name", "Display Name")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t(
                 "profilePage.nameDescription",
                 "Your name as it appears across the application."
@@ -224,10 +224,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profilePage.email", "Email Address")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t(
                 "profilePage.emailDescription",
                 "Your email address is managed by your authentication provider."
@@ -246,10 +246,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profilePage.language", "Language")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t(
                 "profilePage.languageDescription",
                 "Choose your preferred language for the interface."
@@ -275,10 +275,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profilePage.theme", "Theme")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t(
                 "profilePage.themeDescription",
                 "Select a theme for the application."
@@ -294,8 +294,8 @@ function ProfileSettings() {
                 className={cn(
                   "flex items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
                   theme === option.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-primary/60 hover:border-primary/40"
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted-foreground hover:border-primary/40"
                 )}
               >
                 <option.icon className="h-4 w-4" />
@@ -310,10 +310,10 @@ function ProfileSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex w-full flex-col gap-4 rounded-lg p-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-medium text-primary">
+            <h2 className="text-xl font-medium text-foreground">
               {t("profilePage.timezone", "Timezone")}
             </h2>
-            <p className="text-sm font-normal text-primary/60">
+            <p className="text-sm font-normal text-muted-foreground">
               {t(
                 "profilePage.timezoneDescription",
                 "Set your local timezone for accurate date and time display."

@@ -12,7 +12,7 @@ import type { FilterTab } from "@/components/email/inbox-list";
 import { ThreadView } from "@/components/email/thread-view";
 import { ComposeDialog } from "@/components/email/compose-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, Mail, RefreshCw } from "lucide-react";
+import { Pencil, Mail, RefreshCw } from "@/lib/ez-icons";
 import { toast } from "sonner";
 
 export const Route = createFileRoute(

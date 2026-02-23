@@ -6,7 +6,7 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Mail } from "lucide-react";
+import { Plus, Mail } from "@/lib/ez-icons";
 import { ComposeDialog } from "./compose-dialog";
 
 interface EmailEntityTabProps {

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Download, FileText } from "lucide-react";
+import { Trash2, Download, FileText } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(

@@ -14,6 +14,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Check,
@@ -22,7 +29,7 @@ import {
   Plus,
   Trash2,
   X,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import type { FilterCondition, FilterConfig, QuickFilterDef, FieldDef } from "./types";
 
@@ -110,7 +117,7 @@ function QuickFilterChip({
                         "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
                         isSelected
                           ? "bg-primary text-primary-foreground"
-                          : "opacity-50 [&_svg]:invisible"
+                          : "opacity-50 [&_svg]:invisible [&_easier-icon]:invisible"
                       )}
                     >
                       <Check className="h-4 w-4" />
@@ -148,36 +155,43 @@ function ConditionRow({
 
   return (
     <div className="flex items-center gap-2">
-      <select
-        value={condition.field}
-        onChange={(e) =>
-          onChange(index, { ...condition, field: e.target.value, value: "" })
+      <Select
+        value={condition.field || undefined}
+        onValueChange={(val) =>
+          onChange(index, { ...condition, field: val, value: "" })
         }
-        className="h-8 rounded-md border bg-transparent px-2 text-sm"
       >
-        <option value="">Select field</option>
-        {fields.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.label}
-          </option>
-        ))}
-      </select>
-      <select
+        <SelectTrigger className="h-8 w-auto min-w-[130px]">
+          <SelectValue placeholder="Select field" />
+        </SelectTrigger>
+        <SelectContent>
+          {fields.map((f) => (
+            <SelectItem key={f.id} value={f.id}>
+              {f.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
         value={condition.operator}
-        onChange={(e) =>
+        onValueChange={(val) =>
           onChange(index, {
             ...condition,
-            operator: e.target.value as FilterCondition["operator"],
+            operator: val as FilterCondition["operator"],
           })
         }
-        className="h-8 rounded-md border bg-transparent px-2 text-sm"
       >
-        {operators.map((op) => (
-          <option key={op} value={op}>
-            {OPERATOR_LABELS[op]}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="h-8 w-auto min-w-[120px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {operators.map((op) => (
+            <SelectItem key={op} value={op}>
+              {OPERATOR_LABELS[op]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {needsValue && (
         <>
           <input

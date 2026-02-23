@@ -1,14 +1,22 @@
 import { useState, useRef } from "react";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useMutation } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { Upload, FileText, X, Loader2 } from "lucide-react";
+import { Upload, FileText, X, Loader2 } from "@/lib/ez-icons";
 import type { CustomFieldType } from "@cvx/schema";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -50,9 +58,6 @@ export function CustomFieldRenderer({
 }: CustomFieldRendererProps) {
   const { fieldType, name, options, isRequired } = definition;
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50";
-
   switch (fieldType) {
     case "text":
     case "url":
@@ -64,9 +69,8 @@ export function CustomFieldRenderer({
             {name}
             {isRequired && <span className="text-destructive"> *</span>}
           </Label>
-          <input
+          <Input
             type={fieldType === "email" ? "email" : fieldType === "url" ? "url" : fieldType === "phone" ? "tel" : "text"}
-            className={inputClasses}
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
             disabled={readonly}
@@ -82,9 +86,8 @@ export function CustomFieldRenderer({
             {name}
             {isRequired && <span className="text-destructive"> *</span>}
           </Label>
-          <input
+          <Input
             type="number"
-            className={inputClasses}
             value={(value as number) ?? ""}
             onChange={(e) =>
               onChange(e.target.value ? Number(e.target.value) : null)
@@ -102,9 +105,8 @@ export function CustomFieldRenderer({
             {name}
             {isRequired && <span className="text-destructive"> *</span>}
           </Label>
-          <input
+          <Input
             type="date"
-            className={inputClasses}
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
             disabled={readonly}
@@ -132,20 +134,23 @@ export function CustomFieldRenderer({
             {name}
             {isRequired && <span className="text-destructive"> *</span>}
           </Label>
-          <select
-            className={inputClasses}
+          <Select
             value={(value as string) ?? ""}
-            onChange={(e) => onChange(e.target.value || null)}
+            onValueChange={(val) => onChange(val || null)}
             disabled={readonly}
             required={isRequired}
           >
-            <option value="">Select...</option>
-            {options?.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {options?.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       );
 

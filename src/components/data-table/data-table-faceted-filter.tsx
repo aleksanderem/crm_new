@@ -1,5 +1,5 @@
 import { Column } from "@tanstack/react-table";
-import { Check, PlusCircle } from "lucide-react";
+import { Check, PlusCircle } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                         "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
                         isSelected
                           ? "bg-primary text-primary-foreground"
-                          : "opacity-50 [&_svg]:invisible"
+                          : "opacity-50 [&_svg]:invisible [&_easier-icon]:invisible"
                       )}
                     >
                       <Check className="h-4 w-4" />

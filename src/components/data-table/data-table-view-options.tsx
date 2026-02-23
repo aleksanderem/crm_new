@@ -1,5 +1,5 @@
 import { Table } from "@tanstack/react-table";
-import { Settings2 } from "lucide-react";
+import { Settings2 } from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {

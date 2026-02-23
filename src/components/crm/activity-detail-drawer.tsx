@@ -7,6 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,8 @@ import {
   CheckCircle2,
   Circle,
   FileText,
-  type LucideIcon,
-} from "lucide-react";
+  type EzIconType as LucideIcon,
+} from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 
@@ -106,9 +107,6 @@ export function ActivityDetailDrawer({
   const [editEndTime, setEditEndTime] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCfValues, setEditCfValues] = useState<Record<string, unknown>>({});
-
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50";
 
   if (!activity) return null;
 
@@ -231,8 +229,7 @@ export function ActivityDetailDrawer({
                 <Label>
                   <span className="text-destructive">*</span> {t('activityDetail.title')}
                 </Label>
-                <input
-                  className={cn(inputClasses, "focus:ring-primary")}
+                <Input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
@@ -269,15 +266,15 @@ export function ActivityDetailDrawer({
               <div className="space-y-1.5">
                 <Label>{t('activityDetail.startDate')}</Label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="date"
-                    className={cn(inputClasses, "w-auto flex-1")}
+                    className="w-auto flex-1"
                     value={editDueDate}
                     onChange={(e) => setEditDueDate(e.target.value)}
                   />
-                  <input
+                  <Input
                     type="time"
-                    className={cn(inputClasses, "w-auto")}
+                    className="w-auto"
                     value={editDueTime}
                     onChange={(e) => setEditDueTime(e.target.value)}
                   />
@@ -287,15 +284,15 @@ export function ActivityDetailDrawer({
               <div className="space-y-1.5">
                 <Label>{t('activityDetail.endDate')}</Label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="date"
-                    className={cn(inputClasses, "w-auto flex-1")}
+                    className="w-auto flex-1"
                     value={editEndDate}
                     onChange={(e) => setEditEndDate(e.target.value)}
                   />
-                  <input
+                  <Input
                     type="time"
-                    className={cn(inputClasses, "w-auto")}
+                    className="w-auto"
                     value={editEndTime}
                     onChange={(e) => setEditEndTime(e.target.value)}
                   />

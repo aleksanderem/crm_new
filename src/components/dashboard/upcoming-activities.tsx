@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
-import { CalendarCheck, Clock, AlertTriangle } from "lucide-react";
+import { CalendarCheck, Clock, AlertTriangle } from "@/lib/ez-icons";
 
 interface Activity {
   _id: string;

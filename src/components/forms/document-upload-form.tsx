@@ -1,8 +1,16 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Upload } from "@/lib/ez-icons";
 import type { DocumentCategory } from "@cvx/schema";
 
 interface DocumentUploadFormProps {
@@ -36,9 +44,6 @@ export function DocumentUploadForm({
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
@@ -56,8 +61,7 @@ export function DocumentUploadForm({
           <Label>
             Document Name <span className="text-destructive">*</span>
           </Label>
-          <input
-            className={inputClasses}
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -66,20 +70,18 @@ export function DocumentUploadForm({
 
         <div className="space-y-1.5">
           <Label>Category</Label>
-          <select
-            className={inputClasses}
-            value={category}
-            onChange={(e) =>
-              setCategory(e.target.value as DocumentCategory | "")
-            }
-          >
-            <option value="">Select...</option>
-            {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c.charAt(0).toUpperCase() + c.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={category} onValueChange={(val) => setCategory(val as DocumentCategory | "")}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

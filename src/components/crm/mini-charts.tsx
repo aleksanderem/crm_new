@@ -1,15 +1,24 @@
+import { useId } from "react";
+import { Area, AreaChart, Bar, BarChart } from "recharts";
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+  Card,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import type { TimeRange } from "./types";
 
@@ -36,8 +45,9 @@ export interface MiniChartCardProps {
   accentColor?: string;
 }
 
-const CHART_BLUE = "#3b82f6";
-const CHART_BLUE_LIGHT = "#93c5fd";
+const chartConfig = {
+  value: { label: "Count", color: "var(--chart-2)" },
+} satisfies ChartConfig;
 
 function MiniChartCard({
   title,
@@ -46,24 +56,21 @@ function MiniChartCard({
   timeRange,
   onTimeRangeChange,
   isLoading = false,
-  accentColor,
 }: MiniChartCardProps) {
   const { t } = useTranslation();
-  const color = accentColor || CHART_BLUE;
-  const colorLight = accentColor
-    ? `${accentColor}40`
-    : `${CHART_BLUE_LIGHT}60`;
+  const gradientId = useId();
 
   if (isLoading) {
     return (
-      <Card className="flex-1 min-w-0">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <Skeleton className="h-4 w-[120px]" />
-          <Skeleton className="h-7 w-[100px]" />
+      <Card className="gap-4">
+        <CardHeader className="gap-1">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-7 w-20" />
+          <Skeleton className="h-4 w-24" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[140px] w-full" />
-        </CardContent>
+        <div className="overflow-hidden px-6">
+          <Skeleton className="h-21 w-full" />
+        </div>
       </Card>
     );
   }
@@ -71,99 +78,83 @@ function MiniChartCard({
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <Card className="flex-1 min-w-0 overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-        <div>
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <p className="text-2xl font-bold mt-0.5" style={{ color }}>
-            {total.toLocaleString()}
-          </p>
-        </div>
-        <select
+    <Card className="gap-4">
+      <CardHeader className="gap-1">
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <span className="text-2xl font-semibold">{total.toLocaleString()}</span>
+        <Select
           value={timeRange}
-          onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
-          className="h-7 rounded-md border bg-transparent px-2 text-xs text-muted-foreground"
+          onValueChange={(val) => onTimeRangeChange(val as TimeRange)}
         >
-          {TIME_RANGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {t(`timeRange.${opt}`)}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="text-muted-foreground h-auto w-fit gap-1 border-0 p-0 text-sm shadow-none focus:ring-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TIME_RANGE_OPTIONS.map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {t(`timeRange.${opt}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </CardHeader>
-      <CardContent className="pb-3">
-        <div className="h-[120px]">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === "line" ? (
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  strokeOpacity={0.5}
-                  vertical={false}
+
+      <ChartContainer config={chartConfig} className="h-21 w-full overflow-hidden px-2.75">
+        {chartType === "bar" ? (
+          <BarChart
+            accessibilityLayer
+            data={data}
+            barSize={12}
+            margin={{ left: 0, right: 0 }}
+          >
+            <Bar
+              dataKey="value"
+              fill="var(--color-value)"
+              background={{
+                fill: "color-mix(in oklab, var(--primary) 10%, transparent)",
+                radius: 12,
+              }}
+              radius={12}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+          </BarChart>
+        ) : (
+          <AreaChart
+            data={data}
+            margin={{ left: 0, right: 0 }}
+            className="stroke-2"
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="10%"
+                  stopColor="var(--chart-2)"
+                  stopOpacity={0.4}
                 />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  tickLine={false}
-                  axisLine={false}
+                <stop
+                  offset="90%"
+                  stopColor="var(--chart-2)"
+                  stopOpacity={0}
                 />
-                <YAxis hide />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={color}
-                  strokeWidth={2.5}
-                  fill={`url(#gradient-${title})`}
-                  dot={false}
-                  activeDot={{
-                    r: 4,
-                    fill: color,
-                    stroke: "white",
-                    strokeWidth: 2,
-                  }}
-                />
-              </AreaChart>
-            ) : (
-              <BarChart data={data}>
-                <defs>
-                  <linearGradient id={`bar-gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  strokeOpacity={0.5}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis hide />
-                <Bar
-                  dataKey="value"
-                  fill={`url(#bar-gradient-${title})`}
-                  stroke="#2563eb"
-                  strokeWidth={1}
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={40}
-                />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
+              </linearGradient>
+            </defs>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Area
+              dataKey="value"
+              type="natural"
+              fill={`url(#${gradientId})`}
+              stroke="var(--chart-2)"
+              stackId="a"
+            />
+          </AreaChart>
+        )}
+      </ChartContainer>
     </Card>
   );
 }
@@ -175,7 +166,7 @@ export interface MiniChartsRowProps {
 
 export function MiniChartsRow({ leftChart, rightChart }: MiniChartsRowProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
+    <div className="grid gap-4 sm:grid-cols-2">
       <MiniChartCard {...leftChart} />
       <MiniChartCard {...rightChart} />
     </div>

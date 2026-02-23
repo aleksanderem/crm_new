@@ -15,7 +15,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { Users, Building2, TrendingUp, FileText } from "lucide-react";
+import { Users, Building2, TrendingUp, FileText } from "@/lib/ez-icons";
 
 const entityTypes = [
   { value: "contact", label: "Contacts", icon: Users },

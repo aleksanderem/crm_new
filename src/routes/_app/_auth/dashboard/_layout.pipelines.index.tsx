@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { KanbanBoard, KanbanLead } from "@/components/kanban/kanban-board";
 import { KanbanCardDetailSheet } from "@/components/kanban/kanban-card-detail-sheet";
 import { Button } from "@/components/ui/button";
-import { Kanban, TableIcon, KanbanIcon } from "lucide-react";
+import { Kanban, TableIcon, KanbanIcon } from "@/lib/ez-icons";
 import { useState } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";

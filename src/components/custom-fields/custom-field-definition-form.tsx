@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X, Plus } from "@/lib/ez-icons";
 import type { CustomFieldType, EntityType } from "@cvx/schema";
 
 interface CustomFieldDefinitionFormProps {
@@ -59,9 +67,6 @@ export function CustomFieldDefinitionForm({
 
   const needsOptions = fieldType === "select" || fieldType === "multiSelect";
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const fieldKey =
@@ -84,8 +89,7 @@ export function CustomFieldDefinitionForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <Label>Field Name</Label>
-        <input
-          className={inputClasses}
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Company Size"
@@ -95,17 +99,18 @@ export function CustomFieldDefinitionForm({
 
       <div className="space-y-1.5">
         <Label>Field Type</Label>
-        <select
-          className={inputClasses}
-          value={fieldType}
-          onChange={(e) => setFieldType(e.target.value as CustomFieldType)}
-        >
-          {fieldTypes.map((ft) => (
-            <option key={ft.value} value={ft.value}>
-              {ft.label}
-            </option>
-          ))}
-        </select>
+        <Select value={fieldType} onValueChange={(val) => setFieldType(val as CustomFieldType)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {fieldTypes.map((ft) => (
+              <SelectItem key={ft.value} value={ft.value}>
+                {ft.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {needsOptions && (
@@ -129,8 +134,7 @@ export function CustomFieldDefinitionForm({
               </div>
             ))}
             <div className="flex items-center gap-2">
-              <input
-                className={inputClasses}
+              <Input
                 value={newOption}
                 onChange={(e) => setNewOption(e.target.value)}
                 placeholder="Add option..."
@@ -163,8 +167,7 @@ export function CustomFieldDefinitionForm({
 
       <div className="space-y-1.5">
         <Label>Group (optional)</Label>
-        <input
-          className={inputClasses}
+        <Input
           value={group}
           onChange={(e) => setGroup(e.target.value)}
           placeholder="e.g. Contact Info"

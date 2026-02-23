@@ -9,7 +9,7 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -26,7 +26,7 @@ import {
   FileText,
   Package,
   Mail,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/organization"

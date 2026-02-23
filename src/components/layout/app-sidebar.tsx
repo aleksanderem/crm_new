@@ -48,6 +48,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
+import { CalendarMiniMonth } from "@/components/application/calendar/base-components/calendar-mini-month";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
@@ -257,6 +259,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const { openQuickCreate, navigateTo } = useSidebarActions();
   const { organizationId } = useOrganization();
+  const { state: miniCalState } = useMiniCalendar();
 
   const { data: activeProducts } = useQuery(
     convexQuery(api.productSubscriptions.getActiveProducts, { organizationId })
@@ -296,7 +299,7 @@ export function AppSidebar() {
     <>
       {/* Column 1: Narrow icon sidebar */}
       <Sidebar collapsible="icon" className="[&_[data-slot=sidebar-inner]]:bg-card">
-        <SidebarHeader>
+        <SidebarHeader className="min-h-20 flex justify-center">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -355,7 +358,7 @@ export function AppSidebar() {
       </Sidebar>
 
       {/* Column 2: Detail panel */}
-      <div className="bg-muted sticky top-0 flex h-dvh w-65 flex-col border-r max-lg:hidden">
+      <div className="bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r max-lg:hidden">
         {/* Workspace switcher */}
         <div className="px-4 pt-3 pb-2">
           <WorkspaceSwitcher activeWorkspace={activeWorkspace} />
@@ -424,6 +427,19 @@ export function AppSidebar() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Mini calendar - pushed to bottom by spacer */}
+        {miniCalState.visible && miniCalState.selectedDate && miniCalState.onDateChange && (
+          <>
+            <div className="flex-1" />
+            <CalendarMiniMonth
+              selectedDate={miniCalState.selectedDate}
+              onDateChange={miniCalState.onDateChange}
+              highlightedDates={miniCalState.highlightedDates}
+              className="border-t-0 px-3 py-3"
+            />
+          </>
         )}
 
       </div>

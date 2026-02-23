@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Languages } from "lucide-react";
+import { Languages } from "@/lib/ez-icons";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/ui/select";
 import { changeLanguage } from "i18next";
 

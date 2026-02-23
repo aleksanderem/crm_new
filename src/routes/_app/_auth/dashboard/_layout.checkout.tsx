@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, BadgeCheck, AlertTriangle, ExternalLink } from "lucide-react";
+import { Loader2, BadgeCheck, AlertTriangle, ExternalLink } from "@/lib/ez-icons";
 import { buttonVariants } from "@/ui/button-util";
 import { useEffect, useState } from "react";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";

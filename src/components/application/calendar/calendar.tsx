@@ -915,25 +915,25 @@ const DayView = ({
                     />
                     {showTimeMarker && <CalendarTimeMarker style={{ top: `${timeMarkerTop}px` }}>{formatTime(localCurrentTime)}</CalendarTimeMarker>}
                 </div>
-
-                <CalendarSidebar
-                    selectedDate={selectedDate}
-                    onDateChange={setSelectedDate}
-                    highlightedDates={localHighlightedDates}
-                    className="sticky top-0 hidden h-full w-82 lg:flex"
-                />
             </div>
         </div>
     );
 };
 
+export interface CalendarHandle {
+    selectDate: (date: CalendarDate) => void;
+}
+
 interface CalendarProps {
     events: CalendarEvent[];
     view?: "month" | "week" | "day";
     className?: string;
+    calendarRef?: React.RefObject<CalendarHandle | null>;
+    onSidebarChange?: (open: boolean, selectedDate: CalendarDate | null, highlightedDates: Set<string>) => void;
+    onViewChange?: (view: string, selectedDate: CalendarDate | null, highlightedDates: Set<string>) => void;
 }
 
-export const Calendar = ({ events, view: defaultView = "month", className }: CalendarProps) => {
+export const Calendar = ({ events, view: defaultView = "month", className, calendarRef, onSidebarChange, onViewChange }: CalendarProps) => {
     const { locale } = useLocale();
     const timeZone = useMemo(() => getLocalTimeZone(), []);
 
@@ -1015,14 +1015,39 @@ export const Calendar = ({ events, view: defaultView = "month", className }: Cal
 
     const [showSidebar, setShowSidebar] = useState(false);
 
+    // Notify parent about view changes (for mini calendar visibility in sidebar)
+    useEffect(() => {
+        onViewChange?.(view, selectedDate || currentMonthDate, highlightedDates);
+    }, [view, highlightedDates]); // intentionally exclude selectedDate/currentMonthDate to avoid excessive calls
+
+    // Expose imperative handle for external date selection (e.g. mini month)
+    useEffect(() => {
+        if (calendarRef) {
+            (calendarRef as React.MutableRefObject<CalendarHandle | null>).current = {
+                selectDate: (date: CalendarDate) => {
+                    setSelectedDate(date);
+                    setCurrentMonthDate(date);
+                    setShowSidebar(true);
+                    onSidebarChange?.(true, date, highlightedDates);
+                },
+            };
+        }
+    }, [calendarRef, onSidebarChange, highlightedDates]);
+
+    const handleCloseSidebar = useCallback(() => {
+        setShowSidebar(false);
+        onSidebarChange?.(false, null, highlightedDates);
+    }, [onSidebarChange, highlightedDates]);
+
     const handleDateSelect = useCallback(
         (date: CalendarDate | null) => {
             setSelectedDate(date);
             if (date && view !== "day") {
                 setShowSidebar(true);
+                onSidebarChange?.(true, date, highlightedDates);
             }
         },
-        [view],
+        [view, onSidebarChange, highlightedDates],
     );
 
     return (
@@ -1044,7 +1069,7 @@ export const Calendar = ({ events, view: defaultView = "month", className }: Cal
                 onClickNext={() => handleNavigate("NEXT")}
                 onClickToday={() => handleNavigate("TODAY")}
             />
-            <main className="flex flex-1 overflow-hidden">
+            <main className="flex min-h-0 flex-1 overflow-hidden">
                 {view === "month" && (
                     <>
                         <MonthView
@@ -1057,16 +1082,14 @@ export const Calendar = ({ events, view: defaultView = "month", className }: Cal
                             fullDateFormatter={fullDateFormatter}
                             shortWeekdayFormatter={shortWeekdayFormatter}
                             timeFormatter={timeFormatter}
-                            className="flex-1"
+                            className="min-h-0 flex-1"
                         />
                         {showSidebar && selectedDate && (
                             <CalendarSidebar
                                 selectedDate={selectedDate}
-                                onDateChange={(date) => {
-                                    setSelectedDate(date);
-                                    setCurrentMonthDate(date);
-                                }}
-                                highlightedDates={highlightedDates}
+                                zonedEvents={zonedEvents}
+                                currentTime={currentTime}
+                                onClose={handleCloseSidebar}
                                 className="hidden w-82 shrink-0 lg:flex"
                             />
                         )}
@@ -1101,15 +1124,14 @@ export const Calendar = ({ events, view: defaultView = "month", className }: Cal
                             timeFormatter={timeFormatter}
                             hourOnlyFormatter={hourOnlyFormatter}
                             view={view}
-                            className={cx("max-md:hidden", showSidebar && selectedDate ? "flex-1" : "")}
+                            className="min-h-0 flex-1 max-md:hidden"
                         />
                         {showSidebar && selectedDate && (
                             <CalendarSidebar
                                 selectedDate={selectedDate}
-                                onDateChange={(date) => {
-                                    setSelectedDate(date);
-                                }}
-                                highlightedDates={highlightedDates}
+                                zonedEvents={zonedEvents}
+                                currentTime={currentTime}
+                                onClose={handleCloseSidebar}
                                 className="hidden w-82 shrink-0 lg:flex"
                             />
                         )}
@@ -1135,3 +1157,6 @@ export const Calendar = ({ events, view: defaultView = "month", className }: Cal
         </div>
     );
 };
+
+export { CalendarMiniMonth } from "./base-components/calendar-mini-month";
+export { CalendarDate } from "@internationalized/date";

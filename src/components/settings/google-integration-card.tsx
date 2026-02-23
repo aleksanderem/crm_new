@@ -6,7 +6,7 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Calendar, Unplug, ExternalLink } from "lucide-react";
+import { Mail, Calendar, Unplug, ExternalLink } from "@/lib/ez-icons";
 import { useState } from "react";
 
 interface GoogleIntegrationCardProps {

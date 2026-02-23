@@ -1,3 +1,4 @@
+import { internal } from "./_generated/api";
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireUser, verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
@@ -46,6 +47,13 @@ export const create = mutation({
       description: `Created organization "${args.name}"`,
       performedBy: user._id,
     });
+
+    // Seed default reference data
+    await ctx.scheduler.runAfter(
+      0,
+      internal.seedDefaults.seedOrganizationDefaults,
+      { organizationId: orgId, userId: user._id },
+    );
 
     return orgId;
   },

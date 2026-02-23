@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Mail,
   MailOpen,
-} from "lucide-react";
+} from "@/lib/ez-icons";
 import type { ActivityAction } from "@cvx/schema";
 
 const actionIcons: Record<ActivityAction, typeof Plus> = {

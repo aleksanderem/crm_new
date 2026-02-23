@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
-import { MoreHorizontal, Send, XCircle, UserPlus } from "lucide-react";
+import { MoreHorizontal, Send, XCircle, UserPlus } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/team"
@@ -51,7 +51,7 @@ export const Route = createFileRoute(
 const ROLES = ["admin", "member", "viewer"] as const;
 
 function TeamSettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
 
   const { data: members } = useQuery(
@@ -116,7 +116,7 @@ function TeamSettings() {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString(undefined, {
+    return new Date(timestamp).toLocaleDateString(i18n.language, {
       year: "numeric",
       month: "short",
       day: "numeric",

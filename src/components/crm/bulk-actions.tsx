@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import type { BulkAction } from "./types";
 

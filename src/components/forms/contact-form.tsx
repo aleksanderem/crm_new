@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+import { X } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
@@ -67,9 +68,6 @@ export function ContactForm({
     initialCustomFieldValues
   );
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
     if (trimmed && !tags.includes(trimmed)) {
@@ -106,8 +104,7 @@ export function ContactForm({
           <Label>
             {t('contacts.form.firstNameRequired')} <span className="text-destructive">*</span>
           </Label>
-          <input
-            className={inputClasses}
+          <Input
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
@@ -115,34 +112,30 @@ export function ContactForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t('contacts.form.lastName')}</Label>
-          <input
-            className={inputClasses}
+          <Input
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
           <Label>{t('contacts.form.email')}</Label>
-          <input
+          <Input
             type="email"
-            className={inputClasses}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
           <Label>{t('contacts.form.phone')}</Label>
-          <input
+          <Input
             type="tel"
-            className={inputClasses}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('contacts.form.titleRole')}</Label>
-          <input
-            className={inputClasses}
+          <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -151,8 +144,7 @@ export function ContactForm({
           <>
             <div className="space-y-1.5">
               <Label>{t('contacts.form.source')}</Label>
-              <input
-                className={inputClasses}
+              <Input
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
                 placeholder={t('contacts.form.sourcePlaceholder')}
@@ -176,8 +168,7 @@ export function ContactForm({
                   ))}
                 </div>
               )}
-              <input
-                className={inputClasses}
+              <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {

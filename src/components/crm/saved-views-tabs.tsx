@@ -13,8 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MoreHorizontal, Pencil, Plus, Trash2, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import type { SavedView, FilterConfig, FilterCondition, FieldDef } from "./types";
 
@@ -37,9 +45,6 @@ const OPERATORS_FOR_TYPE: Record<string, string[]> = {
   select: ["equals", "notEquals", "isEmpty", "isNotEmpty"],
   boolean: ["equals"],
 };
-
-const inputClasses =
-  "h-8 w-full rounded-md border bg-transparent px-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 function FilterRow({
   condition,
@@ -72,40 +77,50 @@ function FilterRow({
 
   return (
     <div className="flex items-center gap-2">
-      <select
-        className={cn(inputClasses, "w-[130px] shrink-0")}
-        value={condition.field}
-        onChange={(e) => onChange({ ...condition, field: e.target.value, value: "" })}
+      <Select
+        value={condition.field || undefined}
+        onValueChange={(val) => onChange({ ...condition, field: val, value: "" })}
       >
-        <option value="">{t('views.fieldPlaceholder')}</option>
-        {fields.map((f) => (
-          <option key={f.id} value={f.id}>{f.label}</option>
-        ))}
-      </select>
-      <select
-        className={cn(inputClasses, "w-[120px] shrink-0")}
-        value={condition.operator}
-        onChange={(e) => onChange({ ...condition, operator: e.target.value as any })}
-      >
-        {operators.map((op) => (
-          <option key={op} value={op}>{operatorLabels[op]}</option>
-        ))}
-      </select>
-      {needsValue && selectedField?.type === "select" && selectedField.options ? (
-        <select
-          className={cn(inputClasses, "flex-1")}
-          value={condition.value ?? ""}
-          onChange={(e) => onChange({ ...condition, value: e.target.value })}
-        >
-          <option value="">{t('views.selectPlaceholder')}</option>
-          {selectedField.options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+        <SelectTrigger className="w-[130px] shrink-0">
+          <SelectValue placeholder={t('views.fieldPlaceholder')} />
+        </SelectTrigger>
+        <SelectContent>
+          {fields.map((f) => (
+            <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
           ))}
-        </select>
+        </SelectContent>
+      </Select>
+      <Select
+        value={condition.operator}
+        onValueChange={(val) => onChange({ ...condition, operator: val as any })}
+      >
+        <SelectTrigger className="w-[120px] shrink-0">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {operators.map((op) => (
+            <SelectItem key={op} value={op}>{operatorLabels[op]}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {needsValue && selectedField?.type === "select" && selectedField.options ? (
+        <Select
+          value={condition.value || undefined}
+          onValueChange={(val) => onChange({ ...condition, value: val })}
+        >
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder={t('views.selectPlaceholder')} />
+          </SelectTrigger>
+          <SelectContent>
+            {selectedField.options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : needsValue ? (
-        <input
+        <Input
           type={selectedField?.type === "number" ? "number" : selectedField?.type === "date" ? "date" : "text"}
-          className={cn(inputClasses, "flex-1")}
+          className="flex-1"
           value={condition.value ?? ""}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
           placeholder={t('views.valuePlaceholder')}
@@ -298,12 +313,11 @@ export function SavedViewsTabs({
           <DialogHeader>
             <DialogTitle>{t('views.renameView')}</DialogTitle>
           </DialogHeader>
-          <input
+          <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleConfirmRename()}
             placeholder={t('views.viewName')}
-            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             autoFocus
           />
           <DialogFooter>
@@ -326,12 +340,11 @@ export function SavedViewsTabs({
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>{t('views.viewName')}</Label>
-              <input
+              <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && filterConditions.length === 0 && handleCreateView()}
                 placeholder={t('views.viewNamePlaceholder')}
-                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 autoFocus
               />
             </div>
@@ -341,14 +354,18 @@ export function SavedViewsTabs({
                 <div className="flex items-center justify-between">
                   <Label>{t('views.filters')}</Label>
                   {filterConditions.length > 1 && (
-                    <select
-                      className="h-7 rounded border bg-transparent px-2 text-xs"
+                    <Select
                       value={filterLogic}
-                      onChange={(e) => setFilterLogic(e.target.value as "and" | "or")}
+                      onValueChange={(val) => setFilterLogic(val as "and" | "or")}
                     >
-                      <option value="and">{t('views.matchAll')}</option>
-                      <option value="or">{t('views.matchAny')}</option>
-                    </select>
+                      <SelectTrigger className="h-7 w-auto px-2 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="and">{t('views.matchAll')}</SelectItem>
+                        <SelectItem value="or">{t('views.matchAny')}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
 

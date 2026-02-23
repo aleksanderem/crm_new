@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -125,9 +126,6 @@ export function ComposeDialog({
     }
   };
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
@@ -152,8 +150,7 @@ export function ComposeDialog({
                 </button>
               )}
             </div>
-            <input
-              className={inputClasses}
+            <Input
               placeholder="recipient@example.com"
               value={to}
               onChange={(e) => setTo(e.target.value)}
@@ -164,8 +161,7 @@ export function ComposeDialog({
           {showCc && (
             <div className="space-y-1.5">
               <Label>{t("inbox.cc")}</Label>
-              <input
-                className={inputClasses}
+              <Input
                 placeholder="cc@example.com"
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
@@ -176,8 +172,7 @@ export function ComposeDialog({
           {/* Subject */}
           <div className="space-y-1.5">
             <Label>{t("inbox.subject")}</Label>
-            <input
-              className={inputClasses}
+            <Input
               placeholder={t("inbox.subject")}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}

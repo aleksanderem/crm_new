@@ -9,9 +9,10 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -80,9 +81,6 @@ function EmailSettings() {
     setIsDefault(false);
   };
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader
@@ -104,8 +102,7 @@ function EmailSettings() {
           <CardContent className="py-4 space-y-4">
             <div className="space-y-1.5">
               <Label>{t("common.name")}</Label>
-              <input
-                className={inputClasses}
+              <Input
                 value={fromName}
                 onChange={(e) => setFromName(e.target.value)}
                 placeholder="John Doe"
@@ -114,8 +111,7 @@ function EmailSettings() {
             </div>
             <div className="space-y-1.5">
               <Label>{t("common.email")}</Label>
-              <input
-                className={inputClasses}
+              <Input
                 type="email"
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}

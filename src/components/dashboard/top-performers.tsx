@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslation } from "react-i18next";
-import { Trophy } from "lucide-react";
+import { Trophy } from "@/lib/ez-icons";
 import type { TimeRange } from "@/components/crm/types";
 
 interface Performer {
@@ -13,16 +13,8 @@ interface Performer {
 interface TopPerformersProps {
   performers: Performer[];
   timeRange: TimeRange;
-  onTimeRangeChange: (range: TimeRange) => void;
+  onTimeRangeChange?: (range: TimeRange) => void;
 }
-
-const TIME_RANGE_OPTIONS: TimeRange[] = [
-  "last7days",
-  "last30days",
-  "thisMonth",
-  "last3months",
-  "all",
-];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pl-PL", {
@@ -36,7 +28,6 @@ function formatCurrency(value: number) {
 export function TopPerformers({
   performers,
   timeRange,
-  onTimeRangeChange,
 }: TopPerformersProps) {
   const { t } = useTranslation();
 
@@ -49,17 +40,9 @@ export function TopPerformers({
             {t("dashboard.topPerformers")}
           </CardTitle>
         </div>
-        <select
-          value={timeRange}
-          onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
-          className="h-7 rounded-md border bg-transparent px-2 text-xs text-muted-foreground"
-        >
-          {TIME_RANGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {t(`timeRange.${opt}`)}
-            </option>
-          ))}
-        </select>
+        <span className="text-xs text-muted-foreground">
+          {t(`timeRange.${timeRange}`)}
+        </span>
       </CardHeader>
       <CardContent>
         {performers.length === 0 ? (

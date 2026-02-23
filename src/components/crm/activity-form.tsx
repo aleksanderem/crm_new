@@ -1,10 +1,18 @@
 import { useState, useRef, useEffect, useMemo, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -19,8 +27,8 @@ import {
   X,
   ChevronDown,
   Search,
-  type LucideIcon,
-} from "lucide-react";
+  type EzIconType as LucideIcon,
+} from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
@@ -223,8 +231,7 @@ export function ActivityForm({
           <Label>
             <span className="text-destructive">*</span> {t('activityForm.title')}
           </Label>
-          <input
-            className={cn(inputClasses, "focus:ring-primary")}
+          <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('activityForm.titlePlaceholder')}
@@ -270,16 +277,16 @@ export function ActivityForm({
 
         {/* Date/time range */}
         <div className="flex items-center gap-2 flex-wrap">
-          <input
+          <Input
             type="date"
-            className={cn(inputClasses, "w-auto")}
+            className="w-auto"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
           <div className="relative flex items-center">
-            <input
+            <Input
               type="time"
-              className={cn(inputClasses, "w-auto pr-8")}
+              className="w-auto pr-8"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
             />
@@ -294,16 +301,16 @@ export function ActivityForm({
             )}
           </div>
           <span className="text-muted-foreground">-</span>
-          <input
+          <Input
             type="time"
-            className={cn(inputClasses, "w-auto")}
+            className="w-auto"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
             placeholder="HH:mm"
           />
-          <input
+          <Input
             type="date"
-            className={cn(inputClasses, "w-auto")}
+            className="w-auto"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
@@ -321,23 +328,24 @@ export function ActivityForm({
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-              <input
+              <Input
                 type="number"
-                className={cn(inputClasses, "w-24 pl-7")}
+                className="w-24 pl-7"
                 value={reminderValue}
                 onChange={(e) => setReminderValue(e.target.value)}
                 min={0}
               />
             </div>
-            <select
-              className={cn(inputClasses, "w-auto")}
-              value={reminderUnit}
-              onChange={(e) => setReminderUnit(e.target.value)}
-            >
-              <option value="minuty">{t('activityForm.minutes')}</option>
-              <option value="godziny">{t('activityForm.hours')}</option>
-              <option value="dni">{t('activityForm.days')}</option>
-            </select>
+            <Select value={reminderUnit} onValueChange={setReminderUnit}>
+              <SelectTrigger className="w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minuty">{t('activityForm.minutes')}</SelectItem>
+                <SelectItem value="godziny">{t('activityForm.hours')}</SelectItem>
+                <SelectItem value="dni">{t('activityForm.days')}</SelectItem>
+              </SelectContent>
+            </Select>
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               {t('activityForm.beforeDue')}
             </span>

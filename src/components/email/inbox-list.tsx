@@ -6,8 +6,9 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Star } from "lucide-react";
+import { Search, Star } from "@/lib/ez-icons";
 
 export type FilterTab = "all" | "unread" | "sent" | "starred";
 
@@ -106,9 +107,9 @@ export function InboxList({
       <div className="shrink-0 border-b p-3">
         <div className="flex items-center rounded-md border bg-transparent">
           <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
+          <Input
             type="text"
-            className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+            className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
             placeholder={t("inbox.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

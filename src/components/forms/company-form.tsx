@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import type { CustomFieldType } from "@cvx/schema";
 
@@ -85,9 +93,6 @@ export function CompanyForm({
     initialCustomFieldValues
   );
 
-  const inputClasses =
-    "h-9 w-full rounded-md border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const hasAddress = street || city || state || zip || country;
@@ -121,8 +126,7 @@ export function CompanyForm({
           <Label>
             {t('companies.form.name')} <span className="text-destructive">*</span>
           </Label>
-          <input
-            className={inputClasses}
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -130,8 +134,7 @@ export function CompanyForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t('companies.form.domain')}</Label>
-          <input
-            className={inputClasses}
+          <Input
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             placeholder={t('companies.form.domainPlaceholder')}
@@ -139,42 +142,39 @@ export function CompanyForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t('companies.form.industry')}</Label>
-          <input
-            className={inputClasses}
+          <Input
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
           <Label>{t('companies.form.size')}</Label>
-          <select
-            className={inputClasses}
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-          >
-            <option value="">{t('companies.form.sizePlaceholder')}</option>
-            <option value="1-10">1-10</option>
-            <option value="11-50">11-50</option>
-            <option value="51-200">51-200</option>
-            <option value="201-500">201-500</option>
-            <option value="501-1000">501-1000</option>
-            <option value="1000+">1000+</option>
-          </select>
+          <Select value={size} onValueChange={setSize}>
+            <SelectTrigger>
+              <SelectValue placeholder={t('companies.form.sizePlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1-10">1-10</SelectItem>
+              <SelectItem value="11-50">11-50</SelectItem>
+              <SelectItem value="51-200">51-200</SelectItem>
+              <SelectItem value="201-500">201-500</SelectItem>
+              <SelectItem value="501-1000">501-1000</SelectItem>
+              <SelectItem value="1000+">1000+</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>{t('companies.form.website')}</Label>
-          <input
+          <Input
             type="url"
-            className={inputClasses}
             value={website}
             onChange={(e) => setWebsite(e.target.value)}
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('companies.form.phone')}</Label>
-          <input
+          <Input
             type="tel"
-            className={inputClasses}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
@@ -186,40 +186,35 @@ export function CompanyForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{t('companies.form.street')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={street}
               onChange={(e) => setStreet(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label>{t('companies.form.city')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={city}
               onChange={(e) => setCity(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label>{t('companies.form.state')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={state}
               onChange={(e) => setState(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label>{t('companies.form.zip')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={zip}
               onChange={(e) => setZip(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label>{t('companies.form.country')}</Label>
-            <input
-              className={inputClasses}
+            <Input
               value={country}
               onChange={(e) => setCountry(e.target.value)}
             />

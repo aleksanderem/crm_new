@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
-import { Users, AlertCircle, CheckCircle2, XCircle, LogIn } from "lucide-react";
+import { Users, AlertCircle, CheckCircle2, XCircle, LogIn } from "@/lib/ez-icons";
 
 export const Route = createFileRoute("/_app/invite/$token")({
   component: InviteAcceptPage,

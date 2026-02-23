@@ -88,6 +88,49 @@ export const remove = mutation({
   },
 });
 
+export const seed = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("lostReasons")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    if (existing.length > 0) return [];
+
+    const defaults = [
+      "Budget constraints",
+      "Chose competitor",
+      "No response",
+      "Timing not right",
+      "Requirements changed",
+      "Price too high",
+      "Other",
+    ];
+    const ids = [];
+
+    for (let i = 0; i < defaults.length; i++) {
+      const id = await ctx.db.insert("lostReasons", {
+        organizationId: args.organizationId,
+        label: defaults[i],
+        order: i,
+        isActive: true,
+        createdBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      ids.push(id);
+    }
+
+    return ids;
+  },
+});
+
 export const reorder = mutation({
   args: {
     organizationId: v.id("organizations"),

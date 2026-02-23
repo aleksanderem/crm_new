@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/lib/ez-icons";
 import {
   CommandDialog,
   CommandEmpty,

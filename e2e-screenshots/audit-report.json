@@ -1,0 +1,293 @@
+{
+  "timestamp": "2026-02-12T00:10:26.992Z",
+  "totalPages": 31,
+  "summary": {
+    "ok": 31,
+    "error": 0,
+    "empty": 0,
+    "redirect": 0
+  },
+  "pagesWithConsoleErrors": 0,
+  "avgLoadTimeMs": 2686,
+  "results": [
+    {
+      "route": "/dashboard",
+      "name": "CRM_Dashboard",
+      "status": "ok",
+      "screenshot": "CRM_Dashboard.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2958
+    },
+    {
+      "route": "/dashboard/leads",
+      "name": "CRM_Leads_List",
+      "status": "ok",
+      "screenshot": "CRM_Leads_List.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2946
+    },
+    {
+      "route": "/dashboard/contacts",
+      "name": "CRM_Contacts_List",
+      "status": "ok",
+      "screenshot": "CRM_Contacts_List.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2942
+    },
+    {
+      "route": "/dashboard/companies",
+      "name": "CRM_Companies_List",
+      "status": "ok",
+      "screenshot": "CRM_Companies_List.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2959
+    },
+    {
+      "route": "/dashboard/documents",
+      "name": "CRM_Documents_List",
+      "status": "ok",
+      "screenshot": "CRM_Documents_List.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2931
+    },
+    {
+      "route": "/dashboard/activities",
+      "name": "CRM_Activities",
+      "status": "ok",
+      "screenshot": "CRM_Activities.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2114
+    },
+    {
+      "route": "/dashboard/calls",
+      "name": "CRM_Calls",
+      "status": "ok",
+      "screenshot": "CRM_Calls.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2959
+    },
+    {
+      "route": "/dashboard/inbox",
+      "name": "CRM_Inbox",
+      "status": "ok",
+      "screenshot": "CRM_Inbox.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2966
+    },
+    {
+      "route": "/dashboard/pipelines",
+      "name": "CRM_Pipelines_Kanban",
+      "status": "ok",
+      "screenshot": "CRM_Pipelines_Kanban.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2120
+    },
+    {
+      "route": "/dashboard/products",
+      "name": "CRM_Products",
+      "status": "ok",
+      "screenshot": "CRM_Products.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2942
+    },
+    {
+      "route": "/dashboard/gabinet",
+      "name": "Gabinet_Dashboard",
+      "status": "ok",
+      "screenshot": "Gabinet_Dashboard.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2109
+    },
+    {
+      "route": "/dashboard/gabinet/patients",
+      "name": "Gabinet_Patients",
+      "status": "ok",
+      "screenshot": "Gabinet_Patients.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2113
+    },
+    {
+      "route": "/dashboard/gabinet/treatments",
+      "name": "Gabinet_Treatments",
+      "status": "ok",
+      "screenshot": "Gabinet_Treatments.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2958
+    },
+    {
+      "route": "/dashboard/gabinet/calendar",
+      "name": "Gabinet_Calendar",
+      "status": "ok",
+      "screenshot": "Gabinet_Calendar.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2977
+    },
+    {
+      "route": "/dashboard/gabinet/packages",
+      "name": "Gabinet_Packages",
+      "status": "ok",
+      "screenshot": "Gabinet_Packages.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2938
+    },
+    {
+      "route": "/dashboard/gabinet/documents",
+      "name": "Gabinet_Documents",
+      "status": "ok",
+      "screenshot": "Gabinet_Documents.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2956
+    },
+    {
+      "route": "/dashboard/gabinet/employees",
+      "name": "Gabinet_Employees",
+      "status": "ok",
+      "screenshot": "Gabinet_Employees.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2991
+    },
+    {
+      "route": "/dashboard/settings",
+      "name": "Settings_General",
+      "status": "ok",
+      "screenshot": "Settings_General.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2123
+    },
+    {
+      "route": "/dashboard/settings/team",
+      "name": "Settings_Team",
+      "status": "ok",
+      "screenshot": "Settings_Team.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2934
+    },
+    {
+      "route": "/dashboard/settings/custom-fields",
+      "name": "Settings_CustomFields",
+      "status": "ok",
+      "screenshot": "Settings_CustomFields.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2945
+    },
+    {
+      "route": "/dashboard/settings/activity-types",
+      "name": "Settings_ActivityTypes",
+      "status": "ok",
+      "screenshot": "Settings_ActivityTypes.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2952
+    },
+    {
+      "route": "/dashboard/settings/lost-reasons",
+      "name": "Settings_LostReasons",
+      "status": "ok",
+      "screenshot": "Settings_LostReasons.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2130
+    },
+    {
+      "route": "/dashboard/settings/sources",
+      "name": "Settings_Sources",
+      "status": "ok",
+      "screenshot": "Settings_Sources.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2934
+    },
+    {
+      "route": "/dashboard/settings/email",
+      "name": "Settings_Email",
+      "status": "ok",
+      "screenshot": "Settings_Email.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2146
+    },
+    {
+      "route": "/dashboard/settings/organization",
+      "name": "Settings_Organization",
+      "status": "ok",
+      "screenshot": "Settings_Organization.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2126
+    },
+    {
+      "route": "/dashboard/gabinet/settings/scheduling",
+      "name": "Gabinet_Settings_Scheduling",
+      "status": "ok",
+      "screenshot": "Gabinet_Settings_Scheduling.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2971
+    },
+    {
+      "route": "/dashboard/gabinet/settings/leave-types",
+      "name": "Gabinet_Settings_LeaveTypes",
+      "status": "ok",
+      "screenshot": "Gabinet_Settings_LeaveTypes.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2977
+    },
+    {
+      "route": "/dashboard/gabinet/settings/leave-balances",
+      "name": "Gabinet_Settings_LeaveBalances",
+      "status": "ok",
+      "screenshot": "Gabinet_Settings_LeaveBalances.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2943
+    },
+    {
+      "route": "/dashboard/gabinet/settings/leaves",
+      "name": "Gabinet_Settings_Leaves",
+      "status": "ok",
+      "screenshot": "Gabinet_Settings_Leaves.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2968
+    },
+    {
+      "route": "/dashboard/gabinet/settings/document-templates",
+      "name": "Gabinet_Settings_DocTemplates",
+      "status": "ok",
+      "screenshot": "Gabinet_Settings_DocTemplates.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2134
+    },
+    {
+      "route": "/patient/login",
+      "name": "Patient_Login",
+      "status": "ok",
+      "screenshot": "Patient_Login.png",
+      "consoleErrors": [],
+      "notes": "",
+      "loadTimeMs": 2114
+    }
+  ]
+}

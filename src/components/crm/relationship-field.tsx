@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X } from "@/lib/ez-icons";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";

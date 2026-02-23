@@ -492,7 +492,13 @@ If I catch myself deviating:
 
 # Project Overview
 
-This is a multi-tenant SaaS CRM with an integrated medical office management module ("Gabinet"). The app targets Polish-market small businesses: sales teams use the CRM, clinics/salons use Gabinet, and both share the same organization, auth, and billing infrastructure.
+This is a horizontal modular SaaS platform targeting Polish-market small businesses. The core is a shared platform layer (organizations, auth, billing, RBAC, notifications, audit log) on top of which independent vertical modules are plugged in. Each module addresses a different business domain but shares the same org context, user accounts, and UI shell.
+
+Current modules:
+- CRM — sales pipeline, contacts, companies, leads/deals, email, documents, products
+- Gabinet — medical office / clinic / salon management (patients, appointments, treatments, employee scheduling, packages, loyalty, patient portal)
+
+The architecture is designed so that new vertical modules can be added without touching the platform core. Modules are activated per-organization via product subscriptions (`productSubscriptions` table). Each module has its own Convex backend files (`convex/gabinet/`), its own route namespace (`_layout.gabinet.*`), and its own component directory (`src/components/gabinet/`). The workspace switcher in the sidebar lets users navigate between modules.
 
 ## Tech Stack
 

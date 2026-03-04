@@ -11,6 +11,8 @@ import {
   HeartPulse,
   CalendarClockIcon,
   Stethoscope,
+  Package,
+  UserCog,
 } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,9 +36,19 @@ export type QuickCreateEntityType =
   | "document"
   | "patient"
   | "appointment"
-  | "treatment";
+  | "treatment"
+  | "package"
+  | "employee";
 
-export type FormEntityType = "contact" | "company" | "lead" | "patient" | "appointment" | "treatment";
+export type FormEntityType =
+  | "contact"
+  | "company"
+  | "lead"
+  | "patient"
+  | "appointment"
+  | "treatment"
+  | "package"
+  | "employee";
 
 type EntityGroup = "crm" | "gabinet";
 
@@ -127,6 +139,24 @@ const entityItems: {
     descriptionKey: "quickCreate.itemDesc.treatment",
     icon: Stethoscope,
     avatarColor: "bg-indigo-600/10 text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-400",
+    hasForm: true,
+    group: "gabinet",
+  },
+  {
+    type: "package",
+    i18nKey: "quickCreate.items.package",
+    descriptionKey: "quickCreate.itemDesc.package",
+    icon: Package,
+    avatarColor: "bg-cyan-600/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-400",
+    hasForm: true,
+    group: "gabinet",
+  },
+  {
+    type: "employee",
+    i18nKey: "quickCreate.items.employee",
+    descriptionKey: "quickCreate.itemDesc.employee",
+    icon: UserCog,
+    avatarColor: "bg-orange-600/10 text-orange-600 dark:bg-orange-400/10 dark:text-orange-400",
     hasForm: true,
     group: "gabinet",
   },

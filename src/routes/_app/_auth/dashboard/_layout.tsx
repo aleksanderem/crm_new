@@ -51,6 +51,8 @@ import { LeadForm } from "@/components/forms/lead-form";
 import { PatientForm } from "@/components/forms/patient-form";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import { AppointmentForm } from "@/components/gabinet/appointment-form";
+import { PackageForm } from "@/components/forms/package-form";
+import { EmployeeForm } from "@/components/forms/employee-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
@@ -86,6 +88,8 @@ function DashboardLayout() {
   const createPatient = useMutation(api.gabinet.patients.create);
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const createAppointment = useMutation(api.gabinet.appointments.create);
+  const createPackage = useMutation(api.gabinet.packages.create);
+  const createEmployee = useMutation(api.gabinet.employees.create);
 
   const firstOrg = orgs?.[0];
 
@@ -243,11 +247,44 @@ function DashboardLayout() {
               isSubmitting={isCreating}
             />
           );
+        case "package":
+          return (
+            <PackageForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createPackage({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "employee":
+          return (
+            <EmployeeForm
+              onSubmit={async (data) => {
+                if (!data.userId) return;
+                setIsCreating(true);
+                try {
+                  await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
         default:
           return null;
       }
     },
-    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });

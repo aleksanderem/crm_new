@@ -21,3 +21,36 @@ export const getActiveProducts = query({
       .map((s) => s.productId);
   },
 });
+
+export const getSubscription = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+
+    // Check for user's subscription (plans are per-user, not per-org)
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first();
+
+    if (!subscription) {
+      // No active subscription - return default free tier
+      return {
+        seatLimit: 5,
+        status: "free" as const,
+        productId: null,
+      };
+    }
+
+    // Get plan details for seat limit
+    const plan = await ctx.db.get(subscription.planId);
+    const seatLimit = plan?.seatLimit ?? 10;
+
+    return {
+      seatLimit,
+      status: subscription.status as "active" | "trialing",
+      productId: null,
+    };
+  },
+});

@@ -268,6 +268,7 @@ const schema = defineSchema({
     stripeId: v.string(),
     name: v.string(),
     description: v.string(),
+    seatLimit: v.number(), // Maximum number of team members
     prices: v.object({
       [INTERVALS.MONTH]: pricesValidator,
       [INTERVALS.YEAR]: pricesValidator,

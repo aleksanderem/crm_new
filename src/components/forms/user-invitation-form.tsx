@@ -50,6 +50,10 @@ export function UserInvitationForm({
     convexQuery(api.invitations.listPending, { organizationId })
   );
 
+  const { data: subscription } = useQuery(
+    convexQuery(api.productSubscriptions.getSubscription, { organizationId })
+  );
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("member");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -58,11 +62,10 @@ export function UserInvitationForm({
   const pendingCount = pendingInvitations?.length ?? 0;
   const totalUsers = memberCount + pendingCount;
 
-  // TODO: Get actual seat limit from subscription
-  // For now, show a warning if approaching typical limits
-  const SEAT_LIMIT = 10; // Placeholder - should come from subscription
-  const isNearLimit = totalUsers >= SEAT_LIMIT - 2;
-  const isAtLimit = totalUsers >= SEAT_LIMIT;
+  // Get seat limit from subscription or default to 10
+  const seatLimit = subscription?.seatLimit ?? 10;
+  const isNearLimit = totalUsers >= seatLimit - 2;
+  const isAtLimit = totalUsers >= seatLimit;
 
   const validateEmail = (value: string): boolean => {
     if (!value.trim()) {
@@ -99,7 +102,7 @@ export function UserInvitationForm({
             {t("settings.team.currentUsage")}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t("settings.team.usageCount", { current: totalUsers, limit: SEAT_LIMIT })}
+            {t("settings.team.usageCount", { current: totalUsers, limit: seatLimit })}
             {pendingCount > 0 && (
               <span className="ml-1">
                 ({pendingCount} {t("settings.team.pendingInvites")})

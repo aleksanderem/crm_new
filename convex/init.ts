@@ -17,6 +17,7 @@ const seedProducts = [
     key: PLANS.FREE,
     name: "Free",
     description: "Start with the basics, upgrade anytime.",
+    seatLimit: 5,
     prices: {
       [INTERVALS.MONTH]: {
         [CURRENCIES.USD]: 0,
@@ -32,6 +33,7 @@ const seedProducts = [
     key: PLANS.PRO,
     name: "Pro",
     description: "Access to all features and unlimited projects.",
+    seatLimit: 25,
     prices: {
       [INTERVALS.MONTH]: {
         [CURRENCIES.USD]: 1990,
@@ -53,6 +55,7 @@ export const insertSeedPlan = internalMutation({
       key: args.key,
       name: args.name,
       description: args.description,
+      seatLimit: args.seatLimit,
       prices: args.prices,
     });
   },
@@ -119,6 +122,7 @@ export default internalAction(async (ctx) => {
       key: product.key as PlanKey,
       name: product.name,
       description: product.description,
+      seatLimit: product.seatLimit,
       prices: {
         [INTERVALS.MONTH]: {
           [CURRENCIES.USD]: getPrice(CURRENCIES.USD, INTERVALS.MONTH),

@@ -129,7 +129,7 @@ export function CustomFieldDefinitionForm({
                     setOptions(options.filter((_, idx) => idx !== i))
                   }
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
                 </Button>
               </div>
             ))}

@@ -295,7 +295,7 @@ export function ActivityForm({
                 className="absolute right-2 text-muted-foreground hover:text-foreground"
                 onClick={() => setStartTime("")}
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
               </button>
             )}
           </div>
@@ -325,7 +325,7 @@ export function ActivityForm({
                 className="absolute left-2 text-muted-foreground hover:text-foreground"
                 onClick={() => setReminderValue("")}
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
               </button>
               <Input
                 type="number"
@@ -396,7 +396,7 @@ export function ActivityForm({
                         className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
                         onClick={() => removeGuest(guest)}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
                       </button>
                     </Badge>
                   ))}

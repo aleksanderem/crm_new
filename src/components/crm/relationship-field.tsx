@@ -89,7 +89,7 @@ export function RelationshipField({
                 className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
                 onClick={() => onRemove(item.id)}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
               </button>
             </Badge>
           ))}

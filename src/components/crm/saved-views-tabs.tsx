@@ -134,7 +134,7 @@ function FilterRow({
         className="h-7 w-7 shrink-0"
         onClick={onRemove}
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
       </Button>
     </div>
   );

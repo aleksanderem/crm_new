@@ -15,8 +15,8 @@ function createIcon(lucideName: string): EzIconType {
   if (!ezName) {
     console.warn(`[ez-icons] No mapping for "${lucideName}"`);
   }
-  const Icon: EzIconType = ({ className, size }: { className?: string; size?: number }) =>
-    createElement(EzIcon, { name: ezName ?? lucideName, size, className });
+  const Icon: EzIconType = ({ className, size, variant }: { className?: string; size?: number; variant?: "stroke" | "solid" | "bulk" | "duotone" | "twotone" }) =>
+    createElement(EzIcon, { name: ezName ?? lucideName, size, variant, className });
   Icon.displayName = lucideName;
   return Icon;
 }

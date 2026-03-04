@@ -79,7 +79,7 @@ export function BulkActionsBar({
           </DropdownMenuContent>
         </DropdownMenu>
         <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={onClearSelection}>
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
           <span className="sr-only">{t('table.clearSelection')}</span>
         </Button>
       </div>

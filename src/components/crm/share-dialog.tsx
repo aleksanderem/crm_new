@@ -213,7 +213,7 @@ export function ShareDialog({
                           className="h-7 w-7 shrink-0"
                           onClick={() => handleRevoke(invite._id)}
                         >
-                          <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                          <X className="h-[18px] w-[18px]" variant="stroke" />
                         </Button>
                       )}
                     </div>

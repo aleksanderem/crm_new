@@ -148,7 +148,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
               <div className='flex items-center gap-2.5'>
                 <Avatar className='size-6.5'>
                   <AvatarFallback className='bg-primary/10 text-primary shrink-0'>
-                    <ArrowUpIcon className='size-4' />
+                    <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                   </AvatarFallback>
                 </Avatar>
                 <span className='text-xl font-semibold'>14.78%</span>
@@ -190,7 +190,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
               <div className='flex items-center gap-2.5'>
                 <Avatar className='size-6'>
                   <AvatarFallback className='bg-primary/10 text-primary shrink-0'>
-                    <ArrowUpIcon className='size-4' />
+                    <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                   </AvatarFallback>
                 </Avatar>
                 <span className='text-lg font-medium'>7,589</span>
@@ -201,7 +201,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
               <div className='flex items-center gap-2.5'>
                 <Avatar className='size-6'>
                   <AvatarFallback className='bg-primary/10 text-primary shrink-0'>
-                    <ArrowDownIcon className='size-4' />
+                    <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />
                   </AvatarFallback>
                 </Avatar>
                 <span className='text-lg font-medium'>8,365</span>
@@ -216,7 +216,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
                 <span className='text-xl font-semibold'>$78,263</span>
               </div>
               <Badge className='bg-primary/10 [a&]:hover:bg-primary/5 focus-visible:ring-primary/20 dark:focus-visible:ring-primary/40 text-primary rounded-sm border-none focus-visible:outline-none'>
-                <ArrowUpIcon className='size-4' />
+                <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                 5.6%
               </Badge>
             </div>
@@ -262,7 +262,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
               <div className='flex items-center gap-2.5'>
                 <Avatar className='size-6'>
                   <AvatarFallback className='bg-primary/10 text-primary shrink-0'>
-                    <ArrowUpIcon className='size-4' />
+                    <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                   </AvatarFallback>
                 </Avatar>
                 <span className='text-lg font-medium'>8,365</span>
@@ -273,7 +273,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
               <div className='flex items-center gap-2.5'>
                 <Avatar className='size-6'>
                   <AvatarFallback className='bg-primary/10 text-primary shrink-0'>
-                    <ArrowDownIcon className='size-4' />
+                    <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />
                   </AvatarFallback>
                 </Avatar>
                 <span className='text-lg font-medium'>7,589</span>
@@ -288,7 +288,7 @@ const PerformanceCard = ({ className }: { className?: string }) => {
                 <span className='text-xl font-semibold'>$8,263</span>
               </div>
               <Badge className='bg-primary/10 [a&]:hover:bg-primary/5 focus-visible:ring-primary/20 dark:focus-visible:ring-primary/40 text-primary rounded-sm border-none focus-visible:outline-none'>
-                <ArrowDownIcon className='size-4' />
+                <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />
                 3.4%
               </Badge>
             </div>

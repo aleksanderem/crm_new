@@ -106,7 +106,7 @@ export function InboxList({
       {/* Search */}
       <div className="shrink-0 border-b p-3">
         <div className="flex items-center rounded-md border bg-transparent">
-          <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
           <Input
             type="text"
             className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"

@@ -1052,7 +1052,7 @@ function LeadDetail() {
                   {showSidebarContactLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
@@ -1172,7 +1172,7 @@ function LeadDetail() {
                   {showSidebarCompanyLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"

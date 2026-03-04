@@ -543,7 +543,7 @@ function EmployeeDetail() {
 
                   <div className="relative">
                     <div className="flex items-center w-full rounded-md border bg-transparent">
-                      <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                       <input
                         type="text"
                         className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"

@@ -162,7 +162,7 @@ export function ContactForm({
                         className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
                         onClick={() => handleRemoveTag(tag)}
                       >
-                        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                        <X className="h-[18px] w-[18px]" variant="stroke" />
                       </button>
                     </Badge>
                   ))}

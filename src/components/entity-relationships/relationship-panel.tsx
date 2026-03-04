@@ -87,7 +87,7 @@ export function RelationshipPanel({
                         className="h-6 w-6"
                         onClick={() => onRemove(rel._id)}
                       >
-                        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                        <X className="h-[18px] w-[18px]" variant="stroke" />
                       </Button>
                     )}
                   </div>

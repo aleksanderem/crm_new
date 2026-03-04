@@ -128,7 +128,7 @@ function ActivityTypesSettings() {
         description={t('activityTypeSettings.description')}
         actions={
           <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t('activityTypeSettings.addType')}
           </Button>
         }
@@ -265,7 +265,7 @@ function ActivityTypesSettings() {
                     size="sm"
                     onClick={() => setShowFieldForm(true)}
                   >
-                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
                     {t('activityTypeSettings.addField')}
                   </Button>
                 </div>

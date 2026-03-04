@@ -644,7 +644,7 @@ function ContactDetail() {
                 navigate({ to: "/dashboard/leads", search: {} })
               }
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
               {t('detail.actions.addLead')}
             </Button>
 
@@ -774,7 +774,7 @@ function ContactDetail() {
                   {showSidebarDealLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
@@ -890,7 +890,7 @@ function ContactDetail() {
                   {showSidebarCompanyLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
@@ -1082,7 +1082,7 @@ function ContactDetail() {
                           className="bg-primary"
                           onClick={() => setShowActivityForm(true)}
                         >
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                           {t('detail.activitySection.add')}
                         </Button>
                       </div>
@@ -1173,7 +1173,7 @@ function ContactDetail() {
                       </p>
                     </div>
                     <Button className="bg-primary">
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                       {t('detail.documentsTab.create')}
                     </Button>
                   </div>
@@ -1190,7 +1190,7 @@ function ContactDetail() {
                     </div>
                     <div className="flex gap-2">
                       <Button className="bg-primary">
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.callsTab.logCall')}
                       </Button>
                       <Button variant="outline">
@@ -1215,7 +1215,7 @@ function ContactDetail() {
                         className="bg-primary"
                         onClick={() => setIsAddingNote(true)}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.notes.add')}
                       </Button>
                     </div>

@@ -111,7 +111,7 @@ const SalesReportCard = ({ className }: { className?: string }) => {
             <span className='text-xl font-semibold'>$4,698</span>
             <div className='flex items-center gap-2'>
               <div className='flex items-center gap-0.5'>
-                <ArrowUpIcon className='size-4' />
+                <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                 <span className='text-sm'>25.6%</span>
               </div>
               <span className='text-muted-foreground text-sm'>77 USD</span>
@@ -125,7 +125,7 @@ const SalesReportCard = ({ className }: { className?: string }) => {
             <span className='text-xl font-semibold'>$14,698</span>
             <div className='flex items-center gap-2'>
               <div className='flex items-center gap-0.5'>
-                <ArrowUpIcon className='size-4' />
+                <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
                 <span className='text-sm'>5.6%</span>
               </div>
               <span className='text-muted-foreground text-sm'>77 USD</span>

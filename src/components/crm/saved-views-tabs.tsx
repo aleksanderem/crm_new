@@ -134,7 +134,7 @@ function FilterRow({
         className="h-7 w-7 shrink-0"
         onClick={onRemove}
       >
-        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+        <X className="h-[18px] w-[18px]" variant="stroke" />
       </Button>
     </div>
   );
@@ -302,7 +302,7 @@ export function SavedViewsTabs({
           disabled={!canAddMore}
           onClick={openCreateDialog}
         >
-          <Plus className="mr-1 h-3.5 w-3.5" />
+          <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
           {t('views.addView', { current: customViewCount, max: maxCustomViews })}
         </Button>
       </div>
@@ -387,7 +387,7 @@ export function SavedViewsTabs({
                   className="w-full text-xs"
                   onClick={addFilterRow}
                 >
-                  <Plus className="mr-1 h-3 w-3" />
+                  <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
                   {t('views.addFilter')}
                 </Button>
               </div>

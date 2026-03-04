@@ -199,7 +199,7 @@ export function EntityDetailLayout({
                     className="h-6 w-6"
                     onClick={section.onCreateNew}
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-[17px] w-[17px]" variant="stroke" />
                   </Button>
                 )}
               </div>

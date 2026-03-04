@@ -49,7 +49,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-1 items-center gap-2">
         {searchKey && (
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-5 w-5 text-muted-foreground" variant="stroke" />
             <Input
               placeholder={searchPlaceholder}
               value={

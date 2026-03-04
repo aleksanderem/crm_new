@@ -74,9 +74,9 @@ const StatisticsActivityCard = ({ className }: { className?: string }) => {
           <span className='text-5xl font-semibold'>{StatisticsCardData.amount}</span>
           <div className='text-primary flex items-center gap-1'>
             {StatisticsCardData.changePercentage > 0 ? (
-              <ArrowUpIcon className='size-4' />
+              <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
             ) : (
-              <ArrowDownIcon className='size-4' />
+              <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />
             )}
             <span className='text-xs'>{StatisticsCardData.changePercentage}%</span>
           </div>

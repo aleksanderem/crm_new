@@ -59,7 +59,7 @@ export function EmailEntityTab({
             </p>
           </div>
           <Button onClick={() => setComposeOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
             {t("inbox.compose")}
           </Button>
         </div>

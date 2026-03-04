@@ -164,7 +164,7 @@ const columns: ColumnDef<Item>[] = [
     accessorKey: 'orders',
     cell: ({ row }) => (
       <div className='flex items-center gap-2'>
-        {row.original.orderTrend === 'up' ? <ArrowUpIcon className='size-4' /> : <ArrowDownIcon className='size-4' />}
+        {row.original.orderTrend === 'up' ? <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" /> : <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />}
         <span>{row.getValue('orders')}</span>
       </div>
     ),

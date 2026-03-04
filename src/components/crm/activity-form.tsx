@@ -295,7 +295,7 @@ export function ActivityForm({
                 className="absolute right-2 text-muted-foreground hover:text-foreground"
                 onClick={() => setStartTime("")}
               >
-                <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                <X className="h-[18px] w-[18px]" variant="stroke" />
               </button>
             )}
           </div>
@@ -325,7 +325,7 @@ export function ActivityForm({
                 className="absolute left-2 text-muted-foreground hover:text-foreground"
                 onClick={() => setReminderValue("")}
               >
-                <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                <X className="h-[18px] w-[18px]" variant="stroke" />
               </button>
               <Input
                 type="number"
@@ -396,7 +396,7 @@ export function ActivityForm({
                         className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
                         onClick={() => removeGuest(guest)}
                       >
-                        <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                        <X className="h-[18px] w-[18px]" variant="stroke" />
                       </button>
                     </Badge>
                   ))}
@@ -405,7 +405,7 @@ export function ActivityForm({
               {/* Search input */}
               <div className="relative">
                 <div className="flex items-center w-full rounded-md border bg-transparent">
-                  <Search className="ml-3 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Search className="ml-3 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
                   <input
                     ref={guestInputRef}
                     type="text"

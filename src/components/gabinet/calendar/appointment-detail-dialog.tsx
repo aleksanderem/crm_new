@@ -462,7 +462,7 @@ export function AppointmentDetailDialog({
                           onClick={() => setCancelDialogOpen(true)}
                           className="gap-1.5 text-destructive hover:text-destructive"
                         >
-                          <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+                          <X className="h-[18px] w-[18px]" variant="stroke" />
                           {t("gabinet.appointmentDetail.cancelAppointment")}
                         </Button>
                       )}

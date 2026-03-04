@@ -352,7 +352,7 @@ export function AdvancedFilter({
               </div>
             )}
             <Button variant="outline" size="sm" className="h-8" onClick={handleAddCondition}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />
               Add condition
             </Button>
             {activeFilterCount > 0 && (

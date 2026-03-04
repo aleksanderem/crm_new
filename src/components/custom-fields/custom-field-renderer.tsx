@@ -281,7 +281,7 @@ function FileFieldRenderer({
               className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
               onClick={() => onChange(null)}
             >
-              <X className="h-3.5 w-3.5 stroke-[1.5]" variant="stroke" />
+              <X className="h-[18px] w-[18px]" variant="stroke" />
             </button>
           )}
         </div>

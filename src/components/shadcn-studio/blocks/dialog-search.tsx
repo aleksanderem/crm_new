@@ -193,10 +193,10 @@ const SearchDialog = ({ defaultOpen = false, trigger, className }: Props) => {
           </div>
           <div className='flex items-center gap-2'>
             <div className='flex size-5 items-center justify-center rounded border'>
-              <ArrowUpIcon className='size-4' />
+              <ArrowUpIcon className='h-[18px] w-[18px]'  variant="stroke" />
             </div>
             <div className='flex size-5 items-center justify-center rounded border'>
-              <ArrowDownIcon className='size-4' />
+              <ArrowDownIcon className='h-[18px] w-[18px]'  variant="stroke" />
             </div>
             <span>To Navigate</span>
           </div>

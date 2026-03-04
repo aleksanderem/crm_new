@@ -202,7 +202,7 @@ export function PackageForm({
             onClick={addTreatment}
             disabled={!treatments?.length}
           >
-            <Plus className="mr-1 h-3.5 w-3.5" />
+            <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
             {t("common.add")}
           </Button>
         </div>

@@ -122,7 +122,7 @@ function DocumentTemplatesPage() {
           description={t("gabinet.documentTemplates.description")}
         />
         <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
           {t("gabinet.documentTemplates.addTemplate")}
         </Button>
       </div>

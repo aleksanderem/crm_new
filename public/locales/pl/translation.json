@@ -299,7 +299,15 @@
     }
   },
   "activities": {
-    "title": "Aktywności",
+    "title": "Tytuł",
+    "titlePlaceholder": "np. Spotkanie z klientem",
+    "type": "Typ",
+    "duration": "Czas trwania",
+    "durationPlaceholder": "Wybierz czas",
+    "dueDate": "Data",
+    "dueTime": "Godzina",
+    "descriptionPlaceholder": "Szczegóły aktywności...",
+    "create": "Utwórz aktywność",
     "description": "Śledź spotkania, połączenia, e-maile i zadania.",
     "addActivity": "Dodaj aktywność",
     "newActivity": "Nowa aktywność",
@@ -308,7 +316,6 @@
     "updateDescription": "Aktualizuj szczegóły aktywności.",
     "searchPlaceholder": "Szukaj aktywności...",
     "activityType": "Typ aktywności",
-    "dueDate": "Termin",
     "completed": "Ukończona",
     "markComplete": "Oznacz jako ukończone",
     "markIncomplete": "Oznacz jako nieukończone",
@@ -782,6 +789,7 @@
     "document": "Utwórz dokument",
     "dialogTitle": "Utwórz nowy element",
     "groupGabinet": "Gabinet",
+    "groupSystem": "System",
     "items": {
       "contact": "Kontakt",
       "company": "Firma",
@@ -793,7 +801,9 @@
       "appointment": "Wizyta",
       "treatment": "Zabieg",
       "package": "Pakiet",
-      "employee": "Pracownik"
+      "employee": "Pracownik",
+      "leave": "Nieobecność",
+      "user": "Zaproś użytkownika"
     },
     "itemDesc": {
       "contact": "Dodaj osobę do bazy CRM",
@@ -806,7 +816,9 @@
       "appointment": "Zarezerwuj wizytę w kalendarzu",
       "treatment": "Dodaj nowy rodzaj zabiegu",
       "package": "Utwórz pakiet zabiegów",
-      "employee": "Dodaj pracownika do zespołu"
+      "employee": "Dodaj pracownika do zespołu",
+      "leave": "Zgłoś nieobecność lub urlop",
+      "user": "Zaproś nowego użytkownika do organizacji"
     },
     "formTitles": {
       "contact": "Nowy kontakt",
@@ -816,7 +828,10 @@
       "appointment": "Nowa wizyta",
       "treatment": "Nowy zabieg",
       "package": "Nowy pakiet",
-      "employee": "Nowy pracownik"
+      "employee": "Nowy pracownik",
+      "activity": "Nowa aktywność",
+      "leave": "Nowa nieobecność",
+      "user": "Zaproś użytkownika"
     }
   },
   "quickActions": {
@@ -1520,5 +1535,44 @@
     "signInFirst": "Zaloguj się, aby przyjąć zaproszenie.",
     "accepted": "Dołączyłeś do {{orgName}}!",
     "declined": "Zaproszenie odrzucone."
+  },
+  "schedule": {
+    "employee": "Pracownik",
+    "selectEmployee": "Wybierz pracownika...",
+    "noEmployees": "Brak aktywnych pracowników",
+    "type": "Typ nieobecności",
+    "leaveCategory": "Kategoria urlopu",
+    "selectLeaveType": "Wybierz typ urlopu...",
+    "startDate": "Data rozpoczęcia",
+    "endDate": "Data zakończenia",
+    "startTime": "Godzina rozpoczęcia",
+    "endTime": "Godzina zakończenia",
+    "partialDay": "Część dnia",
+    "reason": "Powód",
+    "reasonPlaceholder": "Opcjonalny powód nieobecności...",
+    "leaveApprovalInfo": "Wniosek zostanie wysłany do zatwierdzenia. Otrzymasz powiadomienie po rozpatrzeniu.",
+    "createLeave": "Zgłoś nieobecność",
+    "leaveTypes": {
+      "vacation": "Urlop wypoczynkowy",
+      "sick": "Zwolnienie lekarskie",
+      "personal": "Sprawy prywatne"
+    }
+  },
+  "settings": {
+    "team": {
+      "currentUsage": "Aktualne użycie",
+      "usageCount": "{{current}} z {{limit}} miejsc",
+      "pendingInvites": "oczekujących zaproszeń",
+      "nearLimitWarning": "Zbliżasz się do limitu miejsc. Rozważ rozbudowę planu.",
+      "limitReached": "Osiągnięto limit miejsc dla obecnego planu. Rozbuduj plan, aby zaprosić więcej użytkowników.",
+      "email": "Adres e-mail",
+      "emailRequired": "Adres e-mail jest wymagany",
+      "emailInvalid": "Nieprawidłowy format e-mail",
+      "emailPlaceholder": "kollega@firma.com",
+      "role": "Rola",
+      "roleHint": "Administratorzy mogą zarządzać ustawieniami i zespołem",
+      "sendInvite": "Wyślij zaproszenie",
+      "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
+    }
   }
 }

@@ -299,7 +299,15 @@
     }
   },
   "activities": {
-    "title": "Activities",
+    "title": "Title",
+    "titlePlaceholder": "e.g. Meeting with client",
+    "type": "Type",
+    "duration": "Duration",
+    "durationPlaceholder": "Select duration",
+    "dueDate": "Date",
+    "dueTime": "Time",
+    "descriptionPlaceholder": "Activity details...",
+    "create": "Create Activity",
     "description": "Track meetings, calls, emails, and tasks.",
     "addActivity": "Add Activity",
     "newActivity": "New Activity",
@@ -308,7 +316,6 @@
     "updateDescription": "Update activity details.",
     "searchPlaceholder": "Search activities...",
     "activityType": "Activity Type",
-    "dueDate": "Due Date",
     "completed": "Completed",
     "markComplete": "Mark Complete",
     "markIncomplete": "Mark Incomplete",
@@ -782,6 +789,7 @@
     "document": "Create Document",
     "dialogTitle": "Create new item",
     "groupGabinet": "Clinic",
+    "groupSystem": "System",
     "items": {
       "contact": "Contact",
       "company": "Company",
@@ -793,7 +801,9 @@
       "appointment": "Appointment",
       "treatment": "Treatment",
       "package": "Package",
-      "employee": "Employee"
+      "employee": "Employee",
+      "leave": "Leave",
+      "user": "Invite User"
     },
     "itemDesc": {
       "contact": "Add a person to your CRM",
@@ -806,7 +816,9 @@
       "appointment": "Book an appointment",
       "treatment": "Add a new treatment type",
       "package": "Create a treatment package",
-      "employee": "Add a team member"
+      "employee": "Add a team member",
+      "leave": "Submit a leave request",
+      "user": "Invite a new user to your organization"
     },
     "formTitles": {
       "contact": "New Contact",
@@ -816,7 +828,10 @@
       "appointment": "New Appointment",
       "treatment": "New Treatment",
       "package": "New Package",
-      "employee": "New Employee"
+      "employee": "New Employee",
+      "activity": "New Activity",
+      "leave": "New Leave Request",
+      "user": "Invite User"
     }
   },
   "quickActions": {
@@ -1518,5 +1533,44 @@
     "signInFirst": "Please sign in to accept this invitation.",
     "accepted": "You've joined {{orgName}}!",
     "declined": "Invitation declined."
+  },
+  "schedule": {
+    "employee": "Employee",
+    "selectEmployee": "Select employee...",
+    "noEmployees": "No active employees",
+    "type": "Leave Type",
+    "leaveCategory": "Leave Category",
+    "selectLeaveType": "Select leave type...",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "partialDay": "Partial day",
+    "reason": "Reason",
+    "reasonPlaceholder": "Optional reason for leave...",
+    "leaveApprovalInfo": "Request will be sent for approval. You'll be notified once reviewed.",
+    "createLeave": "Submit Leave Request",
+    "leaveTypes": {
+      "vacation": "Vacation",
+      "sick": "Sick Leave",
+      "personal": "Personal Leave"
+    }
+  },
+  "settings": {
+    "team": {
+      "currentUsage": "Current Usage",
+      "usageCount": "{{current}} of {{limit}} seats used",
+      "pendingInvites": "pending invites",
+      "nearLimitWarning": "You're approaching your seat limit. Consider upgrading your plan.",
+      "limitReached": "Seat limit reached for your current plan. Upgrade to invite more users.",
+      "email": "Email Address",
+      "emailRequired": "Email address is required",
+      "emailInvalid": "Invalid email format",
+      "emailPlaceholder": "colleague@company.com",
+      "role": "Role",
+      "roleHint": "Admins can manage settings and team",
+      "sendInvite": "Send Invitation",
+      "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
+    }
   }
 }

@@ -13,6 +13,8 @@ import {
   Stethoscope,
   Package,
   UserCog,
+  CalendarDaysIcon,
+  UserPlus,
 } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +40,9 @@ export type QuickCreateEntityType =
   | "appointment"
   | "treatment"
   | "package"
-  | "employee";
+  | "employee"
+  | "leave"
+  | "user";
 
 export type FormEntityType =
   | "contact"
@@ -48,9 +52,12 @@ export type FormEntityType =
   | "appointment"
   | "treatment"
   | "package"
-  | "employee";
+  | "employee"
+  | "activity"
+  | "leave"
+  | "user";
 
-type EntityGroup = "crm" | "gabinet";
+type EntityGroup = "crm" | "gabinet" | "system";
 
 const entityItems: {
   type: QuickCreateEntityType;
@@ -94,7 +101,7 @@ const entityItems: {
     descriptionKey: "quickCreate.itemDesc.activity",
     icon: CalendarCheck,
     avatarColor: "bg-purple-600/10 text-purple-600 dark:bg-purple-400/10 dark:text-purple-400",
-    hasForm: false,
+    hasForm: true,
     group: "crm",
   },
   {
@@ -159,6 +166,24 @@ const entityItems: {
     avatarColor: "bg-orange-600/10 text-orange-600 dark:bg-orange-400/10 dark:text-orange-400",
     hasForm: true,
     group: "gabinet",
+  },
+  {
+    type: "leave",
+    i18nKey: "quickCreate.items.leave",
+    descriptionKey: "quickCreate.itemDesc.leave",
+    icon: CalendarDaysIcon,
+    avatarColor: "bg-yellow-600/10 text-yellow-600 dark:bg-yellow-400/10 dark:text-yellow-400",
+    hasForm: true,
+    group: "gabinet",
+  },
+  {
+    type: "user",
+    i18nKey: "quickCreate.items.user",
+    descriptionKey: "quickCreate.itemDesc.user",
+    icon: UserPlus,
+    avatarColor: "bg-blue-600/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400",
+    hasForm: true,
+    group: "system",
   },
 ];
 
@@ -253,6 +278,9 @@ export function QuickCreateMenu({
                 </TabsTrigger>
                 <TabsTrigger value="gabinet" className="flex-1">
                   {t("quickCreate.groupGabinet")}
+                </TabsTrigger>
+                <TabsTrigger value="system" className="flex-1">
+                  {t("quickCreate.groupSystem")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>

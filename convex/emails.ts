@@ -19,7 +19,7 @@ export const listInbox = query({
     await verifyOrgAccess(ctx, args.organizationId);
 
     if (args.search) {
-      let searchQuery = ctx.db
+      const searchQuery = ctx.db
         .query("emails")
         .withSearchIndex("search_emails", (q) => {
           let sq = q
@@ -41,7 +41,7 @@ export const listInbox = query({
       return { page: filtered, isDone: true, continueCursor: "" };
     }
 
-    let q = ctx.db
+    const q = ctx.db
       .query("emails")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .order("desc");

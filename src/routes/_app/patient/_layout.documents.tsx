@@ -24,13 +24,12 @@ export const Route = createFileRoute("/_app/patient/_layout/documents")({
 
 function PatientDocuments() {
   const { t } = useTranslation();
-  const sessionId = typeof window !== "undefined" ? localStorage.getItem("patientPortalSessionId") ?? "" : "";
-  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
-  const signDoc = useMutation(api["gabinet/patientPortal"].signDocument);
+  const signDoc = useMutation(api.gabinet.patientPortal.signDocument);
 
   const { data: documents } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyDocuments, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyDocuments, { tokenHash })
   );
 
   const [viewDocId, setViewDocId] = useState<string | null>(null);
@@ -41,7 +40,7 @@ function PatientDocuments() {
   const handleSign = async (signatureData: string) => {
     if (!signDocId) return;
     try {
-      await signDoc({ sessionId, token, documentId: signDocId as any, signatureData });
+      await signDoc({ tokenHash, documentId: signDocId as any, signatureData });
       toast.success(t("patientPortal.documents.signed"));
       setSignDocId(null);
     } catch (e: any) {

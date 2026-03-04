@@ -7,7 +7,6 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ActivityForm } from "@/components/crm/activity-form";
-import type { ActivityType } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,16 +64,16 @@ function EmployeeDetail() {
   const { t } = useTranslation();
 
   // Mutations
-  const updateEmployee = useMutation(api["gabinet/employees"].update);
-  const removeEmployee = useMutation(api["gabinet/employees"].remove);
-  const setQualifiedTreatments = useMutation(api["gabinet/employees"].setQualifiedTreatments);
+  const updateEmployee = useMutation(api.gabinet.employees.update);
+  const removeEmployee = useMutation(api.gabinet.employees.remove);
+  const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
   const createNote = useMutation(api.notes.create);
   const createScheduledActivity = useMutation(api.scheduledActivities.create);
   const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
   const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
-  const bulkSetEmployeeSchedule = useMutation(api["gabinet/scheduling"].bulkSetEmployeeSchedule);
+  const bulkSetEmployeeSchedule = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
 
   // UI state
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -93,7 +92,7 @@ function EmployeeDetail() {
   );
 
   const { data: employee, isLoading } = useQuery(
-    convexQuery(api["gabinet/employees"].getById, {
+    convexQuery(api.gabinet.employees.getById, {
       organizationId,
       employeeId: employeeId as Id<"gabinetEmployees">,
     })
@@ -104,7 +103,7 @@ function EmployeeDetail() {
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const { data: activityTypeDefs } = useQuery(
@@ -139,7 +138,7 @@ function EmployeeDetail() {
 
   // Appointments for this employee (by userId)
   const { data: employeeAppointments } = useQuery({
-    ...convexQuery(api["gabinet/appointments"].listByEmployee, {
+    ...convexQuery(api.gabinet.appointments.listByEmployee, {
       organizationId,
       employeeId: (employee?.userId ?? "") as Id<"users">,
     }),
@@ -148,7 +147,7 @@ function EmployeeDetail() {
 
   // Unique patients this employee has seen
   const { data: employeePatients } = useQuery({
-    ...convexQuery(api["gabinet/appointments"].listPatientsForEmployee, {
+    ...convexQuery(api.gabinet.appointments.listPatientsForEmployee, {
       organizationId,
       employeeId: (employee?.userId ?? "") as Id<"users">,
     }),
@@ -157,7 +156,7 @@ function EmployeeDetail() {
 
   // Employee schedule (per-employee working hours)
   const { data: employeeScheduleData } = useQuery({
-    ...convexQuery(api["gabinet/scheduling"].getEmployeeSchedule, {
+    ...convexQuery(api.gabinet.scheduling.getEmployeeSchedule, {
       organizationId,
       userId: (employee?.userId ?? "") as Id<"users">,
     }),
@@ -166,7 +165,7 @@ function EmployeeDetail() {
 
   // Clinic-wide working hours (fallback)
   const { data: clinicHours } = useQuery(
-    convexQuery(api["gabinet/scheduling"].getWorkingHours, { organizationId })
+    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
   );
 
   // Selected activity for drawer
@@ -262,7 +261,7 @@ function EmployeeDetail() {
 
   const handleCreateActivity = async (data: {
     title: string;
-    activityType: ActivityType;
+    activityType: string;
     dueDate: number;
     endDate?: number;
     description?: string;
@@ -692,7 +691,7 @@ function EmployeeDetail() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {employeePatients.map((pat) => (
+                        {employeePatients.filter((pat): pat is NonNullable<typeof pat> => pat != null).map((pat) => (
                           <div
                             key={pat._id}
                             className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"

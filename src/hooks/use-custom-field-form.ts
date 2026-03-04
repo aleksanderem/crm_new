@@ -30,7 +30,7 @@ export function useCustomFieldForm({
 
   const { data: definitions } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
-      organizationId,
+      organizationId: organizationId as Id<"organizations">,
       entityType: entityType as any,
       ...(activityTypeKey !== undefined ? { activityTypeKey } : {}),
     })
@@ -75,7 +75,7 @@ export function useCustomFieldForm({
         }));
       if (fieldsToSave.length > 0) {
         await setCustomFields({
-          organizationId,
+          organizationId: organizationId as Id<"organizations">,
           entityType: entityType as any,
           entityId,
           fields: fieldsToSave,

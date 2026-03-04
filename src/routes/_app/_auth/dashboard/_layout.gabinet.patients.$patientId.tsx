@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -30,7 +30,6 @@ import {
   Calendar,
   FileText,
   Star,
-  Clock,
   Trophy,
   Plus,
   Minus,
@@ -52,15 +51,15 @@ function PatientDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const updatePatient = useMutation(api["gabinet/patients"].update);
-  const removePatient = useMutation(api["gabinet/patients"].remove);
+  const updatePatient = useMutation(api.gabinet.patients.update);
+  const removePatient = useMutation(api.gabinet.patients.remove);
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllFields, setShowAllFields] = useState(false);
 
   const { data: patient, isLoading } = useQuery(
-    convexQuery(api["gabinet/patients"].getById, {
+    convexQuery(api.gabinet.patients.getById, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
@@ -77,35 +76,35 @@ function PatientDetail() {
   const activities = activitiesData?.page;
 
   const { data: patientAppointments } = useQuery(
-    convexQuery(api["gabinet/appointments"].listByPatient, {
+    convexQuery(api.gabinet.appointments.listByPatient, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: patientDocuments } = useQuery(
-    convexQuery(api["gabinet/documents"].listByPatient, {
+    convexQuery(api.gabinet.documents.listByPatient, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: loyaltyBalance } = useQuery(
-    convexQuery(api["gabinet/loyalty"].getBalance, {
+    convexQuery(api.gabinet.loyalty.getBalance, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: loyaltyTransactions } = useQuery(
-    convexQuery(api["gabinet/loyalty"].getTransactions, {
+    convexQuery(api.gabinet.loyalty.getTransactions, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: treatmentsData } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   if (isLoading) {

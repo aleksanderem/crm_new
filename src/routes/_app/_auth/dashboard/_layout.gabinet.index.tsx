@@ -21,25 +21,25 @@ function GabinetDashboard() {
   const today = new Date().toISOString().split("T")[0];
 
   const { data: todayAppointments } = useQuery(
-    convexQuery(api["gabinet/appointments"].listByDate, {
+    convexQuery(api.gabinet.appointments.listByDate, {
       organizationId,
       date: today,
     })
   );
 
   const { data: patients } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const { data: leaves } = useQuery(
-    convexQuery(api["gabinet/scheduling"].listLeaves, { organizationId })
+    convexQuery(api.gabinet.scheduling.listLeaves, { organizationId })
   );
 
   const patientMap = useMemo(

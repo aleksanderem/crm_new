@@ -12,11 +12,10 @@ export const Route = createFileRoute("/_app/patient/_layout/appointments")({
 
 function PatientAppointments() {
   const { t } = useTranslation();
-  const sessionId = typeof window !== "undefined" ? localStorage.getItem("patientPortalSessionId") ?? "" : "";
-  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
   const { data: appointments } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyAppointments, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash })
   );
 
   const today = new Date().toISOString().split("T")[0];

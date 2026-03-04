@@ -86,7 +86,7 @@ function GabinetCalendarPage() {
 
   // Fetch appointments for the week
   const { data: weekAppointments } = useQuery(
-    convexQuery(api["gabinet/appointments"].listByDateRange, {
+    convexQuery(api.gabinet.appointments.listByDateRange, {
       organizationId,
       startDate: startDateStr,
       endDate: endDateStr,
@@ -96,7 +96,7 @@ function GabinetCalendarPage() {
   // Fetch appointments for the selected day (for right panel)
   const selectedDateStr = formatDateStr(selectedDate);
   const { data: dayAppointments } = useQuery(
-    convexQuery(api["gabinet/appointments"].listByDate, {
+    convexQuery(api.gabinet.appointments.listByDate, {
       organizationId,
       date: selectedDateStr,
     })
@@ -104,14 +104,14 @@ function GabinetCalendarPage() {
 
   // Fetch patient & treatment data for the day panel
   const { data: patients } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].list, {
+    convexQuery(api.gabinet.treatments.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     })

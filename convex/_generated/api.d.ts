@@ -36,6 +36,7 @@ import type * as emails from "../emails.js";
 import type * as emails_internal from "../emails_internal.js";
 import type * as env from "../env.js";
 import type * as gabinet__availability from "../gabinet/_availability.js";
+import type * as gabinet__e2eTest from "../gabinet/_e2eTest.js";
 import type * as gabinet__registry from "../gabinet/_registry.js";
 import type * as gabinet_appointments from "../gabinet/appointments.js";
 import type * as gabinet_documentTemplates from "../gabinet/documentTemplates.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   emails_internal: typeof emails_internal;
   env: typeof env;
   "gabinet/_availability": typeof gabinet__availability;
+  "gabinet/_e2eTest": typeof gabinet__e2eTest;
   "gabinet/_registry": typeof gabinet__registry;
   "gabinet/appointments": typeof gabinet_appointments;
   "gabinet/documentTemplates": typeof gabinet_documentTemplates;

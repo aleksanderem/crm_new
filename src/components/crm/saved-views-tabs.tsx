@@ -148,7 +148,7 @@ export function SavedViewsTabs({
   onUpdateView,
   onDeleteView,
   maxCustomViews = 5,
-  currentFilterState,
+  currentFilterState: _currentFilterState,
   filterableFields = [],
 }: SavedViewsTabsProps) {
   const { t } = useTranslation();

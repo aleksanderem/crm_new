@@ -26,7 +26,7 @@ export const getUnreadCount = query({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
 
     const unread = await ctx.db
@@ -61,7 +61,7 @@ export const markAllRead = mutation({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
 
     const unread = await ctx.db

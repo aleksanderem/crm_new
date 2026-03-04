@@ -57,8 +57,6 @@ function CustomFieldsSettings() {
 
   const crmTypes = ENTITY_TYPE_CONFIG.filter((c) => c.group === "crm");
   const gabinetTypes = ENTITY_TYPE_CONFIG.filter((c) => c.group === "gabinet");
-  const activeLabel = ENTITY_TYPE_CONFIG.find((c) => c.value === activeTab);
-
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader

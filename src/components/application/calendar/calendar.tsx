@@ -311,7 +311,7 @@ const MonthView = ({
         const findAvailableRow = (startDayIndex: number, span: number): number => {
             let row = 0;
 
-            while (true) {
+            for (;;) {
                 let isAvailable = true;
 
                 // Check if this row is free for all days in the span
@@ -795,7 +795,7 @@ const DayView = ({
     shortWeekdayFormatter,
     timeFormatter,
     hourOnlyFormatter,
-    highlightedDates: highlightedDatesProp,
+    highlightedDates: _highlightedDatesProp,
     selectedDate,
     className,
     view,
@@ -817,20 +817,6 @@ const DayView = ({
     }
 
     const visibleEvents = useMemo(() => getEventsForDay(zonedEvents, dayToDisplay, timeZone), [zonedEvents, dayToDisplay, timeZone]);
-
-    const localHighlightedDates = useMemo(() => {
-        if (highlightedDatesProp) return highlightedDatesProp;
-        const datesWithEvents = new Set<string>();
-        zonedEvents.forEach((event) => {
-            let currentDate = toCalendarDate(event.start);
-            const endDate = toCalendarDate(event.end);
-            while (currentDate.compare(endDate) <= 0) {
-                datesWithEvents.add(currentDate.toString());
-                currentDate = currentDate.add({ days: 1 });
-            }
-        });
-        return datesWithEvents;
-    }, [zonedEvents, highlightedDatesProp]);
 
     const days: CalendarDate[] = [];
     let dayIterator = currentWeekStart;
@@ -979,10 +965,11 @@ export const Calendar = ({ events, view: defaultView = "month", className, calen
                 case "month":
                     newDate = currentMonthDate.add({ months: P });
                     break;
-                case "week":
+                case "week": {
                     const currentWeekStart = startOfWeek(anchorDate, locale);
                     newDate = currentWeekStart.add({ weeks: P });
                     break;
+                }
                 case "day":
                     newDate = anchorDate.add({ days: P });
                     break;

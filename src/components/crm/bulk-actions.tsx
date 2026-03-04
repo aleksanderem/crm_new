@@ -106,7 +106,7 @@ export function BulkActionsBar({
   );
 }
 
-export function useBulkSelection<T extends { _id: string }>() {
+export function useBulkSelection<_T extends { _id: string }>() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const isSelected = useCallback(

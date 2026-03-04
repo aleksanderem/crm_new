@@ -16,13 +16,12 @@ export const Route = createFileRoute("/_app/patient/_layout/profile")({
 
 function PatientProfile() {
   const { t } = useTranslation();
-  const sessionId = typeof window !== "undefined" ? localStorage.getItem("patientPortalSessionId") ?? "" : "";
-  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
-  const updateProfile = useMutation(api["gabinet/patientPortal"].updateMyProfile);
+  const updateProfile = useMutation(api.gabinet.patientPortal.updateMyProfile);
 
   const { data: profile } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyProfile, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash })
   );
 
   const [phone, setPhone] = useState("");
@@ -48,8 +47,7 @@ function PatientProfile() {
     setSaving(true);
     try {
       await updateProfile({
-        sessionId,
-        token,
+        tokenHash,
         phone: phone || undefined,
         address: (street || city || postalCode) ? { street, city, postalCode } : undefined,
         emergencyContactName: emergencyContactName || undefined,

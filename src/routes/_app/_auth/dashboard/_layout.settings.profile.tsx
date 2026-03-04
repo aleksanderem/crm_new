@@ -31,8 +31,8 @@ const LANGUAGES = [
   { value: "es", label: "Español" },
 ];
 
-const COMMON_TIMEZONES = Intl.supportedValuesOf
-  ? Intl.supportedValuesOf("timeZone")
+const COMMON_TIMEZONES = (Intl as any).supportedValuesOf
+  ? (Intl as any).supportedValuesOf("timeZone") as string[]
   : [
       "America/New_York",
       "America/Chicago",

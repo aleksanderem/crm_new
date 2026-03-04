@@ -195,6 +195,7 @@ export const update = mutation({
     assignedTo: v.optional(v.id("users")),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    lostReason: v.optional(v.string()),
     customFields: v.optional(v.array(v.object({
       fieldDefinitionId: v.id("customFieldDefinitions"),
       value: v.any(),

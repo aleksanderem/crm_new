@@ -28,18 +28,18 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
   const [purchaseOpen, setPurchaseOpen] = useState(false);
 
   const { data: usages } = useQuery(
-    convexQuery(api["gabinet/packages"].getPatientPackages, {
+    convexQuery(api.gabinet.packages.getPatientPackages, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: allPackages } = useQuery(
-    convexQuery(api["gabinet/packages"].listActive, { organizationId })
+    convexQuery(api.gabinet.packages.listActive, { organizationId })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const treatmentMap = new Map(

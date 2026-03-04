@@ -22,9 +22,9 @@ const salesChartConfig = {
 } satisfies ChartConfig
 
 // Custom dot for chart
-// @ts-ignore
-const CustomDot = props => {
-  const { cx, cy, index } = props
+
+const CustomDot = (props: { cx?: number; cy?: number; index?: number }) => {
+  const { cx = 0, cy = 0, index } = props
 
   if (index !== salesChartData.length - 1) {
     return null
@@ -83,9 +83,9 @@ const CustomDot = props => {
 }
 
 // Custom active dot for chart
-// @ts-ignore
-const CustomActiveDot = props => {
-  const { cx, cy, index } = props
+
+const CustomActiveDot = (props: { cx?: number; cy?: number; index?: number }) => {
+  const { cx = 0, cy = 0, index } = props
 
   if (index !== salesChartData.length - 1) {
     return (

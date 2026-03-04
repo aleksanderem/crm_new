@@ -5,13 +5,10 @@ import { LanguageSwitcher } from "@/ui/language-switcher";
 import {
   CalendarCheck,
   Download,
-  FileText,
   Kanban,
-  Mail,
   Phone,
   PlusCircle,
   Send,
-  TrendingUp,
   Upload,
   UserPlus,
 } from "@/lib/ez-icons";

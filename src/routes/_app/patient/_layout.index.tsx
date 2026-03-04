@@ -11,26 +11,25 @@ export const Route = createFileRoute("/_app/patient/_layout/")({
   component: PatientDashboard,
 });
 
-function usePortalSession() {
-  const sessionId = typeof window !== "undefined" ? localStorage.getItem("patientPortalSessionId") ?? "" : "";
-  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
-  return { sessionId, token };
+function usePortalToken() {
+  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  return { tokenHash };
 }
 
 function PatientDashboard() {
   const { t } = useTranslation();
-  const { sessionId, token } = usePortalSession();
+  const { tokenHash } = usePortalToken();
 
   const { data: profile } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyProfile, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash })
   );
 
   const { data: appointments } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyAppointments, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash })
   );
 
   const { data: loyaltyBalance } = useQuery(
-    convexQuery(api["gabinet/patientPortal"].getMyLoyaltyBalance, { sessionId, token })
+    convexQuery(api.gabinet.patientPortal.getMyLoyaltyBalance, { tokenHash })
   );
 
   const upcoming = useMemo(() => {

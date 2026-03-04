@@ -1,0 +1,11 @@
+{
+  "results": {
+    "home-landing.png": "OK - Landing page captured",
+    "auth-login-form.png": "OK - Auth login form captured",
+    "auth-logged-in-dashboard.png": "OK - Redirected to login (not authenticated): http://localhost:5173/login",
+    "patient-portal-login.png": "OK - Patient portal login page captured",
+    "patient-portal-view.png": "OK - Redirected to patient login (not authenticated): http://localhost:5173/patient/login",
+    "runtime-error-console.png": "SKIPPED - No console errors detected during navigation"
+  },
+  "consoleErrors": []
+}

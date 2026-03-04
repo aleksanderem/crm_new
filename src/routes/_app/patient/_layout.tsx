@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, FileText, Heart, LogOut, User } from "@/lib/ez-icons";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/_app/patient/_layout")({
@@ -15,36 +15,32 @@ export const Route = createFileRoute("/_app/patient/_layout")({
 function PatientLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const logout = useMutation(api["gabinet/patientAuth"].logoutPortal);
+  const logout = useMutation(api.gabinet.patientAuth.logoutPortal);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") : null;
-  const sessionId = typeof window !== "undefined" ? localStorage.getItem("patientPortalSessionId") : null;
 
   const { data: session, isLoading } = useQuery(
-    convexQuery(api["gabinet/patientAuth"].getPortalSession, {
-      sessionId: sessionId ?? "",
-      token: token ?? "",
+    convexQuery(api.gabinet.patientAuth.getPortalSession, {
+      tokenHash: token ?? "",
     })
   );
 
   useEffect(() => {
     if (!isLoading && !session) {
       localStorage.removeItem("patientPortalToken");
-      localStorage.removeItem("patientPortalSessionId");
       navigate({ to: "/patient/login" });
     }
   }, [isLoading, session, navigate]);
 
   const handleLogout = useCallback(async () => {
-    if (sessionId) {
+    if (token) {
       try {
-        await logout({ sessionId });
-      } catch {}
+        await logout({ tokenHash: token });
+      } catch { /* logout may fail if token expired */ }
     }
     localStorage.removeItem("patientPortalToken");
-    localStorage.removeItem("patientPortalSessionId");
     navigate({ to: "/patient/login" });
-  }, [sessionId, logout, navigate]);
+  }, [token, logout, navigate]);
 
   if (isLoading || !session) {
     return null;

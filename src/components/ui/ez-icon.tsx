@@ -34,7 +34,7 @@ export function EzIcon({
       // Set initial attributes for SSR/first paint - useEffect ensures they stick
       name={name}
       variant={variant}
-      class={cn(className)}
+      className={cn(className)}
     />
   );
 }

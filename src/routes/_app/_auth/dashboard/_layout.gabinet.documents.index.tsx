@@ -44,27 +44,27 @@ const DOC_TYPES = ["consent", "medical_record", "prescription", "referral", "cus
 function DocumentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createDoc = useMutation(api["gabinet/documents"].create);
-  const updateDoc = useMutation(api["gabinet/documents"].update);
-  const signDoc = useMutation(api["gabinet/documents"].sign);
-  const requestSig = useMutation(api["gabinet/documents"].requestSignature);
+  const createDoc = useMutation(api.gabinet.documents.create);
+  const updateDoc = useMutation(api.gabinet.documents.update);
+  const signDoc = useMutation(api.gabinet.documents.sign);
+  const requestSig = useMutation(api.gabinet.documents.requestSignature);
 
   const { data: docs } = useQuery(
-    convexQuery(api["gabinet/documents"].list, {
+    convexQuery(api.gabinet.documents.list, {
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     })
   );
 
   const { data: patients } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     })
   );
 
   const { data: templates } = useQuery(
-    convexQuery(api["gabinet/documentTemplates"].list, { organizationId })
+    convexQuery(api.gabinet.documentTemplates.list, { organizationId })
   );
 
   const [panelOpen, setPanelOpen] = useState(false);

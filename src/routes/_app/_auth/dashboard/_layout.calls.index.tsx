@@ -88,7 +88,7 @@ function CallsPage() {
   );
 
   const allCalls = data?.page ?? [];
-  const calls = useMemo(() => applyFilters(allCalls), [allCalls, applyFilters]);
+  const calls = useMemo(() => applyFilters(allCalls) as typeof allCalls, [allCalls, applyFilters]);
 
   const createCall = useMutation(api.calls.create);
   const updateCall = useMutation(api.calls.update);

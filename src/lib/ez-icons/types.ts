@@ -5,4 +5,7 @@ import type { ComponentType } from "react";
 export type EzIconType = ComponentType<{
   className?: string;
   size?: number;
+  fill?: string;
+  stroke?: string;
+  'aria-hidden'?: boolean | 'true' | 'false';
 }>;

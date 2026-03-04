@@ -11,7 +11,6 @@ import { ContactForm } from "@/components/forms/contact-form";
 import { RelationshipField } from "@/components/crm/relationship-field";
 import type { RelationshipItem } from "@/components/crm/relationship-field";
 import { ActivityForm } from "@/components/crm/activity-form";
-import type { ActivityType } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -41,7 +40,6 @@ import {
   FileText,
   Pin,
   User,
-  Building2,
   Search,
   Link2,
 } from "@/lib/ez-icons";
@@ -94,7 +92,7 @@ function CompanyDetail() {
   // Company entity custom fields
   const {
     definitions: companyCfDefs,
-    saveValues: saveCompanyCfValues,
+    saveValues: _saveCompanyCfValues,
   } = useCustomFieldForm({ organizationId, entityType: "company" });
 
   const { data: companyCfValuesRaw } = useQuery({
@@ -447,7 +445,7 @@ function CompanyDetail() {
 
   const handleCreateActivity = async (data: {
     title: string;
-    activityType: ActivityType;
+    activityType: string;
     dueDate: number;
     endDate?: number;
     description?: string;

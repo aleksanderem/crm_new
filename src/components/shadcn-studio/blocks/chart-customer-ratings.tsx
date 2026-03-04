@@ -38,9 +38,9 @@ const chartConfig = {
   }
 } satisfies ChartConfig
 
-// @ts-ignore
-const CustomDot = props => {
-  const { cx, cy, index } = props
+
+const CustomDot = (props: { cx?: number; cy?: number; index?: number }) => {
+  const { cx = 0, cy = 0, index } = props
 
   if (index !== chartData.length - 1) {
     return null
@@ -98,9 +98,9 @@ const CustomDot = props => {
   )
 }
 
-// @ts-ignore
-const CustomActiveDot = props => {
-  const { cx, cy } = props
+
+const CustomActiveDot = (props: { cx?: number; cy?: number }) => {
+  const { cx = 0, cy = 0 } = props
 
   return (
     <svg

@@ -58,7 +58,6 @@ function Index() {
               <span className="hidden select-none items-center gap-1 rounded-full bg-green-500/5 px-2 py-1 pr-2.5 text-xs font-medium tracking-tight text-green-600 ring-1 ring-inset ring-green-600/20 backdrop-blur-sm dark:bg-yellow-800/40 dark:text-yellow-100 dark:ring-yellow-200/50 md:flex">
                 <Star
                   className="h-3 w-3 text-green-600 dark:text-yellow-100"
-                  fill="currentColor"
                 />
                 Star Us on GitHub
               </span>

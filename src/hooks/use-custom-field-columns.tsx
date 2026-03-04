@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
 import type { FieldDefinition } from "@/components/custom-fields/types";
 
@@ -27,7 +28,7 @@ export function useCustomFieldColumns<TRow extends { _id: string }>({
 }: UseCustomFieldColumnsOptions): UseCustomFieldColumnsResult<TRow> {
   const { data: definitions } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
-      organizationId,
+      organizationId: organizationId as Id<"organizations">,
       entityType: entityType as any,
       ...(activityTypeKey !== undefined ? { activityTypeKey } : {}),
     })
@@ -35,7 +36,7 @@ export function useCustomFieldColumns<TRow extends { _id: string }>({
 
   const { data: bulkValues } = useQuery({
     ...convexQuery(api.customFields.getValuesBulk, {
-      organizationId,
+      organizationId: organizationId as Id<"organizations">,
       entityType: entityType as any,
       entityIds,
     }),

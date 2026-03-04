@@ -81,7 +81,7 @@ function TranslatedActionButton({
 
 export function EntityQuickActions({
   entityType,
-  entityId,
+  entityId: _entityId,
   onAction,
 }: EntityQuickActionsProps) {
   const actions = ENTITY_ACTIONS[entityType];

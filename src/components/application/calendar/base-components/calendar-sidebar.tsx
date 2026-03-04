@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type FC } from "react";
 import { CalendarDate, CalendarDateTime, type ZonedDateTime, getLocalTimeZone, isSameDay, toCalendarDate, toZoned } from "@internationalized/date";
 import { useDateFormatter, useLocale } from "@react-aria/i18n";
 import { XClose } from "@untitledui/icons";
@@ -39,7 +39,7 @@ interface CalendarSidebarProps {
 }
 
 export const CalendarSidebar = ({ selectedDate, zonedEvents, currentTime, onClose, className }: CalendarSidebarProps) => {
-    const { locale } = useLocale();
+    const { locale: _locale } = useLocale();
     const timeZone = getLocalTimeZone();
     const timeFormatter = useDateFormatter({ hour: "numeric", minute: "2-digit", hour12: true });
     const hourOnlyFormatter = useDateFormatter({ hour: "numeric", hour12: true });
@@ -76,7 +76,7 @@ export const CalendarSidebar = ({ selectedDate, zonedEvents, currentTime, onClos
                     </p>
                 </div>
                 {onClose && (
-                    <Button iconLeading={XClose} size="sm" color="tertiary" className="size-8 shrink-0" onPress={onClose} />
+                    <Button iconLeading={XClose as FC<{ className?: string }>} size="sm" color="tertiary" className="size-8 shrink-0" onClick={onClose} />
                 )}
             </div>
 

@@ -40,16 +40,16 @@ const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as con
 function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createLeave = useMutation(api["gabinet/scheduling"].createLeave);
-  const approveLeave = useMutation(api["gabinet/scheduling"].approveLeave);
-  const rejectLeave = useMutation(api["gabinet/scheduling"].rejectLeave);
+  const createLeave = useMutation(api.gabinet.scheduling.createLeave);
+  const approveLeave = useMutation(api.gabinet.scheduling.approveLeave);
+  const rejectLeave = useMutation(api.gabinet.scheduling.rejectLeave);
 
   const { data: leaves } = useQuery(
-    convexQuery(api["gabinet/scheduling"].listLeaves, { organizationId })
+    convexQuery(api.gabinet.scheduling.listLeaves, { organizationId })
   );
 
   const { data: employees } = useQuery(
-    convexQuery(api["gabinet/employees"].listAll, { organizationId, activeOnly: true })
+    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
   );
 
   const { data: teamMembers } = useQuery(

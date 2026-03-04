@@ -168,7 +168,7 @@ export const getLeadsByStage = query({
         return {
           stageId: stage._id,
           stageName: stage.name,
-          stageColor: stage.color,
+          stageColor: stage.color ?? "#888",
           order: stage.order,
           count: leads.length,
           totalValue,

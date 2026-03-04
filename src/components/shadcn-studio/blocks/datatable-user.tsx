@@ -404,7 +404,6 @@ function Filter({ column }: { column: Column<any, unknown> }) {
     }, [])
 
     return Array.from(new Set(flattenedValues)).sort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [column.getFacetedUniqueValues(), filterVariant])
 
   return (

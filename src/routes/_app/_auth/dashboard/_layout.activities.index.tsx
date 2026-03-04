@@ -286,8 +286,8 @@ function ActivitiesPage() {
     },
   ];
 
-  const columns = useMemo(
-    () => [...baseColumns, ...cfColumns],
+  const columns: ColumnDef<ActivityRow, unknown>[] = useMemo(
+    () => [...baseColumns, ...(cfColumns as ColumnDef<ActivityRow, unknown>[])],
     [baseColumns, cfColumns]
   );
 
@@ -354,7 +354,7 @@ function ActivitiesPage() {
         ]}
       />
 
-      <CrmDataTable
+      <CrmDataTable<ActivityRow>
         columns={columns}
         data={tableData}
         rowActions={rowActions}

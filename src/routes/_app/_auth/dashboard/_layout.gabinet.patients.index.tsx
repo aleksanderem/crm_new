@@ -47,8 +47,8 @@ function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const createPatient = useMutation(api["gabinet/patients"].create);
-  const removePatient = useMutation(api["gabinet/patients"].remove);
+  const createPatient = useMutation(api.gabinet.patients.create);
+  const removePatient = useMutation(api.gabinet.patients.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -68,7 +68,7 @@ function PatientsIndex() {
   ], [t]);
 
   const { data, isLoading } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
     })

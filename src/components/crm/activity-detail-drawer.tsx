@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Sheet,
@@ -18,7 +18,6 @@ import {
   Trash2,
   Calendar,
   Clock,
-  User,
   CheckCircle2,
   Circle,
   FileText,

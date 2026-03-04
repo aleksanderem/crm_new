@@ -24,14 +24,14 @@ export function PackageUsageSelector({
   const { t } = useTranslation();
 
   const { data: usages } = useQuery(
-    convexQuery(api["gabinet/packages"].getPatientPackages, {
+    convexQuery(api.gabinet.packages.getPatientPackages, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
     })
   );
 
   const { data: allPackages } = useQuery(
-    convexQuery(api["gabinet/packages"].listActive, { organizationId })
+    convexQuery(api.gabinet.packages.listActive, { organizationId })
   );
 
   const packageMap = new Map(

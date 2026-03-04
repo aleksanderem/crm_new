@@ -51,7 +51,7 @@ type Props = {
 }
 
 // Define steps for the stepper
-const { useStepper, utils } = Stepperize.defineStepper(
+const { useStepper } = Stepperize.defineStepper(
   { id: 'details', title: 'Details', description: 'Enter details', icon: HouseIcon },
   {
     id: 'frameworks',
@@ -311,7 +311,7 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
   const [open, setOpen] = useState(defaultOpen)
 
   const stepper = useStepper()
-  const currentStep = utils.getIndex(stepper.current.id)
+  const currentStep = stepper.state.current.index
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -327,12 +327,12 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
         <div className='flex gap-8 max-md:flex-col'>
           <nav aria-label='Multi Steps'>
             <ol className='flex flex-col justify-between gap-x-2 gap-y-4'>
-              {stepper.all.map((step, index) => (
+              {stepper.state.all.map((step, index) => (
                 <li key={step.id}>
                   <Button
                     variant='ghost'
                     className='h-auto w-full shrink-0 cursor-pointer justify-start gap-4 rounded !bg-transparent p-0.5'
-                    onClick={() => stepper.goTo(step.id)}
+                    onClick={() => stepper.navigation.goTo(step.id)}
                   >
                     <Avatar className='size-10 rounded-sm'>
                       <AvatarFallback
@@ -363,18 +363,18 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
             </ol>
           </nav>
           <div className='flex-1 space-y-6'>
-            {stepper.switch({
+            {stepper.flow.switch({
               details: () => <DetailsStep />,
               frameworks: () => <FrameworksStep />,
               database: () => <DatabaseStep />,
               billing: () => <BillingStep />
             })}
             <DialogFooter className='flex !justify-between'>
-              <Button variant='secondary' size='lg' onClick={stepper.prev} disabled={stepper.isFirst}>
+              <Button variant='secondary' size='lg' onClick={stepper.navigation.prev} disabled={stepper.state.isFirst}>
                 <ArrowLeftIcon />
                 Previous
               </Button>
-              {stepper.isLast ? (
+              {stepper.state.isLast ? (
                 <DialogClose asChild>
                   <Button
                     size='lg'
@@ -385,7 +385,7 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
                   </Button>
                 </DialogClose>
               ) : (
-                <Button size='lg' onClick={stepper.next}>
+                <Button size='lg' onClick={stepper.navigation.next}>
                   Next
                   <ArrowRightIcon />
                 </Button>

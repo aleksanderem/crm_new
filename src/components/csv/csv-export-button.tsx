@@ -32,7 +32,7 @@ export function useCsvExport(organizationId: Id<"organizations">, entityType: En
       const rows = result.data;
       if (!rows || rows.length === 0) return;
 
-      const csv = Papa.unparse(rows);
+      const csv = Papa.unparse(rows as Record<string, unknown>[]);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

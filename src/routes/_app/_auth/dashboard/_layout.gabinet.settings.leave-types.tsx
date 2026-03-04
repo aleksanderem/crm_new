@@ -30,13 +30,13 @@ function LeaveTypesSettings() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<Id<"gabinetLeaveTypes"> | null>(null);
 
-  const createLeaveType = useMutation(api["gabinet/leaveTypes"].create);
-  const updateLeaveType = useMutation(api["gabinet/leaveTypes"].update);
-  const removeLeaveType = useMutation(api["gabinet/leaveTypes"].remove);
-  const initAllBalances = useMutation(api["gabinet/leaveTypes"].initializeAllBalances);
+  const createLeaveType = useMutation(api.gabinet.leaveTypes.create);
+  const updateLeaveType = useMutation(api.gabinet.leaveTypes.update);
+  const removeLeaveType = useMutation(api.gabinet.leaveTypes.remove);
+  const initAllBalances = useMutation(api.gabinet.leaveTypes.initializeAllBalances);
 
   const { data: leaveTypes } = useQuery(
-    convexQuery(api["gabinet/leaveTypes"].list, { organizationId })
+    convexQuery(api.gabinet.leaveTypes.list, { organizationId })
   );
 
   const editing = editingId ? leaveTypes?.find((lt) => lt._id === editingId) : null;

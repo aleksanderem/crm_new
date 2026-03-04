@@ -16,7 +16,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -211,7 +210,7 @@ function UnifiedCalendarPage() {
 
   const updateActivity = useMutation(api.scheduledActivities.update);
   const updateAppointment = useMutation(
-    api["gabinet/appointments"].update
+    api.gabinet.appointments.update
   );
 
   // Navigation
@@ -428,15 +427,15 @@ function EventDetailPanel({
             {end && ` – ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
           </p>
           <p>{t("calendar.type", "Type")}: {event.activityType}</p>
-          {isGab && event.metadata.patientName && (
-            <p>{t("gabinet.appointments.patient", "Patient")}: {event.metadata.patientName as string}</p>
-          )}
-          {isGab && event.metadata.treatmentName && (
-            <p>{t("gabinet.appointments.treatment", "Treatment")}: {event.metadata.treatmentName as string}</p>
-          )}
-          {isGab && event.metadata.status && (
-            <p>{t("common.status", "Status")}: {event.metadata.status as string}</p>
-          )}
+          {isGab && event.metadata.patientName ? (
+            <p>{t("gabinet.appointments.patient", "Patient")}: {String(event.metadata.patientName)}</p>
+          ) : null}
+          {isGab && event.metadata.treatmentName ? (
+            <p>{t("gabinet.appointments.treatment", "Treatment")}: {String(event.metadata.treatmentName)}</p>
+          ) : null}
+          {isGab && event.metadata.status ? (
+            <p>{t("common.status", "Status")}: {String(event.metadata.status)}</p>
+          ) : null}
           {event.isCompleted && (
             <p className="font-medium text-green-600">{t("calendar.completed", "Completed")}</p>
           )}
@@ -551,7 +550,6 @@ function DayColumn({
   const gridRef = useRef<HTMLDivElement>(null);
   const now = new Date();
   const isToday = formatDateStr(date) === formatDateStr(now);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = timeToOffset(now.getHours(), now.getMinutes());
 
   const layouts = useMemo(() => layoutEvents(events), [events]);
@@ -733,8 +731,6 @@ function MonthView({
     const d = new Date(2024, 0, 1); // Monday
     return Array.from({ length: 7 }, (_, i) => {
       d.setDate(1 + i);
-      const wd = (d.getDay() + 6) % 7;
-      const target = new Date(2024, 0, 1 + i);
       // Use a known Monday
       const mon = new Date(2024, 0, 1); // 2024-01-01 is Monday
       const label = new Date(mon);

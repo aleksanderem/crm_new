@@ -1,0 +1,110 @@
+{
+  "results": [
+    {
+      "flow": "Auth",
+      "step": "Login",
+      "status": "PASS",
+      "detail": "Post-login URL: http://localhost:5173/dashboard",
+      "durationMs": 5593
+    },
+    {
+      "flow": "Leads",
+      "step": "Navigate to list",
+      "status": "PASS",
+      "detail": "URL: http://localhost:5173/dashboard/leads",
+      "durationMs": 2694
+    },
+    {
+      "flow": "Leads",
+      "step": "List renders",
+      "status": "PASS",
+      "detail": "Table visible",
+      "durationMs": 25
+    },
+    {
+      "flow": "Leads",
+      "step": "Create lead",
+      "status": "PASS",
+      "detail": "Created: E2E-Lead-1772622277596",
+      "durationMs": 6018
+    },
+    {
+      "flow": "Leads",
+      "step": "View detail",
+      "status": "PASS",
+      "detail": "Detail URL: http://localhost:5173/dashboard/leads/kn708zfshtbypt33vey1ft281n8297vg",
+      "durationMs": 4749
+    },
+    {
+      "flow": "Activities",
+      "step": "Navigate to list",
+      "status": "PASS",
+      "detail": "URL: http://localhost:5173/dashboard/activities",
+      "durationMs": 1504
+    },
+    {
+      "flow": "Activities",
+      "step": "List renders",
+      "status": "PASS",
+      "detail": "Activity content present",
+      "durationMs": 11
+    },
+    {
+      "flow": "Activities",
+      "step": "Create activity",
+      "status": "PASS",
+      "detail": "Created: E2E-Activity-1772622290353",
+      "durationMs": 6478
+    },
+    {
+      "flow": "Calendar",
+      "step": "Navigate to calendar",
+      "status": "PASS",
+      "detail": "URL: http://localhost:5173/dashboard/calendar?filter=all",
+      "durationMs": 2339
+    },
+    {
+      "flow": "Calendar",
+      "step": "Calendar renders",
+      "status": "PASS",
+      "detail": "Calendar content visible",
+      "durationMs": 17
+    },
+    {
+      "flow": "Calendar",
+      "step": "No error boundary",
+      "status": "PASS",
+      "detail": "No errors",
+      "durationMs": 5
+    },
+    {
+      "flow": "Documents",
+      "step": "Navigate to list",
+      "status": "PASS",
+      "detail": "URL: http://localhost:5173/dashboard/documents",
+      "durationMs": 2547
+    },
+    {
+      "flow": "Documents",
+      "step": "Page renders",
+      "status": "PASS",
+      "detail": "Documents page content present",
+      "durationMs": 18
+    },
+    {
+      "flow": "Documents",
+      "step": "Upload button available",
+      "status": "PASS",
+      "detail": "Upload button visible",
+      "durationMs": 4
+    },
+    {
+      "flow": "Overall",
+      "step": "Console errors",
+      "status": "PASS",
+      "detail": "No critical console errors",
+      "durationMs": 0
+    }
+  ],
+  "consoleErrors": []
+}

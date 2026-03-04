@@ -41,9 +41,9 @@ function formatCurrency(amount: number, currency?: string): string {
 function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createTreatment = useMutation(api["gabinet/treatments"].create);
-  const updateTreatment = useMutation(api["gabinet/treatments"].update);
-  const removeTreatment = useMutation(api["gabinet/treatments"].remove);
+  const createTreatment = useMutation(api.gabinet.treatments.create);
+  const updateTreatment = useMutation(api.gabinet.treatments.update);
+  const removeTreatment = useMutation(api.gabinet.treatments.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
@@ -61,7 +61,7 @@ function TreatmentsIndex() {
   ], [t]);
 
   const { data, isLoading } = useQuery(
-    convexQuery(api["gabinet/treatments"].list, {
+    convexQuery(api.gabinet.treatments.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
     })

@@ -37,12 +37,12 @@ const DOC_TYPES = ["consent", "medical_record", "prescription", "referral", "cus
 function DocumentTemplatesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createTpl = useMutation(api["gabinet/documentTemplates"].create);
-  const updateTpl = useMutation(api["gabinet/documentTemplates"].update);
-  const removeTpl = useMutation(api["gabinet/documentTemplates"].remove);
+  const createTpl = useMutation(api.gabinet.documentTemplates.create);
+  const updateTpl = useMutation(api.gabinet.documentTemplates.update);
+  const removeTpl = useMutation(api.gabinet.documentTemplates.remove);
 
   const { data: templates } = useQuery(
-    convexQuery(api["gabinet/documentTemplates"].list, { organizationId })
+    convexQuery(api.gabinet.documentTemplates.list, { organizationId })
   );
 
   const [panelOpen, setPanelOpen] = useState(false);

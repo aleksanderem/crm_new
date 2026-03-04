@@ -318,8 +318,8 @@ function DocumentsIndex() {
     },
   ];
 
-  const columns = useMemo(
-    () => [...baseColumns, ...cfColumns],
+  const columns: ColumnDef<DocumentRow, unknown>[] = useMemo(
+    () => [...baseColumns, ...(cfColumns as ColumnDef<DocumentRow, unknown>[])],
     [baseColumns, cfColumns]
   );
 
@@ -396,7 +396,7 @@ function DocumentsIndex() {
         filterableFields={filterableFields}
       />
 
-      <CrmDataTable
+      <CrmDataTable<DocumentRow>
         columns={columns}
         data={tableData}
         stickyFirstColumn

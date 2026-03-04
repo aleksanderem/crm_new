@@ -1,12 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
@@ -25,15 +22,15 @@ function LeaveBalancesPage() {
   const [year, setYear] = useState(currentYear);
 
   const { data: employees } = useQuery(
-    convexQuery(api["gabinet/employees"].listAll, { organizationId, activeOnly: true })
+    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
   );
 
   const { data: leaveTypes } = useQuery(
-    convexQuery(api["gabinet/leaveTypes"].list, { organizationId, activeOnly: true })
+    convexQuery(api.gabinet.leaveTypes.list, { organizationId, activeOnly: true })
   );
 
   const { data: balances } = useQuery(
-    convexQuery(api["gabinet/leaveTypes"].getAllBalances, { organizationId, year })
+    convexQuery(api.gabinet.leaveTypes.getAllBalances, { organizationId, year })
   );
 
   const { data: members } = useQuery(
@@ -56,7 +53,7 @@ function LeaveBalancesPage() {
 
   // Group balances by employee
   const balancesByEmployee = useMemo(() => {
-    const map = new Map<string, Array<typeof balances extends Array<infer T> ? T : never>>();
+    const map = new Map<string, Array<NonNullable<typeof balances>[number]>>();
     balances?.forEach((b) => {
       const list = map.get(b.employeeId) ?? [];
       list.push(b);

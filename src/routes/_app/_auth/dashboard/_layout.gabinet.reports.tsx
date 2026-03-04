@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { useId, useMemo } from "react";
@@ -546,7 +547,7 @@ function GabinetReports() {
   const endDate = today.toISOString().split("T")[0];
 
   const { data: appointments } = useQuery(
-    convexQuery(api["gabinet/appointments"].listByDateRange, {
+    convexQuery(api.gabinet.appointments.listByDateRange, {
       organizationId,
       startDate,
       endDate,
@@ -554,11 +555,11 @@ function GabinetReports() {
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const { data: patients } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 500, cursor: null },
     })
@@ -573,7 +574,7 @@ function GabinetReports() {
     }
     const treatmentNameMap = new Map(treatments.map((tr) => [tr._id, tr.name]));
     return Array.from(countMap.entries())
-      .map(([id, count]) => ({ name: treatmentNameMap.get(id) ?? id, count }))
+      .map(([id, count]) => ({ name: treatmentNameMap.get(id as Id<"gabinetTreatments">) ?? id, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
   }, [appointments, treatments]);

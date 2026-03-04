@@ -15,21 +15,24 @@ export const Route = createFileRoute("/_app/patient/login")({
 function PatientLogin() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const sendOtp = useMutation(api["gabinet/patientAuth"].sendPortalOtp);
-  const verifyOtp = useMutation(api["gabinet/patientAuth"].verifyPortalOtp);
+  const sendOtp = useMutation(api.gabinet.patientAuth.sendPortalOtp);
+  const verifyOtp = useMutation(api.gabinet.patientAuth.verifyPortalOtp);
 
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [sessionId, setSessionId] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // TODO: organizationId should come from route params or context
+  const organizationId = typeof window !== "undefined"
+    ? (localStorage.getItem("patientPortalOrgId") as any) ?? undefined
+    : undefined;
+
   const handleSendOtp = async () => {
-    if (!email) return;
+    if (!email || !organizationId) return;
     setLoading(true);
     try {
-      const result = await sendOtp({ email });
-      setSessionId(result.sessionId);
+      await sendOtp({ email, organizationId });
       setStep("otp");
       toast.success(t("patientPortal.login.otpSent"));
     } catch (e: any) {
@@ -40,15 +43,19 @@ function PatientLogin() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !sessionId) return;
+    if (!otp || !organizationId) return;
     setLoading(true);
     try {
-      const result = await verifyOtp({ sessionId, otp });
-      localStorage.setItem("patientPortalToken", result.token);
-      localStorage.setItem("patientPortalSessionId", result.sessionId);
+      const result = await verifyOtp({ email, organizationId, otp });
+      if (!result.success) {
+        toast.error(result.error || t("patientPortal.login.errorGeneric"));
+        return;
+      }
+      localStorage.setItem("patientPortalToken", result.sessionToken);
+      localStorage.setItem("patientPortalPatientId", result.patientId);
       navigate({ to: "/patient" });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || t("patientPortal.login.errorGeneric"));
     } finally {
       setLoading(false);
     }

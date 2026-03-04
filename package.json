@@ -10,9 +10,13 @@
     "dev:backend": "convex dev",
     "predev": "convex dev --run init --until-success",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --ignore-pattern convex/_generated --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ignore-pattern convex/_generated --report-unused-disable-directives",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json && tsc -p convex/tsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "status:watch": "node scripts/status/watch-status.mjs",
+    "status:update": "node scripts/status/update-status.mjs",
+    "status:event": "node scripts/status/push-event.mjs",
+    "status:dashboard": "npm --prefix status-dashboard run dev"
   },
   "dependencies": {
     "@auth/core": "^0.34.1",

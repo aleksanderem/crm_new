@@ -78,12 +78,12 @@ export function AppointmentDetailDialog({
   onOpenChange,
 }: AppointmentDetailDialogProps) {
   const { t } = useTranslation();
-  const updateAppointment = useMutation(api["gabinet/appointments"].update);
-  const updateStatus = useMutation(api["gabinet/appointments"].updateStatus);
-  const cancelAppointment = useMutation(api["gabinet/appointments"].cancel);
+  const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
+  const cancelAppointment = useMutation(api.gabinet.appointments.cancel);
 
   const { data: appointment } = useQuery({
-    ...convexQuery(api["gabinet/appointments"].getById, {
+    ...convexQuery(api.gabinet.appointments.getById, {
       organizationId,
       appointmentId: appointmentId as Id<"gabinetAppointments">,
     }),
@@ -91,7 +91,7 @@ export function AppointmentDetailDialog({
   });
 
   const { data: patients } = useQuery({
-    ...convexQuery(api["gabinet/patients"].list, {
+    ...convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     }),
@@ -99,7 +99,7 @@ export function AppointmentDetailDialog({
   });
 
   const { data: treatments } = useQuery({
-    ...convexQuery(api["gabinet/treatments"].listActive, { organizationId }),
+    ...convexQuery(api.gabinet.treatments.listActive, { organizationId }),
     enabled: !!appointment,
   });
 

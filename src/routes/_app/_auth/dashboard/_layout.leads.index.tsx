@@ -35,7 +35,6 @@ import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import type { QuickAction } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -614,7 +613,7 @@ function LeadsIndex() {
           ]}
           onBulkAction={handleBulkAction}
           onRowClick={(row) => navigate({ to: `/dashboard/leads/${row._id}` })}
-          rowActions={(row) => [
+          rowActions={(_row) => [
             {
               label: t('common.edit'),
               onClick: (r) => navigate({ to: `/dashboard/leads/${r._id}` }),

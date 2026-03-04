@@ -217,3 +217,25 @@ export const UsersRoundIcon = createIcon("UsersRoundIcon");
 export const VideoIcon = createIcon("VideoIcon");
 export const WalletIcon = createIcon("WalletIcon");
 export const XIcon = createIcon("XIcon");
+
+// Additional shadcn-studio block icons
+export const ArmchairIcon = createIcon("ArmchairIcon");
+export const ArrowLeftIcon = createIcon("ArrowLeftIcon");
+export const BadgePercentIcon = createIcon("BadgePercentIcon");
+export const BrushIcon = createIcon("BrushIcon");
+export const ChartNoAxesCombinedIcon = createIcon("ChartNoAxesCombinedIcon");
+export const CirclePercentIcon = createIcon("CirclePercentIcon");
+export const Clock8Icon = createIcon("Clock8Icon");
+export const CrownIcon = createIcon("CrownIcon");
+export const DatabaseIcon = createIcon("DatabaseIcon");
+export const DownloadIcon = createIcon("DownloadIcon");
+export const EyeIcon = createIcon("EyeIcon");
+export const FileSpreadsheetIcon = createIcon("FileSpreadsheetIcon");
+export const Gamepad2Icon = createIcon("Gamepad2Icon");
+export const HeadphonesIcon = createIcon("HeadphonesIcon");
+export const LayoutPanelLeftIcon = createIcon("LayoutPanelLeftIcon");
+export const MailIcon = createIcon("MailIcon");
+export const PencilLineIcon = createIcon("PencilLineIcon");
+export const ShoppingBagIcon = createIcon("ShoppingBagIcon");
+export const Trash2Icon = createIcon("Trash2Icon");
+export const WatchIcon = createIcon("WatchIcon");

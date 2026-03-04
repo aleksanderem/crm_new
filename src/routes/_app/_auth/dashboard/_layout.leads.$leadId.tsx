@@ -13,7 +13,6 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { RelationshipField } from "@/components/crm/relationship-field";
 import type { RelationshipItem } from "@/components/crm/relationship-field";
 import { ActivityForm } from "@/components/crm/activity-form";
-import type { ActivityType } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +50,8 @@ import {
   Pencil,
   Settings2,
   Plus,
-  Tag,
   Upload,
   PhoneCall,
-  FileText,
   Pin,
   User,
   Search,
@@ -658,7 +655,7 @@ function LeadDetail() {
 
   const handleCreateActivity = async (data: {
     title: string;
-    activityType: ActivityType;
+    activityType: string;
     dueDate: number;
     endDate?: number;
     description?: string;
@@ -858,7 +855,7 @@ function LeadDetail() {
     for (const def of leadCfDefs) {
       const val = leadCfValues[def.fieldKey];
       allFields.push({
-        label: def.label,
+        label: def.name,
         value: val != null ? String(val) : undefined,
         fieldKey: def.fieldKey,
       });

@@ -27,7 +27,6 @@ import {
   X,
   ChevronDown,
   Search,
-  type EzIconType as LucideIcon,
 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
@@ -76,8 +75,8 @@ interface ActivityFormProps {
 }
 
 export function ActivityForm({
-  linkedEntityType,
-  linkedEntityLabel,
+  linkedEntityType: _linkedEntityType,
+  linkedEntityLabel: _linkedEntityLabel,
   onSubmit,
   onCancel,
   isSubmitting = false,

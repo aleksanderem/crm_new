@@ -45,23 +45,23 @@ export const Route = createFileRoute(
 function PackagesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createPkg = useMutation(api["gabinet/packages"].create);
-  const updatePkg = useMutation(api["gabinet/packages"].update);
-  const removePkg = useMutation(api["gabinet/packages"].remove);
+  const createPkg = useMutation(api.gabinet.packages.create);
+  const updatePkg = useMutation(api.gabinet.packages.update);
+  const removePkg = useMutation(api.gabinet.packages.remove);
 
   const { data: packages } = useQuery(
-    convexQuery(api["gabinet/packages"].list, {
+    convexQuery(api.gabinet.packages.list, {
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const { data: activeUsageCounts } = useQuery(
-    convexQuery(api["gabinet/packages"].getActiveUsageCounts, { organizationId })
+    convexQuery(api.gabinet.packages.getActiveUsageCounts, { organizationId })
   );
 
   const [panelOpen, setPanelOpen] = useState(false);

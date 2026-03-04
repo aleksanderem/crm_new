@@ -43,21 +43,21 @@ export function AppointmentDialog({
   defaultTime,
 }: AppointmentDialogProps) {
   const { t } = useTranslation();
-  const createAppointment = useMutation(api["gabinet/appointments"].create);
+  const createAppointment = useMutation(api.gabinet.appointments.create);
 
   const { data: patients } = useQuery(
-    convexQuery(api["gabinet/patients"].list, {
+    convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
     })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const { data: employees } = useQuery(
-    convexQuery(api["gabinet/employees"].listAll, { organizationId, activeOnly: true })
+    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
   );
 
   const { data: members } = useQuery(
@@ -96,7 +96,7 @@ export function AppointmentDialog({
   // Query available slots when employee + date + treatment are selected
   const selectedTreatment = treatments?.find((t) => t._id === treatmentId);
   const { data: availableSlots } = useQuery({
-    ...convexQuery(api["gabinet/appointments"].getAvailableSlotsQuery, {
+    ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
       organizationId,
       userId: employeeId as Id<"users">,
       date,
@@ -119,14 +119,14 @@ export function AppointmentDialog({
   };
 
   const handleSubmit = async () => {
-    if (!patientId || !treatmentId || !date || !startTime || !endTime) return;
+    if (!patientId || !treatmentId || !employeeId || !date || !startTime || !endTime) return;
     setSubmitting(true);
     try {
       await createAppointment({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
-        employeeId: employeeId ? employeeId as Id<"users"> : undefined,
+        employeeId: employeeId as Id<"users">,
         date,
         startTime,
         endTime,

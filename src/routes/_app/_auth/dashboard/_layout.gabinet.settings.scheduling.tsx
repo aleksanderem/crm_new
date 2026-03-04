@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -43,11 +42,11 @@ const DEFAULT_HOURS: DayHours[] = Array.from({ length: 7 }, (_, i) => ({
 function SchedulingSettings() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
-  const bulkSet = useMutation(api["gabinet/scheduling"].bulkSetWorkingHours);
+  const bulkSet = useMutation(api.gabinet.scheduling.bulkSetWorkingHours);
   const [saving, setSaving] = useState(false);
 
   const { data: existing } = useQuery(
-    convexQuery(api["gabinet/scheduling"].getWorkingHours, { organizationId })
+    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
   );
 
   const [hours, setHours] = useState<DayHours[]>(DEFAULT_HOURS);

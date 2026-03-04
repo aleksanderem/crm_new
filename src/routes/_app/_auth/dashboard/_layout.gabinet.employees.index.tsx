@@ -34,10 +34,10 @@ function EmployeesIndex() {
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
 
-  const createEmployee = useMutation(api["gabinet/employees"].create);
+  const createEmployee = useMutation(api.gabinet.employees.create);
 
   const { data: employees } = useQuery(
-    convexQuery(api["gabinet/employees"].listAll, { organizationId })
+    convexQuery(api.gabinet.employees.listAll, { organizationId })
   );
 
   const { data: members } = useQuery(
@@ -45,7 +45,7 @@ function EmployeesIndex() {
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   // Users not yet registered as employees

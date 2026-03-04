@@ -1282,6 +1282,10 @@ const schema = defineSchema({
     lastAccessedAt: v.number(),
     createdAt: v.number(),
     expiresAt: v.number(),
+    otpSendCount: v.optional(v.number()),
+    otpSendWindowStart: v.optional(v.number()),
+    verifyFailCount: v.optional(v.number()),
+    lockedUntil: v.optional(v.number()),
   })
     .index("by_token", ["tokenHash"])
     .index("by_patient", ["patientId"])

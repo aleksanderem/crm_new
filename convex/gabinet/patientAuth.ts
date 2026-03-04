@@ -1,24 +1,42 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { sendEmail } from "@cvx/email";
+import { AUTH_RESEND_KEY } from "@cvx/env";
 
-function hashString(str: string): string {
-  // Simple hash for OTP/token — in production, use crypto.subtle
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash).toString(36);
+// ---------------------------------------------------------------------------
+// Crypto helpers
+// ---------------------------------------------------------------------------
+
+async function sha256(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(100000 + (arr[0] % 900000));
 }
 
 function generateToken(): string {
   return crypto.randomUUID() + "-" + crypto.randomUUID();
 }
+
+// ---------------------------------------------------------------------------
+// Rate-limit constants
+// ---------------------------------------------------------------------------
+
+const OTP_SEND_LIMIT = 5;
+const OTP_SEND_WINDOW_MS = 15 * 60 * 1000; // 15 min
+const VERIFY_ATTEMPT_LIMIT = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 min
+
+// ---------------------------------------------------------------------------
+// Mutations / Queries
+// ---------------------------------------------------------------------------
 
 export const sendPortalOtp = mutation({
   args: {
@@ -26,7 +44,6 @@ export const sendPortalOtp = mutation({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    // Find patient by email in this org
     const patient = await ctx.db
       .query("gabinetPatients")
       .withIndex("by_orgAndEmail", (q) =>
@@ -35,49 +52,92 @@ export const sendPortalOtp = mutation({
       .first();
 
     if (!patient) {
-      // Don't reveal whether patient exists
       return { success: true };
     }
 
+    const now = Date.now();
     const otp = generateOtp();
     const token = generateToken();
-    const now = Date.now();
+    const otpHash = await sha256(otp);
 
-    // Create or reuse session
     const existingSession = await ctx.db
       .query("gabinetPortalSessions")
       .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
       .first();
 
     if (existingSession) {
+      const windowStart = existingSession.otpSendWindowStart ?? 0;
+      const sendCount = existingSession.otpSendCount ?? 0;
+
+      if (now - windowStart < OTP_SEND_WINDOW_MS && sendCount >= OTP_SEND_LIMIT) {
+        throw new Error("Too many OTP requests. Please try again later.");
+      }
+
+      const windowExpired = now - windowStart >= OTP_SEND_WINDOW_MS;
+
       await ctx.db.patch(existingSession._id, {
-        otpHash: hashString(otp),
-        otpExpiresAt: now + 10 * 60 * 1000, // 10 minutes
-        tokenHash: hashString(token),
+        otpHash,
+        otpExpiresAt: now + 10 * 60 * 1000,
+        tokenHash: token,
         isActive: false,
         lastAccessedAt: now,
+        verifyFailCount: 0,
+        lockedUntil: undefined,
+        otpSendCount: windowExpired ? 1 : sendCount + 1,
+        otpSendWindowStart: windowExpired ? now : windowStart,
       });
     } else {
       await ctx.db.insert("gabinetPortalSessions", {
         patientId: patient._id,
         organizationId: args.organizationId,
-        tokenHash: hashString(token),
-        otpHash: hashString(otp),
+        tokenHash: token,
+        otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,
         isActive: false,
         lastAccessedAt: now,
         createdAt: now,
-        expiresAt: now + 30 * 24 * 60 * 60 * 1000, // 30 days
+        expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+        otpSendCount: 1,
+        otpSendWindowStart: now,
       });
     }
 
-    // In production, send OTP via email. For now, log it.
-    console.log(`[Patient Portal OTP] ${args.email}: ${otp}`);
+    // Send OTP via email (fallback to console if Resend not configured)
+    if (AUTH_RESEND_KEY) {
+      const org = await ctx.db.get(args.organizationId);
+      const orgName = org?.name ?? "Portal Pacjenta";
+      await sendEmail({
+        to: args.email,
+        subject: `Twój kod weryfikacyjny - ${orgName}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="margin: 0 0 16px; color: #1a1a1a;">Kod weryfikacyjny</h2>
+            <p style="margin: 0 0 24px; color: #666;">
+              Twój jednorazowy kod do zalogowania się do portalu pacjenta:
+            </p>
+            <div style="background: #f5f5f5; border-radius: 8px; padding: 24px; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">${otp}</span>
+            </div>
+            <p style="margin: 24px 0 0; color: #888; font-size: 14px;">
+              Kod jest ważny przez 10 minut. Jeśli nie prosiłeś o ten kod, zignoruj tę wiadomość.
+            </p>
+          </div>
+        `,
+        text: `Twój kod weryfikacyjny: ${otp}\n\nKod jest ważny przez 10 minut.`,
+      });
+    } else {
+      console.warn("[Patient Portal OTP] Resend not configured, logging OTP to console");
+      console.log(`[Patient Portal OTP] ${args.email}: ${otp}`);
+    }
 
-    return { success: true, _devOtp: otp, _devToken: token };
+    return { success: true };
   },
 });
 
+/**
+ * Verify an OTP code. Returns a result object instead of throwing so that
+ * fail-count / lockout state is always persisted (Convex rolls back on throw).
+ */
 export const verifyPortalOtp = mutation({
   args: {
     email: v.string(),
@@ -92,28 +152,67 @@ export const verifyPortalOtp = mutation({
       )
       .first();
 
-    if (!patient) throw new Error("Invalid credentials");
+    if (!patient) {
+      return { success: false as const, error: "Invalid credentials" };
+    }
 
     const session = await ctx.db
       .query("gabinetPortalSessions")
       .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
       .first();
 
-    if (!session) throw new Error("No pending OTP");
-    if (!session.otpHash || !session.otpExpiresAt) throw new Error("No pending OTP");
-    if (Date.now() > session.otpExpiresAt) throw new Error("OTP expired");
-    if (session.otpHash !== hashString(args.otp)) throw new Error("Invalid OTP");
+    if (!session) {
+      return { success: false as const, error: "No pending OTP" };
+    }
 
     const now = Date.now();
+
+    if (session.lockedUntil && now < session.lockedUntil) {
+      return { success: false as const, error: "Too many failed attempts. Account is temporarily locked." };
+    }
+
+    if (!session.otpHash || !session.otpExpiresAt) {
+      return { success: false as const, error: "No pending OTP" };
+    }
+
+    if (now > session.otpExpiresAt) {
+      return { success: false as const, error: "OTP expired" };
+    }
+
+    const otpHash = await sha256(args.otp);
+
+    if (session.otpHash !== otpHash) {
+      const failCount = (session.verifyFailCount ?? 0) + 1;
+      const locked = failCount >= VERIFY_ATTEMPT_LIMIT;
+
+      await ctx.db.patch(session._id, {
+        verifyFailCount: failCount,
+        ...(locked
+          ? { lockedUntil: now + LOCKOUT_DURATION_MS, otpHash: undefined, otpExpiresAt: undefined }
+          : {}),
+      });
+
+      return {
+        success: false as const,
+        error: locked
+          ? "Too many failed attempts. Account is temporarily locked."
+          : "Invalid OTP",
+      };
+    }
+
+    // Success — activate session, clear OTP, reset counters
     await ctx.db.patch(session._id, {
       isActive: true,
       otpHash: undefined,
       otpExpiresAt: undefined,
       lastAccessedAt: now,
       expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+      verifyFailCount: 0,
+      lockedUntil: undefined,
     });
 
     return {
+      success: true as const,
       sessionToken: session.tokenHash,
       patientId: patient._id,
       patientName: `${patient.firstName} ${patient.lastName}`,

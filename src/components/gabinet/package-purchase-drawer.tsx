@@ -37,7 +37,7 @@ export function PackagePurchaseDrawer({
   onOpenChange,
 }: PackagePurchaseDrawerProps) {
   const { t } = useTranslation();
-  const purchasePackage = useMutation(api["gabinet/packages"].purchasePackage);
+  const purchasePackage = useMutation(api.gabinet.packages.purchasePackage);
   const createPayment = useMutation(api.payments.create);
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
@@ -45,11 +45,11 @@ export function PackagePurchaseDrawer({
   const [submitting, setSubmitting] = useState(false);
 
   const { data: activePackages } = useQuery(
-    convexQuery(api["gabinet/packages"].listActive, { organizationId })
+    convexQuery(api.gabinet.packages.listActive, { organizationId })
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api["gabinet/treatments"].listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
   const treatmentMap = new Map(

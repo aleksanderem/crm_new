@@ -1,5 +1,7 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { sendEmail } from "@cvx/email";
+import { AUTH_RESEND_KEY } from "@cvx/env";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -100,7 +102,33 @@ export const sendPortalOtp = mutation({
       });
     }
 
-    console.log(`[Patient Portal OTP] ${args.email}: ${otp}`);
+    // Send OTP via email (fallback to console if Resend not configured)
+    if (AUTH_RESEND_KEY) {
+      const org = await ctx.db.get(args.organizationId);
+      const orgName = org?.name ?? "Portal Pacjenta";
+      await sendEmail({
+        to: args.email,
+        subject: `Twój kod weryfikacyjny - ${orgName}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="margin: 0 0 16px; color: #1a1a1a;">Kod weryfikacyjny</h2>
+            <p style="margin: 0 0 24px; color: #666;">
+              Twój jednorazowy kod do zalogowania się do portalu pacjenta:
+            </p>
+            <div style="background: #f5f5f5; border-radius: 8px; padding: 24px; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">${otp}</span>
+            </div>
+            <p style="margin: 24px 0 0; color: #888; font-size: 14px;">
+              Kod jest ważny przez 10 minut. Jeśli nie prosiłeś o ten kod, zignoruj tę wiadomość.
+            </p>
+          </div>
+        `,
+        text: `Twój kod weryfikacyjny: ${otp}\n\nKod jest ważny przez 10 minut.`,
+      });
+    } else {
+      console.warn("[Patient Portal OTP] Resend not configured, logging OTP to console");
+      console.log(`[Patient Portal OTP] ${args.email}: ${otp}`);
+    }
 
     return { success: true };
   },

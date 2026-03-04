@@ -530,7 +530,7 @@ function EmployeeDetail() {
                             className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
                             onClick={() => handleRemoveTreatment(tid)}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-[18px] w-[18px]" variant="stroke" />
                           </button>
                         </Badge>
                       ))}
@@ -621,7 +621,7 @@ function EmployeeDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
                       >
-                        <Plus className="mr-1 h-4 w-4" />
+                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
                         {t("gabinet.appointments.createAppointment")}
                       </Button>
                     </div>
@@ -745,7 +745,7 @@ function EmployeeDetail() {
                           className="bg-primary"
                           onClick={() => setShowActivityForm(true)}
                         >
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                           {t("detail.activitySection.add")}
                         </Button>
                       </div>
@@ -814,7 +814,7 @@ function EmployeeDetail() {
                         className="bg-primary"
                         onClick={() => setIsAddingNote(true)}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t("detail.notes.add")}
                       </Button>
                     </div>

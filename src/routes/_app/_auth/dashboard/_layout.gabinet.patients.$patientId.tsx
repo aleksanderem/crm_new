@@ -439,7 +439,7 @@ function PatientDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
                       >
-                        <Plus className="mr-1 h-4 w-4" />
+                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
                         {t("gabinet.appointments.createAppointment")}
                       </Button>
                     </div>
@@ -497,7 +497,7 @@ function PatientDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/documents" })}
                       >
-                        <Plus className="mr-1 h-4 w-4" />
+                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
                         {t("gabinet.documents.createDocument")}
                       </Button>
                     </div>
@@ -612,7 +612,7 @@ function PatientDetail() {
                                   tx.type === "spend" ? "bg-red-100 text-red-600" :
                                   "bg-gray-100 text-gray-600"
                                 }`}>
-                                  {tx.type === "earn" ? <Plus className="h-4 w-4" /> :
+                                  {tx.type === "earn" ? <Plus className="h-[17px] w-[17px]" variant="stroke" /> :
                                    tx.type === "spend" ? <Minus className="h-4 w-4" /> :
                                    <Star className="h-4 w-4" />}
                                 </div>

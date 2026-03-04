@@ -364,7 +364,7 @@ export function AdvancedFilter({
                   className="h-7 text-xs"
                   onClick={() => onChange({ conditions: [], logic: "and" })}
                 >
-                  <X className="mr-1 h-3 w-3" variant="stroke" />
+                  <X className="mr-1 h-[18px] w-[18px]" variant="stroke" />
                   Clear all filters
                 </Button>
               </>
@@ -381,7 +381,7 @@ export function AdvancedFilter({
           onClick={() => onChange({ conditions: [], logic: "and" })}
         >
           Reset
-          <X className="ml-1 h-3.5 w-3.5" variant="stroke" />
+          <X className="ml-1 h-[18px] w-[18px]" variant="stroke" />
         </Button>
       )}
     </div>

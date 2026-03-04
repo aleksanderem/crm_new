@@ -351,7 +351,7 @@ function DocumentsIndex() {
         description={t('documents.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t('documents.newDocument')}
           </Button>
         }

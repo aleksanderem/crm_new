@@ -247,7 +247,7 @@ function TreatmentsIndex() {
         description={t("gabinet.treatments.description")}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t("gabinet.treatments.addTreatment")}
           </Button>
         }
@@ -267,7 +267,7 @@ function TreatmentsIndex() {
         actions={[
           {
             label: t('quickActions.newTreatment'),
-            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "gabinet_treatments",
             action: "create",
@@ -282,7 +282,7 @@ function TreatmentsIndex() {
           description={t("gabinet.treatments.emptyDescription")}
           action={
             <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t("gabinet.treatments.addTreatment")}
             </Button>
           }

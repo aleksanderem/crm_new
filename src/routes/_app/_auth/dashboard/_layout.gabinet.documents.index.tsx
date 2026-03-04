@@ -183,7 +183,7 @@ function DocumentsIndex() {
       <div className="flex items-center justify-between">
         <PageHeader title={t("gabinet.documents.title")} description={t("gabinet.documents.description")} />
         <Button size="sm" onClick={() => { resetForm(); setPanelOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
           {t("gabinet.documents.createDocument")}
         </Button>
       </div>

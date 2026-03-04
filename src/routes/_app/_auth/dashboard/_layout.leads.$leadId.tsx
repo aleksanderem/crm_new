@@ -1042,7 +1042,7 @@ function LeadDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateContactDrawerOpen(true)}
                       >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>
@@ -1162,7 +1162,7 @@ function LeadDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateCompanyDrawerOpen(true)}
                       >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>
@@ -1378,7 +1378,7 @@ function LeadDetail() {
                           </p>
                         </div>
                         <Button className="bg-primary" onClick={() => setShowActivityForm(true)}>
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                           {t('detail.activitySection.add')}
                         </Button>
                       </div>
@@ -1462,7 +1462,7 @@ function LeadDetail() {
                       </p>
                     </div>
                     <Button className="bg-primary">
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                       {t('detail.documentsTab.create')}
                     </Button>
                   </div>
@@ -1479,7 +1479,7 @@ function LeadDetail() {
                     </div>
                     <div className="flex gap-2">
                       <Button className="bg-primary">
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.callsTab.logCall')}
                       </Button>
                       <Button variant="outline">
@@ -1501,7 +1501,7 @@ function LeadDetail() {
                         </p>
                       </div>
                       <Button className="bg-primary" onClick={() => setIsAddingNote(true)}>
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.notes.add')}
                       </Button>
                     </div>

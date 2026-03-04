@@ -209,7 +209,7 @@ function CallsPage() {
         description={t('calls.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t('calls.logCall')}
           </Button>
         }

@@ -123,7 +123,7 @@ function LeavesPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t("gabinet.leaves.requestLeave")}
             </Button>
           </DialogTrigger>
@@ -224,7 +224,7 @@ function LeavesPage() {
                         <Check className="h-4 w-4 text-green-600" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
-                        <X className="h-4 w-4 text-red-600" />
+                        <X className="h-[18px] w-[18px] text-red-600" variant="stroke" />
                       </Button>
                     </div>
                   )}

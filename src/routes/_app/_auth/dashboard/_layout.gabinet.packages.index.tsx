@@ -201,7 +201,7 @@ function PackagesIndex() {
       <div className="flex items-center justify-between">
         <PageHeader title={t("gabinet.packages.title")} description={t("gabinet.packages.description")} />
         <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
           {t("gabinet.packages.addPackage")}
         </Button>
       </div>
@@ -210,7 +210,7 @@ function PackagesIndex() {
         actions={[
           {
             label: t('quickActions.newPackage'),
-            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
             onClick: openCreate,
             feature: "gabinet_packages",
             action: "create",
@@ -304,7 +304,7 @@ function PackagesIndex() {
             <div className="flex items-center justify-between">
               <Label>{t("gabinet.packages.treatments")}</Label>
               <Button type="button" variant="outline" size="sm" onClick={addTreatment}>
-                <Plus className="mr-1 h-3 w-3" /> {t("common.add")}
+                <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" /> {t("common.add")}
               </Button>
             </div>
             {selectedTreatments.map((st, i) => (

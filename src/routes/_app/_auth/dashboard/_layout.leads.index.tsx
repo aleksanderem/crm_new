@@ -509,7 +509,7 @@ function LeadsIndex() {
               </Button>
             </div>
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t('deals.addDeal')}
             </Button>
           </div>
@@ -549,7 +549,7 @@ function LeadsIndex() {
         actions={[
           {
             label: t('quickActions.newLead'),
-            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
             onClick: () => setCreateOpen(true),
             feature: "leads",
             action: "create",
@@ -572,7 +572,7 @@ function LeadsIndex() {
           description={t('deals.emptyDescription')}
           action={
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t('deals.addDeal')}
             </Button>
           }

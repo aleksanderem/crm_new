@@ -62,7 +62,7 @@ function LeaveTypesSettings() {
               {t("gabinet.leaveTypes.initBalances", { year: currentYear })}
             </Button>
             <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t("gabinet.leaveTypes.add")}
             </Button>
           </div>

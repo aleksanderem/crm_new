@@ -311,7 +311,7 @@ function PatientsIndex() {
         description={t("gabinet.patients.description")}
         actions={
           <Button onClick={() => setPanelOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t("gabinet.patients.addPatient")}
           </Button>
         }
@@ -348,7 +348,7 @@ function PatientsIndex() {
         actions={[
           {
             label: t('quickActions.newPatient'),
-            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
             onClick: () => setPanelOpen(true),
             feature: "gabinet_patients",
             action: "create",
@@ -363,7 +363,7 @@ function PatientsIndex() {
           description={t("gabinet.patients.emptyDescription")}
           action={
             <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
               {t("gabinet.patients.addPatient")}
             </Button>
           }

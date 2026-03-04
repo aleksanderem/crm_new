@@ -764,7 +764,7 @@ function ContactDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateLeadDrawerOpen(true)}
                       >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>
@@ -880,7 +880,7 @@ function ContactDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateCompanyDrawerOpen(true)}
                       >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>

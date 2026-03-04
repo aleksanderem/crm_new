@@ -326,7 +326,7 @@ function ActivitiesPage() {
         description={t('activities.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
             {t('activities.addActivity')}
           </Button>
         }
@@ -346,7 +346,7 @@ function ActivitiesPage() {
         actions={[
           {
             label: t('quickActions.newActivity'),
-            icon: <Plus className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "activities",
             action: "create",

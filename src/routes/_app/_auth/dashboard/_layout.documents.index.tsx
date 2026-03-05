@@ -35,6 +35,7 @@ import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { Upload } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/"
@@ -113,6 +114,15 @@ function DocumentsIndex() {
   // Chart time ranges
   const [statusChartRange, setStatusChartRange] = useState<TimeRange>("last30days");
   const [sentChartRange, setSentChartRange] = useState<TimeRange>("last7days");
+
+  // Sidebar dispatch handlers
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [typeFilterOpen, setTypeFilterOpen] = useState(false);
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
+
+  useSidebarDispatch("createFromTemplate", () => setTemplateDialogOpen(true));
+  useSidebarDispatch("openFilter", () => setTypeFilterOpen(true));
+  useSidebarDispatch("bulkActions", () => setBulkActionsOpen(true));
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})

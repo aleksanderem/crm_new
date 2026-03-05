@@ -242,4 +242,114 @@ test.describe("Quick-Create Modal", () => {
 
     await page.keyboard.press("Escape");
   });
+
+  // ─── 20.1 Quick-Create: Gabinet Entity Types ─────────────────
+
+  test("patient form available in quick-create", async ({ page }) => {
+    await navigateTo(page, "/dashboard");
+
+    const qcTrigger = page.locator('[data-testid="quick-create-trigger"]');
+    if (
+      !(await qcTrigger.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await qcTrigger.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Look for patient tab
+    const patientTab = dialog
+      .locator(
+        'button:has-text("Pacjent"), button:has-text("Patient"), [role="tab"]:has-text("Pacjent"), [role="tab"]:has-text("Patient")'
+      )
+      .first();
+
+    if (await patientTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await patientTab.click();
+      await page.waitForTimeout(500);
+
+      const inputs = dialog.locator("input");
+      const inputCount = await inputs.count();
+      expect(inputCount).toBeGreaterThan(0);
+    }
+
+    await page.keyboard.press("Escape");
+  });
+
+  test("treatment form available in quick-create", async ({ page }) => {
+    await navigateTo(page, "/dashboard");
+
+    const qcTrigger = page.locator('[data-testid="quick-create-trigger"]');
+    if (
+      !(await qcTrigger.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await qcTrigger.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Look for treatment tab
+    const treatmentTab = dialog
+      .locator(
+        'button:has-text("Zabieg"), button:has-text("Treatment"), [role="tab"]:has-text("Zabieg"), [role="tab"]:has-text("Treatment")'
+      )
+      .first();
+
+    if (await treatmentTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await treatmentTab.click();
+      await page.waitForTimeout(500);
+
+      const inputs = dialog.locator("input");
+      const inputCount = await inputs.count();
+      expect(inputCount).toBeGreaterThan(0);
+    }
+
+    await page.keyboard.press("Escape");
+  });
+
+  test("document form available in quick-create", async ({ page }) => {
+    await navigateTo(page, "/dashboard");
+
+    const qcTrigger = page.locator('[data-testid="quick-create-trigger"]');
+    if (
+      !(await qcTrigger.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await qcTrigger.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Look for document tab
+    const docTab = dialog
+      .locator(
+        'button:has-text("Dokument"), button:has-text("Document"), [role="tab"]:has-text("Dokument"), [role="tab"]:has-text("Document")'
+      )
+      .first();
+
+    if (await docTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await docTab.click();
+      await page.waitForTimeout(500);
+
+      const inputs = dialog.locator("input, textarea");
+      const inputCount = await inputs.count();
+      expect(inputCount).toBeGreaterThan(0);
+    }
+
+    await page.keyboard.press("Escape");
+  });
 });

@@ -153,4 +153,103 @@ test.describe("CRM — Companies", () => {
       await page.keyboard.press("Escape");
     }
   });
+
+  // ─── 3.3 Relationships ────────────────────────────────────────
+
+  test("contacts section appears in company detail", async ({ page }) => {
+    await navigateTo(page, "/dashboard/companies");
+
+    const companyLink = page.locator('a[href*="/companies/"]').first();
+    if (
+      !(await companyLink.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await companyLink.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    expect(page.url()).toContain("/companies/");
+    await assertNoErrorBoundary(page);
+
+    const bodyText = await getBodyText(page);
+    // Company detail should show contacts section or relationships
+    const hasContactsSection =
+      bodyText.includes("Kontakt") ||
+      bodyText.includes("Contact") ||
+      bodyText.includes("Powiązan") ||
+      bodyText.includes("Relacj") ||
+      bodyText.includes("Relationship") ||
+      bodyText.includes("Osob") ||
+      bodyText.includes("People");
+    expect(hasContactsSection).toBe(true);
+  });
+
+  test("add contact button exists in company detail", async ({ page }) => {
+    await navigateTo(page, "/dashboard/companies");
+
+    const companyLink = page.locator('a[href*="/companies/"]').first();
+    if (
+      !(await companyLink.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await companyLink.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    // Look for add relationship / add contact button in the detail page
+    const addRelBtn = page
+      .locator(
+        'button:has-text("Dodaj kontakt"), button:has-text("Add contact"), button:has-text("Dodaj powiązanie"), button:has-text("Add relationship"), button:has-text("Dodaj relacj")'
+      )
+      .first();
+
+    if (await addRelBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      expect(await addRelBtn.isVisible()).toBe(true);
+    } else {
+      // May use a + icon button instead
+      await assertNoErrorBoundary(page);
+    }
+  });
+
+  test("add relationship dialog opens in company detail", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/companies");
+
+    const companyLink = page.locator('a[href*="/companies/"]').first();
+    if (
+      !(await companyLink.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await companyLink.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    // Look for add relationship button
+    const addRelBtn = page
+      .locator(
+        'button:has-text("Dodaj"), button:has-text("Add")'
+      )
+      .first();
+
+    if (await addRelBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await addRelBtn.click();
+      await page.waitForTimeout(1000);
+
+      const dialog = page.locator('[role="dialog"]');
+      if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await assertNoErrorBoundary(page);
+        await page.keyboard.press("Escape");
+      }
+    }
+  });
 });

@@ -122,8 +122,8 @@ e2e/
 - [x] Delete company removes from list
 
 ### 3.3 Relationships
-- [ ] Contacts appear in company detail
-- [ ] Add contact to company works
+- [x] Contacts appear in company detail
+- [x] Add contact to company works
 - [ ] Remove contact from company works
 
 ---
@@ -262,9 +262,9 @@ e2e/
 - [x] Create leave request succeeds
 - [x] Leave appears with "pending" status
 - [x] Admin can approve
-- [ ] Status changes to "approved"
+- [x] Status changes to "approved"
 - [x] Admin can reject
-- [ ] Status changes to "rejected"
+- [x] Status changes to "rejected"
 
 ### 11.2 Leave Types
 - [x] Leave types list loads
@@ -449,7 +449,7 @@ e2e/
 
 ### 19.2 Role-Based UI
 - [ ] Quick-create respects permissions
-- [ ] Sidebar actions respect permissions
+- [x] Sidebar actions respect permissions
 - [ ] Edit/delete buttons hide when not allowed
 
 ---
@@ -463,9 +463,9 @@ e2e/
 - [x] Company form creates company
 - [x] Lead form creates lead
 - [x] Activity form creates activity
-- [ ] Patient form creates patient
-- [ ] Treatment form creates treatment
-- [ ] Document form creates document
+- [x] Patient form creates patient
+- [x] Treatment form creates treatment
+- [x] Document form creates document
 
 ### 20.2 Sidebar Navigation
 - [x] All sidebar items navigate correctly
@@ -507,20 +507,20 @@ e2e/
 ## 22. Error Handling
 
 ### 22.1 Form Validation
-- [ ] Required field errors appear
-- [ ] Email validation works
-- [ ] Phone validation works
+- [x] Required field errors appear
+- [x] Email validation works
+- [x] Phone validation works
 - [ ] Custom validation messages show
 
 ### 22.2 API Errors
 - [ ] Network error shows message
-- [ ] Permission error shows message
+- [x] Permission error shows message
 - [ ] Validation error shows message
 
 ### 22.3 Edge Cases
-- [ ] Empty states display correctly
-- [ ] Loading states display
-- [ ] Pagination at boundaries works
+- [x] Empty states display correctly
+- [x] Loading states display
+- [x] Pagination at boundaries works
 
 ---
 

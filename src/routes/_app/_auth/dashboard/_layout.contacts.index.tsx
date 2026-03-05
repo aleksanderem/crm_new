@@ -57,6 +57,7 @@ function ContactsIndex() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
@@ -64,6 +65,7 @@ function ContactsIndex() {
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t('contacts.views.all'), isSystem: true, isDefault: true },
@@ -373,6 +375,8 @@ function ContactsIndex() {
         onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
       />
 
       <MiniChartsRow

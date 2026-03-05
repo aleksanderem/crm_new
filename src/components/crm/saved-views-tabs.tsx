@@ -36,6 +36,9 @@ export interface SavedViewsTabsProps {
   maxCustomViews?: number;
   currentFilterState?: FilterConfig;
   filterableFields?: FieldDef[];
+  /** External control for create dialog open state */
+  createDialogOpen?: boolean;
+  onCreateDialogOpenChange?: (open: boolean) => void;
 }
 
 const OPERATORS_FOR_TYPE: Record<string, string[]> = {
@@ -150,10 +153,17 @@ export function SavedViewsTabs({
   maxCustomViews = 5,
   currentFilterState: _currentFilterState,
   filterableFields = [],
+  createDialogOpen: externalCreateDialogOpen,
+  onCreateDialogOpenChange,
 }: SavedViewsTabsProps) {
   const { t } = useTranslation();
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [internalCreateDialogOpen, setInternalCreateDialogOpen] = useState(false);
+  
+  // Use external control if provided, otherwise use internal state
+  const createDialogOpen = externalCreateDialogOpen ?? internalCreateDialogOpen;
+  const setCreateDialogOpen = onCreateDialogOpenChange ?? setInternalCreateDialogOpen;
+  
   const [editingView, setEditingView] = useState<SavedView | null>(null);
   const [newName, setNewName] = useState("");
   const [contextMenuViewId, setContextMenuViewId] = useState<string | null>(null);

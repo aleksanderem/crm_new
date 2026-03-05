@@ -74,11 +74,13 @@ function ProductsPage() {
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "products");
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form state
@@ -258,6 +260,8 @@ function ProductsPage() {
         onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
       />
 
       <QuickActionBar

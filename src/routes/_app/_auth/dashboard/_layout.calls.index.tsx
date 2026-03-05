@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
@@ -74,6 +75,10 @@ function CallsPage() {
   } = useSavedViews({ organizationId, entityType: "call", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
 
   // Form state
   const [outcome, setOutcome] = useState<CallOutcome>("noAnswer");
@@ -223,6 +228,8 @@ function CallsPage() {
         onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
       />
 
       <QuickActionBar

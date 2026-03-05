@@ -55,6 +55,7 @@ function PatientsIndex() {
   const [isCreating, setIsCreating] = useState(false);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
 
   // Sidebar dispatch handlers
   useSidebarDispatch("importCsv", () => {
@@ -71,6 +72,7 @@ function PatientsIndex() {
     const activeView = views.find(v => v.id === "active");
     if (activeView) onViewChange("active");
   });
+  useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t("gabinet.patients.views.all"), isSystem: true, isDefault: true },
@@ -342,6 +344,8 @@ function PatientsIndex() {
         onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
       />
 
       <MiniChartsRow

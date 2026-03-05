@@ -1026,6 +1026,7 @@
     "cancelInvitation": "Anuluj",
     "resendInvitation": "Wyślij ponownie",
     "invitationCancelled": "Zaproszenie anulowane.",
+    "invitationSent": "Zaproszenie wysłane pomyślnie.",
     "invitationResent": "Zaproszenie wysłane ponownie.",
     "roles": {
       "owner": "Właściciel",

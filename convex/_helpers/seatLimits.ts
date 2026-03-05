@@ -42,10 +42,22 @@ export async function checkSeatLimit(
     )
     .first();
 
+  // Fail open: default to free tier limit if subscription data is unavailable.
+  // Log warnings so billing issues can be diagnosed.
   let seatLimit = 5; // Default free tier
   if (subscription) {
     const plan = await ctx.db.get(subscription.planId);
-    if (plan) seatLimit = plan.seatLimit;
+    if (plan) {
+      seatLimit = plan.seatLimit;
+    } else {
+      console.warn(
+        `[seatLimits] Plan ${subscription.planId} not found for subscription ${subscription._id}. Using default seat limit.`
+      );
+    }
+  } else {
+    console.warn(
+      `[seatLimits] No active subscription found for org owner ${org.ownerId} (org: ${args.organizationId}). Using default free tier limit.`
+    );
   }
 
   return {

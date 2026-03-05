@@ -42,6 +42,8 @@ import {
   SelectValue,
 } from "@/ui/select";
 import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight } from "@/lib/ez-icons";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/team"
@@ -109,6 +111,8 @@ function TeamSettings() {
     await resendInvitation({ organizationId, invitationId });
   };
 
+  const navigate = useNavigate();
+
   const handleSendInvitation = async () => {
     if (!inviteEmail.trim()) return;
     setIsSending(true);
@@ -121,6 +125,19 @@ function TeamSettings() {
       setInviteEmail("");
       setInviteRole("member");
       setInviteOpen(false);
+      toast.success(t("team.invitationSent"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (message.includes("Seat limit reached")) {
+        toast.error(t("settings.team.limitReached"), {
+          action: {
+            label: t("team.upgrade"),
+            onClick: () => navigate({ to: "/dashboard/settings/billing" }),
+          },
+        });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsSending(false);
     }

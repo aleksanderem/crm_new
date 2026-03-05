@@ -1026,6 +1026,7 @@
     "cancelInvitation": "Cancel",
     "resendInvitation": "Resend",
     "invitationCancelled": "Invitation cancelled.",
+    "invitationSent": "Invitation sent successfully.",
     "invitationResent": "Invitation resent.",
     "roles": {
       "owner": "Owner",

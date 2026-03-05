@@ -193,7 +193,7 @@ export const bulkSetEmployeeSchedule = mutation({
     })),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
     const now = Date.now();
 

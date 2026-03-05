@@ -179,7 +179,7 @@ When seat limit reached, show:
 - [x] Add i18n keys for seat limit errors
 - [x] Add EN translations
 - [x] Add PL translations
-- [ ] Ensure error toast shows upgrade link
+- [x] Ensure error toast shows upgrade link
 
 ### 3.2 Graceful Degradation
 
@@ -190,7 +190,7 @@ If subscription lookup fails:
 
 - [x] Add error handling for subscription lookup
 - [x] Fail open if subscription data unavailable
-- [ ] Log warnings for billing issues
+- [x] Log warnings for billing issues
 
 ---
 
@@ -246,9 +246,9 @@ Recommendation: Option A (simpler, matches expected behavior)
 
 ### 5.3 E2E Tests
 
-- [ ] Test invite flow with seat limit
-- [ ] Test UI shows seat usage correctly
-- [ ] Test upgrade CTA appears when limit reached
+- [x] Test invite flow with seat limit
+- [x] Test UI shows seat usage correctly
+- [x] Test upgrade CTA appears when limit reached
 
 ---
 
@@ -256,14 +256,14 @@ Recommendation: Option A (simpler, matches expected behavior)
 
 ### 6.1 User Documentation
 
-- [ ] Document seat limits in help/docs
-- [ ] Explain free tier vs paid tier limits
-- [ ] Document how to upgrade
+- [x] Document seat limits in help/docs
+- [x] Explain free tier vs paid tier limits
+- [x] Document how to upgrade
 
 ### 6.2 Developer Documentation
 
 - [x] Add JSDoc to `checkSeatLimit` helper
-- [ ] Document seat limit flow in CLAUDE.md or README
+- [x] Document seat limit flow in CLAUDE.md or README
 - [x] Document fail-open behavior
 
 ---

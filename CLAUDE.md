@@ -623,10 +623,15 @@ Only output `GATE2_APPROVED` after ALL checks pass.
 
 ---
 
+## Seat Limits
+
+Organizations have subscription-based seat limits enforced when inviting team members. The flow is: `checkSeatLimit()` helper in `convex/_helpers/seatLimits.ts` counts active `teamMemberships` and compares against the plan's `seatLimit` field. The `invitations.create` mutation calls this helper and throws if the limit is reached. The `getSeatUsage` query in `convex/organizations.ts` exposes seat usage to the frontend. The team settings page (`_layout.settings.team.tsx`) shows a progress bar, warning at 80%, and upgrade CTA at limit. Fail-open behavior: if subscription lookup fails, defaults to free tier limit (5 seats). See `docs/seat-limits.md` for user-facing documentation.
+
 ## Key Files
 
 - `convex/schema.ts` — full database schema (~1290 lines)
 - `convex/permissions.ts` — RBAC logic
+- `convex/_helpers/seatLimits.ts` — seat limit checking helper
 - `src/components/org-context.tsx` — organization context provider (`useOrganization()`)
 - `src/components/layout/app-sidebar.tsx` — main navigation sidebar
 - `src/routes/_app/_auth/dashboard/_layout.tsx` — authenticated dashboard layout

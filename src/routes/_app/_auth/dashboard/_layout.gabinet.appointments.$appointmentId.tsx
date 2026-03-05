@@ -34,6 +34,7 @@ import {
 import { SidePanel } from "@/components/crm/side-panel";
 import { DocumentViewer } from "@/components/gabinet/documents/document-viewer";
 import { SignaturePad } from "@/components/gabinet/documents/signature-pad";
+import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
   ArrowLeft,
@@ -219,6 +220,10 @@ function AppointmentDetail() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [paymentNote, setPaymentNote] = useState("");
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+
+  // Body chart state
+  const [bodyChartData, setBodyChartData] = useState<BodyRegion[]>([]);
+  const [isBodyChartSaving, setIsBodyChartSaving] = useState(false);
 
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
@@ -584,6 +589,39 @@ function AppointmentDetail() {
     setEditingNoteId(note._id);
     setEditNoteContent(note.content);
   };
+
+  // Body chart handlers
+  const handleBodyChartChange = (data: BodyRegion[]) => {
+    setBodyChartData(data);
+  };
+
+  const handleBodyChartSave = async () => {
+    setIsBodyChartSaving(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        bodyChartData: bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : undefined,
+      });
+      toast.success(t("common.saved"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsBodyChartSaving(false);
+    }
+  };
+
+  // Initialize body chart data from appointment
+  useState(() => {
+    if (detail?.appointment.bodyChartData) {
+      try {
+        setBodyChartData(JSON.parse(detail.appointment.bodyChartData));
+      } catch (e) {
+        console.error("Failed to parse body chart data", e);
+      }
+    }
+  });
 
   // Group notes by parent for threading
   const rootNotes = notes.filter((n) => !n.parentNoteId);
@@ -1539,11 +1577,20 @@ function AppointmentDetail() {
               {/* Body Chart Tab */}
               <TabsContent value="body-chart" className="m-0">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>{t("gabinet.appointments.tabs.bodyChart")}</CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>{t("gabinet.appointments.tabs.bodyChart")}</CardTitle>
+                      <CardDescription>{t("gabinet.bodyChart.description")}</CardDescription>
+                    </div>
+                    <Button onClick={handleBodyChartSave} disabled={isBodyChartSaving}>
+                      {isBodyChartSaving ? t("common.saving") : t("common.save")}
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground">{t("common.comingSoon")}</p>
+                    <BodyChart
+                      data={bodyChartData}
+                      onChange={handleBodyChartChange}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>

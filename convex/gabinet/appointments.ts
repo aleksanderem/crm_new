@@ -445,6 +445,7 @@ export const update = mutation({
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
     status: v.optional(gabinetAppointmentStatusValidator),
     cancellationReason: v.optional(v.string()),
+    bodyChartData: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

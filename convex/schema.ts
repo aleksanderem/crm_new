@@ -1126,6 +1126,7 @@ const schema = defineSchema({
     status: gabinetAppointmentStatusValidator,
     notes: v.optional(v.string()),
     internalNotes: v.optional(v.string()),
+    bodyChartData: v.optional(v.string()), // JSON string of BodyRegion[]
     color: v.optional(v.string()),
     isRecurring: v.boolean(),
     recurringRule: v.optional(v.object({

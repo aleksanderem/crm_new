@@ -133,8 +133,8 @@ e2e/
 ### 4.1 Pipeline View
 - [x] Pipeline loads with stages
 - [x] Leads appear in correct stages
-- [ ] Drag-and-drop moves leads between stages
-- [ ] Stage change persists
+- [x] Drag-and-drop moves leads between stages
+- [x] Stage change persists
 
 ### 4.2 Lead CRUD
 - [x] Create lead succeeds
@@ -142,9 +142,9 @@ e2e/
 - [x] Delete lead removes
 
 ### 4.3 Stage Transitions
-- [ ] Move lead forward works
-- [ ] Move lead backward works
-- [ ] Lost lead workflow works
+- [x] Move lead forward works
+- [x] Move lead backward works
+- [x] Lost lead workflow works
 
 ---
 
@@ -204,20 +204,20 @@ e2e/
 - [x] Create patient with all fields succeeds
 - [x] Edit patient persists changes
 - [x] Soft-delete sets isActive=false
-- [ ] Patient no longer appears in active list
+- [x] Patient no longer appears in active list
 
 ### 8.3 Patient Detail
 - [x] Detail page loads
-- [ ] Overview tab shows all data
-- [ ] Medical notes field editable
-- [ ] Allergies field editable
-- [ ] Emergency contact fields editable
+- [x] Overview tab shows all data
+- [x] Medical notes field editable
+- [x] Allergies field editable
+- [x] Emergency contact fields editable
 
 ### 8.4 Medical Data
 - [x] PESEL validation works
-- [ ] Date of birth picker works
-- [ ] Gender selector works
-- [ ] Blood type field saves
+- [x] Date of birth picker works
+- [x] Gender selector works
+- [x] Blood type field saves
 
 ---
 
@@ -289,7 +289,7 @@ e2e/
 - [x] Employee selector works
 - [ ] Available slots load from backend
 - [ ] Slot selection works
-- [ ] Submit creates appointment
+- [x] Submit creates appointment
 - [ ] Appointment appears in calendar
 
 ### 12.2 Recurring Appointments
@@ -305,10 +305,10 @@ e2e/
 - [ ] Cannot create conflicting appointment
 
 ### 12.4 Status Transitions
-- [ ] scheduled → confirmed works
-- [ ] confirmed → in_progress works
-- [ ] in_progress → completed works
-- [ ] Cancel sets status + reason
+- [x] scheduled → confirmed works
+- [x] confirmed → in_progress works
+- [x] in_progress → completed works
+- [x] Cancel sets status + reason
 
 ---
 

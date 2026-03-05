@@ -49,11 +49,11 @@ export function ThemeSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           {currentTheme === "dark" ? (
-            <Moon className="h-4 w-4" />
+            <Moon className="h-4 w-4" variant="stroke" />
           ) : currentTheme === "light" ? (
-            <Sun className="h-4 w-4" />
+            <Sun className="h-4 w-4" variant="stroke" />
           ) : (
-            <Monitor className="h-4 w-4" />
+            <Monitor className="h-4 w-4" variant="stroke" />
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>
@@ -65,11 +65,11 @@ export function ThemeSwitcher() {
             onClick={() => setCurrentTheme(theme)}
           >
             {theme === "light" ? (
-              <Sun className="mr-2 h-4 w-4" />
+              <Sun className="mr-2 h-4 w-4" variant="stroke" />
             ) : theme === "dark" ? (
-              <Moon className="mr-2 h-4 w-4" />
+              <Moon className="mr-2 h-4 w-4" variant="stroke" />
             ) : (
-              <Monitor className="mr-2 h-4 w-4" />
+              <Monitor className="mr-2 h-4 w-4" variant="stroke" />
             )}
             {theme.charAt(0).toUpperCase() + theme.slice(1)}
           </DropdownMenuItem>
@@ -86,11 +86,11 @@ export function ThemeSwitcherHome() {
       {themes.map((theme) => (
         <button key={theme} name="theme" onClick={() => setCurrentTheme(theme)}>
           {theme === "light" ? (
-            <Sun className="h-4 w-4 text-primary/80 hover:text-primary" />
+            <Sun className="h-4 w-4 text-primary/80 hover:text-primary" variant="stroke" />
           ) : theme === "dark" ? (
-            <Moon className="h-4 w-4 text-primary/80 hover:text-primary" />
+            <Moon className="h-4 w-4 text-primary/80 hover:text-primary" variant="stroke" />
           ) : (
-            <Monitor className="h-4 w-4 text-primary/80 hover:text-primary" />
+            <Monitor className="h-4 w-4 text-primary/80 hover:text-primary" variant="stroke" />
           )}
         </button>
       ))}

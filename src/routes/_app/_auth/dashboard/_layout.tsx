@@ -65,11 +65,11 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
 });
 
 const typeIcons: Record<string, React.ReactNode> = {
-  contact: <Users className="h-4 w-4" />,
-  company: <Building2 className="h-4 w-4" />,
-  lead: <TrendingUp className="h-4 w-4" />,
-  document: <FileText className="h-4 w-4" />,
-  product: <Package className="h-4 w-4" />,
+  contact: <Users className="h-4 w-4" variant="stroke" />,
+  company: <Building2 className="h-4 w-4" variant="stroke" />,
+  lead: <TrendingUp className="h-4 w-4" variant="stroke" />,
+  document: <FileText className="h-4 w-4" variant="stroke" />,
+  product: <Package className="h-4 w-4" variant="stroke" />,
 };
 
 function DashboardLayout() {
@@ -402,7 +402,7 @@ function DashboardLayout() {
             <div className="flex flex-1 flex-col">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
-                  <SidebarTrigger className="[&_svg]:!size-5 [&_easier-icon]:!size-5" />
+                  <SidebarTrigger className="[&_svg]:!size-4 [&_easier-icon]:!size-4" />
                   <Separator orientation="vertical" className="hidden !h-4 sm:block" />
                   <Button
                     variant="ghost"
@@ -410,7 +410,7 @@ function DashboardLayout() {
                     onClick={() => setSearchOpen(true)}
                   >
                     <div className="text-muted-foreground hidden items-center gap-1.5 text-sm sm:flex">
-                      <SearchIcon />
+                      <SearchIcon className="size-4" variant="stroke" />
                       <span>{t("layout.search")}</span>
                     </div>
                   </Button>
@@ -420,7 +420,7 @@ function DashboardLayout() {
                     className="sm:hidden"
                     onClick={() => setSearchOpen(true)}
                   >
-                    <SearchIcon />
+                    <SearchIcon className="size-4" variant="stroke" />
                   </Button>
                 </div>
 
@@ -461,12 +461,12 @@ function DashboardLayout() {
                       </div>
                       <DropdownMenuSeparator className="sm:hidden" />
                       <DropdownMenuItem onClick={() => navigate({ to: "/dashboard/settings" })}>
-                        <Settings className="mr-2 h-4 w-4" />
+                        <Settings className="mr-2 h-4 w-4" variant="stroke" />
                         {t("layout.settings")}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => signOut()}>
-                        <LogOut className="mr-2 h-4 w-4" />
+                        <LogOut className="mr-2 h-4 w-4" variant="stroke" />
                         {t("layout.logOut")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>

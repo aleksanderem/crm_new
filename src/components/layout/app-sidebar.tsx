@@ -13,29 +13,32 @@ import {
   Clock,
   ClipboardList,
   Download,
+  Eye,
   FileText,
   Filter,
   Gift,
   Heart,
   Kanban,
   LayoutDashboard,
+  LinkIcon,
   Mail,
   Package,
   Phone,
   PieChart,
   PlusCircle,
-  Power,
   RefreshCw,
+  SearchIcon,
   Send,
   Settings,
+  Star,
   Stethoscope,
+  TableIcon,
+  Tag,
   TrendingUp,
-  Trophy,
   Upload,
   UserCog,
   UserPlus,
   Users,
-  X,
 } from "@/lib/ez-icons";
 import {
   Sidebar,
@@ -102,14 +105,22 @@ const gabinetNav: NavItem[] = [
 
 // Contextual actions per entity route — designed around what users actually do on each page
 const pageContexts: Record<string, PageContext> = {
+  dashboard: {
+    titleKey: "nav.insights",
+    actions: [
+      { label: "nav.actions.viewPipeline", icon: Eye, href: "/dashboard/leads" },
+      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead" },
+      { label: "nav.actions.todaysActivities", icon: Clock, href: "/dashboard/activities" },
+      { label: "nav.actions.exportReport", icon: Download, href: "/dashboard" },
+    ],
+  },
   contacts: {
     titleKey: "nav.contacts",
     actions: [
       { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/contacts" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/contacts" },
-      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead" },
-      { label: "nav.actions.addActivity", icon: CalendarCheck, quickCreate: "activity" },
+      { label: "nav.actions.savedViews", icon: Star, href: "/dashboard/contacts" },
     ],
   },
   companies: {
@@ -118,8 +129,7 @@ const pageContexts: Record<string, PageContext> = {
       { label: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/companies" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/companies" },
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
-      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead" },
+      { label: "nav.actions.viewRelationships", icon: LinkIcon, href: "/dashboard/companies" },
     ],
   },
   leads: {
@@ -127,37 +137,44 @@ const pageContexts: Record<string, PageContext> = {
     actions: [
       { label: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead" },
       { label: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
+      { label: "nav.actions.viewTable", icon: TableIcon, href: "/dashboard/leads" },
+      { label: "nav.actions.pipelineSettings", icon: Settings, href: "/dashboard/settings/pipelines" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/leads" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/leads" },
-      { label: "nav.actions.markWon", icon: Trophy, href: "/dashboard/leads" },
-      { label: "nav.actions.markLost", icon: X, href: "/dashboard/leads" },
-    ],
-  },
-  products: {
-    titleKey: "nav.products",
-    actions: [
-      { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "document" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/products" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
-      { label: "nav.actions.activate", icon: Power, href: "/dashboard/products" },
-    ],
-  },
-  documents: {
-    titleKey: "nav.documents",
-    actions: [
-      { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/documents" },
-      { label: "nav.actions.changeStatus", icon: RefreshCw, href: "/dashboard/documents" },
-      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead" },
     ],
   },
   activities: {
     titleKey: "nav.activities",
     actions: [
       { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity" },
-      { label: "nav.actions.markComplete", icon: CheckCircle, href: "/dashboard/activities" },
-      { label: "nav.actions.dueToday", icon: Clock, href: "/dashboard/activities" },
-      { label: "nav.actions.overdue", icon: Filter, href: "/dashboard/activities" },
+      { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/activities" },
+      { label: "nav.actions.calendarView", icon: Calendar, href: "/dashboard/calendar" },
+      { label: "nav.actions.upcomingOnly", icon: Clock, href: "/dashboard/activities" },
+    ],
+  },
+  calendar: {
+    titleKey: "nav.calendar",
+    actions: [
+      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity" },
+      { label: "nav.actions.goToToday", icon: CalendarCheck, href: "/dashboard/calendar" },
+    ],
+  },
+  documents: {
+    titleKey: "nav.documents",
+    actions: [
+      { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document" },
+      { label: "nav.actions.createFromTemplate", icon: FileText, href: "/dashboard/documents" },
+      { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/documents" },
+      { label: "nav.actions.bulkActions", icon: CheckCircle, href: "/dashboard/documents" },
+    ],
+  },
+  products: {
+    titleKey: "nav.products",
+    actions: [
+      { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "product" },
+      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/products" },
+      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
+      { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/products" },
     ],
   },
   calls: {
@@ -184,22 +201,28 @@ const gabinetPageContexts: Record<string, PageContext> = {
     titleKey: "nav.gabinet.calendar",
     actions: [
       { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
-      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+      { label: "nav.actions.goToToday", icon: Calendar, href: "/dashboard/gabinet/calendar" },
+      { label: "nav.actions.filterByEmployee", icon: UserCog, href: "/dashboard/gabinet/calendar" },
+      { label: "nav.actions.filterByTreatment", icon: Stethoscope, href: "/dashboard/gabinet/calendar" },
     ],
   },
   patients: {
     titleKey: "nav.gabinet.patients",
     actions: [
       { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
-      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/gabinet/patients" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/gabinet/patients" },
+      { label: "nav.actions.searchPatients", icon: SearchIcon, href: "/dashboard/gabinet/patients" },
+      { label: "nav.actions.filterByStatus", icon: Filter, href: "/dashboard/gabinet/patients" },
+      { label: "nav.actions.viewPatientStats", icon: BarChart3, href: "/dashboard/gabinet/patients" },
     ],
   },
   treatments: {
     titleKey: "nav.gabinet.treatments",
     actions: [
       { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment" },
+      { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/gabinet/treatments" },
+      { label: "nav.actions.sortByPrice", icon: TrendingUp, href: "/dashboard/gabinet/treatments" },
+      { label: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/treatments" },
     ],
   },
   packages: {
@@ -224,7 +247,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
 
 const gabinetRouteKeys = ["calendar", "patients", "treatments", "packages", "employees", "documents"];
 
-const entityRouteKeys = ["contacts", "companies", "leads", "products", "documents", "activities", "calls", "inbox"];
+const entityRouteKeys = ["contacts", "companies", "leads", "products", "documents", "activities", "calls", "inbox", "calendar"];
 
 interface SettingsNavItem {
   labelKey: string;
@@ -289,11 +312,15 @@ export function AppSidebar() {
   const activeGabinetEntity = activeWorkspace === "gabinet" && !isSettingsRoute
     ? gabinetRouteKeys.find((key) => matchRoute({ to: `/dashboard/gabinet/${key}`, fuzzy: true }))
     : undefined;
+  const isDashboardHome = activeWorkspace === "crm" && !isSettingsRoute && !activeEntity
+    && matchRoute({ to: "/dashboard" }) !== false;
   const pageContext = activeEntity
     ? pageContexts[activeEntity]
     : activeGabinetEntity
       ? gabinetPageContexts[activeGabinetEntity]
-      : null;
+      : isDashboardHome
+        ? pageContexts.dashboard
+        : null;
 
   return (
     <>
@@ -304,7 +331,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
-                className="gap-2.5 !bg-transparent group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>svg]:size-8"
+                className="gap-2.5 !bg-transparent group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>svg]:size-5"
                 asChild
               >
                 <Link to="/dashboard">
@@ -338,13 +365,13 @@ export function AppSidebar() {
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
-                        className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-6 [&>easier-icon]:size-6"
+                        className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
                         tooltip={t(item.label)}
                         isActive={isActive}
                         asChild
                       >
                         <Link to={item.href}>
-                          <item.icon />
+                          <item.icon variant="stroke" />
                           <span>{t(item.label)}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -421,7 +448,7 @@ export function AppSidebar() {
                     }
                   }}
                 >
-                  <action.icon className="size-7" />
+                  <action.icon className="size-4" variant="stroke" />
                   <span className="text-center leading-tight">{t(action.label)}</span>
                 </button>
               ))}

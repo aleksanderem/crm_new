@@ -30,18 +30,18 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 const notificationTypeIcons: Record<string, React.ReactNode> = {
-  email: <Mail className="h-4 w-4" />,
-  deal: <TrendingUp className="h-4 w-4" />,
-  contact: <Users className="h-4 w-4" />,
-  activity: <Calendar className="h-4 w-4" />,
-  document: <FileText className="h-4 w-4" />,
+  email: <Mail className="h-4 w-4" variant="stroke" />,
+  deal: <TrendingUp className="h-4 w-4" variant="stroke" />,
+  contact: <Users className="h-4 w-4" variant="stroke" />,
+  activity: <Calendar className="h-4 w-4" variant="stroke" />,
+  document: <FileText className="h-4 w-4" variant="stroke" />,
 };
 
 function getNotificationIcon(type?: string) {
   if (type && type in notificationTypeIcons) {
     return notificationTypeIcons[type];
   }
-  return <Info className="h-4 w-4" />;
+  return <Info className="h-4 w-4" variant="stroke" />;
 }
 
 export function NotificationBell() {
@@ -90,7 +90,7 @@ export function NotificationBell() {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4" variant="stroke" />
           {count > 0 && (
             <span className="bg-destructive text-destructive-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium">
               {count > 99 ? "99+" : count}

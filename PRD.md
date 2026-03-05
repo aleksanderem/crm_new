@@ -1,60 +1,75 @@
-# PRD: Gabinet Module — Phase 1: Patients & Treatments
+# PRD: UI Polish — Icons, Contextual Actions, Permissions, Quick-Create
 
 ## Context
 
-Port the Patients and Treatments foundation from the Karta clinic system into the CRM as the "Gabinet" module. These are core entities referenced by all later phases (appointments, scheduling, packages, loyalty, documents).
+The CRM platform needs polish across four systems: icon consistency, the sidebar middle-panel contextual actions, the RBAC permissions architecture, and the quick-create modal. All changes must maintain existing functionality while improving UX quality.
 
-Follow existing CRM conventions: organizationId scoping, verifyOrgAccess/checkPermission auth, logActivity audit, i18n (PL/EN), CrmDataTable with SidePanel, shadcn/ui components.
-
-Reference: `karta.md` for full spec details.
+Key files to understand before starting:
+- `src/components/layout/app-sidebar.tsx` — sidebar with icon column (left), contextual actions panel (middle), main content (right)
+- `src/components/crm/quick-create-menu.tsx` — quick-create modal with CRM/Gabinet/System tabs
+- `convex/permissions.ts` + `convex/_helpers/permissions.ts` — RBAC system
+- `src/lib/ez-icons/` — icon wrapper library supporting `size` and `variant` (stroke/solid/bulk/duotone/twotone) props
 
 ---
 
 ## Tasks
 
-### Schema
+### 1. Icon Standardization (16px stroke)
 
-- [x] Add `gabinetPatients` table to `convex/schema.ts` with fields: organizationId, contactId?, firstName, lastName, pesel?, dateOfBirth?, gender?, email, phone?, address?, medicalNotes?, allergies?, bloodType?, emergencyContactName?, emergencyContactPhone?, referralSource?, isActive, tags?, createdBy, createdAt, updatedAt. Indexes: by_org, by_orgAndEmail, by_orgAndPesel, by_orgAndContact. Search index on firstName + lastName filtered by organizationId.
-- [x] Add `gabinetTreatments` table to `convex/schema.ts` with fields: organizationId, name, description?, category?, duration (minutes), price, currency (default "PLN"), taxRate?, contraindications?, preparationInstructions?, aftercareInstructions?, isActive, requiresApproval?, color?, sortOrder?, createdBy, createdAt, updatedAt. Indexes: by_org, by_orgAndCategory, by_orgAndActive.
+All icons in the left sidebar column and middle contextual-actions panel should be 16px (size-4 / `className="size-4"`) using the stroke variant. Currently icons are mixed sizes (size-5, size-6, size-7, size-8).
 
-### Backend — Patients
+- [x] Audit `app-sidebar.tsx`: change all sidebar menu item icons (left icon column) to `size-4` (16px). The CSS selectors `[&>svg]:size-6` and `[&>easier-icon]:size-6` on `SidebarMenuButton` must become `size-4`. Keep the app logo icon larger if needed (size-5 max).
+- [x] Audit `app-sidebar.tsx`: change all contextual action icons in the middle panel (the grid of action buttons under "Actions") to `size-4`.
+- [x] Ensure all icons in both columns use the stroke variant. If the ez-icons component supports a `variant` prop, pass `variant="stroke"`. If icons are imported from `@/lib/ez-icons`, verify they default to stroke or explicitly set it.
+- [x] Audit page header icons (the SidebarTrigger, search button, notification bell, theme switcher, user dropdown trigger in the sticky top header bar) — these should also be `size-4` for consistency, except where the button itself requires a larger touch target (keep button size, shrink icon inside).
+- [x] Run typecheck and build to verify no breakage.
 
-- [x] Create `convex/gabinet/patients.ts` with queries: list (paginated + search + filters), getById, getByContact. All use verifyOrgAccess.
-- [x] Add mutations in `convex/gabinet/patients.ts`: create, update, remove (soft-delete via isActive=false). All use verifyOrgAccess + logActivity.
+### 2. Middle Panel — Contextual Actions per View
 
-### Backend — Treatments
+The middle panel (second column, the "detail panel") currently shows a title and action buttons via `pageContexts`/`gabinetPageContexts` in `app-sidebar.tsx`. These need to be expanded with actually useful, context-relevant actions and shortcuts for each view. Remove generic/unhelpful actions, add missing useful ones.
 
-- [x] Create `convex/gabinet/treatments.ts` with queries: list (paginated), getById, listByCategory, listActive (non-paginated for dropdowns). All use verifyOrgAccess.
-- [x] Add mutations in `convex/gabinet/treatments.ts`: create, update, remove (soft-delete). All use verifyOrgAccess + logActivity.
+- [x] **Dashboard page**: Actions should include: View Pipeline (navigate to leads kanban), Add Deal (quickCreate lead), Today's Activities (navigate to activities with today filter), Quick Stats (navigate to dashboard settings or refresh), Export Report (placeholder or actual export).
+- [x] **Contacts page**: Actions should include: Add Contact (quickCreate), Import CSV (navigate), Export CSV (navigate), Merge Duplicates (navigate to contacts with merge mode if exists, otherwise placeholder), Saved Views (toggle saved views panel).
+- [x] **Companies page**: Actions should include: Add Company (quickCreate), Import CSV, Export CSV, View Relationships (navigate to a company relationships view or filter).
+- [x] **Leads page**: Actions should include: Add Deal (quickCreate lead), View as Kanban (navigate to kanban view), View as Table (navigate to table view), Pipeline Settings (navigate to pipeline config), Import CSV, Export CSV.
+- [x] **Activities page**: Actions should include: Add Activity (quickCreate), Filter by Type (open type filter dropdown or navigate with filter), Calendar View (navigate to calendar), Upcoming Only (toggle showing only future activities).
+- [x] **Calendar page**: Actions should include: Add Appointment (quickCreate appointment if gabinet active, otherwise quickCreate activity), Go to Today (scroll calendar to today), Switch View (day/week/month toggle if not already in toolbar).
+- [x] **Documents page**: Actions should include: Upload Document (trigger document upload dialog), Create from Template (placeholder), Filter by Type, Bulk Actions.
+- [x] **Products page**: Fix the bug — current quickCreate action is "document" but should be "product". Actions should include: Add Product (quickCreate product — see quick-create section), Import CSV, Export CSV, Category Filter.
+- [x] **Gabinet Patients page**: Actions should include: Add Patient (quickCreate patient), Import Patients, Search Patients, Filter by Status (active/inactive), View Patient Stats.
+- [x] **Gabinet Treatments page**: Actions should include: Add Treatment (quickCreate treatment), Filter by Category, Sort by Price/Duration, Manage Categories.
+- [x] **Gabinet Calendar page**: Actions should include: Add Appointment (quickCreate appointment), Go to Today, View Day/Week/Month, Filter by Employee, Filter by Treatment Type.
+- [x] Add i18n keys for all new action labels in both `en/translation.json` and `pl/translation.json`.
+- [x] Run typecheck and build.
 
-### Frontend — Patient List Page
+### 3. Permissions System — Better Organization
 
-- [x] Create `src/routes/_app/_auth/dashboard/_layout.gabinet.patients.index.tsx` with CrmDataTable showing columns: name (firstName + lastName), email, phone, dateOfBirth, tags, isActive, createdAt. Include SidePanel for create/edit with patient form.
-- [x] Create patient form component with all fields organized in sections: Basic Info (name, email, phone, dateOfBirth, gender), Medical (pesel, bloodType, allergies, medicalNotes), Emergency Contact, Additional (referralSource, tags).
+The RBAC system in `convex/_helpers/permissions.ts` works but needs better structure: typed feature/action constants, frontend permission awareness, and the quick-create modal should respect permissions.
 
-### Frontend — Patient Detail Page
+- [ ] Extract permission constants into a shared file `convex/_helpers/permissionTypes.ts` (or similar) that exports: `FEATURES` (array/enum of all feature names), `ACTIONS` (array/enum of all action names), `SCOPES` (array/enum), `DEFAULT_PERMISSIONS` (the role→feature→action→scope mapping). Import these in both `permissions.ts` and frontend code. This removes magic strings spread across files.
+- [ ] Create a frontend React hook `usePermission(feature, action)` that calls the existing `getMyPermissions` query and returns `{ allowed: boolean, scope: string, loading: boolean }`. Place in `src/hooks/use-permission.ts`. This hook should use the org context from `useOrganization()`.
+- [ ] Create a frontend wrapper component `<PermissionGate feature="leads" action="create">` that conditionally renders children based on permission. Falls back to nothing (or optional `fallback` prop). Place in `src/components/crm/permission-gate.tsx`.
+- [ ] Wrap quick-create menu entity buttons with permission checks: hide or disable items the user lacks "create" permission for. Use the `usePermission` hook. Map entity types to permission features (contact→contacts, lead→leads, patient→gabinet_patients, etc.).
+- [ ] Wrap sidebar contextual action buttons with permission checks where the action is a create operation.
+- [ ] Add i18n keys for permission-denied states if showing disabled buttons (e.g., "You don't have permission to create contacts").
+- [ ] Run typecheck and build.
 
-- [x] Create `src/routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId.tsx` with tabs: Overview (patient info cards), Activity (audit log). Appointments/Documents/Loyalty tabs can be placeholder stubs for later phases.
+### 4. Quick-Create Modal — Complete All Entities
 
-### Frontend — Treatment List Page
+The quick-create modal (`src/components/crm/quick-create-menu.tsx`) already lists 13 entity types across CRM/Gabinet/System tabs. Several have `hasForm: false` and just navigate away. All should have proper inline forms.
 
-- [x] Create `src/routes/_app/_auth/dashboard/_layout.gabinet.treatments.index.tsx` with CrmDataTable showing columns: name, category, duration, price, isActive. Include SidePanel for create/edit.
-- [x] Create treatment form component with fields: name, description, category, duration (minute picker), price, currency, taxRate, contraindications (textarea), preparation/aftercare instructions, color picker, isActive toggle.
+- [ ] **Product** — add product to the entityItems list (currently missing entirely). Type: "product", group: "crm", icon: appropriate product icon, hasForm: true. Create the inline form with fields: name, description, price, currency, unit, sku, isActive. Add the case to `renderQuickCreateForm` in `_layout.tsx`.
+- [ ] **Call** — change `hasForm: false` to `true` for calls. Create an inline call-logging form with fields: contact selector (search contacts), phone number (auto-fill from contact), direction (inbound/outbound), duration, outcome (select: connected/voicemail/no_answer/busy), notes. Add the case to `renderQuickCreateForm`.
+- [ ] **Document** — change `hasForm: false` to `true` for documents. Create an inline document form with fields: title, file upload (use Convex file storage), entity link (optional: link to contact/company/lead), description/notes. Add the case to `renderQuickCreateForm`.
+- [ ] Fix the `renderQuickCreateForm` switch in `_layout.tsx` to handle ALL entity types including: product, call, document, gabinetDocument (if applicable). Every `FormEntityType` must have a corresponding form rendered.
+- [ ] Verify each form submits correctly by testing: open quick-create → select entity → fill form → submit → entity appears in the relevant list page.
+- [ ] Add missing i18n keys for form labels, placeholders, and success/error messages for product, call, and document forms in both translation files.
+- [ ] Run typecheck and build.
 
-### Navigation & Routing
+### Integration & Verification
 
-- [x] Add Gabinet section to sidebar navigation (`src/components/layout/app-sidebar.tsx`) with collapsible group containing: Patients, Treatments. Only show when user's org has gabinet module active (check productSubscriptions or always show for now).
-- [x] Ensure TanStack Router file-based routes are correctly set up for the new pages (gabinet namespace under dashboard layout).
-
-### i18n
-
-- [x] Add `gabinet.patients.*` translation keys to both `public/locales/en/translation.json` and `public/locales/pl/translation.json`. Keys needed: page title, column headers, form labels, empty state, create/edit/delete actions, validation messages.
-- [x] Add `gabinet.treatments.*` translation keys to both translation files. Same scope as patients.
-
-### Integration
-
-- [x] Verify all new pages render without errors (no error boundaries triggered, no console errors on navigation).
-- [x] Verify patient CRUD works end-to-end: create patient from list page, see in table, click to detail, edit, soft-delete.
-- [x] Verify treatment CRUD works end-to-end: create treatment, see in table, edit, soft-delete.
-- [x] Run typecheck (`npm run typecheck`) — must pass with 0 errors.
-- [x] Run build (`npm run build`) — must succeed.
+- [ ] Verify all CRM pages render without error boundaries after icon/action changes.
+- [ ] Verify quick-create modal opens, all tabs work, all entity forms render and submit.
+- [ ] Verify that a "viewer" role user sees appropriately restricted quick-create options (permission gate working).
+- [ ] Run `npm run typecheck` — must pass with 0 errors.
+- [ ] Run `npm run build` — must succeed.

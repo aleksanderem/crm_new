@@ -42,6 +42,7 @@ export type QuickCreateEntityType =
   | "activity"
   | "call"
   | "document"
+  | "product"
   | "patient"
   | "appointment"
   | "treatment"
@@ -54,6 +55,9 @@ export type FormEntityType =
   | "contact"
   | "company"
   | "lead"
+  | "product"
+  | "call"
+  | "document"
   | "patient"
   | "appointment"
   | "treatment"
@@ -73,12 +77,13 @@ const entityFeatureMap: Record<QuickCreateEntityType, Feature | null> = {
   activity: "activities",
   call: "calls",
   document: "documents",
+  product: "products",
   patient: "gabinet_patients",
   appointment: "gabinet_appointments",
   treatment: "gabinet_treatments",
   package: "gabinet_packages",
   employee: "gabinet_employees",
-  leave: "gabinet_employees", // leave is tied to employee management
+  leave: "gabinet_employees",
   user: "team",
 };
 
@@ -133,7 +138,7 @@ const entityItems: {
     descriptionKey: "quickCreate.itemDesc.call",
     icon: Phone,
     avatarColor: "bg-rose-600/10 text-rose-600 dark:bg-rose-400/10 dark:text-rose-400",
-    hasForm: false,
+    hasForm: true,
     group: "crm",
   },
   {
@@ -142,7 +147,16 @@ const entityItems: {
     descriptionKey: "quickCreate.itemDesc.document",
     icon: FileText,
     avatarColor: "bg-slate-600/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-400",
-    hasForm: false,
+    hasForm: true,
+    group: "crm",
+  },
+  {
+    type: "product",
+    i18nKey: "quickCreate.items.product",
+    descriptionKey: "quickCreate.itemDesc.product",
+    icon: Package,
+    avatarColor: "bg-emerald-600/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400",
+    hasForm: true,
     group: "crm",
   },
   {

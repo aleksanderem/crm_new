@@ -58,18 +58,18 @@ The RBAC system in `convex/_helpers/permissions.ts` works but needs better struc
 
 The quick-create modal (`src/components/crm/quick-create-menu.tsx`) already lists 13 entity types across CRM/Gabinet/System tabs. Several have `hasForm: false` and just navigate away. All should have proper inline forms.
 
-- [ ] **Product** — add product to the entityItems list (currently missing entirely). Type: "product", group: "crm", icon: appropriate product icon, hasForm: true. Create the inline form with fields: name, description, price, currency, unit, sku, isActive. Add the case to `renderQuickCreateForm` in `_layout.tsx`.
-- [ ] **Call** — change `hasForm: false` to `true` for calls. Create an inline call-logging form with fields: contact selector (search contacts), phone number (auto-fill from contact), direction (inbound/outbound), duration, outcome (select: connected/voicemail/no_answer/busy), notes. Add the case to `renderQuickCreateForm`.
-- [ ] **Document** — change `hasForm: false` to `true` for documents. Create an inline document form with fields: title, file upload (use Convex file storage), entity link (optional: link to contact/company/lead), description/notes. Add the case to `renderQuickCreateForm`.
-- [ ] Fix the `renderQuickCreateForm` switch in `_layout.tsx` to handle ALL entity types including: product, call, document, gabinetDocument (if applicable). Every `FormEntityType` must have a corresponding form rendered.
+- [x] **Product** — add product to the entityItems list (currently missing entirely). Type: "product", group: "crm", icon: appropriate product icon, hasForm: true. Create the inline form with fields: name, description, price, currency, unit, sku, isActive. Add the case to `renderQuickCreateForm` in `_layout.tsx`.
+- [x] **Call** — change `hasForm: false` to `true` for calls. Create an inline call-logging form with fields: contact selector (search contacts), phone number (auto-fill from contact), direction (inbound/outbound), duration, outcome (select: connected/voicemail/no_answer/busy), notes. Add the case to `renderQuickCreateForm`.
+- [x] **Document** — change `hasForm: false` to `true` for documents. Create an inline document form with fields: title, file upload (use Convex file storage), entity link (optional: link to contact/company/lead), description/notes. Add the case to `renderQuickCreateForm`.
+- [x] Fix the `renderQuickCreateForm` switch in `_layout.tsx` to handle ALL entity types including: product, call, document, gabinetDocument (if applicable). Every `FormEntityType` must have a corresponding form rendered.
 - [ ] Verify each form submits correctly by testing: open quick-create → select entity → fill form → submit → entity appears in the relevant list page.
-- [ ] Add missing i18n keys for form labels, placeholders, and success/error messages for product, call, and document forms in both translation files.
-- [ ] Run typecheck and build.
+- [x] Add missing i18n keys for form labels, placeholders, and success/error messages for product, call, and document forms in both translation files.
+- [x] Run typecheck and build.
 
 ### Integration & Verification
 
 - [ ] Verify all CRM pages render without error boundaries after icon/action changes.
 - [ ] Verify quick-create modal opens, all tabs work, all entity forms render and submit.
 - [ ] Verify that a "viewer" role user sees appropriately restricted quick-create options (permission gate working).
-- [ ] Run `npm run typecheck` — must pass with 0 errors.
-- [ ] Run `npm run build` — must succeed.
+- [x] Run `npm run typecheck` — must pass with 0 errors.
+- [x] Run `npm run build` — must succeed.

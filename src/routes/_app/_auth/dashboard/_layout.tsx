@@ -56,6 +56,9 @@ import { EmployeeForm } from "@/components/forms/employee-form";
 import { ActivityForm } from "@/components/crm/activity-form";
 import { LeaveForm } from "@/components/forms/leave-form";
 import { UserInvitationForm } from "@/components/forms/user-invitation-form";
+import { ProductForm } from "@/components/forms/product-form";
+import { CallForm } from "@/components/forms/call-form";
+import { DocumentForm } from "@/components/forms/document-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
@@ -95,6 +98,9 @@ function DashboardLayout() {
   const createEmployee = useMutation(api.gabinet.employees.create);
   const createActivity = useMutation(api.scheduledActivities.create);
   const createLeave = useMutation(api.gabinet.scheduling.createLeave);
+  const createProduct = useMutation(api.products.create);
+  const createCall = useMutation(api.calls.create);
+  const createDocument = useMutation(api.documents.create);
   const createInvitation = useMutation(api.invitations.create);
 
   const firstOrg = orgs?.[0];
@@ -338,6 +344,54 @@ function DashboardLayout() {
               isSubmitting={isCreating}
             />
           );
+        case "product":
+          return (
+            <ProductForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createProduct({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "call":
+          return (
+            <CallForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createCall({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
+        case "document":
+          return (
+            <DocumentForm
+              onSubmit={async (data) => {
+                setIsCreating(true);
+                try {
+                  await createDocument({ organizationId: orgId, ...data });
+                  opts.onSuccess();
+                } finally {
+                  setIsCreating(false);
+                }
+              }}
+              onCancel={opts.onCancel}
+              isSubmitting={isCreating}
+            />
+          );
         case "user":
           return (
             <UserInvitationForm
@@ -362,7 +416,7 @@ function DashboardLayout() {
           return null;
       }
     },
-    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, user]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, createDocument, user]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });

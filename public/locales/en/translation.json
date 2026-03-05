@@ -391,6 +391,30 @@
     "views": {
       "all": "All Documents",
       "my": "My Documents"
+    },
+    "categories": {
+      "proposal": "Proposal",
+      "contract": "Contract",
+      "invoice": "Invoice",
+      "presentation": "Presentation",
+      "report": "Report",
+      "other": "Other"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "lost": "Lost"
+    },
+    "form": {
+      "name": "Document Name",
+      "namePlaceholder": "Enter document name",
+      "category": "Category",
+      "categoryPlaceholder": "Select category",
+      "status": "Status",
+      "amount": "Amount",
+      "description": "Description",
+      "descriptionPlaceholder": "Document description..."
     }
   },
   "products": {
@@ -412,6 +436,17 @@
     "views": {
       "all": "All Products",
       "active": "Active Products"
+    },
+    "form": {
+      "name": "Product Name",
+      "namePlaceholder": "Enter product name",
+      "sku": "SKU",
+      "skuPlaceholder": "e.g. PROD-001",
+      "unitPrice": "Unit Price",
+      "taxRate": "Tax Rate (%)",
+      "isActive": "Active",
+      "description": "Description",
+      "descriptionPlaceholder": "Product description..."
     }
   },
   "calls": {
@@ -435,6 +470,12 @@
     },
     "views": {
       "all": "All Calls"
+    },
+    "form": {
+      "outcome": "Outcome",
+      "note": "Notes",
+      "notePlaceholder": "Add call notes...",
+      "logCall": "Log Call"
     }
   },
   "pipelines": {
@@ -828,7 +869,8 @@
       "package": "Package",
       "employee": "Employee",
       "leave": "Leave",
-      "user": "Invite User"
+      "user": "Invite User",
+      "product": "Product"
     },
     "itemDesc": {
       "contact": "Add a person to your CRM",
@@ -837,6 +879,7 @@
       "activity": "Schedule a meeting or task",
       "call": "Log a phone call",
       "document": "Upload or create a document",
+      "product": "Add a product to your catalog",
       "patient": "Register a new patient",
       "appointment": "Book an appointment",
       "treatment": "Add a new treatment type",
@@ -849,6 +892,9 @@
       "contact": "New Contact",
       "company": "New Company",
       "lead": "New Deal",
+      "product": "New Product",
+      "call": "Log Call",
+      "document": "New Document",
       "patient": "New Patient",
       "appointment": "New Appointment",
       "treatment": "New Treatment",

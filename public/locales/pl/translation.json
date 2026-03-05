@@ -391,6 +391,30 @@
     "views": {
       "all": "Wszystkie dokumenty",
       "my": "Moje dokumenty"
+    },
+    "categories": {
+      "proposal": "Oferta",
+      "contract": "Umowa",
+      "invoice": "Faktura",
+      "presentation": "Prezentacja",
+      "report": "Raport",
+      "other": "Inne"
+    },
+    "statuses": {
+      "draft": "Szkic",
+      "sent": "Wysłany",
+      "accepted": "Zaakceptowany",
+      "lost": "Utracony"
+    },
+    "form": {
+      "name": "Nazwa dokumentu",
+      "namePlaceholder": "Wpisz nazwę dokumentu",
+      "category": "Kategoria",
+      "categoryPlaceholder": "Wybierz kategorię",
+      "status": "Status",
+      "amount": "Kwota",
+      "description": "Opis",
+      "descriptionPlaceholder": "Opis dokumentu..."
     }
   },
   "products": {
@@ -412,6 +436,17 @@
     "views": {
       "all": "Wszystkie produkty",
       "active": "Aktywne produkty"
+    },
+    "form": {
+      "name": "Nazwa produktu",
+      "namePlaceholder": "Wpisz nazwę produktu",
+      "sku": "SKU",
+      "skuPlaceholder": "np. PROD-001",
+      "unitPrice": "Cena jednostkowa",
+      "taxRate": "Stawka VAT (%)",
+      "isActive": "Aktywny",
+      "description": "Opis",
+      "descriptionPlaceholder": "Opis produktu..."
     }
   },
   "calls": {
@@ -435,6 +470,12 @@
     },
     "views": {
       "all": "Wszystkie połączenia"
+    },
+    "form": {
+      "outcome": "Wynik",
+      "note": "Notatki",
+      "notePlaceholder": "Dodaj notatki z połączenia...",
+      "logCall": "Zarejestruj połączenie"
     }
   },
   "pipelines": {
@@ -828,7 +869,8 @@
       "package": "Pakiet",
       "employee": "Pracownik",
       "leave": "Nieobecność",
-      "user": "Zaproś użytkownika"
+      "user": "Zaproś użytkownika",
+      "product": "Produkt"
     },
     "itemDesc": {
       "contact": "Dodaj osobę do bazy CRM",
@@ -837,6 +879,7 @@
       "activity": "Zaplanuj spotkanie lub zadanie",
       "call": "Zarejestruj rozmowę telefoniczną",
       "document": "Prześlij lub utwórz dokument",
+      "product": "Dodaj produkt do katalogu",
       "patient": "Zarejestruj nowego pacjenta",
       "appointment": "Zarezerwuj wizytę w kalendarzu",
       "treatment": "Dodaj nowy rodzaj zabiegu",
@@ -849,6 +892,9 @@
       "contact": "Nowy kontakt",
       "company": "Nowa firma",
       "lead": "Nowa transakcja",
+      "product": "Nowy produkt",
+      "call": "Zarejestruj połączenie",
+      "document": "Nowy dokument",
       "patient": "Nowy pacjent",
       "appointment": "Nowa wizyta",
       "treatment": "Nowy zabieg",

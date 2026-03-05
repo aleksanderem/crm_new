@@ -4,11 +4,22 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight } from "@/lib/ez-icons";
-import { useState, useMemo } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, Plus } from "@/lib/ez-icons";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
+import { CalendarDayView } from "@/components/gabinet/calendar/calendar-day-view";
+import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
+import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
+import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
+import { AppointmentDetailDialog } from "@/components/gabinet/calendar/appointment-detail-dialog";
+import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/"
@@ -16,7 +27,7 @@ export const Route = createFileRoute(
   component: GabinetCalendarPage,
 });
 
-// --- Helpers ---
+type ViewMode = "day" | "week" | "month";
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -31,86 +42,68 @@ function formatDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-function parseTime(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + (m || 0);
-}
-
-function formatTimeShort(t: string): string {
-  return t.slice(0, 5);
-}
-
-const HOUR_HEIGHT = 60;
-const START_HOUR = 7;
-const END_HOUR = 21;
-const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
-
-function timeToOffset(minutes: number): number {
-  return ((minutes / 60) - START_HOUR) * HOUR_HEIGHT;
-}
-
-const statusColors: Record<string, string> = {
-  scheduled: "bg-indigo-100 text-indigo-700 border-indigo-300",
-  confirmed: "bg-blue-100 text-blue-700 border-blue-300",
-  in_progress: "bg-amber-100 text-amber-700 border-amber-300",
-  completed: "bg-green-100 text-green-700 border-green-300",
-  cancelled: "bg-red-100 text-red-700 border-red-300",
-  no_show: "bg-gray-100 text-gray-500 border-gray-300",
-};
-
-// --- Main component ---
-
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [employeeFilter, setEmployeeFilter] = useState<string>("all");
 
-  const weekStart = useMemo(() => getMonday(currentDate), [currentDate]);
+  // Dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDefaultDate, setCreateDefaultDate] = useState<string | undefined>();
+  const [createDefaultTime, setCreateDefaultTime] = useState<string | undefined>();
+  const [detailAppointmentId, setDetailAppointmentId] = useState<string | null>(null);
 
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-  }, [weekStart]);
+  // Compute date range based on view mode
+  const { startDate, endDate } = useMemo(() => {
+    if (viewMode === "day") {
+      const ds = formatDateStr(currentDate);
+      return { startDate: ds, endDate: ds };
+    }
+    if (viewMode === "week") {
+      const monday = getMonday(currentDate);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return { startDate: formatDateStr(monday), endDate: formatDateStr(sunday) };
+    }
+    // month
+    const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    return { startDate: formatDateStr(first), endDate: formatDateStr(last) };
+  }, [viewMode, currentDate]);
 
-  // Date range for the week query
-  const startDateStr = formatDateStr(weekStart);
-  const endDateStr = useMemo(() => {
-    const end = new Date(weekStart);
-    end.setDate(end.getDate() + 6);
-    return formatDateStr(end);
-  }, [weekStart]);
-
-  // Fetch appointments for the week
-  const { data: weekAppointments } = useQuery(
+  // Fetch appointments
+  const { data: rawAppointments } = useQuery(
     convexQuery(api.gabinet.appointments.listByDateRange, {
       organizationId,
-      startDate: startDateStr,
-      endDate: endDateStr,
+      startDate,
+      endDate,
+      employeeId: employeeFilter !== "all" ? (employeeFilter as Id<"users">) : undefined,
     })
   );
 
-  // Fetch appointments for the selected day (for right panel)
-  const selectedDateStr = formatDateStr(selectedDate);
-  const { data: dayAppointments } = useQuery(
-    convexQuery(api.gabinet.appointments.listByDate, {
+  // Fetch employees for filter
+  const { data: employees } = useQuery(
+    convexQuery(api.gabinet.employees.listAll, {
       organizationId,
-      date: selectedDateStr,
+      activeOnly: true,
     })
   );
 
-  // Fetch patient & treatment data for the day panel
-  const { data: patients } = useQuery(
+  // Fetch members for name resolution
+  const { data: members } = useQuery(
+    convexQuery(api.organizations.getMembers, { organizationId })
+  );
+
+  // Fetch patients + treatments for display names
+  const { data: patientsPage } = useQuery(
     convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     })
   );
-
-  const { data: treatments } = useQuery(
+  const { data: treatmentsPage } = useQuery(
     convexQuery(api.gabinet.treatments.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
@@ -119,259 +112,242 @@ function GabinetCalendarPage() {
 
   const patientMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (patients?.page) {
-      for (const p of patients.page) {
+    if (patientsPage?.page) {
+      for (const p of patientsPage.page) {
         map.set(p._id, `${p.firstName} ${p.lastName}`);
       }
     }
     return map;
-  }, [patients]);
+  }, [patientsPage]);
 
   const treatmentMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (treatments?.page) {
-      for (const t of treatments.page) {
-        map.set(t._id, t.name);
+    const map = new Map<string, { name: string; color?: string }>();
+    if (treatmentsPage?.page) {
+      for (const tr of treatmentsPage.page) {
+        map.set(tr._id, { name: tr.name, color: tr.color });
       }
     }
     return map;
-  }, [treatments]);
+  }, [treatmentsPage]);
+
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>();
+    members?.forEach((m) => {
+      if (m.user) {
+        map.set(m.userId, m.user.name || m.user.email || "");
+      }
+    });
+    return map;
+  }, [members]);
+
+  // Transform appointments for view components
+  const viewAppointments = useMemo(() => {
+    if (!rawAppointments) return [];
+    return rawAppointments.map((a) => {
+      const treatment = treatmentMap.get(a.treatmentId);
+      return {
+        _id: a._id,
+        date: a.date,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        patientName: patientMap.get(a.patientId) ?? "",
+        treatmentName: treatment?.name ?? "",
+        status: a.status,
+        color: a.color ?? treatment?.color,
+      };
+    });
+  }, [rawAppointments, patientMap, treatmentMap]);
 
   // Navigation
-  const navigateWeek = (dir: number) => {
-    setCurrentDate((prev) => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + dir * 7);
-      return d;
-    });
-  };
+  const navigate = useCallback(
+    (dir: number) => {
+      setCurrentDate((prev) => {
+        const d = new Date(prev);
+        if (viewMode === "day") d.setDate(d.getDate() + dir);
+        else if (viewMode === "week") d.setDate(d.getDate() + dir * 7);
+        else d.setMonth(d.getMonth() + dir);
+        return d;
+      });
+    },
+    [viewMode]
+  );
 
-  const goToday = () => {
-    const today = new Date();
-    setCurrentDate(today);
-    setSelectedDate(today);
-  };
+  const goToday = () => setCurrentDate(new Date());
 
-  // Group week appointments by date
-  const appointmentsByDate = useMemo(() => {
-    const map = new Map<string, typeof weekAppointments>();
-    if (weekAppointments) {
-      for (const appt of weekAppointments) {
-        const existing = map.get(appt.date) ?? [];
-        existing.push(appt);
-        map.set(appt.date, existing);
+  // Click-to-create handler
+  const handleSlotClick = useCallback(
+    (dateOrTime: string, time?: string) => {
+      // Day view passes just time, week view passes date + time
+      if (time) {
+        setCreateDefaultDate(dateOrTime);
+        setCreateDefaultTime(time);
+      } else {
+        setCreateDefaultDate(formatDateStr(currentDate));
+        setCreateDefaultTime(dateOrTime);
       }
-    }
-    return map;
-  }, [weekAppointments]);
+      setCreateDialogOpen(true);
+    },
+    [currentDate]
+  );
 
-  // Sort day appointments by start time
-  const sortedDayAppointments = useMemo(() => {
-    if (!dayAppointments) return [];
-    return [...dayAppointments].sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime));
-  }, [dayAppointments]);
+  const handleDayClick = useCallback((date: string) => {
+    setCurrentDate(new Date(date + "T00:00:00"));
+    setViewMode("day");
+  }, []);
 
-  const today = formatDateStr(new Date());
-  const selectedStr = formatDateStr(selectedDate);
+  const handleAppointmentClick = useCallback((id: string) => {
+    setDetailAppointmentId(id);
+  }, []);
 
-  const weekTitle = useMemo(() => {
+  // Title
+  const title = useMemo(() => {
     const locale = i18n.language;
-    const end = new Date(weekStart);
-    end.setDate(end.getDate() + 6);
-    return `${weekStart.toLocaleDateString(locale, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })}`;
-  }, [weekStart, i18n.language]);
+    if (viewMode === "day") {
+      return currentDate.toLocaleDateString(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+    if (viewMode === "week") {
+      const monday = getMonday(currentDate);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return `${monday.toLocaleDateString(locale, { month: "short", day: "numeric" })} – ${sunday.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })}`;
+    }
+    return currentDate.toLocaleDateString(locale, { month: "long", year: "numeric" });
+  }, [currentDate, viewMode, i18n.language]);
+
+  function getEmployeeName(emp: {
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    specialization?: string;
+    role: string;
+  }) {
+    if (emp.firstName || emp.lastName) {
+      return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
+    }
+    return userMap.get(emp.userId) || emp.specialization || emp.role;
+  }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Toolbar */}
       <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigateWeek(-1)}>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={goToday}>
-            {t("gabinet.calendar.today", "Dziś")}
+            {t("gabinet.calendar.today", "Dzis")}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigateWeek(1)}>
+          <Button variant="outline" size="sm" onClick={() => navigate(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <h2 className="ml-2 text-sm font-semibold">{weekTitle}</h2>
+          <h2 className="ml-2 text-sm font-semibold">{title}</h2>
         </div>
-      </div>
 
-      {/* Main split layout: Calendar left, Day detail right */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Calendar grid (left) */}
-        <div className="flex flex-1 overflow-y-auto">
-          {/* Time gutter */}
-          <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-background pt-10">
-            {HOURS.map((h) => (
-              <div key={h} className="flex h-[60px] items-start justify-end pr-2">
-                <span className="text-xs text-muted-foreground">
-                  {String(h).padStart(2, "0")}:00
-                </span>
-              </div>
+        <div className="flex items-center gap-2">
+          {/* Employee filter */}
+          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+            <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectValue placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t("gabinet.calendar.allEmployees", "Wszyscy")}
+              </SelectItem>
+              {(employees ?? []).map((emp) => (
+                <SelectItem key={emp._id} value={emp.userId}>
+                  {getEmployeeName(emp)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* View switcher */}
+          <div className="flex rounded-md border">
+            {(["day", "week", "month"] as const).map((mode) => (
+              <Button
+                key={mode}
+                variant={viewMode === mode ? "default" : "ghost"}
+                size="sm"
+                className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
+                onClick={() => setViewMode(mode)}
+              >
+                {t(`gabinet.calendar.view.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
+              </Button>
             ))}
           </div>
 
-          {/* Day columns */}
-          {weekDays.map((day) => {
-            const dayStr = formatDateStr(day);
-            const isToday = dayStr === today;
-            const isSelected = dayStr === selectedStr;
-            const dayAppts = appointmentsByDate.get(dayStr) ?? [];
-
-            return (
-              <div
-                key={dayStr}
-                className={cn(
-                  "flex flex-1 flex-col border-r last:border-r-0 cursor-pointer",
-                  isSelected && "bg-primary/5"
-                )}
-                onClick={() => setSelectedDate(new Date(day))}
-              >
-                {/* Day header */}
-                <div
-                  className={cn(
-                    "sticky top-0 z-10 border-b bg-background px-1 py-1.5 text-center text-xs",
-                    isToday && "font-bold",
-                    isSelected && "bg-primary/10"
-                  )}
-                >
-                  <div className="text-muted-foreground">
-                    {day.toLocaleDateString(i18n.language, { weekday: "short" })}
-                  </div>
-                  <div className={cn(
-                    isToday && "inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground",
-                    isSelected && !isToday && "inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary text-primary"
-                  )}>
-                    {day.getDate()}
-                  </div>
-                </div>
-
-                {/* Time grid with appointments */}
-                <div className="relative flex-1" style={{ minHeight: HOURS.length * HOUR_HEIGHT }}>
-                  {HOURS.map((h) => (
-                    <div key={h} className="h-[60px] border-b border-dashed border-muted" />
-                  ))}
-
-                  {/* Current time line */}
-                  {isToday && (() => {
-                    const now = new Date();
-                    const mins = now.getHours() * 60 + now.getMinutes();
-                    const top = timeToOffset(mins);
-                    if (top < 0 || top > HOURS.length * HOUR_HEIGHT) return null;
-                    return (
-                      <div
-                        className="pointer-events-none absolute z-20 border-t-2 border-red-500"
-                        style={{ top: `${top}px`, left: 0, right: 0 }}
-                      >
-                        <div className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
-                      </div>
-                    );
-                  })()}
-
-                  {/* Appointment blocks */}
-                  {dayAppts.map((appt) => {
-                    const startMins = parseTime(appt.startTime);
-                    const endMins = parseTime(appt.endTime);
-                    const top = timeToOffset(startMins);
-                    const height = Math.max(((endMins - startMins) / 60) * HOUR_HEIGHT, 18);
-                    const colorClass = statusColors[appt.status] ?? statusColors.scheduled;
-                    const patientName = patientMap.get(appt.patientId) ?? "";
-
-                    return (
-                      <div
-                        key={appt._id}
-                        className={cn(
-                          "absolute left-0.5 right-0.5 rounded border-l-3 px-1 py-0.5 text-xs overflow-hidden cursor-pointer hover:opacity-80 transition-opacity",
-                          colorClass
-                        )}
-                        style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDate(new Date(day));
-                        }}
-                      >
-                        <div className="truncate font-medium">{patientName}</div>
-                        {height > 30 && (
-                          <div className="truncate opacity-75">
-                            {treatmentMap.get(appt.treatmentId) ?? ""}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Selected day detail panel (right) */}
-        <div className="w-80 shrink-0 border-l bg-background overflow-y-auto max-lg:hidden">
-          <div className="border-b px-4 py-3">
-            <h3 className="text-sm font-semibold">
-              {selectedDate.toLocaleDateString(i18n.language, {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {sortedDayAppointments.length}{" "}
-              {t("gabinet.calendar.appointments", "wizyt")}
-            </p>
-          </div>
-
-          {sortedDayAppointments.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {t("gabinet.calendar.noAppointments", "Brak wizyt w tym dniu")}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {sortedDayAppointments.map((appt) => {
-                const patientName = patientMap.get(appt.patientId) ?? t("common.unknown", "Nieznany");
-                const treatmentName = treatmentMap.get(appt.treatmentId) ?? "";
-                const statusClass = statusColors[appt.status] ?? "";
-
-                return (
-                  <div key={appt._id} className="px-4 py-3 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-muted-foreground">
-                            {formatTimeShort(appt.startTime)}–{formatTimeShort(appt.endTime)}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 truncate text-sm font-medium">
-                          {patientName}
-                        </div>
-                        {treatmentName && (
-                          <div className="truncate text-xs text-muted-foreground">
-                            {treatmentName}
-                          </div>
-                        )}
-                        {appt.notes && (
-                          <div className="mt-1 truncate text-xs text-muted-foreground italic">
-                            {appt.notes}
-                          </div>
-                        )}
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn("shrink-0 text-[10px]", statusClass)}
-                      >
-                        {t(`gabinet.appointments.status.${appt.status}`, appt.status)}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Create button */}
+          <Button
+            size="sm"
+            onClick={() => {
+              setCreateDefaultDate(formatDateStr(currentDate));
+              setCreateDefaultTime(undefined);
+              setCreateDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+          </Button>
         </div>
       </div>
+
+      {/* Calendar content */}
+      <div className="flex-1 overflow-hidden">
+        {viewMode === "day" && (
+          <CalendarDayView
+            date={formatDateStr(currentDate)}
+            appointments={viewAppointments}
+            onSlotClick={(time) => handleSlotClick(formatDateStr(currentDate), time)}
+            onAppointmentClick={handleAppointmentClick}
+          />
+        )}
+        {viewMode === "week" && (
+          <CalendarWeekView
+            weekStart={formatDateStr(getMonday(currentDate))}
+            appointments={viewAppointments}
+            onSlotClick={handleSlotClick}
+            onAppointmentClick={handleAppointmentClick}
+            onDayHeaderClick={handleDayClick}
+            selectedDate={formatDateStr(currentDate)}
+          />
+        )}
+        {viewMode === "month" && (
+          <CalendarMonthView
+            year={currentDate.getFullYear()}
+            month={currentDate.getMonth()}
+            appointments={viewAppointments}
+            onDayClick={handleDayClick}
+            selectedDate={formatDateStr(currentDate)}
+          />
+        )}
+      </div>
+
+      {/* Create appointment dialog */}
+      <AppointmentDialog
+        organizationId={organizationId}
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        defaultDate={createDefaultDate}
+        defaultTime={createDefaultTime}
+      />
+
+      {/* Appointment detail dialog */}
+      {detailAppointmentId && (
+        <AppointmentDetailDialog
+          organizationId={organizationId}
+          appointmentId={detailAppointmentId as Id<"gabinetAppointments">}
+          open={!!detailAppointmentId}
+          onOpenChange={(open) => {
+            if (!open) setDetailAppointmentId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

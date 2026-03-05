@@ -1,9 +1,9 @@
 {
-  "session_id": "S0037",
-  "started_at": "2026-03-05T18:00:00Z",
-  "last_updated": "2026-03-05T18:15:00Z",
+  "session_id": "S0050",
+  "started_at": "2026-03-05T00:20:00Z",
+  "last_updated": "2026-03-05T00:35:00Z",
   "status": "completed",
-  "focus": "PRD E2E Testing — Iteration 9: CI workflow, success criteria, final wrap-up",
+  "focus": "Fix non-working filter buttons on Activities page",
   "tasks_snapshot": {
     "total": 3,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0037: Created GitHub Actions CI workflow (.github/workflows/e2e.yml), verified typecheck + build clean, marked all 9 success criteria checkboxes in PRD. Final PRD state: 270/272 items checked (2 BLOCKED — no patient portal routes for packages/loyalty). 316 total E2E tests across 25 spec files."
+  "notes": "S0050: Fixed activities page filters — added typeFilter (FilterButton) and showCompleted (ToggleFilterButton) with reusable components. Added i18n keys for PL/EN. Contacts/leads/companies already had working filters via CrmDataTable filterableColumns."
 }

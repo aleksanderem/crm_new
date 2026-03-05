@@ -359,6 +359,11 @@
       "call": "Call",
       "email": "Email",
       "task": "Task"
+    },
+    "actions": {
+      "filterByType": "Filter by type",
+      "showCompleted": "Show completed",
+      "hideCompleted": "Hide completed"
     }
   },
   "documents": {

@@ -359,6 +359,11 @@
       "call": "Połączenie",
       "email": "E-mail",
       "task": "Zadanie"
+    },
+    "actions": {
+      "filterByType": "Filtruj wg typu",
+      "showCompleted": "Pokaż ukończone",
+      "hideCompleted": "Ukryj ukończone"
     }
   },
   "documents": {

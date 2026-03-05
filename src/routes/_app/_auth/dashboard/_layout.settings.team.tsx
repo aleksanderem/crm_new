@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -8,12 +8,13 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
-import { MoreHorizontal, Send, XCircle, UserPlus } from "@/lib/ez-icons";
+import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/team"
@@ -61,6 +62,16 @@ function TeamSettings() {
   const { data: invitations } = useQuery(
     convexQuery(api.invitations.listPending, { organizationId })
   );
+
+  const { data: seatUsage } = useQuery(
+    convexQuery(api.organizations.getSeatUsage, { organizationId })
+  );
+
+  const seatPercentage = seatUsage
+    ? Math.round((seatUsage.currentSeats / seatUsage.seatLimit) * 100)
+    : 0;
+  const isNearLimit = seatPercentage >= 80 && seatUsage?.canAddMore;
+  const isAtLimit = seatUsage ? !seatUsage.canAddMore : false;
 
   const updateRole = useMutation(api.organizations.updateMemberRole);
   const removeMember = useMutation(api.organizations.removeMember);
@@ -129,6 +140,50 @@ function TeamSettings() {
         title={t("team.title")}
         description={t("team.description")}
       />
+
+      {/* Seat usage */}
+      {seatUsage && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {t("settings.team.currentUsage")}
+            </CardTitle>
+            <CardDescription>
+              {t("settings.team.usageCount", {
+                current: seatUsage.currentSeats,
+                limit: seatUsage.seatLimit,
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Progress
+              value={seatPercentage}
+              className={`h-2 ${isAtLimit ? "[&>div]:bg-destructive" : isNearLimit ? "[&>div]:bg-amber-500" : ""}`}
+            />
+            {isNearLimit && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  {t("settings.team.nearLimitWarning")}
+                </p>
+              </div>
+            )}
+            {isAtLimit && (
+              <div className="flex items-start justify-between gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">
+                  {t("settings.team.limitReached")}
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/dashboard/settings/billing">
+                    {t("team.upgrade")}
+                    <ArrowUpRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Members section */}
       <Card>
@@ -242,7 +297,7 @@ function TeamSettings() {
           <CardTitle className="text-base">{t("team.invitations")}</CardTitle>
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" disabled={isAtLimit}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 {t("team.inviteMember")}
               </Button>
@@ -254,6 +309,13 @@ function TeamSettings() {
                   {t("team.inviteDialog.description")}
                 </DialogDescription>
               </DialogHeader>
+              {seatUsage && (
+                <p className="text-xs text-muted-foreground">
+                  {t("team.remainingSeats", {
+                    count: Math.max(0, seatUsage.seatLimit - seatUsage.currentSeats),
+                  })}
+                </p>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

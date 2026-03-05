@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireUser, verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 
 export const create = mutation({
@@ -160,6 +161,16 @@ export const inviteMember = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
 
+    // Check seat limit before adding member
+    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
+      organizationId: args.organizationId,
+    });
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`
+      );
+    }
+
     const existing = await ctx.db
       .query("teamMemberships")
       .withIndex("by_orgAndUser", (q) =>
@@ -300,5 +311,13 @@ export const getUsageStats = query({
       productCount: products.length,
       emailCount: emails.length,
     };
+  },
+});
+
+export const getSeatUsage = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await checkSeatLimit(ctx, args);
   },
 });

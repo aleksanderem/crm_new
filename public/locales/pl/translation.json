@@ -1035,7 +1035,9 @@
     },
     "invitedBy": "Zaproszony przez",
     "sentDate": "Wysłano",
-    "joinedDate": "Dołączył"
+    "joinedDate": "Dołączył",
+    "upgrade": "Rozbuduj plan",
+    "remainingSeats": "Pozostało {{count}} miejsc(e)"
   },
   "orgSettings": {
     "title": "Organizacja",

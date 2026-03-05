@@ -13,6 +13,7 @@ import type * as _helpers_auth from "../_helpers/auth.js";
 import type * as _helpers_permissionTypes from "../_helpers/permissionTypes.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
 import type * as _helpers_products from "../_helpers/products.js";
+import type * as _helpers_seatLimits from "../_helpers/seatLimits.js";
 import type * as _test from "../_test.js";
 import type * as _test_helpers from "../_test_helpers.js";
 import type * as activities from "../activities.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   "_helpers/permissionTypes": typeof _helpers_permissionTypes;
   "_helpers/permissions": typeof _helpers_permissions;
   "_helpers/products": typeof _helpers_products;
+  "_helpers/seatLimits": typeof _helpers_seatLimits;
   _test: typeof _test;
   _test_helpers: typeof _test_helpers;
   activities: typeof activities;

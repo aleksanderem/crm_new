@@ -1,18 +1,18 @@
 {
-  "session_id": "S0022",
-  "started_at": "2026-03-05T14:00:00Z",
-  "last_updated": "2026-03-05T14:30:00Z",
-  "status": "completed",
-  "focus": "PRD UI Polish — Final verification: e2e tests for all pages, quick-create modal, and permissions",
+  "session_id": "S0023",
+  "started_at": "2026-03-05T15:00:00Z",
+  "last_updated": "2026-03-05T15:00:00Z",
+  "status": "active",
+  "focus": "PRD Seat Limits Enforcement — backend helper, mutations, query, tests, UI",
   "tasks_snapshot": {
-    "total": 4,
-    "not_started": 0,
-    "in_progress": 0,
-    "passing": 4,
+    "total": 6,
+    "not_started": 4,
+    "in_progress": 1,
+    "passing": 0,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": [1],
   "blockers": [],
-  "notes": "S0022: All PRD items verified. Typecheck 0 errors, build success. Ralph Gate e2e passes: all CRM/Gabinet pages render, quick-create modal opens with all 3 tabs, Product/Call/Document forms submit successfully, no console errors. PRD 100% complete."
+  "notes": "S0023: Starting seat limits PRD. Frontend invitation form already has seat limit UI. Need backend enforcement + getSeatUsage query + tests."
 }

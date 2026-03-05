@@ -1035,7 +1035,9 @@
     },
     "invitedBy": "Invited by",
     "sentDate": "Sent",
-    "joinedDate": "Joined"
+    "joinedDate": "Joined",
+    "upgrade": "Upgrade Plan",
+    "remainingSeats": "{{count}} seat(s) remaining"
   },
   "orgSettings": {
     "title": "Organization",

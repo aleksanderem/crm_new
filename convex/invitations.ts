@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
@@ -66,6 +67,16 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
+
+    // Check seat limit before creating invitation
+    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
+      organizationId: args.organizationId,
+    });
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`
+      );
+    }
 
     // Check no existing pending invitation for same email+org
     const existingInvitation = await ctx.db
@@ -149,6 +160,16 @@ export const accept = mutation({
     if (invitation.expiresAt <= Date.now()) throw new Error("Invitation has expired");
     if (user.email !== invitation.email) {
       throw new Error("This invitation was sent to a different email address");
+    }
+
+    // Check seat limit at acceptance time (race condition protection)
+    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
+      organizationId: invitation.organizationId,
+    });
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`
+      );
     }
 
     await ctx.db.insert("teamMemberships", {

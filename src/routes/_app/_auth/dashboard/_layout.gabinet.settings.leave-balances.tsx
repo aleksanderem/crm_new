@@ -1,24 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances"
@@ -31,51 +20,6 @@ function LeaveBalancesPage() {
   const { organizationId } = useOrganization();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
-
-  const adjustBalance = useMutation(api.gabinet.leaveTypes.adjustBalance);
-  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-  const [adjustTarget, setAdjustTarget] = useState<{
-    balanceId: string;
-    employeeName: string;
-    leaveTypeName: string;
-    totalDays: number;
-    usedDays: number;
-  } | null>(null);
-  const [adjustTotal, setAdjustTotal] = useState(0);
-  const [adjustUsed, setAdjustUsed] = useState(0);
-  const [adjusting, setAdjusting] = useState(false);
-
-  const openAdjustDialog = (
-    balanceId: string,
-    employeeName: string,
-    leaveTypeName: string,
-    totalDays: number,
-    usedDays: number
-  ) => {
-    setAdjustTarget({ balanceId, employeeName, leaveTypeName, totalDays, usedDays });
-    setAdjustTotal(totalDays);
-    setAdjustUsed(usedDays);
-    setAdjustDialogOpen(true);
-  };
-
-  const handleAdjust = async () => {
-    if (!adjustTarget) return;
-    setAdjusting(true);
-    try {
-      await adjustBalance({
-        organizationId,
-        balanceId: adjustTarget.balanceId as any,
-        totalDays: adjustTotal,
-        usedDays: adjustUsed,
-      });
-      toast.success(t("gabinet.leaveBalances.adjusted"));
-      setAdjustDialogOpen(false);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setAdjusting(false);
-    }
-  };
 
   const { data: employees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })

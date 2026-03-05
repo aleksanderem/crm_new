@@ -44,6 +44,8 @@ function LeavesPage() {
   const approveLeave = useMutation(api.gabinet.scheduling.approveLeave);
   const rejectLeave = useMutation(api.gabinet.scheduling.rejectLeave);
 
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const { data: leaves } = useQuery(
     convexQuery(api.gabinet.scheduling.listLeaves, {
       organizationId,
@@ -66,7 +68,6 @@ function LeavesPage() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;

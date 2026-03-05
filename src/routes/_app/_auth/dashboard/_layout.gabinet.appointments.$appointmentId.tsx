@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -69,7 +69,6 @@ import {
   Download,
   Upload,
   FilePlus,
-  Package,
   Star,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
@@ -224,6 +223,7 @@ function AppointmentDetail() {
   // Body chart state
   const [bodyChartData, setBodyChartData] = useState<BodyRegion[]>([]);
   const [isBodyChartSaving, setIsBodyChartSaving] = useState(false);
+  const [bodyChartModalOpen, setBodyChartModalOpen] = useState(false);
 
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
@@ -263,11 +263,22 @@ function AppointmentDetail() {
   );
 
   // Initialize internal notes from appointment data
-  useState(() => {
+  useEffect(() => {
     if (detail?.appointment.internalNotes) {
       setInternalNotes(detail.appointment.internalNotes);
     }
-  });
+  }, [detail?.appointment.internalNotes]);
+
+  // Initialize body chart data from appointment
+  useEffect(() => {
+    if (detail?.appointment.bodyChartData) {
+      try {
+        setBodyChartData(JSON.parse(detail.appointment.bodyChartData));
+      } catch (e) {
+        console.error("Failed to parse body chart data", e);
+      }
+    }
+  }, [detail?.appointment.bodyChartData]);
 
   if (isLoading) {
     return (
@@ -293,7 +304,7 @@ function AppointmentDetail() {
     );
   }
 
-  const { appointment, patient, treatment, employee, documents, payments, notes, patientHistory, loyaltyBalance, loyaltyTier, loyaltyTransactions, allPatientPayments } = detail;
+  const { appointment, patient, treatment, employee, documents, payments, notes, patientPackageUsage, patientHistory, loyaltyBalance, loyaltyTier, loyaltyTransactions, allPatientPayments } = detail;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
@@ -612,17 +623,6 @@ function AppointmentDetail() {
     }
   };
 
-  // Initialize body chart data from appointment
-  useState(() => {
-    if (detail?.appointment.bodyChartData) {
-      try {
-        setBodyChartData(JSON.parse(detail.appointment.bodyChartData));
-      } catch (e) {
-        console.error("Failed to parse body chart data", e);
-      }
-    }
-  });
-
   // Group notes by parent for threading
   const rootNotes = notes.filter((n) => !n.parentNoteId);
   const getReplies = (noteId: string) => notes.filter((n) => n.parentNoteId === noteId);
@@ -672,7 +672,7 @@ function AppointmentDetail() {
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
-            {t(`gabinet.appointments.status.${appointment.status}`)}
+            {t(`gabinet.appointments.statuses.${appointment.status}`)}
           </Badge>
           {/* Status action buttons */}
           {availableTransitions.length > 0 && (
@@ -740,14 +740,17 @@ function AppointmentDetail() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 grid grid-cols-3 gap-6 p-6">
-        {/* Left sidebar - Patient & Appointment info */}
-        <div className="space-y-4">
+      <div className="flex-1 grid grid-cols-4 gap-6 p-6">
+        {/* Empty left column for balance */}
+        <div className="col-span-1"></div>
+        
+        {/* Middle sidebar - Patient & Appointment info */}
+        <div className="col-span-1 space-y-4">
           {/* Patient card */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="h-4 w-4" variant="stroke" />
+                <User size={20} variant="stroke" />
                 {t("gabinet.patients.patient")}
               </CardTitle>
             </CardHeader>
@@ -762,7 +765,7 @@ function AppointmentDetail() {
                   </p>
                   {patient?.email && (
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" variant="stroke" />
+                      <Mail size={12} variant="stroke" />
                       {patient.email}
                     </p>
                   )}
@@ -770,7 +773,7 @@ function AppointmentDetail() {
               </div>
               {patient?.phone && (
                 <p className="text-sm flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                  <Phone size={12} className="text-muted-foreground" variant="stroke" />
                   {patient.phone}
                 </p>
               )}
@@ -789,7 +792,7 @@ function AppointmentDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4" variant="stroke" />
+                <Calendar size={20} variant="stroke" />
                 {t("gabinet.appointments.details")}
               </CardTitle>
             </CardHeader>
@@ -801,7 +804,7 @@ function AppointmentDetail() {
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" variant="stroke" />
+                  <Clock size={12} variant="stroke" />
                   {t("common.date")}
                 </span>
                 <span className="font-medium">{formatDate(appointment.date)}</span>
@@ -815,7 +818,7 @@ function AppointmentDetail() {
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
-                  <UserCircle className="h-3 w-3" variant="stroke" />
+                  <UserCircle size={12} variant="stroke" />
                   {t("gabinet.employees.employee")}
                 </span>
                 <span className="font-medium">{getEmployeeName()}</span>
@@ -1075,7 +1078,7 @@ function AppointmentDetail() {
                   <CardContent>
                     {documents.length === 0 ? (
                       <EmptyState
-                        icon={<FileText className="h-12 w-12" variant="stroke" />}
+                        icon={FileText}
                         title={t("gabinet.documents.noDocuments")}
                         description={t("gabinet.documents.noDocumentsDesc")}
                         action={
@@ -1200,7 +1203,7 @@ function AppointmentDetail() {
                   <CardContent>
                     {payments.length === 0 ? (
                       <EmptyState
-                        icon={<CreditCard className="h-12 w-12" variant="stroke" />}
+                        icon={CreditCard}
                         title={t("gabinet.payments.noPayments")}
                         description={t("gabinet.payments.noPaymentsDesc")}
                         action={
@@ -1280,7 +1283,7 @@ function AppointmentDetail() {
                   <CardContent>
                     {patientHistory.length === 0 ? (
                       <EmptyState
-                        icon={<Calendar className="h-12 w-12" variant="stroke" />}
+                        icon={Calendar}
                         title={t("gabinet.patients.noHistory")}
                         description={t("gabinet.patients.noHistoryDesc")}
                       />
@@ -1307,7 +1310,7 @@ function AppointmentDetail() {
                                   </p>
                                 </div>
                                 <Badge variant={statusColors[appt.status] ?? "secondary"}>
-                                  {t(`gabinet.appointments.status.${appt.status}`)}
+                                  {t(`gabinet.appointments.statuses.${appt.status}`)}
                                 </Badge>
                               </Link>
                             </div>
@@ -1329,7 +1332,7 @@ function AppointmentDetail() {
                   <CardContent>
                     {patientPackageUsage.length === 0 ? (
                       <EmptyState
-                        icon={<Package className="h-12 w-12" variant="stroke" />}
+                        icon={Package}
                         title={t("gabinet.packages.noActivePackages")}
                         description={t("gabinet.packages.noActivePackagesDesc")}
                       />
@@ -1476,7 +1479,7 @@ function AppointmentDetail() {
                       </>
                     ) : (
                       <EmptyState
-                        icon={<CreditCard className="h-12 w-12" variant="stroke" />}
+                        icon={CreditCard}
                         title={t("gabinet.payments.noPayments")}
                         description={t("gabinet.payments.noPaymentsDesc")}
                       />
@@ -1523,7 +1526,7 @@ function AppointmentDetail() {
                     {/* Notes list */}
                     {notes.length === 0 ? (
                       <EmptyState
-                        icon={<StickyNote className="h-12 w-12" variant="stroke" />}
+                        icon={StickyNote}
                         title={t("gabinet.notes.noNotes")}
                         description={t("gabinet.notes.noNotesDesc")}
                       />
@@ -1582,17 +1585,57 @@ function AppointmentDetail() {
                       <CardTitle>{t("gabinet.appointments.tabs.bodyChart")}</CardTitle>
                       <CardDescription>{t("gabinet.bodyChart.description")}</CardDescription>
                     </div>
-                    <Button onClick={handleBodyChartSave} disabled={isBodyChartSaving}>
-                      {isBodyChartSaving ? t("common.saving") : t("common.save")}
+                    <Button onClick={() => setBodyChartModalOpen(true)}>
+                      {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
                     </Button>
                   </CardHeader>
                   <CardContent>
+                    {bodyChartData.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.bodyChart.markedCount", { count: bodyChartData.length })}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {bodyChartData.map((region) => (
+                            <div key={region.region} className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm">
+                              <div
+                                className="w-3 h-3 rounded-sm"
+                                style={{ backgroundColor: region.color, opacity: region.intensity }}
+                              />
+                              <span>{t(`gabinet.bodyChart.regions.${region.region}`, region.region)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground text-sm">
+                        {t("gabinet.bodyChart.noRegions", "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.")}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Body Chart Modal */}
+                <Dialog open={bodyChartModalOpen} onOpenChange={setBodyChartModalOpen}>
+                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{t("gabinet.appointments.tabs.bodyChart")}</DialogTitle>
+                      <DialogDescription>{t("gabinet.bodyChart.description")}</DialogDescription>
+                    </DialogHeader>
                     <BodyChart
                       data={bodyChartData}
                       onChange={handleBodyChartChange}
                     />
-                  </CardContent>
-                </Card>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setBodyChartModalOpen(false)}>
+                        {t("common.cancel")}
+                      </Button>
+                      <Button onClick={async () => { await handleBodyChartSave(); setBodyChartModalOpen(false); }} disabled={isBodyChartSaving}>
+                        {isBodyChartSaving ? t("common.saving") : t("common.save")}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
             </ScrollArea>
           </Tabs>
@@ -1751,9 +1794,20 @@ function AppointmentDetail() {
           <DialogHeader>
             <DialogTitle>{documents.find(d => d._id === viewDocId)?.title}</DialogTitle>
           </DialogHeader>
-          {viewDocId && (
-            <DocumentViewer documentId={viewDocId} organizationId={organizationId} />
-          )}
+          {viewDocId && (() => {
+            const doc = documents.find(d => d._id === viewDocId);
+            if (!doc) return null;
+            return (
+              <DocumentViewer
+                title={doc.title}
+                type={doc.type ?? ""}
+                status={doc.status ?? "draft"}
+                content={doc.content ?? ""}
+                signatureData={doc.signatureData}
+                signedAt={doc.signedAt}
+              />
+            );
+          })()}
           <DialogFooter>
             {(() => {
               const doc = documents.find(d => d._id === viewDocId);

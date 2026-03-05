@@ -926,34 +926,30 @@ export const getFullDetail = query({
       // Patient package usage
       ctx.db
         .query("gabinetPackageUsage")
-        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
-        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
         .collect(),
       // Patient history (last 20 appointments, excluding current)
       ctx.db
         .query("gabinetAppointments")
-        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
         .filter((q) => q.neq(q.field("_id"), args.appointmentId))
         .order("desc")
         .take(20),
       // Loyalty points balance
       ctx.db
         .query("gabinetLoyaltyPoints")
-        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
-        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
         .first(),
       // Loyalty transactions (last 10)
       ctx.db
         .query("gabinetLoyaltyTransactions")
-        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
-        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
         .order("desc")
         .take(10),
       // All patient payments (for payment history)
       ctx.db
         .query("payments")
-        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
-        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
         .order("desc")
         .take(50),
     ]);

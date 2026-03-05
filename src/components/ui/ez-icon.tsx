@@ -10,7 +10,7 @@ interface EzIconProps {
 
 export function EzIcon({
   name,
-  size,
+  size = 16,
   variant = "twotone",
   className,
 }: EzIconProps) {

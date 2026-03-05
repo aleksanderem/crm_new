@@ -95,8 +95,10 @@ function InboxPage() {
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-background px-6 py-3">
-        <h1 className="text-xl font-semibold">{t("inbox.title")}</h1>
+
+       <h1 className="text-xl font-semibold">{t("inbox.title")}</h1>
+      <div className="flex shrink-0 items-center justify-between border-b bg-background py-3">
+       
         <div className="flex items-center gap-3">
           <Tabs
             value={filter}

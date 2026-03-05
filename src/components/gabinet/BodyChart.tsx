@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { bodyFront, BODY_FRONT_VIEWBOX, type BodyPartPath } from "./body-parts/body-front";
-import { bodyBack, BODY_BACK_VIEWBOX } from "./body-parts/body-back";
+import { bodyFront, BODY_FRONT_VIEWBOX, BODY_FRONT_OUTLINE, type BodyPartPath } from "./body-parts/body-front";
+import { bodyBack, BODY_BACK_VIEWBOX, BODY_BACK_OUTLINE } from "./body-parts/body-back";
 
 export interface BodyRegion {
   region: string;
@@ -78,13 +78,14 @@ const ALL_REGIONS = [
 interface BodyViewProps {
   parts: BodyPartPath[];
   viewBox: string;
+  outline?: string;
   data: BodyRegion[];
   onRegionClick?: (slug: string) => void;
   readOnly?: boolean;
   side: "left" | "right";
 }
 
-function BodyView({ parts, viewBox, data, onRegionClick, readOnly, side }: BodyViewProps) {
+function BodyView({ parts, viewBox, outline, data, onRegionClick, readOnly, side }: BodyViewProps) {
   const getRegionColor = useCallback(
     (slug: string) => {
       const region = data.find((r) => r.region === slug);
@@ -116,6 +117,17 @@ function BodyView({ parts, viewBox, data, onRegionClick, readOnly, side }: BodyV
       className="w-full h-auto max-h-[600px]"
       style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))" }}
     >
+      {/* Body outline silhouette background */}
+      {outline && (
+        <path
+          d={outline}
+          fill="hsl(var(--muted))"
+          stroke="hsl(var(--border))"
+          strokeWidth="2"
+          opacity={0.5}
+        />
+      )}
+
       {/* Background body fill */}
       <g fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="2">
         {parts.map((part) => {
@@ -268,6 +280,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
             <BodyView
               parts={bodyFront}
               viewBox={BODY_FRONT_VIEWBOX}
+              outline={BODY_FRONT_OUTLINE}
               data={data}
               onRegionClick={toggleRegion}
               readOnly={readOnly}
@@ -285,6 +298,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
             <BodyView
               parts={bodyBack}
               viewBox={BODY_BACK_VIEWBOX}
+              outline={BODY_BACK_OUTLINE}
               data={data}
               onRegionClick={toggleRegion}
               readOnly={readOnly}

@@ -246,7 +246,7 @@ function GabinetCalendarPage() {
   }, [rawAppointments, patientMap, treatmentMap]);
 
   // Navigation
-  const navigate = useCallback(
+  const navigateDate = useCallback(
     (dir: number) => {
       setCurrentDate((prev) => {
         const d = new Date(prev);
@@ -394,13 +394,13 @@ function GabinetCalendarPage() {
         {/* Toolbar */}
         <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <Button variant="outline" size="sm" onClick={() => navigateDate(-1)}>
               <ChevronLeft className="h-4 w-4" variant="stroke" />
             </Button>
             <Button variant="outline" size="sm" onClick={goToday}>
               {t("gabinet.calendar.today", "Dzis")}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate(1)}>
+            <Button variant="outline" size="sm" onClick={() => navigateDate(1)}>
               <ChevronRight className="h-4 w-4" variant="stroke" />
             </Button>
             <h2 className="ml-2 text-sm font-semibold">{title}</h2>

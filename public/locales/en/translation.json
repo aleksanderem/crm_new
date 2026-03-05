@@ -47,7 +47,17 @@
     "deleted": "Deleted",
     "confirmDelete": "Are you sure you want to delete?",
     "all": "All",
-    "notFound": "Not found"
+    "notFound": "Not found",
+    "back": "Back",
+    "createdAt": "Created at",
+    "date": "Date",
+    "error": "Error",
+    "price": "Price",
+    "processing": "Processing...",
+    "stats": "Stats",
+    "time": "Time",
+    "titleRequired": "Title is required",
+    "type": "Type"
   },
   "nav": {
     "deals": "Deals",
@@ -126,22 +136,9 @@
       "gabinet": "Gabinet",
       "gabinetDesc": "Clinic & patients"
     },
-    "gabinet": {
-      "dashboard": "Gabinet",
-      "patients": "Patients",
-      "treatments": "Treatments",
-      "calendar": "Calendar",
-      "packages": "Packages",
-      "documents": "Documents",
-      "employees": "HR / Employees",
-      "reports": "Reports",
-      "scheduling": "Working Hours",
-      "leaves": "Leaves",
-      "leaveTypes": "Leave Types",
-      "leaveBalances": "Leave Balances",
-      "documentTemplates": "Doc Templates"
-    },
-    "settings": "Settings"
+    "gabinet": "Cabinet",
+    "settings": "Settings",
+    "home": "Home"
   },
   "notifications": {
     "title": "Notifications",
@@ -492,18 +489,21 @@
     "lost": "Lost"
   },
   "settings": {
-    "title": "Settings",
-    "general": "General",
-    "profile": "Profile",
-    "billing": "Billing",
-    "pipelines": "Pipelines",
-    "customFields": "Custom Fields",
-    "activityTypes": "Activity Types",
-    "team": "Team",
-    "email": "Email",
-    "organization": "Organization",
-    "integrations": "Integrations",
-    "gabinetSection": "Gabinet"
+    "team": {
+      "currentUsage": "Current Usage",
+      "usageCount": "{{current}} of {{limit}} seats used",
+      "pendingInvites": "pending invites",
+      "nearLimitWarning": "You're approaching your seat limit. Consider upgrading your plan.",
+      "limitReached": "Seat limit reached for your current plan. Upgrade to invite more users.",
+      "email": "Email Address",
+      "emailRequired": "Email address is required",
+      "emailInvalid": "Invalid email format",
+      "emailPlaceholder": "colleague@company.com",
+      "role": "Role",
+      "roleHint": "Admins can manage settings and team",
+      "sendInvite": "Send Invitation",
+      "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
+    }
   },
   "leadForm": {
     "title": "Title",
@@ -1161,7 +1161,13 @@
         "activity": "Activity"
       },
       "byDay": "Patients by Day",
-      "bySource": "Patients by Source"
+      "bySource": "Patients by Source",
+      "appointmentHistory": "Appointment history",
+      "history": "History",
+      "noHistory": "No history",
+      "noHistoryDesc": "Patient has no previous appointments",
+      "patient": "Patient",
+      "lastAppointments": "Patient's recent appointments"
     },
     "treatments": {
       "title": "Treatments",
@@ -1191,7 +1197,9 @@
         "all": "All Treatments",
         "active": "Active",
         "inactive": "Inactive"
-      }
+      },
+      "aftercare": "Aftercare",
+      "treatment": "Treatment"
     },
     "scheduling": {
       "title": "Working Hours",
@@ -1286,7 +1294,8 @@
         "receptionist": "Receptionist",
         "admin": "Administrator",
         "other": "Other"
-      }
+      },
+      "employee": "Employee"
     },
     "leaveTypes": {
       "title": "Leave Types",
@@ -1322,7 +1331,7 @@
       "endTime": "End Time",
       "notes": "Notes",
       "notesPlaceholder": "Additional notes for the appointment...",
-      "recurring": "Recurring",
+      "recurring": "Recurring appointment",
       "frequency": "Frequency",
       "count": "Occurrences",
       "selectPatient": "Select patient",
@@ -1359,6 +1368,33 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "no_show": "No Show"
+      },
+      "actions": {
+        "cancel": "Cancel appointment",
+        "complete": "Complete",
+        "confirm": "Confirm",
+        "noShow": "No show",
+        "start": "Start"
+      },
+      "appointment": "Appointment",
+      "cancelDesc": "Provide a reason for cancelling the appointment",
+      "cancelReasonPlaceholder": "Enter cancellation reason...",
+      "cancelReasonRequired": "Cancellation reason is required",
+      "cancelTitle": "Cancel appointment",
+      "cancelled": "Appointment cancelled",
+      "details": "Appointment details",
+      "internalNotes": "Internal notes",
+      "internalNotesDesc": "Notes visible only to staff",
+      "internalNotesPlaceholder": "Enter internal notes...",
+      "prepayment": "Prepayment",
+      "prepaymentAmount": "Prepayment amount",
+      "prepaymentPending": "Prepayment pending",
+      "prepaymentRequired": "Prepayment required",
+      "scheduling": "Scheduling",
+      "statusUpdated": "Appointment status updated",
+      "tabs": {
+        "bodyChart": "Body Chart",
+        "details": "Details"
       }
     },
     "appointmentDetail": {
@@ -1385,11 +1421,10 @@
     },
     "packages": {
       "title": "Treatment Packages",
-      "description": "Manage treatment bundles and packages",
+      "description": "Description",
       "addPackage": "Add Package",
       "name": "Name",
       "namePlaceholder": "e.g. Relaxation Package",
-      "description": "Description",
       "descriptionPlaceholder": "Describe the package contents...",
       "totalPrice": "Total Price",
       "validityDays": "Validity (days)",
@@ -1436,7 +1471,14 @@
         "completed": "Completed",
         "expired": "Expired",
         "cancelled": "Cancelled"
-      }
+      },
+      "activePackages": "Active packages",
+      "noActivePackages": "No active packages",
+      "noActivePackagesDesc": "Patient has no active treatment packages",
+      "package": "Package",
+      "packageUsage": "Package usage",
+      "treatmentsUsed": "Treatments used",
+      "usedInThisAppointment": "Used in this appointment"
     },
     "documents": {
       "title": "Medical Documents",
@@ -1444,7 +1486,13 @@
       "createDocument": "New Document",
       "titleField": "Title",
       "type": "Type",
-      "status": "Status",
+      "status": {
+        "draft": "Draft",
+        "pending_signature": "Pending signature",
+        "signed": "Signed",
+        "archived": "Archived",
+        "final": "Final"
+      },
       "date": "Date",
       "patient": "Patient",
       "template": "Template",
@@ -1466,14 +1514,29 @@
         "medical_record": "Medical Record",
         "prescription": "Prescription",
         "referral": "Referral",
-        "custom": "Custom"
+        "custom": "Custom",
+        "invoice": "Invoice",
+        "other": "Other",
+        "report": "Report"
       },
       "statuses": {
         "draft": "Draft",
-        "pending_signature": "Pending Signature",
+        "pending_signature": "Pending signature",
         "signed": "Signed",
         "archived": "Archived"
-      }
+      },
+      "contentPlaceholder": "Enter document content...",
+      "createFirst": "Create first document",
+      "documents": "Documents",
+      "editDocument": "Edit document",
+      "fromTemplate": "From template",
+      "linkedToAppointment": "Linked to appointment",
+      "newDocument": "New document",
+      "noDocumentsDesc": "No documents linked to this appointment",
+      "selectTemplate": "Select template",
+      "sign": "Sign",
+      "signDescription": "Sign the document electronically",
+      "titlePlaceholder": "Enter document title..."
     },
     "documentTemplates": {
       "title": "Document Templates",
@@ -1498,7 +1561,12 @@
         "platinum": "Platinum"
       },
       "transactionHistory": "Transaction History",
-      "noTransactions": "No point transactions"
+      "noTransactions": "No point transactions",
+      "currentTier": "Current tier",
+      "loyaltyProgram": "Loyalty program",
+      "points": "points",
+      "pointsBalance": "Points balance",
+      "recentTransactions": "Recent transactions"
     },
     "dashboard": {
       "title": "Gabinet Dashboard",
@@ -1528,6 +1596,80 @@
       "treatmentPopularity": "Treatment Popularity",
       "statusDistribution": "Appointment Status Distribution",
       "dailyVolume": "Daily Appointment Volume"
+    },
+    "bodyChart": {
+      "description": "Mark body areas related to the appointment",
+      "front": "Front",
+      "back": "Back",
+      "clickToSelect": "Click a body area to select it",
+      "legend": "Legend",
+      "clearAll": "Clear all",
+      "color": "Color",
+      "intensity": "Intensity",
+      "markedRegions": "Marked regions",
+      "note": "Note",
+      "notePlaceholder": "Add a note for this area...",
+      "removeRegion": "Remove selection",
+      "openFullMap": "Open body map",
+      "noRegions": "No marked regions. Open the body map to mark areas.",
+      "markedCount": "{{count}} regions marked",
+      "allRegions": "All regions",
+      "regions": {
+        "head": "Head",
+        "neck": "Neck",
+        "chest": "Chest",
+        "abdomen": "Abdomen",
+        "upper-back": "Upper back",
+        "lower-back": "Lower back",
+        "left-arm": "Left arm",
+        "right-arm": "Right arm",
+        "left-hand": "Left hand",
+        "right-hand": "Right hand",
+        "left-leg": "Left leg",
+        "right-leg": "Right leg",
+        "left-foot": "Left foot",
+        "right-foot": "Right foot"
+      }
+    },
+    "notes": {
+      "addNote": "Add note",
+      "created": "Note created",
+      "noNotes": "No notes",
+      "noNotesDesc": "No notes linked to this appointment",
+      "pin": "Pin",
+      "pinned": "Pinned",
+      "placeholder": "Enter note content...",
+      "reply": "Reply",
+      "replyingTo": "Replying to",
+      "unpin": "Unpin"
+    },
+    "payments": {
+      "addFirst": "Add first payment",
+      "addPayment": "Add payment",
+      "addPaymentDesc": "Add payment linked to appointment",
+      "amount": "Amount",
+      "amountRequired": "Amount is required",
+      "create": "Create payment",
+      "created": "Payment created",
+      "lastPayment": "Last payment",
+      "linkedToAppointment": "Linked to appointment",
+      "method": "Payment method",
+      "methods": {
+        "card": "Card",
+        "cash": "Cash",
+        "other": "Other",
+        "transfer": "Transfer"
+      },
+      "noPayments": "No payments",
+      "noPaymentsDesc": "No payments linked to this appointment",
+      "notePlaceholder": "Optional note...",
+      "outstanding": "Outstanding",
+      "paymentHistory": "Payment history",
+      "payments": "Payments",
+      "summary": "Summary",
+      "totalPaid": "Total paid",
+      "totalSpent": "Total spent",
+      "treatmentPrice": "Treatment price"
     }
   },
   "customFields": {
@@ -1653,23 +1795,6 @@
       "vacation": "Vacation",
       "sick": "Sick Leave",
       "personal": "Personal Leave"
-    }
-  },
-  "settings": {
-    "team": {
-      "currentUsage": "Current Usage",
-      "usageCount": "{{current}} of {{limit}} seats used",
-      "pendingInvites": "pending invites",
-      "nearLimitWarning": "You're approaching your seat limit. Consider upgrading your plan.",
-      "limitReached": "Seat limit reached for your current plan. Upgrade to invite more users.",
-      "email": "Email Address",
-      "emailRequired": "Email address is required",
-      "emailInvalid": "Invalid email format",
-      "emailPlaceholder": "colleague@company.com",
-      "role": "Role",
-      "roleHint": "Admins can manage settings and team",
-      "sendInvite": "Send Invitation",
-      "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
     }
   },
   "permissions": {

@@ -47,7 +47,17 @@
     "deleted": "Usunięto",
     "confirmDelete": "Czy na pewno chcesz usunąć?",
     "all": "Wszystkie",
-    "notFound": "Nie znaleziono"
+    "notFound": "Nie znaleziono",
+    "back": "Wróć",
+    "createdAt": "Utworzono",
+    "date": "Data",
+    "error": "Błąd",
+    "price": "Cena",
+    "processing": "Przetwarzanie...",
+    "stats": "Statystyki",
+    "time": "Godzina",
+    "titleRequired": "Tytuł jest wymagany",
+    "type": "Typ"
   },
   "nav": {
     "deals": "Transakcje",
@@ -126,22 +136,9 @@
       "gabinet": "Gabinet",
       "gabinetDesc": "Klinika i pacjenci"
     },
-    "gabinet": {
-      "dashboard": "Gabinet",
-      "patients": "Pacjenci",
-      "treatments": "Zabiegi",
-      "calendar": "Kalendarz",
-      "packages": "Pakiety",
-      "documents": "Dokumenty",
-      "employees": "HR / Pracownicy",
-      "reports": "Raporty",
-      "scheduling": "Godziny pracy",
-      "leaves": "Urlopy",
-      "leaveTypes": "Typy urlopów",
-      "leaveBalances": "Salda urlopów",
-      "documentTemplates": "Szablony dok."
-    },
-    "settings": "Ustawienia"
+    "gabinet": "Gabinet",
+    "settings": "Ustawienia",
+    "home": "Strona główna"
   },
   "notifications": {
     "title": "Powiadomienia",
@@ -492,18 +489,21 @@
     "lost": "Przegrano"
   },
   "settings": {
-    "title": "Ustawienia",
-    "general": "Ogólne",
-    "profile": "Profil",
-    "billing": "Rozliczenia",
-    "pipelines": "Pipeline",
-    "customFields": "Pola niestandardowe",
-    "activityTypes": "Typy aktywności",
-    "team": "Zespół",
-    "email": "E-mail",
-    "organization": "Organizacja",
-    "integrations": "Integracje",
-    "gabinetSection": "Gabinet"
+    "team": {
+      "currentUsage": "Aktualne użycie",
+      "usageCount": "{{current}} z {{limit}} miejsc",
+      "pendingInvites": "oczekujących zaproszeń",
+      "nearLimitWarning": "Zbliżasz się do limitu miejsc. Rozważ rozbudowę planu.",
+      "limitReached": "Osiągnięto limit miejsc dla obecnego planu. Rozbuduj plan, aby zaprosić więcej użytkowników.",
+      "email": "Adres e-mail",
+      "emailRequired": "Adres e-mail jest wymagany",
+      "emailInvalid": "Nieprawidłowy format e-mail",
+      "emailPlaceholder": "kollega@firma.com",
+      "role": "Rola",
+      "roleHint": "Administratorzy mogą zarządzać ustawieniami i zespołem",
+      "sendInvite": "Wyślij zaproszenie",
+      "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
+    }
   },
   "leadForm": {
     "title": "Tytuł",
@@ -1161,7 +1161,13 @@
         "activity": "Aktywność"
       },
       "byDay": "Pacjenci wg dnia",
-      "bySource": "Pacjenci wg źródła"
+      "bySource": "Pacjenci wg źródła",
+      "appointmentHistory": "Historia wizyt",
+      "history": "Historia",
+      "noHistory": "Brak historii",
+      "noHistoryDesc": "Pacjent nie ma wcześniejszych wizyt",
+      "patient": "Pacjent",
+      "lastAppointments": "Ostatnie wizyty pacjenta"
     },
     "treatments": {
       "title": "Zabiegi",
@@ -1191,7 +1197,9 @@
         "all": "Wszystkie zabiegi",
         "active": "Aktywne",
         "inactive": "Nieaktywne"
-      }
+      },
+      "aftercare": "Zalecenia pozabiegowe",
+      "treatment": "Zabieg"
     },
     "scheduling": {
       "title": "Godziny pracy",
@@ -1286,7 +1294,8 @@
         "receptionist": "Recepcjonista",
         "admin": "Administrator",
         "other": "Inny"
-      }
+      },
+      "employee": "Pracownik"
     },
     "leaveTypes": {
       "title": "Typy urlopów",
@@ -1318,13 +1327,12 @@
       "treatment": "Zabieg",
       "package": "Pakiet",
       "employee": "Pracownik",
-      "employee": "Pracownik",
       "date": "Data",
       "startTime": "Godzina rozpoczęcia",
       "endTime": "Godzina zakończenia",
       "notes": "Notatki",
       "notesPlaceholder": "Dodatkowe uwagi do wizyty...",
-      "recurring": "Cykliczna",
+      "recurring": "Wizyta cykliczna",
       "frequency": "Częstotliwość",
       "count": "Powtórzenia",
       "selectPatient": "Wybierz pacjenta",
@@ -1361,6 +1369,33 @@
         "completed": "Zakończona",
         "cancelled": "Anulowana",
         "no_show": "Nieobecność"
+      },
+      "actions": {
+        "cancel": "Anuluj wizytę",
+        "complete": "Zakończ",
+        "confirm": "Potwierdź",
+        "noShow": "Nie pojawił się",
+        "start": "Rozpocznij"
+      },
+      "appointment": "Wizyta",
+      "cancelDesc": "Podaj powód anulowania wizyty",
+      "cancelReasonPlaceholder": "Wpisz powód anulowania...",
+      "cancelReasonRequired": "Powód anulowania jest wymagany",
+      "cancelTitle": "Anuluj wizytę",
+      "cancelled": "Wizyta anulowana",
+      "details": "Szczegóły wizyty",
+      "internalNotes": "Notatki wewnętrzne",
+      "internalNotesDesc": "Notatki widoczne tylko dla personelu",
+      "internalNotesPlaceholder": "Wpisz notatki wewnętrzne...",
+      "prepayment": "Przedpłata",
+      "prepaymentAmount": "Kwota przedpłaty",
+      "prepaymentPending": "Oczekuje na przedpłatę",
+      "prepaymentRequired": "Wymagana przedpłata",
+      "scheduling": "Harmonogram",
+      "statusUpdated": "Status wizyty zaktualizowany",
+      "tabs": {
+        "bodyChart": "Mapa ciała",
+        "details": "Szczegóły"
       }
     },
     "appointmentDetail": {
@@ -1387,11 +1422,10 @@
     },
     "packages": {
       "title": "Pakiety zabiegów",
-      "description": "Zarządzaj pakietami i zestawami zabiegów",
+      "description": "Opis",
       "addPackage": "Dodaj pakiet",
       "name": "Nazwa",
       "namePlaceholder": "np. Pakiet Relaksacyjny",
-      "description": "Opis",
       "descriptionPlaceholder": "Opisz zawartość pakietu...",
       "totalPrice": "Cena całkowita",
       "validityDays": "Ważność (dni)",
@@ -1438,7 +1472,14 @@
         "completed": "Ukończony",
         "expired": "Wygasły",
         "cancelled": "Anulowany"
-      }
+      },
+      "activePackages": "Aktywne pakiety",
+      "noActivePackages": "Brak aktywnych pakietów",
+      "noActivePackagesDesc": "Pacjent nie ma aktywnych pakietów zabiegowych",
+      "package": "Pakiet",
+      "packageUsage": "Wykorzystanie pakietów",
+      "treatmentsUsed": "Wykorzystane zabiegi",
+      "usedInThisAppointment": "Użyty w tej wizycie"
     },
     "documents": {
       "title": "Dokumenty medyczne",
@@ -1446,14 +1487,20 @@
       "createDocument": "Nowy dokument",
       "titleField": "Tytuł",
       "type": "Typ",
-      "status": "Status",
+      "status": {
+        "draft": "Szkic",
+        "pending_signature": "Oczekuje na podpis",
+        "signed": "Podpisany",
+        "archived": "Zarchiwizowany",
+        "final": "Finalny"
+      },
       "date": "Data",
       "patient": "Pacjent",
       "template": "Szablon",
       "content": "Treść",
       "noTemplate": "Bez szablonu",
       "signature": "Podpis",
-      "signedOn": "Podpisano dnia",
+      "signedOn": "Podpisano",
       "signDocument": "Podpisz dokument",
       "clearSignature": "Wyczyść",
       "confirmSign": "Potwierdź podpis",
@@ -1468,14 +1515,29 @@
         "medical_record": "Karta medyczna",
         "prescription": "Recepta",
         "referral": "Skierowanie",
-        "custom": "Inny"
+        "custom": "Inny",
+        "invoice": "Faktura",
+        "other": "Inny",
+        "report": "Raport"
       },
       "statuses": {
         "draft": "Szkic",
         "pending_signature": "Oczekuje na podpis",
         "signed": "Podpisany",
         "archived": "Zarchiwizowany"
-      }
+      },
+      "contentPlaceholder": "Wpisz treść dokumentu...",
+      "createFirst": "Utwórz pierwszy dokument",
+      "documents": "Dokumenty",
+      "editDocument": "Edytuj dokument",
+      "fromTemplate": "Z szablonu",
+      "linkedToAppointment": "Powiązany z wizytą",
+      "newDocument": "Nowy dokument",
+      "noDocumentsDesc": "Brak dokumentów powiązanych z tą wizytą",
+      "selectTemplate": "Wybierz szablon",
+      "sign": "Podpisz",
+      "signDescription": "Złóż podpis elektroniczny na dokumencie",
+      "titlePlaceholder": "Wpisz tytuł dokumentu..."
     },
     "documentTemplates": {
       "title": "Szablony dokumentów",
@@ -1500,7 +1562,12 @@
         "platinum": "Platynowy"
       },
       "transactionHistory": "Historia transakcji",
-      "noTransactions": "Brak transakcji punktowych"
+      "noTransactions": "Brak transakcji punktowych",
+      "currentTier": "Aktualny poziom",
+      "loyaltyProgram": "Program lojalnościowy",
+      "points": "punktów",
+      "pointsBalance": "Saldo punktów",
+      "recentTransactions": "Ostatnie transakcje"
     },
     "dashboard": {
       "title": "Panel Gabinetu",
@@ -1530,6 +1597,80 @@
       "treatmentPopularity": "Popularność zabiegów",
       "statusDistribution": "Rozkład statusów wizyt",
       "dailyVolume": "Dzienny wolumen wizyt"
+    },
+    "bodyChart": {
+      "description": "Zaznacz obszary ciała powiązane z wizytą",
+      "front": "Przód",
+      "back": "Tył",
+      "clickToSelect": "Kliknij obszar ciała, aby go zaznaczyć",
+      "legend": "Legenda",
+      "clearAll": "Wyczyść wszystko",
+      "color": "Kolor",
+      "intensity": "Intensywność",
+      "markedRegions": "Zaznaczone obszary",
+      "note": "Notatka",
+      "notePlaceholder": "Dodaj notatkę do tego obszaru...",
+      "removeRegion": "Usuń zaznaczenie",
+      "openFullMap": "Otwórz mapę ciała",
+      "noRegions": "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.",
+      "markedCount": "Zaznaczono {{count}} regionów",
+      "allRegions": "Wszystkie regiony",
+      "regions": {
+        "head": "Głowa",
+        "neck": "Szyja",
+        "chest": "Klatka piersiowa",
+        "abdomen": "Brzuch",
+        "upper-back": "Górna część pleców",
+        "lower-back": "Dolna część pleców",
+        "left-arm": "Lewe ramię",
+        "right-arm": "Prawe ramię",
+        "left-hand": "Lewa dłoń",
+        "right-hand": "Prawa dłoń",
+        "left-leg": "Lewa noga",
+        "right-leg": "Prawa noga",
+        "left-foot": "Lewa stopa",
+        "right-foot": "Prawa stopa"
+      }
+    },
+    "notes": {
+      "addNote": "Dodaj notatkę",
+      "created": "Notatka utworzona",
+      "noNotes": "Brak notatek",
+      "noNotesDesc": "Brak notatek powiązanych z tą wizytą",
+      "pin": "Przypnij",
+      "pinned": "Przypięta",
+      "placeholder": "Wpisz treść notatki...",
+      "reply": "Odpowiedz",
+      "replyingTo": "Odpowiedź na",
+      "unpin": "Odepnij"
+    },
+    "payments": {
+      "addFirst": "Dodaj pierwszą płatność",
+      "addPayment": "Dodaj płatność",
+      "addPaymentDesc": "Dodaj płatność powiązaną z wizytą",
+      "amount": "Kwota",
+      "amountRequired": "Kwota jest wymagana",
+      "create": "Utwórz płatność",
+      "created": "Płatność utworzona",
+      "lastPayment": "Ostatnia płatność",
+      "linkedToAppointment": "Powiązana z wizytą",
+      "method": "Metoda płatności",
+      "methods": {
+        "card": "Karta",
+        "cash": "Gotówka",
+        "other": "Inna",
+        "transfer": "Przelew"
+      },
+      "noPayments": "Brak płatności",
+      "noPaymentsDesc": "Brak płatności powiązanych z tą wizytą",
+      "notePlaceholder": "Opcjonalna notatka...",
+      "outstanding": "Do zapłaty",
+      "paymentHistory": "Historia płatności",
+      "payments": "Płatności",
+      "summary": "Podsumowanie",
+      "totalPaid": "Zapłacono łącznie",
+      "totalSpent": "Wydano łącznie",
+      "treatmentPrice": "Cena zabiegu"
     }
   },
   "customFields": {
@@ -1655,23 +1796,6 @@
       "vacation": "Urlop wypoczynkowy",
       "sick": "Zwolnienie lekarskie",
       "personal": "Sprawy prywatne"
-    }
-  },
-  "settings": {
-    "team": {
-      "currentUsage": "Aktualne użycie",
-      "usageCount": "{{current}} z {{limit}} miejsc",
-      "pendingInvites": "oczekujących zaproszeń",
-      "nearLimitWarning": "Zbliżasz się do limitu miejsc. Rozważ rozbudowę planu.",
-      "limitReached": "Osiągnięto limit miejsc dla obecnego planu. Rozbuduj plan, aby zaprosić więcej użytkowników.",
-      "email": "Adres e-mail",
-      "emailRequired": "Adres e-mail jest wymagany",
-      "emailInvalid": "Nieprawidłowy format e-mail",
-      "emailPlaceholder": "kollega@firma.com",
-      "role": "Rola",
-      "roleHint": "Administratorzy mogą zarządzać ustawieniami i zespołem",
-      "sendInvite": "Wyślij zaproszenie",
-      "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
     }
   },
   "permissions": {

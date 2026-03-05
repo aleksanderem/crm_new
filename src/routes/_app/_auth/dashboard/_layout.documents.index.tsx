@@ -35,7 +35,7 @@ import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { Upload } from "@/lib/ez-icons";
-import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/"
@@ -115,14 +115,9 @@ function DocumentsIndex() {
   const [statusChartRange, setStatusChartRange] = useState<TimeRange>("last30days");
   const [sentChartRange, setSentChartRange] = useState<TimeRange>("last7days");
 
-  // Sidebar dispatch handlers
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [typeFilterOpen, setTypeFilterOpen] = useState(false);
-  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
-
-  useSidebarDispatch("createFromTemplate", () => setTemplateDialogOpen(true));
-  useSidebarDispatch("openFilter", () => setTypeFilterOpen(true));
-  useSidebarDispatch("bulkActions", () => setBulkActionsOpen(true));
+  // Filter states
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [templateFilter, setTemplateFilter] = useState<string | null>(null);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -383,6 +378,35 @@ function DocumentsIndex() {
           onTimeRangeChange: setSentChartRange,
         }}
       />
+
+      <div className="flex items-center gap-2 py-2">
+        <SidebarFilterAction
+          dispatchId="createFromTemplate"
+          options={[
+            { label: "Umowa", value: "contract" },
+            { label: "Faktura", value: "invoice" },
+            { label: "Oferta", value: "proposal" },
+          ]}
+          selected={templateFilter ? [templateFilter] : []}
+          onChange={(vals) => setTemplateFilter(vals[0] || null)}
+          label="Z szablonu"
+          singleSelect
+        />
+        <SidebarFilterAction
+          dispatchId="openFilter"
+          options={[
+            { label: "Umowa", value: "contract" },
+            { label: "Faktura", value: "invoice" },
+            { label: "Oferta", value: "proposal" },
+            { label: "Prezentacja", value: "presentation" },
+            { label: "Raport", value: "report" },
+          ]}
+          selected={typeFilter ? [typeFilter] : []}
+          onChange={(vals) => setTypeFilter(vals[0] || null)}
+          label="Filtruj wg typu"
+          singleSelect
+        />
+      </div>
 
       <QuickActionBar
         actions={[

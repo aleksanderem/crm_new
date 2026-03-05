@@ -473,6 +473,74 @@ test.describe("CRM — Contacts", () => {
     }
   });
 
+  // ─── 2.3 continued — List updates after edit ───────────────
+
+  test("list updates with new data after editing contact", async ({ page }) => {
+    const uniqueSuffix = testId("Edited");
+
+    await navigateTo(page, "/dashboard/contacts");
+
+    const menuTrigger = page
+      .locator(
+        'table tbody tr button[aria-haspopup="menu"], table tbody tr button:has(svg)'
+      )
+      .first();
+
+    if (
+      !(await menuTrigger.isVisible({ timeout: 5000 }).catch(() => false))
+    ) {
+      test.skip();
+      return;
+    }
+
+    await menuTrigger.click();
+    await page.waitForTimeout(500);
+
+    const editOption = page
+      .locator(
+        '[role="menuitem"]:has-text("Edytuj"), [role="menuitem"]:has-text("Edit")'
+      )
+      .first();
+
+    if (!(await editOption.isVisible({ timeout: 2000 }).catch(() => false))) {
+      await page.keyboard.press("Escape");
+      test.skip();
+      return;
+    }
+
+    await editOption.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    // Change the first input to a unique value
+    const firstInput = dialog.locator("input").first();
+    await firstInput.fill(uniqueSuffix);
+
+    // Save
+    const submitBtn = dialog
+      .locator(
+        'button:has-text("Zapisz"), button:has-text("Save"), button:has-text("Utwórz"), button:has-text("Create")'
+      )
+      .first();
+
+    if (await submitBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await submitBtn.click();
+      await page.waitForTimeout(3000);
+      await waitForApp(page);
+
+      // List should now show the updated name
+      const bodyText = await getBodyText(page);
+      expect(bodyText).toContain(uniqueSuffix);
+    } else {
+      await page.keyboard.press("Escape");
+    }
+  });
+
   // ─── 2.5 Detail View ────────────────────────────────────────
 
   test("detail page loads via table row click", async ({ page }) => {

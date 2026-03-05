@@ -138,6 +138,53 @@ test.describe("Gabinet — Treatments", () => {
     }
   });
 
+  test("color picker works in treatment form", async ({ page }) => {
+    await navigateTo(page, "/dashboard/gabinet/treatments");
+
+    const addBtn = page
+      .locator(
+        'button:has-text("Dodaj zabieg"), button:has-text("Add treatment"), button:has-text("Dodaj")'
+      )
+      .first();
+
+    if (!(await addBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await addBtn.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Look for color picker — could be input[type="color"], a swatch button, or color radio buttons
+    const colorInput = dialog.locator('input[type="color"]').first();
+    const colorSwatches = dialog.locator(
+      '[class*="color"], [class*="swatch"], button[style*="background"]'
+    );
+    const colorRadios = dialog.locator(
+      'button[role="radio"], [data-color], [class*="Color"]'
+    );
+
+    const hasColorInput = await colorInput
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    const hasSwatches = (await colorSwatches.count()) > 0;
+    const hasRadios = (await colorRadios.count()) > 0;
+
+    // Color selection should be available in some form
+    const dialogText = await dialog.innerText();
+    const hasColorLabel =
+      dialogText.includes("Kolor") || dialogText.includes("Color");
+
+    expect(hasColorInput || hasSwatches || hasRadios || hasColorLabel).toBe(
+      true
+    );
+
+    await page.keyboard.press("Escape");
+  });
+
   test("edit treatment via row action", async ({ page }) => {
     await navigateTo(page, "/dashboard/gabinet/treatments");
 

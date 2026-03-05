@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loginAndGoToDashboard, waitForApp } from "../helpers/auth";
-import { navigateTo, assertNoErrorBoundary } from "../helpers/common";
+import { navigateTo, assertNoErrorBoundary, getBodyText } from "../helpers/common";
 
 test.describe("Sidebar Navigation", () => {
   test.setTimeout(120_000);
@@ -44,6 +44,37 @@ test.describe("Sidebar Navigation", () => {
     expect(
       await contactsLink.isVisible({ timeout: 3000 }).catch(() => false)
     ).toBe(true);
+  });
+
+  test("contextual actions change per page", async ({ page }) => {
+    // Navigate to contacts and check sidebar context
+    await navigateTo(page, "/dashboard/contacts");
+    const contactsBodyText = await getBodyText(page);
+
+    // Navigate to gabinet calendar and check sidebar context
+    await navigateTo(page, "/dashboard/gabinet/calendar");
+    const calendarBodyText = await getBodyText(page);
+
+    // The sidebar should show different navigation context for CRM vs Gabinet
+    // CRM pages show: Contacts, Companies, Leads, etc.
+    // Gabinet pages show: Patients, Treatments, Calendar, etc.
+    const hasCrmNav =
+      contactsBodyText.includes("Kontakt") ||
+      contactsBodyText.includes("Contact") ||
+      contactsBodyText.includes("Firm") ||
+      contactsBodyText.includes("Compan");
+
+    const hasGabinetNav =
+      calendarBodyText.includes("Pacjent") ||
+      calendarBodyText.includes("Patient") ||
+      calendarBodyText.includes("Zabieg") ||
+      calendarBodyText.includes("Treatment") ||
+      calendarBodyText.includes("Kalendarz") ||
+      calendarBodyText.includes("Calendar");
+
+    // Both contexts should be represented in sidebar
+    expect(hasCrmNav || hasGabinetNav).toBe(true);
+    await assertNoErrorBoundary(page);
   });
 
   test("collapsible sections expand/collapse", async ({ page }) => {

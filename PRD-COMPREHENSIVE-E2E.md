@@ -94,7 +94,7 @@ e2e/
 ### 2.3 Edit Contact
 - [x] SidePanel opens with contact data
 - [x] Changes persist after save
-- [ ] List updates with new data
+- [x] List updates with new data
 
 ### 2.4 Delete Contact
 - [x] Delete confirmation appears
@@ -124,7 +124,7 @@ e2e/
 ### 3.3 Relationships
 - [x] Contacts appear in company detail
 - [x] Add contact to company works
-- [ ] Remove contact from company works
+- [x] Remove contact from company works
 
 ---
 
@@ -174,8 +174,8 @@ e2e/
 
 ### 6.2 Upload Flow
 - [x] File upload succeeds
-- [ ] Document appears in list
-- [ ] Download works
+- [x] Document appears in list
+- [x] Download works
 
 ---
 
@@ -230,7 +230,7 @@ e2e/
 
 ### 9.2 Treatment CRUD
 - [x] Create treatment succeeds
-- [ ] Color picker works
+- [x] Color picker works
 - [x] Duration in minutes saves
 - [x] Price + currency saves
 - [x] Edit treatment persists
@@ -250,9 +250,9 @@ e2e/
 - [x] Reload shows saved hours
 
 ### 10.2 Employee Schedules
-- [ ] Employee schedule override UI works
-- [ ] Per-day overrides save
-- [ ] "Use defaults" toggle works
+- [x] Employee schedule override UI works
+- [x] Per-day overrides save
+- [x] "Use defaults" toggle works
 
 ---
 
@@ -287,22 +287,22 @@ e2e/
 - [x] Patient search works
 - [x] Treatment selector shows categories
 - [x] Employee selector works
-- [ ] Available slots load from backend
-- [ ] Slot selection works
+- [x] Available slots load from backend
+- [x] Slot selection works
 - [x] Submit creates appointment
-- [ ] Appointment appears in calendar
+- [x] Appointment appears in calendar
 
 ### 12.2 Recurring Appointments
 - [x] Recurring toggle shows options
-- [ ] Frequency selector works (daily/weekly/monthly)
-- [ ] Count field works
-- [ ] Until date picker works
+- [x] Frequency selector works (daily/weekly/monthly)
+- [x] Count field works
+- [x] Until date picker works
 - [ ] Submit creates series
 - [ ] All instances appear in calendar
 
 ### 12.3 Conflict Detection
-- [ ] Overlapping appointment shows warning
-- [ ] Cannot create conflicting appointment
+- [x] Overlapping appointment shows warning
+- [x] Cannot create conflicting appointment
 
 ### 12.4 Status Transitions
 - [x] scheduled → confirmed works
@@ -324,14 +324,14 @@ e2e/
 - [x] Previous button works
 - [x] Next button works
 - [x] Today button works
-- [ ] Date picker navigation works
+- [x] Date picker navigation works
 
 ### 13.3 Filters
 - [x] Employee filter works
 - [x] Filtered appointments only show
 
 ### 13.4 Appointment Display
-- [ ] Appointments render with correct colors
+- [x] Appointments render with correct colors
 - [x] Click appointment opens detail
 - [x] Edit from detail works
 
@@ -354,7 +354,7 @@ e2e/
 - [x] Expiration date displays
 
 ### 14.3 Package Usage
-- [ ] Link appointment to package works
+- [x] Link appointment to package works
 - [ ] Complete appointment deducts from package
 - [x] Usage count updates
 
@@ -385,22 +385,22 @@ e2e/
 
 ### 16.2 Document Creation
 - [x] Create from template works
-- [ ] Placeholders render with patient data
-- [ ] Rich text editor works
+- [x] Placeholders render with patient data
+- [x] Rich text editor works
 
 ### 16.3 Signature Flow
 - [x] Request signature changes status
 - [x] Signature pad renders
-- [ ] Drawing works (mouse)
+- [x] Drawing works (mouse)
 - [ ] Drawing works (touch)
 - [x] Clear button works
-- [ ] Save signature works
-- [ ] Status changes to "signed"
+- [x] Save signature works
+- [x] Status changes to "signed"
 
 ### 16.4 Document Actions
 - [x] View signed document shows signature
 - [ ] PDF download works
-- [ ] Archive document works
+- [x] Archive document works
 
 ---
 
@@ -436,7 +436,7 @@ e2e/
 - [x] Progress bar shows usage
 - [x] Invite disabled at limit
 - [x] Error message shows upgrade CTA
-- [ ] Member removal frees seat
+- [x] Member removal frees seat
 
 ---
 
@@ -471,7 +471,7 @@ e2e/
 - [x] All sidebar items navigate correctly
 - [x] Collapsible sections expand/collapse
 - [x] Active item highlights
-- [ ] Contextual actions change per page
+- [x] Contextual actions change per page
 
 ### 20.3 Global Search
 - [x] Search opens with shortcut

@@ -78,7 +78,7 @@ function CardMenu() {
           size="icon"
           className="text-muted-foreground size-6 rounded-full"
         >
-          <EllipsisVerticalIcon />
+          <EllipsisVerticalIcon className="h-4 w-4" variant="stroke" />
           <span className="sr-only">Menu</span>
         </Button>
       </DropdownMenuTrigger>

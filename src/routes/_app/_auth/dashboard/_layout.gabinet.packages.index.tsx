@@ -201,7 +201,7 @@ function PackagesIndex() {
       <div className="flex items-center justify-between">
         <PageHeader title={t("gabinet.packages.title")} description={t("gabinet.packages.description")} />
         <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
           {t("gabinet.packages.addPackage")}
         </Button>
       </div>
@@ -210,7 +210,7 @@ function PackagesIndex() {
         actions={[
           {
             label: t('quickActions.newPackage'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreate,
             feature: "gabinet_packages",
             action: "create",
@@ -252,10 +252,10 @@ function PackagesIndex() {
               )}
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => openEdit(pkg)}>
-                  <Pencil className="mr-1 h-3 w-3" /> {t("detail.actions.edit")}
+                  <Pencil className="mr-1 h-4 w-4" variant="stroke" /> {t("detail.actions.edit")}
                 </Button>
                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => confirmDelete(pkg._id)}>
-                  <Trash2 className="mr-1 h-3 w-3" /> {t("common.delete")}
+                  <Trash2 className="mr-1 h-4 w-4" variant="stroke" /> {t("common.delete")}
                 </Button>
               </div>
             </div>
@@ -304,7 +304,7 @@ function PackagesIndex() {
             <div className="flex items-center justify-between">
               <Label>{t("gabinet.packages.treatments")}</Label>
               <Button type="button" variant="outline" size="sm" onClick={addTreatment}>
-                <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" /> {t("common.add")}
+                <Plus className="mr-1 h-4 w-4" variant="stroke" /> {t("common.add")}
               </Button>
             </div>
             {selectedTreatments.map((st, i) => (
@@ -327,7 +327,7 @@ function PackagesIndex() {
                   min={1}
                 />
                 <Button type="button" variant="ghost" size="sm" onClick={() => removeTreatment(i)}>
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-4 w-4" variant="stroke" />
                 </Button>
               </div>
             ))}

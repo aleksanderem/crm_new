@@ -79,11 +79,11 @@ function PatientDocuments() {
                 <div className="flex items-center gap-2">
                   <Badge variant={statusColor(doc.status)}>{doc.status.replace("_", " ")}</Badge>
                   <Button variant="ghost" size="sm" onClick={() => setViewDocId(doc._id)}>
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" variant="stroke" />
                   </Button>
                   {doc.status === "pending_signature" && (
                     <Button variant="ghost" size="sm" onClick={() => setSignDocId(doc._id)}>
-                      <PenTool className="h-4 w-4 text-primary" />
+                      <PenTool className="h-4 w-4 text-primary" variant="stroke" />
                     </Button>
                   )}
                 </div>

@@ -86,7 +86,7 @@ function EmployeesIndex() {
         description={t("gabinet.employees.description")}
         actions={
           <Button onClick={() => setShowCreate(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t("gabinet.employees.add")}
           </Button>
         }
@@ -96,7 +96,7 @@ function EmployeesIndex() {
         actions={[
           {
             label: t('quickActions.newEmployee'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setShowCreate(true),
             feature: "gabinet_employees",
             action: "create",
@@ -131,7 +131,7 @@ function EmployeesIndex() {
                   <div className="flex items-center gap-2">
                     {emp.color && (
                       <span
-                        className="h-3 w-3 rounded-full"
+                        className="h-4 w-4 rounded-full"
                         style={{ backgroundColor: emp.color }}
                       />
                     )}

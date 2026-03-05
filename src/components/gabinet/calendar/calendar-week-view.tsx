@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { AppointmentCard } from "./appointment-card";
+import { DraggableAppointment } from "./draggable-appointment";
+import { DroppableSlot } from "./droppable-slot";
 
 interface Appointment {
   _id: string;
@@ -19,6 +20,7 @@ interface CalendarWeekViewProps {
   onAppointmentClick?: (id: string) => void;
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
+  employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -36,6 +38,12 @@ function getWeekDates(start: string): string[] {
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return ((h - 7) * 60 + m);
+}
+
+function getDayOfWeek(date: string): number {
+  const d = new Date(date + "T00:00:00");
+  const day = d.getDay();
+  return day === 0 ? 6 : day - 1; // Monday = 0, Sunday = 6
 }
 
 // Google Calendar-style cascading layout: each overlapping appointment
@@ -101,7 +109,7 @@ function layoutDayAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppointmentClick, onDayHeaderClick, selectedDate }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppointmentClick, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const today = new Date().toISOString().split("T")[0];
 
@@ -131,6 +139,10 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppoi
         const isToday = date === today;
         const isSelected = date === selectedDate;
 
+        // Get working hours for this day
+        const dayOfWeek = di; // 0=Mon, 6=Sun
+        const schedule = employeeSchedules?.get(`${dayOfWeek}`);
+
         return (
           <div key={date} className="flex-1 min-w-[120px] border-r last:border-r-0">
             {/* Day header */}
@@ -148,12 +160,41 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppoi
 
             {/* Hour slots */}
             <div className="relative">
+              {/* Working hours background for this day */}
+              {schedule && (
+                <>
+                  <div
+                    className="absolute left-0 right-0 bg-primary/5 border-y border-primary/10 z-0"
+                    style={{
+                      top: `${timeToTop(schedule.startTime)}px`,
+                      height: `${timeToTop(schedule.endTime) - timeToTop(schedule.startTime)}px`,
+                    }}
+                  />
+                  {schedule.breakStart && schedule.breakEnd && (
+                    <div
+                      className="absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50 z-0"
+                      style={{
+                        top: `${timeToTop(schedule.breakStart)}px`,
+                        height: `${timeToTop(schedule.breakEnd) - timeToTop(schedule.breakStart)}px`,
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
               {HOURS.map((h) => (
-                <div
+                <DroppableSlot
                   key={h}
-                  className="h-[60px] border-b border-dashed border-muted cursor-pointer hover:bg-muted/20"
-                  onClick={() => onSlotClick?.(date, `${String(h).padStart(2, "0")}:00`)}
-                />
+                  id={`${date}-${h}`}
+                  date={date}
+                  time={`${String(h).padStart(2, "0")}:00`}
+                  className="h-[60px] border-b border-dashed border-muted"
+                >
+                  <div
+                    className="h-full w-full cursor-pointer hover:bg-muted/20"
+                    onClick={() => onSlotClick?.(date, `${String(h).padStart(2, "0")}:00`)}
+                  />
+                </DroppableSlot>
               ))}
 
               {/* Appointments — cascading stack when overlapping */}
@@ -178,9 +219,9 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppoi
                       zIndex: 10 + laid.column,
                     }}
                   >
-                    <AppointmentCard
+                    <DraggableAppointment
                       {...appt}
-                      onClick={() => onAppointmentClick?.(appt._id)}
+                      onAppointmentClick={onAppointmentClick}
                     />
                   </div>
                 );

@@ -62,7 +62,7 @@ function LeaveTypesSettings() {
               {t("gabinet.leaveTypes.initBalances", { year: currentYear })}
             </Button>
             <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.leaveTypes.add")}
             </Button>
           </div>
@@ -82,7 +82,7 @@ function LeaveTypesSettings() {
               <div className="flex items-center gap-3">
                 {lt.color && (
                   <span
-                    className="h-3 w-3 rounded-full shrink-0"
+                    className="h-4 w-4 rounded-full shrink-0"
                     style={{ backgroundColor: lt.color }}
                   />
                 )}
@@ -109,7 +109,7 @@ function LeaveTypesSettings() {
                 className="h-8 w-8"
                 onClick={() => setEditingId(lt._id)}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" variant="stroke" />
               </Button>
             </CardContent>
           </Card>

@@ -72,13 +72,13 @@ function DocumentDetail() {
             {doc.fileUrl && (
               <Button variant="outline" size="sm" asChild>
                 <a href={doc.fileUrl} target="_blank" rel="noreferrer">
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-4 w-4" variant="stroke" />
                   Download
                 </a>
               </Button>
             )}
             <Button variant="destructive" size="sm" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 h-4 w-4" variant="stroke" />
               Delete
             </Button>
           </div>

@@ -128,7 +128,7 @@ function LeavesPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.leaves.requestLeave")}
             </Button>
           </DialogTrigger>
@@ -240,7 +240,7 @@ function LeavesPage() {
                   {leave.status === "pending" && (
                     <div className="flex justify-end gap-1">
                       <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id)}>
-                        <Check className="h-4 w-4 text-green-600" />
+                        <Check className="h-4 w-4 text-green-600" variant="stroke" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
                         <X className="h-[18px] w-[18px] text-red-600" variant="stroke" />

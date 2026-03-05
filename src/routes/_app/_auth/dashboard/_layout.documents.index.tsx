@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Pencil, Trash2, RefreshCw } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
@@ -118,6 +119,21 @@ function DocumentsIndex() {
   // Filter states
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [templateFilter, setTemplateFilter] = useState<string | null>(null);
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("openFilter", () => {
+    // Toggle type filter - simple toggle for now
+    setTypeFilter((prev) => prev ? null : "proposal");
+  });
+  useSidebarDispatch("createFromTemplate", () => {
+    // Navigate to new document with template focus
+    navigate({ to: "/dashboard/documents/new" });
+  });
+  useSidebarDispatch("bulkActions", () => {
+    // The table already has row selection - this could trigger bulk mode
+    // For now, just focus on the table
+    document.querySelector<HTMLElement>('[role="table"]')?.focus();
+  });
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -331,12 +347,12 @@ function DocumentsIndex() {
   const rowActions = (row: DocumentRow) => [
     {
       label: t('common.edit'),
-      icon: <Pencil className="h-3.5 w-3.5" />,
+      icon: <Pencil className="h-4 w-4" variant="stroke" />,
       onClick: () => openEditPanel(row),
     },
     {
       label: t('documents.changeStatus'),
-      icon: <RefreshCw className="h-3.5 w-3.5" />,
+      icon: <RefreshCw className="h-4 w-4" variant="stroke" />,
       onClick: () => {
         setStatusChangeDoc(row);
         setNewStatus((row.status as DocumentStatus) ?? "draft");
@@ -344,7 +360,7 @@ function DocumentsIndex() {
     },
     {
       label: t('common.delete'),
-      icon: <Trash2 className="h-3.5 w-3.5" />,
+      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
       onClick: () => removeDocument({ organizationId, documentId: row._id }),
     },
   ];
@@ -356,7 +372,7 @@ function DocumentsIndex() {
         description={t('documents.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('documents.newDocument')}
           </Button>
         }
@@ -412,7 +428,7 @@ function DocumentsIndex() {
         actions={[
           {
             label: t('quickActions.uploadDocument'),
-            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "documents",
             action: "create",

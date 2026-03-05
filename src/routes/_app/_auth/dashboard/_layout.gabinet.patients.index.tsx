@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Heart, Trash2 } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
@@ -54,6 +55,22 @@ function PatientsIndex() {
   const [isCreating, setIsCreating] = useState(false);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("importCsv", () => {
+    // Could open import dialog - for now show toast
+    // Import not implemented for patients yet
+  });
+  useSidebarDispatch("openSearch", () => {
+    // Focus on the search input if present
+    const searchInput = document.querySelector<HTMLInputElement>('input[type="search"], input[placeholder*="Szukaj"], input[placeholder*="Search"]');
+    searchInput?.focus();
+  });
+  useSidebarDispatch("openFilter", () => {
+    // Toggle active/inactive filter
+    const activeView = views.find(v => v.id === "active");
+    if (activeView) onViewChange("active");
+  });
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t("gabinet.patients.views.all"), isSystem: true, isDefault: true },
@@ -285,7 +302,7 @@ function PatientsIndex() {
       },
       {
         label: t("common.delete"),
-        icon: <Trash2 className="h-3.5 w-3.5" />,
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.patients.confirmDelete"))) {
             await removePatient({ organizationId, patientId: row._id });
@@ -311,7 +328,7 @@ function PatientsIndex() {
         description={t("gabinet.patients.description")}
         actions={
           <Button onClick={() => setPanelOpen(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t("gabinet.patients.addPatient")}
           </Button>
         }
@@ -348,7 +365,7 @@ function PatientsIndex() {
         actions={[
           {
             label: t('quickActions.newPatient'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setPanelOpen(true),
             feature: "gabinet_patients",
             action: "create",
@@ -363,7 +380,7 @@ function PatientsIndex() {
           description={t("gabinet.patients.emptyDescription")}
           action={
             <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.patients.addPatient")}
             </Button>
           }

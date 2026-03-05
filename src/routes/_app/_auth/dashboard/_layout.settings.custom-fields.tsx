@@ -64,7 +64,7 @@ function CustomFieldsSettings() {
         description={t("customFields.description")}
         actions={
           <Button onClick={() => setShowForm(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t("customFields.addField")}
           </Button>
         }
@@ -164,7 +164,7 @@ function CustomFieldsSettings() {
                         }
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" variant="stroke" />
                     </Button>
                   </CardContent>
                 </Card>

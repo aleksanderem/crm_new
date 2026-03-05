@@ -128,7 +128,7 @@ function ActivityTypesSettings() {
         description={t('activityTypeSettings.description')}
         actions={
           <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('activityTypeSettings.addType')}
           </Button>
         }
@@ -198,7 +198,7 @@ function ActivityTypesSettings() {
                           : undefined
                       }
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" variant="stroke" />
                     </div>
                   )}
                   <div>
@@ -216,7 +216,7 @@ function ActivityTypesSettings() {
                     className="h-8 w-8"
                     onClick={() => setEditingId(type._id)}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" variant="stroke" />
                   </Button>
                   {!type.isSystem && (
                     <Button
@@ -225,7 +225,7 @@ function ActivityTypesSettings() {
                       className="h-8 w-8"
                       onClick={() => handleDelete(type._id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" variant="stroke" />
                     </Button>
                   )}
                 </div>
@@ -265,7 +265,7 @@ function ActivityTypesSettings() {
                     size="sm"
                     onClick={() => setShowFieldForm(true)}
                   >
-                    <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+                    <Plus className="mr-2 h-4 w-4" variant="stroke" />
                     {t('activityTypeSettings.addField')}
                   </Button>
                 </div>
@@ -361,7 +361,7 @@ function ActivityTypesSettings() {
                               className="h-8 w-8"
                               onClick={() => setEditingFieldId(def._id)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" variant="stroke" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -381,7 +381,7 @@ function ActivityTypesSettings() {
                                 }
                               }}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" variant="stroke" />
                             </Button>
                           </div>
                         </CardContent>

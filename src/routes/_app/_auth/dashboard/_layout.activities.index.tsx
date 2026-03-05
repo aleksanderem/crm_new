@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import {
   Plus,
   Pencil,
@@ -82,6 +83,16 @@ function ActivitiesPage() {
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("openFilter", () => {
+    // Toggle showCompleted as a simple filter toggle
+    setShowCompleted((prev) => !prev);
+  });
+  useSidebarDispatch("upcomingOnly", () => {
+    // Switch to "open" view which shows only incomplete activities
+    onViewChange("open");
+  });
 
   // Form state
   const [title, setTitle] = useState("");
@@ -269,7 +280,7 @@ function ActivitiesPage() {
         const Icon = getActivityIcon(typeDef.icon);
         return (
           <Badge variant="secondary" className={typeDef.color ?? ""}>
-            {Icon && <Icon className="mr-1 h-3 w-3" />}
+            {Icon && <Icon className="mr-1 h-4 w-4" variant="stroke" />}
             {typeDef.name}
           </Badge>
         );
@@ -317,15 +328,15 @@ function ActivitiesPage() {
   const rowActions = (row: ActivityRow) => [
     {
       label: t('common.edit'),
-      icon: <Pencil className="h-3.5 w-3.5" />,
+      icon: <Pencil className="h-4 w-4" variant="stroke" />,
       onClick: () => openEditPanel(row),
     },
     {
       label: row.isCompleted ? t('activities.markIncomplete') : t('activities.markComplete'),
       icon: row.isCompleted ? (
-        <RotateCcw className="h-3.5 w-3.5" />
+        <RotateCcw className="h-4 w-4" variant="stroke" />
       ) : (
-        <Check className="h-3.5 w-3.5" />
+        <Check className="h-4 w-4" variant="stroke" />
       ),
       onClick: () => {
         if (row.isCompleted) {
@@ -337,7 +348,7 @@ function ActivitiesPage() {
     },
     {
       label: t('common.delete'),
-      icon: <Trash2 className="h-3.5 w-3.5" />,
+      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
       onClick: () => removeActivity({ organizationId, activityId: row._id }),
     },
   ];
@@ -349,7 +360,7 @@ function ActivitiesPage() {
         description={t('activities.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('activities.addActivity')}
           </Button>
         }
@@ -377,7 +388,7 @@ function ActivitiesPage() {
         <ToggleFilterButton
           label={t('activities.actions.showCompleted')}
           activeLabel={t('activities.actions.hideCompleted')}
-          icon={<Check className="mr-1.5 h-4 w-4" />}
+          icon={<Check className="mr-1.5 h-4 w-4" variant="stroke" />}
           active={showCompleted}
           onChange={setShowCompleted}
         />
@@ -385,7 +396,7 @@ function ActivitiesPage() {
           actions={[
             {
               label: t('quickActions.newActivity'),
-              icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+              icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
               onClick: openCreatePanel,
               feature: "activities",
               action: "create",

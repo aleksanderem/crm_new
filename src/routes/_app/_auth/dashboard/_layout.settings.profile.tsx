@@ -298,7 +298,7 @@ function ProfileSettings() {
                     : "border-border text-muted-foreground hover:border-primary/40"
                 )}
               >
-                <option.icon className="h-4 w-4" />
+                <option.icon className="h-4 w-4" variant="stroke" />
                 {t(`profilePage.themeOptions.${option.value}`, option.label)}
               </button>
             ))}

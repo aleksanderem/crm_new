@@ -92,7 +92,7 @@ function SourcesSettings() {
         description={t('sources.description')}
         actions={
           <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('sources.addSource')}
           </Button>
         }
@@ -199,7 +199,7 @@ function SourcesSettings() {
                       setEditName(source.name);
                     }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" variant="stroke" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -207,7 +207,7 @@ function SourcesSettings() {
                     className="h-8 w-8"
                     onClick={() => handleDelete(source._id)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" variant="stroke" />
                   </Button>
                 </div>
               </CardContent>

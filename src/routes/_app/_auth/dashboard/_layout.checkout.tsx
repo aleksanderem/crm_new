@@ -82,7 +82,7 @@ export default function DashboardCheckout() {
                   <span className="text-sm font-medium text-primary/60 group-hover:text-primary">
                     Return to Dashboard
                   </span>
-                  <ExternalLink className="h-4 w-4 stroke-[1.5px] text-primary/60 group-hover:text-primary" />
+                  <ExternalLink className="h-4 w-4 stroke-[1.5px] text-primary/60 group-hover:text-primary" variant="stroke" />
                 </Link>
               </div>
               <div className="base-grid absolute h-full w-full opacity-40" />

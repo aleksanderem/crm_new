@@ -66,7 +66,7 @@ function PipelinesSettings() {
               placeholder="Pipeline name"
             />
             <Button type="submit" disabled={!newPipelineName.trim()}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               Create
             </Button>
           </form>
@@ -142,7 +142,7 @@ function PipelineCard({
             }
           }}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" variant="stroke" />
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -152,10 +152,10 @@ function PipelineCard({
             className="flex items-center justify-between rounded-md border px-3 py-2"
           >
             <div className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <GripVertical className="h-4 w-4 text-muted-foreground" variant="stroke" />
               {stage.color && (
                 <div
-                  className="h-3 w-3 rounded-full"
+                  className="h-4 w-4 rounded-full"
                   style={{ backgroundColor: stage.color }}
                 />
               )}
@@ -169,7 +169,7 @@ function PipelineCard({
                 onRemoveStage({ organizationId, stageId: stage._id })
               }
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" variant="stroke" />
             </Button>
           </div>
         ))}
@@ -232,7 +232,7 @@ function PipelineCard({
               setNewStageName("");
             }}
           >
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             Add Stage
           </Button>
         )}

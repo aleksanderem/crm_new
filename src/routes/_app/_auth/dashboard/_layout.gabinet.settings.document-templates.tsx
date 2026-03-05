@@ -122,7 +122,7 @@ function DocumentTemplatesPage() {
           description={t("gabinet.documentTemplates.description")}
         />
         <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
           {t("gabinet.documentTemplates.addTemplate")}
         </Button>
       </div>
@@ -162,7 +162,7 @@ function DocumentTemplatesPage() {
                         {t("common.edit")}
                       </Button>
                       <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleRemove(tpl._id)}>
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" variant="stroke" />
                       </Button>
                     </div>
                   </td>

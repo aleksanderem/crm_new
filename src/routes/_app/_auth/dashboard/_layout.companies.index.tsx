@@ -390,7 +390,7 @@ function CompaniesIndex() {
       },
       {
         label: t('common.delete'),
-        icon: <Trash2 className="h-3.5 w-3.5" />,
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t('companies.confirmDelete'))) {
             await removeCompany({ organizationId, companyId: row._id });
@@ -419,7 +419,7 @@ function CompaniesIndex() {
         description={t('companies.description')}
         actions={
           <Button onClick={() => setPanelOpen(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('companies.addCompany')}
           </Button>
         }
@@ -456,14 +456,14 @@ function CompaniesIndex() {
         actions={[
           {
             label: t('quickActions.newCompany'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setPanelOpen(true),
             feature: "companies",
             action: "create",
           },
           {
             label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setImportOpen(true),
             feature: "companies",
             action: "create",
@@ -479,7 +479,7 @@ function CompaniesIndex() {
           description={t('companies.emptyDescription')}
           action={
             <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t('companies.addCompany')}
             </Button>
           }
@@ -506,8 +506,8 @@ function CompaniesIndex() {
           sorting={sorting}
           onSortingChange={setSorting}
           toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
           ]}
         />
       )}

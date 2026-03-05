@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,23 @@ import {
 import { ChevronLeft, ChevronRight, Plus } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { CalendarDayView } from "@/components/gabinet/calendar/calendar-day-view";
 import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
 import { AppointmentDetailDialog } from "@/components/gabinet/calendar/appointment-detail-dialog";
+import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -54,6 +67,29 @@ function GabinetCalendarPage() {
   const [createDefaultDate, setCreateDefaultDate] = useState<string | undefined>();
   const [createDefaultTime, setCreateDefaultTime] = useState<string | undefined>();
   const [detailAppointmentId, setDetailAppointmentId] = useState<string | null>(null);
+
+  // Drag state
+  const [activeAppointment, setActiveAppointment] = useState<{
+    _id: string;
+    startTime: string;
+    endTime: string;
+    patientName: string;
+    treatmentName: string;
+    status: string;
+    color?: string;
+  } | null>(null);
+
+  // Mutations
+  const updateAppointment = useMutation(api.gabinet.appointments.update);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   // Compute date range based on view mode
   const { startDate, endDate } = useMemo(() => {
@@ -110,6 +146,16 @@ function GabinetCalendarPage() {
     })
   );
 
+  // Fetch employee schedules for working hours display
+  const { data: employeeSchedulesRaw } = useQuery(
+    convexQuery(api.gabinet.scheduling.listEmployeeSchedules, { organizationId })
+  );
+
+  // Fetch clinic working hours as fallback
+  const { data: clinicWorkingHours } = useQuery(
+    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
+  );
+
   const patientMap = useMemo(() => {
     const map = new Map<string, string>();
     if (patientsPage?.page) {
@@ -139,6 +185,48 @@ function GabinetCalendarPage() {
     });
     return map;
   }, [members]);
+
+  // Build schedule map for the filtered employee (or all employees)
+  const employeeSchedules = useMemo(() => {
+    const map = new Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>();
+
+    // If filtering by specific employee, use their schedule
+    if (employeeFilter !== "all" && employeeSchedulesRaw) {
+      const empSchedules = employeeSchedulesRaw.filter((s) => s.userId === employeeFilter);
+      for (const s of empSchedules) {
+        if (s.isWorking) {
+          map.set(`${s.dayOfWeek}`, {
+            startTime: s.startTime,
+            endTime: s.endTime,
+            breakStart: s.breakStart,
+            breakEnd: s.breakEnd,
+          });
+        }
+      }
+    } else if (clinicWorkingHours) {
+      // Otherwise use clinic default working hours
+      for (const wh of clinicWorkingHours) {
+        if (wh.isOpen) {
+          map.set(`${wh.dayOfWeek}`, {
+            startTime: wh.startTime,
+            endTime: wh.endTime,
+            breakStart: wh.breakStart,
+            breakEnd: wh.breakEnd,
+          });
+        }
+      }
+    }
+
+    return map;
+  }, [employeeFilter, employeeSchedulesRaw, clinicWorkingHours]);
+
+  // Get working hours for day view (today's schedule)
+  const dayWorkingHours = useMemo(() => {
+    if (viewMode !== "day") return null;
+    const dayOfWeek = new Date(currentDate).getDay();
+    const dow = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday = 0
+    return employeeSchedules.get(`${dow}`) ?? null;
+  }, [viewMode, currentDate, employeeSchedules]);
 
   // Transform appointments for view components
   const viewAppointments = useMemo(() => {
@@ -174,6 +262,18 @@ function GabinetCalendarPage() {
 
   const goToday = () => setCurrentDate(new Date());
 
+  // Sidebar dispatch handlers
+  useSidebarDispatch("goToToday", goToday);
+  useSidebarDispatch("filterByEmployee", () => {
+    // Focus on the employee filter select
+    const trigger = document.querySelector<HTMLElement>('[role="combobox"]');
+    trigger?.click();
+  });
+  useSidebarDispatch("filterByTreatment", () => {
+    // Could open treatment filter if implemented - for now just scroll to calendar
+    document.querySelector<HTMLElement>('.flex-1.overflow-hidden')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
   // Click-to-create handler
   const handleSlotClick = useCallback(
     (dateOrTime: string, time?: string) => {
@@ -198,6 +298,58 @@ function GabinetCalendarPage() {
   const handleAppointmentClick = useCallback((id: string) => {
     setDetailAppointmentId(id);
   }, []);
+
+  // DnD handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const { active } = event;
+    const appt = viewAppointments.find((a) => a._id === active.id);
+    if (appt) {
+      setActiveAppointment(appt);
+    }
+  }, [viewAppointments]);
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveAppointment(null);
+
+    if (!over) return;
+
+    const appointmentId = active.id as string;
+    const dropData = over.data.current;
+
+    if (dropData?.type === "time-slot") {
+      const newDate = dropData.date as string;
+      const newStartTime = dropData.time as string;
+
+      // Find the original appointment to calculate duration
+      const originalAppt = viewAppointments.find((a) => a._id === appointmentId);
+      if (!originalAppt) return;
+
+      // Calculate new end time based on original duration
+      const [startH, startM] = originalAppt.startTime.split(":").map(Number);
+      const [endH, endM] = originalAppt.endTime.split(":").map(Number);
+      const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+      const [newStartH, newStartM] = newStartTime.split(":").map(Number);
+      const newEndMinutes = newStartH * 60 + newStartM + durationMinutes;
+      const newEndH = Math.floor(newEndMinutes / 60);
+      const newEndM = newEndMinutes % 60;
+      const newEndTime = `${String(newEndH).padStart(2, "0")}:${String(newEndM).padStart(2, "0")}`;
+
+      try {
+        await updateAppointment({
+          organizationId,
+          appointmentId: appointmentId as Id<"gabinetAppointments">,
+          date: newDate,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        });
+        toast.success(t("gabinet.appointments.rescheduled", "Appointment rescheduled"));
+      } catch (e: any) {
+        toast.error(e.message ?? t("gabinet.appointments.rescheduleFailed", "Failed to reschedule"));
+      }
+    }
+  }, [organizationId, updateAppointment, viewAppointments, t]);
 
   // Title
   const title = useMemo(() => {
@@ -233,121 +385,145 @@ function GabinetCalendarPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToday}>
-            {t("gabinet.calendar.today", "Dzis")}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h2 className="ml-2 text-sm font-semibold">{title}</h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Employee filter */}
-          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-            <SelectTrigger className="h-8 w-[180px] text-xs">
-              <SelectValue placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                {t("gabinet.calendar.allEmployees", "Wszyscy")}
-              </SelectItem>
-              {(employees ?? []).map((emp) => (
-                <SelectItem key={emp._id} value={emp.userId}>
-                  {getEmployeeName(emp)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* View switcher */}
-          <div className="flex rounded-md border">
-            {(["day", "week", "month"] as const).map((mode) => (
-              <Button
-                key={mode}
-                variant={viewMode === mode ? "default" : "ghost"}
-                size="sm"
-                className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
-                onClick={() => setViewMode(mode)}
-              >
-                {t(`gabinet.calendar.view.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
-              </Button>
-            ))}
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex h-[calc(100vh-4rem)] flex-col">
+        {/* Toolbar */}
+        <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+              <ChevronLeft className="h-4 w-4" variant="stroke" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={goToday}>
+              {t("gabinet.calendar.today", "Dzis")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(1)}>
+              <ChevronRight className="h-4 w-4" variant="stroke" />
+            </Button>
+            <h2 className="ml-2 text-sm font-semibold">{title}</h2>
           </div>
 
-          {/* Create button */}
-          <Button
-            size="sm"
-            onClick={() => {
-              setCreateDefaultDate(formatDateStr(currentDate));
-              setCreateDefaultTime(undefined);
-              setCreateDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Employee filter */}
+            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+              <SelectTrigger className="h-8 w-[180px] text-xs">
+                <SelectValue placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("gabinet.calendar.allEmployees", "Wszyscy")}
+                </SelectItem>
+                {(employees ?? []).map((emp) => (
+                  <SelectItem key={emp._id} value={emp.userId}>
+                    {getEmployeeName(emp)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* View switcher */}
+            <div className="flex rounded-md border">
+              {(["day", "week", "month"] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  variant={viewMode === mode ? "default" : "ghost"}
+                  size="sm"
+                  className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
+                  onClick={() => setViewMode(mode)}
+                >
+                  {t(`gabinet.calendar.view.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
+                </Button>
+              ))}
+            </div>
+
+            {/* Create button */}
+            <Button
+              size="sm"
+              onClick={() => {
+                setCreateDefaultDate(formatDateStr(currentDate));
+                setCreateDefaultTime(undefined);
+                setCreateDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1 h-4 w-4" variant="stroke" />
+              {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Calendar content */}
-      <div className="flex-1 overflow-hidden">
-        {viewMode === "day" && (
-          <CalendarDayView
-            date={formatDateStr(currentDate)}
-            appointments={viewAppointments}
-            onSlotClick={(time) => handleSlotClick(formatDateStr(currentDate), time)}
-            onAppointmentClick={handleAppointmentClick}
-          />
-        )}
-        {viewMode === "week" && (
-          <CalendarWeekView
-            weekStart={formatDateStr(getMonday(currentDate))}
-            appointments={viewAppointments}
-            onSlotClick={handleSlotClick}
-            onAppointmentClick={handleAppointmentClick}
-            onDayHeaderClick={handleDayClick}
-            selectedDate={formatDateStr(currentDate)}
-          />
-        )}
-        {viewMode === "month" && (
-          <CalendarMonthView
-            year={currentDate.getFullYear()}
-            month={currentDate.getMonth()}
-            appointments={viewAppointments}
-            onDayClick={handleDayClick}
-            selectedDate={formatDateStr(currentDate)}
-          />
-        )}
-      </div>
+        {/* Calendar content */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === "day" && (
+            <CalendarDayView
+              date={formatDateStr(currentDate)}
+              appointments={viewAppointments}
+              onSlotClick={(time) => handleSlotClick(formatDateStr(currentDate), time)}
+              onAppointmentClick={handleAppointmentClick}
+              workingHours={dayWorkingHours}
+            />
+          )}
+          {viewMode === "week" && (
+            <CalendarWeekView
+              weekStart={formatDateStr(getMonday(currentDate))}
+              appointments={viewAppointments}
+              onSlotClick={handleSlotClick}
+              onAppointmentClick={handleAppointmentClick}
+              onDayHeaderClick={handleDayClick}
+              selectedDate={formatDateStr(currentDate)}
+              employeeSchedules={employeeSchedules}
+            />
+          )}
+          {viewMode === "month" && (
+            <CalendarMonthView
+              year={currentDate.getFullYear()}
+              month={currentDate.getMonth()}
+              appointments={viewAppointments}
+              onDayClick={handleDayClick}
+              selectedDate={formatDateStr(currentDate)}
+            />
+          )}
+        </div>
 
-      {/* Create appointment dialog */}
-      <AppointmentDialog
-        organizationId={organizationId}
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        defaultDate={createDefaultDate}
-        defaultTime={createDefaultTime}
-      />
-
-      {/* Appointment detail dialog */}
-      {detailAppointmentId && (
-        <AppointmentDetailDialog
+        {/* Create appointment dialog */}
+        <AppointmentDialog
           organizationId={organizationId}
-          appointmentId={detailAppointmentId as Id<"gabinetAppointments">}
-          open={!!detailAppointmentId}
-          onOpenChange={(open) => {
-            if (!open) setDetailAppointmentId(null);
-          }}
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          defaultDate={createDefaultDate}
+          defaultTime={createDefaultTime}
         />
-      )}
-    </div>
+
+        {/* Appointment detail dialog */}
+        {detailAppointmentId && (
+          <AppointmentDetailDialog
+            organizationId={organizationId}
+            appointmentId={detailAppointmentId as Id<"gabinetAppointments">}
+            open={!!detailAppointmentId}
+            onOpenChange={(open) => {
+              if (!open) setDetailAppointmentId(null);
+            }}
+          />
+        )}
+      </div>
+
+      {/* Drag overlay - shows appointment being dragged */}
+      <DragOverlay>
+        {activeAppointment ? (
+          <div className="w-48 opacity-90 shadow-lg">
+            <AppointmentCard
+              startTime={activeAppointment.startTime}
+              endTime={activeAppointment.endTime}
+              patientName={activeAppointment.patientName}
+              treatmentName={activeAppointment.treatmentName}
+              status={activeAppointment.status}
+              color={activeAppointment.color}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

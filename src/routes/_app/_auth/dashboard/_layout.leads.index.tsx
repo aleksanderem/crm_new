@@ -502,7 +502,7 @@ function LeadsIndex() {
             )}
             <div className="flex rounded-md border">
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none bg-accent">
-                <TableIcon className="h-4 w-4" />
+                <TableIcon className="h-4 w-4" variant="stroke" />
               </Button>
               <Button
                 variant="ghost"
@@ -510,11 +510,11 @@ function LeadsIndex() {
                 className="h-9 w-9 rounded-l-none"
                 onClick={() => navigate({ to: "/dashboard/pipelines" })}
               >
-                <KanbanIcon className="h-4 w-4" />
+                <KanbanIcon className="h-4 w-4" variant="stroke" />
               </Button>
             </div>
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t('deals.addDeal')}
             </Button>
           </div>
@@ -554,14 +554,14 @@ function LeadsIndex() {
         actions={[
           {
             label: t('quickActions.newLead'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setCreateOpen(true),
             feature: "leads",
             action: "create",
           },
           {
             label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setImportOpen(true),
             feature: "leads",
             action: "create",
@@ -577,7 +577,7 @@ function LeadsIndex() {
           description={t('deals.emptyDescription')}
           action={
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t('deals.addDeal')}
             </Button>
           }
@@ -625,17 +625,17 @@ function LeadsIndex() {
             },
             {
               label: t('deals.markWon'),
-              icon: <Trophy className="h-3.5 w-3.5" />,
+              icon: <Trophy className="h-4 w-4" variant="stroke" />,
               onClick: handleMarkWon,
             },
             {
               label: t('deals.markLost'),
-              icon: <XCircle className="h-3.5 w-3.5" />,
+              icon: <XCircle className="h-4 w-4" variant="stroke" />,
               onClick: handleMarkLost,
             },
             {
               label: t('common.delete'),
-              icon: <Trash2 className="h-3.5 w-3.5" />,
+              icon: <Trash2 className="h-4 w-4" variant="stroke" />,
               onClick: handleDelete,
             },
           ]}
@@ -644,8 +644,8 @@ function LeadsIndex() {
           sorting={sorting}
           onSortingChange={setSorting}
           toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
           ]}
         />
       )}

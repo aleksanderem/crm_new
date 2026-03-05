@@ -13,6 +13,7 @@ import { ThreadView } from "@/components/email/thread-view";
 import { ComposeDialog } from "@/components/email/compose-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, Mail, RefreshCw } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute(
@@ -56,6 +57,14 @@ function InboxPage() {
     from: string;
     to: string[];
   } | null>(null);
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("composeEmail", () => {
+    setComposeOpen(true);
+  });
+  useSidebarDispatch("viewUnread", () => {
+    setFilter("unread");
+  });
 
   const handleSelectThread = useCallback(
     (threadId: string, _emailId: string) => {
@@ -115,12 +124,12 @@ function InboxPage() {
               onClick={handleSyncGmail}
               disabled={isSyncing}
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} variant="stroke" />
               {isSyncing ? t("integrations.syncing") : t("integrations.syncNow")}
             </Button>
           )}
           <Button size="sm" onClick={() => setComposeOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+            <Pencil className="mr-2 h-4 w-4" variant="stroke" />
             {t("inbox.compose")}
           </Button>
         </div>

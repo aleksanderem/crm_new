@@ -89,7 +89,7 @@ function GabinetDashboard() {
           <div className="rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-                <CalendarCheck className="h-5 w-5 text-blue-600" />
+                <CalendarCheck className="h-4 w-4 text-blue-600" variant="stroke" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t("gabinet.dashboard.todayAppointments")}</p>
@@ -102,7 +102,7 @@ function GabinetDashboard() {
           <div className="rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50">
-                <Users className="h-5 w-5 text-green-600" />
+                <Users className="h-4 w-4 text-green-600" variant="stroke" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t("gabinet.dashboard.totalPatients")}</p>
@@ -115,7 +115,7 @@ function GabinetDashboard() {
           <div className="rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50">
-                <FileText className="h-5 w-5 text-purple-600" />
+                <FileText className="h-4 w-4 text-purple-600" variant="stroke" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t("gabinet.dashboard.totalTreatments")}</p>
@@ -128,7 +128,7 @@ function GabinetDashboard() {
           <div className="rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
-                <Clock className="h-5 w-5 text-orange-600" />
+                <Clock className="h-4 w-4 text-orange-600" variant="stroke" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t("gabinet.dashboard.pendingLeaves")}</p>

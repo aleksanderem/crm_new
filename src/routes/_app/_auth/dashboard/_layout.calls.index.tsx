@@ -192,12 +192,12 @@ function CallsPage() {
   const rowActions = (row: Call) => [
     {
       label: t('common.edit'),
-      icon: <Pencil className="h-3.5 w-3.5" />,
+      icon: <Pencil className="h-4 w-4" variant="stroke" />,
       onClick: () => openEditPanel(row),
     },
     {
       label: t('common.delete'),
-      icon: <Trash2 className="h-3.5 w-3.5" />,
+      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
       onClick: () => removeCall({ organizationId, callId: row._id }),
     },
   ];
@@ -209,7 +209,7 @@ function CallsPage() {
         description={t('calls.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('calls.logCall')}
           </Button>
         }
@@ -229,7 +229,7 @@ function CallsPage() {
         actions={[
           {
             label: t('quickActions.logCall'),
-            icon: <Phone className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Phone className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "calls",
             action: "create",

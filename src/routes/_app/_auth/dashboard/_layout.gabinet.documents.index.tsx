@@ -183,7 +183,7 @@ function DocumentsIndex() {
       <div className="flex items-center justify-between">
         <PageHeader title={t("gabinet.documents.title")} description={t("gabinet.documents.description")} />
         <Button size="sm" onClick={() => { resetForm(); setPanelOpen(true); }}>
-          <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
           {t("gabinet.documents.createDocument")}
         </Button>
       </div>
@@ -242,21 +242,21 @@ function DocumentsIndex() {
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => setViewDocId(doc._id)}>
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" variant="stroke" />
                       </Button>
                       {doc.status === "draft" && (
                         <>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(doc)}>
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" variant="stroke" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleRequestSignature(doc._id)}>
-                            <PenTool className="h-4 w-4" />
+                            <PenTool className="h-4 w-4" variant="stroke" />
                           </Button>
                         </>
                       )}
                       {doc.status === "pending_signature" && (
                         <Button variant="ghost" size="sm" onClick={() => setSignDocId(doc._id)}>
-                          <PenTool className="h-4 w-4 text-primary" />
+                          <PenTool className="h-4 w-4 text-primary" variant="stroke" />
                         </Button>
                       )}
                     </div>

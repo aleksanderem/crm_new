@@ -243,12 +243,12 @@ function PatientDetail() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   {t("detail.actions.actions")}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
                   {t("detail.actions.edit")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -279,10 +279,10 @@ function PatientDetail() {
                         className="h-7 w-7"
                         onClick={() => setEditDrawerOpen(true)}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" variant="stroke" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Settings2 className="h-3.5 w-3.5" />
+                        <Settings2 className="h-4 w-4" variant="stroke" />
                       </Button>
                       {hiddenCount > 0 && (
                         <Button
@@ -295,9 +295,9 @@ function PatientDetail() {
                             ? t("detail.sidebar.showLess")
                             : t("detail.sidebar.showMore", { count: hiddenCount })}
                           {showAllFields ? (
-                            <ChevronUp className="ml-1 h-3 w-3" />
+                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
                           ) : (
-                            <ChevronDown className="ml-1 h-3 w-3" />
+                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                           )}
                         </Button>
                       )}
@@ -371,7 +371,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Heart className="h-5 w-5 text-muted-foreground" />
+                            <Heart className="h-4 w-4 text-muted-foreground" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("common.status")}
@@ -386,7 +386,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Calendar className="h-5 w-5 text-muted-foreground" />
+                            <Calendar className="h-4 w-4 text-muted-foreground" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("common.created")}
@@ -401,7 +401,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Star className="h-5 w-5 text-muted-foreground" />
+                            <Star className="h-4 w-4 text-muted-foreground" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("gabinet.patients.referralSource")}
@@ -439,7 +439,7 @@ function PatientDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
                       >
-                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
+                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
                         {t("gabinet.appointments.createAppointment")}
                       </Button>
                     </div>
@@ -461,7 +461,7 @@ function PatientDetail() {
                                 className={`flex items-center gap-4 rounded-lg border p-3 ${isPast ? "opacity-60" : ""}`}
                               >
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                  <Calendar className="h-5 w-5 text-primary" />
+                                  <Calendar className="h-4 w-4 text-primary" variant="stroke" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">
@@ -497,7 +497,7 @@ function PatientDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/documents" })}
                       >
-                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
+                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
                         {t("gabinet.documents.createDocument")}
                       </Button>
                     </div>
@@ -516,7 +516,7 @@ function PatientDetail() {
                               className="flex items-center gap-4 rounded-lg border p-3"
                             >
                               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                                <FileText className="h-5 w-5 text-blue-500" />
+                                <FileText className="h-4 w-4 text-blue-500" variant="stroke" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{doc.title}</p>
@@ -548,7 +548,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Trophy className="h-5 w-5 text-yellow-500" />
+                            <Trophy className="h-4 w-4 text-yellow-500" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.balance")}</p>
                               <p className="text-2xl font-bold">{loyaltyBalance?.balance ?? 0}</p>
@@ -559,7 +559,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <ArrowUpRight className="h-5 w-5 text-green-500" />
+                            <ArrowUpRight className="h-4 w-4 text-green-500" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.totalEarned")}</p>
                               <p className="text-2xl font-bold">{loyaltyBalance?.lifetimeEarned ?? 0}</p>
@@ -570,7 +570,7 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <ArrowDownRight className="h-5 w-5 text-red-500" />
+                            <ArrowDownRight className="h-4 w-4 text-red-500" variant="stroke" />
                             <div>
                               <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.totalSpent")}</p>
                               <p className="text-2xl font-bold">{loyaltyBalance?.lifetimeSpent ?? 0}</p>
@@ -582,7 +582,7 @@ function PatientDetail() {
 
                     {loyaltyBalance?.tier && (
                       <div className="flex items-center gap-2">
-                        <Star className="h-4 w-4 text-yellow-500" />
+                        <Star className="h-4 w-4 text-yellow-500" variant="stroke" />
                         <span className="text-sm font-medium">
                           {t("gabinet.loyalty.tier")}: {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
                         </span>
@@ -612,9 +612,9 @@ function PatientDetail() {
                                   tx.type === "spend" ? "bg-red-100 text-red-600" :
                                   "bg-gray-100 text-gray-600"
                                 }`}>
-                                  {tx.type === "earn" ? <Plus className="h-[17px] w-[17px]" variant="stroke" /> :
-                                   tx.type === "spend" ? <Minus className="h-4 w-4" /> :
-                                   <Star className="h-4 w-4" />}
+                                  {tx.type === "earn" ? <Plus className="h-4 w-4" variant="stroke" /> :
+                                   tx.type === "spend" ? <Minus className="h-4 w-4" variant="stroke" /> :
+                                   <Star className="h-4 w-4" variant="stroke" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium">{tx.reason}</p>

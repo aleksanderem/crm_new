@@ -243,7 +243,7 @@ function OrganizationSettings() {
                   key={item.key}
                   className="flex flex-col items-center gap-2 rounded-lg border p-4"
                 >
-                  <Icon className="h-5 w-5 text-muted-foreground" />
+                  <Icon className="h-4 w-4 text-muted-foreground" variant="stroke" />
                   <span className="text-2xl font-semibold">{item.count}</span>
                   <span className="text-xs text-muted-foreground">
                     {item.label}

@@ -179,7 +179,7 @@ function TeamSettings() {
             />
             {isNearLimit && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" variant="stroke" />
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   {t("settings.team.nearLimitWarning")}
                 </p>
@@ -193,7 +193,7 @@ function TeamSettings() {
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/dashboard/settings/billing">
                     {t("team.upgrade")}
-                    <ArrowUpRight className="ml-1 h-3 w-3" />
+                    <ArrowUpRight className="ml-1 h-4 w-4" variant="stroke" />
                   </Link>
                 </Button>
               </div>
@@ -255,7 +255,7 @@ function TeamSettings() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" variant="stroke" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -315,7 +315,7 @@ function TeamSettings() {
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger asChild>
               <Button size="sm" disabled={isAtLimit}>
-                <UserPlus className="mr-2 h-4 w-4" />
+                <UserPlus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("team.inviteMember")}
               </Button>
             </DialogTrigger>
@@ -369,7 +369,7 @@ function TeamSettings() {
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={!inviteEmail.trim() || isSending}>
-                    <Send className="mr-2 h-4 w-4" />
+                    <Send className="mr-2 h-4 w-4" variant="stroke" />
                     {isSending
                       ? t("team.inviteDialog.sending")
                       : t("team.inviteDialog.send")}
@@ -420,7 +420,7 @@ function TeamSettings() {
                       )
                     }
                   >
-                    <Send className="mr-1 h-3 w-3" />
+                    <Send className="mr-1 h-4 w-4" variant="stroke" />
                     {t("team.resendInvitation")}
                   </Button>
                   <Button
@@ -433,7 +433,7 @@ function TeamSettings() {
                       )
                     }
                   >
-                    <XCircle className="mr-1 h-3 w-3" />
+                    <XCircle className="mr-1 h-4 w-4" variant="stroke" />
                     {t("team.cancelInvitation")}
                   </Button>
                 </div>

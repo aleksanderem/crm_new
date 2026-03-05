@@ -264,7 +264,7 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
                   onClick={() => setIsVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+                  {isVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -691,7 +691,7 @@ function ResetPasswordForm({
                   onClick={() => setIsPasswordVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
+                  {isPasswordVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -725,7 +725,7 @@ function ResetPasswordForm({
                   onClick={() => setIsConfirmVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isConfirmVisible ? <EyeOffIcon /> : <EyeIcon />}
+                  {isConfirmVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (

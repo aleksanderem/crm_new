@@ -89,7 +89,7 @@ function EmailSettings() {
         actions={
           !showForm ? (
             <Button onClick={() => setShowForm(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("common.add")}
             </Button>
           ) : undefined
@@ -170,7 +170,7 @@ function EmailSettings() {
                   className="h-8 w-8"
                   onClick={() => handleEdit(account)}
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" variant="stroke" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -178,7 +178,7 @@ function EmailSettings() {
                   className="h-8 w-8"
                   onClick={() => handleDelete(account._id)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" variant="stroke" />
                 </Button>
               </div>
             </CardContent>

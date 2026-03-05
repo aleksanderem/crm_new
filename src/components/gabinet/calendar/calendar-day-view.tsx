@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { AppointmentCard } from "./appointment-card";
+import { DraggableAppointment } from "./draggable-appointment";
+import { DroppableSlot } from "./droppable-slot";
 
 interface Appointment {
   _id: string;
@@ -16,6 +17,7 @@ interface CalendarDayViewProps {
   appointments: Appointment[];
   onSlotClick?: (time: string) => void;
   onAppointmentClick?: (id: string) => void;
+  workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
@@ -88,13 +90,19 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onAppointmentClick }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onAppointmentClick, workingHours }: CalendarDayViewProps) {
   const now = new Date();
   const isToday = date === now.toISOString().split("T")[0];
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
 
   const layouts = useMemo(() => layoutAppointments(appointments), [appointments]);
+
+  // Calculate working hours background positions
+  const workStartTop = workingHours ? timeToTop(workingHours.startTime) : null;
+  const workEndTop = workingHours ? timeToTop(workingHours.endTime) : null;
+  const breakStartTop = workingHours?.breakStart ? timeToTop(workingHours.breakStart) : null;
+  const breakEndTop = workingHours?.breakEnd ? timeToTop(workingHours.breakEnd) : null;
 
   return (
     <div className="relative flex h-full overflow-y-auto">
@@ -111,13 +119,42 @@ export function CalendarDayView({ date, appointments, onSlotClick, onAppointment
 
       {/* Grid + appointments */}
       <div className="relative flex-1">
+        {/* Working hours background */}
+        {workStartTop !== null && workEndTop !== null && (
+          <div
+            className="absolute left-0 right-0 bg-primary/5 border-y border-primary/10"
+            style={{
+              top: `${workStartTop}px`,
+              height: `${workEndTop - workStartTop}px`,
+            }}
+          />
+        )}
+
+        {/* Break time background */}
+        {breakStartTop !== null && breakEndTop !== null && (
+          <div
+            className="absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50"
+            style={{
+              top: `${breakStartTop}px`,
+              height: `${breakEndTop - breakStartTop}px`,
+            }}
+          />
+        )}
+
         {/* Hour lines */}
         {HOURS.map((h) => (
-          <div
+          <DroppableSlot
             key={h}
-            className="h-[60px] border-b border-dashed border-muted cursor-pointer hover:bg-muted/30"
-            onClick={() => onSlotClick?.(`${String(h).padStart(2, "0")}:00`)}
-          />
+            id={`${date}-${h}`}
+            date={date}
+            time={`${String(h).padStart(2, "0")}:00`}
+            className="h-[60px] border-b border-dashed border-muted"
+          >
+            <div
+              className="h-full w-full cursor-pointer hover:bg-muted/30"
+              onClick={() => onSlotClick?.(`${String(h).padStart(2, "0")}:00`)}
+            />
+          </DroppableSlot>
         ))}
 
         {/* Current time line */}
@@ -152,9 +189,10 @@ export function CalendarDayView({ date, appointments, onSlotClick, onAppointment
                 zIndex: 10 + laid.column,
               }}
             >
-              <AppointmentCard
+              <DraggableAppointment
                 {...appt}
-                onClick={() => onAppointmentClick?.(appt._id)}
+                date={date}
+                onAppointmentClick={onAppointmentClick}
               />
             </div>
           );

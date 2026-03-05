@@ -68,13 +68,13 @@ function PatientLayout() {
                 className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 activeProps={{ className: "bg-muted text-foreground" }}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className="h-4 w-4" variant="stroke" />
                 {item.label}
               </Link>
             ))}
           </nav>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-1 h-4 w-4" />
+            <LogOut className="mr-1 h-4 w-4" variant="stroke" />
             {t("patientPortal.logout")}
           </Button>
         </div>
@@ -87,7 +87,7 @@ function PatientLayout() {
               className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] text-muted-foreground"
               activeProps={{ className: "text-primary" }}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4" variant="stroke" />
               {item.label}
             </Link>
           ))}

@@ -98,7 +98,7 @@ function LostReasonsSettings() {
         description={t('lostReasons.description')}
         actions={
           <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('lostReasons.addReason')}
           </Button>
         }
@@ -235,7 +235,7 @@ function LostReasonsSettings() {
                       setEditLabel(reason.label);
                     }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" variant="stroke" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -243,7 +243,7 @@ function LostReasonsSettings() {
                     className="h-8 w-8"
                     onClick={() => handleDelete(reason._id)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" variant="stroke" />
                   </Button>
                 </div>
               </CardContent>

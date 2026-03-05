@@ -341,7 +341,7 @@ function ContactsIndex() {
       },
       {
         label: t('common.delete'),
-        icon: <Trash2 className="h-3.5 w-3.5" />,
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t('contacts.confirmDelete'))) {
             await removeContact({ organizationId, contactId: row._id });
@@ -359,7 +359,7 @@ function ContactsIndex() {
         description={t('contacts.description')}
         actions={
           <Button onClick={() => setPanelOpen(true)}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('contacts.addContact')}
           </Button>
         }
@@ -396,14 +396,14 @@ function ContactsIndex() {
         actions={[
           {
             label: t('quickActions.newContact'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setPanelOpen(true),
             feature: "contacts",
             action: "create",
           },
           {
             label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-3.5 w-3.5" />,
+            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setImportOpen(true),
             feature: "contacts",
             action: "create",
@@ -419,7 +419,7 @@ function ContactsIndex() {
           description={t('contacts.emptyDescription')}
           action={
             <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t('contacts.addContact')}
             </Button>
           }
@@ -448,8 +448,8 @@ function ContactsIndex() {
           sorting={sorting}
           onSortingChange={setSorting}
           toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
           ]}
         />
       )}

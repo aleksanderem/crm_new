@@ -222,17 +222,17 @@ function ProductsPage() {
   const rowActions = (row: Product) => [
     {
       label: t('common.edit'),
-      icon: <Pencil className="h-3.5 w-3.5" />,
+      icon: <Pencil className="h-4 w-4" variant="stroke" />,
       onClick: () => openEditPanel(row),
     },
     {
       label: row.isActive ? t('products.deactivate') : t('products.activate'),
-      icon: <Power className="h-3.5 w-3.5" />,
+      icon: <Power className="h-4 w-4" variant="stroke" />,
       onClick: () => toggleActive({ organizationId, productId: row._id }),
     },
     {
       label: t('common.delete'),
-      icon: <Trash2 className="h-3.5 w-3.5" />,
+      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
       onClick: () => removeProduct({ organizationId, productId: row._id }),
     },
   ];
@@ -244,7 +244,7 @@ function ProductsPage() {
         description={t('products.description')}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t('products.addProduct')}
           </Button>
         }
@@ -264,7 +264,7 @@ function ProductsPage() {
         actions={[
           {
             label: t('quickActions.newProduct'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "products",
             action: "create",
@@ -281,8 +281,8 @@ function ProductsPage() {
         searchPlaceholder={t('products.searchPlaceholder')}
         isLoading={isLoading}
         toolbarDropdownActions={[
-          { label: t("csv.export"), icon: <Download className="h-4 w-4" />, onClick: handleExport },
-          { label: t("csv.import"), icon: <Upload className="h-4 w-4" />, onClick: () => setImportOpen(true) },
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
         ]}
       />
 

@@ -624,7 +624,7 @@ function CompanyDetail() {
               </AvatarFallback>
             </Avatar>
             <h1 className="text-xl font-bold">{company.name}</h1>
-            <Tag className="h-4 w-4 text-muted-foreground" />
+            <Tag className="h-4 w-4 text-muted-foreground" variant="stroke" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -635,7 +635,7 @@ function CompanyDetail() {
                 navigate({ to: "/dashboard/leads", search: {} })
               }
             >
-              <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+              <Plus className="h-4 w-4 mr-1" variant="stroke" />
               {t('detail.actions.addLead')}
             </Button>
 
@@ -652,12 +652,12 @@ function CompanyDetail() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   {t('detail.actions.actions')}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
                   {t('detail.actions.edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -688,14 +688,14 @@ function CompanyDetail() {
                         className="h-7 w-7"
                         onClick={() => setEditDrawerOpen(true)}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" variant="stroke" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
                       >
-                        <Settings2 className="h-3.5 w-3.5" />
+                        <Settings2 className="h-4 w-4" variant="stroke" />
                       </Button>
                       {hiddenCount > 0 && (
                         <Button
@@ -708,9 +708,9 @@ function CompanyDetail() {
                             ? t('detail.sidebar.showLess')
                             : t('detail.sidebar.showMore', { count: hiddenCount })}
                           {showAllFields ? (
-                            <ChevronUp className="ml-1 h-3 w-3" />
+                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
                           ) : (
-                            <ChevronDown className="ml-1 h-3 w-3" />
+                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                           )}
                         </Button>
                       )}
@@ -766,7 +766,7 @@ function CompanyDetail() {
                           setSidebarDealSearch("");
                         }}
                       >
-                        <Link2 className="h-3 w-3 mr-1" />
+                        <Link2 className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.relationships.add')}
                       </Button>
                       <Button
@@ -775,7 +775,7 @@ function CompanyDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateLeadDrawerOpen(true)}
                       >
-                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>
@@ -785,7 +785,7 @@ function CompanyDetail() {
                   {showSidebarDealLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
+                        <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
@@ -814,7 +814,7 @@ function CompanyDetail() {
                                         setShowSidebarDealLink(false);
                                       }}
                                     >
-                                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
                                       <span>{d.title}</span>
                                       {d.value != null && (
                                         <span className="text-xs text-muted-foreground">
@@ -846,7 +846,7 @@ function CompanyDetail() {
                               })
                             }
                           >
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
                             <span>
                               {(r as any).targetName ?? r.targetId}
                             </span>
@@ -884,7 +884,7 @@ function CompanyDetail() {
                           setSidebarContactSearch("");
                         }}
                       >
-                        <Link2 className="h-3 w-3 mr-1" />
+                        <Link2 className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.relationships.add')}
                       </Button>
                       <Button
@@ -893,7 +893,7 @@ function CompanyDetail() {
                         className="h-7 text-xs px-2"
                         onClick={() => setCreateContactDrawerOpen(true)}
                       >
-                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.relationships.addNew')}
                       </Button>
                     </div>
@@ -903,7 +903,7 @@ function CompanyDetail() {
                   {showSidebarContactLink && (
                     <div className="mb-3 relative">
                       <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
+                        <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
                         <Input
                           type="text"
                           className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
@@ -935,7 +935,7 @@ function CompanyDetail() {
                                         setShowSidebarContactLink(false);
                                       }}
                                     >
-                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
                                       <span>{`${c.firstName} ${c.lastName ?? ""}`.trim()}</span>
                                       {c.email && (
                                         <span className="text-xs text-muted-foreground">
@@ -967,7 +967,7 @@ function CompanyDetail() {
                               })
                             }
                           >
-                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
                             <span>
                               {(r as any).targetName ?? r.targetId}
                             </span>
@@ -1000,7 +1000,7 @@ function CompanyDetail() {
                     {t('detail.attachments.empty')}
                   </p>
                   <Button variant="outline" size="sm">
-                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    <Upload className="h-4 w-4 mr-1.5" variant="stroke" />
                     {t('detail.attachments.selectFile')}
                   </Button>
                 </CardContent>
@@ -1046,7 +1046,7 @@ function CompanyDetail() {
                     <span>{t('detail.actions.filterBy')}</span>
                     <Button variant="outline" size="sm" className="h-7">
                       {t('detail.tabs.all')}
-                      <ChevronDown className="ml-1 h-3 w-3" />
+                      <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                     </Button>
                   </div>
                   <ActivityTimeline
@@ -1079,7 +1079,7 @@ function CompanyDetail() {
                           className="bg-primary"
                           onClick={() => setShowActivityForm(true)}
                         >
-                          <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                          <Plus className="h-4 w-4 mr-1" variant="stroke" />
                           {t('detail.activitySection.add')}
                         </Button>
                       </div>
@@ -1170,7 +1170,7 @@ function CompanyDetail() {
                       </p>
                     </div>
                     <Button className="bg-primary">
-                      <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                      <Plus className="h-4 w-4 mr-1" variant="stroke" />
                       {t('detail.documentsTab.create')}
                     </Button>
                   </div>
@@ -1187,11 +1187,11 @@ function CompanyDetail() {
                     </div>
                     <div className="flex gap-2">
                       <Button className="bg-primary">
-                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.callsTab.logCall')}
                       </Button>
                       <Button variant="outline">
-                        <PhoneCall className="h-4 w-4 mr-1" />
+                        <PhoneCall className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.callsTab.makeCall')}
                       </Button>
                     </div>
@@ -1212,7 +1212,7 @@ function CompanyDetail() {
                         className="bg-primary"
                         onClick={() => setIsAddingNote(true)}
                       >
-                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
                         {t('detail.notes.add')}
                       </Button>
                     </div>
@@ -1259,7 +1259,7 @@ function CompanyDetail() {
                                 {note.content}
                               </p>
                               {note.isPinned && (
-                                <Pin className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <Pin className="h-4 w-4 text-primary shrink-0" variant="stroke" />
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">

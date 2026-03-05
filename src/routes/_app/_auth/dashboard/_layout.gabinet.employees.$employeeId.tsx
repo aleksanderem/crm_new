@@ -404,7 +404,7 @@ function EmployeeDetail() {
             <h1 className="text-xl font-bold">{fullName}</h1>
             {employee.color && (
               <span
-                className="h-3 w-3 rounded-full"
+                className="h-4 w-4 rounded-full"
                 style={{ backgroundColor: employee.color }}
               />
             )}
@@ -423,12 +423,12 @@ function EmployeeDetail() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   {t("detail.actions.actions")}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
                   {t("gabinet.employees.editEmployee")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -459,10 +459,10 @@ function EmployeeDetail() {
                         className="h-7 w-7"
                         onClick={() => setEditDrawerOpen(true)}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" variant="stroke" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Settings2 className="h-3.5 w-3.5" />
+                        <Settings2 className="h-4 w-4" variant="stroke" />
                       </Button>
                       {hiddenCount > 0 && (
                         <Button
@@ -475,9 +475,9 @@ function EmployeeDetail() {
                             ? t("gabinet.employees.showLess")
                             : t("gabinet.employees.showMore", { count: hiddenCount })}
                           {showAllFields ? (
-                            <ChevronUp className="ml-1 h-3 w-3" />
+                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
                           ) : (
-                            <ChevronDown className="ml-1 h-3 w-3" />
+                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
                           )}
                         </Button>
                       )}
@@ -543,7 +543,7 @@ function EmployeeDetail() {
 
                   <div className="relative">
                     <div className="flex items-center w-full rounded-md border bg-transparent">
-                      <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" variant="stroke" />
+                      <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
                       <input
                         type="text"
                         className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
@@ -621,7 +621,7 @@ function EmployeeDetail() {
                         variant="outline"
                         onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
                       >
-                        <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
+                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
                         {t("gabinet.appointments.createAppointment")}
                       </Button>
                     </div>
@@ -647,7 +647,7 @@ function EmployeeDetail() {
                                 className={`flex items-center gap-4 rounded-lg border p-3 ${isPast ? "opacity-60" : ""}`}
                               >
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                  <Calendar className="h-5 w-5 text-primary" />
+                                  <Calendar className="h-4 w-4 text-primary" variant="stroke" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">
@@ -745,7 +745,7 @@ function EmployeeDetail() {
                           className="bg-primary"
                           onClick={() => setShowActivityForm(true)}
                         >
-                          <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                          <Plus className="h-4 w-4 mr-1" variant="stroke" />
                           {t("detail.activitySection.add")}
                         </Button>
                       </div>
@@ -814,7 +814,7 @@ function EmployeeDetail() {
                         className="bg-primary"
                         onClick={() => setIsAddingNote(true)}
                       >
-                        <Plus className="h-[17px] w-[17px] mr-1" variant="stroke" />
+                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
                         {t("detail.notes.add")}
                       </Button>
                     </div>
@@ -1235,7 +1235,7 @@ function EmployeeScheduleEditor({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4" variant="stroke" />
             {t("gabinet.employees.tabs.schedule")}
           </h3>
           <p className="text-sm text-muted-foreground">

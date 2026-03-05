@@ -139,14 +139,14 @@ function PipelinesIndex() {
                 className="h-9 w-9 rounded-r-none"
                 onClick={() => navigate({ to: "/dashboard/leads" })}
               >
-                <TableIcon className="h-4 w-4" />
+                <TableIcon className="h-4 w-4" variant="stroke" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 rounded-l-none bg-accent"
               >
-                <KanbanIcon className="h-4 w-4" />
+                <KanbanIcon className="h-4 w-4" variant="stroke" />
               </Button>
             </div>
           </div>

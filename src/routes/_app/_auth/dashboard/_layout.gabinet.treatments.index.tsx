@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Stethoscope, Pencil, Trash2, Power } from "@/lib/ez-icons";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmptyState } from "@/components/layout/empty-state";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
@@ -48,6 +49,19 @@ function TreatmentsIndex() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sortAscending, setSortAscending] = useState(true);
+
+  // Sidebar dispatch handlers
+  useSidebarDispatch("openFilter", () => {
+    // Toggle between active/inactive views
+    if (activeViewId === "active") onViewChange("inactive");
+    else if (activeViewId === "inactive") onViewChange("all");
+    else onViewChange("active");
+  });
+  useSidebarDispatch("sortByPrice", () => {
+    // Toggle price sort direction
+    setSortAscending((prev) => !prev);
+  });
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t("gabinet.treatments.views.all"), isSystem: true, isDefault: true },
@@ -114,7 +128,7 @@ function TreatmentsIndex() {
         <div className="flex items-center gap-2">
           {row.original.color && (
             <span
-              className="h-3 w-3 rounded-full shrink-0"
+              className="h-4 w-4 rounded-full shrink-0"
               style={{ backgroundColor: row.original.color }}
             />
           )}
@@ -208,12 +222,12 @@ function TreatmentsIndex() {
     (row: Treatment) => [
       {
         label: t("common.edit"),
-        icon: <Pencil className="h-3.5 w-3.5" />,
+        icon: <Pencil className="h-4 w-4" variant="stroke" />,
         onClick: () => openEditPanel(row),
       },
       {
         label: row.isActive ? t("common.inactive") : t("common.active"),
-        icon: <Power className="h-3.5 w-3.5" />,
+        icon: <Power className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           // Soft toggle by removing (deactivate) or updating
           if (row.isActive) {
@@ -229,7 +243,7 @@ function TreatmentsIndex() {
       },
       {
         label: t("common.delete"),
-        icon: <Trash2 className="h-3.5 w-3.5" />,
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
             await removeTreatment({ organizationId, treatmentId: row._id });
@@ -247,7 +261,7 @@ function TreatmentsIndex() {
         description={t("gabinet.treatments.description")}
         actions={
           <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
             {t("gabinet.treatments.addTreatment")}
           </Button>
         }
@@ -267,7 +281,7 @@ function TreatmentsIndex() {
         actions={[
           {
             label: t('quickActions.newTreatment'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "gabinet_treatments",
             action: "create",
@@ -282,7 +296,7 @@ function TreatmentsIndex() {
           description={t("gabinet.treatments.emptyDescription")}
           action={
             <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-[17px] w-[17px]" variant="stroke" />
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.treatments.addTreatment")}
             </Button>
           }

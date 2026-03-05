@@ -1,17 +1,27 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft,
   Calendar,
@@ -25,10 +35,22 @@ import {
   StickyNote,
   Activity,
   UserCircle,
+  CheckCircle,
+  XCircle,
+  PlayCircle,
+  AlertTriangle,
+  Clock4,
+  DollarSign,
+  RefreshCcw,
+  Info,
+  Sparkles,
+  ShieldAlert,
+  Heart,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId"
@@ -45,18 +67,43 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
   no_show: "destructive",
 };
 
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  scheduled: ["confirmed", "cancelled", "no_show"],
+  confirmed: ["in_progress", "cancelled", "no_show"],
+  in_progress: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+  no_show: [],
+};
+
 function AppointmentDetail() {
   const { appointmentId } = Route.useParams();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const { data: detail, isLoading } = useQuery(
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [internalNotes, setInternalNotes] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
+  const updateAppointment = useMutation(api.gabinet.appointments.update);
+
+  const { data: detail, isLoading, refetch } = useQuery(
     convexQuery(api.gabinet.appointments.getFullDetail, {
       organizationId,
       appointmentId: appointmentId as Id<"gabinetAppointments">,
     })
   );
+
+  // Initialize internal notes from appointment data
+  useState(() => {
+    if (detail?.appointment.internalNotes) {
+      setInternalNotes(detail.appointment.internalNotes);
+    }
+  });
 
   if (isLoading) {
     return (
@@ -93,6 +140,10 @@ function AppointmentDetail() {
     return time.slice(0, 5);
   };
 
+  const formatDateTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString("pl-PL");
+  };
+
   const getPatientInitials = () => {
     if (!patient) return "?";
     return `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase();
@@ -102,6 +153,86 @@ function AppointmentDetail() {
     if (!employee) return "-";
     return employee.name ?? employee.email ?? "-";
   };
+
+  const getEmployeeInitials = () => {
+    if (!employee) return "?";
+    const name = employee.name ?? employee.email ?? "";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const calculateDuration = () => {
+    const [startH, startM] = appointment.startTime.split(":").map(Number);
+    const [endH, endM] = appointment.endTime.split(":").map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    return endMinutes - startMinutes;
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === "cancelled") {
+      setCancelDialogOpen(true);
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await updateStatus({
+        organizationId,
+        appointmentId: appointment._id,
+        status: newStatus as any,
+      });
+      toast.success(t("gabinet.appointments.statusUpdated"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!cancelReason.trim()) {
+      toast.error(t("gabinet.appointments.cancelReasonRequired"));
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        status: "cancelled",
+        cancellationReason: cancelReason.trim(),
+      });
+      toast.success(t("gabinet.appointments.cancelled"));
+      setCancelDialogOpen(false);
+      setCancelReason("");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveInternalNotes = async () => {
+    setIsSavingNotes(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        internalNotes: internalNotes.trim() || undefined,
+      });
+      toast.success(t("common.saved"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
 
   return (
     <div className="flex flex-col h-full">
@@ -137,9 +268,73 @@ function AppointmentDetail() {
             </p>
           </div>
         </div>
-        <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
-          {t(`gabinet.appointments.status.${appointment.status}`)}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
+            {t(`gabinet.appointments.status.${appointment.status}`)}
+          </Badge>
+          {/* Status action buttons */}
+          {availableTransitions.length > 0 && (
+            <div className="flex items-center gap-2">
+              {availableTransitions.includes("confirmed") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleStatusChange("confirmed")}
+                  disabled={isUpdating}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.actions.confirm")}
+                </Button>
+              )}
+              {availableTransitions.includes("in_progress") && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => handleStatusChange("in_progress")}
+                  disabled={isUpdating}
+                >
+                  <PlayCircle className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.actions.start")}
+                </Button>
+              )}
+              {availableTransitions.includes("completed") && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => handleStatusChange("completed")}
+                  disabled={isUpdating}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.actions.complete")}
+                </Button>
+              )}
+              {availableTransitions.includes("no_show") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleStatusChange("no_show")}
+                  disabled={isUpdating}
+                >
+                  <Clock4 className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.actions.noShow")}
+                </Button>
+              )}
+              {availableTransitions.includes("cancelled") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleStatusChange("cancelled")}
+                  disabled={isUpdating}
+                >
+                  <XCircle className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.actions.cancel")}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -302,17 +497,167 @@ function AppointmentDetail() {
             </TabsList>
 
             <ScrollArea className="h-[calc(100vh-320px)] mt-4">
-              <TabsContent value="details" className="m-0">
+              {/* Details Tab */}
+              <TabsContent value="details" className="m-0 space-y-4">
+                {/* Treatment Info Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t("gabinet.appointments.tabs.details")}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.treatments.treatment")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("common.name")}</span>
+                      <span className="font-medium">{treatment?.name ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("gabinet.treatments.duration")}</span>
+                      <span className="font-medium">{calculateDuration()} min</span>
+                    </div>
+                    {treatment?.price !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("common.price")}</span>
+                        <span className="font-medium">
+                          {treatment.price.toFixed(2)} {treatment.currency ?? "PLN"}
+                        </span>
+                      </div>
+                    )}
+                    {treatment?.description && (
+                      <div className="pt-2">
+                        <span className="text-sm text-muted-foreground">{t("common.description")}</span>
+                        <p className="text-sm mt-1">{treatment.description}</p>
+                      </div>
+                    )}
+                    {treatment?.contraindications && (
+                      <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
+                        <div className="flex items-center gap-2 text-destructive mb-1">
+                          <ShieldAlert className="h-4 w-4" variant="stroke" />
+                          <span className="text-sm font-medium">{t("gabinet.treatments.contraindications")}</span>
+                        </div>
+                        <p className="text-sm">{treatment.contraindications}</p>
+                      </div>
+                    )}
+                    {treatment?.aftercare && (
+                      <div className="pt-2 p-3 bg-primary/10 rounded-lg">
+                        <div className="flex items-center gap-2 text-primary mb-1">
+                          <Heart className="h-4 w-4" variant="stroke" />
+                          <span className="text-sm font-medium">{t("gabinet.treatments.aftercare")}</span>
+                        </div>
+                        <p className="text-sm">{treatment.aftercare}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Employee Info Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.employees.employee")}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground">{t("common.comingSoon")}</p>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback>{getEmployeeInitials()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{getEmployeeName()}</p>
+                        <p className="text-sm text-muted-foreground">{employee?.email}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Scheduling Info Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.appointments.scheduling")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("common.date")}</span>
+                      <span className="font-medium">{formatDate(appointment.date)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("common.time")}</span>
+                      <span className="font-medium">
+                        {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)} ({calculateDuration()} min)
+                      </span>
+                    </div>
+                    {appointment.isRecurring && appointment.recurringGroupId && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <RefreshCcw className="h-3 w-3" variant="stroke" />
+                          {t("gabinet.appointments.recurring")}
+                        </span>
+                        <Badge variant="outline">{appointment.recurringRule?.frequency ?? "weekly"}</Badge>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("common.createdAt")}</span>
+                      <span className="text-sm">{formatDateTime(appointment.createdAt)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Prepayment Status Card */}
+                {appointment.prepaymentRequired && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" variant="stroke" />
+                        {t("gabinet.appointments.prepayment")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("gabinet.appointments.prepaymentAmount")}</span>
+                        <span className="font-medium">
+                          {(appointment.prepaymentAmount ?? 0).toFixed(2)} PLN
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("common.status")}</span>
+                        <Badge variant="secondary">{t("gabinet.appointments.prepaymentPending")}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Internal Notes Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.appointments.internalNotes")}
+                    </CardTitle>
+                    <CardDescription>{t("gabinet.appointments.internalNotesDesc")}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Textarea
+                      placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
+                      value={internalNotes}
+                      onChange={(e) => setInternalNotes(e.target.value)}
+                      rows={4}
+                    />
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleSaveInternalNotes} disabled={isSavingNotes}>
+                        {isSavingNotes ? t("common.saving") : t("common.save")}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
+              {/* Documents Tab */}
               <TabsContent value="documents" className="m-0">
                 <Card>
                   <CardHeader>
@@ -338,6 +683,7 @@ function AppointmentDetail() {
                 </Card>
               </TabsContent>
 
+              {/* Payments Tab */}
               <TabsContent value="payments" className="m-0">
                 <Card>
                   <CardHeader>
@@ -367,6 +713,7 @@ function AppointmentDetail() {
                 </Card>
               </TabsContent>
 
+              {/* History Tab */}
               <TabsContent value="history" className="m-0">
                 <Card>
                   <CardHeader>
@@ -394,6 +741,7 @@ function AppointmentDetail() {
                 </Card>
               </TabsContent>
 
+              {/* Notes Tab */}
               <TabsContent value="notes" className="m-0">
                 <Card>
                   <CardHeader>
@@ -418,6 +766,7 @@ function AppointmentDetail() {
                 </Card>
               </TabsContent>
 
+              {/* Body Chart Tab */}
               <TabsContent value="body-chart" className="m-0">
                 <Card>
                   <CardHeader>
@@ -432,6 +781,32 @@ function AppointmentDetail() {
           </Tabs>
         </div>
       </div>
+
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
+            <DialogDescription>{t("gabinet.appointments.cancelDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder={t("gabinet.appointments.cancelReasonPlaceholder")}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleCancelConfirm} disabled={isUpdating}>
+              {isUpdating ? t("common.processing") : t("gabinet.appointments.actions.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

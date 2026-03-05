@@ -443,6 +443,8 @@ export const update = mutation({
     employeeId: v.optional(v.id("users")),
     treatmentId: v.optional(v.id("gabinetTreatments")),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    status: v.optional(gabinetAppointmentStatusValidator),
+    cancellationReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -478,8 +480,28 @@ export const update = mutation({
       }
     }
 
-    const { organizationId, appointmentId, ...updates } = args;
-    await ctx.db.patch(appointmentId, { ...updates, updatedAt: Date.now() });
+    const { organizationId, appointmentId, status, cancellationReason, ...updates } = args;
+    
+    const patch: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+    
+    // Handle status change with cancellation support
+    if (status) {
+      const allowed = VALID_TRANSITIONS[appt.status];
+      if (!allowed?.includes(status)) {
+        throw new Error(`Cannot transition from ${appt.status} to ${status}`);
+      }
+      patch.status = status;
+      
+      if (status === "cancelled") {
+        patch.cancelledAt = Date.now();
+        patch.cancelledBy = user._id;
+        if (cancellationReason) {
+          patch.cancellationReason = cancellationReason;
+        }
+      }
+    }
+    
+    await ctx.db.patch(appointmentId, patch);
 
     // Sync time/date changes to scheduledActivity
     if (appt.scheduledActivityId && (args.date || args.startTime || args.endTime)) {

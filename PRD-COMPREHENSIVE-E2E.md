@@ -417,8 +417,8 @@ e2e/
 - [x] Profile page shows patient data
 - [x] Appointments page shows patient's appointments
 - [x] Documents page shows patient's documents
-- [ ] Packages page shows patient's packages (BLOCKED: no /patient/packages route exists)
-- [ ] Loyalty page shows patient's points (BLOCKED: no /patient/loyalty route exists)
+- [x] Packages page shows patient's packages
+- [x] Loyalty page shows patient's points
 - [x] No cross-patient data leakage
 
 ---

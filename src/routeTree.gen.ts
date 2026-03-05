@@ -23,6 +23,8 @@ import { Route as AppInviteTokenImport } from './routes/_app/invite.$token'
 import { Route as AppPatientLayoutIndexImport } from './routes/_app/patient/_layout.index'
 import { Route as AppLoginLayoutIndexImport } from './routes/_app/login/_layout.index'
 import { Route as AppPatientLayoutProfileImport } from './routes/_app/patient/_layout.profile'
+import { Route as AppPatientLayoutPackagesImport } from './routes/_app/patient/_layout.packages'
+import { Route as AppPatientLayoutLoyaltyImport } from './routes/_app/patient/_layout.loyalty'
 import { Route as AppPatientLayoutDocumentsImport } from './routes/_app/patient/_layout.documents'
 import { Route as AppPatientLayoutAppointmentsImport } from './routes/_app/patient/_layout.appointments'
 import { Route as AppAuthOnboardingLayoutImport } from './routes/_app/_auth/onboarding/_layout'
@@ -156,6 +158,16 @@ const AppLoginLayoutIndexRoute = AppLoginLayoutIndexImport.update({
 
 const AppPatientLayoutProfileRoute = AppPatientLayoutProfileImport.update({
   path: '/profile',
+  getParentRoute: () => AppPatientLayoutRoute,
+} as any)
+
+const AppPatientLayoutPackagesRoute = AppPatientLayoutPackagesImport.update({
+  path: '/packages',
+  getParentRoute: () => AppPatientLayoutRoute,
+} as any)
+
+const AppPatientLayoutLoyaltyRoute = AppPatientLayoutLoyaltyImport.update({
+  path: '/loyalty',
   getParentRoute: () => AppPatientLayoutRoute,
 } as any)
 
@@ -599,6 +611,20 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/patient/documents'
       preLoaderRoute: typeof AppPatientLayoutDocumentsImport
+      parentRoute: typeof AppPatientLayoutImport
+    }
+    '/_app/patient/_layout/loyalty': {
+      id: '/_app/patient/_layout/loyalty'
+      path: '/loyalty'
+      fullPath: '/patient/loyalty'
+      preLoaderRoute: typeof AppPatientLayoutLoyaltyImport
+      parentRoute: typeof AppPatientLayoutImport
+    }
+    '/_app/patient/_layout/packages': {
+      id: '/_app/patient/_layout/packages'
+      path: '/packages'
+      fullPath: '/patient/packages'
+      preLoaderRoute: typeof AppPatientLayoutPackagesImport
       parentRoute: typeof AppPatientLayoutImport
     }
     '/_app/patient/_layout/profile': {
@@ -1068,6 +1094,8 @@ export const routeTree = rootRoute.addChildren({
       AppPatientLayoutRoute: AppPatientLayoutRoute.addChildren({
         AppPatientLayoutAppointmentsRoute,
         AppPatientLayoutDocumentsRoute,
+        AppPatientLayoutLoyaltyRoute,
+        AppPatientLayoutPackagesRoute,
         AppPatientLayoutProfileRoute,
         AppPatientLayoutIndexRoute,
       }),
@@ -1140,6 +1168,8 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/_app/patient/_layout/appointments",
         "/_app/patient/_layout/documents",
+        "/_app/patient/_layout/loyalty",
+        "/_app/patient/_layout/packages",
         "/_app/patient/_layout/profile",
         "/_app/patient/_layout/"
       ]
@@ -1218,6 +1248,14 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/patient/_layout/documents": {
       "filePath": "_app/patient/_layout.documents.tsx",
+      "parent": "/_app/patient/_layout"
+    },
+    "/_app/patient/_layout/loyalty": {
+      "filePath": "_app/patient/_layout.loyalty.tsx",
+      "parent": "/_app/patient/_layout"
+    },
+    "/_app/patient/_layout/packages": {
+      "filePath": "_app/patient/_layout.packages.tsx",
       "parent": "/_app/patient/_layout"
     },
     "/_app/patient/_layout/profile": {

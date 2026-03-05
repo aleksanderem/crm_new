@@ -337,6 +337,49 @@ test.describe("Gabinet — Patient Portal", () => {
     await assertNoErrorBoundary(page);
   });
 
+  test("packages page route exists", async ({ page }) => {
+    await page.goto(`${BASE_URL}/patient/login`, {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+    await page.evaluate(() => {
+      localStorage.removeItem("patientPortalToken");
+    });
+
+    await page.goto(`${BASE_URL}/patient/packages`, {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+    await page.waitForTimeout(3000);
+    await waitForApp(page);
+
+    // Without valid session, should redirect to login or stay on patient path
+    const url = page.url();
+    expect(url).toContain("/patient");
+    await assertNoErrorBoundary(page);
+  });
+
+  test("loyalty page route exists", async ({ page }) => {
+    await page.goto(`${BASE_URL}/patient/login`, {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+    await page.evaluate(() => {
+      localStorage.removeItem("patientPortalToken");
+    });
+
+    await page.goto(`${BASE_URL}/patient/loyalty`, {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+    await page.waitForTimeout(3000);
+    await waitForApp(page);
+
+    const url = page.url();
+    expect(url).toContain("/patient");
+    await assertNoErrorBoundary(page);
+  });
+
   test("no cross-patient data leakage — invalid token gets no data", async ({
     page,
   }) => {

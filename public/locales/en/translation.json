@@ -1561,6 +1561,8 @@
       "dashboard": "Home",
       "appointments": "Appointments",
       "documents": "Documents",
+      "packages": "Packages",
+      "loyalty": "Loyalty",
       "profile": "Profile"
     },
     "login": {
@@ -1599,6 +1601,20 @@
       "title": "My Profile",
       "name": "Name",
       "editableFields": "Editable Information"
+    },
+    "packages": {
+      "title": "My Packages",
+      "empty": "No packages purchased",
+      "expires": "Expires",
+      "usage": "Usage"
+    },
+    "loyalty": {
+      "title": "Loyalty Program",
+      "currentBalance": "Current Points Balance",
+      "earned": "Earned",
+      "spent": "Spent",
+      "history": "Transaction History",
+      "noTransactions": "No transactions"
     }
   },
   "invite": {

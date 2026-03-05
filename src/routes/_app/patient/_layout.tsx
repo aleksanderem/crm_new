@@ -4,7 +4,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, FileText, Heart, LogOut, User } from "@/lib/ez-icons";
+import { CalendarCheck, FileText, Heart, LogOut, Package, Star, User } from "@/lib/ez-icons";
 import { useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -50,6 +50,8 @@ function PatientLayout() {
     { label: t("patientPortal.nav.dashboard"), href: "/patient", icon: Heart },
     { label: t("patientPortal.nav.appointments"), href: "/patient/appointments", icon: CalendarCheck },
     { label: t("patientPortal.nav.documents"), href: "/patient/documents", icon: FileText },
+    { label: t("patientPortal.nav.packages"), href: "/patient/packages", icon: Package },
+    { label: t("patientPortal.nav.loyalty"), href: "/patient/loyalty", icon: Star },
     { label: t("patientPortal.nav.profile"), href: "/patient/profile", icon: User },
   ];
 

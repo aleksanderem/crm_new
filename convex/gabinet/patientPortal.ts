@@ -140,6 +140,22 @@ export const getMyLoyaltyBalance = query({
   },
 });
 
+export const getMyLoyaltyTransactions = query({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => {
+    const { patientId, organizationId } = await validatePortalSession(ctx, args.tokenHash);
+
+    const transactions = await ctx.db
+      .query("gabinetLoyaltyTransactions")
+      .withIndex("by_orgAndPatient", (q) =>
+        q.eq("organizationId", organizationId).eq("patientId", patientId)
+      )
+      .collect();
+
+    return transactions.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
 export const signDocument = mutation({
   args: {
     tokenHash: v.string(),

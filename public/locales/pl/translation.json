@@ -1563,6 +1563,8 @@
       "dashboard": "Strona główna",
       "appointments": "Wizyty",
       "documents": "Dokumenty",
+      "packages": "Pakiety",
+      "loyalty": "Lojalność",
       "profile": "Profil"
     },
     "login": {
@@ -1601,6 +1603,20 @@
       "title": "Mój profil",
       "name": "Imię i nazwisko",
       "editableFields": "Edytowalne informacje"
+    },
+    "packages": {
+      "title": "Moje pakiety",
+      "empty": "Brak zakupionych pakietów",
+      "expires": "Wygasa",
+      "usage": "Wykorzystanie"
+    },
+    "loyalty": {
+      "title": "Program lojalnościowy",
+      "currentBalance": "Aktualny stan punktów",
+      "earned": "Zdobyte",
+      "spent": "Wydane",
+      "history": "Historia transakcji",
+      "noTransactions": "Brak transakcji"
     }
   },
   "invite": {

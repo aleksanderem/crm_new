@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SidePanel } from "@/components/crm/side-panel";
+import { DocumentViewer } from "@/components/gabinet/documents/document-viewer";
+import { SignaturePad } from "@/components/gabinet/documents/signature-pad";
+import { EmptyState } from "@/components/layout/empty-state";
 import {
   ArrowLeft,
   Calendar,
@@ -46,6 +59,14 @@ import {
   Sparkles,
   ShieldAlert,
   Heart,
+  Plus,
+  Eye,
+  PenTool,
+  Pencil,
+  Trash2,
+  Download,
+  Upload,
+  FilePlus,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -88,8 +109,29 @@ function AppointmentDetail() {
   const [internalNotes, setInternalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
+  // Document management state
+  const [docPanelOpen, setDocPanelOpen] = useState(false);
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [viewDocId, setViewDocId] = useState<string | null>(null);
+  const [signDocId, setSignDocId] = useState<string | null>(null);
+  const [docTitle, setDocTitle] = useState("");
+  const [docType, setDocType] = useState<string>("consent");
+  const [docContent, setDocContent] = useState("");
+  const [docTemplateId, setDocTemplateId] = useState("");
+  const [isDocSubmitting, setIsDocSubmitting] = useState(false);
+
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const createDoc = useMutation(api.gabinet.documents.create);
+  const updateDoc = useMutation(api.gabinet.documents.update);
+  const signDoc = useMutation(api.gabinet.documents.sign);
+  const requestDocSig = useMutation(api.gabinet.documents.requestSignature);
+  const archiveDoc = useMutation(api.gabinet.documents.archive);
+
+  // Fetch document templates
+  const { data: templates } = useQuery(
+    convexQuery(api.gabinet.documentTemplates.list, { organizationId })
+  );
 
   const { data: detail, isLoading, refetch } = useQuery(
     convexQuery(api.gabinet.appointments.getFullDetail, {
@@ -229,6 +271,98 @@ function AppointmentDetail() {
       toast.error(error.message ?? t("common.error"));
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  // Document management handlers
+  const resetDocForm = () => {
+    setEditingDocId(null);
+    setDocTitle("");
+    setDocType("consent");
+    setDocContent("");
+    setDocTemplateId("");
+  };
+
+  const openEditDoc = (doc: any) => {
+    setEditingDocId(doc._id);
+    setDocTitle(doc.title);
+    setDocType(doc.type);
+    setDocContent(doc.content ?? "");
+    setDocPanelOpen(true);
+  };
+
+  const handleRequestSignature = async (docId: Id<"gabinetDocuments">) => {
+    try {
+      await requestDocSig({ organizationId, documentId: docId });
+      toast.success(t("gabinet.documents.signatureRequested"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    }
+  };
+
+  const handleArchiveDoc = async (docId: Id<"gabinetDocuments">) => {
+    if (!confirm(t("common.confirmDelete"))) return;
+    try {
+      await archiveDoc({ organizationId, documentId: docId });
+      toast.success(t("common.deleted"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    }
+  };
+
+  const handleDocSubmit = async () => {
+    if (!docTitle.trim()) {
+      toast.error(t("common.titleRequired"));
+      return;
+    }
+
+    setIsDocSubmitting(true);
+    try {
+      if (editingDocId) {
+        await updateDoc({
+          organizationId,
+          documentId: editingDocId as Id<"gabinetDocuments">,
+          title: docTitle,
+          content: docContent || undefined,
+        });
+        toast.success(t("common.saved"));
+      } else {
+        await createDoc({
+          organizationId,
+          patientId: patient!._id,
+          appointmentId: appointment._id,
+          templateId: docTemplateId ? docTemplateId as Id<"gabinetDocumentTemplates"> : undefined,
+          title: docTitle,
+          type: docType as any,
+          content: docContent || undefined,
+        });
+        toast.success(t("gabinet.documents.created"));
+      }
+      setDocPanelOpen(false);
+      resetDocForm();
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsDocSubmitting(false);
+    }
+  };
+
+  const handleSign = async (signatureData: string) => {
+    if (!signDocId) return;
+    try {
+      await signDoc({
+        organizationId,
+        documentId: signDocId as Id<"gabinetDocuments">,
+        signatureData,
+      });
+      toast.success(t("gabinet.documents.signed"));
+      setSignDocId(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
     }
   };
 
@@ -660,23 +794,82 @@ function AppointmentDetail() {
               {/* Documents Tab */}
               <TabsContent value="documents" className="m-0">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>{t("gabinet.documents.documents")}</CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>{t("gabinet.documents.documents")}</CardTitle>
+                      <CardDescription>{t("gabinet.documents.linkedToAppointment")}</CardDescription>
+                    </div>
+                    <Button size="sm" onClick={() => { resetDocForm(); setDocPanelOpen(true); }}>
+                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                      {t("gabinet.documents.newDocument")}
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     {documents.length === 0 ? (
-                      <p className="text-muted-foreground">{t("common.noResults")}</p>
+                      <EmptyState
+                        icon={<FileText className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.documents.noDocuments")}
+                        description={t("gabinet.documents.noDocumentsDesc")}
+                        action={
+                          <Button onClick={() => { resetDocForm(); setDocPanelOpen(true); }}>
+                            <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                            {t("gabinet.documents.createFirst")}
+                          </Button>
+                        }
+                      />
                     ) : (
-                      <div className="space-y-2">
-                        {documents.map((doc) => (
-                          <div key={doc._id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{doc.title}</p>
-                              <p className="text-sm text-muted-foreground">{doc.type}</p>
-                            </div>
-                            <Badge variant={doc.status === "signed" ? "success" : "secondary"}>{doc.status}</Badge>
-                          </div>
-                        ))}
+                      <div className="border rounded-lg">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="text-left p-3 text-sm font-medium">{t("common.title")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("common.type")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
+                              <th className="text-right p-3 text-sm font-medium">{t("common.actions")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {documents.map((doc) => (
+                              <tr key={doc._id} className="border-b last:border-0 hover:bg-muted/30">
+                                <td className="p-3">
+                                  <p className="font-medium">{doc.title}</p>
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant="outline">{t(`gabinet.documents.types.${doc.type}`)}</Badge>
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant={doc.status === "signed" ? "success" : doc.status === "final" ? "default" : "secondary"}>
+                                    {t(`gabinet.documents.status.${doc.status}`)}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-sm text-muted-foreground">
+                                  {new Date(doc.createdAt).toLocaleDateString("pl-PL")}
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="sm" onClick={() => setViewDocId(doc._id)}>
+                                      <Eye className="h-4 w-4" variant="stroke" />
+                                    </Button>
+                                    {doc.status !== "signed" && (
+                                      <Button variant="ghost" size="sm" onClick={() => openEditDoc(doc)}>
+                                        <Pencil className="h-4 w-4" variant="stroke" />
+                                      </Button>
+                                    )}
+                                    {doc.requiresSignature && doc.status !== "signed" && (
+                                      <Button variant="ghost" size="sm" onClick={() => handleRequestSignature(doc._id)}>
+                                        <PenTool className="h-4 w-4" variant="stroke" />
+                                      </Button>
+                                    )}
+                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchiveDoc(doc._id)}>
+                                      <Trash2 className="h-4 w-4" variant="stroke" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </CardContent>
@@ -805,6 +998,108 @@ function AppointmentDetail() {
               {isUpdating ? t("common.processing") : t("gabinet.appointments.actions.cancel")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Panel */}
+      <SidePanel open={docPanelOpen} onOpenChange={setDocPanelOpen} title={editingDocId ? t("gabinet.documents.editDocument") : t("gabinet.documents.newDocument")}>
+        <div className="space-y-4 p-4">
+          <div>
+            <Label>{t("common.title")}</Label>
+            <Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder={t("gabinet.documents.titlePlaceholder")} />
+          </div>
+
+          <div>
+            <Label>{t("common.type")}</Label>
+            <Select value={docType} onValueChange={setDocType} disabled={!!editingDocId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="consent">{t("gabinet.documents.types.consent")}</SelectItem>
+                <SelectItem value="prescription">{t("gabinet.documents.types.prescription")}</SelectItem>
+                <SelectItem value="referral">{t("gabinet.documents.types.referral")}</SelectItem>
+                <SelectItem value="report">{t("gabinet.documents.types.report")}</SelectItem>
+                <SelectItem value="invoice">{t("gabinet.documents.types.invoice")}</SelectItem>
+                <SelectItem value="other">{t("gabinet.documents.types.other")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!editingDocId && templates && templates.length > 0 && (
+            <div>
+              <Label>{t("gabinet.documents.fromTemplate")}</Label>
+              <Select value={docTemplateId} onValueChange={setDocTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.documents.selectTemplate")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((tpl: any) => (
+                    <SelectItem key={tpl._id} value={tpl._id}>{tpl.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <Label>{t("gabinet.documents.content")}</Label>
+            <Textarea
+              value={docContent}
+              onChange={(e) => setDocContent(e.target.value)}
+              placeholder={t("gabinet.documents.contentPlaceholder")}
+              rows={10}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setDocPanelOpen(false); resetDocForm(); }}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleDocSubmit} disabled={isDocSubmitting}>
+              {isDocSubmitting ? t("common.saving") : t("common.save")}
+            </Button>
+          </div>
+        </div>
+      </SidePanel>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!viewDocId} onOpenChange={() => setViewDocId(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>{documents.find(d => d._id === viewDocId)?.title}</DialogTitle>
+          </DialogHeader>
+          {viewDocId && (
+            <DocumentViewer documentId={viewDocId} organizationId={organizationId} />
+          )}
+          <DialogFooter>
+            {(() => {
+              const doc = documents.find(d => d._id === viewDocId);
+              if (doc?.requiresSignature && doc.status !== "signed") {
+                return (
+                  <Button onClick={() => { setViewDocId(null); setSignDocId(doc._id); }}>
+                    <PenTool className="mr-2 h-4 w-4" variant="stroke" />
+                    {t("gabinet.documents.sign")}
+                  </Button>
+                );
+              }
+              return null;
+            })()}
+            <Button variant="outline" onClick={() => setViewDocId(null)}>
+              {t("common.close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Signature Dialog */}
+      <Dialog open={!!signDocId} onOpenChange={() => setSignDocId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.documents.signDocument")}</DialogTitle>
+            <DialogDescription>{t("gabinet.documents.signDescription")}</DialogDescription>
+          </DialogHeader>
+          <SignaturePad onSave={handleSign} onCancel={() => setSignDocId(null)} />
         </DialogContent>
       </Dialog>
     </div>

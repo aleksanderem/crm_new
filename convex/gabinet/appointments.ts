@@ -895,6 +895,8 @@ export const getFullDetail = query({
       patientPackageUsage,
       patientHistory,
       loyaltyBalance,
+      loyaltyTransactions,
+      allPatientPayments,
     ] = await Promise.all([
       // Patient
       ctx.db.get(appointment.patientId),
@@ -926,19 +928,33 @@ export const getFullDetail = query({
         .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
         .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
         .collect(),
-      // Patient history (last 10 appointments, excluding current)
+      // Patient history (last 20 appointments, excluding current)
       ctx.db
         .query("gabinetAppointments")
         .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
         .filter((q) => q.neq(q.field("_id"), args.appointmentId))
         .order("desc")
-        .take(10),
+        .take(20),
       // Loyalty points balance
       ctx.db
         .query("gabinetLoyaltyPoints")
         .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
         .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
         .first(),
+      // Loyalty transactions (last 10)
+      ctx.db
+        .query("gabinetLoyaltyTransactions")
+        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .order("desc")
+        .take(10),
+      // All patient payments (for payment history)
+      ctx.db
+        .query("payments")
+        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .order("desc")
+        .take(50),
     ]);
 
     // Get treatment details for history appointments
@@ -967,6 +983,8 @@ export const getFullDetail = query({
       })),
       loyaltyBalance: loyaltyBalance?.balance ?? 0,
       loyaltyTier: loyaltyBalance?.tier ?? null,
+      loyaltyTransactions,
+      allPatientPayments,
     };
   },
 });

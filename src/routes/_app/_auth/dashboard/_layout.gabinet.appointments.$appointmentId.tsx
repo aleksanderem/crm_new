@@ -69,6 +69,7 @@ import {
   Upload,
   FilePlus,
   Package,
+  Star,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -184,7 +185,7 @@ function AppointmentDetail() {
     );
   }
 
-  const { appointment, patient, treatment, employee, documents, payments, notes, patientHistory, loyaltyBalance, loyaltyTier } = detail;
+  const { appointment, patient, treatment, employee, documents, payments, notes, patientHistory, loyaltyBalance, loyaltyTier, loyaltyTransactions, allPatientPayments } = detail;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
@@ -1050,28 +1051,219 @@ function AppointmentDetail() {
               </TabsContent>
 
               {/* History Tab */}
-              <TabsContent value="history" className="m-0">
+              <TabsContent value="history" className="m-0 space-y-4">
+                {/* Past Appointments Timeline */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t("gabinet.patients.history")}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.patients.appointmentHistory")}
+                    </CardTitle>
+                    <CardDescription>{t("gabinet.patients.lastAppointments", { count: 20 })}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {patientHistory.length === 0 ? (
-                      <p className="text-muted-foreground">{t("common.noResults")}</p>
+                      <EmptyState
+                        icon={<Calendar className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.patients.noHistory")}
+                        description={t("gabinet.patients.noHistoryDesc")}
+                      />
                     ) : (
-                      <div className="space-y-2">
-                        {patientHistory.map((appt) => (
-                          <div key={appt._id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{(appt as any).treatment?.name ?? "-"}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {formatDate(appt.date)} • {formatTime(appt.startTime)}
-                              </p>
+                      <div className="relative">
+                        <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+                        <div className="space-y-4">
+                          {patientHistory.map((appt, index) => (
+                            <div key={appt._id} className="relative flex gap-4">
+                              <div className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-background border-2">
+                                {index === 0 && (
+                                  <div className="w-2 h-2 rounded-full bg-primary" />
+                                )}
+                              </div>
+                              <Link
+                                to="/dashboard/gabinet/appointments/$appointmentId"
+                                params={{ appointmentId: appt._id }}
+                                className="flex-1 flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                              >
+                                <div>
+                                  <p className="font-medium">{(appt as any).treatment?.name ?? "-"}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {formatDate(appt.date)} • {formatTime(appt.startTime)} - {formatTime(appt.endTime)}
+                                  </p>
+                                </div>
+                                <Badge variant={statusColors[appt.status] ?? "secondary"}>
+                                  {t(`gabinet.appointments.status.${appt.status}`)}
+                                </Badge>
+                              </Link>
                             </div>
-                            <Badge variant={statusColors[appt.status] ?? "secondary"}>{appt.status}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Active Packages */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.packages.activePackages")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {patientPackageUsage.length === 0 ? (
+                      <EmptyState
+                        icon={<Package className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.packages.noActivePackages")}
+                        description={t("gabinet.packages.noActivePackagesDesc")}
+                      />
+                    ) : (
+                      <div className="space-y-3">
+                        {patientPackageUsage.map((pkg: any) => (
+                          <div key={pkg._id} className="p-4 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-medium">{pkg.packageName ?? t("gabinet.packages.package")}</p>
+                              <Badge variant={pkg.status === "active" ? "success" : "secondary"}>
+                                {t(`gabinet.packages.status.${pkg.status}`)}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">{t("gabinet.packages.treatmentsUsed")}</span>
+                                <span>{pkg.treatmentsUsed ?? 0} / {pkg.treatmentsTotal ?? 0}</span>
+                              </div>
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary transition-all"
+                                  style={{ width: `${((pkg.treatmentsUsed ?? 0) / (pkg.treatmentsTotal ?? 1)) * 100}%` }}
+                                />
+                              </div>
+                              {pkg.expiresAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  {t("gabinet.packages.expires")}: {new Date(pkg.expiresAt).toLocaleDateString("pl-PL")}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Loyalty Summary */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.loyalty.loyaltyProgram")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.pointsBalance")}</p>
+                        <p className="text-3xl font-bold text-primary">{loyaltyBalance}</p>
+                      </div>
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.currentTier")}</p>
+                        <Badge variant="outline" className="text-lg mt-2">
+                          {loyaltyTier ? t(`gabinet.loyalty.tiers.${loyaltyTier}`) : t("gabinet.loyalty.tiers.bronze")}
+                        </Badge>
+                      </div>
+                    </div>
+                    {loyaltyTransactions && loyaltyTransactions.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium mb-2">{t("gabinet.loyalty.recentTransactions")}</h4>
+                        <div className="space-y-2">
+                          {loyaltyTransactions.slice(0, 5).map((tx: any) => (
+                            <div key={tx._id} className="flex items-center justify-between p-2 border rounded">
+                              <div>
+                                <p className="text-sm">{t(`gabinet.loyalty.txTypes.${tx.type}`)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(tx.createdAt).toLocaleDateString("pl-PL")}
+                                </p>
+                              </div>
+                              <span className={tx.points > 0 ? "text-green-600 font-medium" : "text-destructive font-medium"}>
+                                {tx.points > 0 ? "+" : ""}{tx.points}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Payment History */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.payments.paymentHistory")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {allPatientPayments && allPatientPayments.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                            <p className="text-sm text-muted-foreground">{t("gabinet.payments.totalSpent")}</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {allPatientPayments
+                                .filter((p: any) => p.status === "completed")
+                                .reduce((sum: number, p: any) => sum + p.amount, 0)
+                                .toFixed(2)} PLN
+                            </p>
+                          </div>
+                          <div className="text-center p-4 bg-muted/50 rounded-lg">
+                            <p className="text-sm text-muted-foreground">{t("gabinet.payments.lastPayment")}</p>
+                            <p className="text-sm font-medium">
+                              {allPatientPayments[0]
+                                ? new Date(allPatientPayments[0].createdAt).toLocaleDateString("pl-PL")
+                                : "-"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="border rounded-lg">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b bg-muted/50">
+                                <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.amount")}</th>
+                                <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.method")}</th>
+                                <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
+                                <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {allPatientPayments.slice(0, 10).map((payment: any) => (
+                                <tr key={payment._id} className="border-b last:border-0 hover:bg-muted/30">
+                                  <td className="p-3 font-medium">
+                                    {payment.amount.toFixed(2)} {payment.currency ?? "PLN"}
+                                  </td>
+                                  <td className="p-3">
+                                    <Badge variant="outline">{t(`gabinet.payments.methods.${payment.paymentMethod}`)}</Badge>
+                                  </td>
+                                  <td className="p-3 text-sm text-muted-foreground">
+                                    {new Date(payment.createdAt).toLocaleDateString("pl-PL")}
+                                  </td>
+                                  <td className="p-3">
+                                    <Badge variant={payment.status === "completed" ? "success" : "secondary"}>
+                                      {t(`gabinet.payments.status.${payment.status}`)}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyState
+                        icon={<CreditCard className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.payments.noPayments")}
+                        description={t("gabinet.payments.noPaymentsDesc")}
+                      />
                     )}
                   </CardContent>
                 </Card>

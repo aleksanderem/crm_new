@@ -100,6 +100,96 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   no_show: [],
 };
 
+// Note Item Component
+function NoteItem({
+  note,
+  isEditing,
+  editContent,
+  onEditContentChange,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+  onTogglePin,
+  onReply,
+  isSubmitting,
+  isReply = false,
+}: {
+  note: any;
+  isEditing: boolean;
+  editContent: string;
+  onEditContentChange: (content: string) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: () => void;
+  onTogglePin: () => void;
+  onReply: () => void;
+  isSubmitting: boolean;
+  isReply?: boolean;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className={`p-3 border rounded-lg ${note.isPinned ? "bg-primary/5 border-primary/20" : ""} ${isReply ? "bg-muted/30" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>?</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm font-medium">{note.authorName ?? t("common.unknown")}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(note.createdAt).toLocaleString("pl-PL")}
+            </p>
+          </div>
+        </div>
+        {note.isPinned && (
+          <Badge variant="outline" className="text-xs">
+            📌 {t("gabinet.notes.pinned")}
+          </Badge>
+        )}
+      </div>
+
+      {isEditing ? (
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={editContent}
+            onChange={(e) => onEditContentChange(e.target.value)}
+            rows={3}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onCancelEdit}>
+              {t("common.cancel")}
+            </Button>
+            <Button size="sm" onClick={onSaveEdit} disabled={isSubmitting}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm mt-2 whitespace-pre-wrap">{note.content}</p>
+          <div className="flex items-center gap-1 mt-3">
+            <Button variant="ghost" size="sm" onClick={onReply}>
+              {t("gabinet.notes.reply")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onStartEdit}>
+              <Pencil className="h-3 w-3" variant="stroke" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onTogglePin}>
+              {note.isPinned ? t("gabinet.notes.unpin") : t("gabinet.notes.pin")}
+            </Button>
+            <Button variant="ghost" size="sm" className="text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3 w-3" variant="stroke" />
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AppointmentDetail() {
   const { appointmentId } = Route.useParams();
   const { organizationId } = useOrganization();
@@ -141,6 +231,19 @@ function AppointmentDetail() {
   // Payment mutations
   const createPayment = useMutation(api.payments.create);
   const markPaymentPaid = useMutation(api.payments.markPaid);
+
+  // Note mutations
+  const createNote = useMutation(api.notes.create);
+  const updateNote = useMutation(api.notes.update);
+  const deleteNote = useMutation(api.notes.remove);
+  const togglePinNote = useMutation(api.notes.togglePin);
+
+  // Note state
+  const [newNoteContent, setNewNoteContent] = useState("");
+  const [replyToNoteId, setReplyToNoteId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState("");
+  const [isNoteSubmitting, setIsNoteSubmitting] = useState(false);
 
   // Fetch document templates
   const { data: templates } = useQuery(
@@ -410,6 +513,81 @@ function AppointmentDetail() {
       setIsPaymentSubmitting(false);
     }
   };
+
+  // Note handlers
+  const handleCreateNote = async () => {
+    if (!newNoteContent.trim()) return;
+
+    setIsNoteSubmitting(true);
+    try {
+      await createNote({
+        organizationId,
+        entityType: "gabinetAppointment",
+        entityId: appointment._id,
+        content: newNoteContent.trim(),
+        parentNoteId: replyToNoteId ? replyToNoteId as Id<"notes"> : undefined,
+      });
+      toast.success(t("gabinet.notes.created"));
+      setNewNoteContent("");
+      setReplyToNoteId(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsNoteSubmitting(false);
+    }
+  };
+
+  const handleUpdateNote = async (noteId: Id<"notes">) => {
+    if (!editNoteContent.trim()) return;
+
+    setIsNoteSubmitting(true);
+    try {
+      await updateNote({
+        organizationId,
+        noteId,
+        content: editNoteContent.trim(),
+      });
+      toast.success(t("common.saved"));
+      setEditingNoteId(null);
+      setEditNoteContent("");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsNoteSubmitting(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: Id<"notes">) => {
+    if (!confirm(t("common.confirmDelete"))) return;
+
+    try {
+      await deleteNote({ organizationId, noteId });
+      toast.success(t("common.deleted"));
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    }
+  };
+
+  const handleTogglePin = async (noteId: Id<"notes">) => {
+    try {
+      await togglePinNote({ organizationId, noteId });
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    }
+  };
+
+  const startEditNote = (note: any) => {
+    setEditingNoteId(note._id);
+    setEditNoteContent(note.content);
+  };
+
+  // Group notes by parent for threading
+  const rootNotes = notes.filter((n) => !n.parentNoteId);
+  const getReplies = (noteId: string) => notes.filter((n) => n.parentNoteId === noteId);
 
   // Calculate payment summary
   const treatmentPrice = treatment?.price ?? 0;
@@ -1273,19 +1451,83 @@ function AppointmentDetail() {
               <TabsContent value="notes" className="m-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t("common.notes")}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" variant="stroke" />
+                      {t("common.notes")}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    {/* Add note textarea */}
+                    <div className="space-y-2">
+                      {replyToNoteId && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{t("gabinet.notes.replyingTo")}</span>
+                          <Button variant="ghost" size="sm" onClick={() => setReplyToNoteId(null)}>
+                            {t("common.cancel")}
+                          </Button>
+                        </div>
+                      )}
+                      <Textarea
+                        placeholder={t("gabinet.notes.placeholder")}
+                        value={newNoteContent}
+                        onChange={(e) => setNewNoteContent(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-end">
+                        <Button onClick={handleCreateNote} disabled={isNoteSubmitting || !newNoteContent.trim()}>
+                          {isNoteSubmitting ? t("common.saving") : t("gabinet.notes.addNote")}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Notes list */}
                     {notes.length === 0 ? (
-                      <p className="text-muted-foreground">{t("common.noResults")}</p>
+                      <EmptyState
+                        icon={<StickyNote className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.notes.noNotes")}
+                        description={t("gabinet.notes.noNotesDesc")}
+                      />
                     ) : (
-                      <div className="space-y-3">
-                        {notes.map((note) => (
-                          <div key={note._id} className="p-3 border rounded-lg">
-                            <p className="text-sm">{note.content}</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {new Date(note.createdAt).toLocaleString("pl-PL")}
-                            </p>
+                      <div className="space-y-4">
+                        {rootNotes.map((note) => (
+                          <div key={note._id}>
+                            <NoteItem
+                              note={note}
+                              isEditing={editingNoteId === note._id}
+                              editContent={editNoteContent}
+                              onEditContentChange={setEditNoteContent}
+                              onStartEdit={() => startEditNote(note)}
+                              onCancelEdit={() => { setEditingNoteId(null); setEditNoteContent(""); }}
+                              onSaveEdit={() => handleUpdateNote(note._id)}
+                              onDelete={() => handleDeleteNote(note._id)}
+                              onTogglePin={() => handleTogglePin(note._id)}
+                              onReply={() => setReplyToNoteId(note._id)}
+                              isSubmitting={isNoteSubmitting}
+                            />
+                            {/* Replies */}
+                            {getReplies(note._id).length > 0 && (
+                              <div className="ml-8 mt-2 space-y-2">
+                                {getReplies(note._id).map((reply) => (
+                                  <NoteItem
+                                    key={reply._id}
+                                    note={reply}
+                                    isEditing={editingNoteId === reply._id}
+                                    editContent={editNoteContent}
+                                    onEditContentChange={setEditNoteContent}
+                                    onStartEdit={() => startEditNote(reply)}
+                                    onCancelEdit={() => { setEditingNoteId(null); setEditNoteContent(""); }}
+                                    onSaveEdit={() => handleUpdateNote(reply._id)}
+                                    onDelete={() => handleDeleteNote(reply._id)}
+                                    onTogglePin={() => handleTogglePin(reply._id)}
+                                    onReply={() => setReplyToNoteId(note._id)}
+                                    isSubmitting={isNoteSubmitting}
+                                    isReply
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

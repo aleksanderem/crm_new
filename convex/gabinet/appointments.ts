@@ -842,3 +842,109 @@ export const cancelRecurringSeries = mutation({
     return { cancelled: count };
   },
 });
+
+export const getFullDetail = query({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    // Get the appointment
+    const appointment = await ctx.db.get(args.appointmentId);
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      throw new Error("Appointment not found");
+    }
+    if (perm.scope === "own" && appointment.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only view your own records");
+    }
+
+    // Fetch all related data in parallel
+    const [
+      patient,
+      treatment,
+      employee,
+      documents,
+      payments,
+      notes,
+      patientPackageUsage,
+      patientHistory,
+      loyaltyBalance,
+    ] = await Promise.all([
+      // Patient
+      ctx.db.get(appointment.patientId),
+      // Treatment
+      ctx.db.get(appointment.treatmentId),
+      // Employee + User
+      ctx.db.get(appointment.employeeId),
+      // Documents
+      ctx.db
+        .query("gabinetDocuments")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+        .collect(),
+      // Payments
+      ctx.db
+        .query("payments")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+        .collect(),
+      // Notes
+      ctx.db
+        .query("notes")
+        .withIndex("by_entity", (q) =>
+          q.eq("entityType", "gabinetAppointment").eq("entityId", args.appointmentId)
+        )
+        .order("desc")
+        .take(50),
+      // Patient package usage
+      ctx.db
+        .query("gabinetPackageUsage")
+        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .collect(),
+      // Patient history (last 10 appointments, excluding current)
+      ctx.db
+        .query("gabinetAppointments")
+        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .filter((q) => q.neq(q.field("_id"), args.appointmentId))
+        .order("desc")
+        .take(10),
+      // Loyalty points balance
+      ctx.db
+        .query("gabinetLoyaltyPoints")
+        .withIndex("by_patient", (q) => q.eq("patientId", appointment.patientId))
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .first(),
+    ]);
+
+    // Get treatment details for history appointments
+    const historyTreatmentIds = patientHistory
+      .map((a) => a.treatmentId)
+      .filter(Boolean);
+    const historyTreatments = await Promise.all(
+      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id))
+    );
+    const treatmentMap = new Map(
+      historyTreatments.filter(Boolean).map((t) => [t!._id, t])
+    );
+
+    return {
+      appointment,
+      patient,
+      treatment,
+      employee,
+      documents,
+      payments,
+      notes,
+      patientPackageUsage,
+      patientHistory: patientHistory.map((a) => ({
+        ...a,
+        treatment: treatmentMap.get(a.treatmentId),
+      })),
+      loyaltyBalance: loyaltyBalance?.balance ?? 0,
+      loyaltyTier: loyaltyBalance?.tier ?? null,
+    };
+  },
+});

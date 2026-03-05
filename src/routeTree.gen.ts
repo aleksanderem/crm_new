@@ -81,6 +81,7 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesImport } fro
 import { Route as AppAuthDashboardLayoutGabinetSettingsDocumentTemplatesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.document-templates'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
+import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
 
 // Create Virtual Routes
 
@@ -504,6 +505,12 @@ const AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute =
+  AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport.update({
+    path: '/gabinet/appointments/$appointmentId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -921,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsIndexImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId'
+      path: '/gabinet/appointments/$appointmentId'
+      fullPath: '/dashboard/gabinet/appointments/$appointmentId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId': {
       id: '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId'
       path: '/gabinet/employees/$employeeId'
@@ -1063,6 +1077,7 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutLeadsIndexRoute,
           AppAuthDashboardLayoutPipelinesIndexRoute,
           AppAuthDashboardLayoutProductsIndexRoute,
+          AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute,
           AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute,
           AppAuthDashboardLayoutGabinetPatientsPatientIdRoute,
           AppAuthDashboardLayoutGabinetSettingsDocumentTemplatesRoute,
@@ -1213,6 +1228,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/leads/",
         "/_app/_auth/dashboard/_layout/pipelines/",
         "/_app/_auth/dashboard/_layout/products/",
+        "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
         "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId",
         "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
         "/_app/_auth/dashboard/_layout/gabinet/settings/document-templates",
@@ -1441,6 +1457,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/settings/": {
       "filePath": "_app/_auth/dashboard/_layout.settings.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.employees.$employeeId.tsx",

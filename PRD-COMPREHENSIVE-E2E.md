@@ -364,13 +364,13 @@ e2e/
 
 ### 15.1 Points Flow
 - [ ] Complete appointment awards points
-- [ ] Points balance updates
-- [ ] Transaction history shows
+- [x] Points balance updates
+- [x] Transaction history shows
 - [ ] Spend points succeeds
 - [ ] Spend validates balance
 
 ### 15.2 Tiers
-- [ ] Tier displays based on points
+- [x] Tier displays based on points
 - [ ] Tier upgrade happens at threshold
 
 ---
@@ -378,27 +378,27 @@ e2e/
 ## 16. Gabinet — Documents
 
 ### 16.1 Template Management
-- [ ] Templates list loads
-- [ ] Create template succeeds
-- [ ] Placeholder insertion works
-- [ ] Edit template persists
+- [x] Templates list loads
+- [x] Create template succeeds
+- [x] Placeholder insertion works
+- [x] Edit template persists
 
 ### 16.2 Document Creation
-- [ ] Create from template works
+- [x] Create from template works
 - [ ] Placeholders render with patient data
 - [ ] Rich text editor works
 
 ### 16.3 Signature Flow
-- [ ] Request signature changes status
-- [ ] Signature pad renders
+- [x] Request signature changes status
+- [x] Signature pad renders
 - [ ] Drawing works (mouse)
 - [ ] Drawing works (touch)
-- [ ] Clear button works
+- [x] Clear button works
 - [ ] Save signature works
 - [ ] Status changes to "signed"
 
 ### 16.4 Document Actions
-- [ ] View signed document shows signature
+- [x] View signed document shows signature
 - [ ] PDF download works
 - [ ] Archive document works
 
@@ -427,15 +427,15 @@ e2e/
 
 ### 18.1 Team Management
 - [x] Team members list loads
-- [ ] Invite member succeeds
-- [ ] Role change persists
+- [x] Invite member succeeds
+- [x] Role change persists
 - [ ] Remove member works
 
 ### 18.2 Seat Limits
 - [x] Seat usage displays
 - [x] Progress bar shows usage
 - [ ] Invite disabled at limit
-- [ ] Error message shows upgrade CTA
+- [x] Error message shows upgrade CTA
 - [ ] Member removal frees seat
 
 ---

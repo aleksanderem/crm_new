@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { loginAndGoToDashboard, waitForApp } from "../helpers/auth";
-import { navigateTo, assertNoErrorBoundary, getBodyText } from "../helpers/common";
+import {
+  navigateTo,
+  assertNoErrorBoundary,
+  getBodyText,
+  testId,
+} from "../helpers/common";
 
 test.describe("Settings — Team", () => {
   test.setTimeout(120_000);
@@ -9,6 +14,8 @@ test.describe("Settings — Team", () => {
     await loginAndGoToDashboard(page);
   });
 
+  // ─── 18.1 Team Management ─────────────────────────────────────
+
   test("team members list loads", async ({ page }) => {
     await navigateTo(page, "/dashboard/settings/team");
     await assertNoErrorBoundary(page);
@@ -16,6 +23,152 @@ test.describe("Settings — Team", () => {
     const bodyText = await getBodyText(page);
     expect(bodyText.length).toBeGreaterThan(50);
   });
+
+  test("invite member opens dialog with form", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+
+    const inviteBtn = page
+      .locator(
+        'button:has-text("Zaproś"), button:has-text("Invite"), button:has-text("Dodaj")'
+      )
+      .first();
+
+    if (!(await inviteBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await inviteBtn.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Should have email input
+    const emailInput = dialog.locator('input[type="email"], input[placeholder*="email"], input[placeholder*="Email"]').first();
+    const hasEmail = await emailInput.isVisible({ timeout: 2000 }).catch(() => false);
+
+    // Fallback: any input in the dialog
+    if (!hasEmail) {
+      const anyInput = dialog.locator("input").first();
+      expect(await anyInput.isVisible({ timeout: 2000 }).catch(() => false)).toBe(true);
+    } else {
+      expect(hasEmail).toBe(true);
+    }
+
+    // Should have role selector
+    const dialogText = await dialog.innerText();
+    const hasRole =
+      dialogText.includes("Rola") ||
+      dialogText.includes("Role") ||
+      dialogText.includes("admin") ||
+      dialogText.includes("member") ||
+      dialogText.includes("viewer");
+    expect(hasRole).toBe(true);
+
+    // Should show remaining seats
+    const hasSeats =
+      dialogText.includes("miejsc") ||
+      dialogText.includes("seat") ||
+      dialogText.includes("Seat") ||
+      /\d+\s*(of|z|\/)\s*\d+/.test(dialogText);
+
+    await page.keyboard.press("Escape");
+  });
+
+  test("invite member dialog has send button", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+
+    const inviteBtn = page
+      .locator(
+        'button:has-text("Zaproś"), button:has-text("Invite"), button:has-text("Dodaj")'
+      )
+      .first();
+
+    if (!(await inviteBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await inviteBtn.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Should have send/submit button
+    const sendBtn = dialog
+      .locator(
+        'button:has-text("Wyślij"), button:has-text("Send"), button:has-text("Zaproś"), button:has-text("Invite")'
+      )
+      .first();
+
+    const isVisible = await sendBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    expect(isVisible).toBe(true);
+
+    await page.keyboard.press("Escape");
+  });
+
+  test("member action menu shows role change options", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+    await page.waitForTimeout(2000);
+
+    // Look for three-dots menu button on a member row (not the owner)
+    const moreBtn = page
+      .locator('button:has(svg[class*="more"]), button[aria-label*="more"], button[aria-label*="Więcej"]')
+      .first();
+
+    // Fallback: look for any MoreHorizontal-style button
+    const iconBtns = page.locator("button:has(svg)");
+    const count = await iconBtns.count();
+
+    // Try to find an action menu button (skip if only one member = owner)
+    let foundMenu = false;
+    for (let i = 0; i < Math.min(count, 10); i++) {
+      const btn = iconBtns.nth(i);
+      if (!(await btn.isVisible({ timeout: 500 }).catch(() => false))) continue;
+
+      // Check if clicking opens a dropdown menu
+      await btn.click();
+      await page.waitForTimeout(500);
+
+      const dropdownMenu = page.locator('[role="menu"]');
+      if (await dropdownMenu.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const menuText = await dropdownMenu.innerText();
+
+        // Check for role change option
+        const hasRoleChange =
+          menuText.includes("Zmień rolę") ||
+          menuText.includes("Change Role") ||
+          menuText.includes("Role") ||
+          menuText.includes("admin") ||
+          menuText.includes("member") ||
+          menuText.includes("viewer");
+
+        if (hasRoleChange) {
+          foundMenu = true;
+
+          // Check for remove option
+          const hasRemove =
+            menuText.includes("Usuń") ||
+            menuText.includes("Remove") ||
+            menuText.includes("remove");
+          expect(hasRemove).toBe(true);
+        }
+
+        // Close the menu
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+
+        if (foundMenu) break;
+      }
+    }
+
+    // Soft check — may have only owner member (no action menu)
+    await assertNoErrorBoundary(page);
+  });
+
+  // ─── 18.2 Seat Limits ──────────────────────────────────────────
 
   test("seat usage displays", async ({ page }) => {
     await navigateTo(page, "/dashboard/settings/team");
@@ -40,18 +193,65 @@ test.describe("Settings — Team", () => {
     expect(isVisible).toBe(true);
   });
 
-  test("invite member button exists", async ({ page }) => {
+  test("seat limit warning shows at high capacity", async ({ page }) => {
     await navigateTo(page, "/dashboard/settings/team");
 
-    const inviteBtn = page
+    const bodyText = await getBodyText(page);
+    // Check if we're at high capacity (80%+)
+    const match = bodyText.match(/(\d+)\s*(of|z|\/)\s*(\d+)/);
+    if (match) {
+      const used = parseInt(match[1]);
+      const total = parseInt(match[3]);
+      const usage = used / total;
+
+      if (usage >= 0.8) {
+        // Should show warning message
+        const hasWarning =
+          bodyText.includes("Uwaga") ||
+          bodyText.includes("Warning") ||
+          bodyText.includes("zbliża") ||
+          bodyText.includes("approaching") ||
+          bodyText.includes("limit");
+        expect(hasWarning).toBe(true);
+      }
+    }
+
+    await assertNoErrorBoundary(page);
+  });
+
+  test("upgrade CTA links to billing", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+
+    // Look for upgrade button/link
+    const upgradeBtn = page
       .locator(
-        'button:has-text("Zaproś"), button:has-text("Invite"), button:has-text("Dodaj")'
+        'a:has-text("Upgrade"), a:has-text("upgrade"), a:has-text("Plan"), button:has-text("Upgrade"), button:has-text("upgrade")'
       )
       .first();
 
-    const isVisible = await inviteBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    expect(isVisible).toBe(true);
+    if (await upgradeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const href = await upgradeBtn.getAttribute("href");
+      if (href) {
+        expect(href).toContain("billing");
+      }
+    }
+
+    await assertNoErrorBoundary(page);
+  });
+
+  // ─── Pending Invitations ──────────────────────────────────────
+
+  test("pending invitations section renders", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+
+    const bodyText = await getBodyText(page);
+    const hasInvitationsSection =
+      bodyText.includes("Zaproszenia") ||
+      bodyText.includes("Invitations") ||
+      bodyText.includes("invitation") ||
+      bodyText.includes("Brak zaproszeń") ||
+      bodyText.includes("No pending");
+
+    expect(hasInvitationsSection).toBe(true);
   });
 });

@@ -44,6 +44,7 @@ import {
   Phone,
   FileText,
   CreditCard,
+  Package,
   History,
   StickyNote,
   Activity,
@@ -67,6 +68,7 @@ import {
   Download,
   Upload,
   FilePlus,
+  Package,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -120,6 +122,13 @@ function AppointmentDetail() {
   const [docTemplateId, setDocTemplateId] = useState("");
   const [isDocSubmitting, setIsDocSubmitting] = useState(false);
 
+  // Payment management state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [paymentNote, setPaymentNote] = useState("");
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
   const createDoc = useMutation(api.gabinet.documents.create);
@@ -127,6 +136,10 @@ function AppointmentDetail() {
   const signDoc = useMutation(api.gabinet.documents.sign);
   const requestDocSig = useMutation(api.gabinet.documents.requestSignature);
   const archiveDoc = useMutation(api.gabinet.documents.archive);
+
+  // Payment mutations
+  const createPayment = useMutation(api.payments.create);
+  const markPaymentPaid = useMutation(api.payments.markPaid);
 
   // Fetch document templates
   const { data: templates } = useQuery(
@@ -365,6 +378,44 @@ function AppointmentDetail() {
       toast.error(error.message ?? t("common.error"));
     }
   };
+
+  // Payment handlers
+  const handleCreatePayment = async () => {
+    if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+
+    setIsPaymentSubmitting(true);
+    try {
+      await createPayment({
+        organizationId,
+        patientId: patient!._id,
+        appointmentId: appointment._id,
+        amount: parseFloat(paymentAmount),
+        currency: "PLN",
+        paymentMethod: paymentMethod as any,
+        notes: paymentNote || undefined,
+      });
+
+      toast.success(t("gabinet.payments.created"));
+      setPaymentDialogOpen(false);
+      setPaymentAmount("");
+      setPaymentNote("");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message ?? t("common.error"));
+    } finally {
+      setIsPaymentSubmitting(false);
+    }
+  };
+
+  // Calculate payment summary
+  const treatmentPrice = treatment?.price ?? 0;
+  const totalPaid = payments
+    .filter((p) => p.status === "completed")
+    .reduce((sum, p) => sum + p.amount, 0);
+  const outstanding = treatmentPrice - totalPaid;
 
   const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
 
@@ -877,33 +928,125 @@ function AppointmentDetail() {
               </TabsContent>
 
               {/* Payments Tab */}
-              <TabsContent value="payments" className="m-0">
+              <TabsContent value="payments" className="m-0 space-y-4">
+                {/* Payment Summary Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.payments.summary")}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {payments.length === 0 ? (
-                      <p className="text-muted-foreground">{t("common.noResults")}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {payments.map((payment) => (
-                          <div key={payment._id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">
-                                {payment.amount.toFixed(2)} {payment.currency ?? "PLN"}
-                              </p>
-                              <p className="text-sm text-muted-foreground">{payment.method}</p>
-                            </div>
-                            <Badge variant={payment.status === "completed" ? "success" : "secondary"}>
-                              {payment.status}
-                            </Badge>
-                          </div>
-                        ))}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.treatmentPrice")}</p>
+                        <p className="text-2xl font-bold">{treatmentPrice.toFixed(2)} PLN</p>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.totalPaid")}</p>
+                        <p className="text-2xl font-bold text-green-600">{totalPaid.toFixed(2)} PLN</p>
+                      </div>
+                      <div className={`text-center p-4 rounded-lg ${outstanding > 0 ? "bg-orange-50 dark:bg-orange-950/20" : "bg-muted/50"}`}>
+                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.outstanding")}</p>
+                        <p className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}>
+                          {outstanding.toFixed(2)} PLN
+                        </p>
+                      </div>
+                    </div>
+                    {appointment.prepaymentRequired && appointment.prepaymentAmount && (
+                      <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                        <div className="flex items-center gap-2 text-blue-600">
+                          <Info className="h-4 w-4" variant="stroke" />
+                          <span className="font-medium">{t("gabinet.appointments.prepaymentRequired")}</span>
+                        </div>
+                        <p className="text-sm mt-1">
+                          {t("gabinet.appointments.prepaymentAmount")}: {appointment.prepaymentAmount.toFixed(2)} PLN
+                        </p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Payments Table */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
+                      <CardDescription>{t("gabinet.payments.linkedToAppointment")}</CardDescription>
+                    </div>
+                    <Button size="sm" onClick={() => setPaymentDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                      {t("gabinet.payments.addPayment")}
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {payments.length === 0 ? (
+                      <EmptyState
+                        icon={<CreditCard className="h-12 w-12" variant="stroke" />}
+                        title={t("gabinet.payments.noPayments")}
+                        description={t("gabinet.payments.noPaymentsDesc")}
+                        action={
+                          <Button onClick={() => setPaymentDialogOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                            {t("gabinet.payments.addFirst")}
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <div className="border rounded-lg">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.amount")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.method")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
+                              <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {payments.map((payment) => (
+                              <tr key={payment._id} className="border-b last:border-0 hover:bg-muted/30">
+                                <td className="p-3">
+                                  <p className="font-medium">
+                                    {payment.amount.toFixed(2)} {payment.currency ?? "PLN"}
+                                  </p>
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant="outline">{t(`gabinet.payments.methods.${payment.paymentMethod}`)}</Badge>
+                                </td>
+                                <td className="p-3 text-sm text-muted-foreground">
+                                  {new Date(payment.createdAt).toLocaleDateString("pl-PL")}
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant={payment.status === "completed" ? "success" : payment.status === "refunded" ? "destructive" : "secondary"}>
+                                    {t(`gabinet.payments.status.${payment.status}`)}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Package Usage Card (if applicable) */}
+                {appointment.packageUsageId && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-4 w-4" variant="stroke" />
+                        {t("gabinet.packages.packageUsage")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">{t("gabinet.packages.usedInThisAppointment")}</p>
+                      {/* Package details would be fetched and displayed here */}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* History Tab */}
@@ -996,6 +1139,64 @@ function AppointmentDetail() {
             </Button>
             <Button variant="destructive" onClick={handleCancelConfirm} disabled={isUpdating}>
               {isUpdating ? t("common.processing") : t("gabinet.appointments.actions.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
+            <DialogDescription>{t("gabinet.payments.addPaymentDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>{t("gabinet.payments.amount")}</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
+              />
+              {outstanding > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("gabinet.payments.outstanding")}: {outstanding.toFixed(2)} PLN
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.method")}</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{t("gabinet.payments.methods.cash")}</SelectItem>
+                  <SelectItem value="card">{t("gabinet.payments.methods.card")}</SelectItem>
+                  <SelectItem value="transfer">{t("gabinet.payments.methods.transfer")}</SelectItem>
+                  <SelectItem value="other">{t("gabinet.payments.methods.other")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("common.notes")}</Label>
+              <Textarea
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder={t("gabinet.payments.notePlaceholder")}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleCreatePayment} disabled={isPaymentSubmitting}>
+              {isPaymentSubmitting ? t("common.processing") : t("gabinet.payments.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

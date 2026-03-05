@@ -1,0 +1,8 @@
+You are working in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Execute Sprint 0 stabilization end-to-end:
+1) Fix code so npm run typecheck passes.
+2) Then ensure npm run build and npm run lint pass.
+3) After green, perform blast-radius user-style validation for changed areas (especially gabinet calendar/appointments/patients/documents/packages and patient portal routes), using available local test tooling (playwright or deterministic flow checks).
+4) Return concise final report with: summary, changed files, commands run with outcomes, blast-radius validation evidence, residual risks.
+Constraints: minimal safe changes, do not remove real functionality to silence errors.
+When finished, append a final line: DONE_SPRINT0

@@ -1,0 +1,15 @@
+You are Worker A (gabinet-api-typing) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Goal: eliminate TypeScript errors related to missing API keys like api["gabinet/..."] and implicit anys directly tied to gabinet queries/mutations.
+Scope priority:
+- src/routes/_app/_auth/dashboard/_layout.gabinet.*
+- src/components/gabinet/*
+- src/routes/_app/patient/*
+Approach:
+1) Replace fragile string-indexed api access with generated typed references/imports where appropriate.
+2) Add explicit types for map/filter callback params where needed.
+3) Keep behavior unchanged.
+Validation:
+- run npm run typecheck and report remaining errors count + top remaining files.
+Output:
+- concise summary, changed files list, command outputs.
+- final line: WORKER_A_DONE

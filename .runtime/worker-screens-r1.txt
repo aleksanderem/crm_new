@@ -1,0 +1,14 @@
+You are Worker S1 (screens-crm) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Take runtime screenshots for CRM flows using real logged-in session if possible, otherwise log in with:
+email amiesak@gmail.com
+password ABcdefg123!@#
+
+Capture and save PNG screenshots into docs/runtime-e2e/screenshots with descriptive names:
+- crm-dashboard.png
+- crm-leads.png
+- crm-activities.png
+- crm-calendar.png
+- crm-documents.png
+
+Also create docs/runtime-e2e/screens_manifest_r1.md listing each file + short note.
+Final line: S1_DONE

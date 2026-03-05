@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
 export const Route = createFileRoute(
@@ -59,6 +60,10 @@ function ContactsIndex() {
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
+
+  // Sidebar action dispatches
+  useSidebarDispatch("importCsv", () => setImportOpen(true));
+  useSidebarDispatch("exportCsv", () => handleExport());
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t('contacts.views.all'), isSystem: true, isDefault: true },

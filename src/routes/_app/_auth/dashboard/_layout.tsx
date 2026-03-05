@@ -30,7 +30,7 @@ import {
   SearchIcon,
 } from "@/lib/ez-icons";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GlobalSearch,
@@ -39,6 +39,7 @@ import {
 } from "@/components/crm/global-search";
 import {
   QuickCreateMenu,
+  type QuickCreateMenuHandle,
   type QuickCreateEntityType,
   type FormEntityType,
 } from "@/components/crm/quick-create-menu";
@@ -77,6 +78,7 @@ const typeIcons: Record<string, React.ReactNode> = {
 
 function DashboardLayout() {
   const { t } = useTranslation();
+  const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   const { data: orgs } = useQuery(
     convexQuery(api.organizations.getMyOrganizations, {})
@@ -423,12 +425,22 @@ function DashboardLayout() {
   const showDatePicker = /^\/(dashboard)\/?$/.test(pathname)
     || /^\/dashboard\/(activities|calls|leads|pipelines)/.test(pathname);
 
+  const [lastDispatch, setLastDispatch] = useState<{ id: string; seq: number } | null>(null);
+  const dispatchSeqRef = useRef(0);
+
   const sidebarActionsValue = useMemo(
     () => ({
-      openQuickCreate: (type: string) => handleNavigateEntity(type as QuickCreateEntityType),
+      openQuickCreate: (type: string) => {
+        quickCreateRef.current?.open(type as FormEntityType);
+      },
       navigateTo: (href: string) => navigate({ to: href }),
+      dispatch: (actionId: string) => {
+        dispatchSeqRef.current += 1;
+        setLastDispatch({ id: actionId, seq: dispatchSeqRef.current });
+      },
+      lastDispatch,
     }),
-    [handleNavigateEntity, navigate]
+    [navigate, lastDispatch]
   );
 
   if (!user || !orgs) {
@@ -482,6 +494,7 @@ function DashboardLayout() {
                   {showDatePicker && <DateRangePicker />}
 
                   <QuickCreateMenu
+                    ref={quickCreateRef}
                     onNavigate={handleNavigateEntity}
                     renderForm={renderQuickCreateForm}
                   />

@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
 export const Route = createFileRoute(
@@ -57,6 +58,10 @@ function CompaniesIndex() {
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "companies");
+
+  // Sidebar action dispatches
+  useSidebarDispatch("importCsv", () => setImportOpen(true));
+  useSidebarDispatch("exportCsv", () => handleExport());
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
 

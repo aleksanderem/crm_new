@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import fs from "fs";
 
-const BASE = "http://localhost:5174";
+const BASE = "http://localhost:5173";
 const SCREENSHOTS = "./e2e-screenshots";
 
 // Helper: wait for page to be reasonably loaded

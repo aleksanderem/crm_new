@@ -1,0 +1,12 @@
+You are Worker R1 (runtime-crm) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Mission: Validate REAL runtime flows for CRM dashboard using real data.
+Credentials:
+- email: amiesak@gmail.com
+- password: ABcdefg123!@#
+
+Do now:
+1) Start app if needed, then run browser-based E2E checks for CRM flows (leads, activities, calendar, documents).
+2) Perform at least one real create/update action in each tested area and verify persistence (UI refresh + Convex data check via `npx convex data ...`).
+3) Record evidence in docs/runtime-e2e/R1_crm.md with pass/fail table and exact commands.
+4) If any flow fails, capture minimal repro + suspected file/module.
+Output final line: R1_DONE

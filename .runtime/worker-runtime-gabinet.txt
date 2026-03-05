@@ -1,0 +1,12 @@
+You are Worker R2 (runtime-gabinet) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Mission: Validate REAL runtime flows for Gabinet module using real data.
+Credentials:
+- email: amiesak@gmail.com
+- password: ABcdefg123!@#
+
+Do now:
+1) Browser-based E2E for gabinet calendar, appointments, patients, documents, packages.
+2) Execute real mutations (create/edit/status change) where available.
+3) Verify persistence in UI + Convex tables (`gabinetAppointments`, `gabinetPatients`, `gabinetDocuments`, `gabinetTreatmentPackages`, etc.).
+4) Save evidence to docs/runtime-e2e/R2_gabinet.md with pass/fail + data ids touched.
+Output final line: R2_DONE

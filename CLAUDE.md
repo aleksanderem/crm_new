@@ -580,6 +580,49 @@ All tables use Convex indexes for efficient queries. Search indexes on contacts,
 - `src/components/application/` — reusable app components (calendar, date picker, tabs, breadcrumbs, navigation)
 - `src/components/base/` — base design system components (avatar, badges, buttons, dropdown, input, radio, tooltip)
 
+## Gate 2 Verification Checklist (Alfred)
+
+When Ralph completes Gate 1, verify ALL of these before marking DONE:
+
+### 1. Functional E2E
+- [ ] Changed routes load without errors
+- [ ] Forms submit correctly
+- [ ] Data persists to Convex
+- [ ] Related features still work (blast radius)
+
+### 2. Pattern Compliance
+- [ ] Uses existing components from `src/components/` (no reinventing)
+- [ ] Follows RBAC pattern: `verifyOrgAccess` + `checkPermission`
+- [ ] Uses `useOrganization()` for org context
+- [ ] Follows routing convention: `_app/_auth/dashboard/_layout.*.tsx`
+
+### 3. Code Quality
+- [ ] No unused imports (check all imports are used)
+- [ ] No unused variables (including destructured)
+- [ ] No console.log left in code
+- [ ] No commented-out code blocks
+- [ ] Proper TypeScript types (no `any` unless justified)
+
+### 4. Architecture
+- [ ] New components in correct directory (`crm/`, `gabinet/`, `ui/`)
+- [ ] Follows existing naming conventions
+- [ ] Doesn't break existing abstractions
+- [ ] No technical debt introduced
+
+### 5. Evidence Required
+```
+## Gate 2 Report
+- E2E tested: [routes/actions]
+- Pattern check: PASS/FAIL [details]
+- Code quality: [list any issues found]
+- Architecture: [any concerns]
+- Decision: APPROVED / NEEDS_WORK
+```
+
+Only output `GATE2_APPROVED` after ALL checks pass.
+
+---
+
 ## Key Files
 
 - `convex/schema.ts` — full database schema (~1290 lines)

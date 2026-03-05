@@ -43,6 +43,7 @@ import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
 export const Route = createFileRoute(
@@ -110,6 +111,10 @@ function LeadsIndex() {
   const [importOpen, setImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "leads");
+
+  // Sidebar action dispatches
+  useSidebarDispatch("importCsv", () => setImportOpen(true));
+  useSidebarDispatch("exportCsv", () => handleExport());
   const [chartTimeRange, setChartTimeRange] = useState<TimeRange>("last30days");
 
   const systemViews = useMemo((): SavedView[] => [

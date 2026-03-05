@@ -1,0 +1,8 @@
+{
+  "sessions": [
+    {
+      "name": "crm-gabinet-ralph",
+      "launch": "bash /Users/alfred/.openclaw/workspace/scripts/ralph_loop.sh crm-gabinet-ralph /Users/alfred/.openclaw/workspace/projects/crm_new PRD.md --agent claude --max-iters 20 --tmux"
+    }
+  ]
+}

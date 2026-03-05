@@ -1,0 +1,16 @@
+You are Worker B (ui-icons-shadcn) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Goal: fix TypeScript errors in shared UI/icon blocks and third-party type declarations.
+Scope priority:
+- src/components/shadcn-studio/**
+- src/components/ui/ez-icon.tsx
+- src/lib/ez-icons/icon-map.ts
+- react-payment-inputs declaration issues
+Approach:
+1) Fix invalid icon imports/exports and prop mismatches (e.g., fill where unsupported).
+2) Add minimal .d.ts declarations for modules lacking types if needed.
+3) Keep components working; do not delete blocks unless absolutely required and justified.
+Validation:
+- run npm run typecheck and report remaining errors count + top remaining files.
+Output:
+- concise summary, changed files list, command outputs.
+- final line: WORKER_B_DONE

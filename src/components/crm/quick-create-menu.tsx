@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -224,6 +224,10 @@ const entityItems: {
   },
 ];
 
+export interface QuickCreateMenuHandle {
+  open: (type?: FormEntityType) => void;
+}
+
 interface QuickCreateMenuProps {
   onNavigate: (entityType: QuickCreateEntityType) => void;
   renderForm: (
@@ -232,15 +236,26 @@ interface QuickCreateMenuProps {
   ) => React.ReactNode;
 }
 
-export function QuickCreateMenu({
-  onNavigate,
-  renderForm,
-}: QuickCreateMenuProps) {
+export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenuProps>(
+  function QuickCreateMenu({ onNavigate, renderForm }, ref) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EntityGroup>("crm");
   const [selectedType, setSelectedType] = useState<FormEntityType | null>(null);
   const { can: canCreate, loading: permLoading } = usePermissions("create");
+
+  useImperativeHandle(ref, () => ({
+    open: (type) => {
+      setOpen(true);
+      if (type) {
+        const item = entityItems.find((i) => i.type === type);
+        if (item) setActiveTab(item.group);
+        setSelectedType(type);
+      } else {
+        setSelectedType(null);
+      }
+    },
+  }));
 
   const handleEntityClick = (type: QuickCreateEntityType) => {
     const feature = entityFeatureMap[type];
@@ -361,7 +376,8 @@ export function QuickCreateMenu({
       </DialogContent>
     </Dialog>
   );
-}
+  }
+);
 
 function EntityButton({
   item,

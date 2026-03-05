@@ -1,0 +1,9 @@
+{
+  "current_focus": "OTP security hotfix + retest (production gate)",
+  "done": [
+    "convex",
+    "typecheck",
+    "build",
+    "lint"
+  ]
+}

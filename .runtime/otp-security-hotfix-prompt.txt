@@ -1,0 +1,29 @@
+Project: /Users/alfred/.openclaw/workspace/projects/crm_new
+Objective: Close production security gate for patient OTP auth in gabinet/patientAuth.ts.
+
+MANDATORY TDD FLOW:
+1) Write failing tests first for OTP security behavior.
+2) Implement fixes.
+3) Run tests + typecheck + build.
+
+Required fixes:
+- Replace weak OTP hashing with cryptographically secure hashing suitable for server-side verification.
+- Remove any `_devOtp` / `_devToken` leakage from public mutation responses.
+- Add brute-force protections:
+  - rate limit sendPortalOtp per identifier/IP-equivalent context
+  - rate limit verifyPortalOtp attempts
+  - lockout/cooldown after repeated failures
+- Ensure OTP TTL and one-time use semantics are enforced.
+- Preserve existing UX/API contract as much as possible (avoid breaking frontend unless necessary; if changed, update frontend accordingly).
+
+Validation requirements:
+- `npm run typecheck` passes
+- `npm run build` passes
+- relevant test suite passes
+- Provide concise report in docs/runtime-e2e/OTP_SECURITY_HOTFIX.md:
+  - changed files
+  - tests added
+  - commands run + results
+  - residual risks
+
+Output final line exactly: OTP_SECURITY_DONE

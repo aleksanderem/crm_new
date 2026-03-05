@@ -72,6 +72,8 @@ interface ContextAction {
   icon: React.ElementType;
   quickCreate?: string;
   href?: string;
+  /** Dispatch a named action to the current page component (for filters, import/export, etc.) */
+  dispatch?: string;
   /** RBAC feature required (checked with "create" action). Omit for non-create actions. */
   permissionFeature?: import("@/hooks/use-permission").Feature;
 }
@@ -121,18 +123,18 @@ const pageContexts: Record<string, PageContext> = {
     titleKey: "nav.contacts",
     actions: [
       { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/contacts" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/contacts" },
-      { label: "nav.actions.savedViews", icon: Star, href: "/dashboard/contacts" },
+      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
+      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
+      { label: "nav.actions.savedViews", icon: Star, dispatch: "savedViews" },
     ],
   },
   companies: {
     titleKey: "nav.companies",
     actions: [
       { label: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company", permissionFeature: "companies" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/companies" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/companies" },
-      { label: "nav.actions.viewRelationships", icon: LinkIcon, href: "/dashboard/companies" },
+      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
+      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
+      { label: "nav.actions.viewRelationships", icon: LinkIcon, dispatch: "viewRelationships" },
     ],
   },
   leads: {
@@ -142,42 +144,42 @@ const pageContexts: Record<string, PageContext> = {
       { label: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
       { label: "nav.actions.viewTable", icon: TableIcon, href: "/dashboard/leads" },
       { label: "nav.actions.pipelineSettings", icon: Settings, href: "/dashboard/settings/pipelines" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/leads" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/leads" },
+      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
+      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
     ],
   },
   activities: {
     titleKey: "nav.activities",
     actions: [
       { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
-      { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/activities" },
+      { label: "nav.actions.filterByType", icon: Filter, dispatch: "openFilter" },
       { label: "nav.actions.calendarView", icon: Calendar, href: "/dashboard/calendar" },
-      { label: "nav.actions.upcomingOnly", icon: Clock, href: "/dashboard/activities" },
+      { label: "nav.actions.upcomingOnly", icon: Clock, dispatch: "upcomingOnly" },
     ],
   },
   calendar: {
     titleKey: "nav.calendar",
     actions: [
       { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
-      { label: "nav.actions.goToToday", icon: CalendarCheck, href: "/dashboard/calendar" },
+      { label: "nav.actions.goToToday", icon: CalendarCheck, dispatch: "goToToday" },
     ],
   },
   documents: {
     titleKey: "nav.documents",
     actions: [
       { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document", permissionFeature: "documents" },
-      { label: "nav.actions.createFromTemplate", icon: FileText, href: "/dashboard/documents" },
-      { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/documents" },
-      { label: "nav.actions.bulkActions", icon: CheckCircle, href: "/dashboard/documents" },
+      { label: "nav.actions.createFromTemplate", icon: FileText, dispatch: "createFromTemplate" },
+      { label: "nav.actions.filterByType", icon: Filter, dispatch: "openFilter" },
+      { label: "nav.actions.bulkActions", icon: CheckCircle, dispatch: "bulkActions" },
     ],
   },
   products: {
     titleKey: "nav.products",
     actions: [
       { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "product", permissionFeature: "products" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/products" },
-      { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
-      { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/products" },
+      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
+      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
+      { label: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },
     ],
   },
   calls: {
@@ -191,8 +193,8 @@ const pageContexts: Record<string, PageContext> = {
   inbox: {
     titleKey: "nav.inbox",
     actions: [
-      { label: "nav.actions.composeEmail", icon: Send, href: "/dashboard/inbox" },
-      { label: "nav.actions.viewUnread", icon: Mail, href: "/dashboard/inbox" },
+      { label: "nav.actions.composeEmail", icon: Send, dispatch: "composeEmail" },
+      { label: "nav.actions.viewUnread", icon: Mail, dispatch: "viewUnread" },
       { label: "nav.actions.syncGmail", icon: RefreshCw, href: "/dashboard/settings/email" },
       { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
     ],
@@ -204,28 +206,27 @@ const gabinetPageContexts: Record<string, PageContext> = {
     titleKey: "nav.gabinet.calendar",
     actions: [
       { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment", permissionFeature: "gabinet_appointments" },
-      { label: "nav.actions.goToToday", icon: Calendar, href: "/dashboard/gabinet/calendar" },
-      { label: "nav.actions.filterByEmployee", icon: UserCog, href: "/dashboard/gabinet/calendar" },
-      { label: "nav.actions.filterByTreatment", icon: Stethoscope, href: "/dashboard/gabinet/calendar" },
+      { label: "nav.actions.goToToday", icon: Calendar, dispatch: "goToToday" },
+      { label: "nav.actions.filterByEmployee", icon: UserCog, dispatch: "filterByEmployee" },
+      { label: "nav.actions.filterByTreatment", icon: Stethoscope, dispatch: "filterByTreatment" },
     ],
   },
   patients: {
     titleKey: "nav.gabinet.patients",
     actions: [
       { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient", permissionFeature: "gabinet_patients" },
-      { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/gabinet/patients" },
-      { label: "nav.actions.searchPatients", icon: SearchIcon, href: "/dashboard/gabinet/patients" },
-      { label: "nav.actions.filterByStatus", icon: Filter, href: "/dashboard/gabinet/patients" },
-      { label: "nav.actions.viewPatientStats", icon: BarChart3, href: "/dashboard/gabinet/patients" },
+      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
+      { label: "nav.actions.searchPatients", icon: SearchIcon, dispatch: "openSearch" },
+      { label: "nav.actions.filterByStatus", icon: Filter, dispatch: "openFilter" },
     ],
   },
   treatments: {
     titleKey: "nav.gabinet.treatments",
     actions: [
       { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment", permissionFeature: "gabinet_treatments" },
-      { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/gabinet/treatments" },
-      { label: "nav.actions.sortByPrice", icon: TrendingUp, href: "/dashboard/gabinet/treatments" },
-      { label: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/treatments" },
+      { label: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },
+      { label: "nav.actions.sortByPrice", icon: TrendingUp, dispatch: "sortByPrice" },
+      { label: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/settings" },
     ],
   },
   packages: {
@@ -243,7 +244,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
   documents: {
     titleKey: "nav.gabinet.documents",
     actions: [
-      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "gabinetDocument", permissionFeature: "documents" },
+      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "document", permissionFeature: "documents" },
     ],
   },
 };
@@ -283,7 +284,7 @@ const settingsNav: SettingsNavItem[] = [
 export function AppSidebar() {
   const matchRoute = useMatchRoute();
   const { t } = useTranslation();
-  const { openQuickCreate, navigateTo } = useSidebarActions();
+  const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
   const { can: canCreate } = usePermissions("create");
@@ -452,6 +453,8 @@ export function AppSidebar() {
                     onClick={() => {
                       if (action.quickCreate) {
                         openQuickCreate(action.quickCreate);
+                      } else if (action.dispatch) {
+                        dispatch(action.dispatch);
                       } else if (action.href) {
                         navigateTo(action.href);
                       }

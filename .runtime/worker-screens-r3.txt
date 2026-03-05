@@ -1,0 +1,10 @@
+You are Worker S3 (screens-patient-audit) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Capture evidence screenshots for patient/auth/runtime audit areas.
+Use browser automation and save PNGs into docs/runtime-e2e/screenshots:
+- auth-login-form.png
+- auth-logged-in-dashboard.png
+- patient-portal-view.png (if accessible)
+- runtime-error-console.png (if errors visible)
+
+Create docs/runtime-e2e/screens_manifest_r3.md with file list + notes + any missing screens reasons.
+Final line: S3_DONE

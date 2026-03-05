@@ -1,0 +1,8 @@
+{
+  "agent": "worker-c",
+  "pid": 22733,
+  "started_at": "2026-03-04T09:29:24Z",
+  "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-c-20260304-102924.log",
+  "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-c-20260304-102924.json",
+  "state": "running"
+}

@@ -1,0 +1,15 @@
+You are Worker S2 (screens-gabinet) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Take runtime screenshots for Gabinet flows using real data.
+Login if needed with:
+email amiesak@gmail.com
+password ABcdefg123!@#
+
+Capture PNGs into docs/runtime-e2e/screenshots:
+- gabinet-calendar.png
+- gabinet-appointments.png
+- gabinet-patients.png
+- gabinet-documents.png
+- gabinet-packages.png
+
+Create docs/runtime-e2e/screens_manifest_r2.md with file list + what is visible.
+Final line: S2_DONE

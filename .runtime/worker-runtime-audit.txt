@@ -1,0 +1,9 @@
+You are Worker R3 (runtime-audit) in /Users/alfred/.openclaw/workspace/projects/crm_new.
+Mission: Cross-check runtime changes at data layer and produce consolidated risk log.
+
+Do now:
+1) Snapshot key Convex tables counts before/after test window.
+2) Track any errors from dev logs and browser console if accessible.
+3) Verify auth/session integrity and no unexpected write anomalies.
+4) Produce docs/runtime-e2e/R3_audit.md with: metrics, anomalies, residual risks, rollback notes.
+Output final line: R3_DONE

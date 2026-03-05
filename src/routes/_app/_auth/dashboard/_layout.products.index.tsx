@@ -23,6 +23,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
@@ -74,6 +75,10 @@ function ProductsPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "products");
+
+  // Sidebar action dispatches
+  useSidebarDispatch("importCsv", () => setImportOpen(true));
+  useSidebarDispatch("exportCsv", () => handleExport());
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form state

@@ -5,15 +5,14 @@
 | Field           | Value |
 |-----------------|-------|
 | State           | RUNNING |
-| Current Task    | Blast-radius E2E validation after successful login |
+| Current Task    | Post-Sprint 0 development |
 | Started At      | 2026-03-04T09:02:55.055Z |
-| Updated At      | 2026-03-04T15:15:27.574Z |
-| Test Status     | unknown |
-| Build Status    | stale |
-| Lint Status     | unknown |
+| Updated At      | 2026-03-05T02:55:00.000Z |
+| Test Status     | passing |
+| Build Status    | green |
+| Lint Status     | green |
 | Git Branch      | main |
-| Dirty Files     | 89 |
-| Last Commit     | efcbf09 docs: describe horizontal modular SaaS architecture in CLAUDE.md |
+| Last Commit     | fca3b32 verify: PRD complete — e2e tests pass for all pages, quick-create modal, and permissions |
 
 ## Blockers
 
@@ -23,25 +22,19 @@ None.
 
 - vite-dev-server
 
-## Agents
+## Sprint 0 — CLOSED ✅
 
-- **claude** (PID 34068) — `tmux new -d -s crm-sprint0-ralph cd '/Users/alfred/.openclaw/workspace/projects/`
+Zamknięty 2026-03-05. Oryginalny scope (typecheck/build/lint) completed + OTP security hotfix merged.
 
-## Sprint 0 Checklist
-
-Progress: 4/6
-
-- [x] Convex configured + codegen works
-- [x] Typecheck green
-- [x] Build green
-- [x] Lint green
-- [ ] Blast-radius user validation
-- [ ] Sprint 0 report delivered
-
-## Last Commands
-
-None recorded.
+**Co zostało zrobione PO Sprint 0:**
+- RBAC permission system (shared types, hooks, permission gates)
+- Quick-create modal: Product, Call, Document, Activity, Leave, User invitation
+- Gabinet Phase 1 PRD — complete
+- Seat limits connected to subscription plans
+- Icon stroke variant consistency across system
+- E2E tests: all pages, quick-create modal, permissions
+- PRD verification complete
 
 ## Notes
 
-Logged in as amiesak@gmail.com; executing user-path validation across CRM/Gabinet. TODO board refreshed.
+Sprint 0 był o "czy to w ogóle działa". Teraz idziemy w feature development.

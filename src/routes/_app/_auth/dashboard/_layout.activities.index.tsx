@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import {
   Plus,
   Pencil,

@@ -152,17 +152,17 @@ e2e/
 
 ### 5.1 List View
 - [x] Activities list loads
-- [ ] Filters by type work
-- [ ] Filters by date work
+- [x] Filters by type work
+- [x] Filters by date work
 
 ### 5.2 Activity CRUD
 - [x] Create activity succeeds
-- [ ] Complete activity changes status
-- [ ] Delete activity removes
+- [x] Complete activity changes status
+- [x] Delete activity removes
 
 ### 5.3 Calendar Integration
 - [x] Activities appear in calendar
-- [ ] Click activity opens detail
+- [x] Click activity opens detail
 
 ---
 
@@ -259,23 +259,23 @@ e2e/
 ## 11. Gabinet — Leaves
 
 ### 11.1 Leave Request Flow
-- [ ] Create leave request succeeds
-- [ ] Leave appears with "pending" status
-- [ ] Admin can approve
+- [x] Create leave request succeeds
+- [x] Leave appears with "pending" status
+- [x] Admin can approve
 - [ ] Status changes to "approved"
-- [ ] Admin can reject
+- [x] Admin can reject
 - [ ] Status changes to "rejected"
 
 ### 11.2 Leave Types
-- [ ] Leave types list loads
-- [ ] Create leave type succeeds
-- [ ] Color picker works
-- [ ] Delete leave type soft-deletes
+- [x] Leave types list loads
+- [x] Create leave type succeeds
+- [x] Color picker works
+- [x] Delete leave type soft-deletes
 
 ### 11.3 Leave Balances
-- [ ] Balance display per employee
-- [ ] Progress bars show usage
-- [ ] Year filter works
+- [x] Balance display per employee
+- [x] Progress bars show usage
+- [x] Year filter works
 
 ---
 
@@ -284,16 +284,16 @@ e2e/
 ### 12.1 Appointment Creation
 - [x] Calendar page loads
 - [x] Click-to-create opens dialog
-- [ ] Patient search works
-- [ ] Treatment selector shows categories
-- [ ] Employee selector works
+- [x] Patient search works
+- [x] Treatment selector shows categories
+- [x] Employee selector works
 - [ ] Available slots load from backend
 - [ ] Slot selection works
 - [ ] Submit creates appointment
 - [ ] Appointment appears in calendar
 
 ### 12.2 Recurring Appointments
-- [ ] Recurring toggle shows options
+- [x] Recurring toggle shows options
 - [ ] Frequency selector works (daily/weekly/monthly)
 - [ ] Count field works
 - [ ] Until date picker works
@@ -328,24 +328,24 @@ e2e/
 
 ### 13.3 Filters
 - [x] Employee filter works
-- [ ] Filtered appointments only show
+- [x] Filtered appointments only show
 
 ### 13.4 Appointment Display
 - [ ] Appointments render with correct colors
-- [ ] Click appointment opens detail
-- [ ] Edit from detail works
+- [x] Click appointment opens detail
+- [x] Edit from detail works
 
 ---
 
 ## 14. Gabinet — Packages
 
 ### 14.1 Package CRUD
-- [ ] Packages list loads
-- [ ] Create package with treatments succeeds
-- [ ] Treatment quantities save
-- [ ] Total price calculates
-- [ ] Edit package persists
-- [ ] Delete package soft-deletes
+- [x] Packages list loads
+- [x] Create package with treatments succeeds
+- [x] Treatment quantities save
+- [x] Total price calculates
+- [x] Edit package persists
+- [x] Delete package soft-deletes
 
 ### 14.2 Package Purchase
 - [ ] Purchase creates usage record

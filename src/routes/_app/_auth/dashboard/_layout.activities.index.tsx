@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
 import {
   Plus,
   Pencil,
@@ -368,12 +368,13 @@ function ActivitiesPage() {
       />
 
       <div className="flex items-center gap-2 py-2">
-        <FilterButton
-          label={t('activities.actions.filterByType')}
-          icon={<Filter className="mr-1.5 h-4 w-4" />}
+        <SidebarFilterAction
+          dispatchId="openFilter"
           options={typeFilterOptions}
-          value={typeFilter}
-          onChange={setTypeFilter}
+          selected={typeFilter ? [typeFilter] : []}
+          onChange={(vals) => setTypeFilter(vals[0] || null)}
+          label={t('activities.actions.filterByType')}
+          singleSelect
         />
         <ToggleFilterButton
           label={t('activities.actions.showCompleted')}

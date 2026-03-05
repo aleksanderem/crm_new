@@ -33,7 +33,10 @@ import {
   Trash2,
   Check,
   RotateCcw,
+  Filter,
 } from "@/lib/ez-icons";
+import { FilterButton, ToggleFilterButton } from "@/components/crm/filter-button";
+import type { FilterOption } from "@/components/crm/filter-button";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
@@ -78,6 +81,8 @@ function ActivitiesPage() {
   } = useSavedViews({ organizationId, entityType: "activity", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -121,6 +126,18 @@ function ActivitiesPage() {
     convexQuery(api.activityTypes.list, { organizationId })
   );
 
+  const typeFilterOptions: FilterOption[] = useMemo(() => {
+    if (activityTypeDefs) {
+      return activityTypeDefs.map((td) => ({ label: td.name, value: td.key }));
+    }
+    return [
+      { label: t('activities.types.meeting'), value: "meeting" },
+      { label: t('activities.types.call'), value: "call" },
+      { label: t('activities.types.email'), value: "email" },
+      { label: t('activities.types.task'), value: "task" },
+    ];
+  }, [activityTypeDefs, t]);
+
   // Mutations
   const createActivity = useMutation(api.scheduledActivities.create);
   const updateActivity = useMutation(api.scheduledActivities.update);
@@ -146,8 +163,15 @@ function ActivitiesPage() {
       default:
         data = allData?.page ?? [];
     }
-    return applyFilters(data);
-  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters]);
+    let filtered = applyFilters(data);
+    if (typeFilter) {
+      filtered = filtered.filter((a) => a.activityType === typeFilter);
+    }
+    if (!showCompleted) {
+      filtered = filtered.filter((a) => !a.isCompleted);
+    }
+    return filtered;
+  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id as string),
@@ -342,17 +366,33 @@ function ActivitiesPage() {
         filterableFields={filterableFields}
       />
 
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newActivity'),
-            icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "activities",
-            action: "create",
-          },
-        ]}
-      />
+      <div className="flex items-center gap-2 py-2">
+        <FilterButton
+          label={t('activities.actions.filterByType')}
+          icon={<Filter className="mr-1.5 h-4 w-4" />}
+          options={typeFilterOptions}
+          value={typeFilter}
+          onChange={setTypeFilter}
+        />
+        <ToggleFilterButton
+          label={t('activities.actions.showCompleted')}
+          activeLabel={t('activities.actions.hideCompleted')}
+          icon={<Check className="mr-1.5 h-4 w-4" />}
+          active={showCompleted}
+          onChange={setShowCompleted}
+        />
+        <QuickActionBar
+          actions={[
+            {
+              label: t('quickActions.newActivity'),
+              icon: <Plus className="mr-1.5 h-[17px] w-[17px]" variant="stroke" />,
+              onClick: openCreatePanel,
+              feature: "activities",
+              action: "create",
+            },
+          ]}
+        />
+      </div>
 
       <CrmDataTable<ActivityRow>
         columns={columns}

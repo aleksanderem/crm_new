@@ -2,24 +2,476 @@
   "current_state": "RUNNING",
   "current_task": "Post-Sprint 0 development",
   "started_at": "2026-03-04T09:02:55.055Z",
-  "updated_at": "2026-03-05T02:55:00.000Z",
+  "updated_at": "2026-03-05T03:24:15.500Z",
   "blockers": [],
-  "active_processes": ["vite-dev-server"],
-  "agents": [],
-  "worker_runs": [],
-  "openclaw_sessions": [],
+  "active_processes": [
+    "vite-dev-server",
+    "convex-dev",
+    "tsc"
+  ],
+  "agents": [
+    {
+      "pid": 41034,
+      "agent": "claude",
+      "command": "claude -p --permission-mode bypassPermissions --output-format text You are in iteration 1 of a Ralph loop. Work on the P",
+      "started_at": "2026-03-05T03:23:05.692Z",
+      "state": "running",
+      "last_output": null,
+      "log_file": null
+    }
+  ],
+  "worker_runs": [
+    {
+      "agent": "otp-security-ralph",
+      "pid": 38214,
+      "state": "running",
+      "started_at": "2026-03-04T13:07:00Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/otp-security-ralph-20260304-140700.log",
+      "last_output": "EXITED:0",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/otp-security-ralph-20260304-140700.json"
+    },
+    {
+      "agent": "crm-sprint0-ralph",
+      "pid": 34069,
+      "state": "running",
+      "started_at": "2026-03-04T11:23:30Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/crm-sprint0-ralph-20260304-122330.log",
+      "last_output": "EXITED:0",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/crm-sprint0-ralph-20260304-122330.json"
+    },
+    {
+      "agent": "screens-s3",
+      "pid": 30485,
+      "state": "finished",
+      "started_at": "2026-03-04T10:52:44Z",
+      "finished_at": "2026-03-04T10:55:16.523396Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s3-20260304-115244.log",
+      "last_output": "S3_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s3-20260304-115244.json"
+    },
+    {
+      "agent": "screens-s1",
+      "pid": 30457,
+      "state": "finished",
+      "started_at": "2026-03-04T10:52:43Z",
+      "finished_at": "2026-03-04T10:58:14.608341Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s1-20260304-115243.log",
+      "last_output": "S1_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s1-20260304-115243.json"
+    },
+    {
+      "agent": "screens-s2",
+      "pid": 30471,
+      "state": "finished",
+      "started_at": "2026-03-04T10:52:43Z",
+      "finished_at": "2026-03-04T10:57:43.799338Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s2-20260304-115243.log",
+      "last_output": "S2_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/screens-s2-20260304-115243.json"
+    },
+    {
+      "agent": "runtime-r1",
+      "pid": 28843,
+      "state": "finished",
+      "started_at": "2026-03-04T10:50:16Z",
+      "finished_at": "2026-03-04T11:06:19.723271Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r1-20260304-115016.log",
+      "last_output": "R1_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r1-20260304-115016.json"
+    },
+    {
+      "agent": "runtime-r2",
+      "pid": 28857,
+      "state": "finished",
+      "started_at": "2026-03-04T10:50:16Z",
+      "finished_at": "2026-03-04T10:58:46.297758Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r2-20260304-115016.log",
+      "last_output": "R2_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r2-20260304-115016.json"
+    },
+    {
+      "agent": "runtime-r3",
+      "pid": 28871,
+      "state": "finished",
+      "started_at": "2026-03-04T10:50:16Z",
+      "finished_at": "2026-03-04T10:53:07.452013Z",
+      "exit_code": 0,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r3-20260304-115016.log",
+      "last_output": "R3_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/runtime-r3-20260304-115016.json"
+    },
+    {
+      "agent": "worker-a",
+      "pid": 22705,
+      "state": "running",
+      "started_at": "2026-03-04T09:29:24Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-a-20260304-102924.log",
+      "last_output": "WORKER_A_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-a-20260304-102924.json"
+    },
+    {
+      "agent": "worker-b",
+      "pid": 22719,
+      "state": "running",
+      "started_at": "2026-03-04T09:29:24Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-b-20260304-102924.log",
+      "last_output": "WORKER_B_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-b-20260304-102924.json"
+    },
+    {
+      "agent": "worker-c",
+      "pid": 22733,
+      "state": "running",
+      "started_at": "2026-03-04T09:29:24Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-c-20260304-102924.log",
+      "last_output": "WORKER_C_DONE",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/worker-c-20260304-102924.json"
+    },
+    {
+      "agent": "sprint0-claude",
+      "pid": 21773,
+      "state": "running",
+      "started_at": "2026-03-04T09:22:12Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/sprint0-claude-20260304-102212.log",
+      "last_output": "DONE_SPRINT0",
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/sprint0-claude-20260304-102212.json"
+    },
+    {
+      "agent": "sprint0-claude",
+      "pid": 21349,
+      "state": "running",
+      "started_at": "2026-03-04T09:21:14Z",
+      "finished_at": null,
+      "exit_code": null,
+      "log_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/sprint0-claude-20260304-102114.log",
+      "last_output": null,
+      "meta_file": "/Users/alfred/.openclaw/workspace/projects/crm_new/.runtime/agents/sprint0-claude-20260304-102114.json"
+    }
+  ],
+  "openclaw_sessions": [
+    {
+      "key": "agent:main:telegram:direct:1865993271:thread:1865993271:12852",
+      "sessionId": "aeb17e78-6cc9-4c8c-a37a-a60a0217657d",
+      "updatedAt": "2026-03-05T03:20:41.633Z",
+      "ageMs": 213837,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 29278,
+      "inputTokens": 13548,
+      "outputTokens": 3949
+    },
+    {
+      "key": "agent:main:main",
+      "sessionId": "48cc822b-04be-4f36-836a-b407b5094b1a",
+      "updatedAt": "2026-03-05T03:20:41.583Z",
+      "ageMs": 213887,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 18633,
+      "inputTokens": 6985,
+      "outputTokens": 39
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492",
+      "sessionId": "fa9e7d74-8f37-4b39-b883-125b3063e56e",
+      "updatedAt": "2026-03-05T03:11:06.797Z",
+      "ageMs": 788673,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16666,
+      "inputTokens": 1737,
+      "outputTokens": 1046
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:fa9e7d74-8f37-4b39-b883-125b3063e56e",
+      "sessionId": "fa9e7d74-8f37-4b39-b883-125b3063e56e",
+      "updatedAt": "2026-03-05T03:11:06.797Z",
+      "ageMs": 788673,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16666,
+      "inputTokens": 1737,
+      "outputTokens": 1046
+    },
+    {
+      "key": "agent:main:telegram:direct:1865993271:thread:1865993271:12858",
+      "sessionId": "4ddfaa23-dee8-4192-a0a5-5bb11df437c2",
+      "updatedAt": "2026-03-05T03:08:53.824Z",
+      "ageMs": 921646,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16512,
+      "inputTokens": 128,
+      "outputTokens": 432
+    },
+    {
+      "key": "agent:main:cron:76a2e814-6d30-4943-aa5c-832762ed30c9",
+      "sessionId": "dd6ee5f9-5313-46d1-9480-805f1cfbb3df",
+      "updatedAt": "2026-03-05T03:03:23.633Z",
+      "ageMs": 1251837,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15357,
+      "inputTokens": 330,
+      "outputTokens": 306
+    },
+    {
+      "key": "agent:main:cron:76a2e814-6d30-4943-aa5c-832762ed30c9:run:dd6ee5f9-5313-46d1-9480-805f1cfbb3df",
+      "sessionId": "dd6ee5f9-5313-46d1-9480-805f1cfbb3df",
+      "updatedAt": "2026-03-05T03:03:23.633Z",
+      "ageMs": 1251837,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15357,
+      "inputTokens": 330,
+      "outputTokens": 306
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:b54b327b-f343-4e83-b9e8-3e12d40fb4ac",
+      "sessionId": "b54b327b-f343-4e83-b9e8-3e12d40fb4ac",
+      "updatedAt": "2026-03-05T02:56:06.783Z",
+      "ageMs": 1688687,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16238,
+      "inputTokens": 1206,
+      "outputTokens": 499
+    },
+    {
+      "key": "agent:main:telegram:direct:1865993271:thread:1865993271:12849",
+      "sessionId": "e5b503ac-11c0-41c5-b485-ca9d96ae6d38",
+      "updatedAt": "2026-03-05T02:43:57.196Z",
+      "ageMs": 2418274,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 32288,
+      "inputTokens": 17766,
+      "outputTokens": 3808
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:a5e8d86d-0805-49e0-9553-0c24d167e1b2",
+      "sessionId": "a5e8d86d-0805-49e0-9553-0c24d167e1b2",
+      "updatedAt": "2026-03-05T02:41:06.773Z",
+      "ageMs": 2588697,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16124,
+      "inputTokens": 1098,
+      "outputTokens": 380
+    },
+    {
+      "key": "agent:main:telegram:direct:1865993271:thread:1865993271:12825",
+      "sessionId": "569a33a6-d565-4a94-9156-c801746136ed",
+      "updatedAt": "2026-03-05T02:36:43.216Z",
+      "ageMs": 2852254,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 104460,
+      "inputTokens": 12158,
+      "outputTokens": 2167
+    },
+    {
+      "key": "agent:main:cron:76a2e814-6d30-4943-aa5c-832762ed30c9:run:7565b88f-d4a1-4a6c-a750-c13a735c4e09",
+      "sessionId": "7565b88f-d4a1-4a6c-a750-c13a735c4e09",
+      "updatedAt": "2026-03-05T02:33:23.630Z",
+      "ageMs": 3051840,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15264,
+      "inputTokens": 237,
+      "outputTokens": 170
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:039165bd-3624-41b9-bad5-e28993ccaf0e",
+      "sessionId": "039165bd-3624-41b9-bad5-e28993ccaf0e",
+      "updatedAt": "2026-03-05T02:26:06.761Z",
+      "ageMs": 3488709,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15979,
+      "inputTokens": 932,
+      "outputTokens": 306
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:1caa6d77-97a0-4edb-a90a-974e08afe9a5",
+      "sessionId": "1caa6d77-97a0-4edb-a90a-974e08afe9a5",
+      "updatedAt": "2026-03-05T02:09:37.092Z",
+      "ageMs": 4478378,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15925,
+      "inputTokens": 907,
+      "outputTokens": 334
+    },
+    {
+      "key": "agent:main:cron:76a2e814-6d30-4943-aa5c-832762ed30c9:run:a6499253-d016-4a4d-bb33-46d4b003d5dc",
+      "sessionId": "a6499253-d016-4a4d-bb33-46d4b003d5dc",
+      "updatedAt": "2026-03-05T02:03:23.613Z",
+      "ageMs": 4851857,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 16150,
+      "inputTokens": 1178,
+      "outputTokens": 364
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:fcedc993-691d-4bf4-9afb-9b79f6b0b89b",
+      "sessionId": "fcedc993-691d-4bf4-9afb-9b79f6b0b89b",
+      "updatedAt": "2026-03-05T01:54:37.082Z",
+      "ageMs": 5378388,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15263,
+      "inputTokens": 177,
+      "outputTokens": 157
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:59e9c29f-00f2-49cd-9699-7f09b3829fbd",
+      "sessionId": "59e9c29f-00f2-49cd-9699-7f09b3829fbd",
+      "updatedAt": "2026-03-05T01:39:37.073Z",
+      "ageMs": 6278397,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15985,
+      "inputTokens": 957,
+      "outputTokens": 400
+    },
+    {
+      "key": "agent:main:cron:76a2e814-6d30-4943-aa5c-832762ed30c9:run:afb0297d-699c-4f89-b869-c2bdba59c67d",
+      "sessionId": "afb0297d-699c-4f89-b869-c2bdba59c67d",
+      "updatedAt": "2026-03-05T01:33:23.601Z",
+      "ageMs": 6651869,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15361,
+      "inputTokens": 334,
+      "outputTokens": 383
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:adce3c03-5d54-4ba1-9db6-0f61274c9301",
+      "sessionId": "adce3c03-5d54-4ba1-9db6-0f61274c9301",
+      "updatedAt": "2026-03-05T01:24:37.060Z",
+      "ageMs": 7178410,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15842,
+      "inputTokens": 756,
+      "outputTokens": 398
+    },
+    {
+      "key": "agent:main:cron:d04c08ee-b8bf-4868-9685-5d8f93828492:run:355f7c1d-1878-4ac3-b024-900d9905b646",
+      "sessionId": "355f7c1d-1878-4ac3-b024-900d9905b646",
+      "updatedAt": "2026-03-05T01:09:37.054Z",
+      "ageMs": 8078416,
+      "model": "glm-5",
+      "modelProvider": "zai",
+      "agentId": "main",
+      "kind": "direct",
+      "totalTokens": 15825,
+      "inputTokens": 786,
+      "outputTokens": 288
+    }
+  ],
   "last_commands": [],
   "test_status": "passing",
-  "build_status": "green",
+  "build_status": "pass (recent)",
   "lint_status": "green",
   "git": {
     "branch": "main",
-    "last_commit": "fca3b32 verify: PRD complete — e2e tests pass for all pages, quick-create modal, and permissions"
+    "dirty_files": 1,
+    "last_commit": "70ecd67 fix: Ralph loop counter bug + E2E test reliability improvements"
   },
   "notes": "Sprint 0 CLOSED 2026-03-05. Post-sprint work: RBAC, quick-create modal, Gabinet Phase 1, seat limits, E2E tests.",
   "sprint0": {
-    "status": "CLOSED",
-    "closed_at": "2026-03-05T02:55:00.000Z",
-    "summary": "Typecheck/build/lint green + OTP security hotfix. Post-sprint: RBAC, quick-create, Gabinet Phase 1, E2E tests."
+    "current_focus": "OTP security hotfix + retest (production gate)",
+    "tasks": [
+      {
+        "id": "convex",
+        "title": "Convex configured + codegen works",
+        "done": true
+      },
+      {
+        "id": "typecheck",
+        "title": "Typecheck green",
+        "done": true
+      },
+      {
+        "id": "build",
+        "title": "Build green",
+        "done": true
+      },
+      {
+        "id": "lint",
+        "title": "Lint green",
+        "done": true
+      },
+      {
+        "id": "blast",
+        "title": "Blast-radius user validation",
+        "done": false
+      },
+      {
+        "id": "report",
+        "title": "Sprint 0 report delivered",
+        "done": false
+      }
+    ],
+    "done_count": 4,
+    "total_count": 6
   }
 }

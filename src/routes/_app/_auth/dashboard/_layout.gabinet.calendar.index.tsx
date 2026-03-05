@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
@@ -28,7 +28,6 @@ import { CalendarDayView } from "@/components/gabinet/calendar/calendar-day-view
 import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
-import { AppointmentDetailDialog } from "@/components/gabinet/calendar/appointment-detail-dialog";
 import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { toast } from "sonner";
@@ -58,6 +57,7 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
@@ -66,7 +66,6 @@ function GabinetCalendarPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDefaultDate, setCreateDefaultDate] = useState<string | undefined>();
   const [createDefaultTime, setCreateDefaultTime] = useState<string | undefined>();
-  const [detailAppointmentId, setDetailAppointmentId] = useState<string | null>(null);
 
   // Drag state
   const [activeAppointment, setActiveAppointment] = useState<{
@@ -296,8 +295,9 @@ function GabinetCalendarPage() {
   }, []);
 
   const handleAppointmentClick = useCallback((id: string) => {
-    setDetailAppointmentId(id);
-  }, []);
+    // Navigate to full-page appointment detail
+    navigate({ to: "/dashboard/gabinet/appointments/$appointmentId", params: { appointmentId: id } });
+  }, [navigate]);
 
   // DnD handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -495,18 +495,6 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
         />
-
-        {/* Appointment detail dialog */}
-        {detailAppointmentId && (
-          <AppointmentDetailDialog
-            organizationId={organizationId}
-            appointmentId={detailAppointmentId as Id<"gabinetAppointments">}
-            open={!!detailAppointmentId}
-            onOpenChange={(open) => {
-              if (!open) setDetailAppointmentId(null);
-            }}
-          />
-        )}
       </div>
 
       {/* Drag overlay - shows appointment being dragged */}

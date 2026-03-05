@@ -458,7 +458,8 @@ function PatientDetail() {
                             return (
                               <div
                                 key={apt._id}
-                                className={`flex items-center gap-4 rounded-lg border p-3 ${isPast ? "opacity-60" : ""}`}
+                                className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
+                                onClick={() => navigate({ to: "/dashboard/gabinet/appointments/$appointmentId", params: { appointmentId: apt._id } })}
                               >
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                                   <Calendar className="h-4 w-4 text-primary" variant="stroke" />

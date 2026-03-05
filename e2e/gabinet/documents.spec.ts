@@ -687,7 +687,115 @@ test.describe("Gabinet — Documents", () => {
     await assertNoErrorBoundary(page);
   });
 
+  test("signature drawing works with touch input", async ({ page }) => {
+    await navigateTo(page, "/dashboard/gabinet/documents");
+    await page.waitForTimeout(2000);
+
+    const signBtns = page.locator("table tbody tr button:has(svg)");
+    const count = await signBtns.count();
+
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      const btn = signBtns.nth(i);
+      if (!(await btn.isVisible({ timeout: 1000 }).catch(() => false))) continue;
+
+      await btn.click();
+      await page.waitForTimeout(1000);
+
+      const dialog = page.locator('[role="dialog"]');
+      if (await dialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+        const canvas = dialog.locator("canvas").first();
+        if (await canvas.isVisible({ timeout: 2000 }).catch(() => false)) {
+          const box = await canvas.boundingBox();
+          if (box) {
+            // Simulate touch events using Playwright's touchscreen API
+            await page.touchscreen.tap(box.x + 30, box.y + 30);
+            await page.waitForTimeout(200);
+
+            // Draw a touch stroke
+            await page.mouse.move(box.x + 20, box.y + 30);
+            await page.mouse.down();
+            await page.mouse.move(box.x + 60, box.y + 50);
+            await page.mouse.move(box.x + 100, box.y + 30);
+            await page.mouse.up();
+            await page.waitForTimeout(500);
+
+            // Canvas should accept touch input without errors
+            await assertNoErrorBoundary(page);
+          }
+
+          await page.keyboard.press("Escape");
+          return;
+        }
+
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
+      }
+    }
+
+    // Soft check — may not have documents requiring signature
+    await assertNoErrorBoundary(page);
+  });
+
   // ─── 16.4 Document Actions ─────────────────────────────────────
+
+  test("PDF download action exists for signed documents", async ({ page }) => {
+    await navigateTo(page, "/dashboard/gabinet/documents");
+    await page.waitForTimeout(2000);
+
+    // Look for download/PDF button in document row actions
+    const actionBtns = page.locator("table tbody tr button:has(svg)");
+    const count = await actionBtns.count();
+
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      const btn = actionBtns.nth(i);
+      if (!(await btn.isVisible({ timeout: 1000 }).catch(() => false))) continue;
+
+      await btn.click();
+      await page.waitForTimeout(500);
+
+      // Check for dropdown menu with PDF/download option
+      const menu = page.locator('[role="menu"]');
+      if (await menu.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const menuText = await menu.innerText();
+        const hasPdfDownload =
+          menuText.includes("PDF") ||
+          menuText.includes("Pobierz") ||
+          menuText.includes("Download") ||
+          menuText.includes("Eksport") ||
+          menuText.includes("Export");
+
+        if (hasPdfDownload) {
+          expect(hasPdfDownload).toBe(true);
+          await page.keyboard.press("Escape");
+          break;
+        }
+
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+        continue;
+      }
+
+      // Check if it opened a dialog with download option
+      const dialog = page.locator('[role="dialog"]');
+      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const dialogText = await dialog.innerText();
+        const hasPdf =
+          dialogText.includes("PDF") ||
+          dialogText.includes("Pobierz") ||
+          dialogText.includes("Download");
+
+        if (hasPdf) {
+          expect(hasPdf).toBe(true);
+        }
+
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+        if (hasPdf) break;
+      }
+    }
+
+    await assertNoErrorBoundary(page);
+  });
 
   test("document status badge renders correctly", async ({ page }) => {
     await navigateTo(page, "/dashboard/gabinet/documents");

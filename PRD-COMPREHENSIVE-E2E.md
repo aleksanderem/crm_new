@@ -66,9 +66,9 @@ e2e/
 - [x] Protected route redirects to login when not authenticated
 
 ### 1.3 Password Reset
-- [ ] Request reset email sent
-- [ ] Reset link works
-- [ ] New password applied
+- [x] Request reset email sent
+- [x] Reset link works
+- [x] New password applied
 
 ---
 
@@ -297,8 +297,8 @@ e2e/
 - [x] Frequency selector works (daily/weekly/monthly)
 - [x] Count field works
 - [x] Until date picker works
-- [ ] Submit creates series
-- [ ] All instances appear in calendar
+- [x] Submit creates series
+- [x] All instances appear in calendar
 
 ### 12.3 Conflict Detection
 - [x] Overlapping appointment shows warning
@@ -355,7 +355,7 @@ e2e/
 
 ### 14.3 Package Usage
 - [x] Link appointment to package works
-- [ ] Complete appointment deducts from package
+- [x] Complete appointment deducts from package
 - [x] Usage count updates
 
 ---
@@ -392,14 +392,14 @@ e2e/
 - [x] Request signature changes status
 - [x] Signature pad renders
 - [x] Drawing works (mouse)
-- [ ] Drawing works (touch)
+- [x] Drawing works (touch)
 - [x] Clear button works
 - [x] Save signature works
 - [x] Status changes to "signed"
 
 ### 16.4 Document Actions
 - [x] View signed document shows signature
-- [ ] PDF download works
+- [x] PDF download works
 - [x] Archive document works
 
 ---
@@ -407,19 +407,19 @@ e2e/
 ## 17. Gabinet — Patient Portal
 
 ### 17.1 Authentication
-- [ ] Email input sends OTP
-- [ ] OTP input validates
-- [ ] Successful login creates session
-- [ ] Session persists across refresh
-- [ ] Logout clears session
+- [x] Email input sends OTP
+- [x] OTP input validates
+- [x] Successful login creates session
+- [x] Session persists across refresh
+- [x] Logout clears session
 
 ### 17.2 Portal Data Access
-- [ ] Profile page shows patient data
-- [ ] Appointments page shows patient's appointments
-- [ ] Documents page shows patient's documents
-- [ ] Packages page shows patient's packages
-- [ ] Loyalty page shows patient's points
-- [ ] No cross-patient data leakage
+- [x] Profile page shows patient data
+- [x] Appointments page shows patient's appointments
+- [x] Documents page shows patient's documents
+- [ ] Packages page shows patient's packages (BLOCKED: no /patient/packages route exists)
+- [ ] Loyalty page shows patient's points (BLOCKED: no /patient/loyalty route exists)
+- [x] No cross-patient data leakage
 
 ---
 

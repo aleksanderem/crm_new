@@ -34,10 +34,8 @@ import {
   Trash2,
   Check,
   RotateCcw,
-  Filter,
 } from "@/lib/ez-icons";
-import { FilterButton, ToggleFilterButton } from "@/components/crm/filter-button";
-import type { FilterOption } from "@/components/crm/filter-button";
+import { ToggleFilterButton } from "@/components/crm/filter-button";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";

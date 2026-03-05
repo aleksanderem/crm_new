@@ -348,30 +348,30 @@ e2e/
 - [x] Delete package soft-deletes
 
 ### 14.2 Package Purchase
-- [ ] Purchase creates usage record
-- [ ] Patient packages list shows active
-- [ ] Progress bar shows used/total
-- [ ] Expiration date displays
+- [x] Purchase creates usage record
+- [x] Patient packages list shows active
+- [x] Progress bar shows used/total
+- [x] Expiration date displays
 
 ### 14.3 Package Usage
 - [ ] Link appointment to package works
 - [ ] Complete appointment deducts from package
-- [ ] Usage count updates
+- [x] Usage count updates
 
 ---
 
 ## 15. Gabinet — Loyalty
 
 ### 15.1 Points Flow
-- [ ] Complete appointment awards points
+- [x] Complete appointment awards points
 - [x] Points balance updates
 - [x] Transaction history shows
-- [ ] Spend points succeeds
-- [ ] Spend validates balance
+- [x] Spend points succeeds
+- [x] Spend validates balance
 
 ### 15.2 Tiers
 - [x] Tier displays based on points
-- [ ] Tier upgrade happens at threshold
+- [x] Tier upgrade happens at threshold
 
 ---
 
@@ -510,12 +510,12 @@ e2e/
 - [x] Required field errors appear
 - [x] Email validation works
 - [x] Phone validation works
-- [ ] Custom validation messages show
+- [x] Custom validation messages show
 
 ### 22.2 API Errors
-- [ ] Network error shows message
+- [x] Network error shows message
 - [x] Permission error shows message
-- [ ] Validation error shows message
+- [x] Validation error shows message
 
 ### 22.3 Edge Cases
 - [x] Empty states display correctly

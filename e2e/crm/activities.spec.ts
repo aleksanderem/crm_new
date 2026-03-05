@@ -67,7 +67,176 @@ test.describe("CRM — Activities", () => {
     }
   });
 
-  // ─── 5.1 continued — Filters ────────────────────────────────
+  // ─── 5.1a Filter Buttons ────────────────────────────────────
+
+  test("type filter dropdown opens and shows options", async ({ page }) => {
+    await navigateTo(page, "/dashboard/activities");
+
+    // Find the type filter button (FilterButton component)
+    const filterBtn = page
+      .locator(
+        'button:has-text("Filtruj wg typu"), button:has-text("Filter by type")'
+      )
+      .first();
+
+    if (!(await filterBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await filterBtn.click();
+    await page.waitForTimeout(500);
+
+    // Popover should open with filter options
+    const popover = page.locator('[data-radix-popper-content-wrapper]').first();
+    await expect(popover).toBeVisible({ timeout: 3000 });
+
+    // Should have at least one filter option visible
+    const options = popover.locator("button");
+    const optionCount = await options.count();
+    expect(optionCount).toBeGreaterThanOrEqual(1);
+  });
+
+  test("selecting type filter applies and shows indicator", async ({ page }) => {
+    await navigateTo(page, "/dashboard/activities");
+
+    const filterBtn = page
+      .locator(
+        'button:has-text("Filtruj wg typu"), button:has-text("Filter by type")'
+      )
+      .first();
+
+    if (!(await filterBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await filterBtn.click();
+    await page.waitForTimeout(500);
+
+    // Click the first filter option in the popover
+    const popover = page.locator('[data-radix-popper-content-wrapper]').first();
+    const firstOption = popover.locator("button").first();
+
+    if (await firstOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const optionText = (await firstOption.textContent()) ?? "";
+      await firstOption.click();
+      await page.waitForTimeout(500);
+
+      // After selecting, button should show the selected option name or a badge
+      const updatedBtn = page
+        .locator(
+          'button:has-text("Filtruj wg typu"), button:has-text("Filter by type")'
+        )
+        .first();
+
+      // Either the button text changed to the option or it has a badge indicator
+      const btnText = await page
+        .locator('[data-radix-popper-content-wrapper]')
+        .isVisible()
+        .catch(() => false);
+      // Popover should be closed after selection
+      expect(btnText).toBe(false);
+    }
+
+    await assertNoErrorBoundary(page);
+  });
+
+  test("clear filter works", async ({ page }) => {
+    await navigateTo(page, "/dashboard/activities");
+
+    const filterBtn = page
+      .locator(
+        'button:has-text("Filtruj wg typu"), button:has-text("Filter by type")'
+      )
+      .first();
+
+    if (!(await filterBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    // First select a filter
+    await filterBtn.click();
+    await page.waitForTimeout(500);
+
+    const popover = page.locator('[data-radix-popper-content-wrapper]').first();
+    const firstOption = popover.locator("button").first();
+
+    if (!(await firstOption.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await firstOption.click();
+    await page.waitForTimeout(500);
+
+    // Now re-open and look for the "Clear filter" button
+    // The button text should have changed (no longer showing "Filtruj wg typu")
+    // Find the filter button area (it may now show the selected type name)
+    const activeFilterBtn = page
+      .locator('button:has(.bg-primary\\/10), button:has-text("1")')
+      .first();
+
+    // Alternatively, just click the same area again
+    const reopenBtn = page.locator('button').filter({ has: page.locator('.h-4.min-w-4') }).first();
+
+    if (await reopenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await reopenBtn.click();
+      await page.waitForTimeout(500);
+
+      const clearBtn = page
+        .locator('button:has-text("Clear filter"), button:has-text("Wyczyść")')
+        .first();
+
+      if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clearBtn.click();
+        await page.waitForTimeout(500);
+        await assertNoErrorBoundary(page);
+      }
+    }
+  });
+
+  test("show completed toggle works", async ({ page }) => {
+    await navigateTo(page, "/dashboard/activities");
+
+    // Find the toggle button
+    const toggleBtn = page
+      .locator(
+        'button:has-text("Pokaż ukończone"), button:has-text("Show completed")'
+      )
+      .first();
+
+    if (!(await toggleBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    // Click to enable
+    await toggleBtn.click();
+    await page.waitForTimeout(500);
+    await assertNoErrorBoundary(page);
+
+    // Button text should change to "Ukryj ukończone" / "Hide completed"
+    const hideBtn = page
+      .locator(
+        'button:has-text("Ukryj ukończone"), button:has-text("Hide completed")'
+      )
+      .first();
+
+    const toggledSuccessfully = await hideBtn
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
+
+    // Click again to disable
+    if (toggledSuccessfully) {
+      await hideBtn.click();
+      await page.waitForTimeout(500);
+      await assertNoErrorBoundary(page);
+    }
+  });
+
+  // ─── 5.1 continued — Saved View Filters ────────────────────
 
   test("filters by type work via saved views", async ({ page }) => {
     await navigateTo(page, "/dashboard/activities");

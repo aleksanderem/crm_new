@@ -77,7 +77,37 @@ function SchedulingSettings() {
     );
   };
 
+  const validationErrors = hours
+    .filter((h) => h.isOpen && h.endTime <= h.startTime)
+    .map((h) => dayNames[h.dayOfWeek]);
+
+  const breakErrors = hours
+    .filter(
+      (h) =>
+        h.isOpen &&
+        h.breakStart &&
+        h.breakEnd &&
+        h.breakEnd <= h.breakStart
+    )
+    .map((h) => dayNames[h.dayOfWeek]);
+
   const handleSave = async () => {
+    if (validationErrors.length > 0) {
+      toast.error(
+        t("gabinet.scheduling.validationEndAfterStart", {
+          days: validationErrors.join(", "),
+        })
+      );
+      return;
+    }
+    if (breakErrors.length > 0) {
+      toast.error(
+        t("gabinet.scheduling.validationBreakEndAfterStart", {
+          days: breakErrors.join(", "),
+        })
+      );
+      return;
+    }
     setSaving(true);
     try {
       await bulkSet({
@@ -115,10 +145,13 @@ function SchedulingSettings() {
           <span>{t("gabinet.scheduling.breakEnd")}</span>
         </div>
 
-        {hours.map((h) => (
+        {hours.map((h) => {
+          const hasTimeError = h.isOpen && h.endTime <= h.startTime;
+          const hasBreakError = h.isOpen && h.breakStart && h.breakEnd && h.breakEnd <= h.breakStart;
+          return (
           <div
             key={h.dayOfWeek}
-            className="grid grid-cols-[180px_80px_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-4 py-2 last:border-b-0"
+            className={`grid grid-cols-[180px_80px_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-4 py-2 last:border-b-0 ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
           >
             <span className="text-sm font-medium">{dayNames[h.dayOfWeek]}</span>
             <Checkbox
@@ -154,11 +187,12 @@ function SchedulingSettings() {
               disabled={!h.isOpen}
             />
           </div>
-        ))}
+        );
+        })}
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || validationErrors.length > 0 || breakErrors.length > 0}>
           {saving ? t("common.saving") : t("common.save")}
         </Button>
       </div>

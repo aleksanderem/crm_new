@@ -1196,7 +1196,9 @@
       "start": "Start",
       "end": "End",
       "breakStart": "Break Start",
-      "breakEnd": "Break End"
+      "breakEnd": "Break End",
+      "validationEndAfterStart": "End time must be after start time: {{days}}",
+      "validationBreakEndAfterStart": "Break end must be after break start: {{days}}"
     },
     "leaves": {
       "title": "Leave Management",
@@ -1214,6 +1216,8 @@
       "pending": "Pending",
       "approvedStatus": "Approved",
       "rejectedStatus": "Rejected",
+      "allStatuses": "All Statuses",
+      "filterByStatus": "Filter by status",
       "empty": "No leave requests",
       "types": {
         "vacation": "Vacation",

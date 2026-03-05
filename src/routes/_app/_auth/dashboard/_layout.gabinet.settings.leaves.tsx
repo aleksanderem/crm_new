@@ -45,7 +45,10 @@ function LeavesPage() {
   const rejectLeave = useMutation(api.gabinet.scheduling.rejectLeave);
 
   const { data: leaves } = useQuery(
-    convexQuery(api.gabinet.scheduling.listLeaves, { organizationId })
+    convexQuery(api.gabinet.scheduling.listLeaves, {
+      organizationId,
+      status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+    })
   );
 
   const { data: employees } = useQuery(
@@ -63,6 +66,7 @@ function LeavesPage() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;
@@ -188,6 +192,20 @@ function LeavesPage() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder={t("gabinet.leaves.filterByStatus")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("gabinet.leaves.allStatuses")}</SelectItem>
+            <SelectItem value="pending">{t("gabinet.leaves.pending")}</SelectItem>
+            <SelectItem value="approved">{t("gabinet.leaves.approvedStatus")}</SelectItem>
+            <SelectItem value="rejected">{t("gabinet.leaves.rejectedStatus")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border">

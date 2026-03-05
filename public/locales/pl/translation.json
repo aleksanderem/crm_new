@@ -1196,7 +1196,9 @@
       "start": "Start",
       "end": "Koniec",
       "breakStart": "Początek przerwy",
-      "breakEnd": "Koniec przerwy"
+      "breakEnd": "Koniec przerwy",
+      "validationEndAfterStart": "Godzina końca musi być po godzinie początku: {{days}}",
+      "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}"
     },
     "leaves": {
       "title": "Zarządzanie urlopami",
@@ -1214,6 +1216,8 @@
       "pending": "Oczekujący",
       "approvedStatus": "Zatwierdzony",
       "rejectedStatus": "Odrzucony",
+      "allStatuses": "Wszystkie statusy",
+      "filterByStatus": "Filtruj wg statusu",
       "empty": "Brak wniosków urlopowych",
       "types": {
         "vacation": "Urlop wypoczynkowy",

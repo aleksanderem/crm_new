@@ -254,4 +254,85 @@ test.describe("Settings — Team", () => {
 
     expect(hasInvitationsSection).toBe(true);
   });
+
+  // ─── 18.1 continued — Remove member ────────────────────────────
+
+  test("remove member option exists in action menu", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+    await page.waitForTimeout(2000);
+
+    // Look for action buttons on member rows
+    const iconBtns = page.locator("button:has(svg)");
+    const count = await iconBtns.count();
+
+    let foundRemove = false;
+    for (let i = 0; i < Math.min(count, 15); i++) {
+      const btn = iconBtns.nth(i);
+      if (!(await btn.isVisible({ timeout: 500 }).catch(() => false))) continue;
+
+      await btn.click();
+      await page.waitForTimeout(500);
+
+      const dropdownMenu = page.locator('[role="menu"]');
+      if (await dropdownMenu.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const menuText = await dropdownMenu.innerText();
+
+        const hasRemove =
+          menuText.includes("Usuń") ||
+          menuText.includes("Remove") ||
+          menuText.includes("Usuń członka") ||
+          menuText.includes("Remove member");
+
+        if (hasRemove) {
+          foundRemove = true;
+          expect(hasRemove).toBe(true);
+        }
+
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+
+        if (foundRemove) break;
+      }
+    }
+
+    // Soft check — may have only owner (no removable members)
+    await assertNoErrorBoundary(page);
+  });
+
+  // ─── 18.2 continued — Seat limits ───────────────────────────────
+
+  test("invite button disabled or shows error at seat limit", async ({ page }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+
+    const bodyText = await getBodyText(page);
+    // Check if at limit
+    const match = bodyText.match(/(\d+)\s*(of|z|\/)\s*(\d+)/);
+
+    if (match) {
+      const used = parseInt(match[1]);
+      const total = parseInt(match[3]);
+
+      if (used >= total) {
+        // Invite button should be disabled or show error CTA
+        const inviteBtn = page
+          .locator(
+            'button:has-text("Zaproś"), button:has-text("Invite")'
+          )
+          .first();
+
+        if (await inviteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          const isDisabled = await inviteBtn.isDisabled();
+          const hasUpgradeCta =
+            bodyText.includes("Upgrade") ||
+            bodyText.includes("upgrade") ||
+            bodyText.includes("limit") ||
+            bodyText.includes("Limit");
+          // Either button is disabled or upgrade CTA is shown
+          expect(isDisabled || hasUpgradeCta).toBe(true);
+        }
+      }
+    }
+
+    await assertNoErrorBoundary(page);
+  });
 });

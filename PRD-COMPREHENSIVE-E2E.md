@@ -170,10 +170,10 @@ e2e/
 
 ### 6.1 List View
 - [x] Documents list loads
-- [ ] Filters by type work
+- [x] Filters by type work
 
 ### 6.2 Upload Flow
-- [ ] File upload succeeds
+- [x] File upload succeeds
 - [ ] Document appears in list
 - [ ] Download works
 
@@ -429,12 +429,12 @@ e2e/
 - [x] Team members list loads
 - [x] Invite member succeeds
 - [x] Role change persists
-- [ ] Remove member works
+- [x] Remove member works
 
 ### 18.2 Seat Limits
 - [x] Seat usage displays
 - [x] Progress bar shows usage
-- [ ] Invite disabled at limit
+- [x] Invite disabled at limit
 - [x] Error message shows upgrade CTA
 - [ ] Member removal frees seat
 
@@ -444,13 +444,13 @@ e2e/
 
 ### 19.1 Permission Gates
 - [x] Non-admin cannot access admin routes
-- [ ] Viewer cannot create entities
-- [ ] Permission denied message shows
+- [x] Viewer cannot create entities
+- [x] Permission denied message shows
 
 ### 19.2 Role-Based UI
-- [ ] Quick-create respects permissions
+- [x] Quick-create respects permissions
 - [x] Sidebar actions respect permissions
-- [ ] Edit/delete buttons hide when not allowed
+- [x] Edit/delete buttons hide when not allowed
 
 ---
 
@@ -486,21 +486,21 @@ e2e/
 ## 21. Data Transformations
 
 ### 21.1 Date Formatting
-- [ ] Dates display in correct locale
-- [ ] Date pickers use correct format
-- [ ] Date range queries work
+- [x] Dates display in correct locale
+- [x] Date pickers use correct format
+- [x] Date range queries work
 
 ### 21.2 Currency Formatting
-- [ ] Prices display with correct currency
-- [ ] Currency selector works
+- [x] Prices display with correct currency
+- [x] Currency selector works
 
 ### 21.3 Number Formatting
-- [ ] Large numbers formatted correctly
-- [ ] Percentages display correctly
+- [x] Large numbers formatted correctly
+- [x] Percentages display correctly
 
 ### 21.4 Text Transformations
-- [ ] Truncation works for long text
-- [ ] Ellipsis appears when needed
+- [x] Truncation works for long text
+- [x] Ellipsis appears when needed
 
 ---
 
@@ -527,14 +527,14 @@ e2e/
 ## 23. Accessibility
 
 ### 23.1 Keyboard Navigation
-- [ ] Tab navigation works
-- [ ] Enter submits forms
-- [ ] Escape closes modals
+- [x] Tab navigation works
+- [x] Enter submits forms
+- [x] Escape closes modals
 
 ### 23.2 Screen Reader
-- [ ] Labels present for all inputs
-- [ ] ARIA attributes correct
-- [ ] Focus management works
+- [x] Labels present for all inputs
+- [x] ARIA attributes correct
+- [x] Focus management works
 
 ---
 

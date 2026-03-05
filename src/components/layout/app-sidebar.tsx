@@ -51,6 +51,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { usePermissions } from "@/hooks/use-permission";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
 import { CalendarMiniMonth } from "@/components/application/calendar/base-components/calendar-mini-month";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -71,6 +72,8 @@ interface ContextAction {
   icon: React.ElementType;
   quickCreate?: string;
   href?: string;
+  /** RBAC feature required (checked with "create" action). Omit for non-create actions. */
+  permissionFeature?: import("@/hooks/use-permission").Feature;
 }
 
 interface PageContext {
@@ -109,7 +112,7 @@ const pageContexts: Record<string, PageContext> = {
     titleKey: "nav.insights",
     actions: [
       { label: "nav.actions.viewPipeline", icon: Eye, href: "/dashboard/leads" },
-      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead" },
+      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead", permissionFeature: "leads" },
       { label: "nav.actions.todaysActivities", icon: Clock, href: "/dashboard/activities" },
       { label: "nav.actions.exportReport", icon: Download, href: "/dashboard" },
     ],
@@ -117,7 +120,7 @@ const pageContexts: Record<string, PageContext> = {
   contacts: {
     titleKey: "nav.contacts",
     actions: [
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
+      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/contacts" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/contacts" },
       { label: "nav.actions.savedViews", icon: Star, href: "/dashboard/contacts" },
@@ -126,7 +129,7 @@ const pageContexts: Record<string, PageContext> = {
   companies: {
     titleKey: "nav.companies",
     actions: [
-      { label: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company" },
+      { label: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company", permissionFeature: "companies" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/companies" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/companies" },
       { label: "nav.actions.viewRelationships", icon: LinkIcon, href: "/dashboard/companies" },
@@ -135,7 +138,7 @@ const pageContexts: Record<string, PageContext> = {
   leads: {
     titleKey: "nav.deals",
     actions: [
-      { label: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead" },
+      { label: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead", permissionFeature: "leads" },
       { label: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
       { label: "nav.actions.viewTable", icon: TableIcon, href: "/dashboard/leads" },
       { label: "nav.actions.pipelineSettings", icon: Settings, href: "/dashboard/settings/pipelines" },
@@ -146,7 +149,7 @@ const pageContexts: Record<string, PageContext> = {
   activities: {
     titleKey: "nav.activities",
     actions: [
-      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity" },
+      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
       { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/activities" },
       { label: "nav.actions.calendarView", icon: Calendar, href: "/dashboard/calendar" },
       { label: "nav.actions.upcomingOnly", icon: Clock, href: "/dashboard/activities" },
@@ -155,14 +158,14 @@ const pageContexts: Record<string, PageContext> = {
   calendar: {
     titleKey: "nav.calendar",
     actions: [
-      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity" },
+      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
       { label: "nav.actions.goToToday", icon: CalendarCheck, href: "/dashboard/calendar" },
     ],
   },
   documents: {
     titleKey: "nav.documents",
     actions: [
-      { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document" },
+      { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document", permissionFeature: "documents" },
       { label: "nav.actions.createFromTemplate", icon: FileText, href: "/dashboard/documents" },
       { label: "nav.actions.filterByType", icon: Filter, href: "/dashboard/documents" },
       { label: "nav.actions.bulkActions", icon: CheckCircle, href: "/dashboard/documents" },
@@ -171,7 +174,7 @@ const pageContexts: Record<string, PageContext> = {
   products: {
     titleKey: "nav.products",
     actions: [
-      { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "product" },
+      { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "product", permissionFeature: "products" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/products" },
       { label: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
       { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/products" },
@@ -180,9 +183,9 @@ const pageContexts: Record<string, PageContext> = {
   calls: {
     titleKey: "nav.calls",
     actions: [
-      { label: "nav.actions.logCall", icon: Phone, quickCreate: "call" },
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
-      { label: "nav.actions.addActivity", icon: CalendarCheck, quickCreate: "activity" },
+      { label: "nav.actions.logCall", icon: Phone, quickCreate: "call", permissionFeature: "calls" },
+      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
+      { label: "nav.actions.addActivity", icon: CalendarCheck, quickCreate: "activity", permissionFeature: "activities" },
     ],
   },
   inbox: {
@@ -191,7 +194,7 @@ const pageContexts: Record<string, PageContext> = {
       { label: "nav.actions.composeEmail", icon: Send, href: "/dashboard/inbox" },
       { label: "nav.actions.viewUnread", icon: Mail, href: "/dashboard/inbox" },
       { label: "nav.actions.syncGmail", icon: RefreshCw, href: "/dashboard/settings/email" },
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
+      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
     ],
   },
 };
@@ -200,7 +203,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
   calendar: {
     titleKey: "nav.gabinet.calendar",
     actions: [
-      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment", permissionFeature: "gabinet_appointments" },
       { label: "nav.actions.goToToday", icon: Calendar, href: "/dashboard/gabinet/calendar" },
       { label: "nav.actions.filterByEmployee", icon: UserCog, href: "/dashboard/gabinet/calendar" },
       { label: "nav.actions.filterByTreatment", icon: Stethoscope, href: "/dashboard/gabinet/calendar" },
@@ -209,7 +212,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
   patients: {
     titleKey: "nav.gabinet.patients",
     actions: [
-      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient", permissionFeature: "gabinet_patients" },
       { label: "nav.actions.importCsv", icon: Upload, href: "/dashboard/gabinet/patients" },
       { label: "nav.actions.searchPatients", icon: SearchIcon, href: "/dashboard/gabinet/patients" },
       { label: "nav.actions.filterByStatus", icon: Filter, href: "/dashboard/gabinet/patients" },
@@ -219,7 +222,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
   treatments: {
     titleKey: "nav.gabinet.treatments",
     actions: [
-      { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment" },
+      { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment", permissionFeature: "gabinet_treatments" },
       { label: "nav.actions.categoryFilter", icon: Tag, href: "/dashboard/gabinet/treatments" },
       { label: "nav.actions.sortByPrice", icon: TrendingUp, href: "/dashboard/gabinet/treatments" },
       { label: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/treatments" },
@@ -228,19 +231,19 @@ const gabinetPageContexts: Record<string, PageContext> = {
   packages: {
     titleKey: "nav.gabinet.packages",
     actions: [
-      { label: "nav.actions.addPackage", icon: PlusCircle, quickCreate: "package" },
+      { label: "nav.actions.addPackage", icon: PlusCircle, quickCreate: "package", permissionFeature: "gabinet_packages" },
     ],
   },
   employees: {
     titleKey: "nav.gabinet.employees",
     actions: [
-      { label: "nav.actions.addEmployee", icon: UserPlus, quickCreate: "employee" },
+      { label: "nav.actions.addEmployee", icon: UserPlus, quickCreate: "employee", permissionFeature: "gabinet_employees" },
     ],
   },
   documents: {
     titleKey: "nav.gabinet.documents",
     actions: [
-      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "gabinetDocument" },
+      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "gabinetDocument", permissionFeature: "documents" },
     ],
   },
 };
@@ -283,6 +286,7 @@ export function AppSidebar() {
   const { openQuickCreate, navigateTo } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
+  const { can: canCreate } = usePermissions("create");
 
   const { data: activeProducts } = useQuery(
     convexQuery(api.productSubscriptions.getActiveProducts, { organizationId })
@@ -435,23 +439,28 @@ export function AppSidebar() {
           <div className="mt-3 flex flex-col px-4">
             <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
             <div className="mb-4 grid grid-cols-2 gap-4">
-              {pageContext.actions.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
-                  onClick={() => {
-                    if (action.quickCreate) {
-                      openQuickCreate(action.quickCreate);
-                    } else if (action.href) {
-                      navigateTo(action.href);
-                    }
-                  }}
-                >
-                  <action.icon className="size-4" variant="stroke" />
-                  <span className="text-center leading-tight">{t(action.label)}</span>
-                </button>
-              ))}
+              {pageContext.actions
+                .filter((action) => {
+                  if (!action.permissionFeature) return true;
+                  return canCreate(action.permissionFeature);
+                })
+                .map((action) => (
+                  <button
+                    key={action.label}
+                    type="button"
+                    className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
+                    onClick={() => {
+                      if (action.quickCreate) {
+                        openQuickCreate(action.quickCreate);
+                      } else if (action.href) {
+                        navigateTo(action.href);
+                      }
+                    }}
+                  >
+                    <action.icon className="size-4" variant="stroke" />
+                    <span className="text-center leading-tight">{t(action.label)}</span>
+                  </button>
+                ))}
             </div>
           </div>
         )}

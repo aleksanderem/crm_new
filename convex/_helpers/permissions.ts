@@ -2,31 +2,18 @@ import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { verifyOrgAccess, requireUser } from "./auth";
 import { OrgRole } from "../schema";
+import {
+  FEATURES,
+  type Feature,
+  type Action,
+  type Scope,
+  type PermissionResult,
+  type FeaturePermissions,
+} from "./permissionTypes";
 
-// --- Types ---
+export type { Feature, Action, Scope, PermissionResult, FeaturePermissions };
 
-export type Feature =
-  | "leads" | "contacts" | "companies" | "documents" | "activities"
-  | "calls" | "email" | "products" | "pipelines"
-  | "gabinet_patients" | "gabinet_appointments" | "gabinet_treatments"
-  | "gabinet_packages" | "gabinet_employees"
-  | "settings" | "team";
-
-export type Action = "view" | "create" | "edit" | "delete";
-export type Scope = "none" | "own" | "all";
-export type PermissionResult = { allowed: boolean; scope: Scope };
-
-type FeaturePermissions = Record<Feature, Record<Action, Scope>>;
-
-// --- All features list ---
-
-const ALL_FEATURES: Feature[] = [
-  "leads", "contacts", "companies", "documents", "activities",
-  "calls", "email", "products", "pipelines",
-  "gabinet_patients", "gabinet_appointments", "gabinet_treatments",
-  "gabinet_packages", "gabinet_employees",
-  "settings", "team",
-];
+const ALL_FEATURES: readonly Feature[] = FEATURES;
 
 // --- Default permissions builder ---
 

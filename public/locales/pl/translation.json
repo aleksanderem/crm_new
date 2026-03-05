@@ -1599,5 +1599,11 @@
       "sendInvite": "Wyślij zaproszenie",
       "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
     }
+  },
+  "permissions": {
+    "cannotCreate": "Nie masz uprawnień do tworzenia tego elementu",
+    "cannotEdit": "Nie masz uprawnień do edycji tego elementu",
+    "cannotDelete": "Nie masz uprawnień do usunięcia tego elementu",
+    "noAccess": "Nie masz dostępu do tej funkcji"
   }
 }

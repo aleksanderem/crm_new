@@ -46,13 +46,13 @@ The middle panel (second column, the "detail panel") currently shows a title and
 
 The RBAC system in `convex/_helpers/permissions.ts` works but needs better structure: typed feature/action constants, frontend permission awareness, and the quick-create modal should respect permissions.
 
-- [ ] Extract permission constants into a shared file `convex/_helpers/permissionTypes.ts` (or similar) that exports: `FEATURES` (array/enum of all feature names), `ACTIONS` (array/enum of all action names), `SCOPES` (array/enum), `DEFAULT_PERMISSIONS` (the role→feature→action→scope mapping). Import these in both `permissions.ts` and frontend code. This removes magic strings spread across files.
-- [ ] Create a frontend React hook `usePermission(feature, action)` that calls the existing `getMyPermissions` query and returns `{ allowed: boolean, scope: string, loading: boolean }`. Place in `src/hooks/use-permission.ts`. This hook should use the org context from `useOrganization()`.
-- [ ] Create a frontend wrapper component `<PermissionGate feature="leads" action="create">` that conditionally renders children based on permission. Falls back to nothing (or optional `fallback` prop). Place in `src/components/crm/permission-gate.tsx`.
-- [ ] Wrap quick-create menu entity buttons with permission checks: hide or disable items the user lacks "create" permission for. Use the `usePermission` hook. Map entity types to permission features (contact→contacts, lead→leads, patient→gabinet_patients, etc.).
-- [ ] Wrap sidebar contextual action buttons with permission checks where the action is a create operation.
-- [ ] Add i18n keys for permission-denied states if showing disabled buttons (e.g., "You don't have permission to create contacts").
-- [ ] Run typecheck and build.
+- [x] Extract permission constants into a shared file `convex/_helpers/permissionTypes.ts` (or similar) that exports: `FEATURES` (array/enum of all feature names), `ACTIONS` (array/enum of all action names), `SCOPES` (array/enum), `DEFAULT_PERMISSIONS` (the role→feature→action→scope mapping). Import these in both `permissions.ts` and frontend code. This removes magic strings spread across files.
+- [x] Create a frontend React hook `usePermission(feature, action)` that calls the existing `getMyPermissions` query and returns `{ allowed: boolean, scope: string, loading: boolean }`. Place in `src/hooks/use-permission.ts`. This hook should use the org context from `useOrganization()`.
+- [x] Create a frontend wrapper component `<PermissionGate feature="leads" action="create">` that conditionally renders children based on permission. Falls back to nothing (or optional `fallback` prop). Place in `src/components/crm/permission-gate.tsx`.
+- [x] Wrap quick-create menu entity buttons with permission checks: hide or disable items the user lacks "create" permission for. Use the `usePermission` hook. Map entity types to permission features (contact→contacts, lead→leads, patient→gabinet_patients, etc.).
+- [x] Wrap sidebar contextual action buttons with permission checks where the action is a create operation.
+- [x] Add i18n keys for permission-denied states if showing disabled buttons (e.g., "You don't have permission to create contacts").
+- [x] Run typecheck and build.
 
 ### 4. Quick-Create Modal — Complete All Entities
 

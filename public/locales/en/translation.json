@@ -1597,5 +1597,11 @@
       "sendInvite": "Send Invitation",
       "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
     }
+  },
+  "permissions": {
+    "cannotCreate": "You don't have permission to create this item",
+    "cannotEdit": "You don't have permission to edit this item",
+    "cannotDelete": "You don't have permission to delete this item",
+    "noAccess": "You don't have access to this feature"
   }
 }

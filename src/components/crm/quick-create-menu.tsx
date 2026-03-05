@@ -28,6 +28,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { usePermissions, type Feature } from "@/hooks/use-permission";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type QuickCreateEntityType =
   | "contact"
@@ -58,6 +64,23 @@ export type FormEntityType =
   | "user";
 
 type EntityGroup = "crm" | "gabinet" | "system";
+
+/** Maps each quick-create entity to the RBAC feature used for "create" checks. */
+const entityFeatureMap: Record<QuickCreateEntityType, Feature | null> = {
+  contact: "contacts",
+  company: "companies",
+  lead: "leads",
+  activity: "activities",
+  call: "calls",
+  document: "documents",
+  patient: "gabinet_patients",
+  appointment: "gabinet_appointments",
+  treatment: "gabinet_treatments",
+  package: "gabinet_packages",
+  employee: "gabinet_employees",
+  leave: "gabinet_employees", // leave is tied to employee management
+  user: "team",
+};
 
 const entityItems: {
   type: QuickCreateEntityType;
@@ -203,8 +226,12 @@ export function QuickCreateMenu({
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EntityGroup>("crm");
   const [selectedType, setSelectedType] = useState<FormEntityType | null>(null);
+  const { can: canCreate, loading: permLoading } = usePermissions("create");
 
   const handleEntityClick = (type: QuickCreateEntityType) => {
+    const feature = entityFeatureMap[type];
+    if (feature && !canCreate(feature)) return;
+
     const item = entityItems.find((i) => i.type === type);
     if (item?.hasForm) {
       setSelectedType(type as FormEntityType);
@@ -240,7 +267,7 @@ export function QuickCreateMenu({
           size="icon"
           className="bg-primary/10 text-primary hover:bg-primary/20 size-9"
         >
-          <CirclePlusIcon className="size-5" />
+          <CirclePlusIcon className="size-4" variant="stroke" />
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -286,15 +313,21 @@ export function QuickCreateMenu({
             </Tabs>
 
             <nav className="flex flex-col gap-1">
-              {visibleItems.map((item) => (
-                <EntityButton
-                  key={item.type}
-                  item={item}
-                  selected={selectedType === item.type}
-                  onClick={() => handleEntityClick(item.type)}
-                  t={t}
-                />
-              ))}
+              {visibleItems.map((item) => {
+                const feature = entityFeatureMap[item.type];
+                const disabled = !permLoading && feature ? !canCreate(feature) : false;
+                return (
+                  <EntityButton
+                    key={item.type}
+                    item={item}
+                    selected={selectedType === item.type}
+                    disabled={disabled}
+                    disabledTooltip={t("permissions.cannotCreate")}
+                    onClick={() => handleEntityClick(item.type)}
+                    t={t}
+                  />
+                );
+              })}
             </nav>
           </div>
 
@@ -318,22 +351,31 @@ export function QuickCreateMenu({
 function EntityButton({
   item,
   selected,
+  disabled,
+  disabledTooltip,
   onClick,
   t,
 }: {
   item: (typeof entityItems)[number];
   selected: boolean;
+  disabled?: boolean;
+  disabledTooltip?: string;
   onClick: () => void;
   t: (key: string) => string;
 }) {
-  return (
+  const btn = (
     <button
       type="button"
+      disabled={disabled}
       className={cn(
         "flex items-center gap-3 rounded-lg p-2 text-left transition-colors",
-        selected ? "bg-accent" : "hover:bg-accent/50"
+        disabled
+          ? "cursor-not-allowed opacity-50"
+          : selected
+            ? "bg-accent"
+            : "hover:bg-accent/50"
       )}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       <Avatar className="size-9 rounded-md">
         <AvatarFallback className={cn("rounded-[inherit]", item.avatarColor)}>
@@ -348,4 +390,15 @@ function EntityButton({
       </div>
     </button>
   );
+
+  if (disabled && disabledTooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipContent side="right">{disabledTooltip}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return btn;
 }

@@ -1,27 +1,9 @@
 import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import type { Feature, Action, Scope } from "@cvx/_helpers/permissionTypes";
 
-export type Feature =
-  | "leads"
-  | "contacts"
-  | "companies"
-  | "documents"
-  | "activities"
-  | "calls"
-  | "email"
-  | "products"
-  | "pipelines"
-  | "gabinet_patients"
-  | "gabinet_appointments"
-  | "gabinet_treatments"
-  | "gabinet_packages"
-  | "gabinet_employees"
-  | "settings"
-  | "team";
-
-export type Action = "view" | "create" | "edit" | "delete";
-export type Scope = "none" | "own" | "all";
+export type { Feature, Action, Scope };
 
 export function usePermission(
   feature: Feature,
@@ -48,6 +30,37 @@ export function usePermission(
   return {
     allowed: scope !== "none",
     scope,
+    loading: false,
+  };
+}
+
+/**
+ * Returns a map of feature → boolean for the given action.
+ * Useful when checking create permissions across many features at once
+ * (e.g. in the quick-create menu).
+ */
+export function usePermissions(
+  action: Action
+): {
+  can: (feature: Feature) => boolean;
+  loading: boolean;
+} {
+  const { organizationId } = useOrganization();
+
+  const permissions = useQuery(
+    api.permissions.getMyPermissions,
+    organizationId ? { organizationId } : "skip"
+  );
+
+  if (permissions === undefined) {
+    return { can: () => false, loading: true };
+  }
+
+  return {
+    can: (feature: Feature) => {
+      const scope: Scope = permissions[feature]?.[action] ?? "none";
+      return scope !== "none";
+    },
     loading: false,
   };
 }

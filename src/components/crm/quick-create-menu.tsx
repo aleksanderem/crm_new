@@ -279,6 +279,7 @@ export function QuickCreateMenu({
         <Button
           variant="ghost"
           size="icon"
+          data-testid="quick-create-trigger"
           className="bg-primary/10 text-primary hover:bg-primary/20 size-9"
         >
           <CirclePlusIcon className="size-4" variant="stroke" />

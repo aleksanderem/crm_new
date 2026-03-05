@@ -5,84 +5,84 @@
       "step": "Login",
       "status": "PASS",
       "detail": "Post-login URL: http://localhost:5173/dashboard",
-      "durationMs": 5593
+      "durationMs": 5698
     },
     {
       "flow": "Leads",
       "step": "Navigate to list",
       "status": "PASS",
       "detail": "URL: http://localhost:5173/dashboard/leads",
-      "durationMs": 2694
+      "durationMs": 2553
     },
     {
       "flow": "Leads",
       "step": "List renders",
       "status": "PASS",
       "detail": "Table visible",
-      "durationMs": 25
+      "durationMs": 27
     },
     {
       "flow": "Leads",
       "step": "Create lead",
       "status": "PASS",
-      "detail": "Created: E2E-Lead-1772622277596",
-      "durationMs": 6018
+      "detail": "Created: E2E-Lead-1772671460067",
+      "durationMs": 6016
     },
     {
       "flow": "Leads",
       "step": "View detail",
       "status": "PASS",
-      "detail": "Detail URL: http://localhost:5173/dashboard/leads/kn708zfshtbypt33vey1ft281n8297vg",
-      "durationMs": 4749
+      "detail": "Detail URL: http://localhost:5173/dashboard/leads/kn74yrked9f6hb5k43ea2bthm182bjyd",
+      "durationMs": 4588
     },
     {
       "flow": "Activities",
       "step": "Navigate to list",
       "status": "PASS",
       "detail": "URL: http://localhost:5173/dashboard/activities",
-      "durationMs": 1504
+      "durationMs": 1681
     },
     {
       "flow": "Activities",
       "step": "List renders",
       "status": "PASS",
       "detail": "Activity content present",
-      "durationMs": 11
+      "durationMs": 15
     },
     {
       "flow": "Activities",
       "step": "Create activity",
       "status": "PASS",
-      "detail": "Created: E2E-Activity-1772622290353",
-      "durationMs": 6478
+      "detail": "Created: E2E-Activity-1772671472861",
+      "durationMs": 6517
     },
     {
       "flow": "Calendar",
       "step": "Navigate to calendar",
       "status": "PASS",
       "detail": "URL: http://localhost:5173/dashboard/calendar?filter=all",
-      "durationMs": 2339
+      "durationMs": 2362
     },
     {
       "flow": "Calendar",
       "step": "Calendar renders",
       "status": "PASS",
       "detail": "Calendar content visible",
-      "durationMs": 17
+      "durationMs": 19
     },
     {
       "flow": "Calendar",
       "step": "No error boundary",
       "status": "PASS",
       "detail": "No errors",
-      "durationMs": 5
+      "durationMs": 4
     },
     {
       "flow": "Documents",
       "step": "Navigate to list",
       "status": "PASS",
       "detail": "URL: http://localhost:5173/dashboard/documents",
-      "durationMs": 2547
+      "durationMs": 2461
     },
     {
       "flow": "Documents",
@@ -96,7 +96,7 @@
       "step": "Upload button available",
       "status": "PASS",
       "detail": "Upload button visible",
-      "durationMs": 4
+      "durationMs": 6
     },
     {
       "flow": "Overall",

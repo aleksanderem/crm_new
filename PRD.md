@@ -62,14 +62,14 @@ The quick-create modal (`src/components/crm/quick-create-menu.tsx`) already list
 - [x] **Call** — change `hasForm: false` to `true` for calls. Create an inline call-logging form with fields: contact selector (search contacts), phone number (auto-fill from contact), direction (inbound/outbound), duration, outcome (select: connected/voicemail/no_answer/busy), notes. Add the case to `renderQuickCreateForm`.
 - [x] **Document** — change `hasForm: false` to `true` for documents. Create an inline document form with fields: title, file upload (use Convex file storage), entity link (optional: link to contact/company/lead), description/notes. Add the case to `renderQuickCreateForm`.
 - [x] Fix the `renderQuickCreateForm` switch in `_layout.tsx` to handle ALL entity types including: product, call, document, gabinetDocument (if applicable). Every `FormEntityType` must have a corresponding form rendered.
-- [ ] Verify each form submits correctly by testing: open quick-create → select entity → fill form → submit → entity appears in the relevant list page.
+- [x] Verify each form submits correctly by testing: open quick-create → select entity → fill form → submit → entity appears in the relevant list page.
 - [x] Add missing i18n keys for form labels, placeholders, and success/error messages for product, call, and document forms in both translation files.
 - [x] Run typecheck and build.
 
 ### Integration & Verification
 
-- [ ] Verify all CRM pages render without error boundaries after icon/action changes.
-- [ ] Verify quick-create modal opens, all tabs work, all entity forms render and submit.
-- [ ] Verify that a "viewer" role user sees appropriately restricted quick-create options (permission gate working).
+- [x] Verify all CRM pages render without error boundaries after icon/action changes.
+- [x] Verify quick-create modal opens, all tabs work, all entity forms render and submit.
+- [x] Verify that a "viewer" role user sees appropriately restricted quick-create options (permission gate working).
 - [x] Run `npm run typecheck` — must pass with 0 errors.
 - [x] Run `npm run build` — must succeed.

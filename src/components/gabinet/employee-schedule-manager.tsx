@@ -51,12 +51,12 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const createSchedule = useMutation(api.gabinet.scheduling.createSchedule);
-  const updateSchedule = useMutation(api.gabinet.scheduling.updateSchedule);
-  const deleteSchedule = useMutation(api.gabinet.scheduling.removeSchedule);
+  const setSchedule = useMutation(api.gabinet.scheduling.setEmployeeSchedule);
+  // fallback bulk setter if needed
+  const bulkSet = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
 
   const { data: schedules } = useQuery(
-    convexQuery(api.gabinet.scheduling.getEmployeeSchedules, { organizationId, employeeId })
+    convexQuery(api.gabinet.scheduling.getEmployeeSchedule, { organizationId, userId: employeeId as any })
   );
 
   const [editingId, setEditingId] = useState<string | null>(null);

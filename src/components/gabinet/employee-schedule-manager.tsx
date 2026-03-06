@@ -59,6 +59,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
   const setSchedule = useMutation(api.gabinet.scheduling.setEmployeeSchedule);
   // fallback bulk setter if needed
   const bulkSet = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
+  const removeSchedule = useMutation(api.gabinet.scheduling.removeEmployeeSchedule);
 
   const { data: schedules } = useQuery(
     convexQuery(api.gabinet.scheduling.getEmployeeSchedule, { organizationId, userId: employeeId as any })
@@ -69,15 +70,15 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
 
   const handleCreate = async () => {
     try {
-      await createSchedule({
+      await setSchedule({
         organizationId,
-        employeeId,
+        userId: employeeId as any,
         dayOfWeek: formData.dayOfWeek ?? 1,
         startTime: formData.startTime ?? "09:00",
         endTime: formData.endTime ?? "17:00",
-        breakStartTime: formData.breakStartTime,
-        breakEndTime: formData.breakEndTime,
-        isWorkingDay: formData.isWorkingDay ?? true,
+        isWorking: formData.isWorking ?? true,
+        breakStart: formData.breakStart ?? undefined,
+        breakEnd: formData.breakEnd ?? undefined,
         effectiveFrom: formData.effectiveFrom,
         effectiveTo: formData.effectiveTo,
       });
@@ -91,10 +92,17 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
 
   const handleUpdate = async (scheduleId: string) => {
     try {
-      await updateSchedule({
+      await setSchedule({
         organizationId,
-        scheduleId: scheduleId as Id<"gabinetEmployeeSchedules">,
-        ...formData,
+        userId: employeeId as any,
+        dayOfWeek: formData.dayOfWeek ?? 0,
+        startTime: formData.startTime ?? "09:00",
+        endTime: formData.endTime ?? "17:00",
+        isWorking: formData.isWorking ?? true,
+        breakStart: formData.breakStart ?? undefined,
+        breakEnd: formData.breakEnd ?? undefined,
+        effectiveFrom: formData.effectiveFrom,
+        effectiveTo: formData.effectiveTo,
       });
       toast.success(t("common.saved"));
       setEditingId(null);
@@ -106,7 +114,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
 
   const handleDelete = async (scheduleId: string) => {
     try {
-      await deleteSchedule({
+      await removeSchedule({
         organizationId,
         scheduleId: scheduleId as Id<"gabinetEmployeeSchedules">,
       });

@@ -278,11 +278,13 @@ function LeadsIndex() {
   const columns: ColumnDef<Lead>[] = [
     {
       accessorKey: "title",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('deals.dealName')} />,
       cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
     },
     {
       id: "stage",
+      size: 150,
       header: t('deals.stage'),
       cell: ({ row }) => {
         const stageId = row.original.pipelineStageId;
@@ -298,6 +300,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "value",
+      size: 120,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.amount')} />,
       cell: ({ row }) => (
         <EditableCell
@@ -312,6 +315,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "currency",
+      size: 150,
       header: t('deals.currency'),
       cell: ({ row }) => (
         <EditableCell
@@ -325,6 +329,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "expectedCloseDate",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('deals.expectedClose')} />,
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
@@ -333,6 +338,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "status",
+      size: 150,
       header: t('common.status'),
       cell: ({ row }) => (
         <EditableCell
@@ -350,6 +356,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "priority",
+      size: 150,
       header: t('common.priority'),
       cell: ({ row }) => (
         <EditableCell
@@ -367,6 +374,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "source",
+      size: 150,
       header: t('common.source'),
       cell: ({ row }) => (
         <EditableCell
@@ -381,6 +389,7 @@ function LeadsIndex() {
     },
     {
       id: "company",
+      size: 150,
       header: t('deals.company'),
       accessorFn: (row) => row.companyId ? companyLookup.get(row.companyId) ?? "" : "",
       cell: ({ row }) => {
@@ -391,6 +400,7 @@ function LeadsIndex() {
     },
     {
       id: "assignedTo",
+      size: 150,
       header: t('deals.assignedTo'),
       accessorFn: (row) => row.assignedTo ? userLookup.get(row.assignedTo) ?? "" : "",
       cell: ({ row }) => {
@@ -401,6 +411,7 @@ function LeadsIndex() {
     },
     {
       id: "tags",
+      size: 200,
       header: t('common.tags'),
       accessorFn: (row) => (row.tags ?? []).join(", "),
       cell: ({ row }) => {
@@ -417,6 +428,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "notes",
+      size: 200,
       header: t('common.notes'),
       cell: ({ row }) => (
         <EditableCell
@@ -430,6 +442,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "wonAt",
+      size: 130,
       header: t('deals.wonDate'),
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
@@ -438,6 +451,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "lostAt",
+      size: 130,
       header: t('deals.lostDate'),
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
@@ -446,6 +460,7 @@ function LeadsIndex() {
     },
     {
       accessorKey: "lostReason",
+      size: 200,
       header: t('deals.lostReason'),
       cell: ({ row }) => (
         <EditableCell
@@ -459,17 +474,20 @@ function LeadsIndex() {
     },
     {
       id: "createdBy",
+      size: 150,
       header: t('common.createdBy'),
       accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
       cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
@@ -622,6 +640,7 @@ function LeadsIndex() {
           columns={allColumns}
           data={tableData}
           stickyFirstColumn
+          frozenColumns={2}
           enableBulkSelect
           searchKey="title"
           searchPlaceholder={t('deals.searchPlaceholder')}

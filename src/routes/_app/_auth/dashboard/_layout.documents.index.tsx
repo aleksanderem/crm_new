@@ -268,6 +268,7 @@ function DocumentsIndex() {
   const baseColumns: ColumnDef<DocumentRow, unknown>[] = [
     {
       accessorKey: "name",
+      size: 200,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.title')} />
       ),
@@ -284,6 +285,7 @@ function DocumentsIndex() {
     },
     {
       accessorKey: "category",
+      size: 150,
       header: t('common.category'),
       cell: ({ getValue }) => {
         const v = getValue() as string | undefined;
@@ -300,6 +302,7 @@ function DocumentsIndex() {
     },
     {
       accessorKey: "status",
+      size: 150,
       header: t('common.status'),
       cell: ({ getValue }) => {
         const val = (getValue() as DocumentStatus | undefined) ?? "draft";
@@ -313,6 +316,7 @@ function DocumentsIndex() {
     },
     {
       accessorKey: "amount",
+      size: 120,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.amount')} />
       ),
@@ -320,6 +324,7 @@ function DocumentsIndex() {
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.created')} />
       ),
@@ -439,6 +444,7 @@ function DocumentsIndex() {
         columns={columns}
         data={tableData}
         stickyFirstColumn
+        frozenColumns={2}
         rowActions={rowActions}
         searchKey="name"
         searchPlaceholder={t('documents.searchPlaceholder')}

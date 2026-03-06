@@ -161,6 +161,7 @@ function PatientsIndex() {
   const columns: ColumnDef<Patient>[] = [
     {
       accessorKey: "firstName",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.patients.contact")} />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -183,6 +184,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "email",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.email")} />,
       cell: ({ row }) => (
         <EditableCell
@@ -194,6 +196,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "phone",
+      size: 150,
       header: t("common.phone"),
       cell: ({ row }) => (
         <EditableCell
@@ -205,6 +208,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "pesel",
+      size: 150,
       header: t("gabinet.patients.pesel"),
       cell: ({ row }) => (
         <EditableCell
@@ -216,6 +220,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "dateOfBirth",
+      size: 130,
       header: t("gabinet.patients.dateOfBirth"),
       cell: ({ row }) => (
         <EditableCell
@@ -227,6 +232,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "gender",
+      size: 150,
       header: t("gabinet.patients.gender"),
       cell: ({ row }) => (
         <EditableCell
@@ -242,6 +248,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "referralSource",
+      size: 150,
       header: t("gabinet.patients.referralSource"),
       cell: ({ row }) => (
         <EditableCell
@@ -254,6 +261,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "allergies",
+      size: 200,
       header: t("gabinet.patients.allergies"),
       cell: ({ row }) => (
         <EditableCell
@@ -265,6 +273,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "bloodType",
+      size: 150,
       header: t("gabinet.patients.bloodType"),
       cell: ({ row }) => (
         <EditableCell
@@ -276,6 +285,7 @@ function PatientsIndex() {
     },
     {
       accessorKey: "medicalNotes",
+      size: 200,
       header: t("gabinet.patients.medicalNotes"),
       cell: ({ row }) => (
         <EditableCell
@@ -287,11 +297,13 @@ function PatientsIndex() {
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.created")} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.updated")} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
@@ -437,6 +449,7 @@ function PatientsIndex() {
           columns={columns}
           data={filteredPatients}
           stickyFirstColumn
+          frozenColumns={2}
           searchKey="firstName"
           searchPlaceholder={t("gabinet.patients.searchPlaceholder")}
           isLoading={isLoading}

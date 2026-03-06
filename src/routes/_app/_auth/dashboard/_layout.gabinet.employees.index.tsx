@@ -95,6 +95,7 @@ function EmployeesIndex() {
   const columns: ColumnDef<Employee>[] = [
     {
       accessorKey: "firstName",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.employee")} />,
       cell: ({ row }) => {
         const displayName = getDisplayName(row.original);
@@ -122,6 +123,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "role",
+      size: 150,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.role")} />,
       cell: ({ row }) => (
         <EditableCell
@@ -138,6 +140,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "specialization",
+      size: 150,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.specialization")} />,
       cell: ({ row }) => (
         <EditableCell
@@ -149,6 +152,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "licenseNumber",
+      size: 150,
       header: t("gabinet.employees.license"),
       cell: ({ row }) => (
         <EditableCell
@@ -160,6 +164,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "hireDate",
+      size: 130,
       header: t("gabinet.employees.hireDate"),
       cell: ({ row }) => (
         <EditableCell
@@ -171,6 +176,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "color",
+      size: 80,
       header: t("gabinet.employees.color"),
       cell: ({ row }) => (
         <EditableCell
@@ -183,6 +189,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "notes",
+      size: 200,
       header: t("gabinet.employees.notes"),
       cell: ({ row }) => (
         <EditableCell
@@ -194,6 +201,7 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "isActive",
+      size: 100,
       header: t("gabinet.employees.active"),
       cell: ({ row }) => (
         <EditableCell
@@ -205,11 +213,13 @@ function EmployeesIndex() {
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.created")} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.updated")} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
@@ -282,6 +292,7 @@ function EmployeesIndex() {
         columns={columns}
         data={employees ?? []}
         stickyFirstColumn
+        frozenColumns={2}
         searchKey="firstName"
         searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
         enableBulkSelect

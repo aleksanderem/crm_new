@@ -124,6 +124,7 @@ function TreatmentsIndex() {
   const columns: ColumnDef<Treatment>[] = [
     {
       accessorKey: "name",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.name")} />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -144,6 +145,7 @@ function TreatmentsIndex() {
     },
     {
       accessorKey: "category",
+      size: 150,
       header: t("gabinet.treatments.category"),
       cell: ({ row }) => (
         <EditableCell
@@ -156,6 +158,7 @@ function TreatmentsIndex() {
     },
     {
       accessorKey: "duration",
+      size: 120,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.duration")} />,
       cell: ({ row }) => (
         <EditableCell
@@ -168,6 +171,7 @@ function TreatmentsIndex() {
     },
     {
       accessorKey: "price",
+      size: 120,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.price")} />,
       cell: ({ row }) => (
         <EditableCell
@@ -180,6 +184,7 @@ function TreatmentsIndex() {
     },
     {
       accessorKey: "taxRate",
+      size: 120,
       header: t("gabinet.treatments.taxRate"),
       cell: ({ row }) => (
         <EditableCell
@@ -192,6 +197,7 @@ function TreatmentsIndex() {
     },
     {
       accessorKey: "isActive",
+      size: 100,
       header: t("common.active"),
       cell: ({ getValue }) => {
         const active = getValue() as boolean;
@@ -329,6 +335,7 @@ function TreatmentsIndex() {
           columns={columns}
           data={filteredTreatments}
           stickyFirstColumn
+          frozenColumns={2}
           searchKey="name"
           searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
           isLoading={isLoading}

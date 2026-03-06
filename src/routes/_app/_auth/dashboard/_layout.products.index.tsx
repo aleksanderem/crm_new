@@ -177,6 +177,7 @@ function ProductsPage() {
   const columns: ColumnDef<Product, unknown>[] = [
     {
       accessorKey: "name",
+      size: 200,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.name')} />
       ),
@@ -186,6 +187,7 @@ function ProductsPage() {
     },
     {
       accessorKey: "sku",
+      size: 150,
       header: t('products.sku'),
       cell: ({ row }) => (
         <EditableCell
@@ -199,6 +201,7 @@ function ProductsPage() {
     },
     {
       accessorKey: "unitPrice",
+      size: 120,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('products.unitPrice')} />
       ),
@@ -215,6 +218,7 @@ function ProductsPage() {
     },
     {
       accessorKey: "taxRate",
+      size: 120,
       header: t('products.taxRate'),
       cell: ({ row }) => (
         <EditableCell
@@ -229,6 +233,7 @@ function ProductsPage() {
     },
     {
       accessorKey: "isActive",
+      size: 100,
       header: t('common.active'),
       cell: ({ row }) => (
         <EditableCell
@@ -301,6 +306,7 @@ function ProductsPage() {
         columns={columns}
         data={products}
         stickyFirstColumn
+        frozenColumns={2}
         rowActions={rowActions}
         searchKey="name"
         searchPlaceholder={t('products.searchPlaceholder')}

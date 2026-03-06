@@ -262,6 +262,7 @@ function ActivitiesPage() {
   const baseColumns: ColumnDef<ActivityRow, unknown>[] = [
     {
       accessorKey: "title",
+      size: 200,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.title')} />
       ),
@@ -271,6 +272,7 @@ function ActivitiesPage() {
     },
     {
       accessorKey: "activityType",
+      size: 150,
       header: t('activities.activityType'),
       cell: ({ row }) => (
         <EditableCell
@@ -306,6 +308,7 @@ function ActivitiesPage() {
     },
     {
       accessorKey: "dueDate",
+      size: 130,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('activities.dueDate')} />
       ),
@@ -328,6 +331,7 @@ function ActivitiesPage() {
     },
     {
       accessorKey: "isCompleted",
+      size: 100,
       header: t('activities.completed'),
       cell: ({ row }) => (
         <EditableCell
@@ -434,6 +438,7 @@ function ActivitiesPage() {
         columns={columns}
         data={tableData}
         rowActions={rowActions}
+        frozenColumns={2}
         enableBulkSelect
         searchKey="title"
         searchPlaceholder={t('activities.searchPlaceholder')}

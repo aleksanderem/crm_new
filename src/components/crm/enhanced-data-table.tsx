@@ -43,6 +43,8 @@ export interface CrmDataTableProps<TData> {
   columns: ColumnDef<TData, any>[];
   data: TData[];
   stickyFirstColumn?: boolean;
+  /** Number of leading columns to freeze (sticky). Defaults to 0. Checkbox column counts. */
+  frozenColumns?: number;
   rowActions?: (row: TData) => RowAction<TData>[];
   onRowClick?: (row: TData) => void;
   enableBulkSelect?: boolean;
@@ -68,6 +70,7 @@ export function CrmDataTable<TData>({
   columns: userColumns,
   data,
   stickyFirstColumn = false,
+  frozenColumns = 0,
   rowActions,
   onRowClick,
   enableBulkSelect = false,
@@ -278,59 +281,75 @@ export function CrmDataTable<TData>({
 
       {/* Table with horizontal border above thead, no vertical borders */}
       <div className="mt-4 border-t">
-        <div className="relative w-full overflow-auto">
-          <table className="w-full caption-bottom text-sm">
-            <thead className="[&_tr]:border-b">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
-                  {headerGroup.headers.map((header, index) => {
-                    const isSticky = stickyFirstColumn && index === 0;
-                    return (
-                      <th
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        className={cn(
-                          "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-                          isSticky && "sticky left-0 z-10 bg-background"
-                        )}
-                        style={isSticky ? { minWidth: header.getSize() } : undefined}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
-                    );
-                  })}
-                </tr>
+        <div className="relative w-full overflow-x-auto">
+          <table className="w-full caption-bottom text-sm" style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              {table.getVisibleLeafColumns().map((col) => (
+                <col key={col.id} style={{ width: col.getSize() }} />
               ))}
-            </thead>
-            <tbody className="[&_tr:last-child]:border-0">
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-                  >
-                    {row.getVisibleCells().map((cell, index) => {
-                      const isSticky = stickyFirstColumn && index === 0;
-                      const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
+            </colgroup>
+            <thead className="[&_tr]:border-b">
+              {table.getHeaderGroups().map((headerGroup) => {
+                let stickyOffset = 0;
+                return (
+                  <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
+                    {headerGroup.headers.map((header, index) => {
+                      const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
+                      const left = stickyOffset;
+                      if (isFrozen) stickyOffset += header.getSize();
                       return (
-                        <td
-                          key={cell.id}
+                        <th
+                          key={header.id}
+                          colSpan={header.colSpan}
                           className={cn(
-                            "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                            isSticky && "sticky left-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
-                            isFirstDataCol && onRowClick && "cursor-pointer"
+                            "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+                            isFrozen && "sticky z-20 bg-background after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border"
                           )}
-                          onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
+                          style={isFrozen ? { left, width: header.getSize() } : undefined}
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
                       );
                     })}
                   </tr>
-                ))
+                );
+              })}
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => {
+                  let stickyOffset = 0;
+                  return (
+                    <tr
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                    >
+                      {row.getVisibleCells().map((cell, index) => {
+                        const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
+                        const left = stickyOffset;
+                        if (isFrozen) stickyOffset += cell.column.getSize();
+                        const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
+                        return (
+                          <td
+                            key={cell.id}
+                            className={cn(
+                              "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+                              isFrozen && "sticky z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
+                              isFirstDataCol && onRowClick && "cursor-pointer"
+                            )}
+                            style={isFrozen ? { left } : undefined}
+                            onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={columns.length} className="h-48 text-center">

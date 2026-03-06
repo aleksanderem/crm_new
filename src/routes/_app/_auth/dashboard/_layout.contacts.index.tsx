@@ -188,6 +188,7 @@ function ContactsIndex() {
   const columns: ColumnDef<Contact>[] = [
     {
       accessorKey: "firstName",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -205,6 +206,7 @@ function ContactsIndex() {
     },
     {
       accessorKey: "email",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.email')} />,
       cell: ({ row }) => (
         <EditableCell
@@ -216,6 +218,7 @@ function ContactsIndex() {
     },
     {
       accessorKey: "phone",
+      size: 150,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.phone')} />,
       cell: ({ row }) => (
         <EditableCell
@@ -227,6 +230,7 @@ function ContactsIndex() {
     },
     {
       accessorKey: "title",
+      size: 150,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.title')} />,
       cell: ({ row }) => (
         <EditableCell
@@ -238,11 +242,13 @@ function ContactsIndex() {
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
@@ -408,6 +414,7 @@ function ContactsIndex() {
           columns={allColumns}
           data={tableData}
           stickyFirstColumn
+          frozenColumns={2}
           searchKey="firstName"
           searchPlaceholder={t('contacts.searchPlaceholder')}
           isLoading={isLoading}

@@ -146,6 +146,7 @@ function CallsPage() {
   const columns: ColumnDef<Call, unknown>[] = [
     {
       accessorKey: "outcome",
+      size: 150,
       header: t('calls.outcome'),
       cell: ({ getValue }) => {
         const val = getValue() as CallOutcome;
@@ -160,6 +161,7 @@ function CallsPage() {
     },
     {
       accessorKey: "callDate",
+      size: 130,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('calls.callDate')} />
       ),
@@ -168,6 +170,7 @@ function CallsPage() {
     },
     {
       accessorKey: "note",
+      size: 200,
       header: t('calls.note'),
       cell: ({ getValue }) => {
         const val = getValue() as string | undefined;
@@ -181,6 +184,7 @@ function CallsPage() {
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('common.created')} />
       ),
@@ -243,6 +247,7 @@ function CallsPage() {
         columns={columns}
         data={calls}
         rowActions={rowActions}
+        frozenColumns={2}
         searchKey="note"
         searchPlaceholder={t('calls.searchPlaceholder')}
         isLoading={isLoading}

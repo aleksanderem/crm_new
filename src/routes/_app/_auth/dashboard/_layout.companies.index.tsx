@@ -198,6 +198,7 @@ function CompaniesIndex() {
   const columns: ColumnDef<Company>[] = [
     {
       accessorKey: "name",
+      size: 200,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.name')} />,
       cell: ({ row }) => (
         <div>
@@ -210,6 +211,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "domain",
+      size: 180,
       header: t('companies.domain'),
       cell: ({ row }) => (
         <EditableCell
@@ -221,6 +223,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "phone",
+      size: 150,
       header: t('common.phone'),
       cell: ({ row }) => (
         <EditableCell
@@ -232,6 +235,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "industry",
+      size: 150,
       header: t('companies.industry'),
       cell: ({ row }) => (
         <EditableCell
@@ -244,6 +248,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "size",
+      size: 150,
       header: t('companies.size'),
       cell: ({ row }) => (
         <EditableCell
@@ -267,6 +272,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "website",
+      size: 180,
       header: t('companies.website'),
       cell: ({ row }) => (
         <EditableCell
@@ -278,6 +284,7 @@ function CompaniesIndex() {
     },
     {
       id: "address",
+      size: 200,
       header: t('companies.address'),
       accessorFn: (row) => {
         const a = row.address;
@@ -291,6 +298,7 @@ function CompaniesIndex() {
     },
     {
       id: "tags",
+      size: 200,
       header: t('common.tags'),
       accessorFn: (row) => (row.tags ?? []).join(", "),
       cell: ({ row }) => {
@@ -307,6 +315,7 @@ function CompaniesIndex() {
     },
     {
       accessorKey: "notes",
+      size: 200,
       header: t('common.notes'),
       cell: ({ row }) => (
         <EditableCell
@@ -318,17 +327,20 @@ function CompaniesIndex() {
     },
     {
       id: "createdBy",
+      size: 150,
       header: t('common.createdBy'),
       accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
       cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
     },
     {
       accessorKey: "createdAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
+      size: 130,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
     },
@@ -507,6 +519,7 @@ function CompaniesIndex() {
           columns={allColumns}
           data={tableData}
           stickyFirstColumn
+          frozenColumns={2}
           searchKey="name"
           searchPlaceholder={t('companies.searchPlaceholder')}
           isLoading={isLoading}

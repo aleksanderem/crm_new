@@ -5,8 +5,8 @@
  */
 
 import { ColumnDef } from "@tanstack/react-table";
-import { createEditableColumn, editablePresets } from "@/components/data-table/editable-columns";
-import type { Contact } from "@/types/crm";
+import { createEditableColumn, editablePresets } from "./editable-columns";
+type Contact = any;
 
 export function getContactColumnsWithInlineEdit(
   onUpdate: (contactId: string, field: keyof Contact, value: any) => Promise<void>
@@ -79,7 +79,7 @@ export function getContactColumnsWithInlineEdit(
  * Example: Using inline editing in Gabinet Patients table
  */
 
-import type { Patient } from "@/types/gabinet";
+type Patient = any;
 
 export function getPatientColumnsWithInlineEdit(
   onUpdate: (patientId: string, field: keyof Patient, value: any) => Promise<void>

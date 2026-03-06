@@ -9,6 +9,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { ActivityForm } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { EmployeeScheduleManager } from "@/components/gabinet/employee-schedule-manager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1204,7 +1205,41 @@ function EmployeeScheduleEditor({
     );
   };
 
+  const validateSchedule = (schedule: DaySchedule[]): string | null => {
+    for (const day of schedule) {
+      if (day.isWorking) {
+        // Validate start < end
+        if (day.startTime >= day.endTime) {
+          return `Start time must be before end time on ${dayNames[day.dayOfWeek]}`;
+        }
+
+        // Validate break times if provided
+        if (day.breakStart && day.breakEnd) {
+          if (day.breakStart >= day.breakEnd) {
+            return `Break start must be before break end on ${dayNames[day.dayOfWeek]}`;
+          }
+          if (day.breakStart < day.startTime || day.breakEnd > day.endTime) {
+            return `Break must be within working hours on ${dayNames[day.dayOfWeek]}`;
+          }
+        }
+
+        // Validate partial breaks
+        if ((day.breakStart && !day.breakEnd) || (!day.breakStart && day.breakEnd)) {
+            return `Both break start and end are required on ${dayNames[day.dayOfWeek]}`;
+          }
+      }
+    }
+    return null;
+  };
+
   const handleSave = async () => {
+    // Validation
+    const validationError = validateSchedule(hours);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave({
@@ -1244,9 +1279,18 @@ function EmployeeScheduleEditor({
               : t("gabinet.employees.schedule.usingClinicDefaults")}
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} size="sm">
-          {saving ? t("common.saving") : t("common.save")}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate({ to: "/dashboard/gabinet/settings/leaves" })}
+          >
+            {t("gabinet.employees.schedule.manageLeaves")}
+          </Button>
+          <Button onClick={handleSave} disabled={saving} size="sm">
+            {saving ? t("common.saving") : t("common.save")}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-lg border">

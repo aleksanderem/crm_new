@@ -4,6 +4,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useWideContent } from "@/hooks/use-wide-content";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -58,6 +59,10 @@ function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  
+  // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
+  useWideContent(true);
+
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");

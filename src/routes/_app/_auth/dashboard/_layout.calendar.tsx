@@ -1,5 +1,6 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useWideContent } from "@/hooks/use-wide-content";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -168,6 +169,9 @@ function UnifiedCalendarPage() {
   const { organizationId } = useOrganization();
   const search = useSearch({ from: Route.id });
   const editPerm = usePermission("activities", "edit");
+
+  // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
+  useWideContent(true);
 
   const [view, setView] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());

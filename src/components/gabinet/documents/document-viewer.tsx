@@ -30,9 +30,10 @@ export function DocumentViewer({ title, type, status, content, signatureData, si
         <Badge variant={STATUS_COLORS[status] ?? "secondary"}>{status.replace("_", " ")}</Badge>
       </div>
 
-      <div className="rounded-lg border bg-white p-6 text-sm leading-relaxed whitespace-pre-wrap">
-        {content}
-      </div>
+      <div
+        className="prose prose-sm max-w-none rounded-lg border bg-white p-6 leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
 
       {signatureData && (
         <div className="rounded-lg border p-4">

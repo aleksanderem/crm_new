@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TemplateEditor } from "@/components/gabinet/template-editor";
 import {
   Select,
   SelectContent,
@@ -33,6 +33,11 @@ export const Route = createFileRoute(
 });
 
 const DOC_TYPES = ["consent", "medical_record", "prescription", "referral", "custom"] as const;
+
+function isEditorEmpty(html: string) {
+  const stripped = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  return stripped.length === 0;
+}
 
 function DocumentTemplatesPage() {
   const { t } = useTranslation();
@@ -72,7 +77,7 @@ function DocumentTemplatesPage() {
   };
 
   const handleSubmit = async () => {
-    if (!name || !content) return;
+    if (!name || isEditorEmpty(content)) return;
     setSubmitting(true);
     try {
       if (editId) {
@@ -207,7 +212,7 @@ function DocumentTemplatesPage() {
           <div className="space-y-1.5">
             <Label>{t("gabinet.documentTemplates.contentLabel")}</Label>
             <p className="text-xs text-muted-foreground">{t("gabinet.documentTemplates.placeholderHint")}</p>
-            <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={10} />
+            <TemplateEditor value={content} onChange={setContent} minHeightClassName="min-h-[320px]" />
           </div>
         </div>
       </SidePanel>

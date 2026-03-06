@@ -1,112 +1,147 @@
-import React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { EditableCell, type EditableCellConfig, type EditableCellType } from "./editable-cell";
+import { ColumnDef } from "@tanstack/react-table";
+import { EditableCell, EditableCellConfig } from "./editable-cell";
 
-export type OnSaveFn<T> = (row: T, value: any) => Promise<void> | void;
-
-export interface CreateEditableColumnOptions<T> {
-  onSave?: OnSaveFn<T>;
-  disabled?: boolean | ((row: T) => boolean);
-  displayFormatter?: (value: any) => string;
-  className?: string;
-}
-
-export function createEditableColumn<T extends Record<string, any>>(
-  accessorKey: string,
-  header: string | React.ReactNode,
+/**
+ * Helper to create an editable column definition
+ */
+export function createEditableColumn<TData>(
+  accessorKey: keyof TData,
+  header: string,
   config: EditableCellConfig,
-  options: CreateEditableColumnOptions<T> = {}
-): ColumnDef<T, any> {
+  options?: {
+    onSave: (row: TData, value: any) => Promise<void> | void;
+    displayFormatter?: (value: any, row: TData) => string;
+    disabled?: (row: TData) => boolean;
+    size?: number;
+  }
+): ColumnDef<TData, any> {
   return {
-    accessorKey,
+    accessorKey: accessorKey as string,
     header,
+    size: options?.size,
     cell: ({ row }) => {
-      const value = row.getValue(accessorKey as any);
-
-      const disabled = typeof options.disabled === "function" ? options.disabled(row.original) : !!options.disabled;
-
-      const handleChange = async (newValue: any) => {
-        if (options.onSave) {
-          await options.onSave(row.original, newValue);
-        }
-      };
+      const value = row.original[accessorKey as keyof TData];
+      const disabled = options?.disabled?.(row.original) ?? false;
 
       return (
         <EditableCell
           value={value}
-          onChange={handleChange}
+          onChange={async (newValue) => {
+            if (options?.onSave) {
+              await options.onSave(row.original, newValue);
+            }
+          }}
           config={config}
-          className={options.className}
           disabled={disabled}
-          displayFormatter={options.displayFormatter}
+          displayFormatter={
+            options?.displayFormatter
+              ? (v) => options.displayFormatter!(v, row.original)
+              : undefined
+          }
         />
       );
     },
-  } as ColumnDef<T, any>;
+  };
 }
 
-// Presets for common field types
+/**
+ * Batch create editable columns
+ */
+export function createEditableColumns<TData>(
+  columns: Array<{
+    accessorKey: keyof TData;
+    header: string;
+    config: EditableCellConfig;
+    onSave?: (row: TData, value: any) => Promise<void> | void;
+    displayFormatter?: (value: any, row: TData) => string;
+    disabled?: (row: TData) => boolean;
+    size?: number;
+  }>,
+  commonOnSave?: (row: TData, field: keyof TData, value: any) => Promise<void> | void
+): ColumnDef<TData, any>[] {
+  return columns.map((col) =>
+    createEditableColumn(col.accessorKey, col.header, col.config, {
+      onSave: col.onSave ?? (commonOnSave ? (row, value) => commonOnSave(row, col.accessorKey, value) : undefined),
+      displayFormatter: col.displayFormatter,
+      disabled: col.disabled,
+      size: col.size,
+    })
+  );
+}
+
+/**
+ * Common editable field presets
+ */
 export const editablePresets = {
-  text: (required = false, placeholder?: string): EditableCellConfig => ({
-    type: "text" as EditableCellType,
+  text: (required = false): EditableCellConfig => ({
+    type: "text",
     required,
-    placeholder,
+    placeholder: "Enter text...",
   }),
 
-  email: (required = false): EditableCellConfig => ({
-    type: "text" as EditableCellType,
-    required,
-    validate: (v: any) => {
-      if (!v && required) return "Required";
-      if (v && !/^\S+@\S+\.\S+$/.test(v)) return "Invalid email";
-      return null;
-    },
-    placeholder: "name@example.com",
+  number: (options?: { min?: number; max?: number; step?: number; required?: boolean }): EditableCellConfig => ({
+    type: "number",
+    min: options?.min,
+    max: options?.max,
+    step: options?.step,
+    required: options?.required,
+    placeholder: "Enter number...",
   }),
 
-  phone: (required = false): EditableCellConfig => ({
-    type: "text" as EditableCellType,
-    required,
-    validate: (v: any) => {
-      if (!v && required) return "Required";
-      if (v && !/^\+?[0-9 \-()]{6,}$/.test(v)) return "Invalid phone";
+  email: (): EditableCellConfig => ({
+    type: "text",
+    required: false,
+    placeholder: "email@example.com",
+    validate: (value) => {
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        return "Invalid email format";
+      }
       return null;
     },
+  }),
+
+  phone: (): EditableCellConfig => ({
+    type: "text",
+    required: false,
     placeholder: "+48 123 456 789",
   }),
 
-  number: (required = false, min?: number, max?: number, step?: number): EditableCellConfig => ({
-    type: "number" as EditableCellType,
-    required,
-    min,
-    max,
-    step,
-  }),
-
   select: (options: { label: string; value: string }[], required = false): EditableCellConfig => ({
-    type: "select" as EditableCellType,
+    type: "select",
     options,
     required,
   }),
 
+  boolean: (): EditableCellConfig => ({
+    type: "boolean",
+  }),
+
   date: (required = false): EditableCellConfig => ({
-    type: "date" as EditableCellType,
+    type: "date",
     required,
   }),
 
   time: (required = false): EditableCellConfig => ({
-    type: "time" as EditableCellType,
+    type: "time",
     required,
   }),
 
   datetime: (required = false): EditableCellConfig => ({
-    type: "datetime" as EditableCellType,
+    type: "datetime",
     required,
   }),
 
-  boolean: (): EditableCellConfig => ({
-    type: "boolean" as EditableCellType,
+  currency: (required = false): EditableCellConfig => ({
+    type: "number",
+    required,
+    min: 0,
+    step: 0.01,
+    placeholder: "0.00",
+    validate: (value) => {
+      if (value !== "" && value !== null && isNaN(Number(value))) {
+        return "Must be a valid number";
+      }
+      return null;
+    },
   }),
 };
-
-export default createEditableColumn;

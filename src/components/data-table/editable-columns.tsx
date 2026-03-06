@@ -9,7 +9,7 @@ export function createEditableColumn<TData>(
   header: string,
   config: EditableCellConfig,
   options?: {
-    onSave: (row: TData, value: any) => Promise<void> | void;
+    onSave?: (row: TData, value: any) => Promise<void> | void;
     displayFormatter?: (value: any, row: TData) => string;
     disabled?: (row: TData) => boolean;
     size?: number;

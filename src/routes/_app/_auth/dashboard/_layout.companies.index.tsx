@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { EditableCell } from "@/components/data-table/editable-cell";
+import { companySizeOptions } from "@/lib/options";
 import { Plus, Building2, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -79,14 +80,7 @@ function CompaniesIndex() {
       id: "size",
       label: t('companies.size'),
       type: "select",
-      options: [
-        { label: "1-10", value: "1-10" },
-        { label: "11-50", value: "11-50" },
-        { label: "51-200", value: "51-200" },
-        { label: "201-500", value: "201-500" },
-        { label: "501-1000", value: "501-1000" },
-        { label: "1000+", value: "1000+" },
-      ],
+      options: companySizeOptions(),
     },
     { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);

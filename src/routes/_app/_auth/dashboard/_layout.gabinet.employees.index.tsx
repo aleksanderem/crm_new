@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { EditableCell } from "@/components/data-table/editable-cell";
+import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,7 +31,6 @@ export const Route = createFileRoute(
   component: EmployeesIndex,
 });
 
-const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
 
 type Employee = Doc<"gabinetEmployees">;
 
@@ -90,10 +90,7 @@ function EmployeesIndex() {
     return name.substring(0, 2).toUpperCase();
   }
 
-  const roleOptions = ROLES.map((r) => ({
-    label: t(`gabinet.employees.roles.${r}`),
-    value: r,
-  }));
+  const roleOptions = employeeRoleOptions(t);
 
   const columns: ColumnDef<Employee>[] = [
     {
@@ -416,7 +413,7 @@ function CreateEmployeeSheet({
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ROLES.map((r) => (
+                {EMPLOYEE_ROLES.map((r) => (
                   <SelectItem key={r} value={r}>
                     {t(`gabinet.employees.roles.${r}`)}
                   </SelectItem>

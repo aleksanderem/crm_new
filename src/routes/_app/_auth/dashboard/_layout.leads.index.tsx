@@ -13,6 +13,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { EditableCell } from "@/components/data-table/editable-cell";
+import { leadStatusOptions, leadPriorityOptions } from "@/lib/options";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -131,21 +132,13 @@ function LeadsIndex() {
       id: "status",
       label: t('common.status'),
       type: "select",
-      options: [
-        { label: t('deals.filters.open'), value: "open" },
-        { label: t('deals.filters.won'), value: "won" },
-        { label: t('deals.filters.lost'), value: "lost" },
-      ],
+      options: leadStatusOptions(t),
     },
     {
       id: "priority",
       label: t('common.priority'),
       type: "select",
-      options: [
-        { label: t('deals.priority.high'), value: "high" },
-        { label: t('deals.priority.medium'), value: "medium" },
-        { label: t('deals.priority.low'), value: "low" },
-      ],
+      options: leadPriorityOptions(t),
     },
     { id: "source", label: t('common.source'), type: "text" },
     { id: "value", label: t('deals.dealValue'), type: "number" },
@@ -346,12 +339,7 @@ function LeadsIndex() {
           value={row.original.status}
           config={{
             type: "select",
-            options: [
-              { label: t('deals.filters.open'), value: "open" },
-              { label: t('deals.filters.won'), value: "won" },
-              { label: t('deals.filters.lost'), value: "lost" },
-              { label: "Archived", value: "archived" },
-            ],
+            options: leadStatusOptions(t),
           }}
           onChange={async (v) => {
             await updateLead({ organizationId, leadId: row.original._id, status: v });
@@ -368,12 +356,7 @@ function LeadsIndex() {
           value={row.original.priority ?? ""}
           config={{
             type: "select",
-            options: [
-              { label: t('deals.priority.high'), value: "high" },
-              { label: t('deals.priority.medium'), value: "medium" },
-              { label: t('deals.priority.low'), value: "low" },
-              { label: "Urgent", value: "urgent" },
-            ],
+            options: leadPriorityOptions(t),
           }}
           onChange={async (v) => {
             await updateLead({ organizationId, leadId: row.original._id, priority: v });

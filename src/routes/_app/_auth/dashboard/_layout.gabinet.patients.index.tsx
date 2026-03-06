@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Heart, Trash2 } from "@/lib/ez-icons";
 import { EditableCell } from "@/components/data-table/editable-cell";
+import { genderOptions } from "@/lib/options";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
@@ -232,11 +233,7 @@ function PatientsIndex() {
           value={row.original.gender ?? ""}
           config={{
             type: "select",
-            options: [
-              { label: t("gabinet.patients.genderOptions.male"), value: "male" },
-              { label: t("gabinet.patients.genderOptions.female"), value: "female" },
-              { label: t("gabinet.patients.genderOptions.other"), value: "other" },
-            ],
+            options: genderOptions(t),
             placeholder: "—",
           }}
           onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, gender: v as any }); }}

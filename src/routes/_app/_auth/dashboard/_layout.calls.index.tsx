@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { callOutcomeOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -59,13 +60,7 @@ function CallsPage() {
   const filterableFields = useMemo((): FieldDef[] => [
     {
       id: "outcome", label: t('calls.outcome'), type: "select",
-      options: [
-        { label: t('calls.outcomes.busy'), value: "busy" },
-        { label: t('calls.outcomes.leftVoiceMessage'), value: "leftVoiceMessage" },
-        { label: t('calls.outcomes.movedConversationForward'), value: "movedConversationForward" },
-        { label: t('calls.outcomes.wrongNumber'), value: "wrongNumber" },
-        { label: t('calls.outcomes.noAnswer'), value: "noAnswer" },
-      ],
+      options: callOutcomeOptions(t),
     },
     { id: "callDate", label: t('calls.callDate'), type: "date" },
   ], [t]);

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GENDERS } from "@/lib/options";
 
 interface PatientFormData {
   firstName: string;
@@ -152,9 +153,9 @@ export function PatientForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="male">{t("gabinet.patients.genderOptions.male")}</SelectItem>
-              <SelectItem value="female">{t("gabinet.patients.genderOptions.female")}</SelectItem>
-              <SelectItem value="other">{t("gabinet.patients.genderOptions.other")}</SelectItem>
+              {GENDERS.map((g) => (
+                <SelectItem key={g} value={g}>{t(`gabinet.patients.genderOptions.${g}`)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

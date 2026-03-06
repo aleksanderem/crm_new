@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { documentCategoryOptions, documentStatusOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2, RefreshCw } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -76,23 +77,11 @@ function DocumentsIndex() {
   const filterableFields = useMemo((): FieldDef[] => [
     {
       id: "status", label: t('common.status'), type: "select",
-      options: [
-        { label: t('documents.status.draft'), value: "draft" },
-        { label: t('documents.status.sent'), value: "sent" },
-        { label: t('documents.status.accepted'), value: "accepted" },
-        { label: t('documents.status.lost'), value: "lost" },
-      ],
+      options: documentStatusOptions(t),
     },
     {
       id: "category", label: t('common.category'), type: "select",
-      options: [
-        { label: t('documents.category.proposal'), value: "proposal" },
-        { label: t('documents.category.contract'), value: "contract" },
-        { label: t('documents.category.invoice'), value: "invoice" },
-        { label: t('documents.category.presentation'), value: "presentation" },
-        { label: t('documents.category.report'), value: "report" },
-        { label: t('documents.category.other'), value: "other" },
-      ],
+      options: documentCategoryOptions(t),
     },
     { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);

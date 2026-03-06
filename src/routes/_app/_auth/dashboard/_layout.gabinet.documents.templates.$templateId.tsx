@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TemplateEditor } from "@/components/gabinet/template-editor";
 import { TEMPLATE_VARIABLE_CATEGORIES, TEMPLATE_VARIABLES } from "@/components/gabinet/variable-mention";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId")({
   component: EditTemplatePage,
@@ -22,10 +23,10 @@ function EditTemplatePage({ params }: any) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const templateId = params.templateId as string;
-  const { data: tpl } = useQuery(convexQuery(api.gabinet.documentTemplates.get, { organizationId, templateId }));
+  const { data: tpl } = useQuery(convexQuery(api.gabinet.documentTemplates.getById, { organizationId, templateId: templateId as Id<"gabinetDocumentTemplates"> }));
   const updateTpl = useMutation(api.gabinet.documentTemplates.update);
   const [name, setName] = useState("");
-  const [type, setType] = useState("");
+  const [type, setType] = useState<"consent" | "medical_record" | "prescription" | "referral" | "custom">("consent");
   const editorRef = useRef<any>(null);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ function EditTemplatePage({ params }: any) {
   const handleSave = async () => {
     const html = editorRef.current?.getHTML?.() ?? "";
     if (!name || !html) return;
-    await updateTpl({ organizationId, templateId, name, type, content: html });
+    await updateTpl({ organizationId, templateId: templateId as Id<"gabinetDocumentTemplates">, name, type, content: html });
     window.location.href = "/dashboard/gabinet/settings/document-templates";
   };
 
@@ -61,7 +62,16 @@ function EditTemplatePage({ params }: any) {
             </div>
             <div>
               <Label>{t("gabinet.documents.type") || "Typ"}</Label>
-              <Input value={type} onChange={(e) => setType(e.target.value)} />
+              <Select value={type} onValueChange={(val) => setType(val as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="consent">consent</SelectItem>
+                  <SelectItem value="medical_record">medical_record</SelectItem>
+                  <SelectItem value="prescription">prescription</SelectItem>
+                  <SelectItem value="referral">referral</SelectItem>
+                  <SelectItem value="custom">custom</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

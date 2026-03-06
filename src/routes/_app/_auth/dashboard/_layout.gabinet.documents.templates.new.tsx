@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { useMutation } from "convex/react";
@@ -8,10 +7,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TemplateEditor } from "@/components/gabinet/template-editor";
 import { TEMPLATE_VARIABLE_CATEGORIES, TEMPLATE_VARIABLES } from "@/components/gabinet/variable-mention";
-import { SidePanel } from "@/components/crm/side-panel";
 import { useTranslation } from "react-i18next";
+import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/gabinet/documents/templates/new")({
   component: NewTemplatePage,
@@ -22,13 +22,13 @@ function NewTemplatePage() {
   const { organizationId } = useOrganization();
   const createTpl = useMutation(api.gabinet.documentTemplates.create);
   const [name, setName] = useState("");
-  const [type, setType] = useState("consent");
+  const [type, setType] = useState<"consent" | "medical_record" | "prescription" | "referral" | "custom">("consent");
   const editorRef = useRef<any>(null);
 
   const handleSave = async () => {
     const html = editorRef.current?.getHTML?.() ?? "";
     if (!name || !html) return;
-    await createTpl({ organizationId, name, type, content: html });
+    await createTpl({ organizationId, name, type, content: html, requiresSignature: false });
     // navigate back to templates list
     window.location.href = "/dashboard/gabinet/settings/document-templates";
   };
@@ -52,7 +52,16 @@ function NewTemplatePage() {
             </div>
             <div>
               <Label>{t("gabinet.documents.type") || "Typ"}</Label>
-              <Input value={type} onChange={(e) => setType(e.target.value)} />
+              <Select value={type} onValueChange={(val) => setType(val as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="consent">consent</SelectItem>
+                  <SelectItem value="medical_record">medical_record</SelectItem>
+                  <SelectItem value="prescription">prescription</SelectItem>
+                  <SelectItem value="referral">referral</SelectItem>
+                  <SelectItem value="custom">custom</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

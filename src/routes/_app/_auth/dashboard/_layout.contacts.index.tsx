@@ -26,6 +26,7 @@ import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
 export const Route = createFileRoute(
@@ -182,8 +183,9 @@ function ContactsIndex() {
     return Array.from(sources).map((s) => ({ label: s, value: s }));
   }, [contacts]);
 
-  // Base columns (used for display when inline editing is not applied)
-  const baseColumns: ColumnDef<Contact>[] = [
+  const updateContact = useMutation(api.contacts.update);
+
+  const columns: ColumnDef<Contact>[] = [
     {
       accessorKey: "firstName",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
@@ -202,6 +204,39 @@ function ContactsIndex() {
       ),
     },
     {
+      accessorKey: "email",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.email')} />,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.email ?? ""}
+          config={{ type: "text", placeholder: "email@example.com" }}
+          onChange={async (v) => { await updateContact({ id: row.original._id, email: v } as any); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.phone')} />,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.phone ?? ""}
+          config={{ type: "text", placeholder: "+48..." }}
+          onChange={async (v) => { await updateContact({ id: row.original._id, phone: v } as any); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "title",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.title')} />,
+      cell: ({ row }) => (
+        <EditableCell
+          value={(row.original as any).title ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateContact({ id: row.original._id, title: v } as any); }}
+        />
+      ),
+    },
+    {
       accessorKey: "createdAt",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
@@ -213,28 +248,9 @@ function ContactsIndex() {
     },
   ];
 
-  // Inline editable columns
-  const updateContact = useMutation(api.contacts.update);
-  const handleInlineUpdate = async (contactId: string, field: keyof Contact, value: any) => {
-    await updateContact({ id: contactId as any, [field]: value } as any);
-  };
-
-  // get editable columns from helper and merge with custom field columns
-  // import helper dynamically to avoid breaking non-editable mode
-  const editableColumns = useMemo(() => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      const { getContactColumnsWithInlineEdit } = require('@/components/data-table/editable-examples');
-      return getContactColumnsWithInlineEdit(handleInlineUpdate);
-    } catch (e) {
-      return [] as ColumnDef<Contact>[];
-    }
-  }, [handleInlineUpdate]);
-
   const allColumns = useMemo(() => {
-    // Prefer editable columns for standard fields, then append custom field columns
-    return [...(editableColumns.length ? editableColumns : baseColumns), ...cfColumns];
-  }, [editableColumns, baseColumns, cfColumns]);
+    return [...columns, ...cfColumns];
+  }, [columns, cfColumns]);
 
   const handleCreate = useCallback(
     async (

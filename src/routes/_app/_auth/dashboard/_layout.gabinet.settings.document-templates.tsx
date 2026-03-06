@@ -6,6 +6,9 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Route as NewTemplateRoute } from "@/routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.new";
+import { Route as EditTemplateRoute } from "@/routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.$templateId";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,21 +62,13 @@ function DocumentTemplatesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const openCreate = () => {
-    setEditId(null);
-    setName("");
-    setType("consent");
-    setContent("");
-    setRequiresSignature(false);
-    setPanelOpen(true);
+    // navigate to full-page editor for new template
+    window.location.href = NewTemplateRoute.fullPath;
   };
 
   const openEdit = (tpl: any) => {
-    setEditId(tpl._id);
-    setName(tpl.name);
-    setType(tpl.type);
-    setContent(tpl.content);
-    setRequiresSignature(tpl.requiresSignature ?? false);
-    setPanelOpen(true);
+    // navigate to full-page editor for editing
+    window.location.href = EditTemplateRoute.fullPath.replace('$templateId', tpl._id);
   };
 
   const handleSubmit = async () => {

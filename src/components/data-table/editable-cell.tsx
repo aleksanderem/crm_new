@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Inplace } from "@/components/ui/inplace";
+import { Check, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 
 export type EditableCellType = "text" | "number" | "select" | "date" | "time" | "datetime" | "boolean";
@@ -212,9 +213,30 @@ export function EditableCell({
         {getDisplayContent()}
       </Inplace.Display>
       <Inplace.Content>
-        <div onBlur={handleBlur}>
+        <div className="inline-flex items-center gap-1" onBlur={handleBlur}>
           {getEditContent()}
-          {saving && <span className="text-xs text-muted-foreground animate-pulse ml-1">...</span>}
+          {config.type !== "select" && (
+            <>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-8 w-8 rounded border border-input bg-background hover:bg-accent text-green-600 hover:text-green-700 disabled:opacity-50"
+                onClick={() => handleSave()}
+                disabled={saving}
+                tabIndex={0}
+              >
+                <Check size={16} />
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-8 w-8 rounded border border-input bg-background hover:bg-accent text-red-500 hover:text-red-600 disabled:opacity-50"
+                onClick={() => setActive(false)}
+                disabled={saving}
+                tabIndex={0}
+              >
+                <X size={16} />
+              </button>
+            </>
+          )}
         </div>
       </Inplace.Content>
       {errorMessage && (

@@ -1,0 +1,19 @@
+/* Stonowana (muted) color theme for Gabinet UI */
+:root {
+  --primary: #2f5d7d; /* muted navy */
+  --primary-foreground: #ffffff;
+  --accent: #7aa7c7; /* light steel */
+  --accent-foreground: #052b38;
+  --success: #2f7a4a;
+  --destructive: #b94a4a;
+  --border: #e6eef6;
+  --muted: #f6f8fa;
+  --card: #ffffff;
+}
+
+/* Optional utility classes to preview the theme */
+.theme-stonowana .swatch { width: 48px; height: 28px; border-radius: 6px; border: 1px solid var(--border); }
+.theme-stonowana .swatch--primary { background: var(--primary); }
+.theme-stonowana .swatch--accent { background: var(--accent); }
+.theme-stonowana .swatch--success { background: var(--success); }
+.theme-stonowana .swatch--danger { background: var(--destructive); }

@@ -407,7 +407,7 @@ export const removeEmployeeSchedule = mutation({
     scheduleId: v.id("gabinetEmployeeSchedules"),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    await requireOrgAdmin(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const schedule = await ctx.db.get(args.scheduleId);

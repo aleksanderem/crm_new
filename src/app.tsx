@@ -3,7 +3,6 @@ import { RouterProvider } from "@tanstack/react-router";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
-import { PrimeReactProvider } from "@primereact/core/config";
 import { router } from "@/router";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import "@/i18n";
@@ -31,14 +30,12 @@ const helmetContext = {};
 
 export default function App() {
   return (
-    <PrimeReactProvider unstyled>
-      <HelmetProvider context={helmetContext}>
-        <ConvexAuthProvider client={convex}>
-          <QueryClientProvider client={queryClient}>
-            <InnerApp />
-          </QueryClientProvider>
-        </ConvexAuthProvider>
-      </HelmetProvider>
-    </PrimeReactProvider>
+    <HelmetProvider context={helmetContext}>
+      <ConvexAuthProvider client={convex}>
+        <QueryClientProvider client={queryClient}>
+          <InnerApp />
+        </QueryClientProvider>
+      </ConvexAuthProvider>
+    </HelmetProvider>
   );
 }

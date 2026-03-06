@@ -1272,6 +1272,138 @@ const schema = defineSchema({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_appointment", ["appointmentId"]),
 
+  // --- Platform: Document Templates ---
+
+  documentTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.union(
+      v.literal("contract"),
+      v.literal("invoice"),
+      v.literal("consent"),
+      v.literal("referral"),
+      v.literal("prescription"),
+      v.literal("report"),
+      v.literal("protocol"),
+      v.literal("custom"),
+    ),
+    content: v.string(),
+    module: v.string(),
+    requiredSources: v.array(v.string()),
+    requiresSignature: v.boolean(),
+    signatureSlots: v.array(v.object({
+      id: v.string(),
+      role: v.union(
+        v.literal("author"),
+        v.literal("client"),
+        v.literal("patient"),
+        v.literal("employee"),
+        v.literal("witness"),
+      ),
+      label: v.string(),
+    })),
+    accessControl: v.object({
+      mode: v.union(v.literal("all"), v.literal("roles"), v.literal("users")),
+      roles: v.array(v.string()),
+      userIds: v.array(v.id("users")),
+    }),
+    version: v.number(),
+    parentTemplateId: v.optional(v.id("documentTemplates")),
+    status: v.union(v.literal("draft"), v.literal("active"), v.literal("archived")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndModule", ["organizationId", "module"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndCategory", ["organizationId", "category"])
+    .index("by_parent", ["parentTemplateId"]),
+
+  documentTemplateFields: defineTable({
+    templateId: v.id("documentTemplates"),
+    fieldKey: v.string(),
+    label: v.string(),
+    type: v.union(
+      v.literal("text"),
+      v.literal("textarea"),
+      v.literal("number"),
+      v.literal("date"),
+      v.literal("select"),
+      v.literal("checkbox"),
+      v.literal("signature"),
+      v.literal("currency"),
+      v.literal("phone"),
+      v.literal("email"),
+      v.literal("pesel"),
+    ),
+    sortOrder: v.number(),
+    group: v.optional(v.string()),
+    options: v.optional(v.array(v.object({ label: v.string(), value: v.string() }))),
+    defaultValue: v.optional(v.string()),
+    binding: v.optional(v.object({
+      source: v.string(),
+      field: v.string(),
+    })),
+    validation: v.optional(v.object({
+      required: v.optional(v.boolean()),
+      min: v.optional(v.number()),
+      max: v.optional(v.number()),
+      pattern: v.optional(v.string()),
+      minLength: v.optional(v.number()),
+      maxLength: v.optional(v.number()),
+    })),
+    placeholder: v.optional(v.string()),
+    helpText: v.optional(v.string()),
+    width: v.union(v.literal("full"), v.literal("half")),
+  })
+    .index("by_template", ["templateId"])
+    .index("by_templateAndKey", ["templateId", "fieldKey"]),
+
+  documentInstances: defineTable({
+    organizationId: v.id("organizations"),
+    templateId: v.id("documentTemplates"),
+    templateVersion: v.number(),
+    title: v.string(),
+    renderedContent: v.string(),
+    fieldValues: v.any(),
+    resolvedSources: v.any(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("pending_review"),
+      v.literal("approved"),
+      v.literal("pending_signature"),
+      v.literal("signed"),
+      v.literal("archived"),
+    ),
+    module: v.string(),
+    signatures: v.array(v.object({
+      slotId: v.string(),
+      slotLabel: v.string(),
+      signatureData: v.optional(v.string()),
+      signedByUserId: v.optional(v.id("users")),
+      signedByName: v.optional(v.string()),
+      signedAt: v.optional(v.number()),
+    })),
+    pdfFileId: v.optional(v.id("_storage")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndModule", ["organizationId", "module"])
+    .index("by_template", ["templateId"])
+    .searchIndex("search_documents", {
+      searchField: "title",
+      filterFields: ["organizationId", "status", "module"],
+    }),
+
   // --- Gabinet: Patient Portal (Phase 6) ---
 
   gabinetPortalSessions: defineTable({

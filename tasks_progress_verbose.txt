@@ -3,7 +3,7 @@ Task Progress Log
 
 === SESSION S0001 START === [timestamp]
 Focus: Initial project setup
-Project: [PROJECT_NAME]
+Project: crm_new
 First session - creating task tracking infrastructure
 
 ---
@@ -12,5 +12,173 @@ S0001. Initialization:
 - Created task tracking files (session_state.json, tasks_progress.json, tasks_progress_verbose.txt)
 - Next: Define first tasks based on project requirements
 - Note: Do not remove tests as this could lead to missing functionality
+
+---
+
+=== SESSION S0056 NOTES ===
+Focus: WYSIWYG template editor, layout auto-hide, move patient cards
+Tasks carried: 354f9094, 7ec167f5, 720e1ca7 (all in_progress)
+
+---
+
+=== SESSION S0057 START === 2026-03-06T18:00:00Z
+Focus: Document template system — planning and task breakdown
+Continuing from: S0056 (tasks carried over as blocked)
+
+---
+
+S0057. Document Template System — Task Breakdown:
+
+Plan document: docs/document-templates-system.md
+Architecture: Platform-level core with Data Source Registry, modules plug in via source definitions.
+
+Previous tasks from S0056:
+- 354f9094 (gabinet_wysiwyg_template_editor): BLOCKED — superseded by platform-level system. TipTap editor will be migrated in DT-06.
+- 7ec167f5 (layout_auto_hide_column2): BLOCKED — unrelated, status unclear from S0056.
+- 720e1ca7 (move_patient_cards_to_middle_sidebar): BLOCKED — unrelated, status unclear from S0056.
+
+=== ETAP 1: Schema + Data Source Registry + Backend Core ===
+
+DT-01: data_source_registry_and_types
+  What: DataSourceDefinition TypeScript type, central registry module, bazowe sources (system, current_user, org), Gabinet sources (patient, employee, appointment), CRM sources (contact, company, lead, deal), listAvailableSources query.
+  Why first: Everything depends on this. Source definitions drive template field binding, document creation, and UI discovery.
+  Files: convex/documentDataSources.ts, convex/gabinet/documentDataSources.ts, convex/crm/documentDataSources.ts, src/lib/document-data-sources.ts
+  Depends on: nothing
+
+DT-02: schema_tables
+  What: Add documentTemplates, documentTemplateFields, documentInstances to convex/schema.ts with indexes.
+  Key decisions: binding field on templateFields is { source: string, field: string } | null. Instance stores resolvedSources: Record<string, string> instead of contextType/contextId. requiredSources on template.
+  Files: convex/schema.ts
+  Depends on: nothing
+
+DT-03: backend_templates_crud
+  What: convex/documentTemplates.ts — create, update, archive, publish, duplicate, list, getById, listActive.
+  Files: convex/documentTemplates.ts
+  Depends on: DT-02
+
+DT-04: backend_template_fields_crud
+  What: convex/documentTemplateFields.ts — create, update, remove, reorder, listByTemplate.
+  Files: convex/documentTemplateFields.ts
+  Depends on: DT-02
+
+DT-05: backend_instances_crud_and_rendering
+  What: convex/documentInstances.ts — create (resolve all sources via registry → fill bound field defaults → render HTML snapshot), update draft, workflow transitions, sign, archive. renderTemplate function. Queries: list, getById, listByResolvedSource.
+  Critical: This is where the Data Source Registry gets consumed. create() takes sources map {patient: id, appointment: id}, resolves each via registry, builds fieldValues with defaults, renders HTML.
+  Files: convex/documentInstances.ts
+  Depends on: DT-01, DT-02, DT-04
+
+DT-17: rbac_permissions
+  What: Add document_templates and document_instances permission entries. Enforce in all mutations/queries. Per-template accessControl.
+  Files: convex/permissions.ts, convex/documentTemplates.ts, convex/documentInstances.ts
+  Depends on: DT-03, DT-05
+
+=== ETAP 2: UI Template Editor ===
+
+DT-06: ui_template_editor
+  What: TipTap with {{field:key}} badge nodes. Migrate from gabinet/template-editor.tsx, generalize. {{ autocomplete. Insert field button.
+  Files: src/components/documents/template-editor.tsx
+  Depends on: DT-03, DT-04
+
+DT-07: ui_template_field_panel_and_config
+  What: Side panel (field list, drag-and-drop, CRUD), data source tree browser, source-field-picker (cascading selects), field config modal (binding toggle manual/source, validation, options).
+  Key UX: Clicking a field in source tree auto-creates template field with pre-filled binding. Cascading select: pick source → pick field → auto-fill label and type.
+  Files: src/components/documents/template-field-panel.tsx, template-field-config.tsx, source-field-picker.tsx
+  Depends on: DT-01, DT-04
+
+DT-08: ui_template_admin_routes
+  What: Settings routes — list, new, edit. List page with table, filters, actions. Editor page: full-screen with header (name, category, module, requiredSources, description, preview, save/publish), editor + field panel, settings section (signatures, access control).
+  Files: settings.document-templates routes
+  Depends on: DT-06, DT-07
+
+=== ETAP 3: UI Document Creation ===
+
+DT-09: ui_template_picker
+  What: Template selection dialog. Grouped by category, filtered by access + module + requiredSources. Search. Incompatible templates greyed out. source-instance-picker for missing sources (entity search).
+  Files: src/components/documents/template-picker.tsx, source-instance-picker.tsx
+  Depends on: DT-03, DT-01
+
+DT-10: ui_document_from_template
+  What: Split view — field form + live preview. Bound fields pre-filled with auto-fill indicator + restore button on override. Grouped/sorted fields. Live preview debounce 300ms. Mobile tabs. Title field. Save draft / approve / cancel.
+  Key UX: Klik na pole w podglądzie → focus pole w formularzu. Klik na pole w formularzu → highlight w podglądzie.
+  Files: src/components/documents/document-from-template.tsx
+  Depends on: DT-05, DT-09
+
+DT-11: ui_document_viewer
+  What: Read-only view. Rendered HTML, header with source links, status badge. Signature section with slot status, sign button, auto-signed. Actions per status. Migrate from gabinet/document-viewer.tsx.
+  Files: src/components/documents/document-viewer.tsx, signature-pad.tsx
+  Depends on: DT-05
+
+DT-12: ui_document_routes
+  What: /dashboard/documents list (table + filters), /$instanceId view. Reusable document-instance-table.tsx.
+  Files: documents routes, document-instance-table.tsx
+  Depends on: DT-10, DT-11
+
+=== ETAP 4: Module Integration ===
+
+DT-13: integration_module_gabinet
+  What: DocumentFromTemplateDialog wrapper. Patient card Documents tab + button (sources: {patient}). Appointment view button + list (sources: {patient, appointment}).
+  Files: document-from-template-dialog.tsx
+  Depends on: DT-10, DT-12
+
+DT-14: integration_module_crm
+  What: Contact/Company/Deal cards — Documents tab + button with appropriate sources.
+  Depends on: DT-13
+
+=== ETAP 5: Workflow + Signatures + PDF ===
+
+DT-15: workflow_signatures_pdf
+  What: Workflow validation, signature pad in viewer, PDF export (html2canvas + jsPDF), notifications.
+  Files: src/components/documents/pdf-export.tsx
+  Depends on: DT-11, DT-12
+
+=== ETAP 6: Migration ===
+
+DT-16: migration_gabinet_documents
+  What: Migrate gabinetDocumentTemplates → documentTemplates + fields. Migrate gabinetDocuments → instances. Update Gabinet routes. Deprecate old tables.
+  Depends on: DT-13, DT-15
+
+=== DEPENDENCY GRAPH ===
+
+DT-01 (sources) ──┬──→ DT-05 (instances backend) ──→ DT-10 (from-template UI)
+                   ├──→ DT-07 (field panel UI)        DT-11 (viewer UI)
+                   └──→ DT-09 (template picker)          │
+                                                          ↓
+DT-02 (schema) ───┬──→ DT-03 (templates CRUD) ──→ DT-06 (editor UI) ──→ DT-08 (admin routes)
+                   └──→ DT-04 (fields CRUD) ────→ DT-07 (field panel)
+                                                          │
+DT-03 + DT-05 ──→ DT-17 (RBAC)                          ↓
+                                                   DT-08 (admin routes)
+DT-10 + DT-11 ──→ DT-12 (document routes) ──→ DT-13 (Gabinet integration) ──→ DT-14 (CRM integration)
+                                                                                       │
+DT-11 + DT-12 ──→ DT-15 (workflow/PDF)                                               ↓
+                                                                                DT-16 (migration)
+DT-13 + DT-15 ──→ DT-16 (migration)
+
+=== BUILD ORDER (recommended) ===
+
+Phase A (parallel): DT-01, DT-02
+Phase B (parallel): DT-03, DT-04 (both need DT-02)
+Phase C: DT-05 (needs DT-01, DT-02, DT-04)
+Phase D (parallel): DT-06 (needs DT-03, DT-04), DT-07 (needs DT-01, DT-04), DT-09 (needs DT-03, DT-01), DT-11 (needs DT-05), DT-17 (needs DT-03, DT-05)
+Phase E (parallel): DT-08 (needs DT-06, DT-07), DT-10 (needs DT-05, DT-09)
+Phase F: DT-12 (needs DT-10, DT-11)
+Phase G: DT-13 (needs DT-10, DT-12)
+Phase H (parallel): DT-14 (needs DT-13), DT-15 (needs DT-11, DT-12)
+Phase I: DT-16 (needs DT-13, DT-15)
+
+=== METRICS mapped to tasks ===
+
+M1 (template creation): DT-03 + DT-04 + DT-08
+M2 (bound fields auto-fill): DT-01 + DT-05 + DT-10
+M3 (full workflow): DT-05 + DT-15
+M4 (signatures): DT-11 + DT-15
+M5 (PDF): DT-15
+M6 (versioning): DT-03
+M7 (access control): DT-17
+M8 (cross-module): DT-13 + DT-14
+M9 (new module = 1 file): DT-01 (architectural validation)
+M10 (multi-source): DT-05 + DT-10
+M15 (migration): DT-16
+M16 (CRM untouched): DT-16 (verify no regression)
 
 ---

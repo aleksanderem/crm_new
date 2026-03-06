@@ -1,16 +1,266 @@
 {
-  "session_id": "S0056",
+  "session_id": "S0057",
   "date": "2026-03-06",
   "tasks": [
-    { "id": "354f9094", "name": "gabinet_wysiwyg_template_editor", "status": "in_progress", "created_session": "S0056", "last_updated_session": "S0056" },
-    { "id": "7ec167f5", "name": "layout_auto_hide_column2", "status": "in_progress", "created_session": "S0056", "last_updated_session": "S0056" },
-    { "id": "720e1ca7", "name": "move_patient_cards_to_middle_sidebar", "status": "in_progress", "created_session": "S0056", "last_updated_session": "S0056" }
+    {
+      "id": "354f9094",
+      "name": "gabinet_wysiwyg_template_editor",
+      "status": "blocked",
+      "created_session": "S0056",
+      "last_updated_session": "S0057",
+      "note": "Superseded by platform-level document template system. Existing TipTap editor will be migrated in task DT-02. Keep blocked until DT-02 starts."
+    },
+    {
+      "id": "7ec167f5",
+      "name": "layout_auto_hide_column2",
+      "status": "blocked",
+      "created_session": "S0056",
+      "last_updated_session": "S0057",
+      "note": "Carried from S0056. Unrelated to document system. Status unclear — needs review."
+    },
+    {
+      "id": "720e1ca7",
+      "name": "move_patient_cards_to_middle_sidebar",
+      "status": "blocked",
+      "created_session": "S0056",
+      "last_updated_session": "S0057",
+      "note": "Carried from S0056. Unrelated to document system. Status unclear — needs review."
+    },
+
+    {
+      "id": "DT-01",
+      "name": "data_source_registry_and_types",
+      "status": "passing",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "DataSourceDefinition type, central registry (getAllDataSources, getDataSource, resolveSource), bazowe source'y (system, current_user, org), source'y Gabinet (patient, employee, appointment), source'y CRM (contact, company, lead, deal). Query listAvailableSources(module) for UI discovery.",
+      "files": [
+        "convex/documentDataSources.ts",
+        "convex/gabinet/documentDataSources.ts",
+        "convex/crm/documentDataSources.ts",
+        "src/lib/document-data-sources.ts"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "DT-02",
+      "name": "schema_tables",
+      "status": "passing",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "Add documentTemplates, documentTemplateFields, documentInstances tables to convex/schema.ts with all indexes.",
+      "files": ["convex/schema.ts"],
+      "depends_on": []
+    },
+    {
+      "id": "DT-03",
+      "name": "backend_templates_crud",
+      "status": "passing",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "convex/documentTemplates.ts — create, update, archive, publish (draft→active), duplicate. Queries: list (filters), getById, listActive (user access control check).",
+      "files": ["convex/documentTemplates.ts"],
+      "depends_on": ["DT-02"]
+    },
+    {
+      "id": "DT-04",
+      "name": "backend_template_fields_crud",
+      "status": "passing",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "convex/documentTemplateFields.ts — create, update, remove, reorder. Query: listByTemplate.",
+      "files": ["convex/documentTemplateFields.ts"],
+      "depends_on": ["DT-02"]
+    },
+    {
+      "id": "DT-05",
+      "name": "backend_instances_crud_and_rendering",
+      "status": "passing",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "convex/documentInstances.ts — create (resolve sources + render HTML), update draft, workflow transitions (status machine), sign (add signature to slot), archive. Queries: list (filters), getById, listByResolvedSource. renderTemplate function: content + bindings + values → HTML snapshot.",
+      "files": ["convex/documentInstances.ts"],
+      "depends_on": ["DT-01", "DT-02", "DT-04"]
+    },
+    {
+      "id": "DT-06",
+      "name": "ui_template_editor",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 2,
+      "description": "TipTap editor with {{field:key}} badge nodes (inline, non-editable, draggable, double-click to edit). {{ autocomplete dropdown. Toolbar 'Insert field' button. Migrate and generalize from gabinet/template-editor.tsx.",
+      "files": ["src/components/documents/template-editor.tsx"],
+      "depends_on": ["DT-03", "DT-04"]
+    },
+    {
+      "id": "DT-07",
+      "name": "ui_template_field_panel_and_config",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 2,
+      "description": "Side panel: field list with drag-and-drop sort, add/edit/delete buttons, binding info display. 'Available data sources' tree section. source-field-picker.tsx: cascading selects source→field. template-field-config.tsx: modal with label, key, type, binding toggle (manual vs source), validation, options (for select), width.",
+      "files": [
+        "src/components/documents/template-field-panel.tsx",
+        "src/components/documents/template-field-config.tsx",
+        "src/components/documents/source-field-picker.tsx"
+      ],
+      "depends_on": ["DT-01", "DT-04"]
+    },
+    {
+      "id": "DT-08",
+      "name": "ui_template_admin_routes",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 2,
+      "description": "Settings → Document Templates routes. List page (table with filters, actions: edit/duplicate/archive). New template page (full-screen editor + field panel + settings). Edit template page ($id). Header: name, category, module select, requiredSources, description, preview button, save draft / publish.",
+      "files": [
+        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.tsx",
+        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.new.tsx",
+        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.$id.tsx"
+      ],
+      "depends_on": ["DT-06", "DT-07"]
+    },
+    {
+      "id": "DT-09",
+      "name": "ui_template_picker",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 3,
+      "description": "Dialog: list of available templates grouped by category, filtered by user access + module + requiredSources compatibility. Search, source requirement badges, greyed-out incompatible templates with tooltip. Step 1a: source-instance-picker for missing required sources (entity search).",
+      "files": [
+        "src/components/documents/template-picker.tsx",
+        "src/components/documents/source-instance-picker.tsx"
+      ],
+      "depends_on": ["DT-03", "DT-01"]
+    },
+    {
+      "id": "DT-10",
+      "name": "ui_document_from_template",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 3,
+      "description": "Split view: field form (40%) + live HTML preview (60%). Fields sorted/grouped, width half/full, bound fields pre-filled with source data + 'auto-filled' indicator + 'restore from source' on override. Live preview debounce 300ms, unfilled = orange placeholder. Mobile: tabs. Title field with default. Actions: save draft, approve, cancel (dirty check).",
+      "files": ["src/components/documents/document-from-template.tsx"],
+      "depends_on": ["DT-05", "DT-09"]
+    },
+    {
+      "id": "DT-11",
+      "name": "ui_document_viewer",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 3,
+      "description": "Read-only rendered HTML. Header: title, status badge, metadata, resolved source links. Signature section: slots with status, sign button (opens pad), auto-signed transition. Actions per status (edit/approve/reject/sign/pdf/archive/restore). Migrate and generalize from gabinet/document-viewer.tsx.",
+      "files": [
+        "src/components/documents/document-viewer.tsx",
+        "src/components/documents/signature-pad.tsx"
+      ],
+      "depends_on": ["DT-05"]
+    },
+    {
+      "id": "DT-12",
+      "name": "ui_document_routes",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 3,
+      "description": "Platform document routes. /dashboard/documents — instance list (table: title, template, category, status, source badges, author, date; filters). /dashboard/documents/$instanceId — instance view (viewer + actions).",
+      "files": [
+        "src/routes/_app/_auth/dashboard/_layout.documents.index.tsx",
+        "src/routes/_app/_auth/dashboard/_layout.documents.$instanceId.tsx",
+        "src/components/documents/document-instance-table.tsx"
+      ],
+      "depends_on": ["DT-10", "DT-11"]
+    },
+    {
+      "id": "DT-13",
+      "name": "integration_module_gabinet",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 4,
+      "description": "DocumentFromTemplateDialog wrapper (sources map + module prop). Patient card: Documents tab with filtered instance list + 'New from template' button (sources: {patient: patientId}). Appointment view: button + list (sources: {patient, appointment}).",
+      "files": [
+        "src/components/documents/document-from-template-dialog.tsx"
+      ],
+      "depends_on": ["DT-10", "DT-12"]
+    },
+    {
+      "id": "DT-14",
+      "name": "integration_module_crm",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 4,
+      "description": "Contact card: Documents tab + button (sources: {contact}). Company card: Documents tab + button (sources: {company}). Deal card: Documents tab + button (sources: {deal, contact, company}).",
+      "files": [],
+      "depends_on": ["DT-13"]
+    },
+    {
+      "id": "DT-15",
+      "name": "workflow_signatures_pdf",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 5,
+      "description": "Workflow transition validation (required fields check before approve). Signature pad integration in viewer. PDF export: client-side html2canvas + jsPDF, signatures appended, save to Convex storage, re-download. Notifications: review request, signature request.",
+      "files": [
+        "src/components/documents/pdf-export.tsx"
+      ],
+      "depends_on": ["DT-11", "DT-12"]
+    },
+    {
+      "id": "DT-16",
+      "name": "migration_gabinet_documents",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 6,
+      "description": "Migration script: gabinetDocumentTemplates → documentTemplates + documentTemplateFields (auto-create fields with bindings from old {{patient.X}} placeholders). gabinetDocuments → documentInstances. Update Gabinet routes to use new system. Deprecate old tables.",
+      "files": [],
+      "depends_on": ["DT-13", "DT-15"]
+    },
+    {
+      "id": "DT-17",
+      "name": "rbac_permissions",
+      "status": "not_started",
+      "created_session": "S0057",
+      "last_updated_session": "S0057",
+      "etap": 1,
+      "description": "Add document_templates (view/create/edit/delete) and document_instances (view/create/edit/approve/sign/delete) to orgPermissions. Enforce in all backend mutations and queries. Per-template accessControl check in listActive.",
+      "files": [
+        "convex/permissions.ts",
+        "convex/documentTemplates.ts",
+        "convex/documentInstances.ts"
+      ],
+      "depends_on": ["DT-03", "DT-05"]
+    }
   ],
-  "reason": "S0056: Working on three in-progress Gabinet UI tasks: WYSIWYG editor, layout auto-hide Column2, move patient cards.",
-  "thinking_process": "Inspected existing code for TemplateEditor and related routes. TemplateEditor using TipTap is already implemented and wired into settings and appointment flows. Next: manual verification and tests, then PR.",
-  "connected_tasks": ["354f9094","7ec167f5","720e1ca7"],
+  "reason": "S0057: Full task breakdown for platform-level document template system with Data Source Registry. 6 etaps, 15 tasks (DT-01 through DT-17), dependency chain ensures correct build order.",
+  "thinking_process": "Decomposed docs/document-templates-system.md plan into implementable tasks. Each task maps to a concrete set of files. Dependencies reflect build order: schema first, then backend CRUD, then UI components, then routes, then module integrations, then workflow/PDF, then migration. See verbose file for etap grouping and rationale.",
+  "connected_tasks": ["DT-01","DT-02","DT-03","DT-04","DT-05","DT-06","DT-07","DT-08","DT-09","DT-10","DT-11","DT-12","DT-13","DT-14","DT-15","DT-16","DT-17"],
   "how_to_test": [
-    {"id": 1, "name": "Open /dashboard/gabinet/settings/document-templates and create/edit a template; verify formatting and variables are preserved", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0056"},
-    {"id": 2, "name": "Open appointment detail and create a document from template; verify variables render and signature flow remains", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0056"}
+    {"id": 1, "name": "M1: Admin creates template with 3+ field types (text, date, select), publishes, visible to users", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 2, "name": "M2: User selects template from entity context, bound fields auto-filled, override works, live preview updates", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 3, "name": "M3: Full workflow: draft → pending_review → approved → pending_signature → signed", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 4, "name": "M4: Signature pad, save, auto-signed when all slots done, signed = immutable", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 5, "name": "M5: PDF export with content + signatures, save to storage, re-download", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 6, "name": "M6: Edit active template creates new version, old instances keep snapshot", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 7, "name": "M7: Access control: no-access user doesn't see template, no-approve user doesn't see approve button", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 8, "name": "M8: Same template used from CRM contact context and Gabinet patient context — core unchanged", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 9, "name": "M9: New module = 1 data source file, zero core changes, new sources appear in editor", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 10, "name": "M10: Template with multiple sources (patient + appointment + org) resolves all correctly", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 11, "name": "M15: Migrated Gabinet documents readable with signatures preserved", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
+    {"id": 12, "name": "M16: CRM file-based documents untouched", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"}
   ]
 }

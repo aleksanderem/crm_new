@@ -398,3 +398,23 @@ export const getLeavesByDateRange = query({
     return leaves.filter((l) => l.status === "approved");
   },
 });
+
+// --- Remove employee schedule (delete by id) ---
+
+export const removeEmployeeSchedule = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    scheduleId: v.id("gabinetEmployeeSchedules"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+
+    const schedule = await ctx.db.get(args.scheduleId);
+    if (!schedule || schedule.organizationId !== args.organizationId) {
+      throw new Error("Schedule not found");
+    }
+
+    await ctx.db.delete(args.scheduleId);
+  },
+});

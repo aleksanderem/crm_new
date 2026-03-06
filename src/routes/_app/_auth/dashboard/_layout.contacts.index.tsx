@@ -182,7 +182,8 @@ function ContactsIndex() {
     return Array.from(sources).map((s) => ({ label: s, value: s }));
   }, [contacts]);
 
-  const columns: ColumnDef<Contact>[] = [
+  // Base columns (used for display when inline editing is not applied)
+  const baseColumns: ColumnDef<Contact>[] = [
     {
       accessorKey: "firstName",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
@@ -201,69 +202,6 @@ function ContactsIndex() {
       ),
     },
     {
-      accessorKey: "lastName",
-      header: t('contacts.lastName'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
-    },
-    {
-      accessorKey: "email",
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.email')} />,
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
-      ),
-    },
-    {
-      accessorKey: "phone",
-      header: t('common.phone'),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
-      ),
-    },
-    {
-      accessorKey: "title",
-      header: t('contacts.jobTitle'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
-    },
-    {
-      accessorKey: "source",
-      header: t('common.source'),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
-      ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
-    },
-    {
-      id: "tags",
-      header: t('common.tags'),
-      accessorFn: (row) => (row.tags ?? []).join(", "),
-      cell: ({ row }) => {
-        const tags = row.original.tags;
-        if (!tags || tags.length === 0) return "—";
-        return (
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "notes",
-      header: t('common.notes'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return <span className="max-w-[200px] truncate block">{v}</span>;
-      },
-    },
-    {
-      id: "createdBy",
-      header: t('common.createdBy'),
-      accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
-      cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
-    },
-    {
       accessorKey: "createdAt",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
       cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
@@ -275,7 +213,28 @@ function ContactsIndex() {
     },
   ];
 
-  const allColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
+  // Inline editable columns
+  const updateContact = useMutation(api.contacts.update);
+  const handleInlineUpdate = async (contactId: string, field: keyof Contact, value: any) => {
+    await updateContact({ id: contactId, [field]: value });
+  };
+
+  // get editable columns from helper and merge with custom field columns
+  // import helper dynamically to avoid breaking non-editable mode
+  const editableColumns = useMemo(() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+      const { getContactColumnsWithInlineEdit } = require('@/components/data-table/editable-examples');
+      return getContactColumnsWithInlineEdit(handleInlineUpdate);
+    } catch (e) {
+      return [] as ColumnDef<Contact>[];
+    }
+  }, [handleInlineUpdate]);
+
+  const allColumns = useMemo(() => {
+    // Prefer editable columns for standard fields, then append custom field columns
+    return [...(editableColumns.length ? editableColumns : baseColumns), ...cfColumns];
+  }, [editableColumns, baseColumns, cfColumns]);
 
   const handleCreate = useCallback(
     async (

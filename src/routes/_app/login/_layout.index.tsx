@@ -37,15 +37,13 @@ function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if ((isLoading && !isAuthenticated) || !user) return;
-    if (!isLoading && isAuthenticated && !user.username) {
+    if (isLoading || !isAuthenticated || !user) return;
+    if (!user.username) {
       navigate({ to: OnboardingUsernameRoute.fullPath });
       return;
     }
-    if (!isLoading && isAuthenticated) {
-      navigate({ to: DashboardRoute.fullPath });
-    }
-  }, [user]);
+    navigate({ to: DashboardRoute.fullPath });
+  }, [isLoading, isAuthenticated, user, navigate]);
 
   if (step === "choose") {
     return (

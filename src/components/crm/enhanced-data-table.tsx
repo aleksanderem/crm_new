@@ -252,7 +252,7 @@ export function CrmDataTable<TData>({
   }
 
   return (
-    <Card className="py-0">
+    <Card className="py-0 overflow-hidden">
       <div className="px-4 pt-4 sm:px-6">
         <DataTableToolbar
           table={table}
@@ -279,90 +279,88 @@ export function CrmDataTable<TData>({
         </div>
       )}
 
-      {/* Table with horizontal border above thead, no vertical borders */}
-      <div className="mt-4 border-t">
-        <div className="relative w-full overflow-x-auto">
-          <table className="w-full caption-bottom text-sm" style={{ tableLayout: "fixed" }}>
-            <colgroup>
-              {table.getVisibleLeafColumns().map((col) => (
-                <col key={col.id} style={{ width: col.getSize() }} />
-              ))}
-            </colgroup>
-            <thead className="[&_tr]:border-b">
-              {table.getHeaderGroups().map((headerGroup) => {
+      {/* Table with horizontal scroll constrained to parent width */}
+      <div className="mt-4 border-t overflow-x-auto overflow-y-visible">
+        <table className="caption-bottom text-sm" style={{ minWidth: "100%" }}>
+          <colgroup>
+            {table.getVisibleLeafColumns().map((col) => (
+              <col key={col.id} style={{ width: col.getSize() }} />
+            ))}
+          </colgroup>
+          <thead className="[&_tr]:border-b">
+            {table.getHeaderGroups().map((headerGroup) => {
+              let stickyOffset = 0;
+              return (
+                <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
+                  {headerGroup.headers.map((header, index) => {
+                    const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
+                    const left = stickyOffset;
+                    if (isFrozen) stickyOffset += header.getSize();
+                    return (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={cn(
+                          "h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+                          isFrozen && "sticky z-20 bg-background"
+                        )}
+                        style={isFrozen ? { left } : undefined}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </thead>
+          <tbody className="[&_tr:last-child]:border-0">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => {
                 let stickyOffset = 0;
                 return (
-                  <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
-                    {headerGroup.headers.map((header, index) => {
+                  <tr
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                  >
+                    {row.getVisibleCells().map((cell, index) => {
                       const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
                       const left = stickyOffset;
-                      if (isFrozen) stickyOffset += header.getSize();
+                      if (isFrozen) stickyOffset += cell.column.getSize();
+                      const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
                       return (
-                        <th
-                          key={header.id}
-                          colSpan={header.colSpan}
+                        <td
+                          key={cell.id}
                           className={cn(
-                            "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-                            isFrozen && "sticky z-20 bg-background after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border"
+                            "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+                            isFrozen && "sticky z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
+                            isFirstDataCol && onRowClick && "cursor-pointer"
                           )}
-                          style={isFrozen ? { left, width: header.getSize() } : undefined}
+                          style={isFrozen ? { left } : undefined}
+                          onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
                         >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
                       );
                     })}
                   </tr>
                 );
-              })}
-            </thead>
-            <tbody className="[&_tr:last-child]:border-0">
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => {
-                  let stickyOffset = 0;
-                  return (
-                    <tr
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-                    >
-                      {row.getVisibleCells().map((cell, index) => {
-                        const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
-                        const left = stickyOffset;
-                        if (isFrozen) stickyOffset += cell.column.getSize();
-                        const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
-                        return (
-                          <td
-                            key={cell.id}
-                            className={cn(
-                              "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                              isFrozen && "sticky z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
-                              isFirstDataCol && onRowClick && "cursor-pointer"
-                            )}
-                            style={isFrozen ? { left } : undefined}
-                            onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={columns.length} className="h-48 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Inbox className="h-10 w-10" />
-                      <p className="text-sm">{t('table.noResults')}</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              })
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Inbox className="h-10 w-10" />
+                    <p className="text-sm">{t('table.noResults')}</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
       <div className="border-t px-4 pb-4 pt-2 sm:px-6">
         <DataTablePagination table={table} totalCount={displayCount} />

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TemplateEditor } from "@/components/gabinet/template-editor";
 import {
   Select,
   SelectContent,
@@ -316,7 +316,7 @@ function DocumentsIndex() {
           </div>
           <div className="space-y-1.5">
             <Label>{t("gabinet.documents.content")}</Label>
-            <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} />
+            <TemplateEditor value={content} onChange={setContent} minHeightClassName="min-h-[260px]" />
           </div>
         </div>
       </SidePanel>

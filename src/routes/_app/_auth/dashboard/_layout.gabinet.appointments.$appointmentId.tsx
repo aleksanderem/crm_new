@@ -11,9 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { TemplateEditor } from "@/components/gabinet/template-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -70,11 +77,13 @@ import {
   Upload,
   FilePlus,
   Star,
+  MoreHorizontal,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId"
@@ -280,14 +289,194 @@ function AppointmentDetail() {
     }
   }, [detail?.appointment.bodyChartData]);
 
+  // Push patient & appointment info into sidebar slot
+  const { setContent: setSidebarContent } = useSidebarSlot();
+  useEffect(() => {
+    if (!detail) return;
+    const { appointment: appt, patient: pat, treatment: treat, employee: emp, documents: docs, payments: pays, notes: nts, patientHistory: hist, loyaltyBalance: loyBal, loyaltyTier: loyTier } = detail;
+    const getInitials = () => {
+      if (pat?.firstName && pat?.lastName) return `${pat.firstName[0]}${pat.lastName[0]}`;
+      return "?";
+    };
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString("pl-PL");
+    const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
+    const empName = emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.email : "-";
+
+    setSidebarContent(
+      <div className="space-y-3">
+        <Card className="border-purple-200/50 dark:border-purple-800/30">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
+                <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">{getInitials()}</AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-semibold">{pat?.firstName} {pat?.lastName}</p>
+            </div>
+            <Separator />
+            {pat?.phone && (
+              <p className="text-xs flex items-center gap-1.5">
+                <Phone size={12} className="text-muted-foreground" variant="stroke" />
+                {pat.phone}
+              </p>
+            )}
+            {pat?.email && (
+              <>
+                <Separator />
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Mail size={12} variant="stroke" />
+                  {pat.email}
+                </p>
+              </>
+            )}
+            {loyBal > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs">
+                      <Star size={10} variant="stroke" className="mr-1" />
+                      {loyBal} {t("gabinet.loyalty.points")}
+                    </Badge>
+                    {loyTier && <span className="text-xs text-muted-foreground">{loyTier}</span>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t("gabinet.loyalty.programDescription", "Program lojalnościowy — punkty za wizyty")}</p>
+                </div>
+              </>
+            )}
+            <Separator />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-xs h-7 px-2">
+                  {t("gabinet.patients.actions", "Akcje pacjenta")}
+                  <MoreHorizontal size={14} variant="stroke" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }}>
+                    <Eye size={14} variant="stroke" className="mr-2" />
+                    {t("gabinet.patients.viewProfile", "Profil pacjenta")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }} search={{ tab: "history" }}>
+                    <History size={14} variant="stroke" className="mr-2" />
+                    {t("gabinet.patients.history", "Historia wizyt")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {pat?.phone && (
+                  <DropdownMenuItem asChild>
+                    <a href={`tel:${pat.phone}`}>
+                      <Phone size={14} variant="stroke" className="mr-2" />
+                      {t("common.call", "Zadzwoń")}
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                {pat?.email && (
+                  <DropdownMenuItem asChild>
+                    <a href={`mailto:${pat.email}`}>
+                      <Mail size={14} variant="stroke" className="mr-2" />
+                      {t("common.sendEmail", "Wyślij e-mail")}
+                    </a>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </CardContent>
+        </Card>
+
+        <Card className="border-cyan-200/50 dark:border-cyan-800/30">
+          <CardHeader className="pb-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-t-lg">
+            <CardTitle className="text-sm flex items-center gap-2 text-cyan-700 dark:text-cyan-300">
+              <Calendar size={16} variant="stroke" className="text-cyan-500" />
+              {t("gabinet.appointments.details")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">{t("gabinet.treatments.treatment")}</span>
+              <span className="font-medium text-xs">{treat?.name ?? "-"}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Clock size={10} variant="stroke" />
+                {t("common.date")}
+              </span>
+              <span className="font-medium text-xs">{fmtDate(appt.date)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">{t("common.time")}</span>
+              <span className="font-medium text-xs">
+                {fmtTime(appt.startTime)} - {fmtTime(appt.endTime)}
+              </span>
+            </div>
+            <Separator />
+            <div>
+              <span className="text-muted-foreground flex items-center gap-1">
+                <UserCircle size={10} variant="stroke" />
+                {t("gabinet.employees.employee")}
+              </span>
+              <p className="font-medium text-xs mt-0.5">{empName}</p>
+            </div>
+            {treat?.price !== undefined && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t("common.price")}</span>
+                  <span className="font-medium text-xs">
+                    {treat.price.toFixed(2)} {treat.currency ?? "PLN"}
+                  </span>
+                </div>
+              </>
+            )}
+            {(appt.status === "completed" || appt.status === "cancelled") && appt.updatedAt && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    {appt.status === "completed" ? t("gabinet.appointments.completedAt", "Zakończono") : t("gabinet.appointments.cancelledAt", "Anulowano")}
+                  </span>
+                  <span className="font-medium text-xs">{new Date(appt.updatedAt).toLocaleString("pl-PL")}</span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="text-lg font-bold">{docs.length}</p>
+                <p className="text-[10px] text-muted-foreground">{t("gabinet.documents.documents")}</p>
+              </div>
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="text-lg font-bold">{pays.length}</p>
+                <p className="text-[10px] text-muted-foreground">{t("gabinet.payments.payments")}</p>
+              </div>
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="text-lg font-bold">{nts.length}</p>
+                <p className="text-[10px] text-muted-foreground">{t("common.notes")}</p>
+              </div>
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="text-lg font-bold">{hist.length}</p>
+                <p className="text-[10px] text-muted-foreground">{t("gabinet.patients.history")}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+    return () => setSidebarContent(null);
+  }, [detail, t, setSidebarContent]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-3 gap-6">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96 col-span-2" />
-        </div>
+        <Skeleton className="h-96" />
       </div>
     );
   }
@@ -658,7 +847,7 @@ function AppointmentDetail() {
       {/* Header */}
       <div className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
             <ArrowLeft className="h-4 w-4" variant="stroke" />
           </Button>
           <div>
@@ -671,211 +860,39 @@ function AppointmentDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
-            {t(`gabinet.appointments.statuses.${appointment.status}`)}
-          </Badge>
-          {/* Status action buttons */}
-          {availableTransitions.length > 0 && (
-            <div className="flex items-center gap-2">
-              {availableTransitions.includes("confirmed") && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStatusChange("confirmed")}
-                  disabled={isUpdating}
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.actions.confirm")}
-                </Button>
-              )}
-              {availableTransitions.includes("in_progress") && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => handleStatusChange("in_progress")}
-                  disabled={isUpdating}
-                >
-                  <PlayCircle className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.actions.start")}
-                </Button>
-              )}
-              {availableTransitions.includes("completed") && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => handleStatusChange("completed")}
-                  disabled={isUpdating}
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.actions.complete")}
-                </Button>
-              )}
-              {availableTransitions.includes("no_show") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleStatusChange("no_show")}
-                  disabled={isUpdating}
-                >
-                  <Clock4 className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.actions.noShow")}
-                </Button>
-              )}
-              {availableTransitions.includes("cancelled") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleStatusChange("cancelled")}
-                  disabled={isUpdating}
-                >
-                  <XCircle className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.actions.cancel")}
-                </Button>
-              )}
-            </div>
+          {availableTransitions.length > 0 ? (
+            <Select
+              value={appointment.status}
+              onValueChange={(value) => handleStatusChange(value)}
+              disabled={isUpdating}
+            >
+              <SelectTrigger className="w-auto gap-2">
+                <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
+                  {t(`gabinet.appointments.statuses.${appointment.status}`)}
+                </Badge>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={appointment.status} disabled>
+                  {t(`gabinet.appointments.statuses.${appointment.status}`)}
+                </SelectItem>
+                {availableTransitions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {t(`gabinet.appointments.statuses.${status}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
+              {t(`gabinet.appointments.statuses.${appointment.status}`)}
+            </Badge>
           )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 grid grid-cols-4 gap-6 p-6">
-        {/* Empty left column for balance */}
-        <div className="col-span-1"></div>
-        
-        {/* Middle sidebar - Patient & Appointment info */}
-        <div className="col-span-1 space-y-4">
-          {/* Patient card */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <User size={20} variant="stroke" />
-                {t("gabinet.patients.patient")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback>{getPatientInitials()}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">
-                    {patient?.firstName} {patient?.lastName}
-                  </p>
-                  {patient?.email && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Mail size={12} variant="stroke" />
-                      {patient.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {patient?.phone && (
-                <p className="text-sm flex items-center gap-2">
-                  <Phone size={12} className="text-muted-foreground" variant="stroke" />
-                  {patient.phone}
-                </p>
-              )}
-              {loyaltyBalance > 0 && (
-                <div className="pt-2">
-                  <Badge variant="outline">
-                    ⭐ {loyaltyBalance} {t("gabinet.loyalty.points")}
-                  </Badge>
-                  {loyaltyTier && <span className="ml-2 text-xs text-muted-foreground">{loyaltyTier}</span>}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Appointment details card */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar size={20} variant="stroke" />
-                {t("gabinet.appointments.details")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("gabinet.treatments.treatment")}</span>
-                <span className="font-medium">{treatment?.name ?? "-"}</span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Clock size={12} variant="stroke" />
-                  {t("common.date")}
-                </span>
-                <span className="font-medium">{formatDate(appointment.date)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("common.time")}</span>
-                <span className="font-medium">
-                  {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-                </span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-1">
-                  <UserCircle size={12} variant="stroke" />
-                  {t("gabinet.employees.employee")}
-                </span>
-                <span className="font-medium">{getEmployeeName()}</span>
-              </div>
-              {treatment?.price !== undefined && (
-                <>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t("common.price")}</span>
-                    <span className="font-medium">
-                      {treatment.price.toFixed(2)} {treatment.currency ?? "PLN"}
-                    </span>
-                  </div>
-                </>
-              )}
-              {appointment.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <span className="text-sm text-muted-foreground">{t("common.notes")}</span>
-                    <p className="text-sm mt-1">{appointment.notes}</p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick stats */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("common.stats")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold">{documents.length}</p>
-                  <p className="text-xs text-muted-foreground">{t("gabinet.documents.documents")}</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{payments.length}</p>
-                  <p className="text-xs text-muted-foreground">{t("gabinet.payments.payments")}</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{notes.length}</p>
-                  <p className="text-xs text-muted-foreground">{t("common.notes")}</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{patientHistory.length}</p>
-                  <p className="text-xs text-muted-foreground">{t("gabinet.patients.history")}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right main area - Tabs */}
-        <div className="col-span-2">
+      <div className="flex-1 p-6">
+        <div>
           <Tabs defaultValue="details" className="h-full">
             <TabsList>
               <TabsTrigger value="details">
@@ -898,16 +915,19 @@ function AppointmentDetail() {
                 <StickyNote className="mr-2 h-4 w-4" variant="stroke" />
                 {t("common.notes")}
               </TabsTrigger>
-              <TabsTrigger value="body-chart">{t("gabinet.appointments.tabs.bodyChart")}</TabsTrigger>
+              <TabsTrigger value="body-chart">
+                <Heart className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.appointments.tabs.bodyChart")}
+              </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="h-[calc(100vh-320px)] mt-4">
+            <div className="mt-4">
               {/* Details Tab */}
               <TabsContent value="details" className="m-0 space-y-4">
                 {/* Treatment Info Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <Sparkles className="h-4 w-4" variant="stroke" />
                       {t("gabinet.treatments.treatment")}
                     </CardTitle>
@@ -959,7 +979,7 @@ function AppointmentDetail() {
                 {/* Employee Info Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <UserCircle className="h-4 w-4" variant="stroke" />
                       {t("gabinet.employees.employee")}
                     </CardTitle>
@@ -980,7 +1000,7 @@ function AppointmentDetail() {
                 {/* Scheduling Info Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <Calendar className="h-4 w-4" variant="stroke" />
                       {t("gabinet.appointments.scheduling")}
                     </CardTitle>
@@ -1017,7 +1037,7 @@ function AppointmentDetail() {
                 {appointment.prepaymentRequired && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="text-base flex items-center gap-2.5">
                         <DollarSign className="h-4 w-4" variant="stroke" />
                         {t("gabinet.appointments.prepayment")}
                       </CardTitle>
@@ -1040,7 +1060,7 @@ function AppointmentDetail() {
                 {/* Internal Notes Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <StickyNote className="h-4 w-4" variant="stroke" />
                       {t("gabinet.appointments.internalNotes")}
                     </CardTitle>
@@ -1152,7 +1172,7 @@ function AppointmentDetail() {
                 {/* Payment Summary Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <DollarSign className="h-4 w-4" variant="stroke" />
                       {t("gabinet.payments.summary")}
                     </CardTitle>
@@ -1256,7 +1276,7 @@ function AppointmentDetail() {
                 {appointment.packageUsageId && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="text-base flex items-center gap-2.5">
                         <Package className="h-4 w-4" variant="stroke" />
                         {t("gabinet.packages.packageUsage")}
                       </CardTitle>
@@ -1274,7 +1294,7 @@ function AppointmentDetail() {
                 {/* Past Appointments Timeline */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <History className="h-4 w-4" variant="stroke" />
                       {t("gabinet.patients.appointmentHistory")}
                     </CardTitle>
@@ -1324,7 +1344,7 @@ function AppointmentDetail() {
                 {/* Active Packages */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <Package className="h-4 w-4" variant="stroke" />
                       {t("gabinet.packages.activePackages")}
                     </CardTitle>
@@ -1373,7 +1393,7 @@ function AppointmentDetail() {
                 {/* Loyalty Summary */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <Star className="h-4 w-4" variant="stroke" />
                       {t("gabinet.loyalty.loyaltyProgram")}
                     </CardTitle>
@@ -1417,7 +1437,7 @@ function AppointmentDetail() {
                 {/* Payment History */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <CreditCard className="h-4 w-4" variant="stroke" />
                       {t("gabinet.payments.paymentHistory")}
                     </CardTitle>
@@ -1492,7 +1512,7 @@ function AppointmentDetail() {
               <TabsContent value="notes" className="m-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2.5">
                       <StickyNote className="h-4 w-4" variant="stroke" />
                       {t("common.notes")}
                     </CardTitle>
@@ -1637,7 +1657,7 @@ function AppointmentDetail() {
                   </DialogContent>
                 </Dialog>
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         </div>
       </div>
@@ -1769,12 +1789,7 @@ function AppointmentDetail() {
 
           <div>
             <Label>{t("gabinet.documents.content")}</Label>
-            <Textarea
-              value={docContent}
-              onChange={(e) => setDocContent(e.target.value)}
-              placeholder={t("gabinet.documents.contentPlaceholder")}
-              rows={10}
-            />
+            <TemplateEditor value={docContent} onChange={setDocContent} minHeightClassName="min-h-[320px]" />
           </div>
 
           <div className="flex justify-end gap-2">

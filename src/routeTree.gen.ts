@@ -82,6 +82,8 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsDocumentTemplatesImport }
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
+import { Route as AppAuthDashboardLayoutGabinetDocumentsTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.new'
+import { Route as AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.$templateId'
 
 // Create Virtual Routes
 
@@ -508,6 +510,18 @@ const AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute =
 const AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute =
   AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport.update({
     path: '/gabinet/appointments/$appointmentId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetDocumentsTemplatesNewRoute =
+  AppAuthDashboardLayoutGabinetDocumentsTemplatesNewImport.update({
+    path: '/gabinet/documents/templates/new',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdRoute =
+  AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdImport.update({
+    path: '/gabinet/documents/templates/$templateId',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
@@ -1026,6 +1040,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsIndexImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId'
+      path: '/gabinet/documents/templates/$templateId'
+      fullPath: '/dashboard/gabinet/documents/templates/$templateId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
+    '/_app/_auth/dashboard/_layout/gabinet/documents/templates/new': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/documents/templates/new'
+      path: '/gabinet/documents/templates/new'
+      fullPath: '/dashboard/gabinet/documents/templates/new'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDocumentsTemplatesNewImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
   }
 }
 
@@ -1091,6 +1119,8 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetPackagesIndexRoute,
           AppAuthDashboardLayoutGabinetPatientsIndexRoute,
           AppAuthDashboardLayoutGabinetTreatmentsIndexRoute,
+          AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdRoute,
+          AppAuthDashboardLayoutGabinetDocumentsTemplatesNewRoute,
         }),
       }),
       AppAuthOnboardingRoute: AppAuthOnboardingRoute.addChildren({
@@ -1241,7 +1271,9 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/employees/",
         "/_app/_auth/dashboard/_layout/gabinet/packages/",
         "/_app/_auth/dashboard/_layout/gabinet/patients/",
-        "/_app/_auth/dashboard/_layout/gabinet/treatments/"
+        "/_app/_auth/dashboard/_layout/gabinet/treatments/",
+        "/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId",
+        "/_app/_auth/dashboard/_layout/gabinet/documents/templates/new"
       ]
     },
     "/_app/_auth/onboarding": {
@@ -1512,6 +1544,14 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/gabinet/treatments/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.treatments.index.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.templates.$templateId.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/documents/templates/new": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.templates.new.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     }
   }

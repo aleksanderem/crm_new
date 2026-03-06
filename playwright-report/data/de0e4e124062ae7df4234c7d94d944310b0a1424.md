@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e7]
+        - generic [ref=e15]: Kolabo
+      - generic [ref=e16]:
+        - heading "Witaj!" [level=2] [ref=e17]
+        - paragraph [ref=e18]: "Wybierz metodę logowania:"
+      - generic [ref=e19]:
+        - button "Email i hasło" [ref=e20] [cursor=pointer]
+        - button "Kod jednorazowy" [ref=e21] [cursor=pointer]
+      - paragraph [ref=e23]: Lub kontynuuj z
+      - button "Github" [ref=e24] [cursor=pointer]:
+        - img
+        - text: Github
+      - paragraph [ref=e25]:
+        - text: Kontynuując, akceptujesz
+        - link "Regulamin" [ref=e26] [cursor=pointer]:
+          - /url: "#"
+        - text: i
+        - link "Politykę prywatności." [ref=e27] [cursor=pointer]:
+          - /url: "#"
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]: Jeden system. Cały Twój biznes.
+        - paragraph [ref=e32]: Klienci, zespół, dokumenty, grafik — wszystko w jednym miejscu. Ostatnie narzędzie, które wdrożysz.
+      - img
+      - generic [ref=e33]:
+        - img
+        - img [ref=e35]
+        - generic [ref=e43]:
+          - paragraph [ref=e44]: Przestań żonglować aplikacjami
+          - paragraph [ref=e45]: Prosty w obsłudze. Potężny w działaniu. Rośnie razem z Twoim biznesem.
+  - contentinfo:
+    - button "Open TanStack Router Devtools" [ref=e46] [cursor=pointer]:
+      - generic [ref=e47]:
+        - img [ref=e49]
+        - img [ref=e84]
+      - generic [ref=e118]: "-"
+      - generic [ref=e119]: TanStack Router
+```

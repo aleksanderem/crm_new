@@ -51,6 +51,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { usePermissions } from "@/hooks/use-permission";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
 import { CalendarMiniMonth } from "@/components/application/calendar/base-components/calendar-mini-month";
@@ -287,6 +288,7 @@ export function AppSidebar() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
+  const { content: sidebarSlotContent, wideContent } = useSidebarSlot();
   const { can: canCreate } = usePermissions("create");
 
   const { data: activeProducts } = useQuery(
@@ -390,7 +392,10 @@ export function AppSidebar() {
       </Sidebar>
 
       {/* Column 2: Detail panel */}
-      <div className="bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r max-lg:hidden">
+      <div className={cn(
+        "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
+        wideContent ? "max-2xl:hidden lg:block" : "max-lg:hidden"
+      )}>
         {/* Workspace switcher */}
         <div className="px-4 pt-3 pb-2">
           <WorkspaceSwitcher activeWorkspace={activeWorkspace} />
@@ -428,44 +433,53 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Context title when on entity page */}
-        {pageContext && (
-          <div className="px-4 pb-1 text-lg font-semibold">
-            {t(pageContext.titleKey)}
+        {/* Sidebar slot content (from child pages) */}
+        {sidebarSlotContent ? (
+          <div className="flex-1 overflow-y-auto px-3 pb-4">
+            {sidebarSlotContent}
           </div>
-        )}
+        ) : (
+          <>
+            {/* Context title when on entity page */}
+            {pageContext && (
+              <div className="px-4 pb-1 text-lg font-semibold">
+                {t(pageContext.titleKey)}
+              </div>
+            )}
 
-        {/* Contextual actions section */}
-        {pageContext && (
-          <div className="mt-3 flex flex-col px-4">
-            <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
-            <div className="mb-4 grid grid-cols-2 gap-4">
-              {pageContext.actions
-                .filter((action) => {
-                  if (!action.permissionFeature) return true;
-                  return canCreate(action.permissionFeature);
-                })
-                .map((action) => (
-                  <button
-                    key={action.label}
-                    type="button"
-                    className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
-                    onClick={() => {
-                      if (action.quickCreate) {
-                        openQuickCreate(action.quickCreate);
-                      } else if (action.dispatch) {
-                        dispatch(action.dispatch);
-                      } else if (action.href) {
-                        navigateTo(action.href);
-                      }
-                    }}
-                  >
-                    <action.icon className="size-4" variant="stroke" />
-                    <span className="text-center leading-tight">{t(action.label)}</span>
-                  </button>
-                ))}
-            </div>
-          </div>
+            {/* Contextual actions section */}
+            {pageContext && (
+              <div className="mt-3 flex flex-col px-4">
+                <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
+                <div className="mb-4 grid grid-cols-2 gap-4">
+                  {pageContext.actions
+                    .filter((action) => {
+                      if (!action.permissionFeature) return true;
+                      return canCreate(action.permissionFeature);
+                    })
+                    .map((action) => (
+                      <button
+                        key={action.label}
+                        type="button"
+                        className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
+                        onClick={() => {
+                          if (action.quickCreate) {
+                            openQuickCreate(action.quickCreate);
+                          } else if (action.dispatch) {
+                            dispatch(action.dispatch);
+                          } else if (action.href) {
+                            navigateTo(action.href);
+                          }
+                        }}
+                      >
+                        <action.icon className="size-4" variant="stroke" />
+                        <span className="text-center leading-tight">{t(action.label)}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Mini calendar - pushed to bottom by spacer */}

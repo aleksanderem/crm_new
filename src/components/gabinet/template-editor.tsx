@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, forwardRef, useImperativeHandle } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -23,11 +23,14 @@ interface TemplateEditorProps {
   minHeightClassName?: string;
 }
 
-export function TemplateEditor({
-  value,
-  onChange,
-  minHeightClassName = "min-h-[260px]",
-}: TemplateEditorProps) {
+export const TemplateEditor = forwardRef(function TemplateEditor(
+  {
+    value,
+    onChange,
+    minHeightClassName = "min-h-[260px]",
+  }: TemplateEditorProps,
+  ref: any
+) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -57,6 +60,27 @@ export function TemplateEditor({
       editor.commands.setContent(value || "", { emitUpdate: false });
     }
   }, [editor, value]);
+
+  useImperativeHandle(ref, () => ({
+    insertVariable: (key: string) => {
+      if (!editor) return;
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          {
+            type: "variableMentionAt",
+            attrs: {
+              id: key,
+              label: TEMPLATE_VARIABLES.find((v) => v.key === key)?.label ?? key,
+            },
+          },
+          { type: "text", text: " " },
+        ])
+        .run();
+    },
+    getHTML: () => editor?.getHTML(),
+  }));
 
   if (!editor) return null;
 
@@ -141,4 +165,4 @@ export function TemplateEditor({
       />
     </div>
   );
-}
+});

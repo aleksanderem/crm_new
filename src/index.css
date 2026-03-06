@@ -6,6 +6,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./styles/untitled-ui-compat.css";
+@import "./styles/colors-stonowana.css";
+
 
 @theme inline {
   --radius-lg: var(--radius);

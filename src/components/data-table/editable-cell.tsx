@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent } from "react";
+import { Inplace } from "primereact/inplace";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -8,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Inplace } from "@/components/ui/inplace";
 import { cn } from "@/lib/utils";
 
 export type EditableCellType = "text" | "number" | "select" | "date" | "time" | "datetime" | "boolean";
@@ -41,18 +41,18 @@ export function EditableCell({
   disabled = false,
   displayFormatter,
 }: EditableCellProps) {
-  const [active, setActive] = useState(false);
   const [editValue, setEditValue] = useState<any>(value);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isActive, setIsActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLButtonElement>(null);
+  const inplaceRef = useRef<any>(null);
 
   // Focus input when entering edit mode
   useEffect(() => {
-    if (!active) return;
+    if (!isActive) return;
     if (config.type === "boolean") {
-      // Boolean: toggle immediately, no edit mode
       handleSave(!value);
       return;
     }
@@ -62,18 +62,18 @@ export function EditableCell({
       inputRef.current?.focus();
       inputRef.current?.select();
     }
-  }, [active]);
+  }, [isActive]);
 
-  const handleActiveChange = useCallback(
-    (e: { active: boolean }) => {
-      if (e.active) {
-        setEditValue(value);
-        setErrorMessage(null);
-      }
-      setActive(e.active);
-    },
-    [value]
-  );
+  const handleOpen = useCallback(() => {
+    setEditValue(value);
+    setErrorMessage(null);
+    setIsActive(true);
+  }, [value]);
+
+  const handleClose = useCallback(() => {
+    setIsActive(false);
+    inplaceRef.current?.close();
+  }, []);
 
   const handleSave = async (newValue?: any) => {
     const v = newValue !== undefined ? newValue : editValue;
@@ -86,13 +86,13 @@ export function EditableCell({
       const err = config.validate(v);
       if (err) { setErrorMessage(err); return; }
     }
-    if (v === value) { setActive(false); return; }
+    if (v === value) { handleClose(); return; }
 
     setSaving(true);
     try {
       await onChange(v);
       setErrorMessage(null);
-      setActive(false);
+      handleClose();
     } catch (e: any) {
       setErrorMessage(e.message || "Save failed");
     } finally {
@@ -102,7 +102,7 @@ export function EditableCell({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSave(); }
-    else if (e.key === "Escape") { e.preventDefault(); setActive(false); }
+    else if (e.key === "Escape") { e.preventDefault(); handleClose(); }
   };
 
   const handleBlur = (e: FocusEvent) => {
@@ -208,8 +208,29 @@ export function EditableCell({
   }
 
   return (
-    <Inplace.Root active={active} onActiveChange={handleActiveChange} disabled={disabled} className={className}>
-      <Inplace.Display className={cn(errorMessage && "border border-destructive")}>
+    <Inplace
+      ref={inplaceRef}
+      disabled={disabled}
+      pt={{
+        root: {
+          className: cn("inline-block", className),
+          onClick: (e: React.MouseEvent) => e.stopPropagation(),
+          "aria-live": "polite" as any,
+        },
+        display: {
+          className: cn(
+            "min-h-[2rem] px-2 py-1 rounded cursor-pointer hover:bg-accent transition-colors inline-flex items-center",
+            disabled && "cursor-not-allowed opacity-50",
+            errorMessage && "border border-destructive"
+          ),
+          onClick: handleOpen,
+        },
+        content: {
+          className: "inline-flex items-center gap-1",
+        },
+      }}
+    >
+      <Inplace.Display>
         {getDisplayContent()}
       </Inplace.Display>
       <Inplace.Content>
@@ -223,6 +244,6 @@ export function EditableCell({
           {errorMessage}
         </div>
       )}
-    </Inplace.Root>
+    </Inplace>
   );
 }

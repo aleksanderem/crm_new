@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type KeyboardEvent, type FocusEvent, type MouseEvent } from "react";
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -8,20 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Inplace } from "@/components/ui/inplace";
 import { cn } from "@/lib/utils";
 
 export type EditableCellType = "text" | "number" | "select" | "date" | "time" | "datetime" | "boolean";
 
 export interface EditableCellConfig {
   type: EditableCellType;
-  options?: { label: string; value: string }[]; // for select type
+  options?: { label: string; value: string }[];
   required?: boolean;
   min?: number;
   max?: number;
   step?: number;
   placeholder?: string;
-  validate?: (value: any) => string | null; // returns error message or null
-  displayFormatter?: (value: any) => string; // format display value
+  validate?: (value: any) => string | null;
 }
 
 interface EditableCellProps {
@@ -33,8 +33,6 @@ interface EditableCellProps {
   displayFormatter?: (value: any) => string;
 }
 
-type CellState = "view" | "editing" | "saving" | "error";
-
 export function EditableCell({
   value,
   onChange,
@@ -43,274 +41,188 @@ export function EditableCell({
   disabled = false,
   displayFormatter,
 }: EditableCellProps) {
-  const [state, setState] = useState<CellState>("view");
+  const [active, setActive] = useState(false);
   const [editValue, setEditValue] = useState<any>(value);
+  const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLButtonElement>(null);
 
+  // Focus input when entering edit mode
   useEffect(() => {
-    if (state === "editing") {
-      if (config.type === "boolean") {
-        // Auto-toggle and save for boolean
-        handleSave(!value);
-      } else if (config.type === "text" || config.type === "number" || config.type === "date" || config.type === "time" || config.type === "datetime") {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      } else if (config.type === "select") {
-        selectRef.current?.focus();
-      }
+    if (!active) return;
+    if (config.type === "boolean") {
+      // Boolean: toggle immediately, no edit mode
+      handleSave(!value);
+      return;
     }
-  }, [state, config.type, value]);
+    if (config.type === "select") {
+      selectRef.current?.focus();
+    } else {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [active]);
 
-  const handleStartEdit = (e: MouseEvent) => {
-    e.stopPropagation();
-    if (disabled) return;
-    setEditValue(value);
-    setState("editing");
-    setErrorMessage(null);
-  };
+  const handleActiveChange = useCallback(
+    (e: { active: boolean }) => {
+      if (e.active) {
+        setEditValue(value);
+        setErrorMessage(null);
+      }
+      setActive(e.active);
+    },
+    [value]
+  );
 
   const handleSave = async (newValue?: any) => {
-    const valueToSave = newValue !== undefined ? newValue : editValue;
+    const v = newValue !== undefined ? newValue : editValue;
 
-    // Validation
-    if (config.required && (valueToSave === "" || valueToSave === null || valueToSave === undefined)) {
-      setErrorMessage("Required field");
-      setState("error");
+    if (config.required && (v === "" || v == null)) {
+      setErrorMessage("Required");
       return;
     }
-
     if (config.validate) {
-      const error = config.validate(valueToSave);
-      if (error) {
-        setErrorMessage(error);
-        setState("error");
-        return;
-      }
+      const err = config.validate(v);
+      if (err) { setErrorMessage(err); return; }
     }
+    if (v === value) { setActive(false); return; }
 
-    // Check if value changed
-    if (valueToSave === value) {
-      setState("view");
-      return;
-    }
-
-    // Save
-    setState("saving");
+    setSaving(true);
     try {
-      await onChange(valueToSave);
-      setState("view");
+      await onChange(v);
       setErrorMessage(null);
+      setActive(false);
     } catch (e: any) {
       setErrorMessage(e.message || "Save failed");
-      setState("error");
+    } finally {
+      setSaving(false);
     }
-  };
-
-  const handleCancel = () => {
-    setEditValue(value);
-    setState("view");
-    setErrorMessage(null);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      handleCancel();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSave(); }
+    else if (e.key === "Escape") { e.preventDefault(); setActive(false); }
   };
 
   const handleBlur = (e: FocusEvent) => {
-    // Only blur if focus is leaving the cell entirely
-    const relatedTarget = e.relatedTarget as HTMLElement;
-    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+    const related = e.relatedTarget as HTMLElement;
+    if (!related || !e.currentTarget.contains(related)) {
       handleSave();
     }
   };
 
-  const renderEditMode = () => {
+  // --- Display value ---
+  const getDisplayContent = () => {
+    if (config.type === "boolean") {
+      return (
+        <Checkbox
+          checked={!!value}
+          onCheckedChange={(checked) => { if (!disabled) handleSave(checked); }}
+          disabled={disabled}
+        />
+      );
+    }
+
+    let text: string;
+    if (displayFormatter) {
+      text = displayFormatter(value);
+    } else {
+      switch (config.type) {
+        case "select": {
+          const opt = config.options?.find((o) => o.value === value);
+          text = opt?.label ?? value ?? "";
+          break;
+        }
+        case "date":
+          text = value ? new Date(value).toLocaleDateString() : "";
+          break;
+        case "datetime":
+          text = value ? new Date(value).toLocaleString() : "";
+          break;
+        default:
+          text = value?.toString() ?? "";
+      }
+    }
+
+    return (
+      <span className={cn("text-sm", !text && "text-muted-foreground")}>
+        {text || config.placeholder || "—"}
+      </span>
+    );
+  };
+
+  // --- Edit input ---
+  const getEditContent = () => {
+    const inputProps = {
+      onKeyDown: handleKeyDown,
+      onBlur: handleBlur,
+      disabled: saving,
+      className: "h-8",
+    };
+
     switch (config.type) {
       case "text":
         return (
-          <Input
-            ref={inputRef}
-            value={editValue ?? ""}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            placeholder={config.placeholder}
-            className="h-8"
-            disabled={state === "saving"}
-          />
+          <Input ref={inputRef} value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)}
+            placeholder={config.placeholder} {...inputProps} />
         );
-
       case "number":
         return (
-          <Input
-            ref={inputRef}
-            type="number"
-            value={editValue ?? ""}
-            onChange={(e) => setEditValue(e.target.valueAsNumber || "")}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            placeholder={config.placeholder}
-            min={config.min}
-            max={config.max}
-            step={config.step}
-            className="h-8"
-            disabled={state === "saving"}
-          />
+          <Input ref={inputRef} type="number" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.valueAsNumber || "")}
+            min={config.min} max={config.max} step={config.step} placeholder={config.placeholder} {...inputProps} />
         );
-
       case "date":
         return (
-          <Input
-            ref={inputRef}
-            type="date"
-            value={editValue ?? ""}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            className="h-8"
-            disabled={state === "saving"}
-          />
+          <Input ref={inputRef} type="date" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
         );
-
       case "time":
         return (
-          <Input
-            ref={inputRef}
-            type="time"
-            value={editValue ?? ""}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            className="h-8"
-            disabled={state === "saving"}
-          />
+          <Input ref={inputRef} type="time" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
         );
-
       case "datetime":
         return (
-          <Input
-            ref={inputRef}
-            type="datetime-local"
-            value={editValue ?? ""}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            className="h-8"
-            disabled={state === "saving"}
-          />
+          <Input ref={inputRef} type="datetime-local" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
         );
-
       case "select":
         return (
-          <Select
-            value={editValue ?? ""}
-            onValueChange={(v) => {
-              setEditValue(v);
-              handleSave(v);
-            }}
-            disabled={state === "saving"}
-          >
+          <Select value={editValue ?? ""} onValueChange={(v) => { setEditValue(v); handleSave(v); }} disabled={saving}>
             <SelectTrigger ref={selectRef} className="h-8">
               <SelectValue placeholder={config.placeholder} />
             </SelectTrigger>
             <SelectContent>
               {config.options?.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
-
-      case "boolean":
-        return null; // Boolean is auto-toggle, no edit UI needed
-
       default:
         return null;
     }
   };
 
-  const renderViewMode = () => {
-    let displayValue: string;
-
-    if (displayFormatter) {
-      displayValue = displayFormatter(value);
-    } else {
-      switch (config.type) {
-        case "boolean":
-          return (
-            <Checkbox
-              checked={!!value}
-              onCheckedChange={(checked) => {
-                if (!disabled) {
-                  handleSave(checked);
-                }
-              }}
-              disabled={disabled}
-            />
-          );
-        case "select":
-          const option = config.options?.find((o) => o.value === value);
-          displayValue = option?.label ?? value ?? "";
-          break;
-        case "date":
-          displayValue = value ? new Date(value).toLocaleDateString() : "";
-          break;
-        case "datetime":
-          displayValue = value ? new Date(value).toLocaleString() : "";
-          break;
-        default:
-          displayValue = value?.toString() ?? "";
-      }
-    }
-
-    return (
-      <div
-        className={cn(
-          "min-h-[2rem] px-2 py-1 rounded cursor-pointer hover:bg-accent transition-colors",
-          disabled && "cursor-not-allowed opacity-50",
-          state === "error" && "border border-destructive",
-          className
-        )}
-        onClick={handleStartEdit}
-      >
-        <span className={cn("text-sm", !displayValue && "text-muted-foreground")}>
-          {displayValue || config.placeholder || "Click to edit"}
-        </span>
-      </div>
-    );
-  };
-
-  if (state === "view" || state === "error") {
-    return (
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        {renderViewMode()}
-        {errorMessage && (
-          <div className="absolute top-full left-0 mt-1 text-xs text-destructive z-10 bg-background px-2 py-1 rounded border border-destructive shadow-sm">
-            {errorMessage}
-          </div>
-        )}
-      </div>
-    );
+  // Boolean doesn't use Inplace (just a checkbox)
+  if (config.type === "boolean") {
+    return <div onClick={(e) => e.stopPropagation()}>{getDisplayContent()}</div>;
   }
 
-  if (state === "saving") {
-    return (
-      <div className="flex items-center gap-2 min-h-[2rem] px-2" onClick={(e) => e.stopPropagation()}>
-        {renderEditMode()}
-        <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
-      </div>
-    );
-  }
-
-  return <div onBlur={handleBlur} onClick={(e) => e.stopPropagation()}>{renderEditMode()}</div>;
+  return (
+    <Inplace.Root active={active} onActiveChange={handleActiveChange} disabled={disabled} className={className}>
+      <Inplace.Display className={cn(errorMessage && "border border-destructive")}>
+        {getDisplayContent()}
+      </Inplace.Display>
+      <Inplace.Content>
+        <div onBlur={handleBlur}>
+          {getEditContent()}
+          {saving && <span className="text-xs text-muted-foreground animate-pulse ml-1">...</span>}
+        </div>
+      </Inplace.Content>
+      {errorMessage && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-destructive z-10 bg-background px-2 py-1 rounded border border-destructive shadow-sm">
+          {errorMessage}
+        </div>
+      )}
+    </Inplace.Root>
+  );
 }

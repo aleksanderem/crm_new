@@ -35,6 +35,7 @@ import {
   Check,
   RotateCcw,
 } from "@/lib/ez-icons";
+import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { ToggleFilterButton } from "@/components/crm/filter-button";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
@@ -279,9 +280,23 @@ function ActivitiesPage() {
             options: typeFilterOptions,
             placeholder: "—",
           }}
-          displayFormatter={(v) => {
+          displayRenderer={(v) => {
             const typeDef = activityTypeDefs?.find((td) => td.key === v);
-            return typeDef?.name ?? v ?? "";
+            if (!typeDef) return null;
+            const Icon = getActivityIcon(typeDef.icon);
+            return (
+              <span className="inline-flex items-center gap-1.5 text-sm">
+                {Icon && (
+                  <span
+                    className="inline-flex h-5 w-5 items-center justify-center rounded"
+                    style={typeDef.color ? { color: typeDef.color } : undefined}
+                  >
+                    <Icon size={14} />
+                  </span>
+                )}
+                {typeDef.name}
+              </span>
+            );
           }}
           onChange={async (v) => {
             await updateActivity({ organizationId, activityId: row.original._id, activityType: v });

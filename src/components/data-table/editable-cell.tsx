@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent } from "react";
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,6 +32,7 @@ interface EditableCellProps {
   className?: string;
   disabled?: boolean;
   displayFormatter?: (value: any) => string;
+  displayRenderer?: (value: any) => ReactNode;
 }
 
 export function EditableCell({
@@ -41,6 +42,7 @@ export function EditableCell({
   className,
   disabled = false,
   displayFormatter,
+  displayRenderer,
 }: EditableCellProps) {
   const [active, setActive] = useState(false);
   const [editValue, setEditValue] = useState<any>(value);
@@ -124,6 +126,12 @@ export function EditableCell({
           onCheckedChange={(checked) => { if (!disabled) handleSave(checked); }}
           disabled={disabled}
         />
+      );
+    }
+
+    if (displayRenderer) {
+      return displayRenderer(value) ?? (
+        <span className="text-sm text-muted-foreground">{config.placeholder || "—"}</span>
       );
     }
 

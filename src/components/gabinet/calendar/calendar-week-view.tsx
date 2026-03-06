@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo } from "react";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Stethoscope, Pencil, Trash2, Power } from "@/lib/ez-icons";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmptyState } from "@/components/layout/empty-state";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -152,12 +153,26 @@ function TreatmentsIndex() {
     {
       accessorKey: "duration",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.duration")} />,
-      cell: ({ getValue }) => `${getValue() as number} min`,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.duration}
+          config={{ type: "number", min: 5, step: 5, placeholder: "min" }}
+          displayFormatter={(v) => `${v} min`}
+          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, duration: Number(v) }); }}
+        />
+      ),
     },
     {
       accessorKey: "price",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.price")} />,
-      cell: ({ row }) => formatCurrency(row.original.price, row.original.currency ?? undefined),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.price}
+          config={{ type: "number", min: 0, step: 1, placeholder: "0.00" }}
+          displayFormatter={(v) => formatCurrency(v, row.original.currency ?? undefined)}
+          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, price: Number(v) }); }}
+        />
+      ),
     },
     {
       accessorKey: "taxRate",

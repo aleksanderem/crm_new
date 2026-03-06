@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Heart, Trash2 } from "@/lib/ez-icons";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
@@ -49,6 +50,7 @@ function PatientsIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const createPatient = useMutation(api.gabinet.patients.create);
+  const updatePatient = useMutation(api.gabinet.patients.update);
   const removePatient = useMutation(api.gabinet.patients.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -181,15 +183,23 @@ function PatientsIndex() {
     {
       accessorKey: "email",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.email")} />,
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.email ?? ""}
+          config={{ type: "text", placeholder: "email@example.com" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, email: v }); }}
+        />
       ),
     },
     {
       accessorKey: "phone",
       header: t("common.phone"),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.phone ?? ""}
+          config={{ type: "text", placeholder: "+48..." }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, phone: v }); }}
+        />
       ),
     },
     {

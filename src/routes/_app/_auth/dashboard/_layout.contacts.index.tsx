@@ -210,7 +210,7 @@ function ContactsIndex() {
         <EditableCell
           value={row.original.email ?? ""}
           config={{ type: "text", placeholder: "email@example.com" }}
-          onChange={async (v) => { await updateContact({ id: row.original._id, email: v } as any); }}
+          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, email: v }); }}
         />
       ),
     },
@@ -221,7 +221,7 @@ function ContactsIndex() {
         <EditableCell
           value={row.original.phone ?? ""}
           config={{ type: "text", placeholder: "+48..." }}
-          onChange={async (v) => { await updateContact({ id: row.original._id, phone: v } as any); }}
+          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, phone: v }); }}
         />
       ),
     },
@@ -232,7 +232,7 @@ function ContactsIndex() {
         <EditableCell
           value={(row.original as any).title ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateContact({ id: row.original._id, title: v } as any); }}
+          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, title: v }); }}
         />
       ),
     },

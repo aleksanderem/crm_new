@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent, FocusEvent } from "react";
+import { useState, useRef, useEffect, type KeyboardEvent, type FocusEvent, type MouseEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -63,7 +63,8 @@ export function EditableCell({
     }
   }, [state, config.type, value]);
 
-  const handleStartEdit = () => {
+  const handleStartEdit = (e: MouseEvent) => {
+    e.stopPropagation();
     if (disabled) return;
     setEditValue(value);
     setState("editing");
@@ -291,7 +292,7 @@ export function EditableCell({
 
   if (state === "view" || state === "error") {
     return (
-      <div className="relative">
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
         {renderViewMode()}
         {errorMessage && (
           <div className="absolute top-full left-0 mt-1 text-xs text-destructive z-10 bg-background px-2 py-1 rounded border border-destructive shadow-sm">
@@ -304,12 +305,12 @@ export function EditableCell({
 
   if (state === "saving") {
     return (
-      <div className="flex items-center gap-2 min-h-[2rem] px-2">
+      <div className="flex items-center gap-2 min-h-[2rem] px-2" onClick={(e) => e.stopPropagation()}>
         {renderEditMode()}
         <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
       </div>
     );
   }
 
-  return <div onBlur={handleBlur}>{renderEditMode()}</div>;
+  return <div onBlur={handleBlur} onClick={(e) => e.stopPropagation()}>{renderEditMode()}</div>;
 }

@@ -19,10 +19,10 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/gabinet/docu
   component: EditTemplatePage,
 });
 
-function EditTemplatePage({ params }: any) {
+function EditTemplatePage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const templateId = params.templateId as string;
+  const { templateId } = Route.useParams();
   const { data: tpl } = useQuery(convexQuery(api.gabinet.documentTemplates.getById, { organizationId, templateId: templateId as Id<"gabinetDocumentTemplates"> }));
   const updateTpl = useMutation(api.gabinet.documentTemplates.update);
   const [name, setName] = useState("");

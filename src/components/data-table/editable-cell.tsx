@@ -106,6 +106,9 @@ export function EditableCell({
   };
 
   const handleBlur = (e: FocusEvent) => {
+    // Select dropdown renders in a portal outside the container,
+    // so we skip blur-to-save for select type entirely (it auto-saves on selection).
+    if (config.type === "select") return;
     const related = e.relatedTarget as HTMLElement;
     if (!related || !e.currentTarget.contains(related)) {
       handleSave();
@@ -186,7 +189,12 @@ export function EditableCell({
         );
       case "select":
         return (
-          <Select value={editValue ?? ""} onValueChange={(v) => { setEditValue(v); handleSave(v); }} disabled={saving}>
+          <Select
+            value={editValue ?? ""}
+            onValueChange={(v) => { setEditValue(v); handleSave(v); }}
+            onOpenChange={(open) => { if (!open && editValue === value) setActive(false); }}
+            disabled={saving}
+          >
             <SelectTrigger ref={selectRef} className="h-8">
               <SelectValue placeholder={config.placeholder} />
             </SelectTrigger>

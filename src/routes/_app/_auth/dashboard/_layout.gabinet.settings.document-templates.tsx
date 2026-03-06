@@ -54,7 +54,7 @@ function DocumentTemplatesPage() {
   );
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
+  const [editId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState<string>("consent");
   const [content, setContent] = useState("");

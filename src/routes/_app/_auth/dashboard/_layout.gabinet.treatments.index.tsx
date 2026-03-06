@@ -49,7 +49,7 @@ function TreatmentsIndex() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sortAscending, setSortAscending] = useState(true);
+  const [_sortAscending, setSortAscending] = useState(true);
 
   // Sidebar dispatch handlers
   useSidebarDispatch("openFilter", () => {

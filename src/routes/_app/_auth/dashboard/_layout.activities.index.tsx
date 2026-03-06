@@ -136,7 +136,7 @@ function ActivitiesPage() {
     convexQuery(api.activityTypes.list, { organizationId })
   );
 
-  const typeFilterOptions: FilterOption[] = useMemo(() => {
+  const typeFilterOptions: { label: string; value: string }[] = useMemo(() => {
     if (activityTypeDefs) {
       return activityTypeDefs.map((td) => ({ label: td.name, value: td.key }));
     }

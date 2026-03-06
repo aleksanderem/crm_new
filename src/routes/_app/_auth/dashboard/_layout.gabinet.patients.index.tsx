@@ -155,52 +155,37 @@ function PatientsIndex() {
     }));
   }, [patients]);
 
-  // Attempt to use inline-editable columns when available
-  const updatePatient = useMutation(api.gabinet.patients.update);
-  const handleInlineUpdatePatient = async (patientId: string, field: keyof Patient, value: any) => {
-    await updatePatient({ id: patientId, [field]: value } as any);
-  };
-
-  let columns: ColumnDef<Patient>[] = [];
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-    const { getPatientColumnsWithInlineEdit } = require('@/components/data-table/editable-examples');
-    columns = getPatientColumnsWithInlineEdit(handleInlineUpdatePatient);
-  } catch (e) {
-    // Fallback to non-editable columns
-    columns = [
-      {
-        accessorKey: "firstName",
-        header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.patients.contact")} />,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">
-                {row.original.firstName[0]}
-                {row.original.lastName[0]}
-              </AvatarFallback>
-            </Avatar>
-            <span className="font-medium">
-              {row.original.firstName} {row.original.lastName}
-            </span>
-            {!row.original.isActive && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                {t("common.inactive")}
-              </Badge>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "email",
-        header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.email")} />,
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
-        ),
-      },
-    ];
-  }
-*** End Patch    {
+  const columns: ColumnDef<Patient>[] = [
+    {
+      accessorKey: "firstName",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.patients.contact")} />,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="text-xs">
+              {row.original.firstName[0]}
+              {row.original.lastName[0]}
+            </AvatarFallback>
+          </Avatar>
+          <span className="font-medium">
+            {row.original.firstName} {row.original.lastName}
+          </span>
+          {!row.original.isActive && (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              {t("common.inactive")}
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.email")} />,
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      ),
+    },
+    {
       accessorKey: "phone",
       header: t("common.phone"),
       cell: ({ getValue }) => (

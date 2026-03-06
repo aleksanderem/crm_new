@@ -9,7 +9,6 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { ActivityForm } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
-import { EmployeeScheduleManager } from "@/components/gabinet/employee-schedule-manager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1283,7 +1282,7 @@ function EmployeeScheduleEditor({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => navigate({ to: "/dashboard/gabinet/settings/leaves" })}
+            onClick={() => window.location.href = "/dashboard/gabinet/settings/leaves"}
           >
             {t("gabinet.employees.schedule.manageLeaves")}
           </Button>

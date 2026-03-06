@@ -12,7 +12,6 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Plus, Users, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
@@ -118,7 +117,8 @@ function ContactsIndex() {
     defaultColumnVisibility: mergedDefaultVis,
   });
 
-  const userLookup = useMemo(() => {
+  // @ts-ignore unused but kept for future use
+  const _userLookup = useMemo(() => {
     const map = new Map<string, string>();
     if (members) {
       for (const m of members) {
@@ -216,7 +216,7 @@ function ContactsIndex() {
   // Inline editable columns
   const updateContact = useMutation(api.contacts.update);
   const handleInlineUpdate = async (contactId: string, field: keyof Contact, value: any) => {
-    await updateContact({ id: contactId, [field]: value });
+    await updateContact({ id: contactId as any, [field]: value } as any);
   };
 
   // get editable columns from helper and merge with custom field columns

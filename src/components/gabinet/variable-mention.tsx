@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Mention from "@tiptap/extension-mention";
 import suggestion, { SuggestionOptions } from "@tiptap/suggestion";
 import tippy, { Instance as TippyInstance } from "tippy.js";

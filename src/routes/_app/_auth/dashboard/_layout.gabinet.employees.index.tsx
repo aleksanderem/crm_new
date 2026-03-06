@@ -5,20 +5,24 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
+import { CrmDataTable } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { Plus } from "@/lib/ez-icons";
-import { useState, useMemo } from "react";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditableCell } from "@/components/data-table/editable-cell";
+import { Plus, Trash2 } from "@/lib/ez-icons";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { toast } from "sonner";
-import { Id } from "@cvx/_generated/dataModel";
+import { Id, Doc } from "@cvx/_generated/dataModel";
+import { ColumnDef } from "@tanstack/react-table";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
@@ -28,6 +32,8 @@ export const Route = createFileRoute(
 
 const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
 
+type Employee = Doc<"gabinetEmployees">;
+
 function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -35,6 +41,8 @@ function EmployeesIndex() {
   const [showCreate, setShowCreate] = useState(false);
 
   const createEmployee = useMutation(api.gabinet.employees.create);
+  const updateEmployee = useMutation(api.gabinet.employees.update);
+  const removeEmployee = useMutation(api.gabinet.employees.remove);
 
   const { data: employees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, { organizationId })
@@ -65,12 +73,6 @@ function EmployeesIndex() {
     return map;
   }, [members]);
 
-  const treatmentMap = useMemo(() => {
-    const map = new Map<string, string>();
-    treatments?.forEach((t) => map.set(t._id, t.name));
-    return map;
-  }, [treatments]);
-
   function getDisplayName(emp: { firstName?: string; lastName?: string; userId: string }) {
     if (emp.firstName || emp.lastName) {
       return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
@@ -79,8 +81,183 @@ function EmployeesIndex() {
     return user?.name || user?.email || t("common.unknown");
   }
 
+  function getInitials(emp: { firstName?: string; lastName?: string; userId: string }) {
+    if (emp.firstName || emp.lastName) {
+      return `${(emp.firstName ?? "")[0] ?? ""}${(emp.lastName ?? "")[0] ?? ""}`.toUpperCase();
+    }
+    const user = userMap.get(emp.userId);
+    const name = user?.name || user?.email || "?";
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  const roleOptions = ROLES.map((r) => ({
+    label: t(`gabinet.employees.roles.${r}`),
+    value: r,
+  }));
+
+  const columns: ColumnDef<Employee>[] = [
+    {
+      accessorKey: "firstName",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.employee")} />,
+      cell: ({ row }) => {
+        const displayName = getDisplayName(row.original);
+        const initials = getInitials(row.original);
+        const user = userMap.get(row.original.userId);
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <span className="font-medium">{displayName}</span>
+              {user?.email && (
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+              )}
+            </div>
+            {!row.original.isActive && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                {t("common.inactive")}
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "role",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.role")} />,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.role ?? ""}
+          config={{
+            type: "select",
+            options: roleOptions,
+            placeholder: "—",
+          }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, role: v as any }); }}
+        />
+      ),
+      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+    },
+    {
+      accessorKey: "specialization",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.specialization")} />,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.specialization ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, specialization: v }); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "licenseNumber",
+      header: t("gabinet.employees.license"),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.licenseNumber ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, licenseNumber: v }); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "hireDate",
+      header: t("gabinet.employees.hireDate"),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.hireDate ?? ""}
+          config={{ type: "date" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, hireDate: v }); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "color",
+      header: t("gabinet.employees.color"),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.color ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, color: v }); }}
+          displayFormatter={(v) => v || "—"}
+        />
+      ),
+    },
+    {
+      accessorKey: "notes",
+      header: t("gabinet.employees.notes"),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.notes ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, notes: v }); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "isActive",
+      header: t("gabinet.employees.active"),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.isActive}
+          config={{ type: "boolean" }}
+          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, isActive: v }); }}
+        />
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.created")} />,
+      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.updated")} />,
+      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+    },
+  ];
+
+  const rowActions = useCallback(
+    (row: Employee) => [
+      {
+        label: t("common.edit"),
+        onClick: () => navigate({ to: `/dashboard/gabinet/employees/${row._id}` }),
+      },
+      {
+        label: t("common.delete"),
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+        onClick: async () => {
+          if (window.confirm(t("gabinet.employees.confirmDelete"))) {
+            await removeEmployee({ organizationId, employeeId: row._id });
+          }
+        },
+      },
+    ],
+    [navigate, removeEmployee, organizationId, t]
+  );
+
+  const handleBulkAction = useCallback(
+    async (action: string, selectedRows: Employee[]) => {
+      if (action === "delete") {
+        for (const row of selectedRows) {
+          await removeEmployee({ organizationId, employeeId: row._id });
+        }
+      }
+    },
+    [removeEmployee, organizationId]
+  );
+
+  const roleFilterOptions = useMemo(() => {
+    const roles = new Set<string>();
+    for (const emp of (employees ?? [])) {
+      if (emp.role) roles.add(emp.role);
+    }
+    return Array.from(roles).map((r) => ({ label: t(`gabinet.employees.roles.${r}`), value: r }));
+  }, [employees, t]);
+
   return (
-    <div className="flex h-full w-full flex-col gap-6">
+    <div className="space-y-4">
       <PageHeader
         title={t("gabinet.employees.title")}
         description={t("gabinet.employees.description")}
@@ -104,74 +281,24 @@ function EmployeesIndex() {
         ]}
       />
 
-      {!employees?.length && (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          {t("gabinet.employees.empty")}
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {employees?.map((emp) => {
-          const user = userMap.get(emp.userId);
-          const displayName = getDisplayName(emp);
-          return (
-            <Card
-              key={emp._id}
-              className={`cursor-pointer transition-colors hover:bg-muted/30 ${!emp.isActive ? "opacity-50" : ""}`}
-              onClick={() => navigate({ to: `/dashboard/gabinet/employees/${emp._id}` })}
-            >
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{displayName}</p>
-                    {user?.email && (
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {emp.color && (
-                      <span
-                        className="h-4 w-4 rounded-full"
-                        style={{ backgroundColor: emp.color }}
-                      />
-                    )}
-                    <Badge variant={emp.isActive ? "default" : "secondary"}>
-                      {t(`gabinet.employees.roles.${emp.role}`)}
-                    </Badge>
-                  </div>
-                </div>
-
-                {emp.specialization && (
-                  <p className="text-xs text-muted-foreground">
-                    {emp.specialization}
-                  </p>
-                )}
-
-                {emp.qualifiedTreatmentIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {emp.qualifiedTreatmentIds.slice(0, 3).map((tid) => (
-                      <Badge key={tid} variant="outline" className="text-xs">
-                        {treatmentMap.get(tid) || "..."}
-                      </Badge>
-                    ))}
-                    {emp.qualifiedTreatmentIds.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{emp.qualifiedTreatmentIds.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-
-                {emp.licenseNumber && (
-                  <p className="text-xs text-muted-foreground">
-                    {t("gabinet.employees.license")}: {emp.licenseNumber}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <CrmDataTable
+        columns={columns}
+        data={employees ?? []}
+        stickyFirstColumn
+        searchKey="firstName"
+        searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
+        enableBulkSelect
+        bulkActions={[
+          { label: t("common.delete"), value: "delete", variant: "destructive" },
+        ]}
+        onBulkAction={handleBulkAction}
+        rowActions={rowActions}
+        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/employees/${row._id}` })}
+        totalCount={(employees ?? []).length}
+        filterableColumns={roleFilterOptions.length > 0 ? [
+          { id: "role", title: t("gabinet.employees.role"), options: roleFilterOptions },
+        ] : []}
+      />
 
       {/* Create dialog */}
       <CreateEmployeeSheet

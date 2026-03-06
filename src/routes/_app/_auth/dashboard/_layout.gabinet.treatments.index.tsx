@@ -145,8 +145,12 @@ function TreatmentsIndex() {
     {
       accessorKey: "category",
       header: t("gabinet.treatments.category"),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.category ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, category: v }); }}
+        />
       ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
@@ -177,10 +181,14 @@ function TreatmentsIndex() {
     {
       accessorKey: "taxRate",
       header: t("gabinet.treatments.taxRate"),
-      cell: ({ getValue }) => {
-        const v = getValue() as number | undefined;
-        return v != null ? `${v}%` : "—";
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.taxRate ?? ""}
+          config={{ type: "number", min: 0, max: 100, step: 1, placeholder: "%" }}
+          displayFormatter={(v) => v != null && v !== "" ? `${v}%` : "—"}
+          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, taxRate: Number(v) }); }}
+        />
+      ),
     },
     {
       accessorKey: "isActive",

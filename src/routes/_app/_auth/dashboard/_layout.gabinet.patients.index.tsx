@@ -205,52 +205,88 @@ function PatientsIndex() {
     {
       accessorKey: "pesel",
       header: t("gabinet.patients.pesel"),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.pesel ?? ""}
+          config={{ type: "text", placeholder: "PESEL" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, pesel: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "dateOfBirth",
       header: t("gabinet.patients.dateOfBirth"),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.dateOfBirth ?? ""}
+          config={{ type: "date" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, dateOfBirth: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "gender",
       header: t("gabinet.patients.gender"),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return t(`gabinet.patients.genderOptions.${v}`);
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.gender ?? ""}
+          config={{
+            type: "select",
+            options: [
+              { label: t("gabinet.patients.genderOptions.male"), value: "male" },
+              { label: t("gabinet.patients.genderOptions.female"), value: "female" },
+              { label: t("gabinet.patients.genderOptions.other"), value: "other" },
+            ],
+            placeholder: "—",
+          }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, gender: v as any }); }}
+        />
+      ),
     },
     {
       accessorKey: "referralSource",
       header: t("gabinet.patients.referralSource"),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.referralSource ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, referralSource: v }); }}
+        />
       ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "allergies",
       header: t("gabinet.patients.allergies"),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return <span className="max-w-[200px] truncate block">{v}</span>;
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.allergies ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, allergies: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "bloodType",
       header: t("gabinet.patients.bloodType"),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.bloodType ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, bloodType: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "medicalNotes",
       header: t("gabinet.patients.medicalNotes"),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return <span className="max-w-[200px] truncate block">{v}</span>;
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.medicalNotes ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, medicalNotes: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "createdAt",

@@ -12,6 +12,7 @@ import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -305,15 +306,29 @@ function LeadsIndex() {
     {
       accessorKey: "value",
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.amount')} />,
-      cell: ({ getValue }) => {
-        const v = getValue() as number | undefined;
-        return v ? formatCurrency(v) : "—";
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.value ?? ""}
+          config={{ type: "number", placeholder: "—" }}
+          displayFormatter={(v) => (v ? formatCurrency(v) : "")}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, value: v || undefined });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "currency",
       header: t('deals.currency'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.currency ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, currency: v || undefined });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "expectedCloseDate",
@@ -326,34 +341,59 @@ function LeadsIndex() {
     {
       accessorKey: "status",
       header: t('common.status'),
-      cell: ({ getValue }) => {
-        const status = getValue() as string;
-        return (
-          <Badge variant="secondary" className={cn("capitalize", statusColors[status])}>
-            {status}
-          </Badge>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.status}
+          config={{
+            type: "select",
+            options: [
+              { label: t('deals.filters.open'), value: "open" },
+              { label: t('deals.filters.won'), value: "won" },
+              { label: t('deals.filters.lost'), value: "lost" },
+              { label: "Archived", value: "archived" },
+            ],
+          }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, status: v });
+          }}
+        />
+      ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "priority",
       header: t('common.priority'),
-      cell: ({ getValue }) => {
-        const p = getValue() as string | undefined;
-        if (!p) return "—";
-        return (
-          <Badge variant="secondary" className={cn("capitalize", priorityColors[p])}>
-            {p}
-          </Badge>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.priority ?? ""}
+          config={{
+            type: "select",
+            options: [
+              { label: t('deals.priority.high'), value: "high" },
+              { label: t('deals.priority.medium'), value: "medium" },
+              { label: t('deals.priority.low'), value: "low" },
+              { label: "Urgent", value: "urgent" },
+            ],
+          }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, priority: v });
+          }}
+        />
+      ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "source",
       header: t('common.source'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.source ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, source: v || undefined });
+          }}
+        />
+      ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
@@ -395,11 +435,15 @@ function LeadsIndex() {
     {
       accessorKey: "notes",
       header: t('common.notes'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return <span className="max-w-[200px] truncate block">{v}</span>;
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.notes ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, notes: v || undefined });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "wonAt",
@@ -420,7 +464,15 @@ function LeadsIndex() {
     {
       accessorKey: "lostReason",
       header: t('deals.lostReason'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.lostReason ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => {
+            await updateLead({ organizationId, leadId: row.original._id, lostReason: v || undefined });
+          }}
+        />
+      ),
     },
     {
       id: "createdBy",

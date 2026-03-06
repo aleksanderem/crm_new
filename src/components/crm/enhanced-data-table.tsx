@@ -310,21 +310,20 @@ export function CrmDataTable<TData>({
                   <tr
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className={cn(
-                      "group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-                      onRowClick && "cursor-pointer"
-                    )}
-                    onClick={() => onRowClick?.(row.original)}
+                    className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
                   >
                     {row.getVisibleCells().map((cell, index) => {
                       const isSticky = stickyFirstColumn && index === 0;
+                      const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
                       return (
                         <td
                           key={cell.id}
                           className={cn(
                             "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                            isSticky && "sticky left-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted"
+                            isSticky && "sticky left-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
+                            isFirstDataCol && onRowClick && "cursor-pointer"
                           )}
+                          onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>

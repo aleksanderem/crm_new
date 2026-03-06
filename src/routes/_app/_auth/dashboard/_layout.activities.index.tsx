@@ -16,8 +16,6 @@ import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -27,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import {
@@ -37,7 +36,6 @@ import {
   RotateCcw,
 } from "@/lib/ez-icons";
 import { ToggleFilterButton } from "@/components/crm/filter-button";
-import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
@@ -273,18 +271,23 @@ function ActivitiesPage() {
     {
       accessorKey: "activityType",
       header: t('activities.activityType'),
-      cell: ({ getValue }) => {
-        const typeKey = getValue() as string;
-        const typeDef = activityTypeDefs?.find((t) => t.key === typeKey);
-        if (!typeDef) return typeKey;
-        const Icon = getActivityIcon(typeDef.icon);
-        return (
-          <Badge variant="secondary" className={typeDef.color ?? ""}>
-            {Icon && <Icon className="mr-1 h-4 w-4" variant="stroke" />}
-            {typeDef.name}
-          </Badge>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.activityType}
+          config={{
+            type: "select",
+            options: typeFilterOptions,
+            placeholder: "—",
+          }}
+          displayFormatter={(v) => {
+            const typeDef = activityTypeDefs?.find((td) => td.key === v);
+            return typeDef?.name ?? v ?? "";
+          }}
+          onChange={async (v) => {
+            await updateActivity({ organizationId, activityId: row.original._id, activityType: v });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "dueDate",
@@ -294,10 +297,17 @@ function ActivitiesPage() {
       cell: ({ row }) => {
         const dueDate = row.original.dueDate;
         const isOverdue = !row.original.isCompleted && dueDate < Date.now();
+        // Convert timestamp to YYYY-MM-DD for the date input
+        const dateStr = new Date(dueDate).toISOString().slice(0, 10);
         return (
-          <span className={isOverdue ? "text-red-600 font-medium" : ""}>
-            {new Date(dueDate).toLocaleDateString()}
-          </span>
+          <EditableCell
+            value={dateStr}
+            config={{ type: "date" }}
+            className={isOverdue ? "text-red-600 font-medium" : ""}
+            onChange={async (v) => {
+              await updateActivity({ organizationId, activityId: row.original._id, dueDate: new Date(v).getTime() });
+            }}
+          />
         );
       },
     },
@@ -305,16 +315,16 @@ function ActivitiesPage() {
       accessorKey: "isCompleted",
       header: t('activities.completed'),
       cell: ({ row }) => (
-        <Checkbox
-          checked={row.original.isCompleted}
-          onCheckedChange={(checked) => {
-            if (checked) {
-              markComplete({ organizationId, activityId: row.original._id });
+        <EditableCell
+          value={row.original.isCompleted}
+          config={{ type: "boolean" }}
+          onChange={async (v) => {
+            if (v) {
+              await markComplete({ organizationId, activityId: row.original._id });
             } else {
-              markIncomplete({ organizationId, activityId: row.original._id });
+              await markIncomplete({ organizationId, activityId: row.original._id });
             }
           }}
-          onClick={(e) => e.stopPropagation()}
         />
       ),
     },

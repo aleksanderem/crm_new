@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -186,10 +187,14 @@ function ProductsPage() {
     {
       accessorKey: "sku",
       header: t('products.sku'),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground font-mono text-xs">
-          {getValue() as string}
-        </span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.sku ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => {
+            await updateProduct({ organizationId, productId: row.original._id, sku: v });
+          }}
+        />
       ),
     },
     {
@@ -197,27 +202,43 @@ function ProductsPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('products.unitPrice')} />
       ),
-      cell: ({ getValue }) => formatCurrency(getValue() as number),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.unitPrice ?? 0}
+          config={{ type: "number", min: 0, step: 0.01, placeholder: "0.00" }}
+          displayFormatter={(v) => formatCurrency(v as number)}
+          onChange={async (v) => {
+            await updateProduct({ organizationId, productId: row.original._id, unitPrice: v });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "taxRate",
       header: t('products.taxRate'),
-      cell: ({ getValue }) => `${getValue() as number}%`,
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.taxRate ?? 0}
+          config={{ type: "number", min: 0, max: 100, step: 0.01, placeholder: "0" }}
+          displayFormatter={(v) => `${v as number}%`}
+          onChange={async (v) => {
+            await updateProduct({ organizationId, productId: row.original._id, taxRate: v });
+          }}
+        />
+      ),
     },
     {
       accessorKey: "isActive",
       header: t('common.active'),
-      cell: ({ getValue }) => {
-        const active = getValue() as boolean;
-        return (
-          <span
-            className={`inline-block h-2.5 w-2.5 rounded-full ${
-              active ? "bg-green-500" : "bg-gray-300"
-            }`}
-            title={active ? "Active" : "Inactive"}
-          />
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.isActive}
+          config={{ type: "boolean" }}
+          onChange={async () => {
+            await toggleActive({ organizationId, productId: row.original._id });
+          }}
+        />
+      ),
     },
   ];
 

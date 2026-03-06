@@ -13,6 +13,7 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { Plus, Building2, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -51,6 +52,7 @@ function CompaniesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const createCompany = useMutation(api.companies.create);
+  const updateCompany = useMutation(api.companies.update);
   const removeCompany = useMutation(api.companies.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
 
@@ -215,50 +217,70 @@ function CompaniesIndex() {
     {
       accessorKey: "domain",
       header: t('companies.domain'),
-      cell: ({ getValue }) => (getValue() as string) ?? "—",
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.domain ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, domain: v }); }}
+        />
+      ),
     },
     {
       accessorKey: "phone",
       header: t('common.phone'),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.phone ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, phone: v }); }}
+        />
       ),
     },
     {
       accessorKey: "industry",
       header: t('companies.industry'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        return v ? <Badge variant="outline">{v}</Badge> : "—";
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.industry ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, industry: v }); }}
+        />
+      ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "size",
       header: t('companies.size'),
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{(getValue() as string) ?? "—"}</span>
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.size ?? ""}
+          config={{
+            type: "select",
+            placeholder: "—",
+            options: [
+              { label: "1-10", value: "1-10" },
+              { label: "11-50", value: "11-50" },
+              { label: "51-200", value: "51-200" },
+              { label: "201-500", value: "201-500" },
+              { label: "501-1000", value: "501-1000" },
+              { label: "1000+", value: "1000+" },
+            ],
+          }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, size: v }); }}
+        />
       ),
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "website",
       header: t('companies.website'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return (
-          <a
-            href={v.startsWith("http") ? v : `https://${v}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {v}
-          </a>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.website ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, website: v }); }}
+        />
+      ),
     },
     {
       id: "address",
@@ -292,11 +314,13 @@ function CompaniesIndex() {
     {
       accessorKey: "notes",
       header: t('common.notes'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        if (!v) return "—";
-        return <span className="max-w-[200px] truncate block">{v}</span>;
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.notes ?? ""}
+          config={{ type: "text", placeholder: "—" }}
+          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, notes: v }); }}
+        />
+      ),
     },
     {
       id: "createdBy",

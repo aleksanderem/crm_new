@@ -173,3 +173,41 @@ export const listAvailableSources = query({
     }));
   },
 });
+
+/**
+ * Resolve all sources and return a flat map of field values.
+ * Used by the document-from-template preview to show real data.
+ */
+export const resolveSourceValues = query({
+  args: {
+    organizationId: v.id("organizations"),
+    sources: v.any(), // Record<string, string | null>
+  },
+  handler: async (ctx, args) => {
+    const userId = await (await import("@cvx/auth")).auth.getUserId(ctx);
+    if (!userId) return {};
+
+    const rctx: DataSourceResolverContext = {
+      orgId: args.organizationId as string,
+      userId: userId as string,
+    };
+
+    const sources: Record<string, string | null> = args.sources ?? {};
+    const result: Record<string, Record<string, string>> = {};
+
+    // Always resolve platform sources
+    result.system = await resolveSource(ctx, "system", null, rctx);
+    result.current_user = await resolveSource(ctx, "current_user", null, rctx);
+    result.org = await resolveSource(ctx, "org", null, rctx);
+
+    // Resolve additional sources
+    for (const [key, instanceId] of Object.entries(sources)) {
+      if (key === "system" || key === "current_user" || key === "org") continue;
+      if (instanceId) {
+        result[key] = await resolveSource(ctx, key, instanceId, rctx);
+      }
+    }
+
+    return result;
+  },
+});

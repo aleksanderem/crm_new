@@ -32,6 +32,7 @@ import {
 import { Loader2, FileText, Eye } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SourceInstancePicker } from "./source-instance-picker";
 
 // --- Types ---
 
@@ -40,7 +41,7 @@ type TemplateField = Doc<"documentTemplateFields">;
 interface DocumentFromTemplateProps {
   organizationId: Id<"organizations">;
   templateId: Id<"documentTemplates">;
-  sources: Record<string, string>;
+  sources?: Record<string, string>;
   onComplete?: (instanceId: Id<"documentInstances">) => void;
   onCancel?: () => void;
 }
@@ -107,6 +108,19 @@ export function DocumentFromTemplate({
     }),
   );
 
+  // Source selection state — user can pick which entities to bind
+  const [selectedSources, setSelectedSources] = useState<Record<string, string>>(
+    () => ({ ...(sources ?? {}) }),
+  );
+
+  // Resolve source values for live preview
+  const { data: resolvedSourceData } = useQuery(
+    convexQuery(api.documentDataSources.resolveSourceValues, {
+      organizationId,
+      sources: selectedSources,
+    }),
+  );
+
   const createInstance = useMutation(api.documentInstances.create);
 
   // --- State ---
@@ -141,7 +155,7 @@ export function DocumentFromTemplate({
     setFieldValues(initial);
   }, [template, fields]);
 
-  // Build display values: merge field values with bound field placeholders for preview
+  // Build display values: merge field values with resolved source data for preview
   const displayValues = useMemo(() => {
     if (!fields) return fieldValues;
     const result = { ...fieldValues };
@@ -151,12 +165,19 @@ export function DocumentFromTemplate({
         (result[field.fieldKey] === "" ||
           result[field.fieldKey] == null)
       ) {
-        result[field.fieldKey] =
-          `[auto: ${field.binding.source}.${field.binding.field}]`;
+        // Try to use resolved data from source
+        const sourceData = resolvedSourceData?.[field.binding.source];
+        const resolvedVal = sourceData?.[field.binding.field];
+        if (resolvedVal) {
+          result[field.fieldKey] = resolvedVal;
+        } else {
+          result[field.fieldKey] =
+            `[${field.binding.source}.${field.binding.field}]`;
+        }
       }
     }
     return result;
-  }, [fieldValues, fields]);
+  }, [fieldValues, fields, resolvedSourceData]);
 
   const debouncedValues = useDebounce(displayValues, 300);
 
@@ -209,7 +230,7 @@ export function DocumentFromTemplate({
         organizationId,
         templateId,
         title,
-        sources,
+        sources: selectedSources,
         fieldOverrides,
       });
 
@@ -451,6 +472,31 @@ export function DocumentFromTemplate({
             }}
           />
         </div>
+
+        {/* Source selection — for templates that require entity data */}
+        {template.requiredSources.length > 0 && availableSources && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground border-b pb-1">
+              Źródła danych
+            </h3>
+            {template.requiredSources
+              .map((key) => availableSources.find((s) => s.key === key))
+              .filter(Boolean)
+              .map((source) => (
+                <SourceInstancePicker
+                  key={source!.key}
+                  sourceKey={source!.key}
+                  sourceLabel={source!.label}
+                  organizationId={organizationId}
+                  selectedId={selectedSources[source!.key]}
+                  onSelect={(id) => {
+                    setSelectedSources((prev) => ({ ...prev, [source!.key]: id }));
+                    setIsDirty(true);
+                  }}
+                />
+              ))}
+          </div>
+        )}
 
         {/* Field groups */}
         {fieldGroups.map(({ group, fields: groupFields }) => (

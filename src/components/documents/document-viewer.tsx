@@ -17,6 +17,7 @@ import {
   Undo2,
 } from "@/lib/ez-icons";
 import { SendForSigningDialog } from "./send-for-signing-dialog";
+import { PdfExportButton } from "./pdf-export";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,6 +156,7 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
         <div className={cn("flex w-full flex-wrap gap-2")}>
           <StatusActions
             status={status}
+            instance={instance}
             onStatusChange={onStatusChange}
             onEdit={onEdit}
             onSign={onSign ? () => onSign(signatures.find((s) => !s.signatureData)?.slotId ?? "") : undefined}
@@ -174,6 +176,7 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
 
 interface StatusActionsProps {
   status: DocumentStatus;
+  instance: DocumentInstance;
   onStatusChange?: (status: DocumentStatus) => void;
   onEdit?: () => void;
   onSign?: () => void;
@@ -181,7 +184,7 @@ interface StatusActionsProps {
   hasUnsignedSlots: boolean;
 }
 
-function StatusActions({ status, onStatusChange, onEdit, onSign, onSendForSigning, hasUnsignedSlots }: StatusActionsProps) {
+function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSendForSigning, hasUnsignedSlots }: StatusActionsProps) {
   const actions: React.ReactNode[] = [];
 
   switch (status) {
@@ -243,10 +246,12 @@ function StatusActions({ status, onStatusChange, onEdit, onSign, onSendForSignin
         );
       }
       actions.push(
-        <Button key="download" variant="outline" size="sm">
-          <Download className="mr-1 h-4 w-4" />
-          Pobierz PDF
-        </Button>,
+        <PdfExportButton
+          key="download"
+          title={instance.title}
+          content={instance.renderedContent}
+          signatures={instance.signatures}
+        />,
       );
       break;
 
@@ -260,19 +265,23 @@ function StatusActions({ status, onStatusChange, onEdit, onSign, onSendForSignin
         );
       }
       actions.push(
-        <Button key="download" variant="outline" size="sm">
-          <Download className="mr-1 h-4 w-4" />
-          Pobierz PDF
-        </Button>,
+        <PdfExportButton
+          key="download"
+          title={instance.title}
+          content={instance.renderedContent}
+          signatures={instance.signatures}
+        />,
       );
       break;
 
     case "signed":
       actions.push(
-        <Button key="download" variant="outline" size="sm">
-          <Download className="mr-1 h-4 w-4" />
-          Pobierz PDF
-        </Button>,
+        <PdfExportButton
+          key="download"
+          title={instance.title}
+          content={instance.renderedContent}
+          signatures={instance.signatures}
+        />,
       );
       if (onStatusChange) {
         actions.push(
@@ -286,10 +295,12 @@ function StatusActions({ status, onStatusChange, onEdit, onSign, onSendForSignin
 
     case "archived":
       actions.push(
-        <Button key="download" variant="outline" size="sm">
-          <Download className="mr-1 h-4 w-4" />
-          Pobierz PDF
-        </Button>,
+        <PdfExportButton
+          key="download"
+          title={instance.title}
+          content={instance.renderedContent}
+          signatures={instance.signatures}
+        />,
       );
       if (onStatusChange) {
         actions.push(

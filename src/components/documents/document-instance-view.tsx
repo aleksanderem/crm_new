@@ -104,6 +104,7 @@ export function DocumentInstanceView({
         instance={instance}
         onSign={(slotId) => setSigningSlotId(slotId)}
         onStatusChange={handleStatusChange}
+        onSendForSigning={onStatusChange}
       />
 
       {/* Signature dialog */}

@@ -467,7 +467,7 @@ function DashboardLayout() {
             <AppSidebar />
 
             {/* Column 3: Main content */}
-            <div className="flex flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger className="[&_svg]:!size-4 [&_easier-icon]:!size-4" />
@@ -544,7 +544,7 @@ function DashboardLayout() {
               </header>
 
               {/* Main content */}
-              <main className="size-full flex-1 px-4 py-6 sm:px-6">
+              <main className="min-w-0 size-full flex-1 px-4 py-6 sm:px-6">
                 <Outlet />
               </main>
 

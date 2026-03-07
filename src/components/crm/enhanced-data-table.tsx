@@ -280,7 +280,7 @@ export function CrmDataTable<TData>({
       )}
 
       {/* Table with horizontal scroll constrained to parent width */}
-      <div className="mt-4 border-t overflow-x-auto overflow-y-visible">
+      <div className="relative mt-4 border-t overflow-x-auto overflow-y-visible">
         <table className="caption-bottom text-sm" style={{ minWidth: "100%" }}>
           <colgroup>
             {table.getVisibleLeafColumns().map((col) => (

@@ -240,7 +240,7 @@ export function SavedViewsTabs({
     <>
       <div
         ref={scrollRef}
-        className="flex items-center gap-1 overflow-x-auto scrollbar-none border-b"
+        className="flex items-center gap-1 overflow-x-auto scrollbar-none border-b max-w-full"
       >
         {views.map((view) => {
           const isActive = view.id === activeViewId;

@@ -15,6 +15,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as AppImport } from './routes/_app'
 import { Route as IndexImport } from './routes/index'
+import { Route as SignTokenImport } from './routes/sign.$token'
 import { Route as AppAuthImport } from './routes/_app/_auth'
 import { Route as AppPatientLoginImport } from './routes/_app/patient/login'
 import { Route as AppPatientLayoutImport } from './routes/_app/patient/_layout'
@@ -115,6 +116,11 @@ const AppPatientRoute = AppPatientImport.update({
 const AppLoginRoute = AppLoginImport.update({
   path: '/login',
   getParentRoute: () => AppRoute,
+} as any)
+
+const SignTokenRoute = SignTokenImport.update({
+  path: '/sign/$token',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const AppAuthRoute = AppAuthImport.update({
@@ -570,6 +576,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof AppAuthImport
       parentRoute: typeof AppImport
+    }
+    '/sign/$token': {
+      id: '/sign/$token'
+      path: '/sign/$token'
+      fullPath: '/sign/$token'
+      preLoaderRoute: typeof SignTokenImport
+      parentRoute: typeof rootRoute
     }
     '/_app/invite/$token': {
       id: '/_app/invite/$token'
@@ -1192,6 +1205,7 @@ export const routeTree = rootRoute.addChildren({
       AppPatientLoginRoute,
     }),
   }),
+  SignTokenRoute,
 })
 
 /* prettier-ignore-end */
@@ -1203,7 +1217,8 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/_app"
+        "/_app",
+        "/sign/$token"
       ]
     },
     "/": {
@@ -1225,6 +1240,9 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard",
         "/_app/_auth/onboarding"
       ]
+    },
+    "/sign/$token": {
+      "filePath": "sign.$token.tsx"
     },
     "/_app/invite/$token": {
       "filePath": "_app/invite.$token.tsx",

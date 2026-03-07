@@ -104,6 +104,7 @@ export const ICON_MAP: Record<string, string> = {
   Share2: "share-01",
   Settings: "settings-01",
   ShieldAlert: "shield-02",
+  ShieldCheck: "shield-02",
   Sparkles: "magic-wand-01",
   Settings2: "settings-02",
   Slash: "minus-sign",

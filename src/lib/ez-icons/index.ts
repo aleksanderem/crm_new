@@ -127,6 +127,7 @@ export const Send = createIcon("Send");
 export const Share2 = createIcon("Share2");
 export const Settings = createIcon("Settings");
 export const ShieldAlert = createIcon("ShieldAlert");
+export const ShieldCheck = createIcon("ShieldCheck");
 export const Sparkles = createIcon("Sparkles");
 export const Settings2 = createIcon("Settings2");
 export const Slash = createIcon("Slash");

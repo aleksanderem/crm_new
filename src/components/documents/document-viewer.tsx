@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Doc } from "@cvx/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   Trash2,
   Undo2,
 } from "@/lib/ez-icons";
+import { SendForSigningDialog } from "./send-for-signing-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +30,7 @@ interface DocumentViewerProps {
   onSign?: (slotId: string) => void;
   onStatusChange?: (status: DocumentStatus) => void;
   onEdit?: () => void;
+  onSendForSigning?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,10 +59,20 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function DocumentViewer({ instance, onSign, onStatusChange, onEdit }: DocumentViewerProps) {
+export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSendForSigning }: DocumentViewerProps) {
   const { title, status, renderedContent, signatures, createdAt } = instance;
+  const [showSendDialog, setShowSendDialog] = useState(false);
 
   return (
+    <>
+    <SendForSigningDialog
+      open={showSendDialog}
+      onOpenChange={setShowSendDialog}
+      instanceId={instance._id}
+      organizationId={instance.organizationId}
+      signatures={signatures}
+      onSent={onSendForSigning}
+    />
     <Card>
       {/* Header */}
       <CardHeader>
@@ -145,11 +158,13 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit }: Doc
             onStatusChange={onStatusChange}
             onEdit={onEdit}
             onSign={onSign ? () => onSign(signatures.find((s) => !s.signatureData)?.slotId ?? "") : undefined}
+            onSendForSigning={() => setShowSendDialog(true)}
             hasUnsignedSlots={signatures.some((s) => !s.signatureData)}
           />
         </div>
       </CardFooter>
     </Card>
+    </>
   );
 }
 
@@ -162,10 +177,11 @@ interface StatusActionsProps {
   onStatusChange?: (status: DocumentStatus) => void;
   onEdit?: () => void;
   onSign?: () => void;
+  onSendForSigning?: () => void;
   hasUnsignedSlots: boolean;
 }
 
-function StatusActions({ status, onStatusChange, onEdit, onSign, hasUnsignedSlots }: StatusActionsProps) {
+function StatusActions({ status, onStatusChange, onEdit, onSign, onSendForSigning, hasUnsignedSlots }: StatusActionsProps) {
   const actions: React.ReactNode[] = [];
 
   switch (status) {
@@ -214,7 +230,7 @@ function StatusActions({ status, onStatusChange, onEdit, onSign, hasUnsignedSlot
     case "approved":
       if (onStatusChange) {
         actions.push(
-          <Button key="send-sign" size="sm" onClick={() => onStatusChange("pending_signature")}>
+          <Button key="send-sign" size="sm" onClick={onSendForSigning}>
             <Send className="mr-1 h-4 w-4" />
             Wyslij do podpisu
           </Button>,

@@ -153,6 +153,8 @@ export const create = mutation({
     const signatures = template.signatureSlots.map((slot) => ({
       slotId: slot.id,
       slotLabel: slot.label,
+      verificationMethod: slot.verificationMethod,
+      signerType: slot.signerType,
     }));
 
     return await ctx.db.insert("documentInstances", {

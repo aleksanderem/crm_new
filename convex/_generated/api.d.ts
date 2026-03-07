@@ -89,6 +89,8 @@ import type * as scheduledActivities from "../scheduledActivities.js";
 import type * as scheduledActivities_internal from "../scheduledActivities_internal.js";
 import type * as search from "../search.js";
 import type * as seedDefaults from "../seedDefaults.js";
+import type * as signatureRequests from "../signatureRequests.js";
+import type * as sms from "../sms.js";
 import type * as sources from "../sources.js";
 import type * as stripe from "../stripe.js";
 
@@ -180,6 +182,8 @@ declare const fullApi: ApiFromModules<{
   scheduledActivities_internal: typeof scheduledActivities_internal;
   search: typeof search;
   seedDefaults: typeof seedDefaults;
+  signatureRequests: typeof signatureRequests;
+  sms: typeof sms;
   sources: typeof sources;
   stripe: typeof stripe;
 }>;

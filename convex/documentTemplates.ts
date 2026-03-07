@@ -27,8 +27,18 @@ const signatureSlotValidator = v.object({
     v.literal("patient"),
     v.literal("employee"),
     v.literal("witness"),
+    v.literal("custom"),
   ),
   label: v.string(),
+  verificationMethod: v.optional(v.union(
+    v.literal("click"),
+    v.literal("sms"),
+    v.literal("email_otp"),
+  )),
+  signerType: v.optional(v.union(
+    v.literal("internal"),
+    v.literal("external"),
+  )),
 });
 
 const accessControlValidator = v.object({

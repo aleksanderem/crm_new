@@ -1300,8 +1300,18 @@ const schema = defineSchema({
         v.literal("patient"),
         v.literal("employee"),
         v.literal("witness"),
+        v.literal("custom"),
       ),
       label: v.string(),
+      verificationMethod: v.optional(v.union(
+        v.literal("click"),
+        v.literal("sms"),
+        v.literal("email_otp"),
+      )),
+      signerType: v.optional(v.union(
+        v.literal("internal"),
+        v.literal("external"),
+      )),
     })),
     accessControl: v.object({
       mode: v.union(v.literal("all"), v.literal("roles"), v.literal("users")),
@@ -1381,6 +1391,19 @@ const schema = defineSchema({
     signatures: v.array(v.object({
       slotId: v.string(),
       slotLabel: v.string(),
+      verificationMethod: v.optional(v.union(
+        v.literal("click"),
+        v.literal("sms"),
+        v.literal("email_otp"),
+      )),
+      signerType: v.optional(v.union(
+        v.literal("internal"),
+        v.literal("external"),
+      )),
+      signerUserId: v.optional(v.id("users")),
+      signerEmail: v.optional(v.string()),
+      signerName: v.optional(v.string()),
+      signerPhone: v.optional(v.string()),
       signatureData: v.optional(v.string()),
       signedByUserId: v.optional(v.id("users")),
       signedByName: v.optional(v.string()),
@@ -1403,6 +1426,51 @@ const schema = defineSchema({
       searchField: "title",
       filterFields: ["organizationId", "status", "module"],
     }),
+
+  // --- Document Signing ---
+
+  signatureRequests: defineTable({
+    organizationId: v.id("organizations"),
+    instanceId: v.id("documentInstances"),
+    slotId: v.string(),
+    token: v.string(),
+    signerEmail: v.optional(v.string()),
+    signerName: v.optional(v.string()),
+    signerPhone: v.optional(v.string()),
+    signerUserId: v.optional(v.id("users")),
+    verificationMethod: v.union(
+      v.literal("click"),
+      v.literal("sms"),
+      v.literal("email_otp"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("signed"),
+      v.literal("expired"),
+    ),
+    otpHash: v.optional(v.string()),
+    otpSentAt: v.optional(v.number()),
+    otpAttempts: v.optional(v.number()),
+    expiresAt: v.number(),
+    signedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_instance", ["instanceId"])
+    .index("by_org", ["organizationId"]),
+
+  orgSmsConfig: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.union(v.literal("smsapi"), v.literal("twilio")),
+    apiToken: v.string(),
+    apiSecret: v.optional(v.string()),
+    senderId: v.optional(v.string()),
+    fromNumber: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
 
   // --- Gabinet: Patient Portal (Phase 6) ---
 

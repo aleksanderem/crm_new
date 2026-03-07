@@ -32,15 +32,14 @@ function renderTemplate(
     (_match, key, label) => {
       const val = fieldValues[key];
       if (val != null && val !== "") return String(val);
-      // Unresolved: show clean placeholder text
-      return `[${label || key}]`;
+      return `<span style="background:#dbeafe;padding:1px 6px;border-radius:3px;color:#1e40af;font-size:0.875em">[${label || key}]</span>`;
     },
   );
   // Also handle raw {{field:key}} placeholders
   result = result.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
     const val = fieldValues[key];
     if (val != null && val !== "") return String(val);
-    return `[${key}]`;
+    return `<span style="background:#dbeafe;padding:1px 6px;border-radius:3px;color:#1e40af;font-size:0.875em">[${key}]</span>`;
   });
   return result;
 }

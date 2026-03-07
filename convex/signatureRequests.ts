@@ -181,7 +181,7 @@ export const sendForSigning = mutation({
 
       createdTokens.push({ slotId: signer.slotId, token, requestId: requestId as string });
 
-      // Update the corresponding signature slot
+      // Update the corresponding signature slot, or add a new one
       const slotIndex = updatedSignatures.findIndex((s) => s.slotId === signer.slotId);
       if (slotIndex !== -1) {
         updatedSignatures[slotIndex] = {
@@ -193,6 +193,18 @@ export const sendForSigning = mutation({
           signerPhone: signer.signerPhone,
           verificationMethod: signer.verificationMethod,
         };
+      } else {
+        // Dynamically-added signer — create a new signature slot
+        updatedSignatures.push({
+          slotId: signer.slotId,
+          slotLabel: signerName || signerEmail || "Sygnatariusz",
+          signerType: signer.signerType,
+          signerUserId: signer.signerUserId,
+          signerEmail,
+          signerName,
+          signerPhone: signer.signerPhone,
+          verificationMethod: signer.verificationMethod,
+        });
       }
     }
 

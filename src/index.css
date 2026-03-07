@@ -7,6 +7,8 @@
 @import "tw-animate-css";
 @import "./styles/untitled-ui-compat.css";
 
+@plugin "@tailwindcss/typography";
+
 @theme inline {
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

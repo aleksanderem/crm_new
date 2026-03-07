@@ -66,19 +66,29 @@ export function SendForSigningDialog({
 }: SendForSigningDialogProps) {
   const sendForSigning = useMutation(api.signatureRequests.sendForSigning);
 
-  // Build initial signer configs from slots
-  const [signers, setSigners] = useState<SignerConfig[]>(() =>
-    signatures
-      .filter((s) => !s.signatureData)
-      .map((slot) => ({
+  // Build initial signer configs from slots (or start with one empty signer)
+  const [signers, setSigners] = useState<SignerConfig[]>(() => {
+    const unsigned = signatures.filter((s) => !s.signatureData);
+    if (unsigned.length > 0) {
+      return unsigned.map((slot) => ({
         slotId: slot.slotId,
         signerType: slot.signerType ?? "external",
         signerName: "",
         signerEmail: "",
         signerPhone: "",
         verificationMethod: slot.verificationMethod ?? "click",
-      })),
-  );
+      }));
+    }
+    // No pre-defined slots — start with one empty signer
+    return [{
+      slotId: crypto.randomUUID(),
+      signerType: "external" as const,
+      signerName: "",
+      signerEmail: "",
+      signerPhone: "",
+      verificationMethod: "click" as const,
+    }];
+  });
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,18 +101,42 @@ export function SendForSigningDialog({
     });
   };
 
+  const addSigner = () => {
+    setSigners((prev) => [
+      ...prev,
+      {
+        slotId: crypto.randomUUID(),
+        signerType: "external",
+        signerName: "",
+        signerEmail: "",
+        signerPhone: "",
+        verificationMethod: "click",
+      },
+    ]);
+  };
+
+  const removeSigner = (index: number) => {
+    setSigners((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
     setError(null);
 
+    if (signers.length === 0) {
+      setError("Dodaj przynajmniej jednego sygnatariusza");
+      return;
+    }
+
     // Validate
     for (const signer of signers) {
+      const label = signatures.find((s) => s.slotId === signer.slotId)?.slotLabel ?? (signer.signerName || "Sygnatariusz");
       if (signer.signerType === "external") {
         if (!signer.signerEmail) {
-          setError(`Email wymagany dla slotu "${signatures.find((s) => s.slotId === signer.slotId)?.slotLabel}"`);
+          setError(`Email wymagany dla "${label}"`);
           return;
         }
         if (!signer.signerName) {
-          setError(`Imię i nazwisko wymagane dla slotu "${signatures.find((s) => s.slotId === signer.slotId)?.slotLabel}"`);
+          setError(`Imię i nazwisko wymagane dla "${label}"`);
           return;
         }
       }
@@ -135,10 +169,6 @@ export function SendForSigningDialog({
     }
   };
 
-  const unsignedSlots = signatures.filter((s) => !(s as any).signatureData);
-
-  if (unsignedSlots.length === 0) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -155,7 +185,18 @@ export function SendForSigningDialog({
             return (
               <div key={signer.slotId} className="space-y-3 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{slot?.slotLabel ?? signer.slotId}</p>
+                  <p className="text-sm font-medium">{slot?.slotLabel ?? (signer.signerName || `Sygnatariusz ${index + 1}`)}</p>
+                  <div className="flex items-center gap-2">
+                    {!slot && signers.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-destructive"
+                        onClick={() => removeSigner(index)}
+                      >
+                        Usuń
+                      </Button>
+                    )}
                   <Badge variant="outline">
                     {signer.verificationMethod === "click"
                       ? "Kliknięcie"
@@ -163,6 +204,7 @@ export function SendForSigningDialog({
                         ? "SMS OTP"
                         : "Email OTP"}
                   </Badge>
+                  </div>
                 </div>
 
                 {/* Signer type */}
@@ -258,6 +300,16 @@ export function SendForSigningDialog({
               </div>
             );
           })}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={addSigner}
+          >
+            + Dodaj sygnatariusza
+          </Button>
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>

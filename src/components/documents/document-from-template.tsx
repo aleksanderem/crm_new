@@ -52,13 +52,25 @@ function renderPreview(
   content: string,
   fieldValues: Record<string, unknown>,
 ): string {
-  return content.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
+  const placeholder = (key: string) =>
+    `<span style="background:#fef3c7;padding:0 4px;border-radius:2px;color:#92400e">[${key}]</span>`;
+
+  // Handle TipTap mention spans: <span ... data-field="key" ...>Label</span>
+  let result = content.replace(
+    /<span[^>]*data-field="([^"]+)"[^>]*>[^<]*<\/span>/g,
+    (_match, key) => {
+      const val = fieldValues[key];
+      if (val == null || val === "") return placeholder(key);
+      return String(val);
+    },
+  );
+  // Also handle raw {{field:key}} placeholders
+  result = result.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
     const val = fieldValues[key];
-    if (val == null || val === "") {
-      return `<span style="background:#fef3c7;padding:0 4px;border-radius:2px;color:#92400e">[${key}]</span>`;
-    }
+    if (val == null || val === "") return placeholder(key);
     return String(val);
   });
+  return result;
 }
 
 function useDebounce<T>(value: T, delay: number): T {

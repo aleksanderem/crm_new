@@ -17,18 +17,32 @@ const statusValidator = v.union(
 // ---------------------------------------------------------------------------
 
 /**
- * Replace {{field:fieldKey}} placeholders in HTML with actual values.
- * Returns the rendered HTML string.
+ * Replace field placeholders in HTML with actual values.
+ * Supports two formats:
+ * 1. TipTap mention spans: <span ... data-field="key" ...>Label</span>
+ * 2. Raw text placeholders: {{field:key}}
  */
 function renderTemplate(
   content: string,
   fieldValues: Record<string, unknown>,
 ): string {
-  return content.replace(/\{\{field:(\w+)\}\}/g, (match, key) => {
+  // Handle TipTap mention spans first
+  let result = content.replace(
+    /<span[^>]*data-field="([^"]+)"[^>]*>([^<]*)<\/span>/g,
+    (_match, key, label) => {
+      const val = fieldValues[key];
+      if (val != null && val !== "") return String(val);
+      // Unresolved: show clean placeholder text
+      return `[${label || key}]`;
+    },
+  );
+  // Also handle raw {{field:key}} placeholders
+  result = result.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
     const val = fieldValues[key];
-    if (val == null || val === "") return match;
-    return String(val);
+    if (val != null && val !== "") return String(val);
+    return `[${key}]`;
   });
+  return result;
 }
 
 // ---------------------------------------------------------------------------

@@ -78,7 +78,7 @@ const currentUserSource: DataSourceDefinition = {
     { key: "email", label: "E-mail", type: "email" },
   ],
   resolve: async (ctx, _id, rctx) => {
-    const user = await ctx.db.get(rctx.userId as any);
+    const user = await ctx.db.get(rctx.userId as any) as any;
     return {
       name: user?.name ?? "",
       email: user?.email ?? "",
@@ -94,7 +94,7 @@ const orgSource: DataSourceDefinition = {
     { key: "name", label: "Nazwa firmy", type: "text" },
   ],
   resolve: async (ctx, _id, rctx) => {
-    const org = await ctx.db.get(rctx.orgId as any);
+    const org = await ctx.db.get(rctx.orgId as any) as any;
     return {
       name: org?.name ?? "",
     };

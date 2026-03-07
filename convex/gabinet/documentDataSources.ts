@@ -17,9 +17,9 @@ const patientSource: DataSourceDefinition = {
     { key: "bloodType", label: "Grupa krwi", type: "text" },
     { key: "emergencyContact", label: "Kontakt awaryjny", type: "text" },
   ],
-  resolve: async (ctx, patientId) => {
+  resolve: async (ctx, patientId): Promise<Record<string, string>> => {
     if (!patientId) return {};
-    const patient = await ctx.db.get(patientId as any);
+    const patient = await ctx.db.get(patientId as any) as any;
     if (!patient) return {};
     return {
       firstName: patient.firstName ?? "",
@@ -52,11 +52,11 @@ const employeeSource: DataSourceDefinition = {
     { key: "email", label: "E-mail", type: "email" },
     { key: "phone", label: "Telefon", type: "phone" },
   ],
-  resolve: async (ctx, employeeId) => {
+  resolve: async (ctx, employeeId): Promise<Record<string, string>> => {
     if (!employeeId) return {};
-    const emp = await ctx.db.get(employeeId as any);
+    const emp = await ctx.db.get(employeeId as any) as any;
     if (!emp) return {};
-    const user = emp.userId ? await ctx.db.get(emp.userId) : null;
+    const user = emp.userId ? await ctx.db.get(emp.userId as any) as any : null;
     return {
       name: [emp.firstName, emp.lastName].filter(Boolean).join(" "),
       role: emp.role ?? "",
@@ -78,11 +78,11 @@ const appointmentSource: DataSourceDefinition = {
     { key: "status", label: "Status", type: "text" },
     { key: "notes", label: "Notatki", type: "textarea" },
   ],
-  resolve: async (ctx, appointmentId) => {
+  resolve: async (ctx, appointmentId): Promise<Record<string, string>> => {
     if (!appointmentId) return {};
-    const appt = await ctx.db.get(appointmentId as any);
+    const appt = await ctx.db.get(appointmentId as any) as any;
     if (!appt) return {};
-    const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
+    const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId as any) as any : null;
     const startDate = appt.startTime ? new Date(appt.startTime) : null;
     return {
       date: startDate ? startDate.toISOString().split("T")[0] : "",

@@ -12,9 +12,9 @@ const contactSource: DataSourceDefinition = {
     { key: "phone", label: "Telefon", type: "phone" },
     { key: "title", label: "Stanowisko", type: "text" },
   ],
-  resolve: async (ctx, contactId) => {
+  resolve: async (ctx, contactId): Promise<Record<string, string>> => {
     if (!contactId) return {};
-    const contact = await ctx.db.get(contactId as any);
+    const contact = await ctx.db.get(contactId as any) as any;
     if (!contact) return {};
     return {
       firstName: contact.firstName ?? "",
@@ -39,9 +39,9 @@ const companySource: DataSourceDefinition = {
     { key: "website", label: "Strona www", type: "text" },
     { key: "address", label: "Adres", type: "text" },
   ],
-  resolve: async (ctx, companyId) => {
+  resolve: async (ctx, companyId): Promise<Record<string, string>> => {
     if (!companyId) return {};
-    const company = await ctx.db.get(companyId as any);
+    const company = await ctx.db.get(companyId as any) as any;
     if (!company) return {};
     return {
       name: company.name ?? "",
@@ -67,9 +67,9 @@ const leadSource: DataSourceDefinition = {
     { key: "source", label: "Źródło", type: "text" },
     { key: "expectedCloseDate", label: "Oczekiwana data zamknięcia", type: "date" },
   ],
-  resolve: async (ctx, leadId) => {
+  resolve: async (ctx, leadId): Promise<Record<string, string>> => {
     if (!leadId) return {};
-    const lead = await ctx.db.get(leadId as any);
+    const lead = await ctx.db.get(leadId as any) as any;
     if (!lead) return {};
     return {
       title: lead.title ?? "",

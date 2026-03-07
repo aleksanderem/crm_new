@@ -43,10 +43,11 @@ import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/settings/document-templates",
+  "/_app/_auth/dashboard/_layout/settings/document-templates/",
 )({
   component: DocumentTemplatesListPage,
 });
+
 
 type Category =
   | "contract"

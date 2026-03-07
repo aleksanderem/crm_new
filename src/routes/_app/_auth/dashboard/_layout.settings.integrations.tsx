@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { GoogleIntegrationCard } from "@/components/settings/google-integration-card";
+import { SmsConfigCard } from "@/components/settings/sms-config-card";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -57,6 +58,8 @@ function IntegrationsSettings() {
           convexSiteUrl={convexSiteUrl}
         />
       )}
+
+      <SmsConfigCard organizationId={organizationId} />
     </div>
   );
 }

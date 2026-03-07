@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 
 // ---------------------------------------------------------------------------
@@ -202,6 +203,24 @@ export const sendForSigning = mutation({
       updatedAt: now,
     });
 
+    // Schedule email notifications for each signer
+    const org = await ctx.db.get(instance.organizationId);
+    const orgName = org?.name ?? "Organizacja";
+
+    for (const ct of createdTokens) {
+      const sig = updatedSignatures.find((s) => s.slotId === ct.slotId);
+      if (sig?.signerEmail) {
+        await ctx.scheduler.runAfter(0, api.signingEmails.sendSigningRequestEmail, {
+          signerName: sig.signerName ?? sig.signerEmail,
+          signerEmail: sig.signerEmail,
+          documentTitle: instance.title,
+          organizationName: orgName,
+          token: ct.token,
+          expiresAt: expiresAt,
+        });
+      }
+    }
+
     return createdTokens;
   },
 });
@@ -264,6 +283,19 @@ export const signExternal = mutation({
       status: allSigned ? "signed" : "pending_signature",
       updatedAt: now,
     });
+
+    // Notify document author
+    const author = await ctx.db.get(instance.createdBy);
+    if (author?.email) {
+      await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
+        authorEmail: author.email,
+        authorName: author.name ?? author.email,
+        documentTitle: instance.title,
+        signerName: request.signerName ?? request.signerEmail ?? "Sygnatariusz",
+        slotLabel: signatures[slotIndex].slotLabel,
+        allSigned,
+      });
+    }
 
     return { success: true, allSigned };
   },

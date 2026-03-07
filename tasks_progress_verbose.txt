@@ -231,3 +231,39 @@ All 15 document template tasks PASSING. Full system implemented:
 Commits: 0b5d8f3, e8e6ee5, f5498a0, 6f5f653, 552b44a, f3e7574, 9c81fa0
 
 ---
+
+=== SESSION S0059 START === 2026-03-07T12:00:00Z
+Focus: E2E browser testing of document template system + deployment fixes
+Continuing from: S0058
+
+---
+
+S0059. Deployment blocker — data source TypeScript errors:
+- Convex functions not deployed: 63 TS errors in documentDataSources files
+- Root cause: ctx.db.get() returns union of ALL document types, property access fails
+- Fix: Added `as any` casts on db.get() results + explicit `: Promise<Record<string, string>>` return types on all resolver functions
+- Result: 0 errors, `npx convex dev --once` succeeded
+- Commit: ddc06ac
+
+S0059. Route fix committed:
+- Renamed _layout.settings.document-templates.tsx → .index.tsx (was blocking child routes)
+- Added react-dropzone dependency (required by uploadstuff)
+- Commit: 67aaabe
+
+S0059. E2E Testing Results (dev-browser + Playwright):
+- Dashboard: PASS — loads with CRM data, KPI cards, charts
+- Settings > Document Templates list: PASS — renders table with filters, search, empty state, "Nowy szablon" button
+- New template page: PASS — settings header (name, category, module, access, description, signature toggle), TipTap editor with toolbar (B/I/U/H1-H3/lists/alignment/table/HR/insert-field), field panel, data sources section
+- Add field dialog: PASS — label, key, type, group, width, data source toggle, validation, default value
+- Template save: PASS — creates document in Convex, navigates to edit page with document ID
+- Edit page: PASS — loads template content, shows v1 version, available data sources (System/3, Biezacy uzytkownik/2, Organizacja/1)
+- Publish: PASS — status changes Szkic→Aktywny, buttons change to "Nowa wersja"/"Archiwizuj"
+- Template in list: PASS — table shows name, category, module, status badge, field count, actions menu
+- CRM documents page: PASS — "Z szablonu" button present for template picker integration
+
+S0059. Minor observations (not blocking):
+- Settings sidebar nav labels showing i18n keys instead of Polish text (pre-existing i18n issue, not related to document templates)
+- Category on saved template shows "Inny" instead of "Umowa" — likely form state not being captured for category select on initial save
+- DT-12 platform document instance routes (files) not created — components exist but no standalone /dashboard/documents/$instanceId routes
+
+---

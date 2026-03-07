@@ -232,12 +232,14 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
 
     case "approved":
       if (onStatusChange) {
-        actions.push(
-          <Button key="send-sign" size="sm" onClick={onSendForSigning}>
-            <Send className="mr-1 h-4 w-4" />
-            Wyslij do podpisu
-          </Button>,
-        );
+        if (hasUnsignedSlots && onSendForSigning) {
+          actions.push(
+            <Button key="send-sign" size="sm" onClick={onSendForSigning}>
+              <Send className="mr-1 h-4 w-4" />
+              Wyslij do podpisu
+            </Button>,
+          );
+        }
         actions.push(
           <Button key="archive" variant="outline" size="sm" onClick={() => onStatusChange("archived")}>
             <Archive className="mr-1 h-4 w-4" />

@@ -197,26 +197,14 @@ function createFieldMention(fieldsRef: React.RefObject<TemplateField[]>) {
     deleteTriggerWithBackspace: true,
     HTMLAttributes: { class: "field-placeholder-chip" },
     suggestion: {
-      char: "{",
-      // Only activate when the preceding char is also `{` (i.e. user typed `{{`).
-      allow: ({ state, range }: any) => {
-        const before = state.doc.textBetween(
-          Math.max(0, range.from - 1),
-          range.from,
-          "",
-          ""
-        );
-        return before === "{";
-      },
+      char: "{{",
       items: ({ query }: { query: string }) =>
         findFields(fieldsRef.current ?? [], query),
       command: ({ editor, range, props }: any) => {
-        // Replace from 1 char before range.from to eat the first `{`.
-        const from = Math.max(0, range.from - 1);
         editor
           .chain()
           .focus()
-          .insertContentAt({ from, to: range.to }, [
+          .insertContentAt({ from: range.from, to: range.to }, [
             { type: "fieldPlaceholder", attrs: props },
             { type: "text", text: " " },
           ])

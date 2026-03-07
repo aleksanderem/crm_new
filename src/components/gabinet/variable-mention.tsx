@@ -194,18 +194,13 @@ export const VariableMentionCurly = Mention.extend({
     class: "template-variable-chip",
   },
   suggestion: {
-    char: "{",
-    allow: ({ state, range }: any) => {
-      const before = state.doc.textBetween(Math.max(0, range.from - 1), range.from, "", "");
-      return before === "{";
-    },
+    char: "{{",
     items: ({ query }: { query: string }) => findVariables(query),
     command: ({ editor, range, props }: any) => {
-      const from = Math.max(0, range.from - 1);
       editor
         .chain()
         .focus()
-        .insertContentAt({ from, to: range.to }, [
+        .insertContentAt({ from: range.from, to: range.to }, [
           {
             type: "variableMentionCurly",
             attrs: props,

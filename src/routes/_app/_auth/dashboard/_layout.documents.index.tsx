@@ -36,8 +36,9 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import { Upload } from "@/lib/ez-icons";
+import { Upload, FileSignature } from "@/lib/ez-icons";
 import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
+import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/"
@@ -114,9 +115,10 @@ function DocumentsIndex() {
     // Toggle type filter - simple toggle for now
     setTypeFilter((prev) => prev ? null : "proposal");
   });
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+
   useSidebarDispatch("createFromTemplate", () => {
-    // Navigate to new document with template focus
-    navigate({ to: "/dashboard/documents/new" });
+    setTemplateDialogOpen(true);
   });
   useSidebarDispatch("bulkActions", () => {
     // The table already has row selection - this could trigger bulk mode
@@ -365,10 +367,16 @@ function DocumentsIndex() {
         title={t('documents.title')}
         description={t('documents.description')}
         actions={
-          <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t('documents.newDocument')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(true)}>
+              <FileSignature className="mr-2 h-4 w-4" />
+              Z szablonu
+            </Button>
+            <Button onClick={openCreatePanel}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t('documents.newDocument')}
+            </Button>
+          </div>
         }
       />
 
@@ -513,6 +521,17 @@ function DocumentsIndex() {
           </div>
         </div>
       )}
+
+      <DocumentFromTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        organizationId={organizationId}
+        module="crm"
+        sources={{}}
+        onComplete={(instanceId) => {
+          navigate({ to: `/dashboard/documents/instance/${instanceId}` });
+        }}
+      />
 
       <SidePanel
         open={panelOpen}

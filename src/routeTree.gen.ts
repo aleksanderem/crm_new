@@ -86,6 +86,7 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsDocumentTemplatesImport }
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
+import { Route as AppAuthDashboardLayoutDocumentsInstanceInstanceIdImport } from './routes/_app/_auth/dashboard/_layout.documents.instance.$instanceId'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.new'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsTemplatesTemplateIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.templates.$templateId'
 
@@ -540,6 +541,12 @@ const AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutDocumentsInstanceInstanceIdRoute =
+  AppAuthDashboardLayoutDocumentsInstanceInstanceIdImport.update({
+    path: '/documents/instance/$instanceId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 const AppAuthDashboardLayoutGabinetDocumentsTemplatesNewRoute =
   AppAuthDashboardLayoutGabinetDocumentsTemplatesNewImport.update({
     path: '/gabinet/documents/templates/new',
@@ -976,6 +983,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsIndexImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/documents/instance/$instanceId': {
+      id: '/_app/_auth/dashboard/_layout/documents/instance/$instanceId'
+      path: '/documents/instance/$instanceId'
+      fullPath: '/dashboard/documents/instance/$instanceId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutDocumentsInstanceInstanceIdImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId': {
       id: '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId'
       path: '/gabinet/appointments/$appointmentId'
@@ -1163,6 +1177,7 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutLeadsIndexRoute,
           AppAuthDashboardLayoutPipelinesIndexRoute,
           AppAuthDashboardLayoutProductsIndexRoute,
+          AppAuthDashboardLayoutDocumentsInstanceInstanceIdRoute,
           AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute,
           AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute,
           AppAuthDashboardLayoutGabinetPatientsPatientIdRoute,
@@ -1321,6 +1336,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/leads/",
         "/_app/_auth/dashboard/_layout/pipelines/",
         "/_app/_auth/dashboard/_layout/products/",
+        "/_app/_auth/dashboard/_layout/documents/instance/$instanceId",
         "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
         "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId",
         "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -1555,6 +1571,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/settings/": {
       "filePath": "_app/_auth/dashboard/_layout.settings.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/documents/instance/$instanceId": {
+      "filePath": "_app/_auth/dashboard/_layout.documents.instance.$instanceId.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.tsx",

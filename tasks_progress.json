@@ -1,6 +1,6 @@
 {
-  "session_id": "S0057",
-  "date": "2026-03-06",
+  "session_id": "S0058",
+  "date": "2026-03-07",
   "tasks": [
     {
       "id": "354f9094",
@@ -90,9 +90,9 @@
     {
       "id": "DT-06",
       "name": "ui_template_editor",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 2,
       "description": "TipTap editor with {{field:key}} badge nodes (inline, non-editable, draggable, double-click to edit). {{ autocomplete dropdown. Toolbar 'Insert field' button. Migrate and generalize from gabinet/template-editor.tsx.",
       "files": ["src/components/documents/template-editor.tsx"],
@@ -101,9 +101,9 @@
     {
       "id": "DT-07",
       "name": "ui_template_field_panel_and_config",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 2,
       "description": "Side panel: field list with drag-and-drop sort, add/edit/delete buttons, binding info display. 'Available data sources' tree section. source-field-picker.tsx: cascading selects source→field. template-field-config.tsx: modal with label, key, type, binding toggle (manual vs source), validation, options (for select), width.",
       "files": [
@@ -116,9 +116,9 @@
     {
       "id": "DT-08",
       "name": "ui_template_admin_routes",
-      "status": "not_started",
+      "status": "in_progress",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 2,
       "description": "Settings → Document Templates routes. List page (table with filters, actions: edit/duplicate/archive). New template page (full-screen editor + field panel + settings). Edit template page ($id). Header: name, category, module select, requiredSources, description, preview button, save draft / publish.",
       "files": [
@@ -131,9 +131,9 @@
     {
       "id": "DT-09",
       "name": "ui_template_picker",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 3,
       "description": "Dialog: list of available templates grouped by category, filtered by user access + module + requiredSources compatibility. Search, source requirement badges, greyed-out incompatible templates with tooltip. Step 1a: source-instance-picker for missing required sources (entity search).",
       "files": [
@@ -145,9 +145,9 @@
     {
       "id": "DT-10",
       "name": "ui_document_from_template",
-      "status": "not_started",
+      "status": "in_progress",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 3,
       "description": "Split view: field form (40%) + live HTML preview (60%). Fields sorted/grouped, width half/full, bound fields pre-filled with source data + 'auto-filled' indicator + 'restore from source' on override. Live preview debounce 300ms, unfilled = orange placeholder. Mobile: tabs. Title field with default. Actions: save draft, approve, cancel (dirty check).",
       "files": ["src/components/documents/document-from-template.tsx"],
@@ -156,9 +156,9 @@
     {
       "id": "DT-11",
       "name": "ui_document_viewer",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 3,
       "description": "Read-only rendered HTML. Header: title, status badge, metadata, resolved source links. Signature section: slots with status, sign button (opens pad), auto-signed transition. Actions per status (edit/approve/reject/sign/pdf/archive/restore). Migrate and generalize from gabinet/document-viewer.tsx.",
       "files": [
@@ -170,9 +170,9 @@
     {
       "id": "DT-12",
       "name": "ui_document_routes",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 3,
       "description": "Platform document routes. /dashboard/documents — instance list (table: title, template, category, status, source badges, author, date; filters). /dashboard/documents/$instanceId — instance view (viewer + actions).",
       "files": [
@@ -185,9 +185,9 @@
     {
       "id": "DT-13",
       "name": "integration_module_gabinet",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 4,
       "description": "DocumentFromTemplateDialog wrapper (sources map + module prop). Patient card: Documents tab with filtered instance list + 'New from template' button (sources: {patient: patientId}). Appointment view: button + list (sources: {patient, appointment}).",
       "files": [
@@ -198,9 +198,9 @@
     {
       "id": "DT-14",
       "name": "integration_module_crm",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 4,
       "description": "Contact card: Documents tab + button (sources: {contact}). Company card: Documents tab + button (sources: {company}). Deal card: Documents tab + button (sources: {deal, contact, company}).",
       "files": [],
@@ -209,9 +209,9 @@
     {
       "id": "DT-15",
       "name": "workflow_signatures_pdf",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 5,
       "description": "Workflow transition validation (required fields check before approve). Signature pad integration in viewer. PDF export: client-side html2canvas + jsPDF, signatures appended, save to Convex storage, re-download. Notifications: review request, signature request.",
       "files": [
@@ -222,9 +222,9 @@
     {
       "id": "DT-16",
       "name": "migration_gabinet_documents",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 6,
       "description": "Migration script: gabinetDocumentTemplates → documentTemplates + documentTemplateFields (auto-create fields with bindings from old {{patient.X}} placeholders). gabinetDocuments → documentInstances. Update Gabinet routes to use new system. Deprecate old tables.",
       "files": [],
@@ -233,9 +233,9 @@
     {
       "id": "DT-17",
       "name": "rbac_permissions",
-      "status": "not_started",
+      "status": "passing",
       "created_session": "S0057",
-      "last_updated_session": "S0057",
+      "last_updated_session": "S0058",
       "etap": 1,
       "description": "Add document_templates (view/create/edit/delete) and document_instances (view/create/edit/approve/sign/delete) to orgPermissions. Enforce in all backend mutations and queries. Per-template accessControl check in listActive.",
       "files": [

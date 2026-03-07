@@ -182,3 +182,52 @@ M15 (migration): DT-16
 M16 (CRM untouched): DT-16 (verify no regression)
 
 ---
+
+=== SESSION S0058 START === 2026-03-07T10:00:00Z
+Focus: Document template system — Phase D review + Phase E launch
+Continuing from: S0057
+
+---
+
+S0058. Phase D review and commit:
+- All 5 Phase D agents completed successfully (DT-06, DT-07, DT-09, DT-11, DT-17)
+- tsc --noEmit: 0 errors
+- Files created: template-editor.tsx, template-field-panel.tsx, template-field-config.tsx, source-field-picker.tsx, template-picker.tsx, source-instance-picker.tsx, document-viewer.tsx, signature-pad.tsx
+- Files modified: permissionTypes.ts (+document_templates, +document_instances, +approve, +sign), permissions.ts (RBAC defaults), ez-icons/index.ts (+Archive)
+- Committed as e8e6ee5
+
+S0058. Phase E launched:
+- DT-08 (admin routes): list/new/edit template pages under settings, sidebar nav entry
+- DT-10 (document-from-template): split view field form + live HTML preview
+
+S0058. Phase E committed f5498a0:
+- DT-08 + DT-10 completed, tsc clean
+
+S0058. Phase F committed 6f5f653:
+- DT-12: document-instance-table.tsx, document-instance-view.tsx
+- DT-13: document-from-template-dialog.tsx (two-step orchestrator)
+
+S0058. Phase G committed 552b44a:
+- DT-14: Contact/Company/Lead Documents tabs now use new system
+- DT-15: pdf-export.tsx (browser print API, no deps)
+
+S0058. Overflow fixes committed f3e7574 (carried from S0056/S0057)
+
+S0058. Phase H committed 9c81fa0:
+- DT-16: migrateGabinetDocuments.ts — internalMutation with dry run support
+
+=== SESSION S0058 COMPLETE === 2026-03-07T11:00:00Z
+All 15 document template tasks PASSING. Full system implemented:
+- Backend: schema, data source registry, templates CRUD, fields CRUD, instances CRUD+rendering (DT-01..05)
+- RBAC: document_templates + document_instances permissions (DT-17)
+- UI Components: template editor, field panel/config, source picker, template picker, document viewer, signature pad (DT-06,07,09,11)
+- Admin: Settings > Document Templates routes (list/new/edit) (DT-08)
+- Document creation: DocumentFromTemplate split view + orchestrator dialog (DT-10,13)
+- Instance management: table + view components (DT-12)
+- CRM integration: Contact/Company/Lead Documents tabs (DT-14)
+- PDF export: browser print API (DT-15)
+- Migration: gabinet documents migration script (DT-16)
+
+Commits: 0b5d8f3, e8e6ee5, f5498a0, 6f5f653, 552b44a, f3e7574, 9c81fa0
+
+---

@@ -456,7 +456,7 @@ export const DocumentTemplateEditor = forwardRef<
       <EditorContent
         editor={editor}
         className={cn(
-          "bg-background [&_.ProseMirror]:min-h-[220px] [&_.ProseMirror]:outline-none [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+          "bg-white text-black [&_.ProseMirror]:min-h-[220px] [&_.ProseMirror]:outline-none [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
         )}
       />
     </div>

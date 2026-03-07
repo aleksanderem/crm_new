@@ -94,7 +94,7 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
       {/* Rendered document content */}
       <CardContent className="space-y-6">
         <div
-          className="prose prose-sm max-w-none rounded-lg border bg-white p-6 leading-relaxed dark:bg-muted/30"
+          className="prose prose-sm max-w-none rounded-lg border bg-white text-black p-6 leading-relaxed"
           dangerouslySetInnerHTML={{ __html: renderedContent }}
         />
 

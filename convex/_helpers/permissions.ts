@@ -4,6 +4,7 @@ import { verifyOrgAccess, requireUser } from "./auth";
 import { OrgRole } from "../schema";
 import {
   FEATURES,
+  ACTIONS,
   type Feature,
   type Action,
   type Scope,
@@ -26,10 +27,35 @@ function buildDefaults(scope: Record<Action, Scope>): FeaturePermissions {
 }
 
 export const DEFAULT_PERMISSIONS: Record<OrgRole, FeaturePermissions> = {
-  owner: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all" }),
-  admin: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all" }),
-  member: buildDefaults({ view: "all", create: "all", edit: "own", delete: "own" }),
-  viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none" }),
+  owner: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none" }),
+  admin: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none" }),
+  member: buildDefaults({ view: "all", create: "all", edit: "own", delete: "own", approve: "none", sign: "none" }),
+  viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none" }),
+};
+
+// --- Per-feature overrides for document_templates ---
+// owner/admin: all actions allowed (approve/sign not applicable to templates)
+// member: view only (no create/edit/delete)
+// viewer: view only
+DEFAULT_PERMISSIONS.member.document_templates = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+};
+
+// --- Per-feature overrides for document_instances ---
+// owner/admin: all actions allowed
+DEFAULT_PERMISSIONS.owner.document_instances = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all",
+};
+DEFAULT_PERMISSIONS.admin.document_instances = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all",
+};
+// member: view, create, edit, sign; NO approve or delete
+DEFAULT_PERMISSIONS.member.document_instances = {
+  view: "all", create: "all", edit: "own", delete: "none", approve: "none", sign: "all",
+};
+// viewer: view only
+DEFAULT_PERMISSIONS.viewer.document_instances = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
 };
 
 // --- checkPermission ---
@@ -122,12 +148,11 @@ export async function getEffectivePermissions(
     const defaultActions = defaults[feature];
     const overrideActions = overridePerms?.[feature];
     if (overrideActions) {
-      merged[feature] = {
-        view: overrideActions.view ?? defaultActions.view,
-        create: overrideActions.create ?? defaultActions.create,
-        edit: overrideActions.edit ?? defaultActions.edit,
-        delete: overrideActions.delete ?? defaultActions.delete,
-      };
+      const mergedActions = {} as Record<Action, Scope>;
+      for (const action of ACTIONS) {
+        mergedActions[action] = overrideActions[action] ?? defaultActions[action];
+      }
+      merged[feature] = mergedActions;
     } else {
       merged[feature] = { ...defaultActions };
     }

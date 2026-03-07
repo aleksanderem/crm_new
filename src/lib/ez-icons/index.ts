@@ -24,6 +24,7 @@ function createIcon(lucideName: string): EzIconType {
 // --- Named exports (alphabetical) ---
 export const Activity = createIcon("Activity");
 export const ActivityIcon = createIcon("ActivityIcon");
+export const Archive = createIcon("Archive");
 export const AlertCircle = createIcon("AlertCircle");
 export const AlertTriangle = createIcon("AlertTriangle");
 export const ArrowDown = createIcon("ArrowDown");

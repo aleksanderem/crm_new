@@ -20,9 +20,11 @@ export const FEATURES = [
   "gabinet_employees",
   "settings",
   "team",
+  "document_templates",
+  "document_instances",
 ] as const;
 
-export const ACTIONS = ["view", "create", "edit", "delete"] as const;
+export const ACTIONS = ["view", "create", "edit", "delete", "approve", "sign"] as const;
 
 export const SCOPES = ["none", "own", "all"] as const;
 

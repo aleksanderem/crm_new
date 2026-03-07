@@ -64,6 +64,9 @@ import { cn } from "@/lib/utils";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
+import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
+import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
+import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/leads/$leadId"
@@ -302,6 +305,8 @@ function LeadDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
+  const [showNewDocDialog, setShowNewDocDialog] = useState(false);
+  const [viewingDocId, setViewingDocId] = useState<Id<"documentInstances"> | null>(null);
 
   // Sidebar UI state
   const [showAllFields, setShowAllFields] = useState(false);
@@ -1454,18 +1459,34 @@ function LeadDetail() {
 
                 {/* === Dokumenty tab === */}
                 <TabsContent value="documents" className="m-0 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{t('detail.documentsTab.title')}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {t('detail.documentsTab.description')}
-                      </p>
-                    </div>
-                    <Button className="bg-primary">
-                      <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                      {t('detail.documentsTab.create')}
-                    </Button>
-                  </div>
+                  <DocumentInstanceTable
+                    organizationId={organizationId}
+                    sourceKey="lead"
+                    sourceInstanceId={leadId}
+                    onView={(id) => setViewingDocId(id)}
+                    onNewFromTemplate={() => setShowNewDocDialog(true)}
+                    showNewButton
+                  />
+
+                  <DocumentFromTemplateDialog
+                    open={showNewDocDialog}
+                    onOpenChange={setShowNewDocDialog}
+                    organizationId={organizationId}
+                    module="crm"
+                    sources={{ lead: leadId }}
+                    onComplete={() => setShowNewDocDialog(false)}
+                  />
+
+                  {viewingDocId && (
+                    <Dialog open onOpenChange={() => setViewingDocId(null)}>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                        <DocumentInstanceView
+                          instanceId={viewingDocId}
+                          onClose={() => setViewingDocId(null)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </TabsContent>
 
                 {/* === Połączenia tab === */}

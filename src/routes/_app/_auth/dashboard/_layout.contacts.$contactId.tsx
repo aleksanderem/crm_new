@@ -48,6 +48,10 @@ import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { useTranslation } from "react-i18next";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
+import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
+import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/$contactId"
@@ -146,6 +150,8 @@ function ContactDetail() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [createCompanyDrawerOpen, setCreateCompanyDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNewDocDialog, setShowNewDocDialog] = useState(false);
+  const [viewingDocId, setViewingDocId] = useState<Id<"documentInstances"> | null>(null);
   const [showAllFields, setShowAllFields] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -1165,18 +1171,34 @@ function ContactDetail() {
 
                 {/* === Documents tab === */}
                 <TabsContent value="documents" className="m-0 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{t('detail.documentsTab.title')}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {t('detail.documentsTab.description')}
-                      </p>
-                    </div>
-                    <Button className="bg-primary">
-                      <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                      {t('detail.documentsTab.create')}
-                    </Button>
-                  </div>
+                  <DocumentInstanceTable
+                    organizationId={organizationId}
+                    sourceKey="contact"
+                    sourceInstanceId={contactId}
+                    onView={(id) => setViewingDocId(id)}
+                    onNewFromTemplate={() => setShowNewDocDialog(true)}
+                    showNewButton
+                  />
+
+                  <DocumentFromTemplateDialog
+                    open={showNewDocDialog}
+                    onOpenChange={setShowNewDocDialog}
+                    organizationId={organizationId}
+                    module="crm"
+                    sources={{ contact: contactId }}
+                    onComplete={() => setShowNewDocDialog(false)}
+                  />
+
+                  {viewingDocId && (
+                    <Dialog open onOpenChange={() => setViewingDocId(null)}>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                        <DocumentInstanceView
+                          instanceId={viewingDocId}
+                          onClose={() => setViewingDocId(null)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </TabsContent>
 
                 {/* === Calls tab === */}

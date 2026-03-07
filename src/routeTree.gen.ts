@@ -55,6 +55,7 @@ import { Route as AppAuthDashboardLayoutSettingsOrganizationImport } from './rou
 import { Route as AppAuthDashboardLayoutSettingsLostReasonsImport } from './routes/_app/_auth/dashboard/_layout.settings.lost-reasons'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
 import { Route as AppAuthDashboardLayoutSettingsEmailImport } from './routes/_app/_auth/dashboard/_layout.settings.email'
+import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 import { Route as AppAuthDashboardLayoutSettingsAuditLogImport } from './routes/_app/_auth/dashboard/_layout.settings.audit-log'
@@ -74,6 +75,8 @@ import { Route as AppAuthDashboardLayoutGabinetPackagesIndexImport } from './rou
 import { Route as AppAuthDashboardLayoutGabinetEmployeesIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.index'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.index'
 import { Route as AppAuthDashboardLayoutGabinetCalendarIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index'
+import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.new'
+import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.$id'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
@@ -351,6 +354,12 @@ const AppAuthDashboardLayoutSettingsEmailRoute =
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsDocumentTemplatesRoute =
+  AppAuthDashboardLayoutSettingsDocumentTemplatesImport.update({
+    path: '/document-templates',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsCustomFieldsRoute =
   AppAuthDashboardLayoutSettingsCustomFieldsImport.update({
     path: '/custom-fields',
@@ -463,6 +472,18 @@ const AppAuthDashboardLayoutGabinetCalendarIndexRoute =
   AppAuthDashboardLayoutGabinetCalendarIndexImport.update({
     path: '/gabinet/calendar/',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsDocumentTemplatesNewRoute =
+  AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport.update({
+    path: '/new',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsDocumentTemplatesRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsDocumentTemplatesIdRoute =
+  AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport.update({
+    path: '/$id',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsDocumentTemplatesRoute,
   } as any)
 
 const AppAuthDashboardLayoutGabinetSettingsSchedulingRoute =
@@ -802,6 +823,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsCustomFieldsImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/document-templates': {
+      id: '/_app/_auth/dashboard/_layout/settings/document-templates'
+      path: '/document-templates'
+      fullPath: '/dashboard/settings/document-templates'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/email': {
       id: '/_app/_auth/dashboard/_layout/settings/email'
       path: '/email'
@@ -998,6 +1026,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsSchedulingImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/settings/document-templates/$id': {
+      id: '/_app/_auth/dashboard/_layout/settings/document-templates/$id'
+      path: '/$id'
+      fullPath: '/dashboard/settings/document-templates/$id'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/document-templates/new': {
+      id: '/_app/_auth/dashboard/_layout/settings/document-templates/new'
+      path: '/new'
+      fullPath: '/dashboard/settings/document-templates/new'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/calendar/': {
       id: '/_app/_auth/dashboard/_layout/gabinet/calendar/'
       path: '/gabinet/calendar'
@@ -1074,6 +1116,13 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsAuditLogRoute,
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
+              AppAuthDashboardLayoutSettingsDocumentTemplatesRoute:
+                AppAuthDashboardLayoutSettingsDocumentTemplatesRoute.addChildren(
+                  {
+                    AppAuthDashboardLayoutSettingsDocumentTemplatesIdRoute,
+                    AppAuthDashboardLayoutSettingsDocumentTemplatesNewRoute,
+                  },
+                ),
               AppAuthDashboardLayoutSettingsEmailRoute,
               AppAuthDashboardLayoutSettingsIntegrationsRoute,
               AppAuthDashboardLayoutSettingsLostReasonsRoute,
@@ -1338,6 +1387,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/audit-log",
         "/_app/_auth/dashboard/_layout/settings/billing",
         "/_app/_auth/dashboard/_layout/settings/custom-fields",
+        "/_app/_auth/dashboard/_layout/settings/document-templates",
         "/_app/_auth/dashboard/_layout/settings/email",
         "/_app/_auth/dashboard/_layout/settings/integrations",
         "/_app/_auth/dashboard/_layout/settings/lost-reasons",
@@ -1409,6 +1459,14 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/settings/custom-fields": {
       "filePath": "_app/_auth/dashboard/_layout.settings.custom-fields.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/document-templates": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings",
+      "children": [
+        "/_app/_auth/dashboard/_layout/settings/document-templates/$id",
+        "/_app/_auth/dashboard/_layout/settings/document-templates/new"
+      ]
     },
     "/_app/_auth/dashboard/_layout/settings/email": {
       "filePath": "_app/_auth/dashboard/_layout.settings.email.tsx",
@@ -1521,6 +1579,14 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.scheduling.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/settings/document-templates/$id": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.$id.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/document-templates"
+    },
+    "/_app/_auth/dashboard/_layout/settings/document-templates/new": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.new.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/document-templates"
     },
     "/_app/_auth/dashboard/_layout/gabinet/calendar/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.calendar.index.tsx",

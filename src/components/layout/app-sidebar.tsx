@@ -275,6 +275,7 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settings.email", to: "/dashboard/settings/email" },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
+  { labelKey: "settings.documentTemplates", to: "/dashboard/settings/document-templates" },
   { labelKey: "gabinet.scheduling.title", to: "/dashboard/gabinet/settings/scheduling", section: "settings.gabinetSection" },
   { labelKey: "gabinet.leaveTypes.title", to: "/dashboard/gabinet/settings/leave-types" },
   { labelKey: "gabinet.leaveBalances.title", to: "/dashboard/gabinet/settings/leave-balances" },

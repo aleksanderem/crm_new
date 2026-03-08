@@ -21,7 +21,7 @@ export const scheduleReminder = mutation({
     appointmentId: v.id("gabinetAppointments"),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
     const appointment = await ctx.db.get(args.appointmentId);

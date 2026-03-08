@@ -938,6 +938,22 @@ const schema = defineSchema({
     .index("by_org_active", ["organizationId", "isActive"])
     .index("by_org_module", ["organizationId", "module"]),
 
+  // --- Email Layouts (global wrapper per org) ---
+
+  emailLayouts: defineTable({
+    organizationId: v.id("organizations"),
+    headerBlocks: v.string(),
+    footerBlocks: v.string(),
+    backgroundColor: v.string(),
+    contentBackgroundColor: v.string(),
+    primaryColor: v.string(),
+    logoUrl: v.optional(v.string()),
+    companyName: v.optional(v.string()),
+    footerText: v.optional(v.string()),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_org", ["organizationId"]),
+
   // --- Invitations ---
 
   invitations: defineTable({
@@ -1609,6 +1625,8 @@ const schema = defineSchema({
     .index("by_patient", ["patientId"])
     .index("by_org", ["organizationId"]),
 
+  // (Email Event Bus tables defined below, after appointmentReminders)
+
   // --- Gabinet: Appointment Reminders ---
 
   appointmentReminders: defineTable({
@@ -1633,6 +1651,66 @@ const schema = defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_appointment", ["appointmentId"])
     .index("by_orgAndStatus", ["organizationId", "status"]),
+
+  // --- Platform: Email Event Bus ---
+
+  emailEventTypes: defineTable({
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    module: v.union(
+      v.literal("crm"),
+      v.literal("gabinet"),
+      v.literal("platform"),
+    ),
+    displayName: v.string(),
+    description: v.optional(v.string()),
+    payloadSchema: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndModule", ["organizationId", "module"])
+    .index("by_orgAndType", ["organizationId", "eventType"]),
+
+  emailEventBindings: defineTable({
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    templateId: v.id("emailTemplates"),
+    enabled: v.boolean(),
+    priority: v.number(),
+    conditions: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndEventType", ["organizationId", "eventType"])
+    .index("by_orgAndEnabled", ["organizationId", "enabled"]),
+
+  emailEventLog: defineTable({
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    bindingId: v.optional(v.id("emailEventBindings")),
+    templateId: v.optional(v.id("emailTemplates")),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("skipped"),
+    ),
+    payload: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    triggeredBy: v.optional(v.id("users")),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndEventType", ["organizationId", "eventType"])
+    .index("by_orgAndCreatedAt", ["organizationId", "createdAt"]),
 });
 
 export default schema;

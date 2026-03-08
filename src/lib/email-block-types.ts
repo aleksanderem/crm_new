@@ -11,10 +11,25 @@ export type BlockType =
   | "columns"
   | "spacer";
 
+export interface BlockStyles {
+  backgroundColor?: string;
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  borderWidth?: number;
+  borderColor?: string;
+  borderRadius?: number;
+  textColor?: string;
+  fontSize?: number;
+  textAlign?: "left" | "center" | "right";
+}
+
 export interface EmailBlock {
   id: string;
   type: BlockType;
   content: Record<string, unknown>;
+  styles?: BlockStyles;
 }
 
 // Content shapes per block type

@@ -5,6 +5,9 @@
     "create": "Create",
     "update": "Update",
     "delete": "Delete",
+    "duplicate": "Duplicate",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "edit": "Edit",
     "add": "Add",
     "search": "Search",
@@ -103,7 +106,7 @@
       "viewUnread": "Unread",
       "activate": "Activate/Deactivate",
       "bookAppointment": "Book Appointment",
-      "addPatient": "Add Patient",
+      "addPatient": "Add Client",
       "addTreatment": "Add Treatment",
       "addPackage": "Add Package",
       "addEmployee": "Add Employee",
@@ -122,9 +125,9 @@
       "createFromTemplate": "From Template",
       "bulkActions": "Bulk Actions",
       "categoryFilter": "Category Filter",
-      "searchPatients": "Search Patients",
+      "searchPatients": "Search Clients",
       "filterByStatus": "Filter by Status",
-      "viewPatientStats": "Patient Stats",
+      "viewPatientStats": "Client Stats",
       "sortByPrice": "Sort by Price",
       "manageCategories": "Manage Categories",
       "filterByEmployee": "Filter by Employee",
@@ -134,7 +137,7 @@
       "crm": "CRM",
       "crmDesc": "Sales & contacts",
       "gabinet": "Gabinet",
-      "gabinetDesc": "Clinic & patients"
+      "gabinetDesc": "Clinic & clients"
     },
     "gabinet": "Cabinet",
     "settings": "Settings",
@@ -880,7 +883,7 @@
       "activity": "Activity",
       "call": "Call",
       "document": "Document",
-      "patient": "Patient",
+      "patient": "Client",
       "appointment": "Appointment",
       "treatment": "Treatment",
       "package": "Package",
@@ -932,7 +935,7 @@
     "logCall": "Log Call",
     "importCsv": "Import CSV",
     "exportCsv": "Export CSV",
-    "newPatient": "New Patient",
+    "newPatient": "New Client",
     "newAppointment": "New Appointment",
     "newTreatment": "New Treatment",
     "newPackage": "New Package",
@@ -1127,21 +1130,21 @@
   },
   "gabinet": {
     "patients": {
-      "title": "Patients",
-      "description": "Manage your clinic patients",
-      "addPatient": "Add Patient",
-      "createPatient": "Create Patient",
-      "createDescription": "Add a new patient to your clinic",
-      "searchPlaceholder": "Search patients...",
-      "emptyTitle": "No patients yet",
-      "emptyDescription": "Add your first patient to get started",
-      "confirmDelete": "Are you sure you want to deactivate this patient?",
+      "title": "Clients",
+      "description": "Manage your salon clients",
+      "addPatient": "Add Client",
+      "createPatient": "Create Client",
+      "createDescription": "Add a new client to your salon",
+      "searchPlaceholder": "Search clients...",
+      "emptyTitle": "No clients yet",
+      "emptyDescription": "Add your first client to get started",
+      "confirmDelete": "Are you sure you want to deactivate this client?",
       "views": {
-        "all": "All Patients",
+        "all": "All Clients",
         "active": "Active",
         "inactive": "Inactive"
       },
-      "contact": "Patient",
+      "contact": "Client",
       "firstName": "First Name",
       "lastName": "Last Name",
       "pesel": "PESEL",
@@ -1172,14 +1175,14 @@
         "loyalty": "Loyalty",
         "activity": "Activity"
       },
-      "byDay": "Patients by Day",
-      "bySource": "Patients by Source",
+      "byDay": "Clients by Day",
+      "bySource": "Clients by Source",
       "appointmentHistory": "Appointment history",
       "history": "History",
       "noHistory": "No history",
-      "noHistoryDesc": "Patient has no previous appointments",
-      "patient": "Patient",
-      "lastAppointments": "Patient's recent appointments"
+      "noHistoryDesc": "Client has no previous appointments",
+      "patient": "Client",
+      "lastAppointments": "Client's recent appointments"
     },
     "treatments": {
       "title": "Treatments",
@@ -1299,10 +1302,10 @@
       "showLess": "Show less",
       "tabs": {
         "appointments": "Appointments",
-        "patients": "Patients",
+        "patients": "Clients",
         "activities": "Activities",
         "schedule": "Schedule",
-        "noPatients": "No patients seen yet."
+        "noPatients": "No clients seen yet."
       },
       "schedule": {
         "hasOverrides": "This employee has a custom schedule defined.",
@@ -1344,7 +1347,7 @@
     },
     "appointments": {
       "createAppointment": "New Appointment",
-      "patient": "Patient",
+      "patient": "Client",
       "treatment": "Treatment",
       "employee": "Employee",
       "date": "Date",
@@ -1355,11 +1358,11 @@
       "recurring": "Recurring appointment",
       "frequency": "Frequency",
       "count": "Occurrences",
-      "selectPatient": "Select patient",
-      "searchPatient": "Search patient or contact...",
-      "existingPatients": "Patients",
-      "fromCrmContacts": "CRM Contacts (create patient)",
-      "creatingPatient": "Creating patient...",
+      "selectPatient": "Select client",
+      "searchPatient": "Search client or contact...",
+      "existingPatients": "Clients",
+      "fromCrmContacts": "CRM Contacts (create client)",
+      "creatingPatient": "Creating client...",
       "searchingContacts": "Searching CRM contacts...",
       "typeToSearch": "Type at least 2 characters to search",
       "selectTreatment": "Select treatment",
@@ -1497,7 +1500,7 @@
       },
       "activePackages": "Active packages",
       "noActivePackages": "No active packages",
-      "noActivePackagesDesc": "Patient has no active treatment packages",
+      "noActivePackagesDesc": "Client has no active treatment packages",
       "package": "Package",
       "packageUsage": "Package usage",
       "treatmentsUsed": "Treatments used",
@@ -1505,7 +1508,7 @@
     },
     "documents": {
       "title": "Medical Documents",
-      "description": "Manage patient documents, consents, and records",
+      "description": "Manage client documents, consents, and records",
       "createDocument": "New Document",
       "titleField": "Title",
       "type": "Type",
@@ -1517,7 +1520,7 @@
         "final": "Final"
       },
       "date": "Date",
-      "patient": "Patient",
+      "patient": "Client",
       "template": "Template",
       "content": "Content",
       "noTemplate": "No template",
@@ -1530,8 +1533,8 @@
       "signatureRequested": "Signature requested",
       "signed": "Document signed",
       "emptyTitle": "No documents",
-      "emptyDescription": "Create medical documents for your patients",
-      "noDocuments": "No documents for this patient",
+      "emptyDescription": "Create documents for your clients",
+      "noDocuments": "No documents for this client",
       "types": {
         "consent": "Consent",
         "medical_record": "Medical Record",
@@ -1595,7 +1598,7 @@
       "title": "Gabinet Dashboard",
       "description": "Overview of your clinic operations",
       "todayAppointments": "Today's Appointments",
-      "totalPatients": "Total Patients",
+      "totalPatients": "Total Clients",
       "totalTreatments": "Treatments",
       "pendingLeaves": "Pending Leaves",
       "todaySchedule": "Today's Schedule",
@@ -1603,7 +1606,7 @@
       "pendingLeaveRequests": "Pending Leave Requests",
       "noPendingLeaves": "No pending leave requests",
       "goToCalendar": "Open Calendar",
-      "goToPatients": "View Patients",
+      "goToPatients": "View Clients",
       "goToPackages": "View Packages",
       "goToDocuments": "View Documents"
     },
@@ -1613,7 +1616,7 @@
       "totalAppointments": "Total Appointments",
       "completed": "Completed",
       "cancelled": "Cancelled",
-      "totalPatients": "Total Patients",
+      "totalPatients": "Total Clients",
       "last30days": "Last 30 days",
       "completionRate": "completion rate",
       "treatmentPopularity": "Treatment Popularity",
@@ -1711,7 +1714,7 @@
       "product": "Products",
       "call": "Calls",
       "pipeline": "Pipelines",
-      "gabinetPatient": "Patients",
+      "gabinetPatient": "Clients",
       "gabinetTreatment": "Treatments",
       "gabinetAppointment": "Appointments",
       "gabinetPackage": "Packages",
@@ -1720,7 +1723,7 @@
     }
   },
   "patientPortal": {
-    "title": "Patient Portal",
+    "title": "Client Portal",
     "logout": "Log Out",
     "nav": {
       "dashboard": "Home",
@@ -1731,7 +1734,7 @@
       "profile": "Profile"
     },
     "login": {
-      "title": "Patient Portal",
+      "title": "Client Portal",
       "description": "Sign in to access your medical records",
       "emailPlaceholder": "your@email.com",
       "sendCode": "Send Code",
@@ -1878,5 +1881,8 @@
     "usedVariables": "Variables used",
     "useTemplate": "Use template",
     "selectTemplate": "Select a template..."
+  },
+  "emailBuilder": {
+    "blockOverlayLabel": "{{type}} block"
   }
 }

@@ -407,7 +407,7 @@ export const bookFromPortal = mutation({
     // Find org owner to use as createdBy (portal patients aren't org members)
     const ownerMembership = await ctx.db
       .query("teamMemberships")
-      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId))
       .filter((q) => q.eq(q.field("role"), "owner"))
       .first();
 
@@ -439,7 +439,7 @@ export const bookFromPortal = mutation({
     // Notify all admins and owners about the new booking request
     const staffMemberships = await ctx.db
       .query("teamMemberships")
-      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId))
       .collect();
 
     const staffToNotify = staffMemberships.filter(

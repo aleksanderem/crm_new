@@ -115,7 +115,6 @@ export function DocumentInstanceTable({
   );
 
   const templateQueries = templateIds.map((id) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useQuery(convexQuery(api.documentTemplates.getById, { id })),
   );
 
@@ -126,7 +125,6 @@ export function DocumentInstanceTable({
       if (tpl) map[templateIds[i]] = tpl.name;
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateIds, ...templateQueries.map((q) => q.data)]);
 
   // ----- Loading state -----

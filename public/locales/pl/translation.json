@@ -5,6 +5,9 @@
     "create": "Utwórz",
     "update": "Aktualizuj",
     "delete": "Usuń",
+    "duplicate": "Duplikuj",
+    "moveUp": "Przesuń w górę",
+    "moveDown": "Przesuń w dół",
     "edit": "Edytuj",
     "add": "Dodaj",
     "search": "Szukaj",
@@ -1299,10 +1302,10 @@
       "showLess": "Pokaż mniej",
       "tabs": {
         "appointments": "Wizyty",
-        "patients": "Pacjenci",
+        "patients": "Klienci",
         "activities": "Aktywności",
         "schedule": "Grafik",
-        "noPatients": "Brak obsługiwanych pacjentów."
+        "noPatients": "Brak obsługiwanych klientów."
       },
       "schedule": {
         "hasOverrides": "Ten pracownik ma zdefiniowany indywidualny grafik.",
@@ -1881,5 +1884,8 @@
     "usedVariables": "Użyte zmienne",
     "useTemplate": "Użyj szablonu",
     "selectTemplate": "Wybierz szablon..."
+  },
+  "emailBuilder": {
+    "blockOverlayLabel": "{{type}} blok"
   }
 }

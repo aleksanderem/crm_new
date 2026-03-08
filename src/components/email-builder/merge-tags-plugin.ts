@@ -68,19 +68,17 @@ export function mergeTagsPlugin(
     rte.add("merge-tags", {
       icon: selectHtml,
       event: "change",
-      result: (
-        rteInstance: { insertHTML: (html: string) => void },
-        action: { btn: HTMLElement | undefined },
-      ) => {
-        if (!action.btn) return;
-        const select = action.btn.querySelector(
+      result: (rteInstance: unknown, action: unknown) => {
+        const act = action as { btn: HTMLElement | undefined };
+        if (!act.btn) return;
+        const select = act.btn.querySelector(
           "select",
         ) as HTMLSelectElement | null;
         if (!select || !select.value) return;
 
         const tag = select.value;
         const html = `<span data-merge-tag="${tag}" style="background-color:rgba(123,105,229,0.15);border:1px dashed rgba(123,105,229,0.4);border-radius:4px;padding:1px 5px;white-space:nowrap;font-size:inherit;" contenteditable="false">${tag}</span>&nbsp;`;
-        rteInstance.insertHTML(html);
+        (rteInstance as { insertHTML: (html: string) => void }).insertHTML(html);
 
         select.value = "";
       },

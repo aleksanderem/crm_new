@@ -94,9 +94,30 @@ function renderBlock(block: EmailBlock): string {
   }
 }
 
-export function blocksToHtml(blocks: EmailBlock[]): string {
+export interface EmailLayoutData {
+  headerBlocks?: EmailBlock[];
+  footerBlocks?: EmailBlock[];
+  backgroundColor?: string;
+  contentBackgroundColor?: string;
+  primaryColor?: string;
+  logoUrl?: string;
+  companyName?: string;
+  footerText?: string;
+}
+
+export function blocksToHtml(blocks: EmailBlock[], layout?: EmailLayoutData): string {
+  const bg = layout?.backgroundColor ?? "transparent";
+  const contentBg = layout?.contentBackgroundColor ?? "transparent";
+  const header = layout?.headerBlocks?.map(renderBlock).join("\n") ?? "";
+  const footer = layout?.footerBlocks?.map(renderBlock).join("\n") ?? "";
   const inner = blocks.map(renderBlock).join("\n");
-  return `<div style="max-width: 600px; margin: 0 auto; ${FONT_STACK}">\n${inner}\n</div>`;
+  return `<div style="background-color: ${bg}; padding: 16px 0;">
+<div style="max-width: 600px; margin: 0 auto; background-color: ${contentBg}; ${FONT_STACK}">
+${header}
+${inner}
+${footer}
+</div>
+</div>`;
 }
 
 // ---------------------------------------------------------------------------

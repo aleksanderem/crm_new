@@ -37,18 +37,18 @@ export function BlockPropertiesPanel({
         <TextHint blockType={block.type} />
       ) : block.type === "image" ? (
         <ImageProperties
-          content={block.content as ImageContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as ImageContent}
+          onChange={(c) => onContentChange(c as unknown as Record<string, unknown>)}
         />
       ) : block.type === "button" ? (
         <ButtonProperties
-          content={block.content as ButtonContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as ButtonContent}
+          onChange={(c) => onContentChange(c as unknown as Record<string, unknown>)}
         />
       ) : block.type === "divider" ? (
         <DividerProperties
-          content={block.content as DividerContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as DividerContent}
+          onChange={(c) => onContentChange(c as unknown as Record<string, unknown>)}
         />
       ) : block.type === "spacer" ? (
         <SpacerProperties

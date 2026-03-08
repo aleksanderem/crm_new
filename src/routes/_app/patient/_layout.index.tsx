@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, Heart } from "@/lib/ez-icons";
+import { Button } from "@/components/ui/button";
+import { CalendarCheck, Heart, Plus } from "@/lib/ez-icons";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -12,7 +13,10 @@ export const Route = createFileRoute("/_app/patient/_layout/")({
 });
 
 function usePortalToken() {
-  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const tokenHash =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("patientPortalToken") ?? "")
+      : "";
   return { tokenHash };
 }
 
@@ -21,22 +25,26 @@ function PatientDashboard() {
   const { tokenHash } = usePortalToken();
 
   const { data: profile } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash })
+    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash }),
   );
 
   const { data: appointments } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash })
+    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash }),
   );
 
   const { data: loyaltyBalance } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyLoyaltyBalance, { tokenHash })
+    convexQuery(api.gabinet.patientPortal.getMyLoyaltyBalance, { tokenHash }),
   );
 
   const upcoming = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
     return (appointments ?? [])
       .filter((a) => a.date >= today && a.status !== "cancelled")
-      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          a.startTime.localeCompare(b.startTime),
+      )
       .slice(0, 5);
   }, [appointments]);
 
@@ -44,17 +52,30 @@ function PatientDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">
-          {t("patientPortal.dashboard.welcome", { name: profile?.firstName ?? "" })}
+          {t("patientPortal.dashboard.welcome", {
+            name: profile?.firstName ?? "",
+          })}
         </h1>
-        <p className="text-sm text-muted-foreground">{t("patientPortal.dashboard.subtitle")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("patientPortal.dashboard.subtitle")}
+        </p>
       </div>
+
+      <Button asChild size="lg" className="w-full sm:w-auto">
+        <Link to="/patient/book">
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
+          {t("patientPortal.booking.bookButton")}
+        </Link>
+      </Button>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-3">
             <CalendarCheck className="h-5 w-5 text-primary" />
             <div>
-              <p className="text-sm text-muted-foreground">{t("patientPortal.dashboard.upcomingAppointments")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("patientPortal.dashboard.upcomingAppointments")}
+              </p>
               <p className="text-2xl font-bold">{upcoming.length}</p>
             </div>
           </div>
@@ -63,10 +84,16 @@ function PatientDashboard() {
           <div className="flex items-center gap-3">
             <Heart className="h-5 w-5 text-pink-500" />
             <div>
-              <p className="text-sm text-muted-foreground">{t("patientPortal.dashboard.loyaltyPoints")}</p>
-              <p className="text-2xl font-bold">{loyaltyBalance?.balance ?? 0}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("patientPortal.dashboard.loyaltyPoints")}
+              </p>
+              <p className="text-2xl font-bold">
+                {loyaltyBalance?.balance ?? 0}
+              </p>
               {loyaltyBalance?.tier && (
-                <p className="text-xs text-muted-foreground capitalize">{loyaltyBalance.tier}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {loyaltyBalance.tier}
+                </p>
               )}
             </div>
           </div>
@@ -76,7 +103,9 @@ function PatientDashboard() {
       {/* Upcoming appointments */}
       <div className="rounded-lg border">
         <div className="border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">{t("patientPortal.dashboard.nextAppointments")}</h3>
+          <h3 className="text-sm font-semibold">
+            {t("patientPortal.dashboard.nextAppointments")}
+          </h3>
         </div>
         {upcoming.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
@@ -85,7 +114,10 @@ function PatientDashboard() {
         ) : (
           <div className="divide-y">
             {upcoming.map((a) => (
-              <div key={a._id} className="flex items-center justify-between px-4 py-3">
+              <div
+                key={a._id}
+                className="flex items-center justify-between px-4 py-3"
+              >
                 <div>
                   <p className="text-sm font-medium">{a.treatmentName}</p>
                   <p className="text-xs text-muted-foreground">

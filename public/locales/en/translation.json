@@ -1768,6 +1768,30 @@
       "spent": "Spent",
       "history": "Transaction History",
       "noTransactions": "No transactions"
+    },
+    "booking": {
+      "title": "Book Appointment",
+      "bookButton": "Book Appointment",
+      "selectTreatment": "Select a treatment",
+      "selectEmployee": "Select a specialist",
+      "selectDate": "Select a date",
+      "selectTime": "Select a time slot",
+      "confirmDetails": "Confirm your booking details",
+      "anyEmployee": "Any available",
+      "anyEmployeeDesc": "First available specialist",
+      "treatment": "Treatment",
+      "specialist": "Specialist",
+      "date": "Date",
+      "time": "Time",
+      "duration": "Duration",
+      "price": "Price",
+      "loading": "Loading...",
+      "noTreatments": "No treatments available",
+      "noSlots": "No available slots on this date",
+      "pendingNote": "Your booking requires confirmation from the clinic. You will be notified once approved.",
+      "submit": "Book Appointment",
+      "submitting": "Booking...",
+      "success": "Your booking has been sent for confirmation"
     }
   },
   "invite": {

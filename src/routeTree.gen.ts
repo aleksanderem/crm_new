@@ -27,6 +27,7 @@ import { Route as AppPatientLayoutProfileImport } from './routes/_app/patient/_l
 import { Route as AppPatientLayoutPackagesImport } from './routes/_app/patient/_layout.packages'
 import { Route as AppPatientLayoutLoyaltyImport } from './routes/_app/patient/_layout.loyalty'
 import { Route as AppPatientLayoutDocumentsImport } from './routes/_app/patient/_layout.documents'
+import { Route as AppPatientLayoutBookImport } from './routes/_app/patient/_layout.book'
 import { Route as AppPatientLayoutAppointmentsImport } from './routes/_app/patient/_layout.appointments'
 import { Route as AppAuthOnboardingLayoutImport } from './routes/_app/_auth/onboarding/_layout'
 import { Route as AppAuthDashboardLayoutImport } from './routes/_app/_auth/dashboard/_layout'
@@ -187,6 +188,11 @@ const AppPatientLayoutLoyaltyRoute = AppPatientLayoutLoyaltyImport.update({
 
 const AppPatientLayoutDocumentsRoute = AppPatientLayoutDocumentsImport.update({
   path: '/documents',
+  getParentRoute: () => AppPatientLayoutRoute,
+} as any)
+
+const AppPatientLayoutBookRoute = AppPatientLayoutBookImport.update({
+  path: '/book',
   getParentRoute: () => AppPatientLayoutRoute,
 } as any)
 
@@ -673,6 +679,13 @@ declare module '@tanstack/react-router' {
       path: '/appointments'
       fullPath: '/patient/appointments'
       preLoaderRoute: typeof AppPatientLayoutAppointmentsImport
+      parentRoute: typeof AppPatientLayoutImport
+    }
+    '/_app/patient/_layout/book': {
+      id: '/_app/patient/_layout/book'
+      path: '/book'
+      fullPath: '/patient/book'
+      preLoaderRoute: typeof AppPatientLayoutBookImport
       parentRoute: typeof AppPatientLayoutImport
     }
     '/_app/patient/_layout/documents': {
@@ -1226,6 +1239,7 @@ export const routeTree = rootRoute.addChildren({
     AppPatientRoute: AppPatientRoute.addChildren({
       AppPatientLayoutRoute: AppPatientLayoutRoute.addChildren({
         AppPatientLayoutAppointmentsRoute,
+        AppPatientLayoutBookRoute,
         AppPatientLayoutDocumentsRoute,
         AppPatientLayoutLoyaltyRoute,
         AppPatientLayoutPackagesRoute,
@@ -1305,6 +1319,7 @@ export const routeTree = rootRoute.addChildren({
       "parent": "/_app/patient",
       "children": [
         "/_app/patient/_layout/appointments",
+        "/_app/patient/_layout/book",
         "/_app/patient/_layout/documents",
         "/_app/patient/_layout/loyalty",
         "/_app/patient/_layout/packages",
@@ -1387,6 +1402,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/patient/_layout/appointments": {
       "filePath": "_app/patient/_layout.appointments.tsx",
+      "parent": "/_app/patient/_layout"
+    },
+    "/_app/patient/_layout/book": {
+      "filePath": "_app/patient/_layout.book.tsx",
       "parent": "/_app/patient/_layout"
     },
     "/_app/patient/_layout/documents": {

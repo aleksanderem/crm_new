@@ -1769,6 +1769,30 @@
       "spent": "Wydane",
       "history": "Historia transakcji",
       "noTransactions": "Brak transakcji"
+    },
+    "booking": {
+      "title": "Umów wizytę",
+      "bookButton": "Umów wizytę",
+      "selectTreatment": "Wybierz zabieg",
+      "selectEmployee": "Wybierz specjalistę",
+      "selectDate": "Wybierz datę",
+      "selectTime": "Wybierz godzinę",
+      "confirmDetails": "Potwierdź szczegóły rezerwacji",
+      "anyEmployee": "Dowolny",
+      "anyEmployeeDesc": "Pierwszy dostępny specjalista",
+      "treatment": "Zabieg",
+      "specialist": "Specjalista",
+      "date": "Data",
+      "time": "Godzina",
+      "duration": "Czas trwania",
+      "price": "Cena",
+      "loading": "Ładowanie...",
+      "noTreatments": "Brak dostępnych zabiegów",
+      "noSlots": "Brak dostępnych terminów w tym dniu",
+      "pendingNote": "Rezerwacja wymaga potwierdzenia przez recepcję. Otrzymasz powiadomienie po zatwierdzeniu.",
+      "submit": "Zarezerwuj wizytę",
+      "submitting": "Rezerwacja...",
+      "success": "Twoja rezerwacja została wysłana do potwierdzenia"
     }
   },
   "invite": {

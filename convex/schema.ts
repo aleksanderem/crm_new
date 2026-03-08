@@ -173,6 +173,7 @@ export const gabinetLeaveStatusValidator = v.union(
 export type GabinetLeaveStatus = Infer<typeof gabinetLeaveStatusValidator>;
 
 export const gabinetAppointmentStatusValidator = v.union(
+  v.literal("pending_confirmation"),
   v.literal("scheduled"),
   v.literal("confirmed"),
   v.literal("in_progress"),
@@ -1192,6 +1193,8 @@ const schema = defineSchema({
     cancelledAt: v.optional(v.number()),
     cancelledBy: v.optional(v.id("users")),
     cancellationReason: v.optional(v.string()),
+    bookedFromPortal: v.optional(v.boolean()),
+    bookedByPatientId: v.optional(v.id("gabinetPatients")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

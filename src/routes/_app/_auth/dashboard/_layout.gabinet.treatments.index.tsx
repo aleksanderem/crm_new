@@ -26,7 +26,7 @@ import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/treatments/"
+  "/_app/_auth/dashboard/_layout/gabinet/treatments/",
 )({
   component: TreatmentsIndex,
 });
@@ -48,7 +48,9 @@ function TreatmentsIndex() {
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
+  const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(
+    null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_sortAscending, setSortAscending] = useState(true);
 
@@ -64,22 +66,43 @@ function TreatmentsIndex() {
     setSortAscending((prev) => !prev);
   });
 
-  const systemViews = useMemo((): SavedView[] => [
-    { id: "all", name: t("gabinet.treatments.views.all"), isSystem: true, isDefault: true },
-    { id: "active", name: t("gabinet.treatments.views.active"), isSystem: true, isDefault: false },
-    { id: "inactive", name: t("gabinet.treatments.views.inactive"), isSystem: true, isDefault: false },
-  ], [t]);
+  const systemViews = useMemo(
+    (): SavedView[] => [
+      {
+        id: "all",
+        name: t("gabinet.treatments.views.all"),
+        isSystem: true,
+        isDefault: true,
+      },
+      {
+        id: "active",
+        name: t("gabinet.treatments.views.active"),
+        isSystem: true,
+        isDefault: false,
+      },
+      {
+        id: "inactive",
+        name: t("gabinet.treatments.views.inactive"),
+        isSystem: true,
+        isDefault: false,
+      },
+    ],
+    [t],
+  );
 
-  const filterableFields = useMemo((): FieldDef[] => [
-    { id: "category", label: t("gabinet.treatments.category"), type: "text" },
-    { id: "price", label: t("gabinet.treatments.price"), type: "number" },
-  ], [t]);
+  const filterableFields = useMemo(
+    (): FieldDef[] => [
+      { id: "category", label: t("gabinet.treatments.category"), type: "text" },
+      { id: "price", label: t("gabinet.treatments.price"), type: "number" },
+    ],
+    [t],
+  );
 
   const { data, isLoading } = useQuery(
     convexQuery(api.gabinet.treatments.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
-    })
+    }),
   );
 
   const allTreatments = data?.page ?? [];
@@ -91,6 +114,10 @@ function TreatmentsIndex() {
     onCreateView,
     onUpdateView,
     onDeleteView,
+    columnVisibility,
+    sorting,
+    setColumnVisibility,
+    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
@@ -125,7 +152,12 @@ function TreatmentsIndex() {
     {
       accessorKey: "name",
       size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.name")} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.treatments.name")}
+        />
+      ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           {row.original.color && (
@@ -146,59 +178,118 @@ function TreatmentsIndex() {
     {
       accessorKey: "category",
       size: 150,
-      header: t("gabinet.treatments.category"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.treatments.category")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.category ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, category: v }); }}
+          onChange={async (v) => {
+            await updateTreatment({
+              organizationId,
+              treatmentId: row.original._id,
+              name: row.original.name,
+              category: v,
+            });
+          }}
         />
       ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      filterFn: (row, id, value) =>
+        (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "duration",
       size: 120,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.duration")} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.treatments.duration")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.duration}
           config={{ type: "number", min: 5, step: 5, placeholder: "min" }}
           displayFormatter={(v) => `${v} min`}
-          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, duration: Number(v) }); }}
+          onChange={async (v) => {
+            await updateTreatment({
+              organizationId,
+              treatmentId: row.original._id,
+              name: row.original.name,
+              duration: Number(v),
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "price",
       size: 120,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.treatments.price")} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.treatments.price")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.price}
           config={{ type: "number", min: 0, step: 1, placeholder: "0.00" }}
-          displayFormatter={(v) => formatCurrency(v, row.original.currency ?? undefined)}
-          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, price: Number(v) }); }}
+          displayFormatter={(v) =>
+            formatCurrency(v, row.original.currency ?? undefined)
+          }
+          onChange={async (v) => {
+            await updateTreatment({
+              organizationId,
+              treatmentId: row.original._id,
+              name: row.original.name,
+              price: Number(v),
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "taxRate",
       size: 120,
-      header: t("gabinet.treatments.taxRate"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.treatments.taxRate")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.taxRate ?? ""}
-          config={{ type: "number", min: 0, max: 100, step: 1, placeholder: "%" }}
-          displayFormatter={(v) => v != null && v !== "" ? `${v}%` : "—"}
-          onChange={async (v) => { await updateTreatment({ organizationId, treatmentId: row.original._id, name: row.original.name, taxRate: Number(v) }); }}
+          config={{
+            type: "number",
+            min: 0,
+            max: 100,
+            step: 1,
+            placeholder: "%",
+          }}
+          displayFormatter={(v) => (v != null && v !== "" ? `${v}%` : "—")}
+          onChange={async (v) => {
+            await updateTreatment({
+              organizationId,
+              treatmentId: row.original._id,
+              name: row.original.name,
+              taxRate: Number(v),
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "isActive",
       size: 100,
-      header: t("common.active"),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.active")} />
+      ),
       cell: ({ getValue }) => {
         const active = getValue() as boolean;
         return (
@@ -244,7 +335,18 @@ function TreatmentsIndex() {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, organizationId]
+    [editingTreatment, createTreatment, updateTreatment, organizationId],
+  );
+
+  const handleBulkAction = useCallback(
+    async (action: string, selectedRows: Treatment[]) => {
+      if (action === "delete") {
+        for (const row of selectedRows) {
+          await removeTreatment({ organizationId, treatmentId: row._id });
+        }
+      }
+    },
+    [removeTreatment, organizationId],
   );
 
   const rowActions = useCallback(
@@ -280,7 +382,7 @@ function TreatmentsIndex() {
         },
       },
     ],
-    [t, removeTreatment, updateTreatment, organizationId]
+    [t, removeTreatment, updateTreatment, organizationId],
   );
 
   return (
@@ -309,7 +411,7 @@ function TreatmentsIndex() {
       <QuickActionBar
         actions={[
           {
-            label: t('quickActions.newTreatment'),
+            label: t("quickActions.newTreatment"),
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: openCreatePanel,
             feature: "gabinet_treatments",
@@ -339,10 +441,33 @@ function TreatmentsIndex() {
           searchKey="name"
           searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
           isLoading={isLoading}
+          enableBulkSelect
+          bulkActions={[
+            {
+              label: t("common.delete"),
+              value: "delete",
+              variant: "destructive",
+            },
+          ]}
+          onBulkAction={handleBulkAction}
           rowActions={rowActions}
-          filterableColumns={categoryOptions.length > 0 ? [
-            { id: "category", title: t("gabinet.treatments.category"), options: categoryOptions },
-          ] : []}
+          onRowClick={(row) => openEditPanel(row)}
+          totalCount={filteredTreatments.length}
+          filterableColumns={
+            categoryOptions.length > 0
+              ? [
+                  {
+                    id: "category",
+                    title: t("gabinet.treatments.category"),
+                    options: categoryOptions,
+                  },
+                ]
+              : []
+          }
+          columnVisibility={columnVisibility}
+          onColumnVisibilityChange={setColumnVisibility}
+          sorting={sorting}
+          onSortingChange={setSorting}
         />
       )}
 
@@ -352,8 +477,16 @@ function TreatmentsIndex() {
           setPanelOpen(open);
           if (!open) setEditingTreatment(null);
         }}
-        title={editingTreatment ? t("common.edit") : t("gabinet.treatments.createTreatment")}
-        description={editingTreatment ? undefined : t("gabinet.treatments.createDescription")}
+        title={
+          editingTreatment
+            ? t("common.edit")
+            : t("gabinet.treatments.createTreatment")
+        }
+        description={
+          editingTreatment
+            ? undefined
+            : t("gabinet.treatments.createDescription")
+        }
       >
         <TreatmentForm
           key={editingTreatment?._id ?? "new"}
@@ -367,11 +500,16 @@ function TreatmentsIndex() {
                   price: editingTreatment.price,
                   currency: editingTreatment.currency ?? undefined,
                   taxRate: editingTreatment.taxRate ?? undefined,
-                  requiredEquipment: editingTreatment.requiredEquipment ?? undefined,
-                  contraindications: editingTreatment.contraindications ?? undefined,
-                  preparationInstructions: editingTreatment.preparationInstructions ?? undefined,
-                  aftercareInstructions: editingTreatment.aftercareInstructions ?? undefined,
-                  requiresApproval: editingTreatment.requiresApproval ?? undefined,
+                  requiredEquipment:
+                    editingTreatment.requiredEquipment ?? undefined,
+                  contraindications:
+                    editingTreatment.contraindications ?? undefined,
+                  preparationInstructions:
+                    editingTreatment.preparationInstructions ?? undefined,
+                  aftercareInstructions:
+                    editingTreatment.aftercareInstructions ?? undefined,
+                  requiresApproval:
+                    editingTreatment.requiresApproval ?? undefined,
                   color: editingTreatment.color ?? undefined,
                   sortOrder: editingTreatment.sortOrder ?? undefined,
                 }

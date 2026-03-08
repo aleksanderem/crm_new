@@ -29,7 +29,7 @@ import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/patients/"
+  "/_app/_auth/dashboard/_layout/gabinet/patients/",
 )({
   component: PatientsIndex,
 });
@@ -67,33 +67,60 @@ function PatientsIndex() {
   });
   useSidebarDispatch("openSearch", () => {
     // Focus on the search input if present
-    const searchInput = document.querySelector<HTMLInputElement>('input[type="search"], input[placeholder*="Szukaj"], input[placeholder*="Search"]');
+    const searchInput = document.querySelector<HTMLInputElement>(
+      'input[type="search"], input[placeholder*="Szukaj"], input[placeholder*="Search"]',
+    );
     searchInput?.focus();
   });
   useSidebarDispatch("openFilter", () => {
     // Toggle active/inactive filter
-    const activeView = views.find(v => v.id === "active");
+    const activeView = views.find((v) => v.id === "active");
     if (activeView) onViewChange("active");
   });
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
 
-  const systemViews = useMemo((): SavedView[] => [
-    { id: "all", name: t("gabinet.patients.views.all"), isSystem: true, isDefault: true },
-    { id: "active", name: t("gabinet.patients.views.active"), isSystem: true, isDefault: false },
-    { id: "inactive", name: t("gabinet.patients.views.inactive"), isSystem: true, isDefault: false },
-  ], [t]);
+  const systemViews = useMemo(
+    (): SavedView[] => [
+      {
+        id: "all",
+        name: t("gabinet.patients.views.all"),
+        isSystem: true,
+        isDefault: true,
+      },
+      {
+        id: "active",
+        name: t("gabinet.patients.views.active"),
+        isSystem: true,
+        isDefault: false,
+      },
+      {
+        id: "inactive",
+        name: t("gabinet.patients.views.inactive"),
+        isSystem: true,
+        isDefault: false,
+      },
+    ],
+    [t],
+  );
 
-  const filterableFields = useMemo((): FieldDef[] => [
-    { id: "referralSource", label: t("gabinet.patients.referralSource"), type: "text" },
-    { id: "email", label: t("common.email"), type: "text" },
-    { id: "createdAt", label: t("common.created"), type: "date" },
-  ], [t]);
+  const filterableFields = useMemo(
+    (): FieldDef[] => [
+      {
+        id: "referralSource",
+        label: t("gabinet.patients.referralSource"),
+        type: "text",
+      },
+      { id: "email", label: t("common.email"), type: "text" },
+      { id: "createdAt", label: t("common.created"), type: "date" },
+    ],
+    [t],
+  );
 
   const { data, isLoading } = useQuery(
     convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
-    })
+    }),
   );
 
   const patients = data?.page ?? [];
@@ -162,7 +189,12 @@ function PatientsIndex() {
     {
       accessorKey: "firstName",
       size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.patients.contact")} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.contact")}
+        />
+      ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
@@ -185,55 +217,98 @@ function PatientsIndex() {
     {
       accessorKey: "email",
       size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.email")} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.email")} />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.email ?? ""}
           config={{ type: "text", placeholder: "email@example.com" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, email: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              email: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "phone",
       size: 150,
-      header: t("common.phone"),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.phone")} />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.phone ?? ""}
           config={{ type: "text", placeholder: "+48..." }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, phone: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              phone: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "pesel",
       size: 150,
-      header: t("gabinet.patients.pesel"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.pesel")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.pesel ?? ""}
           config={{ type: "text", placeholder: "PESEL" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, pesel: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              pesel: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "dateOfBirth",
       size: 130,
-      header: t("gabinet.patients.dateOfBirth"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.dateOfBirth")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.dateOfBirth ?? ""}
           config={{ type: "date" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, dateOfBirth: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              dateOfBirth: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "gender",
       size: 150,
-      header: t("gabinet.patients.gender"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.gender")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.gender ?? ""}
@@ -242,70 +317,127 @@ function PatientsIndex() {
             options: genderOptions(t),
             placeholder: "—",
           }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, gender: v as any }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              gender: v as any,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "referralSource",
       size: 150,
-      header: t("gabinet.patients.referralSource"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.referralSource")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.referralSource ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, referralSource: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              referralSource: v,
+            });
+          }}
         />
       ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      filterFn: (row, id, value) =>
+        (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "allergies",
       size: 200,
-      header: t("gabinet.patients.allergies"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.allergies")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.allergies ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, allergies: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              allergies: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "bloodType",
       size: 150,
-      header: t("gabinet.patients.bloodType"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.bloodType")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.bloodType ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, bloodType: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              bloodType: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "medicalNotes",
       size: 200,
-      header: t("gabinet.patients.medicalNotes"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("gabinet.patients.medicalNotes")}
+        />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.medicalNotes ?? ""}
           config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updatePatient({ organizationId, patientId: row.original._id, medicalNotes: v }); }}
+          onChange={async (v) => {
+            await updatePatient({
+              organizationId,
+              patientId: row.original._id,
+              medicalNotes: v,
+            });
+          }}
         />
       ),
     },
     {
       accessorKey: "createdAt",
       size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.created")} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.created")} />
+      ),
+      cell: ({ getValue }) =>
+        new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
       size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.updated")} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.updated")} />
+      ),
+      cell: ({ getValue }) =>
+        new Date(getValue() as number).toLocaleDateString(),
     },
   ];
 
@@ -337,7 +469,7 @@ function PatientsIndex() {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId]
+    [createPatient, organizationId],
   );
 
   const handleBulkAction = useCallback(
@@ -348,14 +480,15 @@ function PatientsIndex() {
         }
       }
     },
-    [removePatient, organizationId]
+    [removePatient, organizationId],
   );
 
   const rowActions = useCallback(
     (row: Patient) => [
       {
         label: t("common.edit"),
-        onClick: () => navigate({ to: `/dashboard/gabinet/patients/${row._id}` }),
+        onClick: () =>
+          navigate({ to: `/dashboard/gabinet/patients/${row._id}` }),
       },
       {
         label: t("common.delete"),
@@ -367,7 +500,7 @@ function PatientsIndex() {
         },
       },
     ],
-    [navigate, removePatient, organizationId, t]
+    [navigate, removePatient, organizationId, t],
   );
 
   const sourceOptions = useMemo(() => {
@@ -423,7 +556,7 @@ function PatientsIndex() {
       <QuickActionBar
         actions={[
           {
-            label: t('quickActions.newPatient'),
+            label: t("quickActions.newPatient"),
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setPanelOpen(true),
             feature: "gabinet_patients",
@@ -455,15 +588,29 @@ function PatientsIndex() {
           isLoading={isLoading}
           enableBulkSelect
           bulkActions={[
-            { label: t("common.delete"), value: "delete", variant: "destructive" },
+            {
+              label: t("common.delete"),
+              value: "delete",
+              variant: "destructive",
+            },
           ]}
           onBulkAction={handleBulkAction}
           rowActions={rowActions}
-          onRowClick={(row) => navigate({ to: `/dashboard/gabinet/patients/${row._id}` })}
+          onRowClick={(row) =>
+            navigate({ to: `/dashboard/gabinet/patients/${row._id}` })
+          }
           totalCount={filteredPatients.length}
-          filterableColumns={sourceOptions.length > 0 ? [
-            { id: "referralSource", title: t("gabinet.patients.referralSource"), options: sourceOptions },
-          ] : []}
+          filterableColumns={
+            sourceOptions.length > 0
+              ? [
+                  {
+                    id: "referralSource",
+                    title: t("gabinet.patients.referralSource"),
+                    options: sourceOptions,
+                  },
+                ]
+              : []
+          }
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}

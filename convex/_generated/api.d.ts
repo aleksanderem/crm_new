@@ -54,6 +54,7 @@ import type * as gabinet__registry from "../gabinet/_registry.js";
 import type * as gabinet_appointmentReminders from "../gabinet/appointmentReminders.js";
 import type * as gabinet_appointments from "../gabinet/appointments.js";
 import type * as gabinet_documentDataSources from "../gabinet/documentDataSources.js";
+import type * as gabinet_documentSending from "../gabinet/documentSending.js";
 import type * as gabinet_documentTemplates from "../gabinet/documentTemplates.js";
 import type * as gabinet_documents from "../gabinet/documents.js";
 import type * as gabinet_employees from "../gabinet/employees.js";
@@ -158,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   "gabinet/appointmentReminders": typeof gabinet_appointmentReminders;
   "gabinet/appointments": typeof gabinet_appointments;
   "gabinet/documentDataSources": typeof gabinet_documentDataSources;
+  "gabinet/documentSending": typeof gabinet_documentSending;
   "gabinet/documentTemplates": typeof gabinet_documentTemplates;
   "gabinet/documents": typeof gabinet_documents;
   "gabinet/employees": typeof gabinet_employees;

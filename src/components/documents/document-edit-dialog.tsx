@@ -40,7 +40,9 @@ export function DocumentEditDialog({
   const [saving, setSaving] = useState(false);
 
   const updateDraft = useMutation(api.documentInstances.updateDraft);
-  const generateUploadUrl = useMutation(api.documentInstances.generateUploadUrl);
+  const generateUploadUrl = useMutation(
+    api.documentInstances.generateUploadUrl,
+  );
 
   const isFile = instance.type === "file";
 
@@ -81,7 +83,7 @@ export function DocumentEditDialog({
         args.fileSize = file.size || undefined;
       }
 
-      await updateDraft(args);
+      await updateDraft(args as typeof args & { id: typeof instance._id });
       toast.success("Dokument został zaktualizowany");
       onOpenChange(false);
     } catch (err: any) {
@@ -146,7 +148,11 @@ export function DocumentEditDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Anuluj
           </Button>
           <Button onClick={handleSave} disabled={saving || !title.trim()}>

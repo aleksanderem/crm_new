@@ -7,13 +7,23 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TemplateEditor } from "@/components/gabinet/template-editor";
-import { TEMPLATE_VARIABLE_CATEGORIES, TEMPLATE_VARIABLES } from "@/components/gabinet/variable-mention";
+import {
+  TEMPLATE_VARIABLE_CATEGORIES,
+  TEMPLATE_VARIABLES,
+} from "@/components/gabinet/variable-mention";
 import { useTranslation } from "react-i18next";
-import { Id } from "@cvx/_generated/dataModel";
 
-export const Route = createFileRoute("/_app/_auth/dashboard/_layout/gabinet/documents/templates/new")({
+export const Route = createFileRoute(
+  "/_app/_auth/dashboard/_layout/gabinet/documents/templates/new",
+)({
   component: NewTemplatePage,
 });
 
@@ -22,13 +32,21 @@ function NewTemplatePage() {
   const { organizationId } = useOrganization();
   const createTpl = useMutation(api.gabinet.documentTemplates.create);
   const [name, setName] = useState("");
-  const [type, setType] = useState<"consent" | "medical_record" | "prescription" | "referral" | "custom">("consent");
+  const [type, setType] = useState<
+    "consent" | "medical_record" | "prescription" | "referral" | "custom"
+  >("consent");
   const editorRef = useRef<any>(null);
 
   const handleSave = async () => {
     const html = editorRef.current?.getHTML?.() ?? "";
     if (!name || !html) return;
-    await createTpl({ organizationId, name, type, content: html, requiresSignature: false });
+    await createTpl({
+      organizationId,
+      name,
+      type,
+      content: html,
+      requiresSignature: false,
+    });
     // navigate back to templates list
     window.location.href = "/dashboard/gabinet/settings/document-templates";
   };
@@ -36,9 +54,23 @@ function NewTemplatePage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <PageHeader title={t("gabinet.documentTemplates.newTitle") || "Nowy szablon"} description={t("gabinet.documentTemplates.newDescription") || "Utwórz nowy szablon dokumentu."} />
+        <PageHeader
+          title={t("gabinet.documentTemplates.newTitle") || "Nowy szablon"}
+          description={
+            t("gabinet.documentTemplates.newDescription") ||
+            "Utwórz nowy szablon dokumentu."
+          }
+        />
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => (window.location.href = "/dashboard/gabinet/settings/document-templates")}>{t("common.cancel") || "Anuluj"}</Button>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              (window.location.href =
+                "/dashboard/gabinet/settings/document-templates")
+            }
+          >
+            {t("common.cancel") || "Anuluj"}
+          </Button>
           <Button onClick={handleSave}>{t("common.save") || "Zapisz"}</Button>
         </div>
       </div>
@@ -53,7 +85,9 @@ function NewTemplatePage() {
             <div>
               <Label>{t("gabinet.documents.type") || "Typ"}</Label>
               <Select value={type} onValueChange={(val) => setType(val as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="consent">consent</SelectItem>
                   <SelectItem value="medical_record">medical_record</SelectItem>
@@ -65,18 +99,26 @@ function NewTemplatePage() {
             </div>
 
             <div>
-              <Label>{t("gabinet.documentTemplates.variables") || "Zmienne"}</Label>
+              <Label>
+                {t("gabinet.documentTemplates.variables") || "Zmienne"}
+              </Label>
               <div className="space-y-2 max-h-[60vh] overflow-auto">
                 {TEMPLATE_VARIABLE_CATEGORIES.map((cat) => (
                   <div key={cat.id}>
-                    <div className="text-xs uppercase text-muted-foreground mb-2">{cat.label}</div>
+                    <div className="text-xs uppercase text-muted-foreground mb-2">
+                      {cat.label}
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {TEMPLATE_VARIABLES.filter((v) => v.category === cat.id).map((v) => (
+                      {TEMPLATE_VARIABLES.filter(
+                        (v) => v.category === cat.id,
+                      ).map((v) => (
                         <button
                           key={v.key}
                           type="button"
                           className="px-2 py-1 text-xs rounded border hover:bg-muted"
-                          onClick={() => editorRef.current?.insertVariable?.(v.key)}
+                          onClick={() =>
+                            editorRef.current?.insertVariable?.(v.key)
+                          }
                         >
                           @{v.key}
                         </button>
@@ -91,7 +133,12 @@ function NewTemplatePage() {
 
         <main className="col-span-9">
           <div className="rounded-lg border p-4">
-            <TemplateEditor ref={editorRef} value={""} onChange={() => {}} minHeightClassName="min-h-[520px]" />
+            <TemplateEditor
+              ref={editorRef}
+              value={""}
+              onChange={() => {}}
+              minHeightClassName="min-h-[520px]"
+            />
           </div>
         </main>
       </div>

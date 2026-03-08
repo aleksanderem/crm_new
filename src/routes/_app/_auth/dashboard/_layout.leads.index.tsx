@@ -48,32 +48,17 @@ import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
-export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/leads/"
-)({
+export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
 });
 
 type Lead = Doc<"leads">;
 
-const statusColors: Record<string, string> = {
-  open: "bg-blue-100 text-blue-700",
-  won: "bg-green-100 text-green-700",
-  lost: "bg-red-100 text-red-700",
-  archived: "bg-gray-100 text-gray-700",
-};
-
-const priorityColors: Record<string, string> = {
-  high: "bg-red-100 text-red-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  low: "bg-green-100 text-green-700",
-};
-
 const stageColors: Record<string, string> = {
-  "New": "bg-sky-100 text-sky-700",
-  "Qualified": "bg-violet-100 text-violet-700",
-  "Proposal": "bg-amber-100 text-amber-700",
-  "Negotiation": "bg-orange-100 text-orange-700",
+  New: "bg-sky-100 text-sky-700",
+  Qualified: "bg-violet-100 text-violet-700",
+  Proposal: "bg-amber-100 text-amber-700",
+  Negotiation: "bg-orange-100 text-orange-700",
   "Closed Won": "bg-green-100 text-green-700",
   "Closed Lost": "bg-red-100 text-red-700",
 };
@@ -119,32 +104,67 @@ function LeadsIndex() {
   useSidebarDispatch("exportCsv", () => handleExport());
   const [chartTimeRange, setChartTimeRange] = useState<TimeRange>("last30days");
 
-  const systemViews = useMemo((): SavedView[] => [
-    { id: "all", name: t('deals.views.all'), isSystem: true, isDefault: true },
-    { id: "my-deals", name: t('deals.views.myDeals'), isSystem: true, isDefault: false },
-    { id: "recently-assigned", name: t('deals.views.recentlyAssigned'), isSystem: true, isDefault: false },
-    { id: "this-month", name: t('deals.views.thisMonth'), isSystem: true, isDefault: false },
-    { id: "won", name: t('deals.views.won'), isSystem: true, isDefault: false },
-  ], [t]);
+  const systemViews = useMemo(
+    (): SavedView[] => [
+      {
+        id: "all",
+        name: t("deals.views.all"),
+        isSystem: true,
+        isDefault: true,
+      },
+      {
+        id: "my-deals",
+        name: t("deals.views.myDeals"),
+        isSystem: true,
+        isDefault: false,
+      },
+      {
+        id: "recently-assigned",
+        name: t("deals.views.recentlyAssigned"),
+        isSystem: true,
+        isDefault: false,
+      },
+      {
+        id: "this-month",
+        name: t("deals.views.thisMonth"),
+        isSystem: true,
+        isDefault: false,
+      },
+      {
+        id: "won",
+        name: t("deals.views.won"),
+        isSystem: true,
+        isDefault: false,
+      },
+    ],
+    [t],
+  );
 
-  const filterableFields = useMemo((): FieldDef[] => [
-    {
-      id: "status",
-      label: t('common.status'),
-      type: "select",
-      options: leadStatusOptions(t),
-    },
-    {
-      id: "priority",
-      label: t('common.priority'),
-      type: "select",
-      options: leadPriorityOptions(t),
-    },
-    { id: "source", label: t('common.source'), type: "text" },
-    { id: "value", label: t('deals.dealValue'), type: "number" },
-    { id: "expectedCloseDate", label: t('deals.expectedClose'), type: "date" },
-    { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+  const filterableFields = useMemo(
+    (): FieldDef[] => [
+      {
+        id: "status",
+        label: t("common.status"),
+        type: "select",
+        options: leadStatusOptions(t),
+      },
+      {
+        id: "priority",
+        label: t("common.priority"),
+        type: "select",
+        options: leadPriorityOptions(t),
+      },
+      { id: "source", label: t("common.source"), type: "text" },
+      { id: "value", label: t("deals.dealValue"), type: "number" },
+      {
+        id: "expectedCloseDate",
+        label: t("deals.expectedClose"),
+        type: "date",
+      },
+      { id: "createdAt", label: t("common.created"), type: "date" },
+    ],
+    [t],
+  );
 
   const {
     views,
@@ -166,10 +186,12 @@ function LeadsIndex() {
   });
 
   const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
+    convexQuery(api.pipelines.list, { organizationId }),
   );
 
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(
+    null,
+  );
   const activePipeline =
     pipelines?.find((p) => p._id === selectedPipelineId) ??
     pipelines?.find((p) => p.isDefault) ??
@@ -188,25 +210,26 @@ function LeadsIndex() {
     convexQuery(api.leads.list, {
       organizationId,
       paginationOpts: { numItems: 100, cursor: null },
-    })
+    }),
   );
 
   const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
+    convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
   const { data: companiesData } = useQuery(
     convexQuery(api.companies.list, {
       organizationId,
       paginationOpts: { numItems: 500, cursor: null },
-    })
+    }),
   );
 
   const userLookup = useMemo(() => {
     const map = new Map<string, string>();
     if (members) {
       for (const m of members) {
-        if (m.user) map.set(m.user._id, m.user.name ?? m.user.email ?? "Unknown");
+        if (m.user)
+          map.set(m.user._id, m.user.name ?? m.user.email ?? "Unknown");
       }
     }
     return map;
@@ -241,13 +264,20 @@ function LeadsIndex() {
     return applyFilters(data);
   }, [leads, activeViewId, applyFilters]);
 
-  const leadIds = useMemo(() => filteredLeads.map((l) => l._id as string), [filteredLeads]);
+  const leadIds = useMemo(
+    () => filteredLeads.map((l) => l._id as string),
+    [filteredLeads],
+  );
   const {
     definitions: cfDefs,
     columns: cfColumns,
     defaultColumnVisibility: cfDefaultVis,
     mergeCustomFieldValues,
-  } = useCustomFieldColumns<Lead>({ organizationId, entityType: "lead", entityIds: leadIds });
+  } = useCustomFieldColumns<Lead>({
+    organizationId,
+    entityType: "lead",
+    entityIds: leadIds,
+  });
   const tableData = mergeCustomFieldValues(filteredLeads);
 
   const stageChartData: MiniChartData[] = useMemo(() => {
@@ -257,17 +287,24 @@ function LeadsIndex() {
     for (const l of leads) {
       if (l.pipelineStageId) {
         const stage = stages.find((s) => s._id === l.pipelineStageId);
-        if (stage) countMap.set(stage.name, (countMap.get(stage.name) ?? 0) + 1);
+        if (stage)
+          countMap.set(stage.name, (countMap.get(stage.name) ?? 0) + 1);
       }
     }
-    return Array.from(countMap.entries()).map(([label, value]) => ({ label, value }));
+    return Array.from(countMap.entries()).map(([label, value]) => ({
+      label,
+      value,
+    }));
   }, [leads, stages]);
 
   const wonChartData: MiniChartData[] = useMemo(() => {
     const wonLeads = leads.filter((l) => l.status === "won" && l.wonAt);
     const dayMap = new Map<string, number>();
     for (const l of wonLeads) {
-      const day = new Date(l.wonAt!).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const day = new Date(l.wonAt!).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
       dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
     }
     return Array.from(dayMap.entries())
@@ -279,20 +316,30 @@ function LeadsIndex() {
     {
       accessorKey: "title",
       size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('deals.dealName')} />,
-      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("deals.dealName")} />
+      ),
+      cell: ({ getValue }) => (
+        <span className="font-medium">{getValue() as string}</span>
+      ),
     },
     {
       id: "stage",
       size: 150,
-      header: t('deals.stage'),
+      header: t("deals.stage"),
       cell: ({ row }) => {
         const stageId = row.original.pipelineStageId;
         if (!stageId || !stages) return "—";
         const stage = stages.find((s) => s._id === stageId);
         if (!stage) return "—";
         return (
-          <Badge variant="secondary" className={cn("text-xs", stageColors[stage.name] ?? "bg-gray-100 text-gray-700")}>
+          <Badge
+            variant="secondary"
+            className={cn(
+              "text-xs",
+              stageColors[stage.name] ?? "bg-gray-100 text-gray-700",
+            )}
+          >
             {stage.name}
           </Badge>
         );
@@ -301,14 +348,20 @@ function LeadsIndex() {
     {
       accessorKey: "value",
       size: 120,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.amount')} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.amount")} />
+      ),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.value ?? ""}
           config={{ type: "number", placeholder: "—" }}
           displayFormatter={(v) => (v ? formatCurrency(v) : "")}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, value: v || undefined });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              value: v || undefined,
+            });
           }}
         />
       ),
@@ -316,13 +369,17 @@ function LeadsIndex() {
     {
       accessorKey: "currency",
       size: 150,
-      header: t('deals.currency'),
+      header: t("deals.currency"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.currency ?? ""}
           config={{ type: "text", placeholder: "—" }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, currency: v || undefined });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              currency: v || undefined,
+            });
           }}
         />
       ),
@@ -330,7 +387,12 @@ function LeadsIndex() {
     {
       accessorKey: "expectedCloseDate",
       size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('deals.expectedClose')} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("deals.expectedClose")}
+        />
+      ),
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
         return v ? new Date(v).toLocaleDateString() : "—";
@@ -339,7 +401,7 @@ function LeadsIndex() {
     {
       accessorKey: "status",
       size: 150,
-      header: t('common.status'),
+      header: t("common.status"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.status}
@@ -348,16 +410,21 @@ function LeadsIndex() {
             options: leadStatusOptions(t),
           }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, status: v });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              status: v,
+            });
           }}
         />
       ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      filterFn: (row, id, value) =>
+        (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "priority",
       size: 150,
-      header: t('common.priority'),
+      header: t("common.priority"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.priority ?? ""}
@@ -366,32 +433,43 @@ function LeadsIndex() {
             options: leadPriorityOptions(t),
           }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, priority: v });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              priority: v,
+            });
           }}
         />
       ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      filterFn: (row, id, value) =>
+        (value as string[]).includes(row.getValue(id)),
     },
     {
       accessorKey: "source",
       size: 150,
-      header: t('common.source'),
+      header: t("common.source"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.source ?? ""}
           config={{ type: "text", placeholder: "—" }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, source: v || undefined });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              source: v || undefined,
+            });
           }}
         />
       ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      filterFn: (row, id, value) =>
+        (value as string[]).includes(row.getValue(id)),
     },
     {
       id: "company",
       size: 150,
-      header: t('deals.company'),
-      accessorFn: (row) => row.companyId ? companyLookup.get(row.companyId) ?? "" : "",
+      header: t("deals.company"),
+      accessorFn: (row) =>
+        row.companyId ? (companyLookup.get(row.companyId) ?? "") : "",
       cell: ({ row }) => {
         const companyId = row.original.companyId;
         if (!companyId) return "—";
@@ -401,8 +479,9 @@ function LeadsIndex() {
     {
       id: "assignedTo",
       size: 150,
-      header: t('deals.assignedTo'),
-      accessorFn: (row) => row.assignedTo ? userLookup.get(row.assignedTo) ?? "" : "",
+      header: t("deals.assignedTo"),
+      accessorFn: (row) =>
+        row.assignedTo ? (userLookup.get(row.assignedTo) ?? "") : "",
       cell: ({ row }) => {
         const userId = row.original.assignedTo;
         if (!userId) return "—";
@@ -412,7 +491,7 @@ function LeadsIndex() {
     {
       id: "tags",
       size: 200,
-      header: t('common.tags'),
+      header: t("common.tags"),
       accessorFn: (row) => (row.tags ?? []).join(", "),
       cell: ({ row }) => {
         const tags = row.original.tags;
@@ -420,7 +499,9 @@ function LeadsIndex() {
         return (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
             ))}
           </div>
         );
@@ -429,13 +510,17 @@ function LeadsIndex() {
     {
       accessorKey: "notes",
       size: 200,
-      header: t('common.notes'),
+      header: t("common.notes"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.notes ?? ""}
           config={{ type: "text", placeholder: "—" }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, notes: v || undefined });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              notes: v || undefined,
+            });
           }}
         />
       ),
@@ -443,7 +528,7 @@ function LeadsIndex() {
     {
       accessorKey: "wonAt",
       size: 130,
-      header: t('deals.wonDate'),
+      header: t("deals.wonDate"),
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
         return v ? new Date(v).toLocaleDateString() : "—";
@@ -452,7 +537,7 @@ function LeadsIndex() {
     {
       accessorKey: "lostAt",
       size: 130,
-      header: t('deals.lostDate'),
+      header: t("deals.lostDate"),
       cell: ({ getValue }) => {
         const v = getValue() as number | undefined;
         return v ? new Date(v).toLocaleDateString() : "—";
@@ -461,13 +546,17 @@ function LeadsIndex() {
     {
       accessorKey: "lostReason",
       size: 200,
-      header: t('deals.lostReason'),
+      header: t("deals.lostReason"),
       cell: ({ row }) => (
         <EditableCell
           value={row.original.lostReason ?? ""}
           config={{ type: "text", placeholder: "—" }}
           onChange={async (v) => {
-            await updateLead({ organizationId, leadId: row.original._id, lostReason: v || undefined });
+            await updateLead({
+              organizationId,
+              leadId: row.original._id,
+              lostReason: v || undefined,
+            });
           }}
         />
       ),
@@ -475,28 +564,37 @@ function LeadsIndex() {
     {
       id: "createdBy",
       size: 150,
-      header: t('common.createdBy'),
+      header: t("common.createdBy"),
       accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
       cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
     },
     {
       accessorKey: "createdAt",
       size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.created")} />
+      ),
+      cell: ({ getValue }) =>
+        new Date(getValue() as number).toLocaleDateString(),
     },
     {
       accessorKey: "updatedAt",
       size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t("common.updated")} />
+      ),
+      cell: ({ getValue }) =>
+        new Date(getValue() as number).toLocaleDateString(),
     },
   ];
 
-  const allColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
+  const allColumns = useMemo(
+    () => [...columns, ...cfColumns],
+    [columns, cfColumns],
+  );
   const effectiveColumnVisibility = useMemo(
     () => ({ ...cfDefaultVis, ...columnVisibility }),
-    [cfDefaultVis, columnVisibility]
+    [cfDefaultVis, columnVisibility],
   );
 
   const handleMarkWon = async (lead: Lead) => {
@@ -516,12 +614,20 @@ function LeadsIndex() {
       switch (action) {
         case "markWon":
           for (const row of selectedRows) {
-            await updateLead({ organizationId, leadId: row._id, status: "won" });
+            await updateLead({
+              organizationId,
+              leadId: row._id,
+              status: "won",
+            });
           }
           break;
         case "markLost":
           for (const row of selectedRows) {
-            await updateLead({ organizationId, leadId: row._id, status: "lost" });
+            await updateLead({
+              organizationId,
+              leadId: row._id,
+              status: "lost",
+            });
           }
           break;
         case "delete":
@@ -531,30 +637,39 @@ function LeadsIndex() {
           break;
       }
     },
-    [updateLead, removeLead, organizationId]
+    [updateLead, removeLead, organizationId],
   );
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title={t('deals.title')}
-        description={t('deals.description')}
+        title={t("deals.title")}
+        description={t("deals.description")}
         actions={
           <div className="flex items-center gap-2">
             {pipelines && pipelines.length > 0 && (
-              <Select value={activePipeline?._id ?? ""} onValueChange={setSelectedPipelineId}>
+              <Select
+                value={activePipeline?._id ?? ""}
+                onValueChange={setSelectedPipelineId}
+              >
                 <SelectTrigger className="h-9 w-auto">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {pipelines.map((p) => (
-                    <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+                    <SelectItem key={p._id} value={p._id}>
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
             <div className="flex rounded-md border">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none bg-accent">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-r-none bg-accent"
+              >
                 <TableIcon className="h-4 w-4" variant="stroke" />
               </Button>
               <Button
@@ -568,7 +683,7 @@ function LeadsIndex() {
             </div>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('deals.addDeal')}
+              {t("deals.addDeal")}
             </Button>
           </div>
         }
@@ -586,7 +701,7 @@ function LeadsIndex() {
 
       <MiniChartsRow
         leftChart={{
-          title: t('deals.byStage'),
+          title: t("deals.byStage"),
           data: stageChartData,
           chartType: "bar",
           timeRange: chartTimeRange,
@@ -594,7 +709,7 @@ function LeadsIndex() {
           isLoading,
         }}
         rightChart={{
-          title: t('deals.wonByDay'),
+          title: t("deals.wonByDay"),
           data: wonChartData,
           chartType: "line",
           timeRange: chartTimeRange,
@@ -606,14 +721,14 @@ function LeadsIndex() {
       <QuickActionBar
         actions={[
           {
-            label: t('quickActions.newLead'),
+            label: t("quickActions.newLead"),
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setCreateOpen(true),
             feature: "leads",
             action: "create",
           },
           {
-            label: t('quickActions.importCsv'),
+            label: t("quickActions.importCsv"),
             icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setImportOpen(true),
             feature: "leads",
@@ -626,12 +741,12 @@ function LeadsIndex() {
       {!isLoading && filteredLeads.length === 0 ? (
         <EmptyState
           icon={TrendingUp}
-          title={t('deals.emptyTitle')}
-          description={t('deals.emptyDescription')}
+          title={t("deals.emptyTitle")}
+          description={t("deals.emptyDescription")}
           action={
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('deals.addDeal')}
+              {t("deals.addDeal")}
             </Button>
           }
         />
@@ -643,52 +758,56 @@ function LeadsIndex() {
           frozenColumns={2}
           enableBulkSelect
           searchKey="title"
-          searchPlaceholder={t('deals.searchPlaceholder')}
+          searchPlaceholder={t("deals.searchPlaceholder")}
           isLoading={isLoading}
           filterableColumns={[
             {
               id: "status",
-              title: t('common.status'),
+              title: t("common.status"),
               options: [
-                { label: t('deals.filters.open'), value: "open" },
-                { label: t('deals.filters.won'), value: "won" },
-                { label: t('deals.filters.lost'), value: "lost" },
+                { label: t("deals.filters.open"), value: "open" },
+                { label: t("deals.filters.won"), value: "won" },
+                { label: t("deals.filters.lost"), value: "lost" },
               ],
             },
             {
               id: "priority",
-              title: t('common.priority'),
+              title: t("common.priority"),
               options: [
-                { label: t('deals.priority.high'), value: "high" },
-                { label: t('deals.priority.medium'), value: "medium" },
-                { label: t('deals.priority.low'), value: "low" },
+                { label: t("deals.priority.high"), value: "high" },
+                { label: t("deals.priority.medium"), value: "medium" },
+                { label: t("deals.priority.low"), value: "low" },
               ],
             },
           ]}
           bulkActions={[
-            { label: t('deals.markWon'), value: "markWon" },
-            { label: t('deals.markLost'), value: "markLost" },
-            { label: t('common.delete'), value: "delete", variant: "destructive" },
+            { label: t("deals.markWon"), value: "markWon" },
+            { label: t("deals.markLost"), value: "markLost" },
+            {
+              label: t("common.delete"),
+              value: "delete",
+              variant: "destructive",
+            },
           ]}
           onBulkAction={handleBulkAction}
           onRowClick={(row) => navigate({ to: `/dashboard/leads/${row._id}` })}
           rowActions={(_row) => [
             {
-              label: t('common.edit'),
+              label: t("common.edit"),
               onClick: (r) => navigate({ to: `/dashboard/leads/${r._id}` }),
             },
             {
-              label: t('deals.markWon'),
+              label: t("deals.markWon"),
               icon: <Trophy className="h-4 w-4" variant="stroke" />,
               onClick: handleMarkWon,
             },
             {
-              label: t('deals.markLost'),
+              label: t("deals.markLost"),
               icon: <XCircle className="h-4 w-4" variant="stroke" />,
               onClick: handleMarkLost,
             },
             {
-              label: t('common.delete'),
+              label: t("common.delete"),
               icon: <Trash2 className="h-4 w-4" variant="stroke" />,
               onClick: handleDelete,
             },
@@ -698,8 +817,16 @@ function LeadsIndex() {
           sorting={sorting}
           onSortingChange={setSorting}
           toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
+            {
+              label: t("csv.export"),
+              icon: <Download className="h-4 w-4" variant="stroke" />,
+              onClick: handleExport,
+            },
+            {
+              label: t("csv.import"),
+              icon: <Upload className="h-4 w-4" variant="stroke" />,
+              onClick: () => setImportOpen(true),
+            },
           ]}
         />
       )}
@@ -714,8 +841,8 @@ function LeadsIndex() {
       <SidePanel
         open={createOpen}
         onOpenChange={setCreateOpen}
-        title={t('deals.newDeal')}
-        description={t('deals.createDescription')}
+        title={t("deals.newDeal")}
+        description={t("deals.createDescription")}
       >
         <LeadForm
           pipelines={pipelines}
@@ -732,7 +859,11 @@ function LeadsIndex() {
                     .map(([key, value]) => {
                       const def = cfDefs.find((d) => d.fieldKey === key);
                       return def
-                        ? { fieldDefinitionId: def._id as Id<"customFieldDefinitions">, value }
+                        ? {
+                            fieldDefinitionId:
+                              def._id as Id<"customFieldDefinitions">,
+                            value,
+                          }
                         : null;
                     })
                     .filter((f): f is NonNullable<typeof f> => f !== null)

@@ -8,7 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/documents/signature-pad";
-import { FileSignature, Check, ShieldCheck, AlertTriangle } from "@/lib/ez-icons";
+import {
+  FileSignature,
+  Check,
+  ShieldCheck,
+  AlertTriangle,
+} from "@/lib/ez-icons";
 
 export const Route = createFileRoute("/sign/$token")({
   component: SigningPage,
@@ -18,10 +23,30 @@ function SigningPage() {
   const { token } = Route.useParams();
   const data = useQuery(api.signatureRequests.getByToken, { token });
 
-  if (data === undefined) return <PageShell><Loading /></PageShell>;
-  if (data === null) return <PageShell><ErrorState message="Nie znaleziono dokumentu." /></PageShell>;
-  if (data.expired) return <PageShell><ErrorState message="Ten link do podpisu wygasł lub został już wykorzystany." /></PageShell>;
-  if (!data.request || !data.document) return <PageShell><ErrorState message="Wystąpił błąd." /></PageShell>;
+  if (data === undefined)
+    return (
+      <PageShell>
+        <Loading />
+      </PageShell>
+    );
+  if (data === null)
+    return (
+      <PageShell>
+        <ErrorState message="Nie znaleziono dokumentu." />
+      </PageShell>
+    );
+  if (data.expired)
+    return (
+      <PageShell>
+        <ErrorState message="Ten link do podpisu wygasł lub został już wykorzystany." />
+      </PageShell>
+    );
+  if (!data.request || !data.document)
+    return (
+      <PageShell>
+        <ErrorState message="Wystąpił błąd." />
+      </PageShell>
+    );
 
   return (
     <PageShell>
@@ -42,9 +67,7 @@ function SigningPage() {
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        {children}
-      </div>
+      <div className="mx-auto max-w-3xl px-4 py-8">{children}</div>
     </div>
   );
 }
@@ -53,7 +76,9 @@ function Loading() {
   return (
     <Card>
       <CardContent className="flex items-center justify-center py-16">
-        <p className="text-muted-foreground animate-pulse">Ładowanie dokumentu...</p>
+        <p className="text-muted-foreground animate-pulse">
+          Ładowanie dokumentu...
+        </p>
       </CardContent>
     </Card>
   );
@@ -86,18 +111,25 @@ interface SigningFlowProps {
   };
   document: {
     title: string;
-    renderedContent: string;
+    renderedContent: string | undefined;
     status: string;
   };
   organizationName?: string;
 }
 
-function SigningFlow({ token, request, document, organizationName }: SigningFlowProps) {
+function SigningFlow({
+  token,
+  request,
+  document,
+  organizationName,
+}: SigningFlowProps) {
   const signExternal = useMutation(api.signatureRequests.signExternal);
   const verifyOtp = useMutation(api.signatureRequests.verifyOtp);
   const requestOtp = useAction(api.sms.requestOtp);
 
-  const [step, setStep] = useState<"review" | "verify" | "sign" | "done">("review");
+  const [step, setStep] = useState<"review" | "verify" | "sign" | "done">(
+    "review",
+  );
   const [acknowledged, setAcknowledged] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -106,7 +138,9 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
   const [loading, setLoading] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
 
-  const needsOtp = request.verificationMethod === "sms" || request.verificationMethod === "email_otp";
+  const needsOtp =
+    request.verificationMethod === "sms" ||
+    request.verificationMethod === "email_otp";
 
   const handleSendOtp = async () => {
     setError(null);
@@ -135,18 +169,21 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
     }
   };
 
-  const handleSign = useCallback(async (signatureData: string) => {
-    setError(null);
-    setLoading(true);
-    try {
-      await signExternal({ token, signatureData });
-      setStep("done");
-    } catch (err: any) {
-      setError(err.message ?? "Nie udało się podpisać dokumentu");
-    } finally {
-      setLoading(false);
-    }
-  }, [signExternal, token]);
+  const handleSign = useCallback(
+    async (signatureData: string) => {
+      setError(null);
+      setLoading(true);
+      try {
+        await signExternal({ token, signatureData });
+        setStep("done");
+      } catch (err: any) {
+        setError(err.message ?? "Nie udało się podpisać dokumentu");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [signExternal, token],
+  );
 
   const handleClickSign = async () => {
     await handleSign("acknowledged");
@@ -175,14 +212,19 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
         <CardHeader>
           <div className="space-y-2">
             {organizationName && (
-              <p className="text-sm text-muted-foreground">{organizationName}</p>
+              <p className="text-sm text-muted-foreground">
+                {organizationName}
+              </p>
             )}
             <CardTitle className="text-xl">
               <FileSignature className="mr-2 inline h-5 w-5" />
               {document.title}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Podpisujesz jako: <span className="font-medium text-foreground">{request.signerName ?? request.signerEmail}</span>
+              Podpisujesz jako:{" "}
+              <span className="font-medium text-foreground">
+                {request.signerName ?? request.signerEmail}
+              </span>
             </p>
           </div>
         </CardHeader>
@@ -193,7 +235,7 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
         <CardContent className="pt-6">
           <div
             className="prose prose-sm max-w-none rounded-lg border bg-white p-6 leading-relaxed dark:bg-muted/30"
-            dangerouslySetInnerHTML={{ __html: document.renderedContent }}
+            dangerouslySetInnerHTML={{ __html: document.renderedContent ?? "" }}
           />
         </CardContent>
       </Card>
@@ -241,11 +283,20 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
                       maxLength={6}
                       className="w-32 text-center font-mono text-lg tracking-widest"
                     />
-                    <Button onClick={handleVerifyOtp} disabled={loading || otpCode.length !== 6}>
+                    <Button
+                      onClick={handleVerifyOtp}
+                      disabled={loading || otpCode.length !== 6}
+                    >
                       {loading ? "Weryfikacja..." : "Weryfikuj"}
                     </Button>
                   </div>
-                  <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSendOtp} disabled={loading}>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto"
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                  >
                     Wyślij ponownie
                   </Button>
                 </div>
@@ -264,14 +315,18 @@ function SigningFlow({ token, request, document, organizationName }: SigningFlow
                   className="mt-0.5"
                 />
                 <span className="text-sm">
-                  Potwierdzam zapoznanie się z treścią dokumentu i wyrażam zgodę na jego podpisanie.
+                  Potwierdzam zapoznanie się z treścią dokumentu i wyrażam zgodę
+                  na jego podpisanie.
                 </span>
               </label>
 
               {/* Signature pad toggle */}
               {!showSignaturePad ? (
                 <div className="flex gap-2">
-                  <Button onClick={handleClickSign} disabled={!acknowledged || loading}>
+                  <Button
+                    onClick={handleClickSign}
+                    disabled={!acknowledged || loading}
+                  >
                     {loading ? "Podpisywanie..." : "Podpisz dokument"}
                   </Button>
                   <Button

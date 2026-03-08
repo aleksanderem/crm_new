@@ -76,19 +76,19 @@ function renderSpacerBlock(content: SpacerContent): string {
 function renderBlock(block: EmailBlock): string {
   switch (block.type) {
     case "text":
-      return renderTextBlock(block.content as TextContent);
+      return renderTextBlock(block.content as unknown as TextContent);
     case "heading":
-      return renderHeadingBlock(block.content as HeadingContent);
+      return renderHeadingBlock(block.content as unknown as HeadingContent);
     case "image":
-      return renderImageBlock(block.content as ImageContent);
+      return renderImageBlock(block.content as unknown as ImageContent);
     case "button":
-      return renderButtonBlock(block.content as ButtonContent);
+      return renderButtonBlock(block.content as unknown as ButtonContent);
     case "divider":
-      return renderDividerBlock(block.content as DividerContent);
+      return renderDividerBlock(block.content as unknown as DividerContent);
     case "columns":
-      return renderColumnsBlock(block.content as ColumnsContent);
+      return renderColumnsBlock(block.content as unknown as ColumnsContent);
     case "spacer":
-      return renderSpacerBlock(block.content as SpacerContent);
+      return renderSpacerBlock(block.content as unknown as SpacerContent);
     default:
       return "";
   }
@@ -105,7 +105,10 @@ export interface EmailLayoutData {
   footerText?: string;
 }
 
-export function blocksToHtml(blocks: EmailBlock[], layout?: EmailLayoutData): string {
+export function blocksToHtml(
+  blocks: EmailBlock[],
+  layout?: EmailLayoutData,
+): string {
   const bg = layout?.backgroundColor ?? "transparent";
   const contentBg = layout?.contentBackgroundColor ?? "transparent";
   const header = layout?.headerBlocks?.map(renderBlock).join("\n") ?? "";

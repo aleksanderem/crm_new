@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
-import { useTranslation } from "react-i18next";
+
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -34,7 +34,7 @@ import type { Doc } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/documents/"
+  "/_app/_auth/dashboard/_layout/documents/",
 )({
   component: DocumentsIndex,
 });
@@ -42,7 +42,10 @@ export const Route = createFileRoute(
 type DocumentInstance = Doc<"documentInstances">;
 type DocumentStatus = DocumentInstance["status"];
 
-const STATUS_VARIANT: Record<DocumentStatus, "default" | "secondary" | "outline" | "destructive"> = {
+const STATUS_VARIANT: Record<
+  DocumentStatus,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
   draft: "secondary",
   pending_review: "outline",
   approved: "default",
@@ -61,7 +64,6 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
 };
 
 function DocumentsIndex() {
-  const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
 
@@ -139,8 +141,12 @@ function DocumentsIndex() {
         cell: ({ row }) => {
           const cat = row.original.category;
           return cat ? (
-            <Badge variant="outline" className="capitalize">{cat}</Badge>
-          ) : "—";
+            <Badge variant="outline" className="capitalize">
+              {cat}
+            </Badge>
+          ) : (
+            "—"
+          );
         },
       },
       {
@@ -182,9 +188,11 @@ function DocumentsIndex() {
               <Upload className="mr-2 h-4 w-4" />
               Prześlij plik
             </Button>
-            <Button variant="outline" onClick={() => setTemplateDialogOpen(true)}>
-              <FileSignature className="mr-2 h-4 w-4" />
-              Z szablonu
+            <Button
+              variant="outline"
+              onClick={() => setTemplateDialogOpen(true)}
+            >
+              <FileSignature className="mr-2 h-4 w-4" />Z szablonu
             </Button>
           </div>
         }
@@ -256,7 +264,9 @@ function UploadDocumentDialog({
   const [file, setFile] = useState<globalThis.File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const generateUploadUrl = useMutation(api.documentInstances.generateUploadUrl);
+  const generateUploadUrl = useMutation(
+    api.documentInstances.generateUploadUrl,
+  );
   const createFromFile = useMutation(api.documentInstances.createFromFile);
 
   const resetForm = () => {
@@ -308,7 +318,9 @@ function UploadDocumentDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Tytuł <span className="text-destructive">*</span></Label>
+            <Label>
+              Tytuł <span className="text-destructive">*</span>
+            </Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -333,7 +345,9 @@ function UploadDocumentDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Plik <span className="text-destructive">*</span></Label>
+            <Label>
+              Plik <span className="text-destructive">*</span>
+            </Label>
             <Input
               type="file"
               onChange={(e) => {
@@ -353,10 +367,17 @@ function UploadDocumentDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={uploading}
+          >
             Anuluj
           </Button>
-          <Button onClick={handleSubmit} disabled={uploading || !file || !title.trim()}>
+          <Button
+            onClick={handleSubmit}
+            disabled={uploading || !file || !title.trim()}
+          >
             {uploading ? "Przesyłanie..." : "Prześlij"}
           </Button>
         </DialogFooter>

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,7 +114,6 @@ function statusBadgeVariant(status: Status) {
 
 function EditDocumentTemplatePage() {
   const { id } = Route.useParams();
-  const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const editorRef = useRef<DocumentTemplateEditorHandle>(null);
 
@@ -553,9 +551,7 @@ function EditDocumentTemplatePage() {
                 <SelectContent>
                   <SelectItem value="all">Wszyscy</SelectItem>
                   <SelectItem value="roles">Wedlug rol</SelectItem>
-                  <SelectItem value="users">
-                    Wybrani uzytkownicy
-                  </SelectItem>
+                  <SelectItem value="users">Wybrani uzytkownicy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -573,14 +569,9 @@ function EditDocumentTemplatePage() {
                 <Checkbox
                   id="requiresSignatureEdit"
                   checked={requiresSignature}
-                  onCheckedChange={(v) =>
-                    setRequiresSignature(v === true)
-                  }
+                  onCheckedChange={(v) => setRequiresSignature(v === true)}
                 />
-                <Label
-                  htmlFor="requiresSignatureEdit"
-                  className="font-normal"
-                >
+                <Label htmlFor="requiresSignatureEdit" className="font-normal">
                   Wymaga podpisu
                 </Label>
               </div>
@@ -588,10 +579,7 @@ function EditDocumentTemplatePage() {
                 <div className="space-y-2 pl-6">
                   <Label className="text-xs">Sloty podpisow</Label>
                   {signatureSlots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      className="flex items-center gap-2"
-                    >
+                    <div key={slot.id} className="flex items-center gap-2">
                       <Select
                         value={slot.role}
                         onValueChange={(v) =>
@@ -605,10 +593,7 @@ function EditDocumentTemplatePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {SIGNATURE_ROLE_OPTIONS.map((opt) => (
-                            <SelectItem
-                              key={opt.value}
-                              value={opt.value}
-                            >
+                            <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
                           ))}

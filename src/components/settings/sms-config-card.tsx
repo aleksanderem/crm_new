@@ -3,7 +3,13 @@ import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Check } from "@/lib/ez-icons";
+import { Phone } from "@/lib/ez-icons";
 import { toast } from "sonner";
 
 interface SmsConfigCardProps {
@@ -91,7 +97,10 @@ export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label>Provider</Label>
-          <Select value={provider} onValueChange={(v) => setProvider(v as "smsapi" | "twilio")}>
+          <Select
+            value={provider}
+            onValueChange={(v) => setProvider(v as "smsapi" | "twilio")}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -106,7 +115,9 @@ export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
           <Label>
             Token API
             {config?.hasToken && (
-              <span className="ml-2 text-xs text-muted-foreground">(zapisany — wpisz nowy aby zmienić)</span>
+              <span className="ml-2 text-xs text-muted-foreground">
+                (zapisany — wpisz nowy aby zmienić)
+              </span>
             )}
           </Label>
           <Input
@@ -122,14 +133,18 @@ export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
             <Label>
               API Secret (Auth Token)
               {config?.hasSecret && (
-                <span className="ml-2 text-xs text-muted-foreground">(zapisany)</span>
+                <span className="ml-2 text-xs text-muted-foreground">
+                  (zapisany)
+                </span>
               )}
             </Label>
             <Input
               type="password"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
-              placeholder={config?.hasSecret ? "••••••••••••" : "Wklej Auth Token"}
+              placeholder={
+                config?.hasSecret ? "••••••••••••" : "Wklej Auth Token"
+              }
             />
           </div>
         )}

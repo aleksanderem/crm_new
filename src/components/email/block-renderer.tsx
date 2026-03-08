@@ -34,8 +34,10 @@ export function BlockRenderer({
     case "text":
       return (
         <TextBlock
-          content={block.content as TextContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as TextContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
           variableSources={variableSources}
         />
@@ -43,40 +45,50 @@ export function BlockRenderer({
     case "heading":
       return (
         <HeadingBlock
-          content={block.content as HeadingContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as HeadingContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
         />
       );
     case "image":
       return (
         <ImageBlock
-          content={block.content as ImageContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as ImageContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
         />
       );
     case "button":
       return (
         <ButtonBlock
-          content={block.content as ButtonContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as ButtonContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
         />
       );
     case "divider":
       return (
         <DividerBlock
-          content={block.content as DividerContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as DividerContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
         />
       );
     case "columns":
       return (
         <ColumnsBlock
-          content={block.content as ColumnsContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as ColumnsContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
           variableSources={variableSources}
         />
@@ -84,8 +96,10 @@ export function BlockRenderer({
     case "spacer":
       return (
         <SpacerBlock
-          content={block.content as SpacerContent}
-          onChange={(c) => onContentChange(c as Record<string, unknown>)}
+          content={block.content as unknown as SpacerContent}
+          onChange={(c) =>
+            onContentChange(c as unknown as Record<string, unknown>)
+          }
           isSelected={isSelected}
         />
       );

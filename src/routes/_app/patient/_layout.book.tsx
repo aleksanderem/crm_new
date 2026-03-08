@@ -4,9 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, ArrowRight, CalendarCheck, Check } from "@/lib/ez-icons";
+import { ArrowLeft, ArrowRight, Check } from "@/lib/ez-icons";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -22,7 +21,7 @@ const STEPS: Step[] = ["treatment", "employee", "date", "time", "confirm"];
 
 function usePortalToken() {
   return typeof window !== "undefined"
-    ? localStorage.getItem("patientPortalToken") ?? ""
+    ? (localStorage.getItem("patientPortalToken") ?? "")
     : "";
 }
 
@@ -55,32 +54,32 @@ function PatientBooking() {
     convexQuery(api.gabinet.patientPortal.getBookableTreatments, { tokenHash }),
   );
 
-  const { data: employees } = useQuery(
-    convexQuery(
-      api.gabinet.patientPortal.getQualifiedEmployees,
-      selectedTreatment
-        ? { tokenHash, treatmentId: selectedTreatment._id }
-        : "skip",
-    ),
-  );
+  const { data: employees } = useQuery({
+    ...convexQuery(api.gabinet.patientPortal.getQualifiedEmployees, {
+      tokenHash,
+      treatmentId: selectedTreatment?._id ?? ("" as Id<"gabinetTreatments">),
+    }),
+    enabled: !!selectedTreatment,
+  });
 
   const dateStr = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : "";
 
-  const { data: slots } = useQuery(
-    convexQuery(
-      api.gabinet.patientPortal.getPublicAvailableSlots,
-      selectedEmployee && selectedDate && selectedTreatment
-        ? {
-            tokenHash,
-            employeeId: selectedEmployee.userId,
-            date: dateStr,
-            duration: selectedTreatment.duration,
-          }
-        : "skip",
-    ),
+  const slotsEnabled = !!(
+    selectedEmployee &&
+    selectedDate &&
+    selectedTreatment
   );
+  const { data: slots } = useQuery({
+    ...convexQuery(api.gabinet.patientPortal.getPublicAvailableSlots, {
+      tokenHash,
+      employeeId: selectedEmployee?.userId ?? ("" as Id<"users">),
+      date: dateStr || "1970-01-01",
+      duration: selectedTreatment?.duration ?? 0,
+    }),
+    enabled: slotsEnabled,
+  });
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -103,7 +102,9 @@ function PatientBooking() {
     }
   };
 
-  const handleSelectTreatment = (treatment: NonNullable<typeof treatments>[number]) => {
+  const handleSelectTreatment = (
+    treatment: NonNullable<typeof treatments>[number],
+  ) => {
     setSelectedTreatment(treatment);
     setSelectedEmployee(null);
     setAnyEmployee(false);
@@ -112,7 +113,9 @@ function PatientBooking() {
     setStep("employee");
   };
 
-  const handleSelectEmployee = (employee: NonNullable<typeof employees>[number]) => {
+  const handleSelectEmployee = (
+    employee: NonNullable<typeof employees>[number],
+  ) => {
     setSelectedEmployee({
       userId: employee.userId,
       firstName: employee.firstName,
@@ -179,7 +182,7 @@ function PatientBooking() {
   today.setHours(0, 0, 0, 0);
 
   const groupedTreatments = useMemo(() => {
-    if (!treatments) return new Map<string, typeof treatments>();
+    if (!treatments) return new Map<string, NonNullable<typeof treatments>>();
     const map = new Map<string, NonNullable<typeof treatments>>();
     for (const t of treatments) {
       const cat = t.category ?? "Inne";
@@ -194,7 +197,12 @@ function PatientBooking() {
       {/* Header with back button */}
       <div className="flex items-center gap-3">
         {stepIndex > 0 ? (
-          <Button variant="ghost" size="icon" onClick={goBack} className="h-8 w-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goBack}
+            className="h-8 w-8"
+          >
             <ArrowLeft className="h-4 w-4" variant="stroke" />
           </Button>
         ) : (
@@ -207,7 +215,9 @@ function PatientBooking() {
             <ArrowLeft className="h-4 w-4" variant="stroke" />
           </Button>
         )}
-        <h1 className="text-xl font-semibold">{t("patientPortal.booking.title")}</h1>
+        <h1 className="text-xl font-semibold">
+          {t("patientPortal.booking.title")}
+        </h1>
       </div>
 
       {/* Step indicators */}
@@ -252,7 +262,9 @@ function PatientBooking() {
                         className="flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 active:bg-muted"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{treatment.name}</p>
+                          <p className="text-sm font-medium">
+                            {treatment.name}
+                          </p>
                           {treatment.description && (
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {treatment.description}
@@ -266,7 +278,10 @@ function PatientBooking() {
                           <span className="text-sm font-semibold">
                             {treatment.price} {treatment.currency}
                           </span>
-                          <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground" variant="stroke" />
+                          <ArrowRight
+                            className="mt-1 h-4 w-4 text-muted-foreground"
+                            variant="stroke"
+                          />
                         </div>
                       </button>
                     ))}
@@ -290,12 +305,17 @@ function PatientBooking() {
             className="flex w-full items-center justify-between rounded-lg border border-dashed p-3 text-left transition-colors hover:bg-muted/50 active:bg-muted"
           >
             <div>
-              <p className="text-sm font-medium">{t("patientPortal.booking.anyEmployee")}</p>
+              <p className="text-sm font-medium">
+                {t("patientPortal.booking.anyEmployee")}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {t("patientPortal.booking.anyEmployeeDesc")}
               </p>
             </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" variant="stroke" />
+            <ArrowRight
+              className="h-4 w-4 text-muted-foreground"
+              variant="stroke"
+            />
           </button>
           {employees?.map((emp) => (
             <button
@@ -309,10 +329,15 @@ function PatientBooking() {
                   {emp.firstName} {emp.lastName}
                 </p>
                 {emp.specialization && (
-                  <p className="text-xs text-muted-foreground">{emp.specialization}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {emp.specialization}
+                  </p>
                 )}
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" variant="stroke" />
+              <ArrowRight
+                className="h-4 w-4 text-muted-foreground"
+                variant="stroke"
+              />
             </button>
           ))}
         </div>
@@ -372,79 +397,86 @@ function PatientBooking() {
       )}
 
       {/* Step: Confirm */}
-      {step === "confirm" && selectedTreatment && selectedDate && selectedTime && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {t("patientPortal.booking.confirmDetails")}
-          </p>
-          <div className="space-y-3 rounded-lg border p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.treatment")}
-              </span>
-              <span className="text-sm font-medium">{selectedTreatment.name}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.specialist")}
-              </span>
-              <span className="text-sm font-medium">
-                {anyEmployee
-                  ? t("patientPortal.booking.anyEmployee")
-                  : `${selectedEmployee?.firstName} ${selectedEmployee?.lastName}`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.date")}
-              </span>
-              <span className="text-sm font-medium">{dateStr}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.time")}
-              </span>
-              <span className="text-sm font-medium">{selectedTime}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.duration")}
-              </span>
-              <span className="text-sm font-medium">{selectedTreatment.duration} min</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {t("patientPortal.booking.price")}
-              </span>
-              <span className="text-sm font-semibold">
-                {selectedTreatment.price} {selectedTreatment.currency}
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950">
-            <p className="text-xs text-blue-800 dark:text-blue-200">
-              {t("patientPortal.booking.pendingNote")}
+      {step === "confirm" &&
+        selectedTreatment &&
+        selectedDate &&
+        selectedTime && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("patientPortal.booking.confirmDetails")}
             </p>
-          </div>
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.treatment")}
+                </span>
+                <span className="text-sm font-medium">
+                  {selectedTreatment.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.specialist")}
+                </span>
+                <span className="text-sm font-medium">
+                  {anyEmployee
+                    ? t("patientPortal.booking.anyEmployee")
+                    : `${selectedEmployee?.firstName} ${selectedEmployee?.lastName}`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.date")}
+                </span>
+                <span className="text-sm font-medium">{dateStr}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.time")}
+                </span>
+                <span className="text-sm font-medium">{selectedTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.duration")}
+                </span>
+                <span className="text-sm font-medium">
+                  {selectedTreatment.duration} min
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {t("patientPortal.booking.price")}
+                </span>
+                <span className="text-sm font-semibold">
+                  {selectedTreatment.price} {selectedTreatment.currency}
+                </span>
+              </div>
+            </div>
 
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              t("patientPortal.booking.submitting")
-            ) : (
-              <>
-                <Check className="mr-2 h-4 w-4" variant="stroke" />
-                {t("patientPortal.booking.submit")}
-              </>
-            )}
-          </Button>
-        </div>
-      )}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                {t("patientPortal.booking.pendingNote")}
+              </p>
+            </div>
+
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                t("patientPortal.booking.submitting")
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("patientPortal.booking.submit")}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
     </div>
   );
 }

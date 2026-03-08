@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Id } from "@cvx/_generated/dataModel";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "@/lib/ez-icons";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/documents/instance/$instanceId"
+  "/_app/_auth/dashboard/_layout/documents/instance/$instanceId",
 )({
   component: DocumentInstancePage,
 });

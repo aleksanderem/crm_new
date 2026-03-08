@@ -40,7 +40,7 @@ interface DocumentInstanceViewProps {
 
 export function DocumentInstanceView({
   instanceId,
-  onClose,
+  onClose: _onClose,
   onStatusChange,
 }: DocumentInstanceViewProps) {
   const [signingSlotId, setSigningSlotId] = useState<string | null>(null);
@@ -53,7 +53,10 @@ export function DocumentInstanceView({
   const updateStatus = useMutation(api.documentInstances.updateStatus);
   const signMutation = useMutation(api.documentInstances.sign);
 
-  const handleStatusChange = async (status: DocumentStatus, assignedReviewerId?: string) => {
+  const handleStatusChange = async (
+    status: DocumentStatus,
+    assignedReviewerId?: string,
+  ) => {
     try {
       await updateStatus({
         id: instanceId,
@@ -63,7 +66,8 @@ export function DocumentInstanceView({
       toast.success("Status dokumentu został zaktualizowany");
       onStatusChange?.();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Nie udało się zmienić statusu";
+      const message =
+        e instanceof Error ? e.message : "Nie udało się zmienić statusu";
       toast.error(message);
     }
   };
@@ -80,7 +84,8 @@ export function DocumentInstanceView({
       setSigningSlotId(null);
       onStatusChange?.();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Nie udało się złożyć podpisu";
+      const message =
+        e instanceof Error ? e.message : "Nie udało się złożyć podpisu";
       toast.error(message);
     }
   };
@@ -99,7 +104,9 @@ export function DocumentInstanceView({
   if (!instance) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-        <p className="text-sm text-muted-foreground">Dokument nie został znaleziony.</p>
+        <p className="text-sm text-muted-foreground">
+          Dokument nie został znaleziony.
+        </p>
       </div>
     );
   }
@@ -121,7 +128,10 @@ export function DocumentInstanceView({
       />
 
       {/* Signature dialog */}
-      <Dialog open={!!signingSlotId} onOpenChange={(open) => !open && setSigningSlotId(null)}>
+      <Dialog
+        open={!!signingSlotId}
+        onOpenChange={(open) => !open && setSigningSlotId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Złóż podpis</DialogTitle>

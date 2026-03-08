@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import {
@@ -60,7 +60,7 @@ export function SendForSigningDialog({
   open,
   onOpenChange,
   instanceId,
-  organizationId,
+  organizationId: _organizationId,
   signatures,
   onSent,
 }: SendForSigningDialogProps) {
@@ -68,7 +68,9 @@ export function SendForSigningDialog({
 
   // Build initial signer configs from slots (or start with one empty signer)
   const [signers, setSigners] = useState<SignerConfig[]>(() => {
-    const unsigned = signatures.filter((s) => !s.signatureData);
+    const unsigned = signatures.filter(
+      (s) => !(s as unknown as Record<string, unknown>).signatureData,
+    );
     if (unsigned.length > 0) {
       return unsigned.map((slot) => ({
         slotId: slot.slotId,
@@ -80,14 +82,16 @@ export function SendForSigningDialog({
       }));
     }
     // No pre-defined slots — start with one empty signer
-    return [{
-      slotId: crypto.randomUUID(),
-      signerType: "external" as const,
-      signerName: "",
-      signerEmail: "",
-      signerPhone: "",
-      verificationMethod: "click" as const,
-    }];
+    return [
+      {
+        slotId: crypto.randomUUID(),
+        signerType: "external" as const,
+        signerName: "",
+        signerEmail: "",
+        signerPhone: "",
+        verificationMethod: "click" as const,
+      },
+    ];
   });
 
   const [sending, setSending] = useState(false);
@@ -129,7 +133,9 @@ export function SendForSigningDialog({
 
     // Validate
     for (const signer of signers) {
-      const label = signatures.find((s) => s.slotId === signer.slotId)?.slotLabel ?? (signer.signerName || "Sygnatariusz");
+      const label =
+        signatures.find((s) => s.slotId === signer.slotId)?.slotLabel ??
+        (signer.signerName || "Sygnatariusz");
       if (signer.signerType === "external") {
         if (!signer.signerEmail) {
           setError(`Email wymagany dla "${label}"`);
@@ -153,7 +159,8 @@ export function SendForSigningDialog({
         signers: signers.map((s) => ({
           slotId: s.slotId,
           signerType: s.signerType,
-          signerUserId: s.signerType === "internal" ? s.signerUserId : undefined,
+          signerUserId:
+            s.signerType === "internal" ? s.signerUserId : undefined,
           signerEmail: s.signerEmail || undefined,
           signerName: s.signerName || undefined,
           signerPhone: s.signerPhone || undefined,
@@ -183,9 +190,15 @@ export function SendForSigningDialog({
           {signers.map((signer, index) => {
             const slot = signatures.find((s) => s.slotId === signer.slotId);
             return (
-              <div key={signer.slotId} className="space-y-3 rounded-lg border p-4">
+              <div
+                key={signer.slotId}
+                className="space-y-3 rounded-lg border p-4"
+              >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{slot?.slotLabel ?? (signer.signerName || `Sygnatariusz ${index + 1}`)}</p>
+                  <p className="text-sm font-medium">
+                    {slot?.slotLabel ??
+                      (signer.signerName || `Sygnatariusz ${index + 1}`)}
+                  </p>
                   <div className="flex items-center gap-2">
                     {!slot && signers.length > 1 && (
                       <Button
@@ -197,23 +210,27 @@ export function SendForSigningDialog({
                         Usuń
                       </Button>
                     )}
-                  <Badge variant="outline">
-                    {signer.verificationMethod === "click"
-                      ? "Kliknięcie"
-                      : signer.verificationMethod === "sms"
-                        ? "SMS OTP"
-                        : "Email OTP"}
-                  </Badge>
+                    <Badge variant="outline">
+                      {signer.verificationMethod === "click"
+                        ? "Kliknięcie"
+                        : signer.verificationMethod === "sms"
+                          ? "SMS OTP"
+                          : "Email OTP"}
+                    </Badge>
                   </div>
                 </div>
 
                 {/* Signer type */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Typ sygnatariusza</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Typ sygnatariusza
+                  </Label>
                   <Select
                     value={signer.signerType}
                     onValueChange={(v) =>
-                      updateSigner(index, { signerType: v as "internal" | "external" })
+                      updateSigner(index, {
+                        signerType: v as "internal" | "external",
+                      })
                     }
                   >
                     <SelectTrigger className="h-9">
@@ -238,20 +255,28 @@ export function SendForSigningDialog({
                 {signer.signerType === "external" && (
                   <>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Imię i nazwisko</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Imię i nazwisko
+                      </Label>
                       <Input
                         value={signer.signerName}
-                        onChange={(e) => updateSigner(index, { signerName: e.target.value })}
+                        onChange={(e) =>
+                          updateSigner(index, { signerName: e.target.value })
+                        }
                         placeholder="Jan Kowalski"
                         className="h-9"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">E-mail</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        E-mail
+                      </Label>
                       <Input
                         type="email"
                         value={signer.signerEmail}
-                        onChange={(e) => updateSigner(index, { signerEmail: e.target.value })}
+                        onChange={(e) =>
+                          updateSigner(index, { signerEmail: e.target.value })
+                        }
                         placeholder="jan@example.com"
                         className="h-9"
                       />
@@ -269,7 +294,9 @@ export function SendForSigningDialog({
                     <Input
                       type="tel"
                       value={signer.signerPhone}
-                      onChange={(e) => updateSigner(index, { signerPhone: e.target.value })}
+                      onChange={(e) =>
+                        updateSigner(index, { signerPhone: e.target.value })
+                      }
                       placeholder="+48 600 123 456"
                       className="h-9"
                     />
@@ -278,7 +305,9 @@ export function SendForSigningDialog({
 
                 {/* Verification method */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Metoda weryfikacji</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Metoda weryfikacji
+                  </Label>
                   <Select
                     value={signer.verificationMethod}
                     onValueChange={(v) =>
@@ -291,7 +320,9 @@ export function SendForSigningDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="click">Kliknięcie (oznajmienie)</SelectItem>
+                      <SelectItem value="click">
+                        Kliknięcie (oznajmienie)
+                      </SelectItem>
                       <SelectItem value="sms">SMS OTP</SelectItem>
                       <SelectItem value="email_otp">Email OTP</SelectItem>
                     </SelectContent>
@@ -311,13 +342,15 @@ export function SendForSigningDialog({
             + Dodaj sygnatariusza
           </Button>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={sending}
+          >
             Anuluj
           </Button>
           <Button onClick={handleSend} disabled={sending}>

@@ -106,11 +106,18 @@ export function DocumentInstanceTable({
   });
 
   const isLoading = bySourceEnabled ? sourceLoading : orgLoading;
-  const rawInstances: DocumentInstance[] = (bySourceEnabled ? sourceData : orgData) ?? [];
+  const rawInstances: DocumentInstance[] =
+    (bySourceEnabled ? sourceData : orgData) ?? [];
 
   // Fetch template names for all unique template IDs
   const templateIds = useMemo(
-    () => [...new Set(rawInstances.map((d) => d.templateId))],
+    () => [
+      ...new Set(
+        rawInstances
+          .map((d) => d.templateId)
+          .filter((id): id is NonNullable<typeof id> => !!id),
+      ),
+    ],
     [rawInstances],
   );
 
@@ -134,7 +141,10 @@ export function DocumentInstanceTable({
         {showNewButton && <Skeleton className="h-9 w-48" />}
         <div className="rounded-lg border">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 border-b p-4 last:border-b-0">
+            <div
+              key={i}
+              className="flex items-center gap-4 border-b p-4 last:border-b-0"
+            >
               <Skeleton className="h-4 w-1/4" />
               <Skeleton className="h-4 w-1/6" />
               <Skeleton className="h-4 w-1/6" />
@@ -208,7 +218,9 @@ export function DocumentInstanceTable({
               >
                 <TableCell className="font-medium">{instance.title}</TableCell>
                 <TableCell className="text-muted-foreground">
-                  {templateMap[instance.templateId] ?? "—"}
+                  {(instance.templateId
+                    ? templateMap[instance.templateId]
+                    : undefined) ?? "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="capitalize">

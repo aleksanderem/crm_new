@@ -95,7 +95,7 @@ function createSuggestionList(getSearchQuery: (query: string) => string): Partia
           row.className = "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-accent";
           if (rowIndex === selectedIndex) row.classList.add("bg-accent");
           row.onclick = () => props.command({ id: item.key, label: item.label });
-          row.innerHTML = `<span>${item.label}</span><code class=\"text-xs text-muted-foreground\">{{${item.key}}}</code>`;
+          row.innerHTML = `<span>${item.label}</span><code class="text-xs text-muted-foreground">{{${item.key}}}</code>`;
           container!.appendChild(row);
           rowIndex += 1;
         });

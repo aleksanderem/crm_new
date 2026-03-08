@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); file=$(echo \"$input\" | grep -o '\"file_path\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); if [ -z \"$file\" ]; then exit 0; fi; case \"$file\" in */convex/crm/*) if grep -q \"from.*convex/gabinet\" \"$file\" 2>/dev/null; then echo \"CROSS-MODULE VIOLATION: $file imports from convex/gabinet/. Use platform layer instead.\" >&2; exit 1; fi ;; */convex/gabinet/*) if grep -q \"from.*convex/crm\" \"$file\" 2>/dev/null; then echo \"CROSS-MODULE VIOLATION: $file imports from convex/crm/. Use platform layer instead.\" >&2; exit 1; fi ;; */components/crm/*) if grep -q \"from.*components/gabinet\" \"$file\" 2>/dev/null; then echo \"CROSS-MODULE VIOLATION: $file imports from components/gabinet/. Use platform layer instead.\" >&2; exit 1; fi ;; */components/gabinet/*) if grep -q \"from.*components/crm\" \"$file\" 2>/dev/null; then echo \"CROSS-MODULE VIOLATION: $file imports from components/crm/. Use platform layer instead.\" >&2; exit 1; fi ;; esac; exit 0'"
+          }
+        ],
+        "description": "Enforce module import boundaries — no cross-imports between crm and gabinet"
+      }
+    ]
+  }
+}

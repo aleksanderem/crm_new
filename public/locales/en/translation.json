@@ -46,6 +46,7 @@
     "saved": "Saved",
     "deleted": "Deleted",
     "confirmDelete": "Are you sure you want to delete?",
+    "actionCannotBeUndone": "This action cannot be undone.",
     "all": "All",
     "notFound": "Not found",
     "back": "Back",

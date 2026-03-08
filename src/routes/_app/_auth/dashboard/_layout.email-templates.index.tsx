@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -290,23 +290,23 @@ function LayoutTab() {
   const [form, setForm] = useState<LayoutFormData>(defaultLayout);
   const [initialized, setInitialized] = useState(false);
 
-  if (layout && !initialized) {
-    setForm({
-      headerBlocks: parseBlocks(layout.headerBlocks),
-      footerBlocks: parseBlocks(layout.footerBlocks),
-      backgroundColor: layout.backgroundColor,
-      contentBackgroundColor: layout.contentBackgroundColor,
-      primaryColor: layout.primaryColor,
-      logoUrl: layout.logoUrl ?? "",
-      companyName: layout.companyName ?? "",
-      footerText: layout.footerText ?? "",
-    });
-    setInitialized(true);
-  }
-
-  if (!isLoading && layout === null && !initialized) {
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (layout && !initialized) {
+      setForm({
+        headerBlocks: parseBlocks(layout.headerBlocks),
+        footerBlocks: parseBlocks(layout.footerBlocks),
+        backgroundColor: layout.backgroundColor,
+        contentBackgroundColor: layout.contentBackgroundColor,
+        primaryColor: layout.primaryColor,
+        logoUrl: layout.logoUrl ?? "",
+        companyName: layout.companyName ?? "",
+        footerText: layout.footerText ?? "",
+      });
+      setInitialized(true);
+    } else if (!isLoading && layout === null && !initialized) {
+      setInitialized(true);
+    }
+  }, [layout, isLoading, initialized]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -371,9 +371,11 @@ function LayoutTab() {
 
   if (isLoading) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        {t("common.loading")}
-      </p>
+      <div className="space-y-6 py-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        ))}
+      </div>
     );
   }
 

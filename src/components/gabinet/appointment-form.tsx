@@ -29,8 +29,14 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
-function getEmployeeName(emp: { firstName?: string; lastName?: string; role: string; specialization?: string }) {
+function getEmployeeName(emp: {
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  specialization?: string;
+}) {
   if (emp.firstName || emp.lastName) {
     return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
   }
@@ -54,6 +60,7 @@ interface AppointmentFormData {
   startTime: string;
   endTime: string;
   notes?: string;
+  sendReminder?: boolean;
 }
 
 interface AppointmentFormProps {
@@ -74,22 +81,29 @@ export function AppointmentForm({
   const { data: treatments } = useQuery(
     convexQuery(api.gabinet.treatments.listActive, {
       organizationId: organizationId!,
-    })
+    }),
   );
   const { data: employees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, {
       organizationId: organizationId!,
       activeOnly: true,
-    })
+    }),
   );
   const { data: patientsPage } = useQuery(
     convexQuery(api.gabinet.patients.list, {
       organizationId: organizationId!,
       paginationOpts: { numItems: 200, cursor: null },
-    })
+    }),
+  );
+  const { data: orgSettings } = useQuery(
+    convexQuery(api.orgSettings.get, {
+      organizationId: organizationId!,
+    }),
   );
 
   const patients = patientsPage?.page ?? [];
+  const reminderEnabled = orgSettings?.reminderEnabled ?? false;
+  const reminderHours = orgSettings?.reminderHoursBefore ?? 24;
 
   // CRM contact search — debounced backend search
   const [patientSearch, setPatientSearch] = useState("");
@@ -99,13 +113,15 @@ export function AppointmentForm({
     if (!patientSearch.trim()) return patients;
     const q = patientSearch.toLowerCase();
     return patients.filter((p) => {
-      const full = `${p.firstName} ${p.lastName} ${p.phone ?? ""}`.toLowerCase();
+      const full =
+        `${p.firstName} ${p.lastName} ${p.phone ?? ""}`.toLowerCase();
       return full.includes(q);
     });
   }, [patients, patientSearch]);
   const debouncedSearch = useDebounce(patientSearch, 300);
 
-  const isDebouncing = patientSearch.length >= 2 && patientSearch !== debouncedSearch;
+  const isDebouncing =
+    patientSearch.length >= 2 && patientSearch !== debouncedSearch;
   const { data: unlinkedContacts, isLoading: contactsLoading } = useQuery({
     ...convexQuery(api.gabinet.patients.searchUnlinkedContacts, {
       organizationId: organizationId!,
@@ -128,6 +144,7 @@ export function AppointmentForm({
     end: string;
   } | null>(null);
   const [notes, setNotes] = useState("");
+  const [sendReminder, setSendReminder] = useState(reminderEnabled);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
 
   // Popover open states
@@ -145,9 +162,18 @@ export function AppointmentForm({
     return employees.filter(
       (emp) =>
         emp.qualifiedTreatmentIds.length === 0 ||
-        emp.qualifiedTreatmentIds.includes(treatmentId as Id<"gabinetTreatments">)
+        emp.qualifiedTreatmentIds.includes(
+          treatmentId as Id<"gabinetTreatments">,
+        ),
     );
   }, [employees, treatmentId]);
+
+  // Sync reminder default when org settings load
+  useEffect(() => {
+    if (orgSettings?.reminderEnabled !== undefined) {
+      setSendReminder(orgSettings.reminderEnabled);
+    }
+  }, [orgSettings?.reminderEnabled]);
 
   // Auto-select employee when only one qualified
   useEffect(() => {
@@ -181,6 +207,7 @@ export function AppointmentForm({
       startTime: selectedSlot.start,
       endTime: selectedSlot.end,
       notes: notes || undefined,
+      sendReminder: sendReminder || undefined,
     });
   };
 
@@ -190,32 +217,35 @@ export function AppointmentForm({
     setPatientSearch("");
   }, []);
 
-  const handleContactSelect = useCallback(async (contact: {
-    _id: Id<"contacts">;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-  }) => {
-    setPatientOpen(false);
-    setPatientSearch("");
-    setIsCreatingPatient(true);
-    setPatientLabel(`${contact.firstName} ${contact.lastName}`);
-    try {
-      const newPatientId = await createPatientFromContact({
-        organizationId: organizationId!,
-        contactId: contact._id,
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        email: contact.email,
-        phone: contact.phone || undefined,
-      });
-      setPatientId(newPatientId as string);
-    } finally {
-      setIsCreatingPatient(false);
-      setPatientLabel("");
-    }
-  }, [createPatientFromContact, organizationId]);
+  const handleContactSelect = useCallback(
+    async (contact: {
+      _id: Id<"contacts">;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+    }) => {
+      setPatientOpen(false);
+      setPatientSearch("");
+      setIsCreatingPatient(true);
+      setPatientLabel(`${contact.firstName} ${contact.lastName}`);
+      try {
+        const newPatientId = await createPatientFromContact({
+          organizationId: organizationId!,
+          contactId: contact._id,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          email: contact.email,
+          phone: contact.phone || undefined,
+        });
+        setPatientId(newPatientId as string);
+      } finally {
+        setIsCreatingPatient(false);
+        setPatientLabel("");
+      }
+    },
+    [createPatientFromContact, organizationId],
+  );
 
   // Reset downstream selections when upstream changes
   const handleTreatmentSelect = (id: string) => {
@@ -248,10 +278,13 @@ export function AppointmentForm({
           {t("gabinet.appointments.patient")}{" "}
           <span className="text-destructive">*</span>
         </Label>
-        <Popover open={patientOpen} onOpenChange={(open) => {
+        <Popover
+          open={patientOpen}
+          onOpenChange={(open) => {
             setPatientOpen(open);
             if (!open) setPatientSearch("");
-          }}>
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -273,7 +306,10 @@ export function AppointmentForm({
               <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <PopoverContent
+            className="w-[--radix-popover-trigger-width] p-0"
+            align="start"
+          >
             <Command shouldFilter={false}>
               <CommandInput
                 placeholder={t("gabinet.appointments.searchPatient")}
@@ -281,15 +317,19 @@ export function AppointmentForm({
                 onValueChange={setPatientSearch}
               />
               <CommandList>
-                {filteredPatients.length === 0 && !isCrmSearching && (!unlinkedContacts || unlinkedContacts.length === 0) && (
-                  <CommandEmpty>
-                    {patientSearch.length >= 2
-                      ? t("common.noResults")
-                      : t("gabinet.appointments.typeToSearch")}
-                  </CommandEmpty>
-                )}
+                {filteredPatients.length === 0 &&
+                  !isCrmSearching &&
+                  (!unlinkedContacts || unlinkedContacts.length === 0) && (
+                    <CommandEmpty>
+                      {patientSearch.length >= 2
+                        ? t("common.noResults")
+                        : t("gabinet.appointments.typeToSearch")}
+                    </CommandEmpty>
+                  )}
                 {filteredPatients.length > 0 && (
-                  <CommandGroup heading={t("gabinet.appointments.existingPatients")}>
+                  <CommandGroup
+                    heading={t("gabinet.appointments.existingPatients")}
+                  >
                     {filteredPatients.map((p) => (
                       <CommandItem
                         key={p._id}
@@ -299,7 +339,7 @@ export function AppointmentForm({
                         <CheckIcon
                           className={cn(
                             "mr-2 size-4",
-                            patientId === p._id ? "opacity-100" : "opacity-0"
+                            patientId === p._id ? "opacity-100" : "opacity-0",
                           )}
                         />
                         <span>
@@ -320,33 +360,40 @@ export function AppointmentForm({
                     {t("gabinet.appointments.searchingContacts")}
                   </div>
                 )}
-                {!isCrmSearching && unlinkedContacts && unlinkedContacts.length > 0 && (
-                  <>
-                    <CommandSeparator />
-                    <CommandGroup heading={t("gabinet.appointments.fromCrmContacts")}>
-                      {unlinkedContacts.map((c) => (
-                        <CommandItem
-                          key={c._id}
-                          value={c._id}
-                          onSelect={() => handleContactSelect(c)}
-                        >
-                          <CheckIcon className="mr-2 size-4 opacity-0" />
-                          <span>
-                            {c.firstName} {c.lastName}
-                          </span>
-                          <Badge variant="outline" className="ml-2 text-[10px] font-normal">
-                            CRM
-                          </Badge>
-                          {(c.phone || c.email) && (
-                            <span className="text-muted-foreground ml-auto text-xs">
-                              {c.phone || c.email}
+                {!isCrmSearching &&
+                  unlinkedContacts &&
+                  unlinkedContacts.length > 0 && (
+                    <>
+                      <CommandSeparator />
+                      <CommandGroup
+                        heading={t("gabinet.appointments.fromCrmContacts")}
+                      >
+                        {unlinkedContacts.map((c) => (
+                          <CommandItem
+                            key={c._id}
+                            value={c._id}
+                            onSelect={() => handleContactSelect(c)}
+                          >
+                            <CheckIcon className="mr-2 size-4 opacity-0" />
+                            <span>
+                              {c.firstName} {c.lastName}
                             </span>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </>
-                )}
+                            <Badge
+                              variant="outline"
+                              className="ml-2 text-[10px] font-normal"
+                            >
+                              CRM
+                            </Badge>
+                            {(c.phone || c.email) && (
+                              <span className="text-muted-foreground ml-auto text-xs">
+                                {c.phone || c.email}
+                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </>
+                  )}
               </CommandList>
             </Command>
           </PopoverContent>
@@ -380,9 +427,14 @@ export function AppointmentForm({
               <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <PopoverContent
+            className="w-[--radix-popover-trigger-width] p-0"
+            align="start"
+          >
             <Command>
-              <CommandInput placeholder={t("gabinet.appointments.searchTreatment")} />
+              <CommandInput
+                placeholder={t("gabinet.appointments.searchTreatment")}
+              />
               <CommandList>
                 <CommandEmpty>{t("common.noResults")}</CommandEmpty>
                 <CommandGroup>
@@ -395,7 +447,7 @@ export function AppointmentForm({
                       <CheckIcon
                         className={cn(
                           "mr-2 size-4",
-                          treatmentId === tr._id ? "opacity-100" : "opacity-0"
+                          treatmentId === tr._id ? "opacity-100" : "opacity-0",
                         )}
                       />
                       <span className="flex-1">{tr.name}</span>
@@ -426,7 +478,7 @@ export function AppointmentForm({
                 "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
                 employeeId === emp.userId
                   ? "border-primary bg-primary/10 text-primary"
-                  : "hover:bg-accent"
+                  : "hover:bg-accent",
               )}
               onClick={() => handleEmployeeSelect(emp.userId)}
             >
@@ -496,7 +548,7 @@ export function AppointmentForm({
                     "rounded-md border px-2 py-1.5 text-center text-sm transition-colors",
                     selectedSlot?.start === slot.start
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "hover:border-primary/50 hover:bg-primary/5"
+                      : "hover:border-primary/50 hover:bg-primary/5",
                   )}
                   onClick={() => setSelectedSlot(slot)}
                 >
@@ -511,7 +563,8 @@ export function AppointmentForm({
           )}
           {selectedSlot && (
             <p className="text-muted-foreground text-sm">
-              {t("gabinet.appointments.selectedTime")}: {selectedSlot.start} – {selectedSlot.end}
+              {t("gabinet.appointments.selectedTime")}: {selectedSlot.start} –{" "}
+              {selectedSlot.end}
             </p>
           )}
         </div>
@@ -526,6 +579,28 @@ export function AppointmentForm({
           rows={2}
           placeholder={t("gabinet.appointments.notesPlaceholder")}
         />
+      </div>
+
+      {/* Reminder toggle */}
+      <div className="flex items-start gap-2">
+        <Checkbox
+          id="sendReminder"
+          checked={sendReminder}
+          onCheckedChange={(checked) => setSendReminder(checked === true)}
+        />
+        <div className="grid gap-0.5 leading-none">
+          <label
+            htmlFor="sendReminder"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            {t("gabinet.appointments.sendReminder")}
+          </label>
+          {sendReminder && (
+            <p className="text-muted-foreground text-xs">
+              {t("gabinet.appointments.reminderInfo", { hours: reminderHours })}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -544,9 +619,7 @@ export function AppointmentForm({
             isSubmitting
           }
         >
-          {isSubmitting
-            ? t("common.saving")
-            : t("gabinet.appointments.create")}
+          {isSubmitting ? t("common.saving") : t("gabinet.appointments.create")}
         </Button>
       </div>
     </form>

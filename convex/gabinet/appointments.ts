@@ -1,4 +1,5 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
@@ -7,7 +8,11 @@ import { verifyProductAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetAppointmentStatusValidator } from "../schema";
-import { checkConflict, getAvailableSlots, checkEmployeeQualification } from "./_availability";
+import {
+  checkConflict,
+  getAvailableSlots,
+  checkEmployeeQualification,
+} from "./_availability";
 import { Id } from "../_generated/dataModel";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
@@ -23,7 +28,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 
 function generateRecurringDates(
   startDate: string,
-  rule: { frequency: string; count?: number; until?: string }
+  rule: { frequency: string; count?: number; until?: string },
 ): string[] {
   const dates: string[] = [];
   const d = new Date(startDate + "T00:00:00");
@@ -32,11 +37,20 @@ function generateRecurringDates(
 
   for (let i = 1; i < max; i++) {
     switch (rule.frequency) {
-      case "daily": d.setDate(d.getDate() + 1); break;
-      case "weekly": d.setDate(d.getDate() + 7); break;
-      case "biweekly": d.setDate(d.getDate() + 14); break;
-      case "monthly": d.setMonth(d.getMonth() + 1); break;
-      default: return dates;
+      case "daily":
+        d.setDate(d.getDate() + 1);
+        break;
+      case "weekly":
+        d.setDate(d.getDate() + 7);
+        break;
+      case "biweekly":
+        d.setDate(d.getDate() + 14);
+        break;
+      case "monthly":
+        d.setMonth(d.getMonth() + 1);
+        break;
+      default:
+        return dates;
     }
     if (untilDate && d > untilDate) break;
     const yyyy = d.getFullYear();
@@ -54,7 +68,12 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const result = await ctx.db
@@ -63,7 +82,10 @@ export const list = query({
       .order("desc")
       .paginate(args.paginationOpts);
     if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
+      return {
+        ...result,
+        page: result.page.filter((r) => r.createdBy === user._id),
+      };
     }
     return result;
   },
@@ -76,7 +98,12 @@ export const getById = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
@@ -97,13 +124,18 @@ export const listByDate = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", args.date)
+        q.eq("organizationId", args.organizationId).eq("date", args.date),
       )
       .collect();
     if (perm.scope === "own") {
@@ -122,7 +154,12 @@ export const listByDateRange = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     let results;
@@ -130,19 +167,21 @@ export const listByDateRange = query({
       results = await ctx.db
         .query("gabinetAppointments")
         .withIndex("by_orgAndEmployeeAndDate", (q) =>
-          q.eq("organizationId", args.organizationId)
+          q
+            .eq("organizationId", args.organizationId)
             .eq("employeeId", args.employeeId!)
             .gte("date", args.startDate)
-            .lte("date", args.endDate)
+            .lte("date", args.endDate),
         )
         .collect();
     } else {
       results = await ctx.db
         .query("gabinetAppointments")
         .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId)
+          q
+            .eq("organizationId", args.organizationId)
             .gte("date", args.startDate)
-            .lte("date", args.endDate)
+            .lte("date", args.endDate),
         )
         .collect();
     }
@@ -160,13 +199,20 @@ export const listByPatient = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("patientId", args.patientId),
       )
       .collect();
     if (perm.scope === "own") {
@@ -183,13 +229,20 @@ export const listByEmployee = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const results = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndEmployee", (q) =>
-        q.eq("organizationId", args.organizationId).eq("employeeId", args.employeeId)
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("employeeId", args.employeeId),
       )
       .collect();
     if (perm.scope === "own") {
@@ -206,13 +259,20 @@ export const listPatientsForEmployee = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     let appointments = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndEmployee", (q) =>
-        q.eq("organizationId", args.organizationId).eq("employeeId", args.employeeId)
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("employeeId", args.employeeId),
       )
       .collect();
     if (perm.scope === "own") {
@@ -221,7 +281,7 @@ export const listPatientsForEmployee = query({
 
     const uniquePatientIds = [...new Set(appointments.map((a) => a.patientId))];
     const patients = await Promise.all(
-      uniquePatientIds.map((pid) => ctx.db.get(pid))
+      uniquePatientIds.map((pid) => ctx.db.get(pid)),
     );
     return patients.filter(Boolean);
   },
@@ -236,7 +296,12 @@ export const getAvailableSlotsQuery = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     return await getAvailableSlots(ctx, args);
@@ -251,7 +316,12 @@ export const checkQualification = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     return await checkEmployeeQualification(ctx, args);
@@ -271,21 +341,37 @@ export const create = mutation({
     internalNotes: v.optional(v.string()),
     color: v.optional(v.string()),
     isRecurring: v.optional(v.boolean()),
-    recurringRule: v.optional(v.object({
-      frequency: v.string(),
-      count: v.optional(v.number()),
-      until: v.optional(v.string()),
-    })),
+    recurringRule: v.optional(
+      v.object({
+        frequency: v.string(),
+        count: v.optional(v.number()),
+        until: v.optional(v.string()),
+      }),
+    ),
     prepaymentRequired: v.optional(v.boolean()),
     prepaymentAmount: v.optional(v.number()),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    sendReminder: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "create");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "create",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
+
+    // Determine whether to send reminder: explicit arg or org default
+    const orgSettings = await ctx.db
+      .query("orgSettings")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+    const shouldSendReminder =
+      args.sendReminder ?? orgSettings?.reminderEnabled ?? false;
 
     // Check employee qualification for treatment
     const qualification = await checkEmployeeQualification(ctx, {
@@ -330,6 +416,7 @@ export const create = mutation({
       prepaymentAmount: args.prepaymentAmount,
       prepaymentStatus: args.prepaymentRequired ? "pending" : undefined,
       packageUsageId: args.packageUsageId,
+      sendReminder: shouldSendReminder,
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
@@ -388,7 +475,9 @@ export const create = mutation({
           recurringIndex: i + 1,
         });
 
-        const recurDueMs = new Date(`${dates[i]}T${args.startTime}:00`).getTime();
+        const recurDueMs = new Date(
+          `${dates[i]}T${args.startTime}:00`,
+        ).getTime();
         const recurEndMs = new Date(`${dates[i]}T${args.endTime}:00`).getTime();
 
         const recurActivityId = await ctx.db.insert("scheduledActivities", {
@@ -426,6 +515,42 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Schedule reminder if enabled
+    if (shouldSendReminder) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.gabinet.appointmentReminders.scheduleReminderInternal,
+        {
+          organizationId: args.organizationId,
+          appointmentId: firstId,
+        },
+      );
+
+      // Also schedule reminders for recurring appointments
+      if (isRecurring && args.recurringRule) {
+        const recurringAppts = await ctx.db
+          .query("gabinetAppointments")
+          .withIndex("by_orgAndRecurringGroup", (q) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("recurringGroupId", recurringGroupId!),
+          )
+          .collect();
+        for (const recurAppt of recurringAppts) {
+          if (recurAppt._id !== firstId) {
+            await ctx.scheduler.runAfter(
+              0,
+              internal.gabinet.appointmentReminders.scheduleReminderInternal,
+              {
+                organizationId: args.organizationId,
+                appointmentId: recurAppt._id,
+              },
+            );
+          }
+        }
+      }
+    }
+
     return firstId;
   },
 });
@@ -450,7 +575,12 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "edit");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "edit",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
@@ -481,10 +611,19 @@ export const update = mutation({
       }
     }
 
-    const { organizationId, appointmentId, status, cancellationReason, ...updates } = args;
-    
-    const patch: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
-    
+    const {
+      organizationId,
+      appointmentId,
+      status,
+      cancellationReason,
+      ...updates
+    } = args;
+
+    const patch: Record<string, unknown> = {
+      ...updates,
+      updatedAt: Date.now(),
+    };
+
     // Handle status change with cancellation support
     if (status) {
       const allowed = VALID_TRANSITIONS[appt.status];
@@ -492,7 +631,7 @@ export const update = mutation({
         throw new Error(`Cannot transition from ${appt.status} to ${status}`);
       }
       patch.status = status;
-      
+
       if (status === "cancelled") {
         patch.cancelledAt = Date.now();
         patch.cancelledBy = user._id;
@@ -501,11 +640,14 @@ export const update = mutation({
         }
       }
     }
-    
+
     await ctx.db.patch(appointmentId, patch);
 
     // Sync time/date changes to scheduledActivity
-    if (appt.scheduledActivityId && (args.date || args.startTime || args.endTime)) {
+    if (
+      appt.scheduledActivityId &&
+      (args.date || args.startTime || args.endTime)
+    ) {
       const syncDate = args.date ?? appt.date;
       const syncStart = args.startTime ?? appt.startTime;
       const syncEnd = args.endTime ?? appt.endTime;
@@ -546,7 +688,12 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "edit");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "edit",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
@@ -559,7 +706,9 @@ export const updateStatus = mutation({
 
     const allowed = VALID_TRANSITIONS[appt.status];
     if (!allowed?.includes(args.status)) {
-      throw new Error(`Cannot transition from ${appt.status} to ${args.status}`);
+      throw new Error(
+        `Cannot transition from ${appt.status} to ${args.status}`,
+      );
     }
 
     const patch: Record<string, unknown> = {
@@ -577,11 +726,28 @@ export const updateStatus = mutation({
     // Sync to scheduledActivity
     if (appt.scheduledActivityId) {
       const activityPatch: Record<string, unknown> = { updatedAt: Date.now() };
-      if (args.status === "completed" || args.status === "cancelled" || args.status === "no_show") {
+      if (
+        args.status === "completed" ||
+        args.status === "cancelled" ||
+        args.status === "no_show"
+      ) {
         activityPatch.isCompleted = true;
         activityPatch.completedAt = Date.now();
       }
       await ctx.db.patch(appt.scheduledActivityId, activityPatch);
+    }
+
+    // Cancel pending reminders when appointment is terminal
+    if (
+      args.status === "cancelled" ||
+      args.status === "completed" ||
+      args.status === "no_show"
+    ) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.gabinet.appointmentReminders.cancelRemindersInternal,
+        { appointmentId: args.appointmentId },
+      );
     }
 
     // On completion: award loyalty points + deduct package usage
@@ -591,7 +757,9 @@ export const updateStatus = mutation({
         appointmentId: args.appointmentId,
         patientId: appt.patientId,
         treatmentId: appt.treatmentId,
-        packageUsageId: appt.packageUsageId as Id<"gabinetPackageUsage"> | undefined,
+        packageUsageId: appt.packageUsageId as
+          | Id<"gabinetPackageUsage">
+          | undefined,
         userId: user._id,
       });
     }
@@ -611,7 +779,10 @@ export const updateStatus = mutation({
       action: "status_changed",
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
-      details: JSON.stringify({ oldStatus: appt.status, newStatus: args.status }),
+      details: JSON.stringify({
+        oldStatus: appt.status,
+        newStatus: args.status,
+      }),
     });
 
     // Notify appointment creator and employee about status change
@@ -647,7 +818,12 @@ export const cancel = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "delete");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "delete",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const appt = await ctx.db.get(args.appointmentId);
@@ -655,7 +831,9 @@ export const cancel = mutation({
       throw new Error("Appointment not found");
     }
     if (perm.scope === "own" && appt.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
+      throw new Error(
+        "Permission denied: you can only delete your own records",
+      );
     }
 
     if (appt.status === "cancelled" || appt.status === "completed") {
@@ -678,6 +856,13 @@ export const cancel = mutation({
         updatedAt: Date.now(),
       });
     }
+
+    // Cancel pending reminders
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.appointmentReminders.cancelRemindersInternal,
+      { appointmentId: args.appointmentId },
+    );
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
@@ -731,7 +916,7 @@ async function handleAppointmentCompletion(
     treatmentId: Id<"gabinetTreatments">;
     packageUsageId?: Id<"gabinetPackageUsage">;
     userId: Id<"users">;
-  }
+  },
 ) {
   const now = Date.now();
   const treatment = await ctx.db.get(args.treatmentId);
@@ -741,16 +926,16 @@ async function handleAppointmentCompletion(
     const usage = await ctx.db.get(args.packageUsageId);
     if (usage && usage.status === "active") {
       const entry = usage.treatmentsUsed.find(
-        (t: any) => t.treatmentId === args.treatmentId
+        (t: any) => t.treatmentId === args.treatmentId,
       );
       if (entry && entry.usedCount < entry.totalCount) {
         const updatedTreatments = usage.treatmentsUsed.map((t: any) =>
           t.treatmentId === args.treatmentId
             ? { ...t, usedCount: t.usedCount + 1 }
-            : t
+            : t,
         );
         const allUsed = updatedTreatments.every(
-          (t: any) => t.usedCount >= t.totalCount
+          (t: any) => t.usedCount >= t.totalCount,
         );
         await ctx.db.patch(args.packageUsageId, {
           treatmentsUsed: updatedTreatments,
@@ -770,7 +955,7 @@ async function handleAppointmentCompletion(
         .withIndex("by_orgAndPatient", (q: any) =>
           q
             .eq("organizationId", args.organizationId)
-            .eq("patientId", args.patientId)
+            .eq("patientId", args.patientId),
         )
         .first();
 
@@ -836,13 +1021,20 @@ export const cancelRecurringSeries = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "delete");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "delete",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const appointments = await ctx.db
       .query("gabinetAppointments")
       .withIndex("by_orgAndRecurringGroup", (q) =>
-        q.eq("organizationId", args.organizationId).eq("recurringGroupId", args.recurringGroupId)
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("recurringGroupId", args.recurringGroupId),
       )
       .collect();
 
@@ -873,7 +1065,12 @@ export const getFullDetail = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     // Get the appointment
@@ -908,48 +1105,74 @@ export const getFullDetail = query({
       // Documents
       ctx.db
         .query("gabinetDocuments")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+        .withIndex("by_appointment", (q) =>
+          q.eq("appointmentId", args.appointmentId),
+        )
         .collect(),
       // Payments
       ctx.db
         .query("payments")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+        .withIndex("by_appointment", (q) =>
+          q.eq("appointmentId", args.appointmentId),
+        )
         .collect(),
       // Notes
       ctx.db
         .query("notes")
         .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetAppointment").eq("entityId", args.appointmentId)
+          q
+            .eq("entityType", "gabinetAppointment")
+            .eq("entityId", args.appointmentId),
         )
         .order("desc")
         .take(50),
       // Patient package usage
       ctx.db
         .query("gabinetPackageUsage")
-        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("patientId", appointment.patientId),
+        )
         .collect(),
       // Patient history (last 20 appointments, excluding current)
       ctx.db
         .query("gabinetAppointments")
-        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("patientId", appointment.patientId),
+        )
         .filter((q) => q.neq(q.field("_id"), args.appointmentId))
         .order("desc")
         .take(20),
       // Loyalty points balance
       ctx.db
         .query("gabinetLoyaltyPoints")
-        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("patientId", appointment.patientId),
+        )
         .first(),
       // Loyalty transactions (last 10)
       ctx.db
         .query("gabinetLoyaltyTransactions")
-        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("patientId", appointment.patientId),
+        )
         .order("desc")
         .take(10),
       // All patient payments (for payment history)
       ctx.db
         .query("payments")
-        .withIndex("by_orgAndPatient", (q) => q.eq("organizationId", args.organizationId).eq("patientId", appointment.patientId))
+        .withIndex("by_orgAndPatient", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("patientId", appointment.patientId),
+        )
         .order("desc")
         .take(50),
     ]);
@@ -959,10 +1182,10 @@ export const getFullDetail = query({
       .map((a) => a.treatmentId)
       .filter(Boolean);
     const historyTreatments = await Promise.all(
-      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id))
+      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id)),
     );
     const treatmentMap = new Map(
-      historyTreatments.filter(Boolean).map((t) => [t!._id, t])
+      historyTreatments.filter(Boolean).map((t) => [t!._id, t]),
     );
 
     return {

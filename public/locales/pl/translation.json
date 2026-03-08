@@ -1213,6 +1213,15 @@
       "validationEndAfterStart": "Godzina końca musi być po godzinie początku: {{days}}",
       "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}"
     },
+    "reminders": {
+      "title": "Przypomnienia o wizytach",
+      "description": "Konfiguruj automatyczne przypomnienia wysyłane przed wizytami",
+      "enabled": "Włącz przypomnienia",
+      "enabledDescription": "Automatycznie wysyłaj przypomnienia o nadchodzących wizytach",
+      "hoursBefore": "Godziny przed wizytą",
+      "hoursBeforeDescription": "Ile godzin przed wizytą wysłać przypomnienie",
+      "saved": "Ustawienia przypomnień zapisane"
+    },
     "leaves": {
       "title": "Zarządzanie urlopami",
       "description": "Zarządzaj urlopami i dniami wolnymi pracowników",
@@ -1392,6 +1401,8 @@
       "prepaymentPending": "Oczekuje na przedpłatę",
       "prepaymentRequired": "Wymagana przedpłata",
       "scheduling": "Harmonogram",
+      "sendReminder": "Wyślij przypomnienie",
+      "reminderInfo": "Przypomnienie: {{hours}}h przed wizytą",
       "statusUpdated": "Status wizyty zaktualizowany",
       "tabs": {
         "bodyChart": "Mapa ciała",

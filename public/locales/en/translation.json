@@ -1213,6 +1213,15 @@
       "validationEndAfterStart": "End time must be after start time: {{days}}",
       "validationBreakEndAfterStart": "Break end must be after break start: {{days}}"
     },
+    "reminders": {
+      "title": "Appointment Reminders",
+      "description": "Configure automatic reminders sent before appointments",
+      "enabled": "Enable reminders",
+      "enabledDescription": "Automatically send reminders about upcoming appointments",
+      "hoursBefore": "Hours before appointment",
+      "hoursBeforeDescription": "How many hours before the appointment to send the reminder",
+      "saved": "Reminder settings saved"
+    },
     "leaves": {
       "title": "Leave Management",
       "description": "Manage employee leaves and time off",
@@ -1391,6 +1400,8 @@
       "prepaymentPending": "Prepayment pending",
       "prepaymentRequired": "Prepayment required",
       "scheduling": "Scheduling",
+      "sendReminder": "Send reminder",
+      "reminderInfo": "Reminder: {{hours}}h before appointment",
       "statusUpdated": "Appointment status updated",
       "tabs": {
         "bodyChart": "Body Chart",

@@ -79,6 +79,7 @@ import { Route as AppAuthDashboardLayoutGabinetCalendarIndexImport } from './rou
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.new'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.$id'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
+import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.reminders'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
@@ -496,6 +497,12 @@ const AppAuthDashboardLayoutSettingsDocumentTemplatesIdRoute =
 const AppAuthDashboardLayoutGabinetSettingsSchedulingRoute =
   AppAuthDashboardLayoutGabinetSettingsSchedulingImport.update({
     path: '/gabinet/settings/scheduling',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetSettingsRemindersRoute =
+  AppAuthDashboardLayoutGabinetSettingsRemindersImport.update({
+    path: '/gabinet/settings/reminders',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
@@ -1039,6 +1046,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeavesImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/reminders': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/reminders'
+      path: '/gabinet/settings/reminders'
+      fullPath: '/dashboard/gabinet/settings/reminders'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsRemindersImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/settings/scheduling': {
       id: '/_app/_auth/dashboard/_layout/gabinet/settings/scheduling'
       path: '/gabinet/settings/scheduling'
@@ -1185,6 +1199,7 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute,
           AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute,
           AppAuthDashboardLayoutGabinetSettingsLeavesRoute,
+          AppAuthDashboardLayoutGabinetSettingsRemindersRoute,
           AppAuthDashboardLayoutGabinetSettingsSchedulingRoute,
           AppAuthDashboardLayoutGabinetCalendarIndexRoute,
           AppAuthDashboardLayoutGabinetDocumentsIndexRoute,
@@ -1344,6 +1359,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances",
         "/_app/_auth/dashboard/_layout/gabinet/settings/leave-types",
         "/_app/_auth/dashboard/_layout/gabinet/settings/leaves",
+        "/_app/_auth/dashboard/_layout/gabinet/settings/reminders",
         "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling",
         "/_app/_auth/dashboard/_layout/gabinet/calendar/",
         "/_app/_auth/dashboard/_layout/gabinet/documents/",
@@ -1602,6 +1618,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/gabinet/settings/leaves": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.leaves.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/settings/reminders": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.reminders.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling": {

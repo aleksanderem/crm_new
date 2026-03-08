@@ -87,7 +87,11 @@ interface PageContext {
 const crmNav: NavItem[] = [
   { label: "nav.insights", href: "/dashboard", icon: BarChart3 },
   { label: "nav.deals", href: "/dashboard/leads", icon: TrendingUp },
-  { label: "nav.activities", href: "/dashboard/activities", icon: CalendarCheck },
+  {
+    label: "nav.activities",
+    href: "/dashboard/activities",
+    icon: CalendarCheck,
+  },
   { label: "nav.calendar", href: "/dashboard/calendar", icon: Calendar },
   { label: "nav.inbox", href: "/dashboard/inbox", icon: Mail },
   { label: "nav.contacts", href: "/dashboard/contacts", icon: Users },
@@ -99,14 +103,46 @@ const crmNav: NavItem[] = [
 ];
 
 const gabinetNav: NavItem[] = [
-  { label: "nav.gabinet.dashboard", href: "/dashboard/gabinet", icon: LayoutDashboard },
-  { label: "nav.gabinet.calendar", href: "/dashboard/gabinet/calendar", icon: Calendar },
-  { label: "nav.gabinet.patients", href: "/dashboard/gabinet/patients", icon: Heart },
-  { label: "nav.gabinet.treatments", href: "/dashboard/gabinet/treatments", icon: Stethoscope },
-  { label: "nav.gabinet.packages", href: "/dashboard/gabinet/packages", icon: Gift },
-  { label: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
-  { label: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
-  { label: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
+  {
+    label: "nav.gabinet.dashboard",
+    href: "/dashboard/gabinet",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "nav.gabinet.calendar",
+    href: "/dashboard/gabinet/calendar",
+    icon: Calendar,
+  },
+  {
+    label: "nav.gabinet.patients",
+    href: "/dashboard/gabinet/patients",
+    icon: Heart,
+  },
+  {
+    label: "nav.gabinet.treatments",
+    href: "/dashboard/gabinet/treatments",
+    icon: Stethoscope,
+  },
+  {
+    label: "nav.gabinet.packages",
+    href: "/dashboard/gabinet/packages",
+    icon: Gift,
+  },
+  {
+    label: "nav.gabinet.employees",
+    href: "/dashboard/gabinet/employees",
+    icon: UserCog,
+  },
+  {
+    label: "nav.gabinet.documents",
+    href: "/dashboard/gabinet/documents",
+    icon: ClipboardList,
+  },
+  {
+    label: "nav.gabinet.reports",
+    href: "/dashboard/gabinet/reports",
+    icon: PieChart,
+  },
 ];
 
 // Contextual actions per entity route — designed around what users actually do on each page
@@ -114,16 +150,34 @@ const pageContexts: Record<string, PageContext> = {
   dashboard: {
     titleKey: "nav.insights",
     actions: [
-      { label: "nav.actions.viewPipeline", icon: Eye, href: "/dashboard/leads" },
-      { label: "nav.actions.addDeal", icon: TrendingUp, quickCreate: "lead", permissionFeature: "leads" },
-      { label: "nav.actions.todaysActivities", icon: Clock, href: "/dashboard/activities" },
+      {
+        label: "nav.actions.viewPipeline",
+        icon: Eye,
+        href: "/dashboard/leads",
+      },
+      {
+        label: "nav.actions.addDeal",
+        icon: TrendingUp,
+        quickCreate: "lead",
+        permissionFeature: "leads",
+      },
+      {
+        label: "nav.actions.todaysActivities",
+        icon: Clock,
+        href: "/dashboard/activities",
+      },
       { label: "nav.actions.exportReport", icon: Download, href: "/dashboard" },
     ],
   },
   contacts: {
     titleKey: "nav.contacts",
     actions: [
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
+      {
+        label: "nav.actions.addContact",
+        icon: UserPlus,
+        quickCreate: "contact",
+        permissionFeature: "contacts",
+      },
       { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
       { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
       { label: "nav.actions.savedViews", icon: Star, dispatch: "savedViews" },
@@ -132,19 +186,45 @@ const pageContexts: Record<string, PageContext> = {
   companies: {
     titleKey: "nav.companies",
     actions: [
-      { label: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company", permissionFeature: "companies" },
+      {
+        label: "nav.actions.addCompany",
+        icon: PlusCircle,
+        quickCreate: "company",
+        permissionFeature: "companies",
+      },
       { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
       { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-      { label: "nav.actions.viewRelationships", icon: LinkIcon, dispatch: "viewRelationships" },
+      {
+        label: "nav.actions.viewRelationships",
+        icon: LinkIcon,
+        dispatch: "viewRelationships",
+      },
     ],
   },
   leads: {
     titleKey: "nav.deals",
     actions: [
-      { label: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead", permissionFeature: "leads" },
-      { label: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
-      { label: "nav.actions.viewTable", icon: TableIcon, href: "/dashboard/leads" },
-      { label: "nav.actions.pipelineSettings", icon: Settings, href: "/dashboard/settings/pipelines" },
+      {
+        label: "nav.actions.addDeal",
+        icon: PlusCircle,
+        quickCreate: "lead",
+        permissionFeature: "leads",
+      },
+      {
+        label: "nav.actions.viewKanban",
+        icon: Kanban,
+        href: "/dashboard/pipelines",
+      },
+      {
+        label: "nav.actions.viewTable",
+        icon: TableIcon,
+        href: "/dashboard/leads",
+      },
+      {
+        label: "nav.actions.pipelineSettings",
+        icon: Settings,
+        href: "/dashboard/settings/pipelines",
+      },
       { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
       { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
     ],
@@ -152,52 +232,132 @@ const pageContexts: Record<string, PageContext> = {
   activities: {
     titleKey: "nav.activities",
     actions: [
-      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
-      { label: "nav.actions.filterByType", icon: Filter, dispatch: "openFilter" },
-      { label: "nav.actions.calendarView", icon: Calendar, href: "/dashboard/calendar" },
-      { label: "nav.actions.upcomingOnly", icon: Clock, dispatch: "upcomingOnly" },
+      {
+        label: "nav.actions.addActivity",
+        icon: PlusCircle,
+        quickCreate: "activity",
+        permissionFeature: "activities",
+      },
+      {
+        label: "nav.actions.filterByType",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.calendarView",
+        icon: Calendar,
+        href: "/dashboard/calendar",
+      },
+      {
+        label: "nav.actions.upcomingOnly",
+        icon: Clock,
+        dispatch: "upcomingOnly",
+      },
     ],
   },
   calendar: {
     titleKey: "nav.calendar",
     actions: [
-      { label: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity", permissionFeature: "activities" },
-      { label: "nav.actions.goToToday", icon: CalendarCheck, dispatch: "goToToday" },
+      {
+        label: "nav.actions.addActivity",
+        icon: PlusCircle,
+        quickCreate: "activity",
+        permissionFeature: "activities",
+      },
+      {
+        label: "nav.actions.goToToday",
+        icon: CalendarCheck,
+        dispatch: "goToToday",
+      },
     ],
   },
   documents: {
     titleKey: "nav.documents",
     actions: [
-      { label: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document", permissionFeature: "documents" },
-      { label: "nav.actions.createFromTemplate", icon: FileText, dispatch: "createFromTemplate" },
-      { label: "nav.actions.filterByType", icon: Filter, dispatch: "openFilter" },
-      { label: "nav.actions.bulkActions", icon: CheckCircle, dispatch: "bulkActions" },
+      {
+        label: "nav.actions.uploadDocument",
+        icon: Upload,
+        quickCreate: "document",
+        permissionFeature: "documents",
+      },
+      {
+        label: "nav.actions.createFromTemplate",
+        icon: FileText,
+        dispatch: "createFromTemplate",
+      },
+      {
+        label: "nav.actions.filterByType",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.bulkActions",
+        icon: CheckCircle,
+        dispatch: "bulkActions",
+      },
     ],
   },
   products: {
     titleKey: "nav.products",
     actions: [
-      { label: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "product", permissionFeature: "products" },
+      {
+        label: "nav.actions.addProduct",
+        icon: PlusCircle,
+        quickCreate: "product",
+        permissionFeature: "products",
+      },
       { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
       { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-      { label: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },
+      {
+        label: "nav.actions.categoryFilter",
+        icon: Tag,
+        dispatch: "openFilter",
+      },
     ],
   },
   calls: {
     titleKey: "nav.calls",
     actions: [
-      { label: "nav.actions.logCall", icon: Phone, quickCreate: "call", permissionFeature: "calls" },
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
-      { label: "nav.actions.addActivity", icon: CalendarCheck, quickCreate: "activity", permissionFeature: "activities" },
+      {
+        label: "nav.actions.logCall",
+        icon: Phone,
+        quickCreate: "call",
+        permissionFeature: "calls",
+      },
+      {
+        label: "nav.actions.addContact",
+        icon: UserPlus,
+        quickCreate: "contact",
+        permissionFeature: "contacts",
+      },
+      {
+        label: "nav.actions.addActivity",
+        icon: CalendarCheck,
+        quickCreate: "activity",
+        permissionFeature: "activities",
+      },
     ],
   },
   inbox: {
     titleKey: "nav.inbox",
     actions: [
-      { label: "nav.actions.composeEmail", icon: Send, dispatch: "composeEmail" },
+      {
+        label: "nav.actions.composeEmail",
+        icon: Send,
+        dispatch: "composeEmail",
+      },
       { label: "nav.actions.viewUnread", icon: Mail, dispatch: "viewUnread" },
-      { label: "nav.actions.syncGmail", icon: RefreshCw, href: "/dashboard/settings/email" },
-      { label: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact", permissionFeature: "contacts" },
+      {
+        label: "nav.actions.syncGmail",
+        icon: RefreshCw,
+        href: "/dashboard/settings/email",
+      },
+      {
+        label: "nav.actions.addContact",
+        icon: UserPlus,
+        quickCreate: "contact",
+        permissionFeature: "contacts",
+      },
     ],
   },
 };
@@ -206,53 +366,128 @@ const gabinetPageContexts: Record<string, PageContext> = {
   calendar: {
     titleKey: "nav.gabinet.calendar",
     actions: [
-      { label: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment", permissionFeature: "gabinet_appointments" },
+      {
+        label: "nav.actions.bookAppointment",
+        icon: CalendarCheck,
+        quickCreate: "appointment",
+        permissionFeature: "gabinet_appointments",
+      },
       { label: "nav.actions.goToToday", icon: Calendar, dispatch: "goToToday" },
-      { label: "nav.actions.filterByEmployee", icon: UserCog, dispatch: "filterByEmployee" },
-      { label: "nav.actions.filterByTreatment", icon: Stethoscope, dispatch: "filterByTreatment" },
+      {
+        label: "nav.actions.filterByEmployee",
+        icon: UserCog,
+        dispatch: "filterByEmployee",
+      },
+      {
+        label: "nav.actions.filterByTreatment",
+        icon: Stethoscope,
+        dispatch: "filterByTreatment",
+      },
     ],
   },
   patients: {
     titleKey: "nav.gabinet.patients",
     actions: [
-      { label: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient", permissionFeature: "gabinet_patients" },
+      {
+        label: "nav.actions.addPatient",
+        icon: UserPlus,
+        quickCreate: "patient",
+        permissionFeature: "gabinet_patients",
+      },
       { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      { label: "nav.actions.searchPatients", icon: SearchIcon, dispatch: "openSearch" },
-      { label: "nav.actions.filterByStatus", icon: Filter, dispatch: "openFilter" },
+      {
+        label: "nav.actions.searchPatients",
+        icon: SearchIcon,
+        dispatch: "openSearch",
+      },
+      {
+        label: "nav.actions.filterByStatus",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
     ],
   },
   treatments: {
     titleKey: "nav.gabinet.treatments",
     actions: [
-      { label: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment", permissionFeature: "gabinet_treatments" },
-      { label: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },
-      { label: "nav.actions.sortByPrice", icon: TrendingUp, dispatch: "sortByPrice" },
-      { label: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/settings" },
+      {
+        label: "nav.actions.addTreatment",
+        icon: PlusCircle,
+        quickCreate: "treatment",
+        permissionFeature: "gabinet_treatments",
+      },
+      {
+        label: "nav.actions.categoryFilter",
+        icon: Tag,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.sortByPrice",
+        icon: TrendingUp,
+        dispatch: "sortByPrice",
+      },
+      {
+        label: "nav.actions.manageCategories",
+        icon: Settings,
+        href: "/dashboard/gabinet/settings",
+      },
     ],
   },
   packages: {
     titleKey: "nav.gabinet.packages",
     actions: [
-      { label: "nav.actions.addPackage", icon: PlusCircle, quickCreate: "package", permissionFeature: "gabinet_packages" },
+      {
+        label: "nav.actions.addPackage",
+        icon: PlusCircle,
+        quickCreate: "package",
+        permissionFeature: "gabinet_packages",
+      },
     ],
   },
   employees: {
     titleKey: "nav.gabinet.employees",
     actions: [
-      { label: "nav.actions.addEmployee", icon: UserPlus, quickCreate: "employee", permissionFeature: "gabinet_employees" },
+      {
+        label: "nav.actions.addEmployee",
+        icon: UserPlus,
+        quickCreate: "employee",
+        permissionFeature: "gabinet_employees",
+      },
     ],
   },
   documents: {
     titleKey: "nav.gabinet.documents",
     actions: [
-      { label: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "document", permissionFeature: "documents" },
+      {
+        label: "nav.actions.addDocument",
+        icon: PlusCircle,
+        quickCreate: "document",
+        permissionFeature: "documents",
+      },
     ],
   },
 };
 
-const gabinetRouteKeys = ["calendar", "patients", "treatments", "packages", "employees", "documents"];
+const gabinetRouteKeys = [
+  "calendar",
+  "patients",
+  "treatments",
+  "packages",
+  "employees",
+  "documents",
+];
 
-const entityRouteKeys = ["contacts", "companies", "leads", "products", "documents", "activities", "calls", "inbox", "calendar"];
+const entityRouteKeys = [
+  "contacts",
+  "companies",
+  "leads",
+  "products",
+  "documents",
+  "activities",
+  "calls",
+  "inbox",
+  "calendar",
+];
 
 interface SettingsNavItem {
   labelKey: string;
@@ -265,9 +500,18 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settings.profile", to: "/dashboard/settings/profile" },
   { labelKey: "settings.billing", to: "/dashboard/settings/billing" },
   { labelKey: "settings.pipelines", to: "/dashboard/settings/pipelines" },
-  { labelKey: "settings.customFields", to: "/dashboard/settings/custom-fields" },
-  { labelKey: "settings.activityTypes", to: "/dashboard/settings/activity-types" },
-  { labelKey: "settingsNav.lostReasons", to: "/dashboard/settings/lost-reasons" },
+  {
+    labelKey: "settings.customFields",
+    to: "/dashboard/settings/custom-fields",
+  },
+  {
+    labelKey: "settings.activityTypes",
+    to: "/dashboard/settings/activity-types",
+  },
+  {
+    labelKey: "settingsNav.lostReasons",
+    to: "/dashboard/settings/lost-reasons",
+  },
   { labelKey: "settingsNav.sources", to: "/dashboard/settings/sources" },
   { labelKey: "settings.team", to: "/dashboard/settings/team" },
   { labelKey: "settings.permissions", to: "/dashboard/settings/permissions" },
@@ -275,12 +519,35 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settings.email", to: "/dashboard/settings/email" },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
-  { labelKey: "settings.documentTemplates", to: "/dashboard/settings/document-templates" },
-  { labelKey: "gabinet.scheduling.title", to: "/dashboard/gabinet/settings/scheduling", section: "settings.gabinetSection" },
-  { labelKey: "gabinet.leaveTypes.title", to: "/dashboard/gabinet/settings/leave-types" },
-  { labelKey: "gabinet.leaveBalances.title", to: "/dashboard/gabinet/settings/leave-balances" },
-  { labelKey: "gabinet.leaves.title", to: "/dashboard/gabinet/settings/leaves" },
-  { labelKey: "gabinet.documentTemplates.title", to: "/dashboard/gabinet/settings/document-templates" },
+  {
+    labelKey: "settings.documentTemplates",
+    to: "/dashboard/settings/document-templates",
+  },
+  {
+    labelKey: "gabinet.scheduling.title",
+    to: "/dashboard/gabinet/settings/scheduling",
+    section: "settings.gabinetSection",
+  },
+  {
+    labelKey: "gabinet.leaveTypes.title",
+    to: "/dashboard/gabinet/settings/leave-types",
+  },
+  {
+    labelKey: "gabinet.leaveBalances.title",
+    to: "/dashboard/gabinet/settings/leave-balances",
+  },
+  {
+    labelKey: "gabinet.leaves.title",
+    to: "/dashboard/gabinet/settings/leaves",
+  },
+  {
+    labelKey: "gabinet.documentTemplates.title",
+    to: "/dashboard/gabinet/settings/document-templates",
+  },
+  {
+    labelKey: "gabinet.reminders.title",
+    to: "/dashboard/gabinet/settings/reminders",
+  },
 ];
 
 export function AppSidebar() {
@@ -293,7 +560,7 @@ export function AppSidebar() {
   const { can: canCreate } = usePermissions("create");
 
   const { data: activeProducts } = useQuery(
-    convexQuery(api.productSubscriptions.getActiveProducts, { organizationId })
+    convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
   );
 
   // During loading (undefined), show all sections to avoid flash
@@ -310,18 +577,27 @@ export function AppSidebar() {
         ? gabinetNav
         : [];
 
-
   // Detect active entity page for contextual actions
-  const isSettingsRoute = !!matchRoute({ to: "/dashboard/settings", fuzzy: true })
-    || !!matchRoute({ to: "/dashboard/gabinet/settings", fuzzy: true });
-  const activeEntity = activeWorkspace === "crm" && !isSettingsRoute
-    ? entityRouteKeys.find((key) => matchRoute({ to: `/dashboard/${key}`, fuzzy: true }))
-    : undefined;
-  const activeGabinetEntity = activeWorkspace === "gabinet" && !isSettingsRoute
-    ? gabinetRouteKeys.find((key) => matchRoute({ to: `/dashboard/gabinet/${key}`, fuzzy: true }))
-    : undefined;
-  const isDashboardHome = activeWorkspace === "crm" && !isSettingsRoute && !activeEntity
-    && matchRoute({ to: "/dashboard" }) !== false;
+  const isSettingsRoute =
+    !!matchRoute({ to: "/dashboard/settings", fuzzy: true }) ||
+    !!matchRoute({ to: "/dashboard/gabinet/settings", fuzzy: true });
+  const activeEntity =
+    activeWorkspace === "crm" && !isSettingsRoute
+      ? entityRouteKeys.find((key) =>
+          matchRoute({ to: `/dashboard/${key}`, fuzzy: true }),
+        )
+      : undefined;
+  const activeGabinetEntity =
+    activeWorkspace === "gabinet" && !isSettingsRoute
+      ? gabinetRouteKeys.find((key) =>
+          matchRoute({ to: `/dashboard/gabinet/${key}`, fuzzy: true }),
+        )
+      : undefined;
+  const isDashboardHome =
+    activeWorkspace === "crm" &&
+    !isSettingsRoute &&
+    !activeEntity &&
+    matchRoute({ to: "/dashboard" }) !== false;
   const pageContext = activeEntity
     ? pageContexts[activeEntity]
     : activeGabinetEntity
@@ -333,7 +609,10 @@ export function AppSidebar() {
   return (
     <>
       {/* Column 1: Narrow icon sidebar */}
-      <Sidebar collapsible="icon" className="[&_[data-slot=sidebar-inner]]:bg-card">
+      <Sidebar
+        collapsible="icon"
+        className="[&_[data-slot=sidebar-inner]]:bg-card"
+      >
         <SidebarHeader className="min-h-20 flex justify-center">
           <SidebarMenu>
             <SidebarMenuItem>
@@ -355,20 +634,42 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {navItems.map((item) => {
-                  const isActive = item.href === "/dashboard"
-                    ? matchRoute({ to: "/dashboard" }) !== false &&
-                      !matchRoute({ to: "/dashboard/leads", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/activities", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/inbox", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/contacts", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/companies", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/documents", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/products", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/calls", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/calendar", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/settings", fuzzy: true }) &&
-                      !matchRoute({ to: "/dashboard/gabinet", fuzzy: true })
-                    : !!matchRoute({ to: item.href, fuzzy: true });
+                  const isActive =
+                    item.href === "/dashboard"
+                      ? matchRoute({ to: "/dashboard" }) !== false &&
+                        !matchRoute({ to: "/dashboard/leads", fuzzy: true }) &&
+                        !matchRoute({
+                          to: "/dashboard/activities",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({ to: "/dashboard/inbox", fuzzy: true }) &&
+                        !matchRoute({
+                          to: "/dashboard/contacts",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({
+                          to: "/dashboard/companies",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({
+                          to: "/dashboard/documents",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({
+                          to: "/dashboard/products",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({ to: "/dashboard/calls", fuzzy: true }) &&
+                        !matchRoute({
+                          to: "/dashboard/calendar",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({
+                          to: "/dashboard/settings",
+                          fuzzy: true,
+                        }) &&
+                        !matchRoute({ to: "/dashboard/gabinet", fuzzy: true })
+                      : !!matchRoute({ to: item.href, fuzzy: true });
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -393,10 +694,12 @@ export function AppSidebar() {
       </Sidebar>
 
       {/* Column 2: Detail panel */}
-      <div className={cn(
-        "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
-        wideContent ? "max-2xl:hidden lg:block" : "max-lg:hidden"
-      )}>
+      <div
+        className={cn(
+          "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
+          wideContent ? "max-2xl:hidden lg:block" : "max-lg:hidden",
+        )}
+      >
         {/* Workspace switcher */}
         <div className="px-4 pt-3 pb-2">
           <WorkspaceSwitcher activeWorkspace={activeWorkspace} />
@@ -423,7 +726,7 @@ export function AppSidebar() {
                       "block rounded-md px-3 py-2 text-sm transition-colors",
                       isActive
                         ? "bg-primary/10 font-medium text-primary"
-                        : "text-foreground hover:bg-muted-foreground/10"
+                        : "text-foreground hover:bg-muted-foreground/10",
                     )}
                   >
                     {t(item.labelKey)}
@@ -451,7 +754,9 @@ export function AppSidebar() {
             {/* Contextual actions section */}
             {pageContext && (
               <div className="mt-3 flex flex-col px-4">
-                <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
+                <p className="text-foreground/70 mb-2 text-sm">
+                  {t("nav.sections.actions")}
+                </p>
                 <div className="mb-4 grid grid-cols-2 gap-4">
                   {pageContext.actions
                     .filter((action) => {
@@ -474,7 +779,9 @@ export function AppSidebar() {
                         }}
                       >
                         <action.icon className="size-4" variant="stroke" />
-                        <span className="text-center leading-tight">{t(action.label)}</span>
+                        <span className="text-center leading-tight">
+                          {t(action.label)}
+                        </span>
                       </button>
                     ))}
                 </div>
@@ -484,18 +791,19 @@ export function AppSidebar() {
         )}
 
         {/* Mini calendar - pushed to bottom by spacer */}
-        {miniCalState.visible && miniCalState.selectedDate && miniCalState.onDateChange && (
-          <>
-            <div className="flex-1" />
-            <CalendarMiniMonth
-              selectedDate={miniCalState.selectedDate}
-              onDateChange={miniCalState.onDateChange}
-              highlightedDates={miniCalState.highlightedDates}
-              className="border-t-0 px-3 py-3"
-            />
-          </>
-        )}
-
+        {miniCalState.visible &&
+          miniCalState.selectedDate &&
+          miniCalState.onDateChange && (
+            <>
+              <div className="flex-1" />
+              <CalendarMiniMonth
+                selectedDate={miniCalState.selectedDate}
+                onDateChange={miniCalState.onDateChange}
+                highlightedDates={miniCalState.highlightedDates}
+                className="border-t-0 px-3 py-3"
+              />
+            </>
+          )}
       </div>
     </>
   );

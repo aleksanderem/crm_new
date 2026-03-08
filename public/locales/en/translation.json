@@ -1127,13 +1127,13 @@
   },
   "gabinet": {
     "patients": {
-      "title": "Patients",
-      "description": "Manage your clinic patients",
+      "title": "Clients",
+      "description": "Manage your salon clients",
       "addPatient": "Add Client",
-      "createPatient": "Create Patient",
-      "createDescription": "Add a new patient to your clinic",
-      "searchPlaceholder": "Search patients...",
-      "emptyTitle": "No patients yet",
+      "createPatient": "Create Client",
+      "createDescription": "Add a new client to your salon",
+      "searchPlaceholder": "Search clients...",
+      "emptyTitle": "No clients yet",
       "emptyDescription": "Add your first client to get started",
       "confirmDelete": "Are you sure you want to deactivate this client?",
       "views": {
@@ -1172,14 +1172,14 @@
         "loyalty": "Loyalty",
         "activity": "Activity"
       },
-      "byDay": "Patients by Day",
-      "bySource": "Patients by Source",
+      "byDay": "Clients by Day",
+      "bySource": "Clients by Source",
       "appointmentHistory": "Appointment history",
       "history": "History",
       "noHistory": "No history",
-      "noHistoryDesc": "Patient has no previous appointments",
+      "noHistoryDesc": "Client has no previous appointments",
       "patient": "Client",
-      "lastAppointments": "Patient's recent appointments"
+      "lastAppointments": "Client's recent appointments"
     },
     "treatments": {
       "title": "Treatments",
@@ -1497,7 +1497,7 @@
       },
       "activePackages": "Active packages",
       "noActivePackages": "No active packages",
-      "noActivePackagesDesc": "Patient has no active treatment packages",
+      "noActivePackagesDesc": "Client has no active treatment packages",
       "package": "Package",
       "packageUsage": "Package usage",
       "treatmentsUsed": "Treatments used",
@@ -1711,7 +1711,7 @@
       "product": "Products",
       "call": "Calls",
       "pipeline": "Pipelines",
-      "gabinetPatient": "Patients",
+      "gabinetPatient": "Clients",
       "gabinetTreatment": "Treatments",
       "gabinetAppointment": "Appointments",
       "gabinetPackage": "Packages",
@@ -1720,7 +1720,7 @@
     }
   },
   "patientPortal": {
-    "title": "Patient Portal",
+    "title": "Client Portal",
     "logout": "Log Out",
     "nav": {
       "dashboard": "Home",
@@ -1731,7 +1731,7 @@
       "profile": "Profile"
     },
     "login": {
-      "title": "Patient Portal",
+      "title": "Client Portal",
       "description": "Sign in to access your medical records",
       "emailPlaceholder": "your@email.com",
       "sendCode": "Send Code",

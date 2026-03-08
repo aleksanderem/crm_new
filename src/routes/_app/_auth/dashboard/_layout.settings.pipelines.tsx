@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, GripVertical } from "@/lib/ez-icons";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -22,6 +24,7 @@ export const Route = createFileRoute(
 
 function PipelinesSettings() {
   const { organizationId } = useOrganization();
+  const { t } = useTranslation();
   const [newPipelineName, setNewPipelineName] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#3b82f6");
@@ -39,13 +42,13 @@ function PipelinesSettings() {
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <PageHeader
-        title="Pipelines"
-        description="Configure your deal pipelines and stages."
+        title={t("settings.pipelines.title")}
+        description={t("settings.pipelines.description")}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Create Pipeline</CardTitle>
+          <CardTitle className="text-base">{t("settings.pipelines.createPipeline")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -63,11 +66,11 @@ function PipelinesSettings() {
             <Input
               value={newPipelineName}
               onChange={(e) => setNewPipelineName(e.target.value)}
-              placeholder="Pipeline name"
+              placeholder={t("settings.pipelines.pipelineNamePlaceholder")}
             />
             <Button type="submit" disabled={!newPipelineName.trim()}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              Create
+              {t("common.create")}
             </Button>
           </form>
         </CardContent>
@@ -118,6 +121,7 @@ function PipelineCard({
   onRemoveStage: (args: { organizationId: Id<"organizations">; stageId: Id<"pipelineStages"> }) => Promise<unknown>;
   onRemovePipeline: (args: { organizationId: Id<"organizations">; pipelineId: Id<"pipelines"> }) => Promise<unknown>;
 }) {
+  const { t } = useTranslation();
   const { data: stages } = useQuery(
     convexQuery(api.pipelines.getStages, {
       organizationId,
@@ -134,7 +138,7 @@ function PipelineCard({
           size="icon"
           className="h-8 w-8"
           onClick={async () => {
-            if (window.confirm(`Delete pipeline "${pipeline.name}"?`)) {
+            if (window.confirm(t("settings.pipelines.confirmDeletePipeline", { name: pipeline.name }))) {
               await onRemovePipeline({
                 organizationId,
                 pipelineId: pipeline._id,
@@ -147,30 +151,30 @@ function PipelineCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {stages?.map((stage) => (
-          <div
-            key={stage._id}
-            className="flex items-center justify-between rounded-md border px-3 py-2"
-          >
-            <div className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground" variant="stroke" />
-              {stage.color && (
-                <div
-                  className="h-4 w-4 rounded-full"
-                  style={{ backgroundColor: stage.color }}
-                />
-              )}
-              <span className="text-sm">{stage.name}</span>
+          <div key={stage._id} className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+              <div className="flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                {stage.color && (
+                  <div
+                    className="h-4 w-4 rounded-full"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                )}
+                <span className="text-sm">{stage.name}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() =>
+                  onRemoveStage({ organizationId, stageId: stage._id })
+                }
+              >
+                <Trash2 className="h-4 w-4" variant="stroke" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() =>
-                onRemoveStage({ organizationId, stageId: stage._id })
-              }
-            >
-              <Trash2 className="h-4 w-4" variant="stroke" />
-            </Button>
+            <StageActions organizationId={organizationId} stageId={stage._id} />
           </div>
         ))}
 
@@ -194,16 +198,16 @@ function PipelineCard({
             }}
           >
             <div className="flex-1 space-y-1">
-              <Label className="text-xs">Stage Name</Label>
+              <Label className="text-xs">{t("settings.pipelines.stageName")}</Label>
               <Input
                 value={newStageName}
                 onChange={(e) => setNewStageName(e.target.value)}
-                placeholder="e.g. Qualification"
+                placeholder={t("settings.pipelines.stageNamePlaceholder")}
                 autoFocus
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Color</Label>
+              <Label className="text-xs">{t("settings.pipelines.color")}</Label>
               <input
                 type="color"
                 value={newStageColor}
@@ -212,7 +216,7 @@ function PipelineCard({
               />
             </div>
             <Button type="submit" size="sm">
-              Add
+              {t("common.add")}
             </Button>
             <Button
               type="button"
@@ -220,7 +224,7 @@ function PipelineCard({
               size="sm"
               onClick={() => setAddingStageFor(null)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </form>
         ) : (
@@ -233,10 +237,177 @@ function PipelineCard({
             }}
           >
             <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            Add Stage
+            {t("settings.pipelines.addStage")}
           </Button>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function StageActions({
+  organizationId,
+  stageId,
+}: {
+  organizationId: Id<"organizations">;
+  stageId: Id<"pipelineStages">;
+}) {
+  const { t } = useTranslation();
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [dueInDays, setDueInDays] = useState(3);
+  const [assignToOwner, setAssignToOwner] = useState(true);
+  const [description, setDescription] = useState("");
+
+  const createAction = useMutation(api.pipelineStageActions.create);
+  const removeAction = useMutation(api.pipelineStageActions.remove);
+
+  const { data: actions } = useQuery(
+    convexQuery(api.pipelineStageActions.listByStage, {
+      organizationId,
+      stageId,
+    })
+  );
+
+  if (!actions?.length && !isAdding) {
+    return (
+      <div className="ml-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-muted-foreground"
+          onClick={() => setIsAdding(true)}
+        >
+          <Plus className="mr-1 h-3 w-3" variant="stroke" />
+          {t("stageActions.addAutoAction")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ml-6 space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">
+        {t("stageActions.autoActions")}
+      </p>
+
+      {actions?.map((action) => (
+        <div
+          key={action._id}
+          className="flex items-center justify-between rounded border border-dashed px-2 py-1.5 text-xs"
+        >
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium">{action.config.title}</span>
+            <span className="text-muted-foreground">
+              {t("stageActions.dueInDaysLabel", { count: action.config.dueInDays })}
+              {action.config.assignToOwner
+                ? ` · ${t("stageActions.assignedToDealOwner")}`
+                : ""}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={() =>
+              removeAction({ organizationId, actionId: action._id })
+            }
+          >
+            <Trash2 className="h-3 w-3" variant="stroke" />
+          </Button>
+        </div>
+      ))}
+
+      {isAdding ? (
+        <form
+          className="space-y-2 rounded border border-dashed p-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!title.trim()) return;
+            await createAction({
+              organizationId,
+              stageId,
+              config: {
+                title: title.trim(),
+                description: description.trim() || undefined,
+                dueInDays,
+                assignToOwner,
+              },
+            });
+            setTitle("");
+            setDescription("");
+            setDueInDays(3);
+            setAssignToOwner(true);
+            setIsAdding(false);
+          }}
+        >
+          <div className="space-y-1">
+            <Label className="text-xs">{t("stageActions.taskTitle")}</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t("stageActions.taskTitlePlaceholder")}
+              className="h-8 text-xs"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">{t("stageActions.taskDescription")}</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("stageActions.taskDescriptionPlaceholder")}
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">{t("stageActions.dueInDays")}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={dueInDays}
+                onChange={(e) => setDueInDays(Number(e.target.value))}
+                className="h-8 w-20 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                id={`assign-owner-${stageId}`}
+                checked={assignToOwner}
+                onCheckedChange={(v) => setAssignToOwner(v === true)}
+              />
+              <Label htmlFor={`assign-owner-${stageId}`} className="text-xs">
+                {t("stageActions.assignToOwner")}
+              </Label>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" className="h-7 text-xs" disabled={!title.trim()}>
+              {t("common.add")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setIsAdding(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-muted-foreground"
+          onClick={() => setIsAdding(true)}
+        >
+          <Plus className="mr-1 h-3 w-3" variant="stroke" />
+          {t("stageActions.addAutoAction")}
+        </Button>
+      )}
+    </div>
   );
 }

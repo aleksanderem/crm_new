@@ -497,6 +497,23 @@ const schema = defineSchema({
     .index("by_pipeline", ["pipelineId", "order"])
     .index("by_org", ["organizationId"]),
 
+  pipelineStageActions: defineTable({
+    organizationId: v.id("organizations"),
+    stageId: v.id("pipelineStages"),
+    actionType: v.literal("create_activity"),
+    config: v.object({
+      activityTypeId: v.optional(v.string()),
+      title: v.string(),
+      description: v.optional(v.string()),
+      dueInDays: v.number(),
+      assignToOwner: v.boolean(),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_stage", ["stageId"])
+    .index("by_org", ["organizationId"]),
+
   customFieldDefinitions: defineTable({
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,
@@ -895,6 +912,29 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),
+
+  // --- Email Templates ---
+
+  emailTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    category: v.optional(v.string()),
+    variables: v.array(
+      v.object({
+        key: v.string(),
+        label: v.string(),
+        source: v.string(),
+      }),
+    ),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_active", ["organizationId", "isActive"]),
 
   // --- Invitations ---
 

@@ -503,6 +503,17 @@
       "roleHint": "Admins can manage settings and team",
       "sendInvite": "Send Invitation",
       "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
+    },
+    "pipelines": {
+      "title": "Pipelines",
+      "description": "Configure your deal pipelines and stages.",
+      "createPipeline": "Create Pipeline",
+      "pipelineNamePlaceholder": "Pipeline name",
+      "confirmDeletePipeline": "Delete pipeline \"{{name}}\"?",
+      "stageName": "Stage Name",
+      "stageNamePlaceholder": "e.g. Qualification",
+      "color": "Color",
+      "addStage": "Add Stage"
     }
   },
   "leadForm": {
@@ -1837,5 +1848,34 @@
     "cannotEdit": "You don't have permission to edit this item",
     "cannotDelete": "You don't have permission to delete this item",
     "noAccess": "You don't have access to this feature"
+  },
+  "stageActions": {
+    "autoActions": "Auto-actions",
+    "addAutoAction": "Add auto-action",
+    "taskTitle": "Task title",
+    "taskTitlePlaceholder": "e.g. Prepare offer",
+    "taskDescription": "Description",
+    "taskDescriptionPlaceholder": "Optional task description",
+    "dueInDays": "Due in (days)",
+    "dueInDaysLabel_one": "Due in {{count}} day",
+    "dueInDaysLabel_other": "Due in {{count}} days",
+    "assignToOwner": "Assign to deal owner",
+    "assignedToDealOwner": "assigned to deal owner"
+  },
+  "emailTemplates": {
+    "title": "Email Templates",
+    "description": "Create reusable email templates with variable substitution for outreach.",
+    "addTemplate": "Add Template",
+    "createTemplate": "Create Template",
+    "editTemplate": "Edit Template",
+    "empty": "No email templates yet. Create one to speed up your outreach.",
+    "namePlaceholder": "e.g. Follow-up after meeting",
+    "categoryPlaceholder": "e.g. Sales, Onboarding",
+    "subjectPlaceholder": "Email subject with {{contact.firstName}} variables",
+    "bodyPlaceholder": "Write your email body here. Use the variable picker to insert dynamic fields like {{contact.firstName}}.",
+    "insertVariable": "Insert variable",
+    "usedVariables": "Variables used",
+    "useTemplate": "Use template",
+    "selectTemplate": "Select a template..."
   }
 }

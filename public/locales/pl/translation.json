@@ -503,6 +503,17 @@
       "roleHint": "Administratorzy mogą zarządzać ustawieniami i zespołem",
       "sendInvite": "Wyślij zaproszenie",
       "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
+    },
+    "pipelines": {
+      "title": "Pipeline",
+      "description": "Konfiguruj pipeline sprzedażowe i ich etapy.",
+      "createPipeline": "Utwórz pipeline",
+      "pipelineNamePlaceholder": "Nazwa pipeline",
+      "confirmDeletePipeline": "Usunąć pipeline \"{{name}}\"?",
+      "stageName": "Nazwa etapu",
+      "stageNamePlaceholder": "np. Kwalifikacja",
+      "color": "Kolor",
+      "addStage": "Dodaj etap"
     }
   },
   "leadForm": {
@@ -1838,5 +1849,20 @@
     "cannotEdit": "Nie masz uprawnień do edycji tego elementu",
     "cannotDelete": "Nie masz uprawnień do usunięcia tego elementu",
     "noAccess": "Nie masz dostępu do tej funkcji"
+  },
+  "stageActions": {
+    "autoActions": "Automatyczne akcje",
+    "addAutoAction": "Dodaj automatyczną akcję",
+    "taskTitle": "Tytuł zadania",
+    "taskTitlePlaceholder": "np. Przygotuj ofertę",
+    "taskDescription": "Opis",
+    "taskDescriptionPlaceholder": "Opcjonalny opis zadania",
+    "dueInDays": "Termin (dni)",
+    "dueInDaysLabel_one": "Termin: {{count}} dzień",
+    "dueInDaysLabel_few": "Termin: {{count}} dni",
+    "dueInDaysLabel_many": "Termin: {{count}} dni",
+    "dueInDaysLabel_other": "Termin: {{count}} dni",
+    "assignToOwner": "Przypisz do właściciela transakcji",
+    "assignedToDealOwner": "przypisane do właściciela transakcji"
   }
 }

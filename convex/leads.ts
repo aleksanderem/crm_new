@@ -17,23 +17,35 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const isOwn = perm.scope === "own";
-    const ownFilter = (r: any) => r.createdBy === user._id || r.assignedTo === user._id;
+    const ownFilter = (r: any) =>
+      r.createdBy === user._id || r.assignedTo === user._id;
 
     if (args.search) {
       const results = await ctx.db
         .query("leads")
         .withSearchIndex("search_leads", (q) => {
-          let sq = q.search("title", args.search!).eq("organizationId", args.organizationId);
+          let sq = q
+            .search("title", args.search!)
+            .eq("organizationId", args.organizationId);
           if (args.status) sq = sq.eq("status", args.status);
           return sq;
         })
         .take(50);
       if (isOwn) {
-        return { page: results.filter(ownFilter), isDone: true, continueCursor: "" };
+        return {
+          page: results.filter(ownFilter),
+          isDone: true,
+          continueCursor: "",
+        };
       }
       return { page: results, isDone: true, continueCursor: "" };
     }
@@ -42,7 +54,9 @@ export const list = query({
       const result = await ctx.db
         .query("leads")
         .withIndex("by_orgAndStatus", (q) =>
-          q.eq("organizationId", args.organizationId).eq("status", args.status!)
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("status", args.status!),
         )
         .order("desc")
         .paginate(args.paginationOpts);
@@ -71,35 +85,51 @@ export const getById = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const lead = await ctx.db.get(args.leadId);
     if (!lead || lead.organizationId !== args.organizationId) {
       throw new Error("Lead not found");
     }
-    if (perm.scope === "own" && lead.createdBy !== user._id && lead.assignedTo !== user._id) {
+    if (
+      perm.scope === "own" &&
+      lead.createdBy !== user._id &&
+      lead.assignedTo !== user._id
+    ) {
       throw new Error("Permission denied");
     }
 
-    const [customFieldValues, company, assignedUser, stage] = await Promise.all([
-      ctx.db
-        .query("customFieldValues")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "lead").eq("entityId", args.leadId)
-        )
-        .collect(),
-      lead.companyId ? ctx.db.get(lead.companyId) : null,
-      lead.assignedTo ? ctx.db.get(lead.assignedTo) : null,
-      lead.pipelineStageId ? ctx.db.get(lead.pipelineStageId) : null,
-    ]);
+    const [customFieldValues, company, assignedUser, stage] = await Promise.all(
+      [
+        ctx.db
+          .query("customFieldValues")
+          .withIndex("by_entity", (q) =>
+            q.eq("entityType", "lead").eq("entityId", args.leadId),
+          )
+          .collect(),
+        lead.companyId ? ctx.db.get(lead.companyId) : null,
+        lead.assignedTo ? ctx.db.get(lead.assignedTo) : null,
+        lead.pipelineStageId ? ctx.db.get(lead.pipelineStageId) : null,
+      ],
+    );
 
     return {
       ...lead,
       customFieldValues,
       company,
       assignedUser: assignedUser
-        ? { _id: assignedUser._id, name: assignedUser.name, email: assignedUser.email, image: assignedUser.image }
+        ? {
+            _id: assignedUser._id,
+            name: assignedUser.name,
+            email: assignedUser.email,
+            image: assignedUser.image,
+          }
         : null,
       stage,
     };
@@ -122,14 +152,23 @@ export const create = mutation({
     stageOrder: v.optional(v.number()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
-    customFields: v.optional(v.array(v.object({
-      fieldDefinitionId: v.id("customFieldDefinitions"),
-      value: v.any(),
-    }))),
+    customFields: v.optional(
+      v.array(
+        v.object({
+          fieldDefinitionId: v.id("customFieldDefinitions"),
+          value: v.any(),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "create");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "create",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const { customFields, ...leadData } = args;
@@ -196,14 +235,23 @@ export const update = mutation({
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     lostReason: v.optional(v.string()),
-    customFields: v.optional(v.array(v.object({
-      fieldDefinitionId: v.id("customFieldDefinitions"),
-      value: v.any(),
-    }))),
+    customFields: v.optional(
+      v.array(
+        v.object({
+          fieldDefinitionId: v.id("customFieldDefinitions"),
+          value: v.any(),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "edit");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "edit",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
@@ -211,7 +259,11 @@ export const update = mutation({
     if (!lead || lead.organizationId !== args.organizationId) {
       throw new Error("Lead not found");
     }
-    if (perm.scope === "own" && lead.createdBy !== user._id && lead.assignedTo !== user._id) {
+    if (
+      perm.scope === "own" &&
+      lead.createdBy !== user._id &&
+      lead.assignedTo !== user._id
+    ) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
@@ -237,12 +289,15 @@ export const update = mutation({
               .eq("organizationId", organizationId)
               .eq("entityType", "lead")
               .eq("entityId", leadId)
-              .eq("fieldDefinitionId", field.fieldDefinitionId)
+              .eq("fieldDefinitionId", field.fieldDefinitionId),
           )
           .unique();
 
         if (existing) {
-          await ctx.db.patch(existing._id, { value: field.value, updatedAt: now });
+          await ctx.db.patch(existing._id, {
+            value: field.value,
+            updatedAt: now,
+          });
         } else {
           await ctx.db.insert("customFieldValues", {
             organizationId,
@@ -276,7 +331,10 @@ export const update = mutation({
           action: "status_changed",
           entityType: "lead",
           entityId: leadId,
-          details: JSON.stringify({ oldStatus: lead.status, newStatus: updates.status }),
+          details: JSON.stringify({
+            oldStatus: lead.status,
+            newStatus: updates.status,
+          }),
         });
       }
 
@@ -314,7 +372,11 @@ export const update = mutation({
     }
 
     // Notify when assignedTo changes to someone other than the current user
-    if (updates.assignedTo && updates.assignedTo !== lead.assignedTo && updates.assignedTo !== user._id) {
+    if (
+      updates.assignedTo &&
+      updates.assignedTo !== lead.assignedTo &&
+      updates.assignedTo !== user._id
+    ) {
       await createNotificationDirect(ctx, {
         organizationId,
         userId: updates.assignedTo,
@@ -336,21 +398,32 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "delete");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "delete",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const lead = await ctx.db.get(args.leadId);
     if (!lead || lead.organizationId !== args.organizationId) {
       throw new Error("Lead not found");
     }
-    if (perm.scope === "own" && lead.createdBy !== user._id && lead.assignedTo !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
+    if (
+      perm.scope === "own" &&
+      lead.createdBy !== user._id &&
+      lead.assignedTo !== user._id
+    ) {
+      throw new Error(
+        "Permission denied: you can only delete your own records",
+      );
     }
 
     const customValues = await ctx.db
       .query("customFieldValues")
       .withIndex("by_entity", (q) =>
-        q.eq("entityType", "lead").eq("entityId", args.leadId)
+        q.eq("entityType", "lead").eq("entityId", args.leadId),
       )
       .collect();
     for (const cv of customValues) {
@@ -388,7 +461,12 @@ export const getByPipeline = query({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "view");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "view",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
     const stages = await ctx.db
@@ -401,19 +479,22 @@ export const getByPipeline = query({
         const leads = await ctx.db
           .query("leads")
           .withIndex("by_pipelineStage", (q) =>
-            q.eq("pipelineStageId", stage._id)
+            q.eq("pipelineStageId", stage._id),
           )
           .collect();
 
         // Sort by stageOrder client-side since index returns in order
         leads.sort((a, b) => (a.stageOrder ?? 0) - (b.stageOrder ?? 0));
 
-        const filtered = perm.scope === "own"
-          ? leads.filter((l) => l.createdBy === user._id || l.assignedTo === user._id)
-          : leads;
+        const filtered =
+          perm.scope === "own"
+            ? leads.filter(
+                (l) => l.createdBy === user._id || l.assignedTo === user._id,
+              )
+            : leads;
 
         return { ...stage, leads: filtered };
-      })
+      }),
     );
 
     return stagesWithLeads;
@@ -429,7 +510,12 @@ export const moveToStage = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "leads", "edit");
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "leads",
+      "edit",
+    );
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
 
@@ -437,7 +523,11 @@ export const moveToStage = mutation({
     if (!lead || lead.organizationId !== args.organizationId) {
       throw new Error("Lead not found");
     }
-    if (perm.scope === "own" && lead.createdBy !== user._id && lead.assignedTo !== user._id) {
+    if (
+      perm.scope === "own" &&
+      lead.createdBy !== user._id &&
+      lead.assignedTo !== user._id
+    ) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
@@ -479,6 +569,48 @@ export const moveToStage = mutation({
       performedBy: user._id,
     });
 
+    // Execute pipeline stage auto-actions for the new stage
+    const stageActions = await ctx.db
+      .query("pipelineStageActions")
+      .withIndex("by_stage", (q) => q.eq("stageId", args.pipelineStageId))
+      .collect();
+
+    for (const stageAction of stageActions) {
+      if (stageAction.actionType === "create_activity") {
+        const { config } = stageAction;
+        const dueDate = now + config.dueInDays * 24 * 60 * 60 * 1000;
+        const ownerId = config.assignToOwner
+          ? (lead.assignedTo ?? lead.createdBy)
+          : user._id;
+
+        await ctx.db.insert("scheduledActivities", {
+          organizationId: args.organizationId,
+          title: config.title,
+          activityType: config.activityTypeId ?? "task",
+          dueDate,
+          isCompleted: false,
+          ownerId,
+          description: config.description,
+          linkedEntityType: "lead",
+          linkedEntityId: args.leadId,
+          createdBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        if (ownerId !== user._id) {
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: ownerId,
+            type: "assigned",
+            title: "New task from pipeline",
+            message: `Task "${config.title}" created for lead "${lead.title}"`,
+            link: `/leads/${args.leadId}`,
+          });
+        }
+      }
+    }
+
     // Audit + notify on auto-status changes from stage moves
     if (updateData.status && updateData.status !== lead.status) {
       if (updateData.status === "won" || updateData.status === "lost") {
@@ -488,7 +620,10 @@ export const moveToStage = mutation({
           action: "status_changed",
           entityType: "lead",
           entityId: args.leadId,
-          details: JSON.stringify({ oldStatus: lead.status, newStatus: updateData.status }),
+          details: JSON.stringify({
+            oldStatus: lead.status,
+            newStatus: updateData.status,
+          }),
         });
 
         const leadOwner = lead.assignedTo ?? lead.createdBy;

@@ -921,6 +921,7 @@ const schema = defineSchema({
     subject: v.string(),
     body: v.string(),
     category: v.optional(v.string()),
+    module: v.optional(v.string()),
     variables: v.array(
       v.object({
         key: v.string(),
@@ -934,7 +935,8 @@ const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_active", ["organizationId", "isActive"]),
+    .index("by_org_active", ["organizationId", "isActive"])
+    .index("by_org_module", ["organizationId", "module"]),
 
   // --- Invitations ---
 

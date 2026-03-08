@@ -2,9 +2,12 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import type { GenericQueryCtx } from "convex/server";
-import type { DataModel, Id } from "./_generated/dataModel";
-import { CRM_DATA_SOURCES } from "./crm/documentDataSources";
-import { PLATFORM_DATA_SOURCES } from "./documentDataSources";
+import type { DataModel } from "./_generated/dataModel";
+import {
+  ALL_DATA_SOURCES,
+  getDataSourcesForModule,
+  PLATFORM_DATA_SOURCES,
+} from "./documentDataSources";
 import type { DataSourceResolverContext } from "./documentDataSources";
 
 // ---------------------------------------------------------------------------
@@ -17,19 +20,16 @@ const emailTemplateVariableValidator = v.object({
   source: v.string(),
 });
 
-/**
- * Available variable sources for email templates.
- * Combines CRM sources (contact, company, lead) with platform sources
- * (system, current_user, org).
- */
-const EMAIL_TEMPLATE_SOURCES = [...PLATFORM_DATA_SOURCES, ...CRM_DATA_SOURCES];
-
-const sourceMap = new Map(EMAIL_TEMPLATE_SOURCES.map((s) => [s.key, s]));
+const allSourceMap = new Map(ALL_DATA_SOURCES.map((s) => [s.key, s]));
 
 /**
  * Resolve all {{source.field}} variables in a template string.
  * Returns a new string with variables replaced by actual values.
  * Unresolved variables are left as-is.
+ */
+/**
+ * Resolve all {{source.field}} variables in a template string.
+ * Uses the full data source registry — works with CRM, Gabinet, and platform sources.
  */
 export async function renderTemplateString(
   ctx: GenericQueryCtx<DataModel>,
@@ -37,11 +37,10 @@ export async function renderTemplateString(
   sourceInstances: Record<string, string | null>,
   rctx: DataSourceResolverContext,
 ): Promise<string> {
-  // Collect all resolved values keyed by "source.field"
   const resolvedValues: Record<string, string> = {};
 
   for (const [sourceKey, instanceId] of Object.entries(sourceInstances)) {
-    const sourceDef = sourceMap.get(sourceKey);
+    const sourceDef = allSourceMap.get(sourceKey);
     if (!sourceDef) continue;
     const values = await sourceDef.resolve(ctx, instanceId, rctx);
     for (const [field, value] of Object.entries(values)) {
@@ -111,13 +110,21 @@ export const getById = query({
 
 /**
  * List available variable sources and their fields for the UI variable picker.
+ * When module is provided, returns platform sources + module-specific sources.
+ * When omitted, returns ALL sources across all modules.
  */
 export const listVariableSources = query({
-  args: {},
-  handler: async () => {
-    return EMAIL_TEMPLATE_SOURCES.map((s) => ({
+  args: {
+    module: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const sources = args.module
+      ? getDataSourcesForModule(args.module)
+      : ALL_DATA_SOURCES;
+    return sources.map((s) => ({
       key: s.key,
       label: s.label,
+      module: s.module,
       fields: s.fields.map((f) => ({
         key: f.key,
         label: f.label,
@@ -130,13 +137,24 @@ export const listVariableSources = query({
  * Render a template with actual entity data. Used by the compose dialog
  * to fill in variables when a template is selected.
  */
+/**
+ * Render a template with actual entity data.
+ * Accepts entity IDs from any module (CRM contacts/companies/leads,
+ * Gabinet patients/employees/appointments). The resolver uses the
+ * full data source registry to resolve variables.
+ */
 export const renderTemplate = query({
   args: {
     organizationId: v.id("organizations"),
     templateId: v.id("emailTemplates"),
+    // CRM entities
     contactId: v.optional(v.id("contacts")),
     companyId: v.optional(v.id("companies")),
     leadId: v.optional(v.id("leads")),
+    // Gabinet entities
+    patientId: v.optional(v.id("gabinetPatients")),
+    employeeId: v.optional(v.id("gabinetEmployees")),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -150,6 +168,9 @@ export const renderTemplate = query({
     if (args.contactId) sourceInstances.contact = args.contactId;
     if (args.companyId) sourceInstances.company = args.companyId;
     if (args.leadId) sourceInstances.lead = args.leadId;
+    if (args.patientId) sourceInstances.patient = args.patientId;
+    if (args.employeeId) sourceInstances.employee = args.employeeId;
+    if (args.appointmentId) sourceInstances.appointment = args.appointmentId;
 
     const rctx: DataSourceResolverContext = {
       orgId: args.organizationId as string,
@@ -187,6 +208,7 @@ export const create = mutation({
     subject: v.string(),
     body: v.string(),
     category: v.optional(v.string()),
+    module: v.optional(v.string()),
     variables: v.array(emailTemplateVariableValidator),
   },
   handler: async (ctx, args) => {
@@ -199,6 +221,7 @@ export const create = mutation({
       subject: args.subject,
       body: args.body,
       category: args.category,
+      module: args.module,
       variables: args.variables,
       createdBy: user._id,
       isActive: true,
@@ -216,6 +239,7 @@ export const update = mutation({
     subject: v.optional(v.string()),
     body: v.optional(v.string()),
     category: v.optional(v.string()),
+    module: v.optional(v.string()),
     variables: v.optional(v.array(emailTemplateVariableValidator)),
     isActive: v.optional(v.boolean()),
   },
@@ -232,6 +256,7 @@ export const update = mutation({
     if (args.subject !== undefined) updates.subject = args.subject;
     if (args.body !== undefined) updates.body = args.body;
     if (args.category !== undefined) updates.category = args.category;
+    if (args.module !== undefined) updates.module = args.module;
     if (args.variables !== undefined) updates.variables = args.variables;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 

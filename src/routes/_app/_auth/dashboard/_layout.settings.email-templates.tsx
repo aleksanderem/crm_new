@@ -26,6 +26,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -46,6 +53,7 @@ interface TemplateFormData {
   subject: string;
   body: string;
   category: string;
+  module: string;
   variables: TemplateVariable[];
 }
 
@@ -54,8 +62,15 @@ const emptyForm: TemplateFormData = {
   subject: "",
   body: "",
   category: "",
+  module: "",
   variables: [],
 };
+
+const MODULE_OPTIONS = [
+  { value: "", label: "Wszystkie moduły" },
+  { value: "crm", label: "CRM" },
+  { value: "gabinet", label: "Gabinet" },
+];
 
 function EmailTemplatesSettings() {
   const { t } = useTranslation();
@@ -74,7 +89,9 @@ function EmailTemplatesSettings() {
   );
 
   const { data: variableSources } = useQuery(
-    convexQuery(api.emailTemplates.listVariableSources, {}),
+    convexQuery(api.emailTemplates.listVariableSources, {
+      module: form.module || undefined,
+    }),
   );
 
   const openCreateDialog = () => {
@@ -89,6 +106,7 @@ function EmailTemplatesSettings() {
     subject: string;
     body: string;
     category?: string;
+    module?: string;
     variables: TemplateVariable[];
   }) => {
     setEditingId(template._id);
@@ -97,6 +115,7 @@ function EmailTemplatesSettings() {
       subject: template.subject,
       body: template.body,
       category: template.category ?? "",
+      module: template.module ?? "",
       variables: template.variables,
     });
     setDialogOpen(true);
@@ -114,6 +133,7 @@ function EmailTemplatesSettings() {
           subject: form.subject.trim(),
           body: form.body,
           category: form.category.trim() || undefined,
+          module: form.module || undefined,
           variables: form.variables,
         });
       } else {
@@ -123,6 +143,7 @@ function EmailTemplatesSettings() {
           subject: form.subject.trim(),
           body: form.body,
           category: form.category.trim() || undefined,
+          module: form.module || undefined,
           variables: form.variables,
         });
       }
@@ -207,6 +228,15 @@ function EmailTemplatesSettings() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{template.name}</p>
+                  {template.module && (
+                    <Badge variant="outline" className="text-xs">
+                      {template.module === "crm"
+                        ? "CRM"
+                        : template.module === "gabinet"
+                          ? "Gabinet"
+                          : template.module}
+                    </Badge>
+                  )}
                   {template.category && (
                     <Badge variant="secondary" className="text-xs">
                       {template.category}
@@ -263,7 +293,7 @@ function EmailTemplatesSettings() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>{t("common.name")}</Label>
                 <Input
@@ -285,6 +315,32 @@ function EmailTemplatesSettings() {
                   placeholder={t("emailTemplates.categoryPlaceholder")}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>{t("common.module")}</Label>
+                <Select
+                  value={form.module}
+                  onValueChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      module: value === "all" ? "" : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wszystkie moduły" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODULE_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value || "all"}
+                        value={opt.value || "all"}
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -293,7 +349,13 @@ function EmailTemplatesSettings() {
                 <VariablePicker
                   sources={variableSources ?? []}
                   onInsert={(sourceKey, fieldKey, fieldLabel, sourceLabel) =>
-                    insertVariable("subject", sourceKey, fieldKey, fieldLabel, sourceLabel)
+                    insertVariable(
+                      "subject",
+                      sourceKey,
+                      fieldKey,
+                      fieldLabel,
+                      sourceLabel,
+                    )
                   }
                   label={t("emailTemplates.insertVariable")}
                 />
@@ -313,7 +375,13 @@ function EmailTemplatesSettings() {
                 <VariablePicker
                   sources={variableSources ?? []}
                   onInsert={(sourceKey, fieldKey, fieldLabel, sourceLabel) =>
-                    insertVariable("body", sourceKey, fieldKey, fieldLabel, sourceLabel)
+                    insertVariable(
+                      "body",
+                      sourceKey,
+                      fieldKey,
+                      fieldLabel,
+                      sourceLabel,
+                    )
                   }
                   label={t("emailTemplates.insertVariable")}
                 />
@@ -352,7 +420,9 @@ function EmailTemplatesSettings() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!form.name.trim() || !form.subject.trim() || isSubmitting}
+              disabled={
+                !form.name.trim() || !form.subject.trim() || isSubmitting
+              }
             >
               {isSubmitting
                 ? t("common.saving")

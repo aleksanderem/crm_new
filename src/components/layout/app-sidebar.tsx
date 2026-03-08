@@ -517,6 +517,10 @@ const settingsNav: SettingsNavItem[] = [
   { labelKey: "settings.permissions", to: "/dashboard/settings/permissions" },
   { labelKey: "settings.auditLog", to: "/dashboard/settings/audit-log" },
   { labelKey: "settings.email", to: "/dashboard/settings/email" },
+  {
+    labelKey: "settings.emailTemplates",
+    to: "/dashboard/settings/email-templates",
+  },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
   {

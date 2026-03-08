@@ -514,7 +514,8 @@
       "stageNamePlaceholder": "np. Kwalifikacja",
       "color": "Kolor",
       "addStage": "Dodaj etap"
-    }
+    },
+    "emailTemplates": "Szablony e-mail"
   },
   "leadForm": {
     "title": "Tytuł",
@@ -1864,5 +1865,21 @@
     "dueInDaysLabel_other": "Termin: {{count}} dni",
     "assignToOwner": "Przypisz do właściciela transakcji",
     "assignedToDealOwner": "przypisane do właściciela transakcji"
+  },
+  "emailTemplates": {
+    "title": "Szablony e-mail",
+    "description": "Twórz szablony e-mail z podstawianiem zmiennych do kampanii sprzedażowych.",
+    "addTemplate": "Dodaj szablon",
+    "createTemplate": "Utwórz szablon",
+    "editTemplate": "Edytuj szablon",
+    "empty": "Brak szablonów e-mail. Utwórz szablon, aby przyspieszyć kontakt z klientami.",
+    "namePlaceholder": "np. Follow-up po spotkaniu",
+    "categoryPlaceholder": "np. Sprzedaż, Onboarding",
+    "subjectPlaceholder": "Temat e-maila z zmiennymi {{contact.firstName}}",
+    "bodyPlaceholder": "Napisz treść e-maila. Użyj przycisku wstawiania zmiennych, aby dodać dynamiczne pola jak {{contact.firstName}}.",
+    "insertVariable": "Wstaw zmienną",
+    "usedVariables": "Użyte zmienne",
+    "useTemplate": "Użyj szablonu",
+    "selectTemplate": "Wybierz szablon..."
   }
 }

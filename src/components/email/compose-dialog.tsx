@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
@@ -17,6 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ComposeDialogProps {
   organizationId: Id<"organizations">;
@@ -51,11 +58,18 @@ export function ComposeDialog({
     convexQuery(api.oauthConnections.getByProvider, {
       organizationId,
       provider: "google",
-    })
+    }),
   );
 
   const { data: currentUser } = useQuery(
-    convexQuery(api.app.getCurrentUser, {})
+    convexQuery(api.app.getCurrentUser, {}),
+  );
+
+  const { data: emailTemplates } = useQuery(
+    convexQuery(api.emailTemplates.list, {
+      organizationId,
+      activeOnly: true,
+    }),
   );
 
   const isGmailConnected = !!googleConnection;
@@ -64,10 +78,42 @@ export function ComposeDialog({
   const [cc, setCc] = useState("");
   const [showCc, setShowCc] = useState(false);
   const [subject, setSubject] = useState(
-    replyTo ? `Re: ${replyTo.subject.replace(/^Re:\s*/i, "")}` : ""
+    replyTo ? `Re: ${replyTo.subject.replace(/^Re:\s*/i, "")}` : "",
   );
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  const { data: renderedTemplate } = useQuery(
+    selectedTemplateId
+      ? convexQuery(api.emailTemplates.renderTemplate, {
+          organizationId,
+          templateId: selectedTemplateId as Id<"emailTemplates">,
+          contactId,
+          companyId,
+          leadId,
+        })
+      : { queryKey: ["noop"], queryFn: () => null, enabled: false },
+  );
+
+  const lastAppliedTemplateRef = useRef<string | null>(null);
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+  };
+
+  // Apply rendered template when it arrives
+  useEffect(() => {
+    if (
+      renderedTemplate &&
+      selectedTemplateId &&
+      lastAppliedTemplateRef.current !== selectedTemplateId
+    ) {
+      setSubject(renderedTemplate.subject);
+      setBody(renderedTemplate.body);
+      lastAppliedTemplateRef.current = selectedTemplateId;
+    }
+  }, [renderedTemplate, selectedTemplateId]);
 
   const handleSend = async () => {
     if (!to.trim()) return;
@@ -120,22 +166,51 @@ export function ComposeDialog({
       setSubject("");
       setBody("");
       setShowCc(false);
+      setSelectedTemplateId("");
+      lastAppliedTemplateRef.current = null;
       onOpenChange(false);
     } finally {
       setIsSending(false);
     }
   };
 
+  const hasTemplates = emailTemplates && emailTemplates.length > 0;
+  const isReply = !!replyTo;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {replyTo ? t("inbox.reply") : t("inbox.compose")}
+            {isReply ? t("inbox.reply") : t("inbox.compose")}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Template selector — only for new emails, not replies */}
+          {!isReply && hasTemplates && (
+            <div className="space-y-1.5">
+              <Label>{t("emailTemplates.useTemplate")}</Label>
+              <Select
+                value={selectedTemplateId}
+                onValueChange={handleTemplateSelect}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={t("emailTemplates.selectTemplate")}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map((tmpl) => (
+                    <SelectItem key={tmpl._id} value={tmpl._id}>
+                      {tmpl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* To */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -194,9 +269,13 @@ export function ComposeDialog({
         <DialogFooter className="flex items-center justify-between sm:justify-between">
           <div className="hidden sm:block">
             {isGmailConnected ? (
-              <Badge variant="outline" className="text-xs">via Gmail</Badge>
+              <Badge variant="outline" className="text-xs">
+                via Gmail
+              </Badge>
             ) : (
-              <Badge variant="secondary" className="text-xs">via Resend</Badge>
+              <Badge variant="secondary" className="text-xs">
+                via Resend
+              </Badge>
             )}
           </div>
           <div className="flex gap-2">
@@ -207,10 +286,7 @@ export function ComposeDialog({
             >
               {t("common.cancel")}
             </Button>
-            <Button
-              onClick={handleSend}
-              disabled={!to.trim() || isSending}
-            >
+            <Button onClick={handleSend} disabled={!to.trim() || isSending}>
               {isSending ? t("inbox.sending") : t("inbox.send")}
             </Button>
           </div>

@@ -514,7 +514,8 @@
       "stageNamePlaceholder": "e.g. Qualification",
       "color": "Color",
       "addStage": "Add Stage"
-    }
+    },
+    "emailTemplates": "Email Templates"
   },
   "leadForm": {
     "title": "Title",

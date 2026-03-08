@@ -8,6 +8,15 @@ import { Resend } from "resend";
 
 const APP_URL = process.env.APP_URL ?? "https://app.example.com";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -170,9 +179,9 @@ export const sendDocumentEmail = internalAction({
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #333;">Dokument do podpisania</h2>
-          <p>Cześć ${args.patientName},</p>
-          <p>Salon <strong>${args.organizationName}</strong> przesyła Ci dokument do zapoznania się i podpisania:</p>
-          <p style="font-size: 18px; font-weight: 600; color: #111;">${args.documentTitle}</p>
+          <p>Cześć ${escapeHtml(args.patientName)},</p>
+          <p>Salon <strong>${escapeHtml(args.organizationName)}</strong> przesyła Ci dokument do zapoznania się i podpisania:</p>
+          <p style="font-size: 18px; font-weight: 600; color: #111;">${escapeHtml(args.documentTitle)}</p>
           <p>
             <a href="${portalUrl}"
                style="display: inline-block; padding: 12px 24px; background: #7C6AE8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500;">

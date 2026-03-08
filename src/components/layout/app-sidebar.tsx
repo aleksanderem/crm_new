@@ -493,7 +493,6 @@ interface SettingsNavItem {
   labelKey: string;
   to: string;
   section?: string;
-  badge?: number;
 }
 
 const settingsNav: SettingsNavItem[] = [

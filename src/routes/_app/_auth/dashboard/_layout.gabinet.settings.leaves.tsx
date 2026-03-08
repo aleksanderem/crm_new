@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -79,7 +80,7 @@ function LeavesPage() {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [confirmLeaveId, setConfirmLeaveId] = useState<string | null>(null);
+  const [confirmLeaveId, setConfirmLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
   const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
 
   const handleCreate = async () => {
@@ -107,12 +108,12 @@ function LeavesPage() {
     }
   };
 
-  const handleApprove = (leaveId: string) => {
+  const handleApprove = (leaveId: Id<"gabinetLeaves">) => {
     setConfirmLeaveId(leaveId);
     setConfirmAction("approve");
   };
 
-  const handleReject = (leaveId: string) => {
+  const handleReject = (leaveId: Id<"gabinetLeaves">) => {
     setConfirmLeaveId(leaveId);
     setConfirmAction("reject");
   };
@@ -121,14 +122,14 @@ function LeavesPage() {
     if (!confirmLeaveId || !confirmAction) return;
     try {
       if (confirmAction === "approve") {
-        await approveLeave({ organizationId, leaveId: confirmLeaveId as any });
+        await approveLeave({ organizationId, leaveId: confirmLeaveId });
         toast.success(t("gabinet.leaves.approved"));
       } else {
-        await rejectLeave({ organizationId, leaveId: confirmLeaveId as any });
+        await rejectLeave({ organizationId, leaveId: confirmLeaveId });
         toast.success(t("gabinet.leaves.rejected"));
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setConfirmLeaveId(null);
       setConfirmAction(null);
@@ -136,7 +137,7 @@ function LeavesPage() {
   };
 
   const getEmployeeName = (userId: string) => {
-    const member = teamMembers?.find((m: any) => m.userId === userId);
+    const member = teamMembers?.find((m) => m.userId === userId);
     return member?.user?.name ?? userId;
   };
 

@@ -84,17 +84,16 @@ export function ComposeDialog({
   const [isSending, setIsSending] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
-  const { data: renderedTemplate } = useQuery(
-    selectedTemplateId
-      ? convexQuery(api.emailTemplates.renderTemplate, {
-          organizationId,
-          templateId: selectedTemplateId as Id<"emailTemplates">,
-          contactId,
-          companyId,
-          leadId,
-        })
-      : { queryKey: ["noop"], queryFn: () => null, enabled: false },
-  );
+  const { data: renderedTemplate } = useQuery({
+    ...convexQuery(api.emailTemplates.renderTemplate, {
+      organizationId,
+      templateId: selectedTemplateId as Id<"emailTemplates">,
+      contactId,
+      companyId,
+      leadId,
+    }),
+    enabled: !!selectedTemplateId,
+  });
 
   const lastAppliedTemplateRef = useRef<string | null>(null);
 

@@ -36,7 +36,7 @@ import {
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { EmailBlockBuilder } from "@/components/email/email-block-builder";
-import { blocksToHtml, htmlToBlocks } from "@/components/email/blocks-to-html";
+import { htmlToBlocks } from "@/components/email/blocks-to-html";
 import type { EmailBlock } from "@/lib/email-block-types";
 
 export const Route = createFileRoute(

@@ -5,6 +5,9 @@
     "create": "Utwórz",
     "update": "Aktualizuj",
     "delete": "Usuń",
+    "duplicate": "Duplikuj",
+    "moveUp": "Przesuń w górę",
+    "moveDown": "Przesuń w dół",
     "edit": "Edytuj",
     "add": "Dodaj",
     "search": "Szukaj",
@@ -1881,5 +1884,8 @@
     "usedVariables": "Użyte zmienne",
     "useTemplate": "Użyj szablonu",
     "selectTemplate": "Wybierz szablon..."
+  },
+  "emailBuilder": {
+    "blockOverlayLabel": "{{type}} blok"
   }
 }

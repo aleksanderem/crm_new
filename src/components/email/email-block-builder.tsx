@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
@@ -71,6 +71,7 @@ function SortableBlock({
   isLast: boolean;
   variableSources?: VariableSource[];
 }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -128,7 +129,8 @@ function SortableBlock({
             onMoveUp();
           }}
           disabled={isFirst}
-          title="Move up"
+          title={t("common.moveUp")}
+          aria-label={t("common.moveUp")}
         >
           <span className="text-xs">↑</span>
         </Button>
@@ -142,7 +144,8 @@ function SortableBlock({
             onMoveDown();
           }}
           disabled={isLast}
-          title="Move down"
+          title={t("common.moveDown")}
+          aria-label={t("common.moveDown")}
         >
           <span className="text-xs">↓</span>
         </Button>
@@ -155,7 +158,8 @@ function SortableBlock({
             e.stopPropagation();
             onDuplicate();
           }}
-          title="Duplicate"
+          title={t("common.duplicate")}
+          aria-label={t("common.duplicate")}
         >
           <span className="text-xs">⧉</span>
         </Button>
@@ -168,7 +172,8 @@ function SortableBlock({
             e.stopPropagation();
             onDelete();
           }}
-          title="Delete"
+          title={t("common.delete")}
+          aria-label={t("common.delete")}
         >
           <Trash2 className="h-3 w-3" variant="stroke" />
         </Button>
@@ -230,6 +235,7 @@ export function EmailBlockBuilder({
   variableSources,
   className,
 }: EmailBlockBuilderProps) {
+  const { t } = useTranslation();
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -392,11 +398,11 @@ export function EmailBlockBuilder({
       <DragOverlay>
         {isPaletteItem ? (
           <div className="rounded-md border bg-background px-4 py-2 text-sm shadow-lg">
-            {activeId?.replace("palette-", "")} block
+            {t("emailBuilder.blockOverlayLabel", { type: activeId?.replace("palette-", "") })}
           </div>
         ) : activeBlock ? (
           <div className="rounded-md border bg-background px-4 py-2 text-sm shadow-lg opacity-80">
-            {activeBlock.type} block
+            {t("emailBuilder.blockOverlayLabel", { type: activeBlock.type })}
           </div>
         ) : null}
       </DragOverlay>

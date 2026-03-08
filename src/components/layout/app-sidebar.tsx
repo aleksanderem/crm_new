@@ -742,7 +742,7 @@ export function AppSidebar() {
                     <span>{t(item.labelKey)}</span>
                     {item.to === "/dashboard/gabinet/settings/leaves" && pendingLeaveCount > 0 && (
                       <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
-                        {pendingLeaveCount}
+                        {pendingLeaveCount > 99 ? "99+" : pendingLeaveCount}
                       </span>
                     )}
                   </Link>

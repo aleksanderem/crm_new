@@ -275,7 +275,7 @@ function LeavesPage() {
                           <Check className="h-4 w-4 text-green-600" variant="stroke" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
-                          <X className="h-[18px] w-[18px] text-red-600" variant="stroke" />
+                          <X className="h-4 w-4 text-red-600" variant="stroke" />
                         </Button>
                       </div>
                     )}
@@ -318,7 +318,10 @@ function LeavesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              className={confirmAction === "reject" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+            >
               {confirmAction === "approve" ? t("gabinet.leaves.approve") : t("gabinet.leaves.reject")}
             </AlertDialogAction>
           </AlertDialogFooter>

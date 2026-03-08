@@ -180,7 +180,9 @@ export const gabinetAppointmentStatusValidator = v.union(
   v.literal("cancelled"),
   v.literal("no_show"),
 );
-export type GabinetAppointmentStatus = Infer<typeof gabinetAppointmentStatusValidator>;
+export type GabinetAppointmentStatus = Infer<
+  typeof gabinetAppointmentStatusValidator
+>;
 
 export const gabinetDocTypeValidator = v.union(
   v.literal("consent"),
@@ -205,7 +207,9 @@ export const gabinetPackageUsageStatusValidator = v.union(
   v.literal("expired"),
   v.literal("cancelled"),
 );
-export type GabinetPackageUsageStatus = Infer<typeof gabinetPackageUsageStatusValidator>;
+export type GabinetPackageUsageStatus = Infer<
+  typeof gabinetPackageUsageStatusValidator
+>;
 
 export const gabinetLoyaltyTierValidator = v.union(
   v.literal("bronze"),
@@ -258,7 +262,9 @@ const schema = defineSchema({
     customerId: v.optional(v.string()),
     // User preferences (Phase 2)
     language: v.optional(v.string()),
-    theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("system"))),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
+    ),
     timezone: v.optional(v.string()),
   })
     .index("email", ["email"])
@@ -385,13 +391,15 @@ const schema = defineSchema({
     size: v.optional(v.string()),
     website: v.optional(v.string()),
     phone: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zip: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+        country: v.optional(v.string()),
+      }),
+    ),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     createdBy: v.id("users"),
@@ -472,8 +480,7 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   pipelineStages: defineTable({
     pipelineId: v.id("pipelines"),
@@ -505,7 +512,12 @@ const schema = defineSchema({
   })
     .index("by_orgAndEntity", ["organizationId", "entityType", "order"])
     .index("by_orgAndKey", ["organizationId", "entityType", "fieldKey"])
-    .index("by_orgEntityAndActivityType", ["organizationId", "entityType", "activityTypeKey", "order"]),
+    .index("by_orgEntityAndActivityType", [
+      "organizationId",
+      "entityType",
+      "activityTypeKey",
+      "order",
+    ]),
 
   customFieldValues: defineTable({
     organizationId: v.id("organizations"),
@@ -518,7 +530,12 @@ const schema = defineSchema({
   })
     .index("by_entity", ["entityType", "entityId"])
     .index("by_fieldDef", ["fieldDefinitionId"])
-    .index("by_orgEntityField", ["organizationId", "entityType", "entityId", "fieldDefinitionId"]),
+    .index("by_orgEntityField", [
+      "organizationId",
+      "entityType",
+      "entityId",
+      "fieldDefinitionId",
+    ]),
 
   activityTypeDefinitions: defineTable({
     organizationId: v.id("organizations"),
@@ -547,7 +564,12 @@ const schema = defineSchema({
     .index("by_source", ["sourceType", "sourceId"])
     .index("by_target", ["targetType", "targetId"])
     .index("by_org", ["organizationId"])
-    .index("by_sourceAndTarget", ["organizationId", "sourceType", "sourceId", "targetType"]),
+    .index("by_sourceAndTarget", [
+      "organizationId",
+      "sourceType",
+      "sourceId",
+      "targetType",
+    ]),
 
   activities: defineTable({
     organizationId: v.id("organizations"),
@@ -629,11 +651,13 @@ const schema = defineSchema({
     googleCalendarId: v.optional(v.string()),
     lastGoogleSyncAt: v.optional(v.number()),
     // Link to module extension record (e.g. gabinetAppointment)
-    moduleRef: v.optional(v.object({
-      moduleId: v.string(),
-      entityType: v.string(),
-      entityId: v.string(),
-    })),
+    moduleRef: v.optional(
+      v.object({
+        moduleId: v.string(),
+        entityType: v.string(),
+        entityId: v.string(),
+      }),
+    ),
     // Resource performing the work (distinct from ownerId who created the event)
     resourceId: v.optional(v.id("users")),
     createdBy: v.id("users"),
@@ -646,7 +670,11 @@ const schema = defineSchema({
     .index("by_orgAndType", ["organizationId", "activityType"])
     .index("by_orgAndCompleted", ["organizationId", "isCompleted"])
     .index("by_orgAndResource", ["organizationId", "resourceId"])
-    .index("by_orgAndResourceAndDueDate", ["organizationId", "resourceId", "dueDate"]),
+    .index("by_orgAndResourceAndDueDate", [
+      "organizationId",
+      "resourceId",
+      "dueDate",
+    ]),
 
   // --- Payments ---
 
@@ -696,8 +724,7 @@ const schema = defineSchema({
     order: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_orgAndEntityType", ["organizationId", "entityType"]),
+  }).index("by_orgAndEntityType", ["organizationId", "entityType"]),
 
   // --- Lost Reasons ---
 
@@ -709,8 +736,7 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   // --- Org Settings ---
 
@@ -721,10 +747,12 @@ const schema = defineSchema({
     defaultCurrency: v.optional(v.string()),
     timezone: v.optional(v.string()),
     resourceSharingEnabled: v.optional(v.boolean()),
+    // Appointment reminder settings
+    reminderEnabled: v.optional(v.boolean()),
+    reminderHoursBefore: v.optional(v.number()), // default 24
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   // --- RBAC: Permission Overrides ---
 
@@ -755,7 +783,11 @@ const schema = defineSchema({
     accessLevel: v.union(v.literal("viewer"), v.literal("editor")),
     invitedBy: v.id("users"),
     token: v.string(),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -763,7 +795,11 @@ const schema = defineSchema({
     .index("by_token", ["token"])
     .index("by_email", ["email"])
     .index("by_resource", ["resourceType", "resourceId"])
-    .index("by_orgAndResource", ["organizationId", "resourceType", "resourceId"]),
+    .index("by_orgAndResource", [
+      "organizationId",
+      "resourceType",
+      "resourceId",
+    ]),
 
   // --- Notifications ---
 
@@ -807,8 +843,7 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   // --- Emails ---
 
@@ -858,8 +893,7 @@ const schema = defineSchema({
     isDefault: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   // --- Invitations ---
 
@@ -924,14 +958,18 @@ const schema = defineSchema({
     lastName: v.string(),
     pesel: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
-    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
+    gender: v.optional(
+      v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+    ),
     email: v.string(),
     phone: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      postalCode: v.optional(v.string()),
-    })),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        postalCode: v.optional(v.string()),
+      }),
+    ),
     medicalNotes: v.optional(v.string()),
     allergies: v.optional(v.string()),
     bloodType: v.optional(v.string()),
@@ -1111,7 +1149,12 @@ const schema = defineSchema({
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndEmployee", ["organizationId", "employeeId"])
-    .index("by_orgEmployeeTypeYear", ["organizationId", "employeeId", "leaveTypeId", "year"]),
+    .index("by_orgEmployeeTypeYear", [
+      "organizationId",
+      "employeeId",
+      "leaveTypeId",
+      "year",
+    ]),
 
   // --- Gabinet: Appointments (Phase 3) ---
 
@@ -1129,11 +1172,13 @@ const schema = defineSchema({
     bodyChartData: v.optional(v.string()), // JSON string of BodyRegion[]
     color: v.optional(v.string()),
     isRecurring: v.boolean(),
-    recurringRule: v.optional(v.object({
-      frequency: v.string(), // daily, weekly, biweekly, monthly
-      count: v.optional(v.number()),
-      until: v.optional(v.string()),
-    })),
+    recurringRule: v.optional(
+      v.object({
+        frequency: v.string(), // daily, weekly, biweekly, monthly
+        count: v.optional(v.number()),
+        until: v.optional(v.string()),
+      }),
+    ),
     recurringGroupId: v.optional(v.string()),
     recurringIndex: v.optional(v.number()),
     prepaymentRequired: v.optional(v.boolean()),
@@ -1142,6 +1187,8 @@ const schema = defineSchema({
     prepaymentPaidAt: v.optional(v.number()),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
     scheduledActivityId: v.optional(v.id("scheduledActivities")),
+    reminderSentAt: v.optional(v.number()),
+    sendReminder: v.optional(v.boolean()),
     cancelledAt: v.optional(v.number()),
     cancelledBy: v.optional(v.id("users")),
     cancellationReason: v.optional(v.string()),
@@ -1163,10 +1210,12 @@ const schema = defineSchema({
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.optional(v.string()),
-    treatments: v.array(v.object({
-      treatmentId: v.id("gabinetTreatments"),
-      quantity: v.number(),
-    })),
+    treatments: v.array(
+      v.object({
+        treatmentId: v.id("gabinetTreatments"),
+        quantity: v.number(),
+      }),
+    ),
     totalPrice: v.number(),
     currency: v.optional(v.string()),
     discountPercent: v.optional(v.number()),
@@ -1187,11 +1236,13 @@ const schema = defineSchema({
     purchasedAt: v.number(),
     expiresAt: v.optional(v.number()),
     status: gabinetPackageUsageStatusValidator,
-    treatmentsUsed: v.array(v.object({
-      treatmentId: v.id("gabinetTreatments"),
-      usedCount: v.number(),
-      totalCount: v.number(),
-    })),
+    treatmentsUsed: v.array(
+      v.object({
+        treatmentId: v.id("gabinetTreatments"),
+        usedCount: v.number(),
+        totalCount: v.number(),
+      }),
+    ),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
     createdBy: v.id("users"),
@@ -1292,27 +1343,26 @@ const schema = defineSchema({
     module: v.string(),
     requiredSources: v.array(v.string()),
     requiresSignature: v.boolean(),
-    signatureSlots: v.array(v.object({
-      id: v.string(),
-      role: v.union(
-        v.literal("author"),
-        v.literal("client"),
-        v.literal("patient"),
-        v.literal("employee"),
-        v.literal("witness"),
-        v.literal("custom"),
-      ),
-      label: v.string(),
-      verificationMethod: v.optional(v.union(
-        v.literal("click"),
-        v.literal("sms"),
-        v.literal("email_otp"),
-      )),
-      signerType: v.optional(v.union(
-        v.literal("internal"),
-        v.literal("external"),
-      )),
-    })),
+    signatureSlots: v.array(
+      v.object({
+        id: v.string(),
+        role: v.union(
+          v.literal("author"),
+          v.literal("client"),
+          v.literal("patient"),
+          v.literal("employee"),
+          v.literal("witness"),
+          v.literal("custom"),
+        ),
+        label: v.string(),
+        verificationMethod: v.optional(
+          v.union(v.literal("click"), v.literal("sms"), v.literal("email_otp")),
+        ),
+        signerType: v.optional(
+          v.union(v.literal("internal"), v.literal("external")),
+        ),
+      }),
+    ),
     accessControl: v.object({
       mode: v.union(v.literal("all"), v.literal("roles"), v.literal("users")),
       roles: v.array(v.string()),
@@ -1320,7 +1370,11 @@ const schema = defineSchema({
     }),
     version: v.number(),
     parentTemplateId: v.optional(v.id("documentTemplates")),
-    status: v.union(v.literal("draft"), v.literal("active"), v.literal("archived")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("archived"),
+    ),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1350,20 +1404,26 @@ const schema = defineSchema({
     ),
     sortOrder: v.number(),
     group: v.optional(v.string()),
-    options: v.optional(v.array(v.object({ label: v.string(), value: v.string() }))),
+    options: v.optional(
+      v.array(v.object({ label: v.string(), value: v.string() })),
+    ),
     defaultValue: v.optional(v.string()),
-    binding: v.optional(v.object({
-      source: v.string(),
-      field: v.string(),
-    })),
-    validation: v.optional(v.object({
-      required: v.optional(v.boolean()),
-      min: v.optional(v.number()),
-      max: v.optional(v.number()),
-      pattern: v.optional(v.string()),
-      minLength: v.optional(v.number()),
-      maxLength: v.optional(v.number()),
-    })),
+    binding: v.optional(
+      v.object({
+        source: v.string(),
+        field: v.string(),
+      }),
+    ),
+    validation: v.optional(
+      v.object({
+        required: v.optional(v.boolean()),
+        min: v.optional(v.number()),
+        max: v.optional(v.number()),
+        pattern: v.optional(v.string()),
+        minLength: v.optional(v.number()),
+        maxLength: v.optional(v.number()),
+      }),
+    ),
     placeholder: v.optional(v.string()),
     helpText: v.optional(v.string()),
     width: v.union(v.literal("full"), v.literal("half")),
@@ -1399,27 +1459,26 @@ const schema = defineSchema({
       v.literal("archived"),
     ),
     module: v.optional(v.string()),
-    signatures: v.array(v.object({
-      slotId: v.string(),
-      slotLabel: v.string(),
-      verificationMethod: v.optional(v.union(
-        v.literal("click"),
-        v.literal("sms"),
-        v.literal("email_otp"),
-      )),
-      signerType: v.optional(v.union(
-        v.literal("internal"),
-        v.literal("external"),
-      )),
-      signerUserId: v.optional(v.id("users")),
-      signerEmail: v.optional(v.string()),
-      signerName: v.optional(v.string()),
-      signerPhone: v.optional(v.string()),
-      signatureData: v.optional(v.string()),
-      signedByUserId: v.optional(v.id("users")),
-      signedByName: v.optional(v.string()),
-      signedAt: v.optional(v.number()),
-    })),
+    signatures: v.array(
+      v.object({
+        slotId: v.string(),
+        slotLabel: v.string(),
+        verificationMethod: v.optional(
+          v.union(v.literal("click"), v.literal("sms"), v.literal("email_otp")),
+        ),
+        signerType: v.optional(
+          v.union(v.literal("internal"), v.literal("external")),
+        ),
+        signerUserId: v.optional(v.id("users")),
+        signerEmail: v.optional(v.string()),
+        signerName: v.optional(v.string()),
+        signerPhone: v.optional(v.string()),
+        signatureData: v.optional(v.string()),
+        signedByUserId: v.optional(v.id("users")),
+        signedByName: v.optional(v.string()),
+        signedAt: v.optional(v.number()),
+      }),
+    ),
     pdfFileId: v.optional(v.id("_storage")),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -1482,8 +1541,7 @@ const schema = defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"]),
+  }).index("by_org", ["organizationId"]),
 
   // --- Gabinet: Patient Portal (Phase 6) ---
 
@@ -1505,6 +1563,31 @@ const schema = defineSchema({
     .index("by_token", ["tokenHash"])
     .index("by_patient", ["patientId"])
     .index("by_org", ["organizationId"]),
+
+  // --- Gabinet: Appointment Reminders ---
+
+  appointmentReminders: defineTable({
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    type: v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("notification"),
+    ),
+    scheduledFor: v.number(),
+    sentAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+    ),
+    scheduledFunctionId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_appointment", ["appointmentId"])
+    .index("by_orgAndStatus", ["organizationId", "status"]),
 });
 
 export default schema;

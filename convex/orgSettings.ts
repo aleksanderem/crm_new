@@ -25,6 +25,8 @@ export const upsert = mutation({
     lostReasonRequired: v.optional(v.boolean()),
     defaultCurrency: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    reminderEnabled: v.optional(v.boolean()),
+    reminderHoursBefore: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

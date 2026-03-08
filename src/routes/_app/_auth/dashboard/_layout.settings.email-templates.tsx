@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +35,9 @@ import {
 } from "@/components/ui/select";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
+import { EmailBlockBuilder } from "@/components/email/email-block-builder";
+import { blocksToHtml, htmlToBlocks } from "@/components/email/blocks-to-html";
+import type { EmailBlock } from "@/lib/email-block-types";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/email-templates",
@@ -52,6 +55,7 @@ interface TemplateFormData {
   name: string;
   subject: string;
   body: string;
+  blocks: EmailBlock[];
   category: string;
   module: string;
   variables: TemplateVariable[];
@@ -61,6 +65,7 @@ const emptyForm: TemplateFormData = {
   name: "",
   subject: "",
   body: "",
+  blocks: [],
   category: "",
   module: "",
   variables: [],
@@ -110,10 +115,21 @@ function EmailTemplatesSettings() {
     variables: TemplateVariable[];
   }) => {
     setEditingId(template._id);
+    // Try to parse blocks from body JSON, fall back to htmlToBlocks
+    let parsedBlocks: EmailBlock[] = [];
+    try {
+      const parsed = JSON.parse(template.body);
+      if (Array.isArray(parsed)) {
+        parsedBlocks = parsed;
+      }
+    } catch {
+      parsedBlocks = htmlToBlocks(template.body);
+    }
     setForm({
       name: template.name,
       subject: template.subject,
       body: template.body,
+      blocks: parsedBlocks,
       category: template.category ?? "",
       module: template.module ?? "",
       variables: template.variables,
@@ -124,6 +140,10 @@ function EmailTemplatesSettings() {
   const handleSave = async () => {
     if (!form.name.trim() || !form.subject.trim()) return;
     setIsSubmitting(true);
+    // Store blocks as JSON in body field; the rendered HTML is generated
+    // via blocksToHtml when actually sending/rendering the email.
+    const bodyPayload =
+      form.blocks.length > 0 ? JSON.stringify(form.blocks) : form.body;
     try {
       if (editingId) {
         await updateTemplate({
@@ -131,7 +151,7 @@ function EmailTemplatesSettings() {
           templateId: editingId,
           name: form.name.trim(),
           subject: form.subject.trim(),
-          body: form.body,
+          body: bodyPayload,
           category: form.category.trim() || undefined,
           module: form.module || undefined,
           variables: form.variables,
@@ -141,7 +161,7 @@ function EmailTemplatesSettings() {
           organizationId,
           name: form.name.trim(),
           subject: form.subject.trim(),
-          body: form.body,
+          body: bodyPayload,
           category: form.category.trim() || undefined,
           module: form.module || undefined,
           variables: form.variables,
@@ -283,7 +303,7 @@ function EmailTemplatesSettings() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[640px]">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingId
@@ -370,29 +390,11 @@ function EmailTemplatesSettings() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label>{t("inbox.body")}</Label>
-                <VariablePicker
-                  sources={variableSources ?? []}
-                  onInsert={(sourceKey, fieldKey, fieldLabel, sourceLabel) =>
-                    insertVariable(
-                      "body",
-                      sourceKey,
-                      fieldKey,
-                      fieldLabel,
-                      sourceLabel,
-                    )
-                  }
-                  label={t("emailTemplates.insertVariable")}
-                />
-              </div>
-              <Textarea
-                value={form.body}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, body: e.target.value }))
-                }
-                placeholder={t("emailTemplates.bodyPlaceholder")}
-                rows={10}
+              <Label>{t("inbox.body")}</Label>
+              <EmailBlockBuilder
+                blocks={form.blocks}
+                onChange={(blocks) => setForm((prev) => ({ ...prev, blocks }))}
+                variableSources={variableSources ?? undefined}
               />
             </div>
 

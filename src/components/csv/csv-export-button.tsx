@@ -8,16 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Download } from "@/lib/ez-icons";
 import Papa from "papaparse";
 
-type EntityType = "contacts" | "companies" | "leads" | "products";
+type EntityType = "contacts" | "companies" | "leads" | "products" | "patients";
 
 const exportQueries = {
   contacts: api.csvExport.exportContacts,
   companies: api.csvExport.exportCompanies,
   leads: api.csvExport.exportLeads,
   products: api.csvExport.exportProducts,
+  patients: api.csvExport.exportPatients,
 } as const;
 
-export function useCsvExport(organizationId: Id<"organizations">, entityType: EntityType) {
+export function useCsvExport(
+  organizationId: Id<"organizations">,
+  entityType: EntityType,
+  fileNamePrefix?: string,
+) {
   const [isExporting, setIsExporting] = useState(false);
 
   const { refetch } = useQuery({
@@ -37,7 +42,8 @@ export function useCsvExport(organizationId: Id<"organizations">, entityType: En
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${entityType}_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      const prefix = fileNamePrefix ?? `${entityType}_export`;
+      link.download = `${prefix}_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -45,7 +51,7 @@ export function useCsvExport(organizationId: Id<"organizations">, entityType: En
     } finally {
       setIsExporting(false);
     }
-  }, [refetch, entityType]);
+  }, [refetch, entityType, fileNamePrefix]);
 
   return { handleExport, isExporting };
 }
@@ -60,7 +66,10 @@ export function CsvExportButton({
   entityType,
 }: CsvExportButtonProps) {
   const { t } = useTranslation();
-  const { handleExport, isExporting } = useCsvExport(organizationId, entityType);
+  const { handleExport, isExporting } = useCsvExport(
+    organizationId,
+    entityType,
+  );
 
   return (
     <Button

@@ -82,6 +82,33 @@ export const exportLeads = query({
   },
 });
 
+export const exportPatients = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+
+    const patients = await ctx.db
+      .query("gabinetPatients")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    return patients.map((p) => ({
+      firstName: p.firstName,
+      lastName: p.lastName,
+      email: p.email ?? "",
+      phone: p.phone ?? "",
+      pesel: p.pesel ?? "",
+      dateOfBirth: p.dateOfBirth ?? "",
+      gender: p.gender ?? "",
+      bloodType: p.bloodType ?? "",
+      allergies: p.allergies ?? "",
+      status: p.isActive ? "active" : "inactive",
+      referralSource: p.referralSource ?? "",
+      createdAt: new Date(p.createdAt).toISOString(),
+    }));
+  },
+});
+
 export const exportProducts = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {

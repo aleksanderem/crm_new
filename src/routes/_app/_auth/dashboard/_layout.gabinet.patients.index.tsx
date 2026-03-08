@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Heart, Trash2 } from "@/lib/ez-icons";
+import { Plus, Heart, Trash2, Download } from "@/lib/ez-icons";
+import { useCsvExport } from "@/components/csv/csv-export-button";
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { genderOptions } from "@/lib/options";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
@@ -60,7 +61,10 @@ function PatientsIndex() {
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
 
+  const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
+
   // Sidebar dispatch handlers
+  useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("importCsv", () => {
     // Could open import dialog - for now show toast
     // Import not implemented for patients yet
@@ -615,6 +619,13 @@ function PatientsIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
+          toolbarDropdownActions={[
+            {
+              label: t("csv.export"),
+              icon: <Download className="h-4 w-4" variant="stroke" />,
+              onClick: handleExport,
+            },
+          ]}
         />
       )}
 

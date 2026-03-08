@@ -234,3 +234,43 @@ img {
   background-image: linear-gradient(90deg, var(--muted-grid) 1px, transparent 0),
     linear-gradient(180deg, var(--muted-grid) 1px, transparent 0);
 }
+
+/*
+* Print styles — hide app chrome, show only .print-schedule
+*/
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-schedule,
+  .print-schedule * {
+    visibility: visible !important;
+    display: block;
+  }
+  .print-schedule {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 1rem;
+    background: white;
+    color: black;
+  }
+  .print-schedule table {
+    display: table;
+    width: 100%;
+  }
+  .print-schedule thead {
+    display: table-header-group;
+  }
+  .print-schedule tbody {
+    display: table-row-group;
+  }
+  .print-schedule tr {
+    display: table-row;
+  }
+  .print-schedule th,
+  .print-schedule td {
+    display: table-cell;
+  }
+}

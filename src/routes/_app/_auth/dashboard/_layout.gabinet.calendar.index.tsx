@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus } from "@/lib/ez-icons";
+import { ChevronLeft, ChevronRight, Plus, Download } from "@/lib/ez-icons";
+import { PrintSchedule } from "@/components/gabinet/calendar/print-schedule";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -35,7 +36,7 @@ import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/calendar/"
+  "/_app/_auth/dashboard/_layout/gabinet/calendar/",
 )({
   component: GabinetCalendarPage,
 });
@@ -59,7 +60,7 @@ function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  
+
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
 
@@ -69,8 +70,12 @@ function GabinetCalendarPage() {
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createDefaultDate, setCreateDefaultDate] = useState<string | undefined>();
-  const [createDefaultTime, setCreateDefaultTime] = useState<string | undefined>();
+  const [createDefaultDate, setCreateDefaultDate] = useState<
+    string | undefined
+  >();
+  const [createDefaultTime, setCreateDefaultTime] = useState<
+    string | undefined
+  >();
 
   // Drag state
   const [activeAppointment, setActiveAppointment] = useState<{
@@ -92,7 +97,7 @@ function GabinetCalendarPage() {
       activationConstraint: {
         distance: 5,
       },
-    })
+    }),
   );
 
   // Compute date range based on view mode
@@ -105,11 +110,22 @@ function GabinetCalendarPage() {
       const monday = getMonday(currentDate);
       const sunday = new Date(monday);
       sunday.setDate(sunday.getDate() + 6);
-      return { startDate: formatDateStr(monday), endDate: formatDateStr(sunday) };
+      return {
+        startDate: formatDateStr(monday),
+        endDate: formatDateStr(sunday),
+      };
     }
     // month
-    const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const first = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1,
+    );
+    const last = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      0,
+    );
     return { startDate: formatDateStr(first), endDate: formatDateStr(last) };
   }, [viewMode, currentDate]);
 
@@ -119,8 +135,9 @@ function GabinetCalendarPage() {
       organizationId,
       startDate,
       endDate,
-      employeeId: employeeFilter !== "all" ? (employeeFilter as Id<"users">) : undefined,
-    })
+      employeeId:
+        employeeFilter !== "all" ? (employeeFilter as Id<"users">) : undefined,
+    }),
   );
 
   // Fetch employees for filter
@@ -128,12 +145,12 @@ function GabinetCalendarPage() {
     convexQuery(api.gabinet.employees.listAll, {
       organizationId,
       activeOnly: true,
-    })
+    }),
   );
 
   // Fetch members for name resolution
   const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
+    convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
   // Fetch patients + treatments for display names
@@ -141,23 +158,25 @@ function GabinetCalendarPage() {
     convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
-    })
+    }),
   );
   const { data: treatmentsPage } = useQuery(
     convexQuery(api.gabinet.treatments.list, {
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
-    })
+    }),
   );
 
   // Fetch employee schedules for working hours display
   const { data: employeeSchedulesRaw } = useQuery(
-    convexQuery(api.gabinet.scheduling.listEmployeeSchedules, { organizationId })
+    convexQuery(api.gabinet.scheduling.listEmployeeSchedules, {
+      organizationId,
+    }),
   );
 
   // Fetch clinic working hours as fallback
   const { data: clinicWorkingHours } = useQuery(
-    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
+    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId }),
   );
 
   const patientMap = useMemo(() => {
@@ -192,11 +211,21 @@ function GabinetCalendarPage() {
 
   // Build schedule map for the filtered employee (or all employees)
   const employeeSchedules = useMemo(() => {
-    const map = new Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>();
+    const map = new Map<
+      string,
+      {
+        startTime: string;
+        endTime: string;
+        breakStart?: string;
+        breakEnd?: string;
+      }
+    >();
 
     // If filtering by specific employee, use their schedule
     if (employeeFilter !== "all" && employeeSchedulesRaw) {
-      const empSchedules = employeeSchedulesRaw.filter((s) => s.userId === employeeFilter);
+      const empSchedules = employeeSchedulesRaw.filter(
+        (s) => s.userId === employeeFilter,
+      );
       for (const s of empSchedules) {
         if (s.isWorking) {
           map.set(`${s.dayOfWeek}`, {
@@ -250,6 +279,28 @@ function GabinetCalendarPage() {
     });
   }, [rawAppointments, patientMap, treatmentMap]);
 
+  // Build print-friendly appointment data for the current day
+  const printDate = formatDateStr(currentDate);
+  const printAppointments = useMemo(() => {
+    if (!rawAppointments) return [];
+    const dayAppts = rawAppointments.filter((a) => a.date === printDate);
+    return dayAppts.map((a) => {
+      const treatment = treatmentMap.get(a.treatmentId);
+      return {
+        startTime: a.startTime,
+        endTime: a.endTime,
+        patientName: patientMap.get(a.patientId) ?? "",
+        treatmentName: treatment?.name ?? "",
+        employeeName: userMap.get(a.employeeId) ?? "",
+        status: a.status,
+      };
+    });
+  }, [rawAppointments, printDate, patientMap, treatmentMap, userMap]);
+
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
   // Navigation
   const navigateDate = useCallback(
     (dir: number) => {
@@ -261,7 +312,7 @@ function GabinetCalendarPage() {
         return d;
       });
     },
-    [viewMode]
+    [viewMode],
   );
 
   const goToday = () => setCurrentDate(new Date());
@@ -275,7 +326,9 @@ function GabinetCalendarPage() {
   });
   useSidebarDispatch("filterByTreatment", () => {
     // Could open treatment filter if implemented - for now just scroll to calendar
-    document.querySelector<HTMLElement>('.flex-1.overflow-hidden')?.scrollIntoView({ behavior: 'smooth' });
+    document
+      .querySelector<HTMLElement>(".flex-1.overflow-hidden")
+      ?.scrollIntoView({ behavior: "smooth" });
   });
 
   // Click-to-create handler
@@ -291,7 +344,7 @@ function GabinetCalendarPage() {
       }
       setCreateDialogOpen(true);
     },
-    [currentDate]
+    [currentDate],
   );
 
   const handleDayClick = useCallback((date: string) => {
@@ -299,62 +352,84 @@ function GabinetCalendarPage() {
     setViewMode("day");
   }, []);
 
-  const handleAppointmentClick = useCallback((id: string) => {
-    // Navigate to full-page appointment detail
-    navigate({ to: "/dashboard/gabinet/appointments/$appointmentId", params: { appointmentId: id } });
-  }, [navigate]);
+  const handleAppointmentClick = useCallback(
+    (id: string) => {
+      // Navigate to full-page appointment detail
+      navigate({
+        to: "/dashboard/gabinet/appointments/$appointmentId",
+        params: { appointmentId: id },
+      });
+    },
+    [navigate],
+  );
 
   // DnD handlers
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event;
-    const appt = viewAppointments.find((a) => a._id === active.id);
-    if (appt) {
-      setActiveAppointment(appt);
-    }
-  }, [viewAppointments]);
-
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveAppointment(null);
-
-    if (!over) return;
-
-    const appointmentId = active.id as string;
-    const dropData = over.data.current;
-
-    if (dropData?.type === "time-slot") {
-      const newDate = dropData.date as string;
-      const newStartTime = dropData.time as string;
-
-      // Find the original appointment to calculate duration
-      const originalAppt = viewAppointments.find((a) => a._id === appointmentId);
-      if (!originalAppt) return;
-
-      // Calculate new end time based on original duration
-      const [startH, startM] = originalAppt.startTime.split(":").map(Number);
-      const [endH, endM] = originalAppt.endTime.split(":").map(Number);
-      const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-
-      const [newStartH, newStartM] = newStartTime.split(":").map(Number);
-      const newEndMinutes = newStartH * 60 + newStartM + durationMinutes;
-      const newEndH = Math.floor(newEndMinutes / 60);
-      const newEndM = newEndMinutes % 60;
-      const newEndTime = `${String(newEndH).padStart(2, "0")}:${String(newEndM).padStart(2, "0")}`;
-
-      try {
-        await updateAppointment({
-          organizationId,
-          appointmentId: appointmentId as Id<"gabinetAppointments">,
-          date: newDate,
-          startTime: newStartTime,
-          endTime: newEndTime,
-        });
-        toast.success(t("gabinet.appointments.rescheduled", "Appointment rescheduled"));
-      } catch (e: any) {
-        toast.error(e.message ?? t("gabinet.appointments.rescheduleFailed", "Failed to reschedule"));
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const { active } = event;
+      const appt = viewAppointments.find((a) => a._id === active.id);
+      if (appt) {
+        setActiveAppointment(appt);
       }
-    }
-  }, [organizationId, updateAppointment, viewAppointments, t]);
+    },
+    [viewAppointments],
+  );
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveAppointment(null);
+
+      if (!over) return;
+
+      const appointmentId = active.id as string;
+      const dropData = over.data.current;
+
+      if (dropData?.type === "time-slot") {
+        const newDate = dropData.date as string;
+        const newStartTime = dropData.time as string;
+
+        // Find the original appointment to calculate duration
+        const originalAppt = viewAppointments.find(
+          (a) => a._id === appointmentId,
+        );
+        if (!originalAppt) return;
+
+        // Calculate new end time based on original duration
+        const [startH, startM] = originalAppt.startTime.split(":").map(Number);
+        const [endH, endM] = originalAppt.endTime.split(":").map(Number);
+        const durationMinutes = endH * 60 + endM - (startH * 60 + startM);
+
+        const [newStartH, newStartM] = newStartTime.split(":").map(Number);
+        const newEndMinutes = newStartH * 60 + newStartM + durationMinutes;
+        const newEndH = Math.floor(newEndMinutes / 60);
+        const newEndM = newEndMinutes % 60;
+        const newEndTime = `${String(newEndH).padStart(2, "0")}:${String(newEndM).padStart(2, "0")}`;
+
+        try {
+          await updateAppointment({
+            organizationId,
+            appointmentId: appointmentId as Id<"gabinetAppointments">,
+            date: newDate,
+            startTime: newStartTime,
+            endTime: newEndTime,
+          });
+          toast.success(
+            t("gabinet.appointments.rescheduled", "Appointment rescheduled"),
+          );
+        } catch (e: any) {
+          toast.error(
+            e.message ??
+              t(
+                "gabinet.appointments.rescheduleFailed",
+                "Failed to reschedule",
+              ),
+          );
+        }
+      }
+    },
+    [organizationId, updateAppointment, viewAppointments, t],
+  );
 
   // Title
   const title = useMemo(() => {
@@ -373,7 +448,10 @@ function GabinetCalendarPage() {
       sunday.setDate(sunday.getDate() + 6);
       return `${monday.toLocaleDateString(locale, { month: "short", day: "numeric" })} – ${sunday.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })}`;
     }
-    return currentDate.toLocaleDateString(locale, { month: "long", year: "numeric" });
+    return currentDate.toLocaleDateString(locale, {
+      month: "long",
+      year: "numeric",
+    });
   }, [currentDate, viewMode, i18n.language]);
 
   function getEmployeeName(emp: {
@@ -399,7 +477,11 @@ function GabinetCalendarPage() {
         {/* Toolbar */}
         <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateDate(-1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateDate(-1)}
+            >
               <ChevronLeft className="h-4 w-4" variant="stroke" />
             </Button>
             <Button variant="outline" size="sm" onClick={goToday}>
@@ -415,7 +497,9 @@ function GabinetCalendarPage() {
             {/* Employee filter */}
             <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
               <SelectTrigger className="h-8 w-[180px] text-xs">
-                <SelectValue placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")} />
+                <SelectValue
+                  placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
@@ -439,10 +523,19 @@ function GabinetCalendarPage() {
                   className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
                   onClick={() => setViewMode(mode)}
                 >
-                  {t(`gabinet.calendar.view.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
+                  {t(
+                    `gabinet.calendar.view.${mode}`,
+                    mode.charAt(0).toUpperCase() + mode.slice(1),
+                  )}
                 </Button>
               ))}
             </div>
+
+            {/* Print button */}
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Download className="mr-1 h-4 w-4" variant="stroke" />
+              {t("gabinet.calendar.print", "Drukuj")}
+            </Button>
 
             {/* Create button */}
             <Button
@@ -465,7 +558,9 @@ function GabinetCalendarPage() {
             <CalendarDayView
               date={formatDateStr(currentDate)}
               appointments={viewAppointments}
-              onSlotClick={(time) => handleSlotClick(formatDateStr(currentDate), time)}
+              onSlotClick={(time) =>
+                handleSlotClick(formatDateStr(currentDate), time)
+              }
               onAppointmentClick={handleAppointmentClick}
               workingHours={dayWorkingHours}
             />
@@ -501,6 +596,9 @@ function GabinetCalendarPage() {
           defaultTime={createDefaultTime}
         />
       </div>
+
+      {/* Print-only schedule table */}
+      <PrintSchedule date={printDate} appointments={printAppointments} />
 
       {/* Drag overlay - shows appointment being dragged */}
       <DragOverlay>

@@ -8,7 +8,13 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,8 +46,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidePanel } from "@/components/crm/side-panel";
-import { DocumentViewer } from "@/components/gabinet/documents/document-viewer";
-import { SignaturePad } from "@/components/gabinet/documents/signature-pad";
+import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
+import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
+import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
@@ -87,12 +94,15 @@ import { toast } from "sonner";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId"
+  "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
 )({
   component: AppointmentDetail,
 });
 
-const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline" | "success"> = {
+const statusColors: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline" | "success"
+> = {
   scheduled: "secondary",
   confirmed: "default",
   in_progress: "default",
@@ -141,14 +151,18 @@ function NoteItem({
   const { t } = useTranslation();
 
   return (
-    <div className={`p-3 border rounded-lg ${note.isPinned ? "bg-primary/5 border-primary/20" : ""} ${isReply ? "bg-muted/30" : ""}`}>
+    <div
+      className={`p-3 border rounded-lg ${note.isPinned ? "bg-primary/5 border-primary/20" : ""} ${isReply ? "bg-muted/30" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarFallback>?</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium">{note.authorName ?? t("common.unknown")}</p>
+            <p className="text-sm font-medium">
+              {note.authorName ?? t("common.unknown")}
+            </p>
             <p className="text-xs text-muted-foreground">
               {new Date(note.createdAt).toLocaleString("pl-PL")}
             </p>
@@ -188,9 +202,16 @@ function NoteItem({
               <Pencil className="h-3 w-3" variant="stroke" />
             </Button>
             <Button variant="ghost" size="sm" onClick={onTogglePin}>
-              {note.isPinned ? t("gabinet.notes.unpin") : t("gabinet.notes.pin")}
+              {note.isPinned
+                ? t("gabinet.notes.unpin")
+                : t("gabinet.notes.pin")}
             </Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={onDelete}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={onDelete}
+            >
               <Trash2 className="h-3 w-3" variant="stroke" />
             </Button>
           </div>
@@ -212,16 +233,10 @@ function AppointmentDetail() {
   const [internalNotes, setInternalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-  // Document management state
-  const [docPanelOpen, setDocPanelOpen] = useState(false);
-  const [editingDocId, setEditingDocId] = useState<string | null>(null);
-  const [viewDocId, setViewDocId] = useState<string | null>(null);
-  const [signDocId, setSignDocId] = useState<string | null>(null);
-  const [docTitle, setDocTitle] = useState("");
-  const [docType, setDocType] = useState<string>("consent");
-  const [docContent, setDocContent] = useState("");
-  const [docTemplateId, setDocTemplateId] = useState("");
-  const [isDocSubmitting, setIsDocSubmitting] = useState(false);
+  // Document management state (new platform document system)
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [viewingDocInstanceId, setViewingDocInstanceId] =
+    useState<Id<"documentInstances"> | null>(null);
 
   // Payment management state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -237,11 +252,6 @@ function AppointmentDetail() {
 
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
-  const createDoc = useMutation(api.gabinet.documents.create);
-  const updateDoc = useMutation(api.gabinet.documents.update);
-  const signDoc = useMutation(api.gabinet.documents.sign);
-  const requestDocSig = useMutation(api.gabinet.documents.requestSignature);
-  const archiveDoc = useMutation(api.gabinet.documents.archive);
 
   // Payment mutations
   const createPayment = useMutation(api.payments.create);
@@ -260,16 +270,15 @@ function AppointmentDetail() {
   const [editNoteContent, setEditNoteContent] = useState("");
   const [isNoteSubmitting, setIsNoteSubmitting] = useState(false);
 
-  // Fetch document templates
-  const { data: templates } = useQuery(
-    convexQuery(api.gabinet.documentTemplates.list, { organizationId })
-  );
-
-  const { data: detail, isLoading, refetch } = useQuery(
+  const {
+    data: detail,
+    isLoading,
+    refetch,
+  } = useQuery(
     convexQuery(api.gabinet.appointments.getFullDetail, {
       organizationId,
       appointmentId: appointmentId as Id<"gabinetAppointments">,
-    })
+    }),
   );
 
   // Initialize internal notes from appointment data
@@ -294,14 +303,28 @@ function AppointmentDetail() {
   const { setContent: setSidebarContent } = useSidebarSlot();
   useEffect(() => {
     if (!detail) return;
-    const { appointment: appt, patient: pat, treatment: treat, employee: emp, documents: docs, payments: pays, notes: nts, patientHistory: hist, loyaltyBalance: loyBal, loyaltyTier: loyTier } = detail;
+    const {
+      appointment: appt,
+      patient: pat,
+      treatment: treat,
+      employee: emp,
+      documents: docs,
+      payments: pays,
+      notes: nts,
+      patientHistory: hist,
+      loyaltyBalance: loyBal,
+      loyaltyTier: loyTier,
+    } = detail;
     const getInitials = () => {
-      if (pat?.firstName && pat?.lastName) return `${pat.firstName[0]}${pat.lastName[0]}`;
+      if (pat?.firstName && pat?.lastName)
+        return `${pat.firstName[0]}${pat.lastName[0]}`;
       return "?";
     };
     const fmtDate = (d: string) => new Date(d).toLocaleDateString("pl-PL");
     const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
-    const empName = emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.email : "-";
+    const empName = emp
+      ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.email
+      : "-";
 
     setSidebarContent(
       <div className="space-y-3">
@@ -309,14 +332,22 @@ function AppointmentDetail() {
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center gap-2.5">
               <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
-                <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">{getInitials()}</AvatarFallback>
+                <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                  {getInitials()}
+                </AvatarFallback>
               </Avatar>
-              <p className="text-sm font-semibold">{pat?.firstName} {pat?.lastName}</p>
+              <p className="text-sm font-semibold">
+                {pat?.firstName} {pat?.lastName}
+              </p>
             </div>
             <Separator />
             {pat?.phone && (
               <p className="text-xs flex items-center gap-1.5">
-                <Phone size={12} className="text-muted-foreground" variant="stroke" />
+                <Phone
+                  size={12}
+                  className="text-muted-foreground"
+                  variant="stroke"
+                />
                 {pat.phone}
               </p>
             )}
@@ -338,29 +369,49 @@ function AppointmentDetail() {
                       <Star size={10} variant="stroke" className="mr-1" />
                       {loyBal} {t("gabinet.loyalty.points")}
                     </Badge>
-                    {loyTier && <span className="text-xs text-muted-foreground">{loyTier}</span>}
+                    {loyTier && (
+                      <span className="text-xs text-muted-foreground">
+                        {loyTier}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">{t("gabinet.loyalty.programDescription", "Program lojalnościowy — punkty za wizyty")}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {t(
+                      "gabinet.loyalty.programDescription",
+                      "Program lojalnościowy — punkty za wizyty",
+                    )}
+                  </p>
                 </div>
               </>
             )}
             <Separator />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-full justify-between text-xs h-7 px-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between text-xs h-7 px-2"
+                >
                   {t("gabinet.patients.actions", "Akcje pacjenta")}
                   <MoreHorizontal size={14} variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }}>
+                  <Link
+                    to="/dashboard/gabinet/patients/$patientId"
+                    params={{ patientId: pat?._id ?? "" }}
+                  >
                     <Eye size={14} variant="stroke" className="mr-2" />
                     {t("gabinet.patients.viewProfile", "Profil pacjenta")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }} search={{ tab: "history" }}>
+                  <Link
+                    to="/dashboard/gabinet/patients/$patientId"
+                    params={{ patientId: pat?._id ?? "" }}
+                    search={{ tab: "history" }}
+                  >
                     <History size={14} variant="stroke" className="mr-2" />
                     {t("gabinet.patients.history", "Historia wizyt")}
                   </Link>
@@ -396,7 +447,9 @@ function AppointmentDetail() {
           </CardHeader>
           <CardContent className="space-y-2 pt-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("gabinet.treatments.treatment")}</span>
+              <span className="text-muted-foreground">
+                {t("gabinet.treatments.treatment")}
+              </span>
               <span className="font-medium text-xs">{treat?.name ?? "-"}</span>
             </div>
             <Separator />
@@ -425,24 +478,31 @@ function AppointmentDetail() {
               <>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("common.price")}</span>
+                  <span className="text-muted-foreground">
+                    {t("common.price")}
+                  </span>
                   <span className="font-medium text-xs">
                     {treat.price.toFixed(2)} {treat.currency ?? "PLN"}
                   </span>
                 </div>
               </>
             )}
-            {(appt.status === "completed" || appt.status === "cancelled") && appt.updatedAt && (
-              <>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    {appt.status === "completed" ? t("gabinet.appointments.completedAt", "Zakończono") : t("gabinet.appointments.cancelledAt", "Anulowano")}
-                  </span>
-                  <span className="font-medium text-xs">{new Date(appt.updatedAt).toLocaleString("pl-PL")}</span>
-                </div>
-              </>
-            )}
+            {(appt.status === "completed" || appt.status === "cancelled") &&
+              appt.updatedAt && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      {appt.status === "completed"
+                        ? t("gabinet.appointments.completedAt", "Zakończono")
+                        : t("gabinet.appointments.cancelledAt", "Anulowano")}
+                    </span>
+                    <span className="font-medium text-xs">
+                      {new Date(appt.updatedAt).toLocaleString("pl-PL")}
+                    </span>
+                  </div>
+                </>
+              )}
           </CardContent>
         </Card>
 
@@ -451,24 +511,32 @@ function AppointmentDetail() {
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="p-2 rounded-md bg-muted/50">
                 <p className="text-lg font-bold">{docs.length}</p>
-                <p className="text-[10px] text-muted-foreground">{t("gabinet.documents.documents")}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("gabinet.documents.documents")}
+                </p>
               </div>
               <div className="p-2 rounded-md bg-muted/50">
                 <p className="text-lg font-bold">{pays.length}</p>
-                <p className="text-[10px] text-muted-foreground">{t("gabinet.payments.payments")}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("gabinet.payments.payments")}
+                </p>
               </div>
               <div className="p-2 rounded-md bg-muted/50">
                 <p className="text-lg font-bold">{nts.length}</p>
-                <p className="text-[10px] text-muted-foreground">{t("common.notes")}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("common.notes")}
+                </p>
               </div>
               <div className="p-2 rounded-md bg-muted/50">
                 <p className="text-lg font-bold">{hist.length}</p>
-                <p className="text-[10px] text-muted-foreground">{t("gabinet.patients.history")}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("gabinet.patients.history")}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div>,
     );
     return () => setSidebarContent(null);
   }, [detail, t, setSidebarContent]);
@@ -486,7 +554,10 @@ function AppointmentDetail() {
     return (
       <div className="p-6">
         <p className="text-muted-foreground">{t("common.notFound")}</p>
-        <Button variant="outline" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
+        <Button
+          variant="outline"
+          onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+        >
           <ArrowLeft className="mr-2 h-4 w-4" variant="stroke" />
           {t("common.back")}
         </Button>
@@ -494,11 +565,29 @@ function AppointmentDetail() {
     );
   }
 
-  const { appointment, patient, treatment, employee, documents, payments, notes, patientPackageUsage, patientHistory, loyaltyBalance, loyaltyTier, loyaltyTransactions, allPatientPayments } = detail;
+  const {
+    appointment,
+    patient,
+    treatment,
+    employee,
+    documents,
+    payments,
+    notes,
+    patientPackageUsage,
+    patientHistory,
+    loyaltyBalance,
+    loyaltyTier,
+    loyaltyTransactions,
+    allPatientPayments,
+  } = detail;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+    return d.toLocaleDateString("pl-PL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   };
 
   const formatTime = (time: string) => {
@@ -522,7 +611,12 @@ function AppointmentDetail() {
   const getEmployeeInitials = () => {
     if (!employee) return "?";
     const name = employee.name ?? employee.email ?? "";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   const calculateDuration = () => {
@@ -598,97 +692,6 @@ function AppointmentDetail() {
   };
 
   // Document management handlers
-  const resetDocForm = () => {
-    setEditingDocId(null);
-    setDocTitle("");
-    setDocType("consent");
-    setDocContent("");
-    setDocTemplateId("");
-  };
-
-  const openEditDoc = (doc: any) => {
-    setEditingDocId(doc._id);
-    setDocTitle(doc.title);
-    setDocType(doc.type);
-    setDocContent(doc.content ?? "");
-    setDocPanelOpen(true);
-  };
-
-  const handleRequestSignature = async (docId: Id<"gabinetDocuments">) => {
-    try {
-      await requestDocSig({ organizationId, documentId: docId });
-      toast.success(t("gabinet.documents.signatureRequested"));
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
-    }
-  };
-
-  const handleArchiveDoc = async (docId: Id<"gabinetDocuments">) => {
-    if (!confirm(t("common.confirmDelete"))) return;
-    try {
-      await archiveDoc({ organizationId, documentId: docId });
-      toast.success(t("common.deleted"));
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
-    }
-  };
-
-  const handleDocSubmit = async () => {
-    if (!docTitle.trim()) {
-      toast.error(t("common.titleRequired"));
-      return;
-    }
-
-    setIsDocSubmitting(true);
-    try {
-      if (editingDocId) {
-        await updateDoc({
-          organizationId,
-          documentId: editingDocId as Id<"gabinetDocuments">,
-          title: docTitle,
-          content: docContent || undefined,
-        });
-        toast.success(t("common.saved"));
-      } else {
-        await createDoc({
-          organizationId,
-          patientId: patient!._id,
-          appointmentId: appointment._id,
-          templateId: docTemplateId ? docTemplateId as Id<"gabinetDocumentTemplates"> : undefined,
-          title: docTitle,
-          type: docType as any,
-          content: docContent || undefined,
-        });
-        toast.success(t("gabinet.documents.created"));
-      }
-      setDocPanelOpen(false);
-      resetDocForm();
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
-    } finally {
-      setIsDocSubmitting(false);
-    }
-  };
-
-  const handleSign = async (signatureData: string) => {
-    if (!signDocId) return;
-    try {
-      await signDoc({
-        organizationId,
-        documentId: signDocId as Id<"gabinetDocuments">,
-        signatureData,
-      });
-      toast.success(t("gabinet.documents.signed"));
-      setSignDocId(null);
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
-    }
-  };
-
   // Payment handlers
   const handleCreatePayment = async () => {
     if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
@@ -731,7 +734,9 @@ function AppointmentDetail() {
         entityType: "gabinetAppointment",
         entityId: appointment._id,
         content: newNoteContent.trim(),
-        parentNoteId: replyToNoteId ? replyToNoteId as Id<"notes"> : undefined,
+        parentNoteId: replyToNoteId
+          ? (replyToNoteId as Id<"notes">)
+          : undefined,
       });
       toast.success(t("gabinet.notes.created"));
       setNewNoteContent("");
@@ -802,7 +807,8 @@ function AppointmentDetail() {
       await updateAppointment({
         organizationId,
         appointmentId: appointment._id,
-        bodyChartData: bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : undefined,
+        bodyChartData:
+          bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : undefined,
       });
       toast.success(t("common.saved"));
       refetch();
@@ -815,7 +821,8 @@ function AppointmentDetail() {
 
   // Group notes by parent for threading
   const rootNotes = notes.filter((n) => !n.parentNoteId);
-  const getReplies = (noteId: string) => notes.filter((n) => n.parentNoteId === noteId);
+  const getReplies = (noteId: string) =>
+    notes.filter((n) => n.parentNoteId === noteId);
 
   // Calculate payment summary
   const treatmentPrice = treatment?.price ?? 0;
@@ -835,7 +842,10 @@ function AppointmentDetail() {
             {t("nav.home")}
           </Link>
           <span>/</span>
-          <Link to="/dashboard/gabinet/calendar" className="hover:text-foreground">
+          <Link
+            to="/dashboard/gabinet/calendar"
+            className="hover:text-foreground"
+          >
             {t("nav.gabinet")} / {t("nav.calendar")}
           </Link>
           <span>/</span>
@@ -848,15 +858,23 @@ function AppointmentDetail() {
       {/* Header */}
       <div className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+          >
             <ArrowLeft className="h-4 w-4" variant="stroke" />
           </Button>
           <div>
             <h1 className="text-xl font-semibold">
-              {treatment?.name ?? t("gabinet.appointments.appointment")} - {patient?.firstName} {patient?.lastName}
+              {treatment?.name ?? t("gabinet.appointments.appointment")} -{" "}
+              {patient?.firstName} {patient?.lastName}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {formatDate(appointment.date)} • {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+              {formatDate(appointment.date)} •{" "}
+              {formatTime(appointment.startTime)} -{" "}
+              {formatTime(appointment.endTime)}
             </p>
           </div>
         </div>
@@ -868,7 +886,10 @@ function AppointmentDetail() {
               disabled={isUpdating}
             >
               <SelectTrigger className="w-auto gap-2">
-                <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
+                <Badge
+                  variant={statusColors[appointment.status] ?? "secondary"}
+                  className="text-sm"
+                >
                   {t(`gabinet.appointments.statuses.${appointment.status}`)}
                 </Badge>
               </SelectTrigger>
@@ -884,7 +905,10 @@ function AppointmentDetail() {
               </SelectContent>
             </Select>
           ) : (
-            <Badge variant={statusColors[appointment.status] ?? "secondary"} className="text-sm">
+            <Badge
+              variant={statusColors[appointment.status] ?? "secondary"}
+              className="text-sm"
+            >
               {t(`gabinet.appointments.statuses.${appointment.status}`)}
             </Badge>
           )}
@@ -935,24 +959,37 @@ function AppointmentDetail() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("common.name")}</span>
-                      <span className="font-medium">{treatment?.name ?? "-"}</span>
+                      <span className="text-muted-foreground">
+                        {t("common.name")}
+                      </span>
+                      <span className="font-medium">
+                        {treatment?.name ?? "-"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("gabinet.treatments.duration")}</span>
-                      <span className="font-medium">{calculateDuration()} min</span>
+                      <span className="text-muted-foreground">
+                        {t("gabinet.treatments.duration")}
+                      </span>
+                      <span className="font-medium">
+                        {calculateDuration()} min
+                      </span>
                     </div>
                     {treatment?.price !== undefined && (
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{t("common.price")}</span>
+                        <span className="text-muted-foreground">
+                          {t("common.price")}
+                        </span>
                         <span className="font-medium">
-                          {treatment.price.toFixed(2)} {treatment.currency ?? "PLN"}
+                          {treatment.price.toFixed(2)}{" "}
+                          {treatment.currency ?? "PLN"}
                         </span>
                       </div>
                     )}
                     {treatment?.description && (
                       <div className="pt-2">
-                        <span className="text-sm text-muted-foreground">{t("common.description")}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {t("common.description")}
+                        </span>
                         <p className="text-sm mt-1">{treatment.description}</p>
                       </div>
                     )}
@@ -960,7 +997,9 @@ function AppointmentDetail() {
                       <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
                         <div className="flex items-center gap-2 text-destructive mb-1">
                           <ShieldAlert className="h-4 w-4" variant="stroke" />
-                          <span className="text-sm font-medium">{t("gabinet.treatments.contraindications")}</span>
+                          <span className="text-sm font-medium">
+                            {t("gabinet.treatments.contraindications")}
+                          </span>
                         </div>
                         <p className="text-sm">{treatment.contraindications}</p>
                       </div>
@@ -969,7 +1008,9 @@ function AppointmentDetail() {
                       <div className="pt-2 p-3 bg-primary/10 rounded-lg">
                         <div className="flex items-center gap-2 text-primary mb-1">
                           <Heart className="h-4 w-4" variant="stroke" />
-                          <span className="text-sm font-medium">{t("gabinet.treatments.aftercare")}</span>
+                          <span className="text-sm font-medium">
+                            {t("gabinet.treatments.aftercare")}
+                          </span>
                         </div>
                         <p className="text-sm">{treatment.aftercare}</p>
                       </div>
@@ -992,7 +1033,9 @@ function AppointmentDetail() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{getEmployeeName()}</p>
-                        <p className="text-sm text-muted-foreground">{employee?.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {employee?.email}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -1008,28 +1051,43 @@ function AppointmentDetail() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("common.date")}</span>
-                      <span className="font-medium">{formatDate(appointment.date)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("common.time")}</span>
+                      <span className="text-muted-foreground">
+                        {t("common.date")}
+                      </span>
                       <span className="font-medium">
-                        {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)} ({calculateDuration()} min)
+                        {formatDate(appointment.date)}
                       </span>
                     </div>
-                    {appointment.isRecurring && appointment.recurringGroupId && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground flex items-center gap-1">
-                          <RefreshCcw className="h-3 w-3" variant="stroke" />
-                          {t("gabinet.appointments.recurring")}
-                        </span>
-                        <Badge variant="outline">{appointment.recurringRule?.frequency ?? "weekly"}</Badge>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        {t("common.time")}
+                      </span>
+                      <span className="font-medium">
+                        {formatTime(appointment.startTime)} -{" "}
+                        {formatTime(appointment.endTime)} ({calculateDuration()}{" "}
+                        min)
+                      </span>
+                    </div>
+                    {appointment.isRecurring &&
+                      appointment.recurringGroupId && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <RefreshCcw className="h-3 w-3" variant="stroke" />
+                            {t("gabinet.appointments.recurring")}
+                          </span>
+                          <Badge variant="outline">
+                            {appointment.recurringRule?.frequency ?? "weekly"}
+                          </Badge>
+                        </div>
+                      )}
                     <Separator />
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("common.createdAt")}</span>
-                      <span className="text-sm">{formatDateTime(appointment.createdAt)}</span>
+                      <span className="text-muted-foreground">
+                        {t("common.createdAt")}
+                      </span>
+                      <span className="text-sm">
+                        {formatDateTime(appointment.createdAt)}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -1045,14 +1103,20 @@ function AppointmentDetail() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{t("gabinet.appointments.prepaymentAmount")}</span>
+                        <span className="text-muted-foreground">
+                          {t("gabinet.appointments.prepaymentAmount")}
+                        </span>
                         <span className="font-medium">
                           {(appointment.prepaymentAmount ?? 0).toFixed(2)} PLN
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{t("common.status")}</span>
-                        <Badge variant="secondary">{t("gabinet.appointments.prepaymentPending")}</Badge>
+                        <span className="text-muted-foreground">
+                          {t("common.status")}
+                        </span>
+                        <Badge variant="secondary">
+                          {t("gabinet.appointments.prepaymentPending")}
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -1065,17 +1129,25 @@ function AppointmentDetail() {
                       <StickyNote className="h-4 w-4" variant="stroke" />
                       {t("gabinet.appointments.internalNotes")}
                     </CardTitle>
-                    <CardDescription>{t("gabinet.appointments.internalNotesDesc")}</CardDescription>
+                    <CardDescription>
+                      {t("gabinet.appointments.internalNotesDesc")}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Textarea
-                      placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
+                      placeholder={t(
+                        "gabinet.appointments.internalNotesPlaceholder",
+                      )}
                       value={internalNotes}
                       onChange={(e) => setInternalNotes(e.target.value)}
                       rows={4}
                     />
                     <div className="flex justify-end">
-                      <Button size="sm" onClick={handleSaveInternalNotes} disabled={isSavingNotes}>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveInternalNotes}
+                        disabled={isSavingNotes}
+                      >
                         {isSavingNotes ? t("common.saving") : t("common.save")}
                       </Button>
                     </div>
@@ -1084,88 +1156,16 @@ function AppointmentDetail() {
               </TabsContent>
 
               {/* Documents Tab */}
-              <TabsContent value="documents" className="m-0">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>{t("gabinet.documents.documents")}</CardTitle>
-                      <CardDescription>{t("gabinet.documents.linkedToAppointment")}</CardDescription>
-                    </div>
-                    <Button size="sm" onClick={() => { resetDocForm(); setDocPanelOpen(true); }}>
-                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                      {t("gabinet.documents.newDocument")}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {documents.length === 0 ? (
-                      <EmptyState
-                        icon={FileText}
-                        title={t("gabinet.documents.noDocuments")}
-                        description={t("gabinet.documents.noDocumentsDesc")}
-                        action={
-                          <Button onClick={() => { resetDocForm(); setDocPanelOpen(true); }}>
-                            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                            {t("gabinet.documents.createFirst")}
-                          </Button>
-                        }
-                      />
-                    ) : (
-                      <div className="border rounded-lg">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="text-left p-3 text-sm font-medium">{t("common.title")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("common.type")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
-                              <th className="text-right p-3 text-sm font-medium">{t("common.actions")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {documents.map((doc) => (
-                              <tr key={doc._id} className="border-b last:border-0 hover:bg-muted/30">
-                                <td className="p-3">
-                                  <p className="font-medium">{doc.title}</p>
-                                </td>
-                                <td className="p-3">
-                                  <Badge variant="outline">{t(`gabinet.documents.types.${doc.type}`)}</Badge>
-                                </td>
-                                <td className="p-3">
-                                  <Badge variant={doc.status === "signed" ? "success" : doc.status === "final" ? "default" : "secondary"}>
-                                    {t(`gabinet.documents.status.${doc.status}`)}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-muted-foreground">
-                                  {new Date(doc.createdAt).toLocaleDateString("pl-PL")}
-                                </td>
-                                <td className="p-3">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => setViewDocId(doc._id)}>
-                                      <Eye className="h-4 w-4" variant="stroke" />
-                                    </Button>
-                                    {doc.status !== "signed" && (
-                                      <Button variant="ghost" size="sm" onClick={() => openEditDoc(doc)}>
-                                        <Pencil className="h-4 w-4" variant="stroke" />
-                                      </Button>
-                                    )}
-                                    {doc.requiresSignature && doc.status !== "signed" && (
-                                      <Button variant="ghost" size="sm" onClick={() => handleRequestSignature(doc._id)}>
-                                        <PenTool className="h-4 w-4" variant="stroke" />
-                                      </Button>
-                                    )}
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchiveDoc(doc._id)}>
-                                      <Trash2 className="h-4 w-4" variant="stroke" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              <TabsContent value="documents" className="m-0 p-6">
+                <DocumentInstanceTable
+                  organizationId={organizationId}
+                  sourceKey="patient"
+                  sourceInstanceId={patient?._id}
+                  module="gabinet"
+                  onView={(instanceId) => setViewingDocInstanceId(instanceId)}
+                  onNewFromTemplate={() => setTemplateDialogOpen(true)}
+                  showNewButton
+                />
               </TabsContent>
 
               {/* Payments Tab */}
@@ -1181,31 +1181,49 @@ function AppointmentDetail() {
                   <CardContent>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.treatmentPrice")}</p>
-                        <p className="text-2xl font-bold">{treatmentPrice.toFixed(2)} PLN</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.payments.treatmentPrice")}
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {treatmentPrice.toFixed(2)} PLN
+                        </p>
                       </div>
                       <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.totalPaid")}</p>
-                        <p className="text-2xl font-bold text-green-600">{totalPaid.toFixed(2)} PLN</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.payments.totalPaid")}
+                        </p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {totalPaid.toFixed(2)} PLN
+                        </p>
                       </div>
-                      <div className={`text-center p-4 rounded-lg ${outstanding > 0 ? "bg-orange-50 dark:bg-orange-950/20" : "bg-muted/50"}`}>
-                        <p className="text-sm text-muted-foreground">{t("gabinet.payments.outstanding")}</p>
-                        <p className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}>
+                      <div
+                        className={`text-center p-4 rounded-lg ${outstanding > 0 ? "bg-orange-50 dark:bg-orange-950/20" : "bg-muted/50"}`}
+                      >
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.payments.outstanding")}
+                        </p>
+                        <p
+                          className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}
+                        >
                           {outstanding.toFixed(2)} PLN
                         </p>
                       </div>
                     </div>
-                    {appointment.prepaymentRequired && appointment.prepaymentAmount && (
-                      <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                        <div className="flex items-center gap-2 text-blue-600">
-                          <Info className="h-4 w-4" variant="stroke" />
-                          <span className="font-medium">{t("gabinet.appointments.prepaymentRequired")}</span>
+                    {appointment.prepaymentRequired &&
+                      appointment.prepaymentAmount && (
+                        <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                          <div className="flex items-center gap-2 text-blue-600">
+                            <Info className="h-4 w-4" variant="stroke" />
+                            <span className="font-medium">
+                              {t("gabinet.appointments.prepaymentRequired")}
+                            </span>
+                          </div>
+                          <p className="text-sm mt-1">
+                            {t("gabinet.appointments.prepaymentAmount")}:{" "}
+                            {appointment.prepaymentAmount.toFixed(2)} PLN
+                          </p>
                         </div>
-                        <p className="text-sm mt-1">
-                          {t("gabinet.appointments.prepaymentAmount")}: {appointment.prepaymentAmount.toFixed(2)} PLN
-                        </p>
-                      </div>
-                    )}
+                      )}
                   </CardContent>
                 </Card>
 
@@ -1214,9 +1232,14 @@ function AppointmentDetail() {
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                       <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
-                      <CardDescription>{t("gabinet.payments.linkedToAppointment")}</CardDescription>
+                      <CardDescription>
+                        {t("gabinet.payments.linkedToAppointment")}
+                      </CardDescription>
                     </div>
-                    <Button size="sm" onClick={() => setPaymentDialogOpen(true)}>
+                    <Button
+                      size="sm"
+                      onClick={() => setPaymentDialogOpen(true)}
+                    >
                       <Plus className="mr-2 h-4 w-4" variant="stroke" />
                       {t("gabinet.payments.addPayment")}
                     </Button>
@@ -1239,29 +1262,57 @@ function AppointmentDetail() {
                         <table className="w-full">
                           <thead>
                             <tr className="border-b bg-muted/50">
-                              <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.amount")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.method")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
-                              <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
+                              <th className="text-left p-3 text-sm font-medium">
+                                {t("gabinet.payments.amount")}
+                              </th>
+                              <th className="text-left p-3 text-sm font-medium">
+                                {t("gabinet.payments.method")}
+                              </th>
+                              <th className="text-left p-3 text-sm font-medium">
+                                {t("common.date")}
+                              </th>
+                              <th className="text-left p-3 text-sm font-medium">
+                                {t("common.status")}
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {payments.map((payment) => (
-                              <tr key={payment._id} className="border-b last:border-0 hover:bg-muted/30">
+                              <tr
+                                key={payment._id}
+                                className="border-b last:border-0 hover:bg-muted/30"
+                              >
                                 <td className="p-3">
                                   <p className="font-medium">
-                                    {payment.amount.toFixed(2)} {payment.currency ?? "PLN"}
+                                    {payment.amount.toFixed(2)}{" "}
+                                    {payment.currency ?? "PLN"}
                                   </p>
                                 </td>
                                 <td className="p-3">
-                                  <Badge variant="outline">{t(`gabinet.payments.methods.${payment.paymentMethod}`)}</Badge>
+                                  <Badge variant="outline">
+                                    {t(
+                                      `gabinet.payments.methods.${payment.paymentMethod}`,
+                                    )}
+                                  </Badge>
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">
-                                  {new Date(payment.createdAt).toLocaleDateString("pl-PL")}
+                                  {new Date(
+                                    payment.createdAt,
+                                  ).toLocaleDateString("pl-PL")}
                                 </td>
                                 <td className="p-3">
-                                  <Badge variant={payment.status === "completed" ? "success" : payment.status === "refunded" ? "destructive" : "secondary"}>
-                                    {t(`gabinet.payments.status.${payment.status}`)}
+                                  <Badge
+                                    variant={
+                                      payment.status === "completed"
+                                        ? "success"
+                                        : payment.status === "refunded"
+                                          ? "destructive"
+                                          : "secondary"
+                                    }
+                                  >
+                                    {t(
+                                      `gabinet.payments.status.${payment.status}`,
+                                    )}
                                   </Badge>
                                 </td>
                               </tr>
@@ -1283,7 +1334,9 @@ function AppointmentDetail() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-muted-foreground">{t("gabinet.packages.usedInThisAppointment")}</p>
+                      <p className="text-muted-foreground">
+                        {t("gabinet.packages.usedInThisAppointment")}
+                      </p>
                       {/* Package details would be fetched and displayed here */}
                     </CardContent>
                   </Card>
@@ -1299,7 +1352,9 @@ function AppointmentDetail() {
                       <History className="h-4 w-4" variant="stroke" />
                       {t("gabinet.patients.appointmentHistory")}
                     </CardTitle>
-                    <CardDescription>{t("gabinet.patients.lastAppointments", { count: 20 })}</CardDescription>
+                    <CardDescription>
+                      {t("gabinet.patients.lastAppointments", { count: 20 })}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {patientHistory.length === 0 ? (
@@ -1325,13 +1380,23 @@ function AppointmentDetail() {
                                 className="flex-1 flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                               >
                                 <div>
-                                  <p className="font-medium">{(appt as any).treatment?.name ?? "-"}</p>
+                                  <p className="font-medium">
+                                    {(appt as any).treatment?.name ?? "-"}
+                                  </p>
                                   <p className="text-sm text-muted-foreground">
-                                    {formatDate(appt.date)} • {formatTime(appt.startTime)} - {formatTime(appt.endTime)}
+                                    {formatDate(appt.date)} •{" "}
+                                    {formatTime(appt.startTime)} -{" "}
+                                    {formatTime(appt.endTime)}
                                   </p>
                                 </div>
-                                <Badge variant={statusColors[appt.status] ?? "secondary"}>
-                                  {t(`gabinet.appointments.statuses.${appt.status}`)}
+                                <Badge
+                                  variant={
+                                    statusColors[appt.status] ?? "secondary"
+                                  }
+                                >
+                                  {t(
+                                    `gabinet.appointments.statuses.${appt.status}`,
+                                  )}
                                 </Badge>
                               </Link>
                             </div>
@@ -1362,25 +1427,44 @@ function AppointmentDetail() {
                         {patientPackageUsage.map((pkg: any) => (
                           <div key={pkg._id} className="p-4 border rounded-lg">
                             <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium">{pkg.packageName ?? t("gabinet.packages.package")}</p>
-                              <Badge variant={pkg.status === "active" ? "success" : "secondary"}>
+                              <p className="font-medium">
+                                {pkg.packageName ??
+                                  t("gabinet.packages.package")}
+                              </p>
+                              <Badge
+                                variant={
+                                  pkg.status === "active"
+                                    ? "success"
+                                    : "secondary"
+                                }
+                              >
                                 {t(`gabinet.packages.status.${pkg.status}`)}
                               </Badge>
                             </div>
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{t("gabinet.packages.treatmentsUsed")}</span>
-                                <span>{pkg.treatmentsUsed ?? 0} / {pkg.treatmentsTotal ?? 0}</span>
+                                <span className="text-muted-foreground">
+                                  {t("gabinet.packages.treatmentsUsed")}
+                                </span>
+                                <span>
+                                  {pkg.treatmentsUsed ?? 0} /{" "}
+                                  {pkg.treatmentsTotal ?? 0}
+                                </span>
                               </div>
                               <div className="h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-primary transition-all"
-                                  style={{ width: `${((pkg.treatmentsUsed ?? 0) / (pkg.treatmentsTotal ?? 1)) * 100}%` }}
+                                  style={{
+                                    width: `${((pkg.treatmentsUsed ?? 0) / (pkg.treatmentsTotal ?? 1)) * 100}%`,
+                                  }}
                                 />
                               </div>
                               {pkg.expiresAt && (
                                 <p className="text-xs text-muted-foreground">
-                                  {t("gabinet.packages.expires")}: {new Date(pkg.expiresAt).toLocaleDateString("pl-PL")}
+                                  {t("gabinet.packages.expires")}:{" "}
+                                  {new Date(pkg.expiresAt).toLocaleDateString(
+                                    "pl-PL",
+                                  )}
                                 </p>
                               )}
                             </div>
@@ -1402,30 +1486,54 @@ function AppointmentDetail() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.pointsBalance")}</p>
-                        <p className="text-3xl font-bold text-primary">{loyaltyBalance}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.loyalty.pointsBalance")}
+                        </p>
+                        <p className="text-3xl font-bold text-primary">
+                          {loyaltyBalance}
+                        </p>
                       </div>
                       <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.currentTier")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.loyalty.currentTier")}
+                        </p>
                         <Badge variant="outline" className="text-lg mt-2">
-                          {loyaltyTier ? t(`gabinet.loyalty.tiers.${loyaltyTier}`) : t("gabinet.loyalty.tiers.bronze")}
+                          {loyaltyTier
+                            ? t(`gabinet.loyalty.tiers.${loyaltyTier}`)
+                            : t("gabinet.loyalty.tiers.bronze")}
                         </Badge>
                       </div>
                     </div>
                     {loyaltyTransactions && loyaltyTransactions.length > 0 && (
                       <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-2">{t("gabinet.loyalty.recentTransactions")}</h4>
+                        <h4 className="text-sm font-medium mb-2">
+                          {t("gabinet.loyalty.recentTransactions")}
+                        </h4>
                         <div className="space-y-2">
                           {loyaltyTransactions.slice(0, 5).map((tx: any) => (
-                            <div key={tx._id} className="flex items-center justify-between p-2 border rounded">
+                            <div
+                              key={tx._id}
+                              className="flex items-center justify-between p-2 border rounded"
+                            >
                               <div>
-                                <p className="text-sm">{t(`gabinet.loyalty.txTypes.${tx.type}`)}</p>
+                                <p className="text-sm">
+                                  {t(`gabinet.loyalty.txTypes.${tx.type}`)}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(tx.createdAt).toLocaleDateString("pl-PL")}
+                                  {new Date(tx.createdAt).toLocaleDateString(
+                                    "pl-PL",
+                                  )}
                                 </p>
                               </div>
-                              <span className={tx.points > 0 ? "text-green-600 font-medium" : "text-destructive font-medium"}>
-                                {tx.points > 0 ? "+" : ""}{tx.points}
+                              <span
+                                className={
+                                  tx.points > 0
+                                    ? "text-green-600 font-medium"
+                                    : "text-destructive font-medium"
+                                }
+                              >
+                                {tx.points > 0 ? "+" : ""}
+                                {tx.points}
                               </span>
                             </div>
                           ))}
@@ -1448,19 +1556,29 @@ function AppointmentDetail() {
                       <>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                            <p className="text-sm text-muted-foreground">{t("gabinet.payments.totalSpent")}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {t("gabinet.payments.totalSpent")}
+                            </p>
                             <p className="text-2xl font-bold text-green-600">
                               {allPatientPayments
                                 .filter((p: any) => p.status === "completed")
-                                .reduce((sum: number, p: any) => sum + p.amount, 0)
-                                .toFixed(2)} PLN
+                                .reduce(
+                                  (sum: number, p: any) => sum + p.amount,
+                                  0,
+                                )
+                                .toFixed(2)}{" "}
+                              PLN
                             </p>
                           </div>
                           <div className="text-center p-4 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">{t("gabinet.payments.lastPayment")}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {t("gabinet.payments.lastPayment")}
+                            </p>
                             <p className="text-sm font-medium">
                               {allPatientPayments[0]
-                                ? new Date(allPatientPayments[0].createdAt).toLocaleDateString("pl-PL")
+                                ? new Date(
+                                    allPatientPayments[0].createdAt,
+                                  ).toLocaleDateString("pl-PL")
                                 : "-"}
                             </p>
                           </div>
@@ -1469,31 +1587,59 @@ function AppointmentDetail() {
                           <table className="w-full">
                             <thead>
                               <tr className="border-b bg-muted/50">
-                                <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.amount")}</th>
-                                <th className="text-left p-3 text-sm font-medium">{t("gabinet.payments.method")}</th>
-                                <th className="text-left p-3 text-sm font-medium">{t("common.date")}</th>
-                                <th className="text-left p-3 text-sm font-medium">{t("common.status")}</th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("gabinet.payments.amount")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("gabinet.payments.method")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("common.date")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("common.status")}
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
-                              {allPatientPayments.slice(0, 10).map((payment: any) => (
-                                <tr key={payment._id} className="border-b last:border-0 hover:bg-muted/30">
-                                  <td className="p-3 font-medium">
-                                    {payment.amount.toFixed(2)} {payment.currency ?? "PLN"}
-                                  </td>
-                                  <td className="p-3">
-                                    <Badge variant="outline">{t(`gabinet.payments.methods.${payment.paymentMethod}`)}</Badge>
-                                  </td>
-                                  <td className="p-3 text-sm text-muted-foreground">
-                                    {new Date(payment.createdAt).toLocaleDateString("pl-PL")}
-                                  </td>
-                                  <td className="p-3">
-                                    <Badge variant={payment.status === "completed" ? "success" : "secondary"}>
-                                      {t(`gabinet.payments.status.${payment.status}`)}
-                                    </Badge>
-                                  </td>
-                                </tr>
-                              ))}
+                              {allPatientPayments
+                                .slice(0, 10)
+                                .map((payment: any) => (
+                                  <tr
+                                    key={payment._id}
+                                    className="border-b last:border-0 hover:bg-muted/30"
+                                  >
+                                    <td className="p-3 font-medium">
+                                      {payment.amount.toFixed(2)}{" "}
+                                      {payment.currency ?? "PLN"}
+                                    </td>
+                                    <td className="p-3">
+                                      <Badge variant="outline">
+                                        {t(
+                                          `gabinet.payments.methods.${payment.paymentMethod}`,
+                                        )}
+                                      </Badge>
+                                    </td>
+                                    <td className="p-3 text-sm text-muted-foreground">
+                                      {new Date(
+                                        payment.createdAt,
+                                      ).toLocaleDateString("pl-PL")}
+                                    </td>
+                                    <td className="p-3">
+                                      <Badge
+                                        variant={
+                                          payment.status === "completed"
+                                            ? "success"
+                                            : "secondary"
+                                        }
+                                      >
+                                        {t(
+                                          `gabinet.payments.status.${payment.status}`,
+                                        )}
+                                      </Badge>
+                                    </td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -1524,7 +1670,11 @@ function AppointmentDetail() {
                       {replyToNoteId && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{t("gabinet.notes.replyingTo")}</span>
-                          <Button variant="ghost" size="sm" onClick={() => setReplyToNoteId(null)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setReplyToNoteId(null)}
+                          >
                             {t("common.cancel")}
                           </Button>
                         </div>
@@ -1536,8 +1686,13 @@ function AppointmentDetail() {
                         rows={3}
                       />
                       <div className="flex justify-end">
-                        <Button onClick={handleCreateNote} disabled={isNoteSubmitting || !newNoteContent.trim()}>
-                          {isNoteSubmitting ? t("common.saving") : t("gabinet.notes.addNote")}
+                        <Button
+                          onClick={handleCreateNote}
+                          disabled={isNoteSubmitting || !newNoteContent.trim()}
+                        >
+                          {isNoteSubmitting
+                            ? t("common.saving")
+                            : t("gabinet.notes.addNote")}
                         </Button>
                       </div>
                     </div>
@@ -1561,7 +1716,10 @@ function AppointmentDetail() {
                               editContent={editNoteContent}
                               onEditContentChange={setEditNoteContent}
                               onStartEdit={() => startEditNote(note)}
-                              onCancelEdit={() => { setEditingNoteId(null); setEditNoteContent(""); }}
+                              onCancelEdit={() => {
+                                setEditingNoteId(null);
+                                setEditNoteContent("");
+                              }}
                               onSaveEdit={() => handleUpdateNote(note._id)}
                               onDelete={() => handleDeleteNote(note._id)}
                               onTogglePin={() => handleTogglePin(note._id)}
@@ -1579,10 +1737,17 @@ function AppointmentDetail() {
                                     editContent={editNoteContent}
                                     onEditContentChange={setEditNoteContent}
                                     onStartEdit={() => startEditNote(reply)}
-                                    onCancelEdit={() => { setEditingNoteId(null); setEditNoteContent(""); }}
-                                    onSaveEdit={() => handleUpdateNote(reply._id)}
+                                    onCancelEdit={() => {
+                                      setEditingNoteId(null);
+                                      setEditNoteContent("");
+                                    }}
+                                    onSaveEdit={() =>
+                                      handleUpdateNote(reply._id)
+                                    }
                                     onDelete={() => handleDeleteNote(reply._id)}
-                                    onTogglePin={() => handleTogglePin(reply._id)}
+                                    onTogglePin={() =>
+                                      handleTogglePin(reply._id)
+                                    }
                                     onReply={() => setReplyToNoteId(note._id)}
                                     isSubmitting={isNoteSubmitting}
                                     isReply
@@ -1603,8 +1768,12 @@ function AppointmentDetail() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle>{t("gabinet.appointments.tabs.bodyChart")}</CardTitle>
-                      <CardDescription>{t("gabinet.bodyChart.description")}</CardDescription>
+                      <CardTitle>
+                        {t("gabinet.appointments.tabs.bodyChart")}
+                      </CardTitle>
+                      <CardDescription>
+                        {t("gabinet.bodyChart.description")}
+                      </CardDescription>
                     </div>
                     <Button onClick={() => setBodyChartModalOpen(true)}>
                       {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
@@ -1614,45 +1783,79 @@ function AppointmentDetail() {
                     {bodyChartData.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
-                          {t("gabinet.bodyChart.markedCount", { count: bodyChartData.length })}
+                          {t("gabinet.bodyChart.markedCount", {
+                            count: bodyChartData.length,
+                          })}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {bodyChartData.map((region) => (
-                            <div key={region.region} className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm">
+                            <div
+                              key={region.region}
+                              className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm"
+                            >
                               <div
                                 className="w-3 h-3 rounded-sm"
-                                style={{ backgroundColor: region.color, opacity: region.intensity }}
+                                style={{
+                                  backgroundColor: region.color,
+                                  opacity: region.intensity,
+                                }}
                               />
-                              <span>{t(`gabinet.bodyChart.regions.${region.region}`, region.region)}</span>
+                              <span>
+                                {t(
+                                  `gabinet.bodyChart.regions.${region.region}`,
+                                  region.region,
+                                )}
+                              </span>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
                       <div className="py-8 text-center text-muted-foreground text-sm">
-                        {t("gabinet.bodyChart.noRegions", "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.")}
+                        {t(
+                          "gabinet.bodyChart.noRegions",
+                          "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.",
+                        )}
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Body Chart Modal */}
-                <Dialog open={bodyChartModalOpen} onOpenChange={setBodyChartModalOpen}>
+                <Dialog
+                  open={bodyChartModalOpen}
+                  onOpenChange={setBodyChartModalOpen}
+                >
                   <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>{t("gabinet.appointments.tabs.bodyChart")}</DialogTitle>
-                      <DialogDescription>{t("gabinet.bodyChart.description")}</DialogDescription>
+                      <DialogTitle>
+                        {t("gabinet.appointments.tabs.bodyChart")}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {t("gabinet.bodyChart.description")}
+                      </DialogDescription>
                     </DialogHeader>
                     <BodyChart
                       data={bodyChartData}
                       onChange={handleBodyChartChange}
                     />
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setBodyChartModalOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setBodyChartModalOpen(false)}
+                      >
                         {t("common.cancel")}
                       </Button>
-                      <Button onClick={async () => { await handleBodyChartSave(); setBodyChartModalOpen(false); }} disabled={isBodyChartSaving}>
-                        {isBodyChartSaving ? t("common.saving") : t("common.save")}
+                      <Button
+                        onClick={async () => {
+                          await handleBodyChartSave();
+                          setBodyChartModalOpen(false);
+                        }}
+                        disabled={isBodyChartSaving}
+                      >
+                        {isBodyChartSaving
+                          ? t("common.saving")
+                          : t("common.save")}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1668,7 +1871,9 @@ function AppointmentDetail() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
-            <DialogDescription>{t("gabinet.appointments.cancelDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("gabinet.appointments.cancelDesc")}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Textarea
@@ -1679,11 +1884,20 @@ function AppointmentDetail() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+            >
               {t("common.cancel")}
             </Button>
-            <Button variant="destructive" onClick={handleCancelConfirm} disabled={isUpdating}>
-              {isUpdating ? t("common.processing") : t("gabinet.appointments.actions.cancel")}
+            <Button
+              variant="destructive"
+              onClick={handleCancelConfirm}
+              disabled={isUpdating}
+            >
+              {isUpdating
+                ? t("common.processing")
+                : t("gabinet.appointments.actions.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1694,7 +1908,9 @@ function AppointmentDetail() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
-            <DialogDescription>{t("gabinet.payments.addPaymentDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("gabinet.payments.addPaymentDesc")}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -1708,7 +1924,8 @@ function AppointmentDetail() {
               />
               {outstanding > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}: {outstanding.toFixed(2)} PLN
+                  {t("gabinet.payments.outstanding")}: {outstanding.toFixed(2)}{" "}
+                  PLN
                 </p>
               )}
             </div>
@@ -1719,10 +1936,18 @@ function AppointmentDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t("gabinet.payments.methods.cash")}</SelectItem>
-                  <SelectItem value="card">{t("gabinet.payments.methods.card")}</SelectItem>
-                  <SelectItem value="transfer">{t("gabinet.payments.methods.transfer")}</SelectItem>
-                  <SelectItem value="other">{t("gabinet.payments.methods.other")}</SelectItem>
+                  <SelectItem value="cash">
+                    {t("gabinet.payments.methods.cash")}
+                  </SelectItem>
+                  <SelectItem value="card">
+                    {t("gabinet.payments.methods.card")}
+                  </SelectItem>
+                  <SelectItem value="transfer">
+                    {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="other">
+                    {t("gabinet.payments.methods.other")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1737,123 +1962,41 @@ function AppointmentDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setPaymentDialogOpen(false)}
+            >
               {t("common.cancel")}
             </Button>
-            <Button onClick={handleCreatePayment} disabled={isPaymentSubmitting}>
-              {isPaymentSubmitting ? t("common.processing") : t("gabinet.payments.create")}
+            <Button
+              onClick={handleCreatePayment}
+              disabled={isPaymentSubmitting}
+            >
+              {isPaymentSubmitting
+                ? t("common.processing")
+                : t("gabinet.payments.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Document Panel */}
-      <SidePanel open={docPanelOpen} onOpenChange={setDocPanelOpen} title={editingDocId ? t("gabinet.documents.editDocument") : t("gabinet.documents.newDocument")}>
-        <div className="space-y-4 p-4">
-          <div>
-            <Label>{t("common.title")}</Label>
-            <Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder={t("gabinet.documents.titlePlaceholder")} />
-          </div>
+      {/* Create document from template dialog */}
+      <DocumentFromTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        organizationId={organizationId}
+        module="gabinet"
+        sources={{ patient: patient?._id ?? "" }}
+        onComplete={(instanceId) => setViewingDocInstanceId(instanceId)}
+      />
 
-          <div>
-            <Label>{t("common.type")}</Label>
-            <Select value={docType} onValueChange={setDocType} disabled={!!editingDocId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="consent">{t("gabinet.documents.types.consent")}</SelectItem>
-                <SelectItem value="prescription">{t("gabinet.documents.types.prescription")}</SelectItem>
-                <SelectItem value="referral">{t("gabinet.documents.types.referral")}</SelectItem>
-                <SelectItem value="report">{t("gabinet.documents.types.report")}</SelectItem>
-                <SelectItem value="invoice">{t("gabinet.documents.types.invoice")}</SelectItem>
-                <SelectItem value="other">{t("gabinet.documents.types.other")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {!editingDocId && templates && templates.length > 0 && (
-            <div>
-              <Label>{t("gabinet.documents.fromTemplate")}</Label>
-              <Select value={docTemplateId} onValueChange={setDocTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("gabinet.documents.selectTemplate")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((tpl: any) => (
-                    <SelectItem key={tpl._id} value={tpl._id}>{tpl.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div>
-            <Label>{t("gabinet.documents.content")}</Label>
-            <TemplateEditor value={docContent} onChange={setDocContent} minHeightClassName="min-h-[320px]" />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setDocPanelOpen(false); resetDocForm(); }}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleDocSubmit} disabled={isDocSubmitting}>
-              {isDocSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          </div>
-        </div>
-      </SidePanel>
-
-      {/* Document Viewer Dialog */}
-      <Dialog open={!!viewDocId} onOpenChange={() => setViewDocId(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>{documents.find(d => d._id === viewDocId)?.title}</DialogTitle>
-          </DialogHeader>
-          {viewDocId && (() => {
-            const doc = documents.find(d => d._id === viewDocId);
-            if (!doc) return null;
-            return (
-              <DocumentViewer
-                title={doc.title}
-                type={doc.type ?? ""}
-                status={doc.status ?? "draft"}
-                content={doc.content ?? ""}
-                signatureData={doc.signatureData}
-                signedAt={doc.signedAt}
-              />
-            );
-          })()}
-          <DialogFooter>
-            {(() => {
-              const doc = documents.find(d => d._id === viewDocId);
-              if (doc?.requiresSignature && doc.status !== "signed") {
-                return (
-                  <Button onClick={() => { setViewDocId(null); setSignDocId(doc._id); }}>
-                    <PenTool className="mr-2 h-4 w-4" variant="stroke" />
-                    {t("gabinet.documents.sign")}
-                  </Button>
-                );
-              }
-              return null;
-            })()}
-            <Button variant="outline" onClick={() => setViewDocId(null)}>
-              {t("common.close")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Signature Dialog */}
-      <Dialog open={!!signDocId} onOpenChange={() => setSignDocId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("gabinet.documents.signDocument")}</DialogTitle>
-            <DialogDescription>{t("gabinet.documents.signDescription")}</DialogDescription>
-          </DialogHeader>
-          <SignaturePad onSave={handleSign} onCancel={() => setSignDocId(null)} />
-        </DialogContent>
-      </Dialog>
+      {/* Document instance viewer */}
+      {viewingDocInstanceId && (
+        <DocumentInstanceView
+          instanceId={viewingDocInstanceId}
+          onClose={() => setViewingDocInstanceId(null)}
+        />
+      )}
     </div>
   );
 }

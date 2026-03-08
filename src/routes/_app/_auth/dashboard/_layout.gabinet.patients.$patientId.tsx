@@ -8,6 +8,9 @@ import { useOrganization } from "@/components/org-context";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
+import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
+import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +31,6 @@ import {
   Settings2,
   Heart,
   Calendar,
-  FileText,
   Star,
   Trophy,
   Plus,
@@ -36,12 +38,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "@/lib/ez-icons";
-import { Id } from "@cvx/_generated/dataModel";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 
 export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId"
+  "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
 )({
   component: PatientDetail,
 });
@@ -57,12 +59,15 @@ function PatientDetail() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllFields, setShowAllFields] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [viewingDocId, setViewingDocId] =
+    useState<Id<"documentInstances"> | null>(null);
 
   const { data: patient, isLoading } = useQuery(
     convexQuery(api.gabinet.patients.getById, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
-    })
+    }),
   );
 
   const { data: activitiesData } = useQuery(
@@ -71,7 +76,7 @@ function PatientDetail() {
       entityType: "gabinetPatient",
       entityId: patientId,
       paginationOpts: { numItems: 50, cursor: null },
-    })
+    }),
   );
   const activities = activitiesData?.page;
 
@@ -79,32 +84,25 @@ function PatientDetail() {
     convexQuery(api.gabinet.appointments.listByPatient, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
-    })
-  );
-
-  const { data: patientDocuments } = useQuery(
-    convexQuery(api.gabinet.documents.listByPatient, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    })
+    }),
   );
 
   const { data: loyaltyBalance } = useQuery(
     convexQuery(api.gabinet.loyalty.getBalance, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
-    })
+    }),
   );
 
   const { data: loyaltyTransactions } = useQuery(
     convexQuery(api.gabinet.loyalty.getTransactions, {
       organizationId,
       patientId: patientId as Id<"gabinetPatients">,
-    })
+    }),
   );
 
   const { data: treatmentsData } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId }),
   );
 
   if (isLoading) {
@@ -172,16 +170,38 @@ function PatientDetail() {
   const allFields = [
     { label: t("common.email"), value: patient.email, fieldKey: "email" },
     { label: t("common.phone"), value: patient.phone, fieldKey: "phone" },
-    { label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" },
-    { label: t("gabinet.patients.dateOfBirth"), value: patient.dateOfBirth, fieldKey: "dateOfBirth" },
+    {
+      label: t("gabinet.patients.pesel"),
+      value: patient.pesel,
+      fieldKey: "pesel",
+    },
+    {
+      label: t("gabinet.patients.dateOfBirth"),
+      value: patient.dateOfBirth,
+      fieldKey: "dateOfBirth",
+    },
     {
       label: t("gabinet.patients.gender"),
-      value: patient.gender ? t(`gabinet.patients.genderOptions.${patient.gender}`) : undefined,
+      value: patient.gender
+        ? t(`gabinet.patients.genderOptions.${patient.gender}`)
+        : undefined,
       fieldKey: "gender",
     },
-    { label: t("gabinet.patients.bloodType"), value: patient.bloodType, fieldKey: "bloodType" },
-    { label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" },
-    { label: t("gabinet.patients.referralSource"), value: patient.referralSource, fieldKey: "referralSource" },
+    {
+      label: t("gabinet.patients.bloodType"),
+      value: patient.bloodType,
+      fieldKey: "bloodType",
+    },
+    {
+      label: t("gabinet.patients.allergies"),
+      value: patient.allergies,
+      fieldKey: "allergies",
+    },
+    {
+      label: t("gabinet.patients.referralSource"),
+      value: patient.referralSource,
+      fieldKey: "referralSource",
+    },
     {
       label: t("gabinet.patients.emergencyContactName"),
       value: patient.emergencyContactName,
@@ -194,9 +214,14 @@ function PatientDetail() {
     },
     {
       label: t("gabinet.patients.address"),
-      value: [patient.address?.street, patient.address?.postalCode, patient.address?.city]
-        .filter(Boolean)
-        .join(", ") || undefined,
+      value:
+        [
+          patient.address?.street,
+          patient.address?.postalCode,
+          patient.address?.city,
+        ]
+          .filter(Boolean)
+          .join(", ") || undefined,
       fieldKey: "address",
     },
     {
@@ -271,7 +296,9 @@ function PatientDetail() {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{t("detail.sidebar.details")}</CardTitle>
+                    <CardTitle className="text-base">
+                      {t("detail.sidebar.details")}
+                    </CardTitle>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -293,11 +320,19 @@ function PatientDetail() {
                         >
                           {showAllFields
                             ? t("detail.sidebar.showLess")
-                            : t("detail.sidebar.showMore", { count: hiddenCount })}
+                            : t("detail.sidebar.showMore", {
+                                count: hiddenCount,
+                              })}
                           {showAllFields ? (
-                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
+                            <ChevronUp
+                              className="ml-1 h-4 w-4"
+                              variant="stroke"
+                            />
                           ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+                            <ChevronDown
+                              className="ml-1 h-4 w-4"
+                              variant="stroke"
+                            />
                           )}
                         </Button>
                       )}
@@ -306,7 +341,10 @@ function PatientDetail() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {visibleFields.map((field) => (
-                    <div key={field.fieldKey} className="flex items-start gap-4">
+                    <div
+                      key={field.fieldKey}
+                      className="flex items-start gap-4"
+                    >
                       <span className="w-28 shrink-0 text-right text-sm text-muted-foreground">
                         {field.label}
                       </span>
@@ -322,7 +360,9 @@ function PatientDetail() {
               {patient.medicalNotes && (
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{t("gabinet.patients.medicalNotes")}</CardTitle>
+                    <CardTitle className="text-base">
+                      {t("gabinet.patients.medicalNotes")}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -371,13 +411,18 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Heart className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                            <Heart
+                              className="h-4 w-4 text-muted-foreground"
+                              variant="stroke"
+                            />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("common.status")}
                               </p>
                               <p className="font-medium">
-                                {patient.isActive ? t("common.active") : t("common.inactive")}
+                                {patient.isActive
+                                  ? t("common.active")
+                                  : t("common.inactive")}
                               </p>
                             </div>
                           </div>
@@ -386,13 +431,18 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                            <Calendar
+                              className="h-4 w-4 text-muted-foreground"
+                              variant="stroke"
+                            />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("common.created")}
                               </p>
                               <p className="font-medium">
-                                {new Date(patient.createdAt).toLocaleDateString()}
+                                {new Date(
+                                  patient.createdAt,
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
@@ -401,7 +451,10 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Star className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                            <Star
+                              className="h-4 w-4 text-muted-foreground"
+                              variant="stroke"
+                            />
                             <div>
                               <p className="text-sm text-muted-foreground">
                                 {t("gabinet.patients.referralSource")}
@@ -433,52 +486,82 @@ function PatientDetail() {
                 <TabsContent value="appointments" className="m-0 p-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">{t("gabinet.patients.tabs.appointments")}</h3>
+                      <h3 className="text-lg font-semibold">
+                        {t("gabinet.patients.tabs.appointments")}
+                      </h3>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+                        onClick={() =>
+                          navigate({ to: "/dashboard/gabinet/calendar" })
+                        }
                       >
                         <Plus className="mr-1 h-4 w-4" variant="stroke" />
                         {t("gabinet.appointments.createAppointment")}
                       </Button>
                     </div>
-                    {!patientAppointments || patientAppointments.length === 0 ? (
+                    {!patientAppointments ||
+                    patientAppointments.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground">{t("gabinet.appointments.noAppointments")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("gabinet.appointments.noAppointments")}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         {[...patientAppointments]
-                          .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))
+                          .sort((a, b) =>
+                            (b.date + b.startTime).localeCompare(
+                              a.date + a.startTime,
+                            ),
+                          )
                           .map((apt) => {
-                            const treatmentName = treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.name;
-                            const isPast = apt.date < new Date().toISOString().split("T")[0];
+                            const treatmentName = treatmentsData?.find(
+                              (tr) => tr._id === apt.treatmentId,
+                            )?.name;
+                            const isPast =
+                              apt.date < new Date().toISOString().split("T")[0];
                             return (
                               <div
                                 key={apt._id}
                                 className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
-                                onClick={() => navigate({ to: "/dashboard/gabinet/appointments/$appointmentId", params: { appointmentId: apt._id } })}
+                                onClick={() =>
+                                  navigate({
+                                    to: "/dashboard/gabinet/appointments/$appointmentId",
+                                    params: { appointmentId: apt._id },
+                                  })
+                                }
                               >
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                  <Calendar className="h-4 w-4 text-primary" variant="stroke" />
+                                  <Calendar
+                                    className="h-4 w-4 text-primary"
+                                    variant="stroke"
+                                  />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">
                                     {treatmentName ?? t("common.unknown")}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {apt.date} &middot; {apt.startTime}–{apt.endTime}
+                                    {apt.date} &middot; {apt.startTime}–
+                                    {apt.endTime}
                                   </p>
                                 </div>
-                                <Badge variant={
-                                  apt.status === "completed" ? "default" :
-                                  apt.status === "cancelled" ? "destructive" :
-                                  apt.status === "no_show" ? "destructive" :
-                                  "secondary"
-                                }>
-                                  {t(`gabinet.appointments.statuses.${apt.status}`)}
+                                <Badge
+                                  variant={
+                                    apt.status === "completed"
+                                      ? "default"
+                                      : apt.status === "cancelled"
+                                        ? "destructive"
+                                        : apt.status === "no_show"
+                                          ? "destructive"
+                                          : "secondary"
+                                  }
+                                >
+                                  {t(
+                                    `gabinet.appointments.statuses.${apt.status}`,
+                                  )}
                                 </Badge>
                               </div>
                             );
@@ -490,55 +573,15 @@ function PatientDetail() {
 
                 {/* Documents tab */}
                 <TabsContent value="documents" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">{t("gabinet.patients.tabs.documents")}</h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate({ to: "/dashboard/gabinet/documents" })}
-                      >
-                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
-                        {t("gabinet.documents.createDocument")}
-                      </Button>
-                    </div>
-                    {!patientDocuments || patientDocuments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground">{t("gabinet.documents.noDocuments")}</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {[...patientDocuments]
-                          .sort((a, b) => b.createdAt - a.createdAt)
-                          .map((doc) => (
-                            <div
-                              key={doc._id}
-                              className="flex items-center gap-4 rounded-lg border p-3"
-                            >
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                                <FileText className="h-4 w-4 text-blue-500" variant="stroke" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{doc.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {t(`gabinet.documents.types.${doc.type}`)} &middot;{" "}
-                                  {new Date(doc.createdAt).toLocaleDateString("pl-PL")}
-                                </p>
-                              </div>
-                              <Badge variant={
-                                doc.status === "signed" ? "default" :
-                                doc.status === "archived" ? "secondary" :
-                                doc.status === "pending_signature" ? "outline" :
-                                "secondary"
-                              }>
-                                {t(`gabinet.documents.statuses.${doc.status}`)}
-                              </Badge>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
+                  <DocumentInstanceTable
+                    organizationId={organizationId}
+                    sourceKey="patient"
+                    sourceInstanceId={patientId}
+                    module="gabinet"
+                    onView={(instanceId) => setViewingDocId(instanceId)}
+                    onNewFromTemplate={() => setTemplateDialogOpen(true)}
+                    showNewButton
+                  />
                 </TabsContent>
 
                 {/* Loyalty tab */}
@@ -549,10 +592,17 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <Trophy className="h-4 w-4 text-yellow-500" variant="stroke" />
+                            <Trophy
+                              className="h-4 w-4 text-yellow-500"
+                              variant="stroke"
+                            />
                             <div>
-                              <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.balance")}</p>
-                              <p className="text-2xl font-bold">{loyaltyBalance?.balance ?? 0}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {t("gabinet.loyalty.balance")}
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {loyaltyBalance?.balance ?? 0}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -560,10 +610,17 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <ArrowUpRight className="h-4 w-4 text-green-500" variant="stroke" />
+                            <ArrowUpRight
+                              className="h-4 w-4 text-green-500"
+                              variant="stroke"
+                            />
                             <div>
-                              <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.totalEarned")}</p>
-                              <p className="text-2xl font-bold">{loyaltyBalance?.lifetimeEarned ?? 0}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {t("gabinet.loyalty.totalEarned")}
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {loyaltyBalance?.lifetimeEarned ?? 0}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -571,10 +628,17 @@ function PatientDetail() {
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-3">
-                            <ArrowDownRight className="h-4 w-4 text-red-500" variant="stroke" />
+                            <ArrowDownRight
+                              className="h-4 w-4 text-red-500"
+                              variant="stroke"
+                            />
                             <div>
-                              <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.totalSpent")}</p>
-                              <p className="text-2xl font-bold">{loyaltyBalance?.lifetimeSpent ?? 0}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {t("gabinet.loyalty.totalSpent")}
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {loyaltyBalance?.lifetimeSpent ?? 0}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -583,20 +647,29 @@ function PatientDetail() {
 
                     {loyaltyBalance?.tier && (
                       <div className="flex items-center gap-2">
-                        <Star className="h-4 w-4 text-yellow-500" variant="stroke" />
+                        <Star
+                          className="h-4 w-4 text-yellow-500"
+                          variant="stroke"
+                        />
                         <span className="text-sm font-medium">
-                          {t("gabinet.loyalty.tier")}: {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
+                          {t("gabinet.loyalty.tier")}:{" "}
+                          {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
                         </span>
                       </div>
                     )}
 
                     {/* Transaction history */}
                     <div>
-                      <h4 className="text-sm font-semibold mb-3">{t("gabinet.loyalty.transactionHistory")}</h4>
-                      {!loyaltyTransactions || loyaltyTransactions.length === 0 ? (
+                      <h4 className="text-sm font-semibold mb-3">
+                        {t("gabinet.loyalty.transactionHistory")}
+                      </h4>
+                      {!loyaltyTransactions ||
+                      loyaltyTransactions.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <Star className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                          <p className="text-sm text-muted-foreground">{t("gabinet.loyalty.noTransactions")}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("gabinet.loyalty.noTransactions")}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-2">
@@ -608,27 +681,57 @@ function PatientDetail() {
                                 key={tx._id}
                                 className="flex items-center gap-3 rounded-lg border p-3"
                               >
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                                  tx.type === "earn" ? "bg-green-100 text-green-600" :
-                                  tx.type === "spend" ? "bg-red-100 text-red-600" :
-                                  "bg-gray-100 text-gray-600"
-                                }`}>
-                                  {tx.type === "earn" ? <Plus className="h-4 w-4" variant="stroke" /> :
-                                   tx.type === "spend" ? <Minus className="h-4 w-4" variant="stroke" /> :
-                                   <Star className="h-4 w-4" variant="stroke" />}
+                                <div
+                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                    tx.type === "earn"
+                                      ? "bg-green-100 text-green-600"
+                                      : tx.type === "spend"
+                                        ? "bg-red-100 text-red-600"
+                                        : "bg-gray-100 text-gray-600"
+                                  }`}
+                                >
+                                  {tx.type === "earn" ? (
+                                    <Plus
+                                      className="h-4 w-4"
+                                      variant="stroke"
+                                    />
+                                  ) : tx.type === "spend" ? (
+                                    <Minus
+                                      className="h-4 w-4"
+                                      variant="stroke"
+                                    />
+                                  ) : (
+                                    <Star
+                                      className="h-4 w-4"
+                                      variant="stroke"
+                                    />
+                                  )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium">{tx.reason}</p>
+                                  <p className="text-sm font-medium">
+                                    {tx.reason}
+                                  </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {new Date(tx.createdAt).toLocaleDateString("pl-PL")}
+                                    {new Date(tx.createdAt).toLocaleDateString(
+                                      "pl-PL",
+                                    )}
                                   </p>
                                 </div>
-                                <span className={`text-sm font-semibold ${
-                                  tx.type === "earn" ? "text-green-600" :
-                                  tx.type === "spend" ? "text-red-600" :
-                                  "text-muted-foreground"
-                                }`}>
-                                  {tx.type === "earn" ? "+" : tx.type === "spend" ? "−" : ""}{tx.points}
+                                <span
+                                  className={`text-sm font-semibold ${
+                                    tx.type === "earn"
+                                      ? "text-green-600"
+                                      : tx.type === "spend"
+                                        ? "text-red-600"
+                                        : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {tx.type === "earn"
+                                    ? "+"
+                                    : tx.type === "spend"
+                                      ? "−"
+                                      : ""}
+                                  {tx.points}
                                 </span>
                               </div>
                             ))}
@@ -686,6 +789,24 @@ function PatientDetail() {
           isSubmitting={isSubmitting}
         />
       </SidePanel>
+
+      {/* Create document from template dialog */}
+      <DocumentFromTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        organizationId={organizationId}
+        module="gabinet"
+        sources={{ patient: patientId }}
+        onComplete={(instanceId) => setViewingDocId(instanceId)}
+      />
+
+      {/* Document instance viewer */}
+      {viewingDocId && (
+        <DocumentInstanceView
+          instanceId={viewingDocId}
+          onClose={() => setViewingDocId(null)}
+        />
+      )}
     </>
   );
 }

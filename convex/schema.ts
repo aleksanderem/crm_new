@@ -1373,12 +1373,23 @@ const schema = defineSchema({
 
   documentInstances: defineTable({
     organizationId: v.id("organizations"),
-    templateId: v.id("documentTemplates"),
-    templateVersion: v.number(),
+    // Type discriminator
+    type: v.optional(v.union(v.literal("template"), v.literal("file"))),
+    // Template fields (optional for file type)
+    templateId: v.optional(v.id("documentTemplates")),
+    templateVersion: v.optional(v.number()),
+    renderedContent: v.optional(v.string()),
+    fieldValues: v.optional(v.any()),
+    resolvedSources: v.optional(v.any()),
+    // File fields (optional for template type)
+    fileId: v.optional(v.id("_storage")),
+    fileUrl: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
+    category: v.optional(v.string()),
+    // Common fields
     title: v.string(),
-    renderedContent: v.string(),
-    fieldValues: v.any(),
-    resolvedSources: v.any(),
     status: v.union(
       v.literal("draft"),
       v.literal("pending_review"),
@@ -1387,7 +1398,7 @@ const schema = defineSchema({
       v.literal("signed"),
       v.literal("archived"),
     ),
-    module: v.string(),
+    module: v.optional(v.string()),
     signatures: v.array(v.object({
       slotId: v.string(),
       slotLabel: v.string(),
@@ -1413,6 +1424,8 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    assignedReviewerId: v.optional(v.id("users")),
+    assignedReviewerName: v.optional(v.string()),
     reviewedBy: v.optional(v.id("users")),
     reviewedAt: v.optional(v.number()),
     approvedBy: v.optional(v.id("users")),

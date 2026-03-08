@@ -15,8 +15,10 @@ import {
   FileSignature,
   Trash2,
   Undo2,
+  ExternalLink,
 } from "@/lib/ez-icons";
 import { SendForSigningDialog } from "./send-for-signing-dialog";
+import { ReviewAssignDialog } from "./review-assign-dialog";
 import { PdfExportButton } from "./pdf-export";
 
 // ---------------------------------------------------------------------------
@@ -29,7 +31,7 @@ type DocumentStatus = DocumentInstance["status"];
 interface DocumentViewerProps {
   instance: DocumentInstance;
   onSign?: (slotId: string) => void;
-  onStatusChange?: (status: DocumentStatus) => void;
+  onStatusChange?: (status: DocumentStatus, assignedReviewerId?: string) => void;
   onEdit?: () => void;
   onSendForSigning?: () => void;
 }
@@ -63,6 +65,7 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
 export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSendForSigning }: DocumentViewerProps) {
   const { title, status, renderedContent, signatures, createdAt } = instance;
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
 
   return (
     <>
@@ -73,6 +76,15 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
       organizationId={instance.organizationId}
       signatures={signatures}
       onSent={onSendForSigning}
+    />
+    <ReviewAssignDialog
+      open={showReviewDialog}
+      onOpenChange={setShowReviewDialog}
+      organizationId={instance.organizationId}
+      onAssign={(reviewerId) => {
+        onStatusChange?.("pending_review", reviewerId);
+        setShowReviewDialog(false);
+      }}
     />
     <Card>
       {/* Header */}
@@ -89,14 +101,23 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
           </div>
           <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[status]}</Badge>
         </div>
+        {status === "pending_review" && instance.assignedReviewerName && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Recenzent: <span className="font-medium text-foreground">{instance.assignedReviewerName}</span>
+          </p>
+        )}
       </CardHeader>
 
-      {/* Rendered document content */}
+      {/* Document content */}
       <CardContent className="space-y-6">
-        <div
-          className="prose prose-sm max-w-none rounded-lg border bg-white text-black p-6 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: renderedContent }}
-        />
+        {instance.type === "file" ? (
+          <FilePreview instance={instance} />
+        ) : (
+          <div
+            className="prose prose-sm max-w-none rounded-lg border bg-white text-black p-6 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: renderedContent ?? "" }}
+          />
+        )}
 
         {/* Signature section */}
         {signatures.length > 0 && (
@@ -161,12 +182,65 @@ export function DocumentViewer({ instance, onSign, onStatusChange, onEdit, onSen
             onEdit={onEdit}
             onSign={onSign ? () => onSign(signatures.find((s) => !s.signatureData)?.slotId ?? "") : undefined}
             onSendForSigning={() => setShowSendDialog(true)}
+            onSendForReview={() => setShowReviewDialog(true)}
             hasUnsignedSlots={signatures.some((s) => !s.signatureData)}
           />
         </div>
       </CardFooter>
     </Card>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// File preview for uploaded documents
+// ---------------------------------------------------------------------------
+
+function FilePreview({ instance }: { instance: DocumentInstance }) {
+  const isPdf = instance.mimeType === "application/pdf";
+  const isImage = instance.mimeType?.startsWith("image/");
+  const fileUrl = instance.fileUrl;
+
+  if (!fileUrl) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border bg-muted/30 p-12">
+        <div className="text-center space-y-2">
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Plik nie jest dostępny</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPdf) {
+    return (
+      <div className="rounded-lg border overflow-hidden">
+        <iframe src={fileUrl} className="w-full h-[600px]" title={instance.title} />
+      </div>
+    );
+  }
+
+  if (isImage) {
+    return (
+      <div className="rounded-lg border bg-white p-4">
+        <img src={fileUrl} alt={instance.title} className="max-w-full mx-auto" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center rounded-lg border bg-muted/30 p-12">
+      <div className="text-center space-y-3">
+        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+        <p className="text-sm font-medium">{instance.fileName}</p>
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+          <Button variant="outline" size="sm">
+            <ExternalLink className="mr-1 h-4 w-4" />
+            Otwórz plik
+          </Button>
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -181,22 +255,26 @@ interface StatusActionsProps {
   onEdit?: () => void;
   onSign?: () => void;
   onSendForSigning?: () => void;
+  onSendForReview?: () => void;
   hasUnsignedSlots: boolean;
 }
 
-function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSendForSigning, hasUnsignedSlots }: StatusActionsProps) {
+function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSendForSigning, onSendForReview, hasUnsignedSlots }: StatusActionsProps) {
   const actions: React.ReactNode[] = [];
+  const isEditable = status !== "signed" && status !== "archived";
+
+  // Edit button — available for all non-signed/non-archived states
+  if (onEdit && isEditable) {
+    actions.push(
+      <Button key="edit" variant="outline" size="sm" onClick={onEdit}>
+        <Pencil className="mr-1 h-4 w-4" />
+        Edytuj
+      </Button>,
+    );
+  }
 
   switch (status) {
     case "draft":
-      if (onEdit) {
-        actions.push(
-          <Button key="edit" variant="outline" size="sm" onClick={onEdit}>
-            <Pencil className="mr-1 h-4 w-4" />
-            Edytuj
-          </Button>,
-        );
-      }
       if (onStatusChange) {
         actions.push(
           <Button key="approve" variant="outline" size="sm" onClick={() => onStatusChange("approved")}>
@@ -205,9 +283,9 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
           </Button>,
         );
         actions.push(
-          <Button key="delete" variant="destructive" size="sm" onClick={() => onStatusChange("pending_review")}>
-            <Trash2 className="mr-1 h-4 w-4" />
-            Usun
+          <Button key="review" variant="outline" size="sm" onClick={onSendForReview}>
+            <Send className="mr-1 h-4 w-4" />
+            Do przeglądu
           </Button>,
         );
       }
@@ -249,7 +327,7 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
         <PdfExportButton
           key="download"
           title={instance.title}
-          content={instance.renderedContent}
+          content={instance.renderedContent ?? ""}
           signatures={instance.signatures}
         />,
       );
@@ -268,7 +346,7 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
         <PdfExportButton
           key="download"
           title={instance.title}
-          content={instance.renderedContent}
+          content={instance.renderedContent ?? ""}
           signatures={instance.signatures}
         />,
       );
@@ -279,7 +357,7 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
         <PdfExportButton
           key="download"
           title={instance.title}
-          content={instance.renderedContent}
+          content={instance.renderedContent ?? ""}
           signatures={instance.signatures}
         />,
       );
@@ -298,7 +376,7 @@ function StatusActions({ status, instance, onStatusChange, onEdit, onSign, onSen
         <PdfExportButton
           key="download"
           title={instance.title}
-          content={instance.renderedContent}
+          content={instance.renderedContent ?? ""}
           signatures={instance.signatures}
         />,
       );

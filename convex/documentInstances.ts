@@ -172,6 +172,7 @@ export const create = mutation({
 
     return await ctx.db.insert("documentInstances", {
       organizationId: args.organizationId,
+      type: "template",
       templateId: args.templateId,
       templateVersion: template.version,
       title: args.title,
@@ -188,23 +189,40 @@ export const create = mutation({
   },
 });
 
+const NON_EDITABLE_STATUSES = ["signed", "archived"];
+
 export const updateDraft = mutation({
   args: {
     id: v.id("documentInstances"),
     title: v.optional(v.string()),
     fieldValues: v.optional(v.any()),
     renderedContent: v.optional(v.string()),
+    category: v.optional(v.string()),
+    fileId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const instance = await ctx.db.get(args.id);
     if (!instance) throw new Error("Document not found");
-    if (instance.status !== "draft") throw new Error("Can only edit draft documents");
+    if (NON_EDITABLE_STATUSES.includes(instance.status)) {
+      throw new Error("Podpisanych i zarchiwizowanych dokumentów nie można edytować");
+    }
     await verifyOrgAccess(ctx, instance.organizationId);
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.title !== undefined) patch.title = args.title;
     if (args.fieldValues !== undefined) patch.fieldValues = args.fieldValues;
     if (args.renderedContent !== undefined) patch.renderedContent = args.renderedContent;
+    if (args.category !== undefined) patch.category = args.category;
+    if (args.fileId !== undefined) {
+      patch.fileId = args.fileId;
+      patch.fileUrl = (await ctx.storage.getUrl(args.fileId)) ?? undefined;
+    }
+    if (args.fileName !== undefined) patch.fileName = args.fileName;
+    if (args.mimeType !== undefined) patch.mimeType = args.mimeType;
+    if (args.fileSize !== undefined) patch.fileSize = args.fileSize;
 
     await ctx.db.patch(args.id, patch);
   },
@@ -214,6 +232,7 @@ export const updateStatus = mutation({
   args: {
     id: v.id("documentInstances"),
     status: statusValidator,
+    assignedReviewerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const instance = await ctx.db.get(args.id);
@@ -245,6 +264,11 @@ export const updateStatus = mutation({
     if (args.status === "pending_review") {
       patch.reviewedBy = user._id;
       patch.reviewedAt = now;
+      if (args.assignedReviewerId) {
+        patch.assignedReviewerId = args.assignedReviewerId;
+        const reviewer = await ctx.db.get(args.assignedReviewerId);
+        patch.assignedReviewerName = reviewer?.name ?? "";
+      }
     }
 
     await ctx.db.patch(args.id, patch);
@@ -290,12 +314,59 @@ export const sign = mutation({
   },
 });
 
+export const createFromFile = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    fileId: v.id("_storage"),
+    fileName: v.string(),
+    mimeType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
+    category: v.optional(v.string()),
+    module: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const now = Date.now();
+
+    const fileUrl = await ctx.storage.getUrl(args.fileId);
+
+    return await ctx.db.insert("documentInstances", {
+      organizationId: args.organizationId,
+      type: "file",
+      title: args.title,
+      fileId: args.fileId,
+      fileUrl: fileUrl ?? undefined,
+      fileName: args.fileName,
+      mimeType: args.mimeType,
+      fileSize: args.fileSize,
+      category: args.category,
+      module: args.module,
+      status: "draft",
+      signatures: [],
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("documentInstances") },
   handler: async (ctx, args) => {
     const instance = await ctx.db.get(args.id);
     if (!instance) throw new Error("Document not found");
-    if (instance.status !== "draft") throw new Error("Can only delete draft documents");
+    if (NON_EDITABLE_STATUSES.includes(instance.status)) {
+      throw new Error("Podpisanych i zarchiwizowanych dokumentów nie można usunąć");
+    }
     await verifyOrgAccess(ctx, instance.organizationId);
 
     await ctx.db.delete(args.id);

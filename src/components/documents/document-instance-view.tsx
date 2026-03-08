@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DocumentViewer } from "./document-viewer";
+import { DocumentEditDialog } from "./document-edit-dialog";
 import { SignaturePad } from "./signature-pad";
 import { toast } from "sonner";
 
@@ -43,6 +44,7 @@ export function DocumentInstanceView({
   onStatusChange,
 }: DocumentInstanceViewProps) {
   const [signingSlotId, setSigningSlotId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: instance, isLoading } = useQuery(
     convexQuery(api.documentInstances.getById, { id: instanceId }),
@@ -51,9 +53,13 @@ export function DocumentInstanceView({
   const updateStatus = useMutation(api.documentInstances.updateStatus);
   const signMutation = useMutation(api.documentInstances.sign);
 
-  const handleStatusChange = async (status: DocumentStatus) => {
+  const handleStatusChange = async (status: DocumentStatus, assignedReviewerId?: string) => {
     try {
-      await updateStatus({ id: instanceId, status });
+      await updateStatus({
+        id: instanceId,
+        status,
+        assignedReviewerId: assignedReviewerId as any,
+      });
       toast.success("Status dokumentu został zaktualizowany");
       onStatusChange?.();
     } catch (e: unknown) {
@@ -104,7 +110,14 @@ export function DocumentInstanceView({
         instance={instance}
         onSign={(slotId) => setSigningSlotId(slotId)}
         onStatusChange={handleStatusChange}
+        onEdit={() => setEditOpen(true)}
         onSendForSigning={onStatusChange}
+      />
+
+      <DocumentEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        instance={instance}
       />
 
       {/* Signature dialog */}

@@ -7,18 +7,17 @@ import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
-import { MiniChartsRow } from "@/components/crm/mini-charts";
-import { SidePanel } from "@/components/crm/side-panel";
-import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
-import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
-import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -27,18 +26,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { documentCategoryOptions, documentStatusOptions } from "@/lib/options";
-import { Plus, Pencil, Trash2, RefreshCw } from "@/lib/ez-icons";
-import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
-import type { MiniChartData } from "@/components/crm/mini-charts";
-import { Doc } from "@cvx/_generated/dataModel";
-import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import { Upload, FileSignature } from "@/lib/ez-icons";
-import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
+import { CrmDataTable } from "@/components/crm/enhanced-data-table";
+import { Upload, FileSignature, FileText, FileCheck } from "@/lib/ez-icons";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Doc } from "@cvx/_generated/dataModel";
+import { toast } from "sonner";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/"
@@ -46,481 +39,179 @@ export const Route = createFileRoute(
   component: DocumentsIndex,
 });
 
-type Document = Doc<"documents">;
-type DocumentRow = Document & { __cfValues: Record<string, unknown> };
-type DocumentStatus = "draft" | "sent" | "accepted" | "lost";
-type DocumentCategory = "proposal" | "contract" | "invoice" | "presentation" | "report" | "other";
+type DocumentInstance = Doc<"documentInstances">;
+type DocumentStatus = DocumentInstance["status"];
 
-const STATUS_CONFIG: Record<DocumentStatus, { color: string; labelKey: string }> = {
-  draft: { color: "bg-gray-100 text-gray-700", labelKey: "documents.status.draft" },
-  sent: { color: "bg-blue-100 text-blue-700", labelKey: "documents.status.sent" },
-  accepted: { color: "bg-green-100 text-green-700", labelKey: "documents.status.accepted" },
-  lost: { color: "bg-red-100 text-red-700", labelKey: "documents.status.lost" },
+const STATUS_VARIANT: Record<DocumentStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  draft: "secondary",
+  pending_review: "outline",
+  approved: "default",
+  pending_signature: "outline",
+  signed: "default",
+  archived: "secondary",
 };
 
-function formatCurrency(amount?: number): string {
-  if (amount == null) return "—";
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-  }).format(amount);
-}
+const STATUS_LABEL: Record<DocumentStatus, string> = {
+  draft: "Szkic",
+  pending_review: "Oczekuje na przegląd",
+  approved: "Zatwierdzony",
+  pending_signature: "Oczekuje na podpis",
+  signed: "Podpisany",
+  archived: "Zarchiwizowany",
+};
 
 function DocumentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const systemViews: SavedView[] = useMemo(() => [
-    { id: "all", name: t('documents.views.all'), isSystem: true, isDefault: true },
-    { id: "my-documents", name: t('documents.views.my'), isSystem: true, isDefault: false },
-  ], [t]);
 
-  const filterableFields = useMemo((): FieldDef[] => [
-    {
-      id: "status", label: t('common.status'), type: "select",
-      options: documentStatusOptions(t),
-    },
-    {
-      id: "category", label: t('common.category'), type: "select",
-      options: documentCategoryOptions(t),
-    },
-    { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
-
-  const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
-  } = useSavedViews({ organizationId, entityType: "document", systemViews });
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
-  const [statusChangeDoc, setStatusChangeDoc] = useState<Document | null>(null);
-  const [newStatus, setNewStatus] = useState<DocumentStatus>("draft");
-
-  // Form state
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<DocumentCategory | "">("");
-  const [status, setStatus] = useState<DocumentStatus>("draft");
-  const [amount, setAmount] = useState("");
-
-  // Chart time ranges
-  const [statusChartRange, setStatusChartRange] = useState<TimeRange>("last30days");
-  const [sentChartRange, setSentChartRange] = useState<TimeRange>("last7days");
-
-  // Filter states
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [templateFilter, setTemplateFilter] = useState<string | null>(null);
-
-  // Sidebar dispatch handlers
-  useSidebarDispatch("openFilter", () => {
-    // Toggle type filter - simple toggle for now
-    setTypeFilter((prev) => prev ? null : "proposal");
-  });
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
-  useSidebarDispatch("createFromTemplate", () => {
-    setTemplateDialogOpen(true);
-  });
-  useSidebarDispatch("bulkActions", () => {
-    // The table already has row selection - this could trigger bulk mode
-    // For now, just focus on the table
-    document.querySelector<HTMLElement>('[role="table"]')?.focus();
-  });
-
-  const { data: currentUser } = useQuery(
-    convexQuery(api.app.getCurrentUser, {})
+  const { data: instances, isLoading } = useQuery(
+    convexQuery(api.documentInstances.list, { organizationId }),
   );
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.documents.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
+  const allDocs = instances ?? [];
 
-  const allDocuments = data?.page ?? [];
-
-  const documents = useMemo(() => {
-    let data = allDocuments;
-    if (activeViewId === "my-documents" && currentUser) {
-      data = allDocuments.filter((d) => d.createdBy === currentUser._id);
-    }
-    return applyFilters(data);
-  }, [activeViewId, allDocuments, currentUser, applyFilters]);
-
-  // Chart data
-  const statusChartData = useMemo((): MiniChartData[] => {
-    const statusKeys: DocumentStatus[] = ["draft", "sent", "accepted", "lost"];
-    const counts: Record<DocumentStatus, number> = { draft: 0, sent: 0, accepted: 0, lost: 0 };
-    for (const doc of allDocuments) {
-      const s = (doc.status ?? "draft") as DocumentStatus;
-      counts[s] = (counts[s] ?? 0) + 1;
-    }
-    return statusKeys.map((key) => ({
-      label: t(STATUS_CONFIG[key].labelKey),
-      value: counts[key],
-    }));
-  }, [allDocuments, t]);
-
-  const sentByDayData = useMemo((): MiniChartData[] => {
-    const sentDocs = allDocuments.filter((d) => d.status && d.status !== "draft");
-    const days: Record<string, number> = {};
-    for (const doc of sentDocs) {
-      const date = new Date(doc.createdAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-      days[date] = (days[date] ?? 0) + 1;
-    }
-    return Object.entries(days)
-      .slice(-7)
-      .map(([label, value]) => ({ label, value }));
-  }, [allDocuments]);
-
-  // Custom fields — table columns
-  const documentIds = useMemo(() => documents.map((d) => d._id as string), [documents]);
-
-  const { columns: cfColumns, defaultColumnVisibility, mergeCustomFieldValues } =
-    useCustomFieldColumns<Document>({ organizationId, entityType: "document", entityIds: documentIds });
-
-  // Custom fields — form
-  const {
-    definitions: cfDefs,
-    values: cfValues,
-    onChange: onCfChange,
-    resetValues: resetCfValues,
-    loadValuesFromEntity,
-    saveValues: saveCfValues,
-  } = useCustomFieldForm({ organizationId, entityType: "document" });
-
-  const createDocument = useMutation(api.documents.create);
-  const updateDocument = useMutation(api.documents.update);
-  const removeDocument = useMutation(api.documents.remove);
-  const updateStatus = useMutation(api.documents.updateStatus);
-
-  const resetForm = () => {
-    setName("");
-    setDescription("");
-    setCategory("");
-    setStatus("draft");
-    setAmount("");
-    resetCfValues();
-    setEditingDoc(null);
-  };
-
-  const openCreatePanel = () => {
-    resetForm();
-    setPanelOpen(true);
-  };
-
-  const openEditPanel = (doc: DocumentRow) => {
-    setEditingDoc(doc);
-    setName(doc.name);
-    setDescription(doc.description ?? "");
-    setCategory((doc.category as DocumentCategory) ?? "");
-    setStatus((doc.status as DocumentStatus) ?? "draft");
-    setAmount(doc.amount != null ? String(doc.amount) : "");
-    loadValuesFromEntity(doc.__cfValues);
-    setPanelOpen(true);
-  };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!name.trim()) return;
-    setIsSubmitting(true);
-    try {
-      const categoryVal = category || undefined;
-      const amountVal = amount ? parseFloat(amount) : undefined;
-
-      let documentId: string;
-      if (editingDoc) {
-        documentId = await updateDocument({
-          organizationId,
-          documentId: editingDoc._id,
-          name: name.trim(),
-          description: description.trim() || undefined,
-          category: categoryVal as any,
-          status: status as any,
-          amount: amountVal,
-        });
-      } else {
-        documentId = await createDocument({
-          organizationId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-          category: categoryVal as any,
-          status: status as any,
-          amount: amountVal,
-        });
-      }
-      await saveCfValues(documentId);
-      setPanelOpen(false);
-      resetForm();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Merge custom field values into row data
-  const tableData: DocumentRow[] = useMemo(
-    () => mergeCustomFieldValues(documents),
-    [mergeCustomFieldValues, documents]
-  );
-
-  const baseColumns: ColumnDef<DocumentRow, unknown>[] = [
-    {
-      accessorKey: "name",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.title')} />
-      ),
-      cell: ({ row }) => (
-        <div>
-          <span className="font-medium">{row.original.name}</span>
-          {row.original.description && (
-            <p className="text-xs text-muted-foreground line-clamp-1">
-              {row.original.description}
-            </p>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "category",
-      size: 150,
-      header: t('common.category'),
-      cell: ({ getValue }) => {
-        const v = getValue() as string | undefined;
-        return v ? (
-          <Badge variant="outline" className="capitalize">
-            {v}
-          </Badge>
-        ) : (
-          "—"
-        );
+  const columns: ColumnDef<DocumentInstance, unknown>[] = useMemo(
+    () => [
+      {
+        accessorKey: "title",
+        size: 250,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Tytuł" />
+        ),
+        cell: ({ row }) => {
+          const doc = row.original;
+          const isFile = doc.type === "file";
+          return (
+            <div className="flex items-center gap-2">
+              {isFile ? (
+                <FileCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <div className="min-w-0">
+                <span className="font-medium">{doc.title}</span>
+                {isFile && doc.fileName && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {doc.fileName}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        },
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
-    },
-    {
-      accessorKey: "status",
-      size: 150,
-      header: t('common.status'),
-      cell: ({ getValue }) => {
-        const val = (getValue() as DocumentStatus | undefined) ?? "draft";
-        const config = STATUS_CONFIG[val];
-        return (
-          <Badge variant="secondary" className={config?.color ?? ""}>
-            {config ? t(config.labelKey) : val}
-          </Badge>
-        );
+      {
+        id: "type",
+        size: 120,
+        header: "Typ",
+        cell: ({ row }) => {
+          const type = row.original.type ?? "template";
+          return (
+            <Badge variant="outline">
+              {type === "file" ? "Plik" : "Z szablonu"}
+            </Badge>
+          );
+        },
       },
-    },
-    {
-      accessorKey: "amount",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.amount')} />
-      ),
-      cell: ({ getValue }) => formatCurrency(getValue() as number | undefined),
-    },
-    {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.created')} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
-    },
-  ];
-
-  const columns: ColumnDef<DocumentRow, unknown>[] = useMemo(
-    () => [...baseColumns, ...(cfColumns as ColumnDef<DocumentRow, unknown>[])],
-    [baseColumns, cfColumns]
+      {
+        accessorKey: "status",
+        size: 160,
+        header: "Status",
+        cell: ({ row }) => {
+          const status = row.original.status;
+          return (
+            <Badge variant={STATUS_VARIANT[status]}>
+              {STATUS_LABEL[status]}
+            </Badge>
+          );
+        },
+        filterFn: (row, _id, value) =>
+          (value as string[]).includes(row.original.status),
+      },
+      {
+        accessorKey: "category",
+        size: 130,
+        header: "Kategoria",
+        cell: ({ row }) => {
+          const cat = row.original.category;
+          return cat ? (
+            <Badge variant="outline" className="capitalize">{cat}</Badge>
+          ) : "—";
+        },
+      },
+      {
+        id: "signatures",
+        size: 130,
+        header: "Podpisy",
+        cell: ({ row }) => {
+          const sigs = row.original.signatures;
+          if (!sigs.length) return "—";
+          const signed = sigs.filter((s) => s.signatureData).length;
+          return (
+            <span className="text-sm">
+              {signed}/{sigs.length}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        size: 130,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Utworzono" />
+        ),
+        cell: ({ getValue }) =>
+          new Date(getValue() as number).toLocaleDateString("pl-PL"),
+      },
+    ],
+    [],
   );
-
-  const rowActions = (row: DocumentRow) => [
-    {
-      label: t('common.edit'),
-      icon: <Pencil className="h-4 w-4" variant="stroke" />,
-      onClick: () => openEditPanel(row),
-    },
-    {
-      label: t('documents.changeStatus'),
-      icon: <RefreshCw className="h-4 w-4" variant="stroke" />,
-      onClick: () => {
-        setStatusChangeDoc(row);
-        setNewStatus((row.status as DocumentStatus) ?? "draft");
-      },
-    },
-    {
-      label: t('common.delete'),
-      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeDocument({ organizationId, documentId: row._id }),
-    },
-  ];
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title={t('documents.title')}
-        description={t('documents.description')}
+        title="Dokumenty"
+        description="Dokumenty z szablonów i przesłane pliki"
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setUploadDialogOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Prześlij plik
+            </Button>
             <Button variant="outline" onClick={() => setTemplateDialogOpen(true)}>
               <FileSignature className="mr-2 h-4 w-4" />
               Z szablonu
             </Button>
-            <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('documents.newDocument')}
-            </Button>
           </div>
         }
       />
 
-      <MiniChartsRow
-        leftChart={{
-          title: t('documents.byStatus'),
-          data: statusChartData,
-          chartType: "bar",
-          timeRange: statusChartRange,
-          onTimeRangeChange: setStatusChartRange,
-        }}
-        rightChart={{
-          title: t('documents.sentByDay'),
-          data: sentByDayData,
-          chartType: "line",
-          timeRange: sentChartRange,
-          onTimeRangeChange: setSentChartRange,
-        }}
-      />
-
-      <div className="flex items-center gap-2 py-2">
-        <SidebarFilterAction
-          dispatchId="createFromTemplate"
-          options={[
-            { label: "Umowa", value: "contract" },
-            { label: "Faktura", value: "invoice" },
-            { label: "Oferta", value: "proposal" },
-          ]}
-          selected={templateFilter ? [templateFilter] : []}
-          onChange={(vals) => setTemplateFilter(vals[0] || null)}
-          label="Z szablonu"
-          singleSelect
-        />
-        <SidebarFilterAction
-          dispatchId="openFilter"
-          options={[
-            { label: "Umowa", value: "contract" },
-            { label: "Faktura", value: "invoice" },
-            { label: "Oferta", value: "proposal" },
-            { label: "Prezentacja", value: "presentation" },
-            { label: "Raport", value: "report" },
-          ]}
-          selected={typeFilter ? [typeFilter] : []}
-          onChange={(vals) => setTypeFilter(vals[0] || null)}
-          label="Filtruj wg typu"
-          singleSelect
-        />
-      </div>
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.uploadDocument'),
-            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "documents",
-            action: "create",
-          },
-        ]}
-      />
-
-      <SavedViewsTabs
-        views={views}
-        activeViewId={activeViewId}
-        onViewChange={onViewChange}
-        onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
-        onDeleteView={onDeleteView}
-        filterableFields={filterableFields}
-      />
-
-      <CrmDataTable<DocumentRow>
+      <CrmDataTable<DocumentInstance>
         columns={columns}
-        data={tableData}
+        data={allDocs}
         stickyFirstColumn
-        frozenColumns={2}
-        rowActions={rowActions}
-        searchKey="name"
-        searchPlaceholder={t('documents.searchPlaceholder')}
-        defaultColumnVisibility={defaultColumnVisibility}
+        frozenColumns={1}
+        searchKey="title"
+        searchPlaceholder="Szukaj dokumentów..."
         filterableColumns={[
           {
-            id: "category",
-            title: t('common.category'),
-            options: [
-              { label: t('documents.category.proposal'), value: "proposal" },
-              { label: t('documents.category.contract'), value: "contract" },
-              { label: t('documents.category.invoice'), value: "invoice" },
-              { label: t('documents.category.presentation'), value: "presentation" },
-              { label: t('documents.category.report'), value: "report" },
-              { label: t('documents.category.other'), value: "other" },
-            ],
+            id: "status",
+            title: "Status",
+            options: Object.entries(STATUS_LABEL).map(([value, label]) => ({
+              value,
+              label,
+            })),
           },
         ]}
         isLoading={isLoading}
         onRowClick={(row) =>
-          navigate({ to: `/dashboard/documents/${row._id}` })
+          navigate({ to: `/dashboard/documents/instance/${row._id}` })
         }
       />
-
-      {/* Status change inline dialog */}
-      {statusChangeDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg border p-6 shadow-lg w-[320px] space-y-4">
-            <h3 className="font-semibold">{t('documents.changeStatus')}</h3>
-            <p className="text-sm text-muted-foreground">
-              {statusChangeDoc.name}
-            </p>
-            <Select value={newStatus} onValueChange={(val) => setNewStatus(val as DocumentStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">{t('documents.status.draft')}</SelectItem>
-                <SelectItem value="sent">{t('documents.status.sent')}</SelectItem>
-                <SelectItem value="accepted">{t('documents.status.accepted')}</SelectItem>
-                <SelectItem value="lost">{t('documents.status.lost')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStatusChangeDoc(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  await updateStatus({
-                    organizationId,
-                    documentId: statusChangeDoc._id,
-                    status: newStatus,
-                  });
-                  setStatusChangeDoc(null);
-                }}
-              >
-                {t('common.update')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <DocumentFromTemplateDialog
         open={templateDialogOpen}
@@ -533,93 +224,143 @@ function DocumentsIndex() {
         }}
       />
 
-      <SidePanel
-        open={panelOpen}
-        onOpenChange={(open) => {
-          setPanelOpen(open);
-          if (!open) resetForm();
+      <UploadDocumentDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        organizationId={organizationId}
+        onComplete={(instanceId) => {
+          navigate({ to: `/dashboard/documents/instance/${instanceId}` });
         }}
-        title={editingDoc ? t('documents.editDocument') : t('documents.newDocument')}
-        description={editingDoc ? t('documents.updateDescription') : t('documents.createDescription')}
-        onSubmit={handleSubmit}
-        submitLabel={editingDoc ? t('common.update') : t('common.create')}
-        isSubmitting={isSubmitting}
-      >
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>
-              {t('common.name')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('documents.documentName')}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('common.description')}</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('documents.documentDescription')}
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('common.category')}</Label>
-            <Select value={category} onValueChange={(val) => setCategory(val as DocumentCategory | "")}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('common.none')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="proposal">{t('documents.category.proposal')}</SelectItem>
-                <SelectItem value="contract">{t('documents.category.contract')}</SelectItem>
-                <SelectItem value="invoice">{t('documents.category.invoice')}</SelectItem>
-                <SelectItem value="presentation">{t('documents.category.presentation')}</SelectItem>
-                <SelectItem value="report">{t('documents.category.report')}</SelectItem>
-                <SelectItem value="other">{t('documents.category.other')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('common.status')}</Label>
-            <Select value={status} onValueChange={(val) => setStatus(val as DocumentStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">{t('documents.status.draft')}</SelectItem>
-                <SelectItem value="sent">{t('documents.status.sent')}</SelectItem>
-                <SelectItem value="accepted">{t('documents.status.accepted')}</SelectItem>
-                <SelectItem value="lost">{t('documents.status.lost')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('common.amount')}</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-
-          {cfDefs && cfDefs.length > 0 && (
-            <CustomFieldFormSection
-              definitions={cfDefs}
-              values={cfValues}
-              onChange={onCfChange}
-            />
-          )}
-        </div>
-      </SidePanel>
+      />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Upload document dialog
+// ---------------------------------------------------------------------------
+
+function UploadDocumentDialog({
+  open,
+  onOpenChange,
+  organizationId,
+  onComplete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organizationId: any;
+  onComplete: (instanceId: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [file, setFile] = useState<globalThis.File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const generateUploadUrl = useMutation(api.documentInstances.generateUploadUrl);
+  const createFromFile = useMutation(api.documentInstances.createFromFile);
+
+  const resetForm = () => {
+    setTitle("");
+    setCategory("");
+    setFile(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!file || !title.trim()) return;
+    setUploading(true);
+    try {
+      const uploadUrl = await generateUploadUrl({ organizationId });
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const { storageId } = await result.json();
+
+      const instanceId = await createFromFile({
+        organizationId,
+        title: title.trim(),
+        fileId: storageId,
+        fileName: file.name,
+        mimeType: file.type || undefined,
+        fileSize: file.size || undefined,
+        category: category || undefined,
+        module: "crm",
+      });
+
+      resetForm();
+      onOpenChange(false);
+      onComplete(instanceId);
+      toast.success("Dokument został przesłany");
+    } catch (err: any) {
+      toast.error(err.message ?? "Nie udało się przesłać dokumentu");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Prześlij dokument</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Tytuł <span className="text-destructive">*</span></Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nazwa dokumentu"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Kategoria</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz kategorię" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contract">Umowa</SelectItem>
+                <SelectItem value="invoice">Faktura</SelectItem>
+                <SelectItem value="proposal">Oferta</SelectItem>
+                <SelectItem value="report">Raport</SelectItem>
+                <SelectItem value="other">Inne</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Plik <span className="text-destructive">*</span></Label>
+            <Input
+              type="file"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setFile(f);
+                if (f && !title.trim()) {
+                  setTitle(f.name.replace(/\.[^.]+$/, ""));
+                }
+              }}
+            />
+            {file && (
+              <p className="text-xs text-muted-foreground">
+                {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+            Anuluj
+          </Button>
+          <Button onClick={handleSubmit} disabled={uploading || !file || !title.trim()}>
+            {uploading ? "Przesyłanie..." : "Prześlij"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

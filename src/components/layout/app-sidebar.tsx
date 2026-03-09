@@ -528,6 +528,10 @@ const settingsNav: SettingsNavItem[] = [
     labelKey: "settings.emailEvents",
     to: "/dashboard/settings/email-events",
   },
+  {
+    labelKey: "settings.emailSequences",
+    to: "/dashboard/settings/email-sequences",
+  },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
   {

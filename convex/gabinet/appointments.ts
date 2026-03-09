@@ -438,6 +438,26 @@ export const create = mutation({
       recurringIndex: isRecurring ? 0 : undefined,
     });
 
+    // Send appointment.created email if patient has email
+    if (patient?.email) {
+      const employee = await ctx.db.get(args.employeeId);
+      const employeeName = employee?.name ?? "Specjalista";
+      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+        organizationId: args.organizationId,
+        eventType: "appointment.created",
+        recipientEmail: patient.email,
+        recipientName: patientName,
+        payload: JSON.stringify({
+          patientName,
+          appointmentDate: args.date,
+          appointmentTime: args.startTime,
+          treatmentName,
+          employeeName,
+        }),
+        triggeredBy: user._id,
+      });
+    }
+
     // Dual write: create shared calendar event
     const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
     const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
@@ -723,6 +743,34 @@ export const updateStatus = mutation({
     }
 
     await ctx.db.patch(args.appointmentId, patch);
+
+    // Send appointment.cancelled email if status changed to cancelled and patient has email
+    if (args.status === "cancelled") {
+      const patient = await ctx.db.get(appt.patientId);
+      const treatment = await ctx.db.get(appt.treatmentId);
+      if (patient?.email) {
+        const employee = await ctx.db.get(appt.employeeId);
+        const patientName = patient
+          ? `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`
+          : "Patient";
+        const treatmentName = treatment?.name ?? "Treatment";
+        const employeeName = employee?.name ?? "Specjalista";
+        await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+          organizationId: args.organizationId,
+          eventType: "appointment.cancelled",
+          recipientEmail: patient.email,
+          recipientName: patientName,
+          payload: JSON.stringify({
+            patientName,
+            appointmentDate: appt.date,
+            appointmentTime: appt.startTime,
+            treatmentName,
+            employeeName,
+          }),
+          triggeredBy: user._id,
+        });
+      }
+    }
 
     // Sync to scheduledActivity
     if (appt.scheduledActivityId) {

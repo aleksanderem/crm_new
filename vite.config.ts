@@ -13,4 +13,15 @@ export default defineConfig({
       "@cvx": path.resolve(__dirname, "./convex"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-charts": ["recharts"],
+          "vendor-react": ["react", "react-dom"],
+          "vendor-convex": ["convex", "@convex-dev/react-query"],
+        },
+      },
+    },
+  },
 });

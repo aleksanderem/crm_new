@@ -6,6 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
+import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
 import { OrgProvider } from "@/components/org-context";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -66,6 +67,9 @@ import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
+  errorComponent: ({ error, reset }) => (
+    <RouteErrorBoundary error={error} reset={reset} />
+  ),
   component: DashboardLayout,
 });
 

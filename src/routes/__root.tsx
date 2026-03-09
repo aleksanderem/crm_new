@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import React, { Suspense } from "react";
 import { Helmet } from "react-helmet-async";
+import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
 
 const TanStackRouterDevtools =
   process.env.NODE_ENV === "production"
@@ -22,6 +23,9 @@ const TanStackRouterDevtools =
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
+  errorComponent: ({ error, reset }) => (
+    <RouteErrorBoundary error={error} reset={reset} />
+  ),
   component: () => {
     const router = useRouter();
     const matchWithTitle = [...router.state.matches]

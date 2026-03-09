@@ -22,6 +22,7 @@ import {
 } from "recharts";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -889,7 +890,7 @@ function GabinetReports() {
     return labels[dateRange];
   }, [dateRange, t]);
 
-  const { data: appointments } = useQuery(
+  const { data: appointments, isLoading: loadingAppointments } = useQuery(
     convexQuery(api.gabinet.appointments.listByDateRange, {
       organizationId,
       startDate,
@@ -897,23 +898,26 @@ function GabinetReports() {
     })
   );
 
-  const { data: treatments } = useQuery(
+  const { data: treatments, isLoading: loadingTreatments } = useQuery(
     convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
 
-  const { data: patients } = useQuery(
+  const { data: patients, isLoading: loadingPatients } = useQuery(
     convexQuery(api.gabinet.patients.list, {
       organizationId,
       paginationOpts: { numItems: 500, cursor: null },
     })
   );
 
-  const { data: employees } = useQuery(
+  const { data: employees, isLoading: loadingEmployees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, {
       organizationId,
       activeOnly: true,
     })
   );
+
+  const isLoading =
+    loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees;
 
   // Treatment map: id → { name, price, currency }
   const treatmentMap = useMemo(() => {
@@ -1098,6 +1102,24 @@ function GabinetReports() {
     }
     return bucketizePairs(Array.from(map.entries()));
   }, [appointments, treatmentMap]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">

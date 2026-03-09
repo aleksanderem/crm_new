@@ -470,3 +470,98 @@ export const bookFromPortal = mutation({
     return appointmentId;
   },
 });
+
+// ---------------------------------------------------------------------------
+// Reschedule Request
+// ---------------------------------------------------------------------------
+
+export const requestReschedule = mutation({
+  args: {
+    tokenHash: v.string(),
+    appointmentId: v.id("gabinetAppointments"),
+    requestedDate: v.string(), // YYYY-MM-DD
+    requestedTime: v.string(), // HH:MM
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { patientId, organizationId } = await validatePortalSession(
+      ctx,
+      args.tokenHash,
+    );
+
+    const appt = await ctx.db.get(args.appointmentId);
+    if (
+      !appt ||
+      appt.organizationId !== organizationId ||
+      appt.patientId !== patientId
+    ) {
+      throw new Error("Appointment not found");
+    }
+
+    if (!["scheduled", "confirmed"].includes(appt.status)) {
+      throw new Error("Only upcoming appointments can be rescheduled");
+    }
+
+    const patient = await ctx.db.get(patientId);
+    const patientName = patient
+      ? `${patient.firstName} ${patient.lastName}`
+      : "Patient";
+
+    const treatment = await ctx.db.get(appt.treatmentId);
+    const treatmentName = treatment?.name ?? "appointment";
+
+    // Add reschedule request to internal notes
+    const requestNote = [
+      `[RESCHEDULE REQUEST] ${new Date().toISOString().split("T")[0]}`,
+      `Requested date: ${args.requestedDate} at ${args.requestedTime}`,
+      ...(args.reason ? [`Reason: ${args.reason}`] : []),
+    ].join("\n");
+
+    const existingNotes = appt.internalNotes ?? "";
+    const updatedNotes = existingNotes
+      ? `${existingNotes}\n\n${requestNote}`
+      : requestNote;
+
+    await ctx.db.patch(args.appointmentId, {
+      internalNotes: updatedNotes,
+      updatedAt: Date.now(),
+    });
+
+    // Notify admins and owners about the reschedule request
+    const staffMemberships = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      )
+      .collect();
+
+    const staffToNotify = staffMemberships.filter(
+      (m) => m.role === "owner" || m.role === "admin",
+    );
+
+    const notifyMessage = `${patientName} requests to reschedule ${treatmentName} to ${args.requestedDate} at ${args.requestedTime}`;
+
+    for (const staff of staffToNotify) {
+      await createNotificationDirect(ctx, {
+        organizationId,
+        userId: staff.userId,
+        type: "portal_booking_request",
+        title: "Reschedule Request",
+        message: notifyMessage,
+      });
+    }
+
+    // Also notify the appointment's employee if not already notified
+    if (!staffToNotify.some((s) => s.userId === appt.employeeId)) {
+      await createNotificationDirect(ctx, {
+        organizationId,
+        userId: appt.employeeId,
+        type: "portal_booking_request",
+        title: "Reschedule Request",
+        message: notifyMessage,
+      });
+    }
+
+    return { success: true };
+  },
+});

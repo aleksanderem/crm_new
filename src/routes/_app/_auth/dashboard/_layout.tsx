@@ -487,6 +487,7 @@ function DashboardLayout() {
                     size="icon"
                     className="sm:hidden"
                     onClick={() => setSearchOpen(true)}
+                    aria-label={t("layout.search")}
                   >
                     <SearchIcon className="size-4" variant="stroke" />
                   </Button>

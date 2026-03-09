@@ -481,13 +481,19 @@ function GabinetCalendarPage() {
               variant="outline"
               size="sm"
               onClick={() => navigateDate(-1)}
+              aria-label={t("gabinet.calendar.previousPeriod")}
             >
               <ChevronLeft className="h-4 w-4" variant="stroke" />
             </Button>
             <Button variant="outline" size="sm" onClick={goToday}>
               {t("gabinet.calendar.today", "Dzis")}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigateDate(1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateDate(1)}
+              aria-label={t("gabinet.calendar.nextPeriod")}
+            >
               <ChevronRight className="h-4 w-4" variant="stroke" />
             </Button>
             <h2 className="ml-2 text-sm font-semibold">{title}</h2>

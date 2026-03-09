@@ -959,10 +959,12 @@
     "download": "Download"
   },
   "layout": {
-    "search": "Search...",
+    "search": "Search",
     "settings": "Settings",
     "logOut": "Log Out",
-    "openDeals": "Open Deals"
+    "openDeals": "Open Deals",
+    "notifications": "Notifications",
+    "createNew": "Create new"
   },
   "profile": {
     "title": "Settings",
@@ -1460,7 +1462,9 @@
       "month": "Month",
       "appointments": "appointments",
       "dayDetail": "Day details",
-      "noAppointments": "No appointments on this day"
+      "noAppointments": "No appointments on this day",
+      "previousPeriod": "Previous period",
+      "nextPeriod": "Next period"
     },
     "packages": {
       "title": "Treatment Packages",
@@ -1782,7 +1786,8 @@
       "documents": "Documents",
       "packages": "Packages",
       "loyalty": "Loyalty",
-      "profile": "Profile"
+      "profile": "Profile",
+      "mainNav": "Main navigation"
     },
     "login": {
       "title": "Client Portal",

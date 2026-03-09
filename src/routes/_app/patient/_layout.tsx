@@ -60,7 +60,7 @@ function PatientLayout() {
       <header className="sticky top-0 z-10 border-b bg-card">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <span className="text-sm font-semibold">{t("patientPortal.title")}</span>
-          <nav className="hidden sm:flex items-center gap-1">
+          <nav className="hidden sm:flex items-center gap-1" aria-label={t("patientPortal.nav.mainNav")}>
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -79,7 +79,7 @@ function PatientLayout() {
           </Button>
         </div>
         {/* Mobile nav */}
-        <nav className="flex sm:hidden border-t overflow-x-auto">
+        <nav className="flex sm:hidden border-t overflow-x-auto" aria-label={t("patientPortal.nav.mainNav")}>
           {navItems.map((item) => (
             <Link
               key={item.href}

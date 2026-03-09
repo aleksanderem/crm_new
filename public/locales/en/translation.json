@@ -1644,7 +1644,20 @@
       "completionRate": "completion rate",
       "treatmentPopularity": "Treatment Popularity",
       "statusDistribution": "Appointment Status Distribution",
-      "dailyVolume": "Daily Appointment Volume"
+      "dailyVolume": "Daily Appointment Volume",
+      "revenue": "Revenue",
+      "estimatedFromCompletedAppointments": "Estimated from completed appointments",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "thisMonth": "This Month",
+      "topTreatmentsByRevenue": "Top Treatments by Revenue",
+      "employeeUtilization": "Employee Utilization",
+      "appointmentsShort": "appts",
+      "appointments": "Appointments",
+      "dateRange": "Date range",
+      "last7days": "Last 7 days",
+      "last90days": "Last 90 days",
+      "lastYear": "Last year"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

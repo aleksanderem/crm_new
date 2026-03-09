@@ -922,6 +922,7 @@ const schema = defineSchema({
     body: v.string(),
     category: v.optional(v.string()),
     module: v.optional(v.string()),
+    eventType: v.optional(v.string()),
     variables: v.array(
       v.object({
         key: v.string(),

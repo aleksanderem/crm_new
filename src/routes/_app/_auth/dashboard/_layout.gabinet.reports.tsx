@@ -2,10 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EllipsisVerticalIcon } from "@/lib/ez-icons";
 import {
@@ -43,6 +42,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/reports"
@@ -60,6 +66,27 @@ const DONUT_COLORS = [
   "color-mix(in oklab, var(--primary) 20%, transparent)",
 ];
 
+const UTILIZATION_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+type DateRangeKey = "7d" | "30d" | "90d" | "365d";
+
+function getDateRange(key: DateRangeKey): { startDate: string; endDate: string } {
+  const today = new Date();
+  const past = new Date(today);
+  const days = key === "7d" ? 7 : key === "30d" ? 30 : key === "90d" ? 90 : 365;
+  past.setDate(past.getDate() - days);
+  return {
+    startDate: past.toISOString().split("T")[0],
+    endDate: today.toISOString().split("T")[0],
+  };
+}
+
 function slugify(s: string): string {
   return (
     s
@@ -67,6 +94,32 @@ function slugify(s: string): string {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "other"
   );
+}
+
+function formatCurrency(amount: number, currency = "PLN") {
+  return new Intl.NumberFormat("pl-PL", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function bucketizePairs(
+  pairs: [string, number][],
+): { index: number; count: number }[] {
+  if (!pairs.length)
+    return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
+  const sorted = [...pairs].sort((a, b) => a[0].localeCompare(b[0]));
+  const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
+  const buckets: { index: number; count: number }[] = [];
+  for (let i = 0; i < sorted.length; i += bucketSize) {
+    const slice = sorted.slice(i, i + bucketSize);
+    buckets.push({
+      index: buckets.length,
+      count: slice.reduce((s, d) => s + d[1], 0),
+    });
+  }
+  return buckets;
 }
 
 function CardMenu() {
@@ -93,7 +146,7 @@ function CardMenu() {
   );
 }
 
-/* ─── KPI Statistics Card (statistics-order-card pattern) ─── */
+/* ─── KPI Statistics Card ─── */
 
 function KpiStatCard({
   title,
@@ -106,7 +159,7 @@ function KpiStatCard({
   description: string;
   value: string;
   chartData: { index: number; count: number }[];
-  chartType: "bar" | "area" | "line";
+  chartType: "bar" | "area";
 }) {
   const gradientId = useId();
   const chartConfig = {
@@ -123,7 +176,10 @@ function KpiStatCard({
         </CardDescription>
       </CardHeader>
 
-      <ChartContainer config={chartConfig} className="h-21 w-full overflow-hidden px-2.75">
+      <ChartContainer
+        config={chartConfig}
+        className="h-21 w-full overflow-hidden px-2.75"
+      >
         {chartType === "bar" ? (
           <BarChart
             accessibilityLayer
@@ -183,18 +239,82 @@ function KpiStatCard({
   );
 }
 
-/* ─── Treatment Popularity (horizontal bar – CountrySalesCard pattern) ─── */
+/* ─── Revenue Summary Card ─── */
 
-const treatmentChartConfig = {
-  count: { label: "Appointments", color: "var(--primary)" },
-} satisfies ChartConfig;
+function RevenueSummaryCard({
+  dailyRevenue,
+  weeklyRevenue,
+  monthlyRevenue,
+  currency,
+}: {
+  dailyRevenue: number;
+  weeklyRevenue: number;
+  monthlyRevenue: number;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Card>
+      <CardHeader className="flex justify-between border-b">
+        <div className="flex flex-col gap-1">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.revenue")}
+          </span>
+          <span className="text-muted-foreground text-sm">
+            {t("gabinet.reports.estimatedFromCompletedAppointments")}
+          </span>
+        </div>
+        <CardMenu />
+      </CardHeader>
+      <CardContent className="grid grid-cols-3 gap-4 pt-4">
+        <div className="flex flex-col gap-1 border-r pr-4 last:border-r-0">
+          <span className="text-muted-foreground text-sm">
+            {t("gabinet.reports.today")}
+          </span>
+          <span className="text-xl font-semibold">
+            {formatCurrency(dailyRevenue, currency)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1 border-r pr-4 last:border-r-0">
+          <span className="text-muted-foreground text-sm">
+            {t("gabinet.reports.thisWeek")}
+          </span>
+          <span className="text-xl font-semibold">
+            {formatCurrency(weeklyRevenue, currency)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground text-sm">
+            {t("gabinet.reports.thisMonth")}
+          </span>
+          <span className="text-xl font-semibold">
+            {formatCurrency(monthlyRevenue, currency)}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Treatment Popularity (horizontal bar) ─── */
 
 function TreatmentPopularityChart({
   data,
+  rangeLabel,
 }: {
-  data: { name: string; count: number }[];
+  data: { name: string; count: number; revenue: number }[];
+  rangeLabel: string;
 }) {
   const { t } = useTranslation();
+
+  const treatmentChartConfig = useMemo(
+    () =>
+      ({
+        count: { label: t("gabinet.reports.appointments"), color: "var(--primary)" },
+      }) satisfies ChartConfig,
+    [t]
+  );
 
   const chartData = useMemo(
     () => data.map((d) => ({ treatment: d.name, count: d.count })),
@@ -230,9 +350,7 @@ function TreatmentPopularityChart({
           <span className="text-lg font-semibold">
             {t("gabinet.reports.treatmentPopularity")}
           </span>
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.last30days")}
-          </span>
+          <span className="text-muted-foreground text-sm">{rangeLabel}</span>
         </div>
         <CardMenu />
       </CardHeader>
@@ -291,7 +409,7 @@ function TreatmentPopularityChart({
   );
 }
 
-/* ─── Status Distribution (donut – TotalOrdersCard pattern) ─── */
+/* ─── Status Distribution (donut) ─── */
 
 function StatusDistributionChart({
   data,
@@ -305,7 +423,7 @@ function StatusDistributionChart({
   const top = useMemo(() => data.slice(0, 5), [data]);
 
   const { chartData, chartConfig } = useMemo(() => {
-    const config: ChartConfig = { count: { label: "Appointments" } };
+    const config: ChartConfig = { count: { label: t("gabinet.reports.appointments") } };
     const items = top.map((item, i) => {
       const key = slugify(item.status);
       config[key] = {
@@ -315,7 +433,7 @@ function StatusDistributionChart({
       return { category: key, count: item.count, fill: `var(--color-${key})` };
     });
     return { chartData: items, chartConfig: config };
-  }, [top]);
+  }, [top, t]);
 
   const topPct = useMemo(
     () =>
@@ -450,7 +568,7 @@ function StatusDistributionChart({
   );
 }
 
-/* ─── Daily Volume (bar chart – EarningReportCard pattern) ─── */
+/* ─── Daily Volume (bar chart) ─── */
 
 const dailyChartConfig = {
   count: { label: "Appointments" },
@@ -458,8 +576,10 @@ const dailyChartConfig = {
 
 function DailyVolumeChart({
   data,
+  rangeLabel,
 }: {
   data: { date: string; count: number }[];
+  rangeLabel: string;
 }) {
   const { t } = useTranslation();
 
@@ -497,9 +617,7 @@ function DailyVolumeChart({
           <span className="text-lg font-semibold">
             {t("gabinet.reports.dailyVolume")}
           </span>
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.last30days")}
-          </span>
+          <span className="text-muted-foreground text-sm">{rangeLabel}</span>
         </div>
         <CardMenu />
       </CardHeader>
@@ -534,17 +652,242 @@ function DailyVolumeChart({
   );
 }
 
+/* ─── Employee Utilization ─── */
+
+function EmployeeUtilizationChart({
+  data,
+  rangeLabel,
+}: {
+  data: { name: string; count: number; completedCount: number }[];
+  rangeLabel: string;
+}) {
+  const { t } = useTranslation();
+
+  const utilizationConfig = useMemo(
+    () =>
+      ({
+        count: { label: t("gabinet.reports.appointments"), color: "var(--chart-2)" },
+        completedCount: { label: t("gabinet.reports.completed"), color: "var(--chart-1)" },
+      }) satisfies ChartConfig,
+    [t]
+  );
+
+  const chartData = useMemo(
+    () =>
+      data.map((d) => ({
+        employee: d.name,
+        count: d.count,
+        completedCount: d.completedCount,
+      })),
+    [data]
+  );
+
+  if (!data.length)
+    return (
+      <Card>
+        <CardHeader className="flex justify-between border-b">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.employeeUtilization")}
+          </span>
+          <CardMenu />
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-12">
+          <span className="text-muted-foreground text-sm">
+            {t("common.noResults")}
+          </span>
+        </CardContent>
+      </Card>
+    );
+
+  return (
+    <Card>
+      <CardHeader className="flex justify-between border-b">
+        <div className="flex flex-col gap-1">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.employeeUtilization")}
+          </span>
+          <span className="text-muted-foreground text-sm">{rangeLabel}</span>
+        </div>
+        <CardMenu />
+      </CardHeader>
+      <CardContent>
+        <div className="mt-4 space-y-3">
+          {data.map((emp, i) => {
+            const pct =
+              emp.count > 0
+                ? Math.round((emp.completedCount / emp.count) * 100)
+                : 0;
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <Avatar className="size-8 shrink-0 rounded-full">
+                  <AvatarFallback
+                    className="text-xs font-semibold text-white"
+                    style={{
+                      backgroundColor:
+                        UTILIZATION_COLORS[i % UTILIZATION_COLORS.length],
+                    }}
+                  >
+                    {emp.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium truncate">
+                      {emp.name}
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-2 shrink-0">
+                      {emp.count} {t("gabinet.reports.appointmentsShort")}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor:
+                          UTILIZATION_COLORS[i % UTILIZATION_COLORS.length],
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {pct}% {t("gabinet.reports.completionRate")}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <ChartContainer config={utilizationConfig} className="mt-6 h-45 w-full">
+          <BarChart
+            accessibilityLayer
+            data={chartData}
+            barSize={24}
+            margin={{ top: 7, left: -4, right: -4 }}
+          >
+            <CartesianGrid vertical={false} strokeDasharray="4" stroke="var(--border)" />
+            <XAxis
+              dataKey="employee"
+              tickLine={false}
+              tickMargin={5.5}
+              axisLine={false}
+              tickFormatter={(v) => v.split(" ")[0]}
+              className="text-sm"
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="count" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="completedCount" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Top Treatments by Revenue ─── */
+
+function TopTreatmentsByRevenue({
+  data,
+  rangeLabel,
+}: {
+  data: { name: string; count: number; revenue: number }[];
+  rangeLabel: string;
+}) {
+  const { t } = useTranslation();
+
+  const top5 = useMemo(() => data.slice(0, 5), [data]);
+  const maxRevenue = useMemo(
+    () => Math.max(...top5.map((d) => d.revenue), 1),
+    [top5]
+  );
+
+  if (!top5.length)
+    return (
+      <Card>
+        <CardHeader className="flex justify-between border-b">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.topTreatmentsByRevenue")}
+          </span>
+          <CardMenu />
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-12">
+          <span className="text-muted-foreground text-sm">
+            {t("common.noResults")}
+          </span>
+        </CardContent>
+      </Card>
+    );
+
+  return (
+    <Card>
+      <CardHeader className="flex justify-between border-b">
+        <div className="flex flex-col gap-1">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.topTreatmentsByRevenue")}
+          </span>
+          <span className="text-muted-foreground text-sm">{rangeLabel}</span>
+        </div>
+        <CardMenu />
+      </CardHeader>
+      <CardContent className="mt-4 space-y-4">
+        {top5.map((item, i) => {
+          const pct = Math.round((item.revenue / maxRevenue) * 100);
+          return (
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium truncate max-w-[60%]">
+                  {item.name}
+                </span>
+                <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+                  <span>{item.count}×</span>
+                  <span className="font-semibold text-foreground">
+                    {formatCurrency(item.revenue)}
+                  </span>
+                </div>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length],
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ─── Main Page ─── */
 
 function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
 
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const startDate = thirtyDaysAgo.toISOString().split("T")[0];
-  const endDate = today.toISOString().split("T")[0];
+  const { startDate, endDate } = useMemo(
+    () => getDateRange(dateRange),
+    [dateRange]
+  );
+
+  const rangeLabel = useMemo(() => {
+    const labels: Record<DateRangeKey, string> = {
+      "7d": t("gabinet.reports.last7days"),
+      "30d": t("gabinet.reports.last30days"),
+      "90d": t("gabinet.reports.last90days"),
+      "365d": t("gabinet.reports.lastYear"),
+    };
+    return labels[dateRange];
+  }, [dateRange, t]);
 
   const { data: appointments } = useQuery(
     convexQuery(api.gabinet.appointments.listByDateRange, {
@@ -565,28 +908,73 @@ function GabinetReports() {
     })
   );
 
-  // Treatment popularity
+  const { data: employees } = useQuery(
+    convexQuery(api.gabinet.employees.listAll, {
+      organizationId,
+      activeOnly: true,
+    })
+  );
+
+  // Treatment map: id → { name, price, currency }
+  const treatmentMap = useMemo(() => {
+    if (!treatments) return new Map<string, { name: string; price: number; currency: string }>();
+    return new Map(
+      treatments.map((tr) => [
+        tr._id,
+        { name: tr.name, price: tr.price, currency: tr.currency ?? "PLN" },
+      ])
+    );
+  }, [treatments]);
+
+  // Employee map: userId → name
+  const employeeMap = useMemo(() => {
+    if (!employees) return new Map<string, string>();
+    return new Map(
+      employees.map((e) => [
+        e.userId,
+        [e.firstName, e.lastName].filter(Boolean).join(" ") || e.userId,
+      ])
+    );
+  }, [employees]);
+
+  // Treatment stats: count + estimated revenue (completed only)
   const treatmentStats = useMemo(() => {
-    if (!appointments || !treatments) return [];
-    const countMap = new Map<string, number>();
+    if (!appointments) return [];
+    const map = new Map<string, { count: number; revenue: number }>();
     for (const a of appointments) {
-      countMap.set(a.treatmentId, (countMap.get(a.treatmentId) ?? 0) + 1);
+      const tid = a.treatmentId as string;
+      const prev = map.get(tid) ?? { count: 0, revenue: 0 };
+      const price = a.status === "completed"
+        ? (treatmentMap.get(tid)?.price ?? 0)
+        : 0;
+      map.set(tid, { count: prev.count + 1, revenue: prev.revenue + price });
     }
-    const treatmentNameMap = new Map(treatments.map((tr) => [tr._id, tr.name]));
-    return Array.from(countMap.entries())
-      .map(([id, count]) => ({ name: treatmentNameMap.get(id as Id<"gabinetTreatments">) ?? id, count }))
+    return Array.from(map.entries())
+      .map(([id, stats]) => ({
+        name: treatmentMap.get(id)?.name ?? id,
+        count: stats.count,
+        revenue: stats.revenue,
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [appointments, treatments]);
+  }, [appointments, treatmentMap]);
+
+  const topByRevenue = useMemo(
+    () =>
+      [...treatmentStats]
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5),
+    [treatmentStats]
+  );
 
   // Status distribution
   const statusStats = useMemo(() => {
     if (!appointments) return [];
-    const countMap = new Map<string, number>();
+    const map = new Map<string, number>();
     for (const a of appointments) {
-      countMap.set(a.status, (countMap.get(a.status) ?? 0) + 1);
+      map.set(a.status, (map.get(a.status) ?? 0) + 1);
     }
-    return Array.from(countMap.entries())
+    return Array.from(map.entries())
       .map(([status, count]) => ({ status, count }))
       .sort((a, b) => b.count - a.count);
   }, [appointments]);
@@ -594,14 +982,76 @@ function GabinetReports() {
   // Daily appointment counts
   const dailyStats = useMemo(() => {
     if (!appointments) return [];
-    const countMap = new Map<string, number>();
+    const map = new Map<string, number>();
     for (const a of appointments) {
-      countMap.set(a.date, (countMap.get(a.date) ?? 0) + 1);
+      map.set(a.date, (map.get(a.date) ?? 0) + 1);
     }
-    return Array.from(countMap.entries())
+    return Array.from(map.entries())
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [appointments]);
+
+  // Employee utilization
+  const employeeStats = useMemo(() => {
+    if (!appointments) return [];
+    const map = new Map<string, { count: number; completedCount: number }>();
+    for (const a of appointments) {
+      const uid = a.employeeId as string;
+      const prev = map.get(uid) ?? { count: 0, completedCount: 0 };
+      map.set(uid, {
+        count: prev.count + 1,
+        completedCount:
+          prev.completedCount + (a.status === "completed" ? 1 : 0),
+      });
+    }
+    return Array.from(map.entries())
+      .map(([userId, stats]) => ({
+        name: employeeMap.get(userId) ?? userId,
+        count: stats.count,
+        completedCount: stats.completedCount,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [appointments, employeeMap]);
+
+  // Revenue: daily, weekly, monthly (from completed appointments × treatment price)
+  const today = new Date().toISOString().split("T")[0];
+  const weekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay());
+    return d.toISOString().split("T")[0];
+  })();
+  const monthStart = (() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  })();
+
+  const { dailyRevenue, weeklyRevenue, monthlyRevenue, defaultCurrency } =
+    useMemo(() => {
+      let daily = 0,
+        weekly = 0,
+        monthly = 0;
+      let currency = "PLN";
+      if (appointments) {
+        for (const a of appointments) {
+          if (a.status !== "completed") continue;
+          const tid = a.treatmentId as string;
+          const tr = treatmentMap.get(tid);
+          if (!tr) continue;
+          const price = tr.price;
+          currency = tr.currency;
+          if (a.date === today) daily += price;
+          if (a.date >= weekStart) weekly += price;
+          if (a.date >= monthStart) monthly += price;
+        }
+      }
+      return {
+        dailyRevenue: daily,
+        weeklyRevenue: weekly,
+        monthlyRevenue: monthly,
+        defaultCurrency: currency,
+      };
+    }, [appointments, treatmentMap, today, weekStart, monthStart]);
 
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =
@@ -614,80 +1064,69 @@ function GabinetReports() {
       : 0;
   const totalPatients = patients?.page?.length ?? 0;
 
-  // Build mini-chart data for each KPI from daily stats
-  const dailyChartPoints = useMemo(() => {
-    // Group into ~7 buckets for compact charts
-    if (!dailyStats.length) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-    const bucketSize = Math.max(1, Math.ceil(dailyStats.length / 7));
-    const buckets: { index: number; count: number }[] = [];
-    for (let i = 0; i < dailyStats.length; i += bucketSize) {
-      const slice = dailyStats.slice(i, i + bucketSize);
-      buckets.push({
-        index: buckets.length,
-        count: slice.reduce((s, d) => s + d.count, 0),
-      });
-    }
-    return buckets;
-  }, [dailyStats]);
+  const dailyChartPoints = useMemo(
+    () => bucketizePairs(dailyStats.map((d) => [d.date, d.count])),
+    [dailyStats]
+  );
 
-  // Completed by day
   const completedChartPoints = useMemo(() => {
     if (!appointments) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-    const countMap = new Map<string, number>();
-    for (const a of appointments) {
-      if (a.status === "completed") {
-        countMap.set(a.date, (countMap.get(a.date) ?? 0) + 1);
-      }
-    }
-    const sorted = Array.from(countMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (!sorted.length) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-    const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
-    const buckets: { index: number; count: number }[] = [];
-    for (let i = 0; i < sorted.length; i += bucketSize) {
-      const slice = sorted.slice(i, i + bucketSize);
-      buckets.push({
-        index: buckets.length,
-        count: slice.reduce((s, d) => s + d[1], 0),
-      });
-    }
-    return buckets;
+    const map = new Map<string, number>();
+    for (const a of appointments)
+      if (a.status === "completed")
+        map.set(a.date, (map.get(a.date) ?? 0) + 1);
+    return bucketizePairs(Array.from(map.entries()));
   }, [appointments]);
 
-  // Cancelled by day
   const cancelledChartPoints = useMemo(() => {
     if (!appointments) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-    const countMap = new Map<string, number>();
-    for (const a of appointments) {
-      if (a.status === "cancelled") {
-        countMap.set(a.date, (countMap.get(a.date) ?? 0) + 1);
-      }
-    }
-    const sorted = Array.from(countMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (!sorted.length) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-    const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
-    const buckets: { index: number; count: number }[] = [];
-    for (let i = 0; i < sorted.length; i += bucketSize) {
-      const slice = sorted.slice(i, i + bucketSize);
-      buckets.push({
-        index: buckets.length,
-        count: slice.reduce((s, d) => s + d[1], 0),
-      });
-    }
-    return buckets;
+    const map = new Map<string, number>();
+    for (const a of appointments)
+      if (a.status === "cancelled")
+        map.set(a.date, (map.get(a.date) ?? 0) + 1);
+    return bucketizePairs(Array.from(map.entries()));
   }, [appointments]);
+
+  const revenueChartPoints = useMemo(() => {
+    if (!appointments) return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
+    const map = new Map<string, number>();
+    for (const a of appointments) {
+      if (a.status !== "completed") continue;
+      const tid = a.treatmentId as string;
+      const price = treatmentMap.get(tid)?.price ?? 0;
+      map.set(a.date, (map.get(a.date) ?? 0) + price);
+    }
+    return bucketizePairs(Array.from(map.entries()));
+  }, [appointments, treatmentMap]);
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <PageHeader
-        title={t("gabinet.reports.title")}
-        description={t("gabinet.reports.description")}
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <PageHeader
+          title={t("gabinet.reports.title")}
+          description={t("gabinet.reports.description")}
+        />
+        <Select
+          value={dateRange}
+          onValueChange={(v) => setDateRange(v as DateRangeKey)}
+        >
+          <SelectTrigger className="w-40 shrink-0" aria-label={t("gabinet.reports.dateRange")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">{t("gabinet.reports.last7days")}</SelectItem>
+            <SelectItem value="30d">{t("gabinet.reports.last30days")}</SelectItem>
+            <SelectItem value="90d">{t("gabinet.reports.last90days")}</SelectItem>
+            <SelectItem value="365d">{t("gabinet.reports.lastYear")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* KPI Statistics Cards (statistics-order-card / statistics-sales-growth-card pattern) */}
+      {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiStatCard
           title={t("gabinet.reports.totalAppointments")}
-          description={t("gabinet.reports.last30days")}
+          description={rangeLabel}
           value={totalAppointments.toLocaleString()}
           chartData={dailyChartPoints}
           chartType="bar"
@@ -701,31 +1140,45 @@ function GabinetReports() {
         />
         <KpiStatCard
           title={t("gabinet.reports.cancelled")}
-          description={t("gabinet.reports.last30days")}
+          description={rangeLabel}
           value={cancelledCount.toLocaleString()}
           chartData={cancelledChartPoints}
           chartType="bar"
         />
         <KpiStatCard
           title={t("gabinet.reports.totalPatients")}
-          description={t("gabinet.reports.last30days")}
+          description={rangeLabel}
           value={totalPatients.toLocaleString()}
-          chartData={dailyChartPoints}
+          chartData={revenueChartPoints}
           chartType="area"
         />
       </div>
 
+      {/* Revenue Summary */}
+      <RevenueSummaryCard
+        dailyRevenue={dailyRevenue}
+        weeklyRevenue={weeklyRevenue}
+        monthlyRevenue={monthlyRevenue}
+        currency={defaultCurrency}
+      />
+
       {/* Treatment Popularity + Status Distribution */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <TreatmentPopularityChart data={treatmentStats} />
+        <TreatmentPopularityChart data={treatmentStats} rangeLabel={rangeLabel} />
         <StatusDistributionChart
           data={statusStats}
           total={totalAppointments}
         />
       </div>
 
+      {/* Top Treatments by Revenue + Employee Utilization */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <TopTreatmentsByRevenue data={topByRevenue} rangeLabel={rangeLabel} />
+        <EmployeeUtilizationChart data={employeeStats} rangeLabel={rangeLabel} />
+      </div>
+
       {/* Daily Appointment Volume */}
-      <DailyVolumeChart data={dailyStats} />
+      <DailyVolumeChart data={dailyStats} rangeLabel={rangeLabel} />
     </div>
   );
 }

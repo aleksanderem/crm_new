@@ -525,7 +525,8 @@
     "emailTemplates": "Email Templates",
     "emailEvents": "Email Events",
     "email": "Email",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "sms": "SMS"
   },
   "leadForm": {
     "title": "Title",
@@ -2021,5 +2022,27 @@
     "crm": "CRM",
     "gabinet": "Gabinet",
     "platform": "Platform"
+  },
+  "sms": {
+    "title": "SMS Settings",
+    "description": "Configure your SMS provider for patient notifications and OTP.",
+    "provider": "Provider",
+    "apiToken": "API Token",
+    "apiSecret": "API Secret (Auth Token)",
+    "senderId": "Sender ID",
+    "fromNumber": "From Number",
+    "isActive": "Active",
+    "save": "Save Configuration",
+    "providerSmsapi": "SMSAPI",
+    "providerTwilio": "Twilio",
+    "tokenSet": "Token set",
+    "secretSet": "Secret set",
+    "notConfigured": "Not configured",
+    "saved": "SMS configuration saved.",
+    "activatedSuccess": "SMS notifications activated.",
+    "deactivatedSuccess": "SMS notifications deactivated.",
+    "apiTokenRequired": "API token is required.",
+    "apiTokenPlaceholder": "Enter API token",
+    "apiSecretPlaceholder": "Enter Auth Token (Twilio)"
   }
 }

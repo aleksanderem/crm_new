@@ -16,7 +16,10 @@
     "status:watch": "node scripts/status/watch-status.mjs",
     "status:update": "node scripts/status/update-status.mjs",
     "status:event": "node scripts/status/push-event.mjs",
-    "status:dashboard": "npm --prefix status-dashboard run dev"
+    "status:dashboard": "npm --prefix status-dashboard run dev",
+    "test:e2e": "playwright test",
+    "test:unit": "cd convex && vitest run",
+    "test": "npm run test:unit && npm run test:e2e"
   },
   "dependencies": {
     "@auth/core": "^0.34.1",

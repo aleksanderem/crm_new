@@ -1750,7 +1750,10 @@
       "otpDescription": "Wpisz 6-cyfrowy kod wysłany na {{email}}",
       "code": "Kod weryfikacyjny",
       "verify": "Weryfikuj",
-      "changeEmail": "Użyj innego e-maila"
+      "changeEmail": "Użyj innego e-maila",
+      "invalidPortalLink": "Nieprawidłowy link do portalu",
+      "invalidPortalLinkDescription": "Ten link jest nieprawidłowy lub wygasł. Skontaktuj się z gabinetem, aby otrzymać nowy link.",
+      "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie."
     },
     "dashboard": {
       "welcome": "Witaj, {{name}}",

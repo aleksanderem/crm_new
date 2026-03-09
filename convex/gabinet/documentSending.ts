@@ -125,6 +125,7 @@ export const sendDocumentToClient = mutation({
       patientEmail: patient.email,
       documentTitle: doc.title,
       organizationName: org?.name ?? "Salon",
+      organizationSlug: org?.slug ?? "",
       token,
       documentId: args.documentId,
       sentByUserId: user._id,
@@ -160,7 +161,10 @@ export const getDocumentShareLink = query({
       return null;
     }
 
-    return `${getAppUrl()}/patient/documents?token=${session.tokenHash}&doc=${args.documentId}`;
+    const org = await ctx.db.get(args.organizationId);
+    const orgParam = org?.slug ? `&org=${encodeURIComponent(org.slug)}` : "";
+
+    return `${getAppUrl()}/patient/documents?token=${session.tokenHash}&doc=${args.documentId}${orgParam}`;
   },
 });
 
@@ -181,6 +185,7 @@ export const sendDocumentEmail = internalAction({
     patientEmail: v.string(),
     documentTitle: v.string(),
     organizationName: v.string(),
+    organizationSlug: v.string(),
     token: v.string(),
     documentId: v.id("gabinetDocuments"),
     sentByUserId: v.id("users"),
@@ -192,7 +197,8 @@ export const sendDocumentEmail = internalAction({
     }
 
     const resend = new Resend(RESEND_API_KEY);
-    const portalUrl = `${getAppUrl()}/patient/documents?token=${args.token}&doc=${args.documentId}`;
+    const orgParam = args.organizationSlug ? `&org=${encodeURIComponent(args.organizationSlug)}` : "";
+    const portalUrl = `${getAppUrl()}/patient/documents?token=${args.token}&doc=${args.documentId}${orgParam}`;
 
     await resend.emails.send({
       from: RESEND_FROM ?? "noreply@example.com",

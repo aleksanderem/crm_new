@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDoubleCheck } from "@/ui/use-double-check";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/ui/button";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
@@ -71,6 +72,7 @@ export default function DashboardSettings() {
               {t("profile.username.description")}
             </p>
           </div>
+          <Label htmlFor="settings-username">{t("profile.username.title")}</Label>
           <usernameForm.Field
             name="username"
             validators={{
@@ -78,6 +80,7 @@ export default function DashboardSettings() {
             }}
             children={(field) => (
               <Input
+                id="settings-username"
                 placeholder={t("profile.username.placeholder")}
                 autoComplete="off"
                 required

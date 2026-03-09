@@ -274,7 +274,7 @@ export function AppointmentForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Patient — searchable combobox with CRM contact search */}
       <div className="space-y-1.5">
-        <Label>
+        <Label htmlFor="appt-patient">
           {t("gabinet.appointments.patient")}{" "}
           <span className="text-destructive">*</span>
         </Label>
@@ -287,6 +287,7 @@ export function AppointmentForm({
         >
           <PopoverTrigger asChild>
             <Button
+              id="appt-patient"
               variant="outline"
               role="combobox"
               aria-expanded={patientOpen}
@@ -402,13 +403,14 @@ export function AppointmentForm({
 
       {/* Treatment — searchable combobox */}
       <div className="space-y-1.5">
-        <Label>
+        <Label htmlFor="appt-treatment">
           {t("gabinet.appointments.treatment")}{" "}
           <span className="text-destructive">*</span>
         </Label>
         <Popover open={treatmentOpen} onOpenChange={setTreatmentOpen}>
           <PopoverTrigger asChild>
             <Button
+              id="appt-treatment"
               variant="outline"
               role="combobox"
               aria-expanded={treatmentOpen}
@@ -464,11 +466,11 @@ export function AppointmentForm({
       </div>
 
       {/* Employee — regular select, filtered by qualification */}
-      <div className="space-y-1.5">
-        <Label>
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
           {t("gabinet.appointments.employee")}{" "}
           <span className="text-destructive">*</span>
-        </Label>
+        </legend>
         <div className="flex flex-wrap gap-2">
           {qualifiedEmployees.map((emp) => (
             <button
@@ -495,18 +497,19 @@ export function AppointmentForm({
             </p>
           )}
         </div>
-      </div>
+      </fieldset>
 
       {/* Date — calendar picker, shown only when employee selected */}
       {employeeId && (
         <div className="space-y-1.5">
-          <Label>
+          <Label htmlFor="appt-date">
             {t("gabinet.appointments.date")}{" "}
             <span className="text-destructive">*</span>
           </Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
+                id="appt-date"
                 variant="outline"
                 className="w-full justify-start font-normal"
               >
@@ -531,8 +534,10 @@ export function AppointmentForm({
 
       {/* Available time slots */}
       {employeeId && date && (
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.appointments.availableSlots")}</Label>
+        <fieldset className="space-y-1.5">
+          <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            {t("gabinet.appointments.availableSlots")}
+          </legend>
           {slotsLoading ? (
             <div className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
               <div className="border-primary size-4 animate-spin rounded-full border-2 border-t-transparent" />
@@ -567,13 +572,14 @@ export function AppointmentForm({
               {selectedSlot.end}
             </p>
           )}
-        </div>
+        </fieldset>
       )}
 
       {/* Notes */}
       <div className="space-y-1.5">
-        <Label>{t("gabinet.appointments.notes")}</Label>
+        <Label htmlFor="appt-notes">{t("gabinet.appointments.notes")}</Label>
         <Textarea
+          id="appt-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}

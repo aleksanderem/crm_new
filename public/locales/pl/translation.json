@@ -959,10 +959,12 @@
     "download": "Pobierz"
   },
   "layout": {
-    "search": "Szukaj...",
+    "search": "Szukaj",
     "settings": "Ustawienia",
     "logOut": "Wyloguj",
-    "openDeals": "Otwarte transakcje"
+    "openDeals": "Otwarte transakcje",
+    "notifications": "Powiadomienia",
+    "createNew": "Utwórz nowy"
   },
   "profile": {
     "title": "Ustawienia",
@@ -1461,7 +1463,9 @@
       "month": "Miesiąc",
       "appointments": "wizyt",
       "dayDetail": "Szczegóły dnia",
-      "noAppointments": "Brak wizyt w tym dniu"
+      "noAppointments": "Brak wizyt w tym dniu",
+      "previousPeriod": "Poprzedni okres",
+      "nextPeriod": "Następny okres"
     },
     "packages": {
       "title": "Pakiety zabiegów",
@@ -1783,7 +1787,8 @@
       "documents": "Dokumenty",
       "packages": "Pakiety",
       "loyalty": "Lojalność",
-      "profile": "Profil"
+      "profile": "Profil",
+      "mainNav": "Nawigacja główna"
     },
     "login": {
       "title": "Portal Pacjenta",

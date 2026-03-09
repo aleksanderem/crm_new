@@ -118,8 +118,9 @@ function PatientLogin() {
         {step === "email" ? (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>{t("common.email")}</Label>
+              <Label htmlFor="patient-email">{t("common.email")}</Label>
               <Input
+                id="patient-email"
                 type="email"
                 className="h-10"
                 value={email}
@@ -143,8 +144,9 @@ function PatientLogin() {
               {t("patientPortal.login.otpDescription", { email })}
             </p>
             <div className="space-y-1.5">
-              <Label>{t("patientPortal.login.code")}</Label>
+              <Label htmlFor="patient-otp">{t("patientPortal.login.code")}</Label>
               <Input
+                id="patient-otp"
                 type="text"
                 className="h-10 text-center tracking-widest text-lg"
                 value={otp}

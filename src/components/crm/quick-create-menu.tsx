@@ -296,6 +296,7 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
           size="icon"
           data-testid="quick-create-trigger"
           className="bg-primary/10 text-primary hover:bg-primary/20 size-9"
+          aria-label={t("layout.createNew")}
         >
           <CirclePlusIcon className="size-4" variant="stroke" />
         </Button>

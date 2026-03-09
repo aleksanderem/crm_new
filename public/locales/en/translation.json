@@ -60,7 +60,9 @@
     "stats": "Stats",
     "time": "Time",
     "titleRequired": "Title is required",
-    "type": "Type"
+    "type": "Type",
+    "actionCannotBeUndone": "This action cannot be undone",
+    "module": "Module"
   },
   "nav": {
     "deals": "Deals",
@@ -519,7 +521,9 @@
       "addStage": "Add Stage"
     },
     "emailTemplates": "Email Templates",
-    "emailEvents": "Email Events"
+    "emailEvents": "Email Events",
+    "email": "Email",
+    "integrations": "Integrations"
   },
   "leadForm": {
     "title": "Title",
@@ -1316,7 +1320,8 @@
       },
       "schedule": {
         "hasOverrides": "This employee has a custom schedule defined.",
-        "usingClinicDefaults": "Using clinic default hours. Customize to set individual schedule."
+        "usingClinicDefaults": "Using clinic default hours. Customize to set individual schedule.",
+        "manageLeaves": "Manage Leaves"
       },
       "roles": {
         "doctor": "Doctor",
@@ -1326,7 +1331,10 @@
         "admin": "Administrator",
         "other": "Other"
       },
-      "employee": "Employee"
+      "employee": "Employee",
+      "active": "Active",
+      "confirmDelete": "Are you sure you want to delete this employee?",
+      "searchPlaceholder": "Search employees..."
     },
     "leaveTypes": {
       "title": "Leave Types",
@@ -1511,7 +1519,8 @@
       "package": "Package",
       "packageUsage": "Package usage",
       "treatmentsUsed": "Treatments used",
-      "usedInThisAppointment": "Used in this appointment"
+      "usedInThisAppointment": "Used in this appointment",
+      "descriptionField": "Description"
     },
     "documents": {
       "title": "Medical Documents",
@@ -1580,7 +1589,12 @@
       "contentLabel": "Template Content",
       "placeholderHint": "Use {{patient.firstName}}, {{patient.lastName}}, {{patient.pesel}} as placeholders",
       "emptyTitle": "No templates",
-      "emptyDescription": "Create document templates to speed up document creation"
+      "emptyDescription": "Create document templates to speed up document creation",
+      "editDescription": "Edit document template",
+      "editTitle": "Edit Template",
+      "newDescription": "Create a new document template",
+      "newTitle": "New Template",
+      "variables": "Variables"
     },
     "loyalty": {
       "balance": "Points Balance",
@@ -1703,6 +1717,21 @@
       "totalPaid": "Total paid",
       "totalSpent": "Total spent",
       "treatmentPrice": "Treatment price"
+    },
+    "schedules": {
+      "break": "Break",
+      "breakEnd": "Break End",
+      "breakStart": "Break Start",
+      "effective": "Effective",
+      "effectiveFrom": "Effective From",
+      "effectiveTo": "Effective To",
+      "endTime": "End Time",
+      "hours": "Hours",
+      "isWorkingDay": "Working Day",
+      "noSchedule": "No schedule set",
+      "startTime": "Start Time",
+      "weeklySchedule": "Weekly Schedule",
+      "working": "Working"
     }
   },
   "customFields": {
@@ -1890,7 +1919,50 @@
     "insertVariable": "Insert variable",
     "usedVariables": "Variables used",
     "useTemplate": "Use template",
-    "selectTemplate": "Select a template..."
+    "selectTemplate": "Select a template...",
+    "backgroundColor": "Background Color",
+    "bindTemplate": "Bind Template",
+    "bindingDeleted": "Binding deleted",
+    "bindingDisabled": "Binding disabled",
+    "bindingEnabled": "Binding enabled",
+    "bindingSaved": "Binding saved",
+    "bindingsDescription": "Configure which templates are sent when events occur",
+    "companyName": "Company Name",
+    "contentBackgroundColor": "Content Background",
+    "editBinding": "Edit Binding",
+    "footerBlocks": "Footer Blocks",
+    "footerTextLabel": "Footer Text",
+    "footerTextPlaceholder": "Enter footer text...",
+    "headerBlocks": "Header Blocks",
+    "layoutDescription": "Customize email appearance",
+    "layoutSaved": "Layout saved",
+    "logColEventType": "Event Type",
+    "logColRecipient": "Recipient",
+    "logColStatus": "Status",
+    "logColTemplate": "Template",
+    "logColTime": "Time",
+    "logEntryDetails": "Entry Details",
+    "logErrorMessage": "Error Message",
+    "logPayload": "Payload",
+    "logStatusAll": "All",
+    "logStatusFailed": "Failed",
+    "logStatusPending": "Pending",
+    "logStatusSent": "Sent",
+    "logStatusSkipped": "Skipped",
+    "logoUrl": "Logo URL",
+    "noEventTypes": "No event types registered",
+    "noLogEntries": "No log entries",
+    "noTemplate": "No template",
+    "preview": "Preview",
+    "primaryColor": "Primary Color",
+    "priority": "Priority",
+    "priorityHint": "Higher priority templates are checked first",
+    "selectTemplateLabel": "Select Template",
+    "tabBindings": "Bindings",
+    "tabEventLog": "Event Log",
+    "tabLayout": "Layout",
+    "tabTemplates": "Templates",
+    "unknownTemplate": "Unknown Template"
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} block"

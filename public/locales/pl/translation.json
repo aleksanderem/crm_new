@@ -60,7 +60,9 @@
     "stats": "Statystyki",
     "time": "Godzina",
     "titleRequired": "Tytuł jest wymagany",
-    "type": "Typ"
+    "type": "Typ",
+    "actionCannotBeUndone": "Tej operacji nie można cofnąć",
+    "module": "Moduł"
   },
   "nav": {
     "deals": "Transakcje",
@@ -519,7 +521,9 @@
       "addStage": "Dodaj etap"
     },
     "emailTemplates": "Szablony e-mail",
-    "emailEvents": "Zdarzenia email"
+    "emailEvents": "Zdarzenia email",
+    "email": "Email",
+    "integrations": "Integracje"
   },
   "leadForm": {
     "title": "Tytuł",
@@ -1316,7 +1320,8 @@
       },
       "schedule": {
         "hasOverrides": "Ten pracownik ma zdefiniowany indywidualny grafik.",
-        "usingClinicDefaults": "Używane domyślne godziny kliniki. Dostosuj, aby ustawić indywidualny grafik."
+        "usingClinicDefaults": "Używane domyślne godziny kliniki. Dostosuj, aby ustawić indywidualny grafik.",
+        "manageLeaves": "Zarządzaj urlopami"
       },
       "roles": {
         "doctor": "Lekarz",
@@ -1326,7 +1331,10 @@
         "admin": "Administrator",
         "other": "Inny"
       },
-      "employee": "Pracownik"
+      "employee": "Pracownik",
+      "active": "Aktywny",
+      "confirmDelete": "Czy na pewno chcesz usunąć tego pracownika?",
+      "searchPlaceholder": "Szukaj pracowników..."
     },
     "leaveTypes": {
       "title": "Typy urlopów",
@@ -1512,7 +1520,8 @@
       "package": "Pakiet",
       "packageUsage": "Wykorzystanie pakietów",
       "treatmentsUsed": "Wykorzystane zabiegi",
-      "usedInThisAppointment": "Użyty w tej wizycie"
+      "usedInThisAppointment": "Użyty w tej wizycie",
+      "descriptionField": "Opis"
     },
     "documents": {
       "title": "Dokumenty medyczne",
@@ -1581,7 +1590,12 @@
       "contentLabel": "Treść szablonu",
       "placeholderHint": "Używaj {{patient.firstName}}, {{patient.lastName}}, {{patient.pesel}} jako zmiennych",
       "emptyTitle": "Brak szablonów",
-      "emptyDescription": "Utwórz szablony dokumentów, aby przyspieszyć tworzenie dokumentów"
+      "emptyDescription": "Utwórz szablony dokumentów, aby przyspieszyć tworzenie dokumentów",
+      "editDescription": "Edytuj szablon dokumentu",
+      "editTitle": "Edytuj szablon",
+      "newDescription": "Utwórz nowy szablon dokumentu",
+      "newTitle": "Nowy szablon",
+      "variables": "Zmienne"
     },
     "loyalty": {
       "balance": "Saldo punktów",
@@ -1704,6 +1718,21 @@
       "totalPaid": "Zapłacono łącznie",
       "totalSpent": "Wydano łącznie",
       "treatmentPrice": "Cena zabiegu"
+    },
+    "schedules": {
+      "break": "Przerwa",
+      "breakEnd": "Koniec przerwy",
+      "breakStart": "Początek przerwy",
+      "effective": "Obowiązujący",
+      "effectiveFrom": "Obowiązuje od",
+      "effectiveTo": "Obowiązuje do",
+      "endTime": "Godzina zakończenia",
+      "hours": "Godziny",
+      "isWorkingDay": "Dzień roboczy",
+      "noSchedule": "Nie ustawiono grafiku",
+      "startTime": "Godzina rozpoczęcia",
+      "weeklySchedule": "Grafik tygodniowy",
+      "working": "Praca"
     }
   },
   "customFields": {
@@ -1893,7 +1922,50 @@
     "insertVariable": "Wstaw zmienną",
     "usedVariables": "Użyte zmienne",
     "useTemplate": "Użyj szablonu",
-    "selectTemplate": "Wybierz szablon..."
+    "selectTemplate": "Wybierz szablon...",
+    "backgroundColor": "Kolor tła",
+    "bindTemplate": "Przypisz szablon",
+    "bindingDeleted": "Powiązanie usunięte",
+    "bindingDisabled": "Powiązanie wyłączone",
+    "bindingEnabled": "Powiązanie włączone",
+    "bindingSaved": "Powiązanie zapisane",
+    "bindingsDescription": "Skonfiguruj, które szablony są wysyłane gdy zachodzą zdarzenia",
+    "companyName": "Nazwa firmy",
+    "contentBackgroundColor": "Kolor tła treści",
+    "editBinding": "Edytuj powiązanie",
+    "footerBlocks": "Bloki stopki",
+    "footerTextLabel": "Tekst stopki",
+    "footerTextPlaceholder": "Wprowadź tekst stopki...",
+    "headerBlocks": "Bloki nagłówka",
+    "layoutDescription": "Dostosuj wygląd emaili",
+    "layoutSaved": "Układ zapisany",
+    "logColEventType": "Typ zdarzenia",
+    "logColRecipient": "Odbiorca",
+    "logColStatus": "Status",
+    "logColTemplate": "Szablon",
+    "logColTime": "Czas",
+    "logEntryDetails": "Szczegóły wpisu",
+    "logErrorMessage": "Komunikat błędu",
+    "logPayload": "Dane",
+    "logStatusAll": "Wszystkie",
+    "logStatusFailed": "Niepowodzenie",
+    "logStatusPending": "Oczekujące",
+    "logStatusSent": "Wysłane",
+    "logStatusSkipped": "Pominięte",
+    "logoUrl": "URL logo",
+    "noEventTypes": "Brak zarejestrowanych typów zdarzeń",
+    "noLogEntries": "Brak wpisów w logu",
+    "noTemplate": "Brak szablonu",
+    "preview": "Podgląd",
+    "primaryColor": "Kolor główny",
+    "priority": "Priorytet",
+    "priorityHint": "Szablony o wyższym priorytecie są sprawdzane jako pierwsze",
+    "selectTemplateLabel": "Wybierz szablon",
+    "tabBindings": "Powiązania",
+    "tabEventLog": "Log zdarzeń",
+    "tabLayout": "Układ",
+    "tabTemplates": "Szablony",
+    "unknownTemplate": "Nieznany szablon"
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} blok"

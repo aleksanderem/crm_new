@@ -136,6 +136,7 @@ export function DocumentEditDialog({
               )}
               <Input
                 type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
               {file && (

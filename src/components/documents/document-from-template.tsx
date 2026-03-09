@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, FileText, Eye } from "@/lib/ez-icons";
-import { cn } from "@/lib/utils";
+import { cn, escapeHtml } from "@/lib/utils";
 import { toast } from "sonner";
 import { SourceInstancePicker } from "./source-instance-picker";
 
@@ -61,14 +61,14 @@ function renderPreview(
     (_match, key) => {
       const val = fieldValues[key];
       if (val == null || val === "") return placeholder(key);
-      return String(val);
+      return escapeHtml(String(val));
     },
   );
   // Also handle raw {{field:key}} placeholders
   result = result.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
     const val = fieldValues[key];
     if (val == null || val === "") return placeholder(key);
-    return String(val);
+    return escapeHtml(String(val));
   });
   return result;
 }

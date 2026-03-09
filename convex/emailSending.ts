@@ -2,19 +2,30 @@ import { internalAction, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Resend } from "resend";
+import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Replace {{key}} placeholders in a string with provided variable values. */
+/**
+ * Replace {{key}} placeholders in a string with provided variable values.
+ * Supports both flat keys ({{patientName}}) and prefixed keys ({{event.patientName}}).
+ * The "event." prefix is stripped before lookup in the variables map.
+ */
 function substituteVariables(
   template: string,
   variables: Record<string, string>,
 ): string {
   return template.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
     const trimmed = key.trim();
-    return variables[trimmed] ?? `{{${trimmed}}}`;
+    // Try exact match first, then strip "event." prefix
+    if (variables[trimmed] !== undefined) return variables[trimmed];
+    if (trimmed.startsWith("event.")) {
+      const flatKey = trimmed.slice(6);
+      if (variables[flatKey] !== undefined) return variables[flatKey];
+    }
+    return `{{${trimmed}}}`;
   });
 }
 
@@ -30,8 +41,13 @@ function buildHtml(
 ): string {
   if (!layout) return bodyContent;
 
-  const { backgroundColor, contentBackgroundColor, logoUrl, companyName, footerText } =
-    layout;
+  const {
+    backgroundColor,
+    contentBackgroundColor,
+    logoUrl,
+    companyName,
+    footerText,
+  } = layout;
 
   const logoHtml = logoUrl
     ? `<div style="text-align:center;padding:16px 0;"><img src="${logoUrl}" alt="${companyName ?? ""}" style="max-height:48px;" /></div>`
@@ -57,7 +73,8 @@ export const getTemplateAndLayout = internalQuery({
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) return null;
+    if (!template || template.organizationId !== args.organizationId)
+      return null;
 
     const layout = await ctx.db
       .query("emailLayouts")
@@ -89,10 +106,13 @@ export const sendTemplateEmail = internalAction({
     bindingId: v.optional(v.id("emailEventBindings")),
   },
   handler: async (ctx, args) => {
-    const data = await ctx.runQuery(internal.emailSending.getTemplateAndLayout, {
-      templateId: args.templateId,
-      organizationId: args.organizationId,
-    });
+    const data = await ctx.runQuery(
+      internal.emailSending.getTemplateAndLayout,
+      {
+        templateId: args.templateId,
+        organizationId: args.organizationId,
+      },
+    );
 
     if (!data) {
       await ctx.runMutation(internal.emailEvents.updateLogStatus, {
@@ -100,7 +120,8 @@ export const sendTemplateEmail = internalAction({
         status: "failed",
         bindingId: args.bindingId,
         templateId: args.templateId,
-        errorMessage: "Template not found or belongs to a different organization",
+        errorMessage:
+          "Template not found or belongs to a different organization",
       });
       return;
     }
@@ -115,11 +136,26 @@ export const sendTemplateEmail = internalAction({
     }
 
     const subject = substituteVariables(template.subject, variables);
-    const bodyHtml = substituteVariables(template.body, variables);
+
+    // Extract HTML from body — may be raw HTML or JSON {projectData, html} / {mjml, html}
+    let rawBodyHtml = template.body;
+    try {
+      const parsed = JSON.parse(template.body);
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        typeof parsed.html === "string"
+      ) {
+        rawBodyHtml = parsed.html;
+      }
+    } catch {
+      // Not JSON — already raw HTML
+    }
+
+    const bodyHtml = substituteVariables(rawBodyHtml, variables);
     const html = buildHtml(bodyHtml, layout);
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
+    if (!RESEND_API_KEY) {
       console.warn("[emailSending] RESEND_API_KEY not set — skipping send");
       await ctx.runMutation(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
@@ -131,14 +167,14 @@ export const sendTemplateEmail = internalAction({
       return;
     }
 
-    const resend = new Resend(apiKey);
+    const resend = new Resend(RESEND_API_KEY);
     const toAddress = args.recipientName
       ? `${args.recipientName} <${args.recipientEmail}>`
       : args.recipientEmail;
 
     try {
       await resend.emails.send({
-        from: process.env.RESEND_FROM ?? "noreply@example.com",
+        from: RESEND_FROM ?? "noreply@example.com",
         to: toAddress,
         subject,
         html,

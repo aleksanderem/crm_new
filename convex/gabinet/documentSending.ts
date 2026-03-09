@@ -5,6 +5,7 @@ import { Id } from "../_generated/dataModel";
 import { MutationCtx } from "../_generated/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { Resend } from "resend";
+import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
 const APP_URL = process.env.APP_URL ?? "https://app.example.com";
 
@@ -163,17 +164,16 @@ export const sendDocumentEmail = internalAction({
     sentByUserId: v.id("users"),
   },
   handler: async (_ctx, args): Promise<{ sent: boolean }> => {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
+    if (!RESEND_API_KEY) {
       console.warn("RESEND_API_KEY not set — skipping document send email");
       return { sent: false };
     }
 
-    const resend = new Resend(apiKey);
+    const resend = new Resend(RESEND_API_KEY);
     const portalUrl = `${APP_URL}/patient/documents?token=${args.token}&doc=${args.documentId}`;
 
     await resend.emails.send({
-      from: process.env.RESEND_FROM ?? "noreply@example.com",
+      from: RESEND_FROM ?? "noreply@example.com",
       to: args.patientEmail,
       subject: `Dokument do podpisania — "${args.documentTitle}"`,
       html: `

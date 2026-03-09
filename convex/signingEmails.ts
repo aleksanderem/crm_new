@@ -1,6 +1,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
 const APP_URL = process.env.APP_URL ?? "https://app.example.com";
 
@@ -18,18 +19,17 @@ export const sendSigningRequestEmail = action({
     expiresAt: v.number(),
   },
   handler: async (_ctx, args): Promise<{ sent: boolean }> => {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
+    if (!RESEND_API_KEY) {
       console.warn("RESEND_API_KEY not set — skipping email");
       return { sent: false };
     }
 
-    const resend = new Resend(apiKey);
+    const resend = new Resend(RESEND_API_KEY);
     const signingUrl = `${APP_URL}/sign/${args.token}`;
     const expiryDate = new Date(args.expiresAt).toLocaleDateString("pl-PL");
 
     await resend.emails.send({
-      from: process.env.RESEND_FROM ?? "noreply@example.com",
+      from: RESEND_FROM ?? "noreply@example.com",
       to: args.signerEmail,
       subject: `Dokument do podpisania — "${args.documentTitle}"`,
       html: `
@@ -73,10 +73,9 @@ export const sendSlotSignedNotification = action({
     allSigned: v.boolean(),
   },
   handler: async (_ctx, args): Promise<{ sent: boolean }> => {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) return { sent: false };
+    if (!RESEND_API_KEY) return { sent: false };
 
-    const resend = new Resend(apiKey);
+    const resend = new Resend(RESEND_API_KEY);
 
     const subject = args.allSigned
       ? `Dokument podpisany — "${args.documentTitle}"`
@@ -87,7 +86,7 @@ export const sendSlotSignedNotification = action({
       : `<p><strong>${args.signerName}</strong> złożył podpis na slocie „${args.slotLabel}" dokumentu <strong>${args.documentTitle}</strong>.</p>`;
 
     await resend.emails.send({
-      from: process.env.RESEND_FROM ?? "noreply@example.com",
+      from: RESEND_FROM ?? "noreply@example.com",
       to: args.authorEmail,
       subject,
       html: `

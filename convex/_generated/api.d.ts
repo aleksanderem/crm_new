@@ -10,6 +10,7 @@
 
 import type * as _helpers_activities from "../_helpers/activities.js";
 import type * as _helpers_auth from "../_helpers/auth.js";
+import type * as _helpers_html from "../_helpers/html.js";
 import type * as _helpers_permissionTypes from "../_helpers/permissionTypes.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
 import type * as _helpers_products from "../_helpers/products.js";
@@ -44,6 +45,7 @@ import type * as emailEventTrigger from "../emailEventTrigger.js";
 import type * as emailEvents from "../emailEvents.js";
 import type * as emailLayouts from "../emailLayouts.js";
 import type * as emailSending from "../emailSending.js";
+import type * as emailSequences from "../emailSequences.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as emails from "../emails.js";
 import type * as emails_internal from "../emails_internal.js";
@@ -115,6 +117,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "_helpers/activities": typeof _helpers_activities;
   "_helpers/auth": typeof _helpers_auth;
+  "_helpers/html": typeof _helpers_html;
   "_helpers/permissionTypes": typeof _helpers_permissionTypes;
   "_helpers/permissions": typeof _helpers_permissions;
   "_helpers/products": typeof _helpers_products;
@@ -149,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   emailEvents: typeof emailEvents;
   emailLayouts: typeof emailLayouts;
   emailSending: typeof emailSending;
+  emailSequences: typeof emailSequences;
   emailTemplates: typeof emailTemplates;
   emails: typeof emails;
   emails_internal: typeof emails_internal;

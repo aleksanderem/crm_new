@@ -439,13 +439,21 @@ const AppAuthDashboardLayoutLeadsLeadIdRoute =
   AppAuthDashboardLayoutLeadsLeadIdImport.update({
     path: '/leads/$leadId',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app/_auth/dashboard/_layout.leads.$leadId.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 const AppAuthDashboardLayoutGabinetReportsRoute =
   AppAuthDashboardLayoutGabinetReportsImport.update({
     path: '/gabinet/reports',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app/_auth/dashboard/_layout.gabinet.reports.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 const AppAuthDashboardLayoutEmailTemplatesNewRoute =
   AppAuthDashboardLayoutEmailTemplatesNewImport.update({
@@ -481,7 +489,11 @@ const AppAuthDashboardLayoutContactsContactIdRoute =
   AppAuthDashboardLayoutContactsContactIdImport.update({
     path: '/contacts/$contactId',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
+  } as any).lazy(() =>
+    import(
+      './routes/_app/_auth/dashboard/_layout.contacts.$contactId.lazy'
+    ).then((d) => d.Route),
+  )
 
 const AppAuthDashboardLayoutCompaniesNewRoute =
   AppAuthDashboardLayoutCompaniesNewImport.update({
@@ -535,7 +547,11 @@ const AppAuthDashboardLayoutGabinetCalendarIndexRoute =
   AppAuthDashboardLayoutGabinetCalendarIndexImport.update({
     path: '/gabinet/calendar/',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
+  } as any).lazy(() =>
+    import(
+      './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index.lazy'
+    ).then((d) => d.Route),
+  )
 
 const AppAuthDashboardLayoutSettingsDocumentTemplatesNewRoute =
   AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport.update({
@@ -601,7 +617,11 @@ const AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute =
   AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport.update({
     path: '/gabinet/appointments/$appointmentId',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
+  } as any).lazy(() =>
+    import(
+      './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy'
+    ).then((d) => d.Route),
+  )
 
 const AppAuthDashboardLayoutDocumentsInstanceInstanceIdRoute =
   AppAuthDashboardLayoutDocumentsInstanceInstanceIdImport.update({

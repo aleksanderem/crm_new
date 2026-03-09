@@ -1749,7 +1749,10 @@
       "otpDescription": "Enter the 6-digit code sent to {{email}}",
       "code": "Verification Code",
       "verify": "Verify",
-      "changeEmail": "Use a different email"
+      "changeEmail": "Use a different email",
+      "invalidPortalLink": "Invalid Portal Link",
+      "invalidPortalLinkDescription": "This link is invalid or expired. Please contact your clinic for a new portal link.",
+      "errorGeneric": "Something went wrong. Please try again."
     },
     "dashboard": {
       "welcome": "Welcome, {{name}}",

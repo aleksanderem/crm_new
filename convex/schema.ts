@@ -1712,6 +1712,56 @@ const schema = defineSchema({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndEventType", ["organizationId", "eventType"])
     .index("by_orgAndCreatedAt", ["organizationId", "createdAt"]),
+
+  // ---------------------------------------------------------------------------
+  // Email Sequences
+  // ---------------------------------------------------------------------------
+
+  emailSequences: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    /** Event type that triggers this sequence, e.g. "appointment.created" */
+    triggerEventType: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org", ["organizationId"]),
+
+  emailSequenceSteps: defineTable({
+    sequenceId: v.id("emailSequences"),
+    organizationId: v.id("organizations"),
+    /** Step order (0-indexed) */
+    order: v.number(),
+    /** Delay in milliseconds after enrollment (or after previous step) */
+    delayMs: v.number(),
+    templateId: v.id("emailTemplates"),
+    /** Optional JSON condition string for conditional sending */
+    conditionJson: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_sequence", ["sequenceId"])
+    .index("by_org", ["organizationId"]),
+
+  emailSequenceEnrollments: defineTable({
+    sequenceId: v.id("emailSequences"),
+    organizationId: v.id("organizations"),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    /** JSON string payload passed from trigger event */
+    payload: v.optional(v.string()),
+    /** Current step index (0-indexed) */
+    currentStep: v.number(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("cancelled"),
+      v.literal("completed"),
+    ),
+    enrolledAt: v.number(),
+    completedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  })
+    .index("by_sequence", ["sequenceId"])
+    .index("by_org", ["organizationId"]),
 });
 
 export default schema;

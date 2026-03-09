@@ -60,6 +60,29 @@ export const triggerEmailEvent = internalMutation({
       logId,
     });
 
+    // Enroll in any active sequences triggered by this event type.
+    // Silent no-op if no sequences match.
+    const sequences = await ctx.db
+      .query("emailSequences")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    for (const sequence of sequences) {
+      if (sequence.isActive && sequence.triggerEventType === args.eventType) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emailSequences.enrollRecipient,
+          {
+            sequenceId: sequence._id,
+            organizationId: args.organizationId,
+            recipientEmail: args.recipientEmail,
+            recipientName: args.recipientName,
+            payload: args.payload,
+          },
+        );
+      }
+    }
+
     return logId;
   },
 });

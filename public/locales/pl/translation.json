@@ -1645,7 +1645,20 @@
       "completionRate": "wskaźnik realizacji",
       "treatmentPopularity": "Popularność zabiegów",
       "statusDistribution": "Rozkład statusów wizyt",
-      "dailyVolume": "Dzienny wolumen wizyt"
+      "dailyVolume": "Dzienny wolumen wizyt",
+      "revenue": "Przychody",
+      "estimatedFromCompletedAppointments": "Szacowane na podstawie zakończonych wizyt",
+      "today": "Dziś",
+      "thisWeek": "Ten tydzień",
+      "thisMonth": "Ten miesiąc",
+      "topTreatmentsByRevenue": "Top zabiegi wg przychodu",
+      "employeeUtilization": "Wykorzystanie pracowników",
+      "appointmentsShort": "wizyt",
+      "appointments": "Wizyty",
+      "dateRange": "Zakres dat",
+      "last7days": "Ostatnie 7 dni",
+      "last90days": "Ostatnie 90 dni",
+      "lastYear": "Ostatni rok"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

@@ -1319,7 +1319,7 @@
       },
       "roles": {
         "doctor": "Doctor",
-        "nurse": "Nurse",
+        "nurse": "Assistant",
         "therapist": "Therapist",
         "receptionist": "Receptionist",
         "admin": "Administrator",

@@ -58,6 +58,7 @@ import { Route as AppAuthDashboardLayoutSettingsOrganizationImport } from './rou
 import { Route as AppAuthDashboardLayoutSettingsLostReasonsImport } from './routes/_app/_auth/dashboard/_layout.settings.lost-reasons'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
 import { Route as AppAuthDashboardLayoutSettingsEmailTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.email-templates'
+import { Route as AppAuthDashboardLayoutSettingsEmailEventsImport } from './routes/_app/_auth/dashboard/_layout.settings.email-events'
 import { Route as AppAuthDashboardLayoutSettingsEmailImport } from './routes/_app/_auth/dashboard/_layout.settings.email'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
@@ -375,6 +376,12 @@ const AppAuthDashboardLayoutSettingsIntegrationsRoute =
 const AppAuthDashboardLayoutSettingsEmailTemplatesRoute =
   AppAuthDashboardLayoutSettingsEmailTemplatesImport.update({
     path: '/email-templates',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsEmailEventsRoute =
+  AppAuthDashboardLayoutSettingsEmailEventsImport.update({
+    path: '/email-events',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -912,6 +919,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsEmailImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/email-events': {
+      id: '/_app/_auth/dashboard/_layout/settings/email-events'
+      path: '/email-events'
+      fullPath: '/dashboard/settings/email-events'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsEmailEventsImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/email-templates': {
       id: '/_app/_auth/dashboard/_layout/settings/email-templates'
       path: '/email-templates'
@@ -1227,6 +1241,7 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
               AppAuthDashboardLayoutSettingsEmailRoute,
+              AppAuthDashboardLayoutSettingsEmailEventsRoute,
               AppAuthDashboardLayoutSettingsEmailTemplatesRoute,
               AppAuthDashboardLayoutSettingsIntegrationsRoute,
               AppAuthDashboardLayoutSettingsLostReasonsRoute,
@@ -1516,6 +1531,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/billing",
         "/_app/_auth/dashboard/_layout/settings/custom-fields",
         "/_app/_auth/dashboard/_layout/settings/email",
+        "/_app/_auth/dashboard/_layout/settings/email-events",
         "/_app/_auth/dashboard/_layout/settings/email-templates",
         "/_app/_auth/dashboard/_layout/settings/integrations",
         "/_app/_auth/dashboard/_layout/settings/lost-reasons",
@@ -1601,6 +1617,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/settings/email": {
       "filePath": "_app/_auth/dashboard/_layout.settings.email.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/email-events": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.email-events.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/email-templates": {

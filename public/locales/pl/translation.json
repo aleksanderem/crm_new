@@ -518,7 +518,8 @@
       "color": "Kolor",
       "addStage": "Dodaj etap"
     },
-    "emailTemplates": "Szablony e-mail"
+    "emailTemplates": "Szablony e-mail",
+    "emailEvents": "Zdarzenia email"
   },
   "leadForm": {
     "title": "Tytuł",
@@ -1893,5 +1894,29 @@
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} blok"
+  },
+  "emailEvents": {
+    "title": "Zdarzenia email",
+    "description": "Skonfiguruj, które szablony są wysyłane gdy zachodzą zdarzenia",
+    "eventType": "Typ zdarzenia",
+    "module": "Moduł",
+    "boundTemplate": "Przypisany szablon",
+    "status": "Status",
+    "active": "Aktywny",
+    "inactive": "Nieaktywny",
+    "noBindings": "Brak skonfigurowanych powiązań",
+    "selectTemplate": "Wybierz szablon",
+    "noTemplate": "Brak przypisanego szablonu",
+    "bindTemplate": "Przypisz szablon",
+    "unbind": "Odwiąż",
+    "confirmUnbind": "Czy na pewno chcesz usunąć to powiązanie?",
+    "bindingSaved": "Powiązanie zapisane",
+    "bindingDeleted": "Powiązanie usunięte",
+    "enabled": "Włączony",
+    "disabled": "Wyłączony",
+    "all": "Wszystkie",
+    "crm": "CRM",
+    "gabinet": "Gabinet",
+    "platform": "Platforma"
   }
 }

@@ -518,7 +518,8 @@
       "color": "Color",
       "addStage": "Add Stage"
     },
-    "emailTemplates": "Email Templates"
+    "emailTemplates": "Email Templates",
+    "emailEvents": "Email Events"
   },
   "leadForm": {
     "title": "Title",
@@ -1890,5 +1891,29 @@
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} block"
+  },
+  "emailEvents": {
+    "title": "Email Events",
+    "description": "Configure which templates are sent when events occur",
+    "eventType": "Event Type",
+    "module": "Module",
+    "boundTemplate": "Bound Template",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "noBindings": "No event bindings configured",
+    "selectTemplate": "Select a template",
+    "noTemplate": "No template bound",
+    "bindTemplate": "Bind Template",
+    "unbind": "Unbind",
+    "confirmUnbind": "Are you sure you want to remove this binding?",
+    "bindingSaved": "Binding saved",
+    "bindingDeleted": "Binding removed",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "all": "All",
+    "crm": "CRM",
+    "gabinet": "Gabinet",
+    "platform": "Platform"
   }
 }

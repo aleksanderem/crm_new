@@ -347,6 +347,7 @@ const schema = defineSchema({
     website: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    onboardingCompleted: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
     .index("by_ownerId", ["ownerId"]),

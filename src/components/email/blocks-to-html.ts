@@ -123,6 +123,24 @@ ${footer}
 </div>`;
 }
 
+/** Wrap raw HTML body string with org layout (header + footer + colors). */
+export function wrapBodyWithLayout(
+  bodyHtml: string,
+  layout: EmailLayoutData | null,
+): string {
+  const bg = layout?.backgroundColor ?? "transparent";
+  const contentBg = layout?.contentBackgroundColor ?? "transparent";
+  const header = layout?.headerBlocks?.map(renderBlock).join("\n") ?? "";
+  const footer = layout?.footerBlocks?.map(renderBlock).join("\n") ?? "";
+  return `<div style="background-color: ${bg}; padding: 16px 0;">
+<div style="max-width: 600px; margin: 0 auto; background-color: ${contentBg}; ${FONT_STACK}">
+${header}
+${bodyHtml}
+${footer}
+</div>
+</div>`;
+}
+
 // ---------------------------------------------------------------------------
 // HTML → Blocks (basic: wraps entire HTML in a single text block)
 // ---------------------------------------------------------------------------

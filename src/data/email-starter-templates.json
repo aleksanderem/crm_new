@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Potwierdzenie wizyty",
+    "nameEn": "Appointment Confirmation",
+    "subject": "Potwierdzenie wizyty – {{appointmentDate}} o {{appointmentTime}}",
+    "category": "gabinet",
+    "module": "gabinet",
+    "eventType": "appointment.created",
+    "body": "<p>Drogi/a {{patientName}},</p>\n<p>Potwierdzamy Twoją wizytę:</p>\n<ul>\n  <li><strong>Data:</strong> {{appointmentDate}}</li>\n  <li><strong>Godzina:</strong> {{appointmentTime}}</li>\n  <li><strong>Zabieg:</strong> {{treatmentName}}</li>\n  <li><strong>Specjalista:</strong> {{employeeName}}</li>\n</ul>\n<p>W razie pytań prosimy o kontakt.</p>",
+    "variables": ["patientName", "appointmentDate", "appointmentTime", "treatmentName", "employeeName"]
+  },
+  {
+    "name": "Przypomnienie o wizycie",
+    "nameEn": "Appointment Reminder",
+    "subject": "Przypomnienie: wizyta jutro o {{appointmentTime}}",
+    "category": "gabinet",
+    "module": "gabinet",
+    "eventType": "appointment.reminder",
+    "body": "<p>Drogi/a {{patientName}},</p>\n<p>Przypominamy o jutrzejszej wizycie:</p>\n<ul>\n  <li><strong>Data:</strong> {{appointmentDate}}</li>\n  <li><strong>Godzina:</strong> {{appointmentTime}}</li>\n  <li><strong>Zabieg:</strong> {{treatmentName}}</li>\n</ul>\n<p>Do zobaczenia!</p>",
+    "variables": ["patientName", "appointmentDate", "appointmentTime", "treatmentName"]
+  },
+  {
+    "name": "Odwołanie wizyty",
+    "nameEn": "Appointment Cancellation",
+    "subject": "Odwołanie wizyty – {{appointmentDate}}",
+    "category": "gabinet",
+    "module": "gabinet",
+    "eventType": "appointment.cancelled",
+    "body": "<p>Drogi/a {{patientName}},</p>\n<p>Informujemy, że Twoja wizyta zaplanowana na <strong>{{appointmentDate}} o {{appointmentTime}}</strong> została odwołana.</p>\n<p>{{cancellationReason}}</p>\n<p>Prosimy o kontakt w celu umówienia nowego terminu.</p>",
+    "variables": ["patientName", "appointmentDate", "appointmentTime", "cancellationReason"]
+  },
+  {
+    "name": "Powitanie nowego kontaktu",
+    "nameEn": "Welcome New Contact",
+    "subject": "Witamy w {{organizationName}}!",
+    "category": "crm",
+    "module": "crm",
+    "eventType": "contact.welcome",
+    "body": "<p>Drogi/a {{contactName}},</p>\n<p>Dziękujemy za dołączenie do {{organizationName}}. Cieszymy się, że jesteś z nami!</p>\n<p>W razie pytań jesteśmy do dyspozycji.</p>",
+    "variables": ["contactName", "organizationName"]
+  },
+  {
+    "name": "Zmiana statusu leada",
+    "nameEn": "Lead Status Change",
+    "subject": "Aktualizacja statusu: {{leadTitle}}",
+    "category": "crm",
+    "module": "crm",
+    "eventType": "lead.status_changed",
+    "body": "<p>Drogi/a {{contactName}},</p>\n<p>Status Twojego zapytania <strong>{{leadTitle}}</strong> zmienił się z <em>{{previousStage}}</em> na <em>{{newStage}}</em>.</p>\n<p>Skontaktuje się z Tobą {{assigneeName}}.</p>",
+    "variables": ["contactName", "leadTitle", "previousStage", "newStage", "assigneeName"]
+  }
+]

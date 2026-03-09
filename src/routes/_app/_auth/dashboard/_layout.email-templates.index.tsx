@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -57,6 +57,7 @@ import {
 } from "@/components/email/blocks-to-html";
 import type { EmailBlock } from "@/lib/email-block-types";
 import { toast } from "sonner";
+import { StarterTemplateGallery } from "@/components/email/starter-template-gallery";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/email-templates/",
@@ -83,6 +84,9 @@ function EmailTemplatesPage() {
           <TabsTrigger value="templates">
             {t("emailTemplates.tabTemplates")}
           </TabsTrigger>
+          <TabsTrigger value="starter">
+            Gotowe szablony
+          </TabsTrigger>
           <TabsTrigger value="layout">
             {t("emailTemplates.tabLayout")}
           </TabsTrigger>
@@ -98,6 +102,10 @@ function EmailTemplatesPage() {
           <TemplatesTab />
         </TabsContent>
 
+        <TabsContent value="starter" className="mt-4">
+          <StarterTab />
+        </TabsContent>
+
         <TabsContent value="layout" className="mt-4">
           <LayoutTab />
         </TabsContent>
@@ -111,6 +119,24 @@ function EmailTemplatesPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Starter Templates Tab — ready-made gallery
+// ---------------------------------------------------------------------------
+
+function StarterTab() {
+  const navigate = useNavigate();
+  return (
+    <StarterTemplateGallery
+      onCreated={(templateId) =>
+        navigate({
+          to: "/dashboard/email-templates/$templateId",
+          params: { templateId },
+        })
+      }
+    />
   );
 }
 

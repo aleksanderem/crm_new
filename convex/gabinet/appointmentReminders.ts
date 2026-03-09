@@ -137,6 +137,25 @@ export const sendReminder = internalMutation({
       });
     }
 
+    // Send appointment.reminder email if patient has email
+    if (patient?.email) {
+      const employee = await ctx.db.get(appointment.employeeId);
+      const employeeName = employee?.name ?? "Specjalista";
+      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+        organizationId: reminder.organizationId,
+        eventType: "appointment.reminder",
+        recipientEmail: patient.email,
+        recipientName: patientName,
+        payload: JSON.stringify({
+          patientName,
+          appointmentDate: appointment.date,
+          appointmentTime: appointment.startTime,
+          treatmentName,
+          employeeName,
+        }),
+      });
+    }
+
     const now = Date.now();
     await ctx.db.patch(args.reminderId, {
       status: "sent",

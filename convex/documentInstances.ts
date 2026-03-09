@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { resolveSource } from "./documentDataSources";
+import { escapeHtml } from "./_helpers/html";
 
 const statusValidator = v.union(
   v.literal("draft"),
@@ -31,14 +32,14 @@ function renderTemplate(
     /<span[^>]*data-field="([^"]+)"[^>]*>([^<]*)<\/span>/g,
     (_match, key, label) => {
       const val = fieldValues[key];
-      if (val != null && val !== "") return String(val);
+      if (val != null && val !== "") return escapeHtml(String(val));
       return `<span style="background:#dbeafe;padding:1px 6px;border-radius:3px;color:#1e40af;font-size:0.875em">[${label || key}]</span>`;
     },
   );
   // Also handle raw {{field:key}} placeholders
   result = result.replace(/\{\{field:(\w+)\}\}/g, (_match, key) => {
     const val = fieldValues[key];
-    if (val != null && val !== "") return String(val);
+    if (val != null && val !== "") return escapeHtml(String(val));
     return `<span style="background:#dbeafe;padding:1px 6px;border-radius:3px;color:#1e40af;font-size:0.875em">[${key}]</span>`;
   });
   return result;

@@ -51,6 +51,7 @@ import { Route as AppAuthDashboardLayoutCallsIndexImport } from './routes/_app/_
 import { Route as AppAuthDashboardLayoutActivitiesIndexImport } from './routes/_app/_auth/dashboard/_layout.activities.index'
 import { Route as AppAuthDashboardLayoutSettingsTeamImport } from './routes/_app/_auth/dashboard/_layout.settings.team'
 import { Route as AppAuthDashboardLayoutSettingsSourcesImport } from './routes/_app/_auth/dashboard/_layout.settings.sources'
+import { Route as AppAuthDashboardLayoutSettingsSmsImport } from './routes/_app/_auth/dashboard/_layout.settings.sms'
 import { Route as AppAuthDashboardLayoutSettingsProfileImport } from './routes/_app/_auth/dashboard/_layout.settings.profile'
 import { Route as AppAuthDashboardLayoutSettingsPipelinesImport } from './routes/_app/_auth/dashboard/_layout.settings.pipelines'
 import { Route as AppAuthDashboardLayoutSettingsPermissionsImport } from './routes/_app/_auth/dashboard/_layout.settings.permissions'
@@ -334,6 +335,12 @@ const AppAuthDashboardLayoutSettingsTeamRoute =
 const AppAuthDashboardLayoutSettingsSourcesRoute =
   AppAuthDashboardLayoutSettingsSourcesImport.update({
     path: '/sources',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsSmsRoute =
+  AppAuthDashboardLayoutSettingsSmsImport.update({
+    path: '/sms',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -975,6 +982,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsProfileImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/sms': {
+      id: '/_app/_auth/dashboard/_layout/settings/sms'
+      path: '/sms'
+      fullPath: '/dashboard/settings/sms'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsSmsImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/sources': {
       id: '/_app/_auth/dashboard/_layout/settings/sources'
       path: '/sources'
@@ -1249,6 +1263,7 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsPermissionsRoute,
               AppAuthDashboardLayoutSettingsPipelinesRoute,
               AppAuthDashboardLayoutSettingsProfileRoute,
+              AppAuthDashboardLayoutSettingsSmsRoute,
               AppAuthDashboardLayoutSettingsSourcesRoute,
               AppAuthDashboardLayoutSettingsTeamRoute,
               AppAuthDashboardLayoutSettingsIndexRoute,
@@ -1539,6 +1554,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/permissions",
         "/_app/_auth/dashboard/_layout/settings/pipelines",
         "/_app/_auth/dashboard/_layout/settings/profile",
+        "/_app/_auth/dashboard/_layout/settings/sms",
         "/_app/_auth/dashboard/_layout/settings/sources",
         "/_app/_auth/dashboard/_layout/settings/team",
         "/_app/_auth/dashboard/_layout/settings/",
@@ -1649,6 +1665,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/settings/profile": {
       "filePath": "_app/_auth/dashboard/_layout.settings.profile.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/sms": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.sms.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/sources": {

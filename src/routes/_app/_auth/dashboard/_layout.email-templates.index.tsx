@@ -963,6 +963,7 @@ function EventLogTab() {
         </div>
       ) : (
         <Card>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1020,6 +1021,7 @@ function EventLogTab() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
 

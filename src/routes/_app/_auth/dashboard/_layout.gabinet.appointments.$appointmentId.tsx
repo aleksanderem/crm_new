@@ -1258,7 +1258,7 @@ function AppointmentDetail() {
                         }
                       />
                     ) : (
-                      <div className="border rounded-lg">
+                      <div className="overflow-x-auto border rounded-lg">
                         <table className="w-full">
                           <thead>
                             <tr className="border-b bg-muted/50">
@@ -1583,7 +1583,7 @@ function AppointmentDetail() {
                             </p>
                           </div>
                         </div>
-                        <div className="border rounded-lg">
+                        <div className="overflow-x-auto border rounded-lg">
                           <table className="w-full">
                             <thead>
                               <tr className="border-b bg-muted/50">

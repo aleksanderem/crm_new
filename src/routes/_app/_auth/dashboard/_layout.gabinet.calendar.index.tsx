@@ -475,7 +475,8 @@ function GabinetCalendarPage() {
     >
       <div className="flex h-[calc(100vh-4rem)] flex-col">
         {/* Toolbar */}
-        <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
+        <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-2 md:flex-row md:items-center md:justify-between">
+          {/* Row 1: nav arrows + date title */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -499,10 +500,11 @@ function GabinetCalendarPage() {
             <h2 className="ml-2 text-sm font-semibold">{title}</h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Row 2: controls (full-width row on mobile, inline on md+) */}
+          <div className="flex flex-wrap items-center gap-2">
             {/* Employee filter */}
             <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
                 <SelectValue
                   placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")}
                 />
@@ -537,8 +539,8 @@ function GabinetCalendarPage() {
               ))}
             </div>
 
-            {/* Print button */}
-            <Button variant="outline" size="sm" onClick={handlePrint}>
+            {/* Print button — hidden on mobile */}
+            <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:flex">
               <Download className="mr-1 h-4 w-4" variant="stroke" />
               {t("gabinet.calendar.print", "Drukuj")}
             </Button>

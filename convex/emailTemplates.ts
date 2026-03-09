@@ -209,6 +209,7 @@ export const create = mutation({
     body: v.string(),
     category: v.optional(v.string()),
     module: v.optional(v.string()),
+    eventType: v.optional(v.string()),
     variables: v.array(emailTemplateVariableValidator),
   },
   handler: async (ctx, args) => {
@@ -222,6 +223,7 @@ export const create = mutation({
       body: args.body,
       category: args.category,
       module: args.module,
+      eventType: args.eventType,
       variables: args.variables,
       createdBy: user._id,
       isActive: true,
@@ -240,6 +242,7 @@ export const update = mutation({
     body: v.optional(v.string()),
     category: v.optional(v.string()),
     module: v.optional(v.string()),
+    eventType: v.optional(v.string()),
     variables: v.optional(v.array(emailTemplateVariableValidator)),
     isActive: v.optional(v.boolean()),
   },
@@ -257,6 +260,7 @@ export const update = mutation({
     if (args.body !== undefined) updates.body = args.body;
     if (args.category !== undefined) updates.category = args.category;
     if (args.module !== undefined) updates.module = args.module;
+    if (args.eventType !== undefined) updates.eventType = args.eventType;
     if (args.variables !== undefined) updates.variables = args.variables;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 

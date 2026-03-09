@@ -62,7 +62,9 @@
     "titleRequired": "Title is required",
     "type": "Type",
     "actionCannotBeUndone": "This action cannot be undone",
-    "module": "Module"
+    "module": "Module",
+    "optional": "optional",
+    "continue": "Continue"
   },
   "nav": {
     "deals": "Deals",
@@ -1796,7 +1798,18 @@
       "upcoming": "Upcoming",
       "past": "Past",
       "noUpcoming": "No upcoming appointments",
-      "noPast": "No past appointments"
+      "noPast": "No past appointments",
+      "reschedule": "Reschedule",
+      "rescheduleTitle": "Request Reschedule",
+      "rescheduleDescription": "Select your preferred new date and time. The clinic will confirm the change.",
+      "rescheduleConfirmDescription": "Please confirm your reschedule request.",
+      "rescheduleDate": "Preferred Date",
+      "rescheduleTime": "Preferred Time",
+      "rescheduleReason": "Reason",
+      "rescheduleReasonPlaceholder": "Optional — let us know why you need to reschedule",
+      "rescheduleSubmit": "Send Request",
+      "rescheduleSuccess": "Reschedule request sent. The clinic will contact you to confirm.",
+      "reschedulePendingNote": "This is a request only. Your appointment will remain unchanged until the clinic confirms the new time."
     },
     "documents": {
       "title": "My Documents",

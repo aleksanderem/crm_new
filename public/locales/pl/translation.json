@@ -62,7 +62,9 @@
     "titleRequired": "Tytuł jest wymagany",
     "type": "Typ",
     "actionCannotBeUndone": "Tej operacji nie można cofnąć",
-    "module": "Moduł"
+    "module": "Moduł",
+    "optional": "opcjonalnie",
+    "continue": "Dalej"
   },
   "nav": {
     "deals": "Transakcje",
@@ -1797,7 +1799,18 @@
       "upcoming": "Nadchodzące",
       "past": "Historia",
       "noUpcoming": "Brak nadchodzących wizyt",
-      "noPast": "Brak historii wizyt"
+      "noPast": "Brak historii wizyt",
+      "reschedule": "Przełóż wizytę",
+      "rescheduleTitle": "Prośba o zmianę terminu",
+      "rescheduleDescription": "Wybierz preferowany nowy termin wizyty. Klinika potwierdzi zmianę.",
+      "rescheduleConfirmDescription": "Potwierdź swoją prośbę o zmianę terminu.",
+      "rescheduleDate": "Preferowana data",
+      "rescheduleTime": "Preferowana godzina",
+      "rescheduleReason": "Powód",
+      "rescheduleReasonPlaceholder": "Opcjonalnie — daj nam znać, dlaczego musisz przełożyć wizytę",
+      "rescheduleSubmit": "Wyślij prośbę",
+      "rescheduleSuccess": "Prośba o zmianę terminu wysłana. Klinika skontaktuje się z Tobą w celu potwierdzenia.",
+      "reschedulePendingNote": "To jest tylko prośba. Twoja wizyta pozostanie bez zmian do momentu potwierdzenia przez klinikę."
     },
     "documents": {
       "title": "Moje dokumenty",

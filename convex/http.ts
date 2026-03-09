@@ -96,7 +96,7 @@ const handleCheckoutSessionCompleted = async (
     subscriptionId,
   });
 
-  // Cancel free subscription. — User upgraded to a paid plan.
+  // Cancel free subscription. - User upgraded to a paid plan.
   // Not required, but it's a good practice to keep just a single active plan.
   const subscriptions = (
     await stripe.subscriptions.list({ customer: customerId })
@@ -179,6 +179,25 @@ const handleCustomerSubscriptionUpdatedError = async (
   return new Response(null);
 };
 
+const handleCustomerSubscriptionCreated = async (
+  ctx: ActionCtx,
+  event: Stripe.CustomerSubscriptionCreatedEvent,
+) => {
+  const subscription = event.data.object;
+  const { customer: customerId } = z
+    .object({ customer: z.string() })
+    .parse(subscription);
+
+  const user = await ctx.runQuery(internal.stripe.PREAUTH_getUserByCustomerId, {
+    customerId,
+  });
+  if (!user) throw new Error(ERRORS.SOMETHING_WENT_WRONG);
+
+  await handleUpdateSubscription(ctx, user, subscription);
+
+  return new Response(null);
+};
+
 const handleCustomerSubscriptionDeleted = async (
   ctx: ActionCtx,
   event: Stripe.CustomerSubscriptionDeletedEvent,
@@ -194,7 +213,16 @@ http.route({
   path: "/stripe/webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const event = await getStripeEvent(request);
+    let event: Stripe.Event;
+    try {
+      event = await getStripeEvent(request);
+    } catch (err: unknown) {
+      // Signature validation failure or missing webhook secret
+      console.error("Stripe webhook signature error:", err);
+      return new Response("Webhook signature verification failed", {
+        status: 400,
+      });
+    }
 
     try {
       switch (event.type) {
@@ -206,6 +234,14 @@ http.route({
         }
 
         /**
+         * Occurs when a new Stripe subscription is created.
+         * E.g. when a user signs up for a paid plan for the first time.
+         */
+        case "customer.subscription.created": {
+          return handleCustomerSubscriptionCreated(ctx, event);
+        }
+
+        /**
          * Occurs when a Stripe subscription has been updated.
          * E.g. when a user upgrades or downgrades their plan.
          */
@@ -214,7 +250,7 @@ http.route({
         }
 
         /**
-         * Occurs whenever a customer’s subscription ends.
+         * Occurs whenever a customer's subscription ends.
          */
         case "customer.subscription.deleted": {
           return handleCustomerSubscriptionDeleted(ctx, event);

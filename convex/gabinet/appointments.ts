@@ -458,6 +458,16 @@ export const create = mutation({
       });
     }
 
+    // Send appointment.created SMS if patient has phone
+    if (patient?.phone) {
+      const smsMessage = `Twoja wizyta dnia ${args.date} o ${args.startTime} została potwierdzona.`;
+      await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+        organizationId: args.organizationId,
+        phone: patient.phone,
+        message: smsMessage,
+      });
+    }
+
     // Dual write: create shared calendar event
     const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
     const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
@@ -744,7 +754,7 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(args.appointmentId, patch);
 
-    // Send appointment.cancelled email if status changed to cancelled and patient has email
+    // Send appointment.cancelled email + SMS if status changed to cancelled
     if (args.status === "cancelled") {
       const patient = await ctx.db.get(appt.patientId);
       const treatment = await ctx.db.get(appt.treatmentId);
@@ -768,6 +778,15 @@ export const updateStatus = mutation({
             employeeName,
           }),
           triggeredBy: user._id,
+        });
+      }
+      // Send cancellation SMS if patient has phone
+      if (patient?.phone) {
+        const smsMessage = `Twoja wizyta dnia ${appt.date} o ${appt.startTime} została odwołana.`;
+        await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+          organizationId: args.organizationId,
+          phone: patient.phone,
+          message: smsMessage,
         });
       }
     }

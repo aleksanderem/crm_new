@@ -156,6 +156,18 @@ export const sendReminder = internalMutation({
       });
     }
 
+    // Send appointment.reminder SMS if patient has phone
+    if (patient?.phone) {
+      const org = await ctx.db.get(reminder.organizationId);
+      const orgName = org?.name ?? "";
+      const smsMessage = `Przypomnienie: jutro wizyta o ${appointment.startTime}.${orgName ? " " + orgName : ""}`;
+      await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+        organizationId: reminder.organizationId,
+        phone: patient.phone,
+        message: smsMessage,
+      });
+    }
+
     const now = Date.now();
     await ctx.db.patch(args.reminderId, {
       status: "sent",

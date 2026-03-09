@@ -1,6 +1,7 @@
-import { action, query, mutation } from "./_generated/server";
+import { action, query, mutation, internalAction, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
+import { verifyOrgAccess } from "./_helpers/auth";
 
 // ---------------------------------------------------------------------------
 // SMS Config (authenticated, org-scoped)
@@ -70,6 +71,29 @@ export const saveConfig = mutation({
 });
 
 // ---------------------------------------------------------------------------
+// Toggle active state
+// ---------------------------------------------------------------------------
+
+export const toggleActive = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const config = await ctx.db
+      .query("orgSmsConfig")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+    if (!config) throw new Error("SMS config not found");
+    await ctx.db.patch(config._id, {
+      isActive: args.isActive,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Send OTP via SMS (action — makes HTTP calls)
 // ---------------------------------------------------------------------------
 
@@ -80,8 +104,8 @@ export const sendOtpSms = action({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    // Load SMS config
-    const config = await ctx.runQuery(api.sms.getConfigInternal, {
+    // Load SMS config via internal query
+    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
       organizationId: args.organizationId,
     });
     if (!config) throw new Error("SMS not configured for this organization");
@@ -102,8 +126,8 @@ export const sendOtpSms = action({
   },
 });
 
-/** Internal query to get full SMS config (with secrets) — only callable from actions. */
-export const getConfigInternal = query({
+/** Internal query to get full SMS config (with secrets) — only callable from internal functions. */
+export const getConfigInternal = internalQuery({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -177,7 +201,43 @@ async function sendViaTwilio(
 }
 
 // ---------------------------------------------------------------------------
-// Send OTP action — orchestrates createOtp mutation + SMS/email delivery
+// sendAppointmentSms — internal action for appointment lifecycle SMS
+// ---------------------------------------------------------------------------
+
+export const sendAppointmentSms = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    phone: v.string(),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Load full config (with secrets) via internal query
+    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
+      organizationId: args.organizationId,
+    });
+
+    // Silent no-op if not configured or inactive
+    if (!config || !config.isActive) return null;
+
+    if (config.provider === "smsapi") {
+      await sendViaSmsapi(config.apiToken, args.phone, args.message, config.senderId);
+    } else if (config.provider === "twilio") {
+      if (!config.apiSecret || !config.fromNumber) return null; // misconfigured — silent no-op
+      await sendViaTwilio(
+        config.apiToken,
+        config.apiSecret,
+        config.fromNumber,
+        args.phone,
+        args.message,
+      );
+    }
+
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// requestOtp — orchestrates createOtp mutation + SMS/email delivery
 // ---------------------------------------------------------------------------
 
 export const requestOtp = action({
@@ -189,7 +249,7 @@ export const requestOtp = action({
       verificationMethod: string;
       signerPhone?: string;
       signerEmail?: string;
-      organizationId: any;
+      organizationId: string;
     } = await ctx.runMutation(api.signatureRequests.createOtp, {
       token: args.token,
     });
@@ -197,7 +257,7 @@ export const requestOtp = action({
     if (result.verificationMethod === "sms") {
       if (!result.signerPhone) throw new Error("No phone number for SMS delivery");
       await ctx.runAction(api.sms.sendOtpSms, {
-        organizationId: result.organizationId,
+        organizationId: result.organizationId as never,
         phone: result.signerPhone,
         code: result.code,
       });

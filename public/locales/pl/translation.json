@@ -518,7 +518,8 @@
       "color": "Kolor",
       "addStage": "Dodaj etap"
     },
-    "emailTemplates": "Szablony e-mail"
+    "emailTemplates": "Szablony e-mail",
+    "emailEvents": "Zdarzenia email"
   },
   "leadForm": {
     "title": "Tytuł",
@@ -1893,5 +1894,9 @@
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} blok"
+  },
+  "emailEvents": {
+    "title": "Zdarzenia email",
+    "description": "Skonfiguruj, które szablony są wysyłane gdy zachodzą zdarzenia"
   }
 }

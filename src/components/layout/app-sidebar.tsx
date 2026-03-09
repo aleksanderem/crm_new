@@ -521,6 +521,10 @@ const settingsNav: SettingsNavItem[] = [
     labelKey: "settings.emailTemplates",
     to: "/dashboard/settings/email-templates",
   },
+  {
+    labelKey: "settings.emailEvents",
+    to: "/dashboard/settings/email-events",
+  },
   { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
   { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
   {

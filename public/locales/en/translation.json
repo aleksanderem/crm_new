@@ -518,7 +518,8 @@
       "color": "Color",
       "addStage": "Add Stage"
     },
-    "emailTemplates": "Email Templates"
+    "emailTemplates": "Email Templates",
+    "emailEvents": "Email Events"
   },
   "leadForm": {
     "title": "Title",
@@ -1890,5 +1891,9 @@
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} block"
+  },
+  "emailEvents": {
+    "title": "Email Events",
+    "description": "Configure which templates are sent when events occur"
   }
 }

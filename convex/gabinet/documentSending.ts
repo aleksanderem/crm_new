@@ -7,7 +7,13 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
-const APP_URL = process.env.APP_URL ?? "https://app.example.com";
+function getAppUrl(): string {
+  const url = process.env.APP_URL;
+  if (!url) {
+    console.warn("APP_URL env var is not set — portal links will be broken");
+  }
+  return url ?? "";
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -44,7 +50,10 @@ async function ensurePortalSession(
     .first();
 
   if (existing) {
-    // Extend and activate the existing session
+    // Extend and activate the existing session with a fresh token.
+    // NOTE: This invalidates any previously sent portal links for this patient.
+    // Each "send document" call issues a new token intentionally — old links
+    // cannot be reused after re-sending, which is the desired security behavior.
     const token = generateToken();
     await ctx.db.patch(existing._id, {
       tokenHash: token,
@@ -87,6 +96,12 @@ export const sendDocumentToClient = mutation({
     }
     if (doc.status === "signed") {
       throw new Error("Document is already signed");
+    }
+    // Allow re-sending a pending_signature document (useful when the client
+    // loses the original email), but log a warning for audit purposes.
+    // Re-sending regenerates the portal session token, invalidating the old link.
+    if (doc.status === "pending_signature") {
+      console.warn(`Re-sending document ${args.documentId} that is already pending_signature — previous portal link will be invalidated`);
     }
 
     const patient = await ctx.db.get(doc.patientId);
@@ -145,14 +160,21 @@ export const getDocumentShareLink = query({
       return null;
     }
 
-    return `${APP_URL}/patient/documents?token=${session.tokenHash}&doc=${args.documentId}`;
+    return `${getAppUrl()}/patient/documents?token=${session.tokenHash}&doc=${args.documentId}`;
   },
 });
 
 // ---------------------------------------------------------------------------
 // Internal action — email delivery
 // ---------------------------------------------------------------------------
-
+//
+// Design note: this uses a direct Resend call rather than the email event bus
+// (`emailEvents.emitEvent`). The event bus requires a registered eventType +
+// binding + template in the DB before it can dispatch. No `gabinet.document_sent`
+// event type or binding exists yet, and the content is generated inline from
+// document metadata. When email template management is added for this event,
+// migrate to: emailEvents.emitEvent({ eventType: "gabinet.document_sent", ... })
+//
 export const sendDocumentEmail = internalAction({
   args: {
     patientName: v.string(),
@@ -170,7 +192,7 @@ export const sendDocumentEmail = internalAction({
     }
 
     const resend = new Resend(RESEND_API_KEY);
-    const portalUrl = `${APP_URL}/patient/documents?token=${args.token}&doc=${args.documentId}`;
+    const portalUrl = `${getAppUrl()}/patient/documents?token=${args.token}&doc=${args.documentId}`;
 
     await resend.emails.send({
       from: RESEND_FROM ?? "noreply@example.com",

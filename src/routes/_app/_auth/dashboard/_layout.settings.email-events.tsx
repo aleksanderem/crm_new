@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -95,6 +96,9 @@ function EmailEventsSettings() {
         templateId: templateId as Id<"emailTemplates">,
         enabled: true,
       });
+      toast.success(t("emailEvents.bindingSaved"));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
     }
@@ -108,6 +112,9 @@ function EmailEventsSettings() {
         bindingId: binding._id,
         enabled: !binding.enabled,
       });
+      toast.success(t("emailEvents.bindingSaved"));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
     }
@@ -121,6 +128,9 @@ function EmailEventsSettings() {
         organizationId,
         bindingId: binding._id,
       });
+      toast.success(t("emailEvents.bindingDeleted"));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
     }
@@ -219,6 +229,7 @@ function EmailEventsSettings() {
                           checked={binding.enabled}
                           onCheckedChange={() => handleToggleBinding(binding)}
                           disabled={isProcessing}
+                          aria-label={binding.enabled ? t("emailEvents.enabled") : t("emailEvents.disabled")}
                         />
 
                         <Button

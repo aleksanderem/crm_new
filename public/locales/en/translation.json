@@ -1262,7 +1262,13 @@
         "personal": "Personal",
         "training": "Training",
         "other": "Other"
-      }
+      },
+      "approve": "Approve",
+      "reject": "Reject",
+      "confirmApproveTitle": "Approve Leave Request",
+      "confirmApproveDesc": "Are you sure you want to approve this leave request? The employee will be notified.",
+      "confirmRejectTitle": "Reject Leave Request",
+      "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified."
     },
     "employees": {
       "title": "Employees",

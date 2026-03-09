@@ -1262,7 +1262,13 @@
         "personal": "Osobisty",
         "training": "Szkolenie",
         "other": "Inne"
-      }
+      },
+      "approve": "Zatwierdź",
+      "reject": "Odrzuć",
+      "confirmApproveTitle": "Zatwierdź wniosek urlopowy",
+      "confirmApproveDesc": "Czy na pewno chcesz zatwierdzić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
+      "confirmRejectTitle": "Odrzuć wniosek urlopowy",
+      "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony."
     },
     "employees": {
       "title": "Pracownicy",

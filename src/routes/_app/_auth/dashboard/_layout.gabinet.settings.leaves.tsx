@@ -10,6 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -24,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -49,7 +60,7 @@ function LeavesPage() {
   const { data: leaves } = useQuery(
     convexQuery(api.gabinet.scheduling.listLeaves, {
       organizationId,
-      status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+      status: statusFilter !== "all" ? (statusFilter as "pending" | "approved" | "rejected") : undefined,
     })
   );
 
@@ -68,6 +79,9 @@ function LeavesPage() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [confirmLeaveId, setConfirmLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
 
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;
@@ -94,22 +108,37 @@ function LeavesPage() {
     }
   };
 
-  const handleApprove = async (leaveId: any) => {
+  const handleApprove = (leaveId: Id<"gabinetLeaves">) => {
+    setConfirmLeaveId(leaveId);
+    setConfirmAction("approve");
+  };
+
+  const handleReject = (leaveId: Id<"gabinetLeaves">) => {
+    setConfirmLeaveId(leaveId);
+    setConfirmAction("reject");
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmLeaveId || !confirmAction) return;
     try {
-      await approveLeave({ organizationId, leaveId });
-      toast.success(t("gabinet.leaves.approved"));
-    } catch (e: any) {
-      toast.error(e.message);
+      if (confirmAction === "approve") {
+        await approveLeave({ organizationId, leaveId: confirmLeaveId });
+        toast.success(t("gabinet.leaves.approved"));
+      } else {
+        await rejectLeave({ organizationId, leaveId: confirmLeaveId });
+        toast.success(t("gabinet.leaves.rejected"));
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setConfirmLeaveId(null);
+      setConfirmAction(null);
     }
   };
 
-  const handleReject = async (leaveId: any) => {
-    try {
-      await rejectLeave({ organizationId, leaveId });
-      toast.success(t("gabinet.leaves.rejected"));
-    } catch (e: any) {
-      toast.error(e.message);
-    }
+  const getEmployeeName = (userId: string) => {
+    const member = teamMembers?.find((m) => m.userId === userId);
+    return member?.user?.name ?? userId;
   };
 
   const statusColor = (status: string) => {
@@ -122,144 +151,182 @@ function LeavesPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <PageHeader title={t("gabinet.leaves.title")} description={t("gabinet.leaves.description")} />
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.leaves.requestLeave")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>{t("gabinet.employees.selectUser")}</Label>
-                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder={t("gabinet.appointments.selectEmployee")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(employees ?? []).map((emp) => {
-                      const member = teamMembers?.find((m: any) => m.userId === emp.userId);
-                      return (
-                        <SelectItem key={emp._id} value={emp.userId}>
-                          {member?.user?.name ?? emp.userId} — {t(`gabinet.employees.roles.${emp.role}`)}
+    <>
+      <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center justify-between">
+          <PageHeader title={t("gabinet.leaves.title")} description={t("gabinet.leaves.description")} />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.leaves.requestLeave")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.employees.selectUser")}</Label>
+                  <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t("gabinet.appointments.selectEmployee")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(employees ?? []).map((emp) => {
+                        const member = teamMembers?.find((m: any) => m.userId === emp.userId);
+                        return (
+                          <SelectItem key={emp._id} value={emp.userId}>
+                            {member?.user?.name ?? emp.userId} — {t(`gabinet.employees.roles.${emp.role}`)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.leaves.type")}</Label>
+                  <Select value={leaveType} onValueChange={setLeaveType}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAVE_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {t(`gabinet.leaves.types.${type}`)}
                         </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("gabinet.leaves.type")}</Label>
-                <Select value={leaveType} onValueChange={setLeaveType}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEAVE_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {t(`gabinet.leaves.types.${type}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("gabinet.leaves.startDate")}</Label>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>{t("gabinet.leaves.startDate")}</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("gabinet.leaves.endDate")}</Label>
+                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t("gabinet.leaves.endDate")}</Label>
-                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  <Label>{t("gabinet.leaves.reason")}</Label>
+                  <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
+                  <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>
+                    {submitting ? t("common.saving") : t("gabinet.leaves.submit")}
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("gabinet.leaves.reason")}</Label>
-                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
-                <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>
-                  {submitting ? t("common.saving") : t("gabinet.leaves.submit")}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder={t("gabinet.leaves.filterByStatus")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("gabinet.leaves.allStatuses")}</SelectItem>
+              <SelectItem value="pending">{t("gabinet.leaves.pending")}</SelectItem>
+              <SelectItem value="approved">{t("gabinet.leaves.approvedStatus")}</SelectItem>
+              <SelectItem value="rejected">{t("gabinet.leaves.rejectedStatus")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="rounded-lg border">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">
+                <th className="px-4 py-2 text-left">{t("gabinet.employees.employee")}</th>
+                <th className="px-4 py-2 text-left">{t("gabinet.leaves.type")}</th>
+                <th className="px-4 py-2 text-left">{t("gabinet.leaves.startDate")}</th>
+                <th className="px-4 py-2 text-left">{t("gabinet.leaves.endDate")}</th>
+                <th className="px-4 py-2 text-left">{t("gabinet.leaves.reason")}</th>
+                <th className="px-4 py-2 text-left">{t("gabinet.leaves.status")}</th>
+                <th className="px-4 py-2 text-right">{t("common.actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(leaves ?? []).map((leave) => (
+                <tr key={leave._id} className="border-b last:border-b-0">
+                  <td className="px-4 py-2 text-sm font-medium">{getEmployeeName(leave.userId)}</td>
+                  <td className="px-4 py-2 text-sm">{t(`gabinet.leaves.types.${leave.type}`)}</td>
+                  <td className="px-4 py-2 text-sm">{leave.startDate}</td>
+                  <td className="px-4 py-2 text-sm">{leave.endDate}</td>
+                  <td className="px-4 py-2 text-sm text-muted-foreground">{leave.reason ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    <Badge variant={statusColor(leave.status)}>
+                      {leave.status === "pending" ? t("gabinet.leaves.pending") :
+                       leave.status === "approved" ? t("gabinet.leaves.approvedStatus") :
+                       leave.status === "rejected" ? t("gabinet.leaves.rejectedStatus") :
+                       leave.status}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {leave.status === "pending" && (
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id)}>
+                          <Check className="h-4 w-4 text-green-600" variant="stroke" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
+                          <X className="h-4 w-4 text-red-600" variant="stroke" />
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(!leaves || leaves.length === 0) && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    {t("gabinet.leaves.empty")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder={t("gabinet.leaves.filterByStatus")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("gabinet.leaves.allStatuses")}</SelectItem>
-            <SelectItem value="pending">{t("gabinet.leaves.pending")}</SelectItem>
-            <SelectItem value="approved">{t("gabinet.leaves.approvedStatus")}</SelectItem>
-            <SelectItem value="rejected">{t("gabinet.leaves.rejectedStatus")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="rounded-lg border">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">
-              <th className="px-4 py-2 text-left">{t("gabinet.leaves.type")}</th>
-              <th className="px-4 py-2 text-left">{t("gabinet.leaves.startDate")}</th>
-              <th className="px-4 py-2 text-left">{t("gabinet.leaves.endDate")}</th>
-              <th className="px-4 py-2 text-left">{t("gabinet.leaves.reason")}</th>
-              <th className="px-4 py-2 text-left">{t("gabinet.leaves.status")}</th>
-              <th className="px-4 py-2 text-right">{t("common.actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(leaves ?? []).map((leave) => (
-              <tr key={leave._id} className="border-b last:border-b-0">
-                <td className="px-4 py-2 text-sm">{t(`gabinet.leaves.types.${leave.type}`)}</td>
-                <td className="px-4 py-2 text-sm">{leave.startDate}</td>
-                <td className="px-4 py-2 text-sm">{leave.endDate}</td>
-                <td className="px-4 py-2 text-sm text-muted-foreground">{leave.reason ?? "—"}</td>
-                <td className="px-4 py-2">
-                  <Badge variant={statusColor(leave.status)}>
-                    {leave.status === "pending" ? t("gabinet.leaves.pending") :
-                     leave.status === "approved" ? t("gabinet.leaves.approvedStatus") :
-                     leave.status === "rejected" ? t("gabinet.leaves.rejectedStatus") :
-                     leave.status}
-                  </Badge>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {leave.status === "pending" && (
-                    <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id)}>
-                        <Check className="h-4 w-4 text-green-600" variant="stroke" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
-                        <X className="h-[18px] w-[18px] text-red-600" variant="stroke" />
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {(!leaves || leaves.length === 0) && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {t("gabinet.leaves.empty")}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <AlertDialog
+        open={!!confirmLeaveId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmLeaveId(null);
+            setConfirmAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "approve"
+                ? t("gabinet.leaves.confirmApproveTitle")
+                : t("gabinet.leaves.confirmRejectTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "approve"
+                ? t("gabinet.leaves.confirmApproveDesc")
+                : t("gabinet.leaves.confirmRejectDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              className={confirmAction === "reject" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+            >
+              {confirmAction === "approve" ? t("gabinet.leaves.approve") : t("gabinet.leaves.reject")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

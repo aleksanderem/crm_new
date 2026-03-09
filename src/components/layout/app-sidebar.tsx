@@ -571,6 +571,12 @@ export function AppSidebar() {
   const hasCrm = !activeProducts || activeProducts.includes("crm");
   const hasGabinet = !activeProducts || activeProducts.includes("gabinet");
 
+  const { data: pendingLeaves } = useQuery({
+    ...convexQuery(api.gabinet.scheduling.listLeaves, { organizationId, status: "pending" as const }),
+    enabled: !!hasGabinet,
+  });
+  const pendingLeaveCount = pendingLeaves?.length ?? 0;
+
   const isGabinetRoute = matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
   const activeWorkspace: Workspace = isGabinetRoute ? "gabinet" : "crm";
 
@@ -727,13 +733,18 @@ export function AppSidebar() {
                   <Link
                     to={item.to}
                     className={cn(
-                      "block rounded-md px-3 py-2 text-sm transition-colors",
+                      "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
                       isActive
                         ? "bg-primary/10 font-medium text-primary"
                         : "text-foreground hover:bg-muted-foreground/10",
                     )}
                   >
-                    {t(item.labelKey)}
+                    <span>{t(item.labelKey)}</span>
+                    {item.to === "/dashboard/gabinet/settings/leaves" && pendingLeaveCount > 0 && (
+                      <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
+                        {pendingLeaveCount > 99 ? "99+" : pendingLeaveCount}
+                      </span>
+                    )}
                   </Link>
                 </div>
               );

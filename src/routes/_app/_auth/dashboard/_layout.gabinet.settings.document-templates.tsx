@@ -134,7 +134,7 @@ function DocumentTemplatesPage() {
           description={t("gabinet.documentTemplates.emptyDescription")}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">

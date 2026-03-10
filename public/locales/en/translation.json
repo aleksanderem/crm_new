@@ -2128,6 +2128,9 @@
     "back": "Back",
     "next": "Next",
     "skip": "Skip",
-    "finish": "Get Started"
+    "finish": "Get Started",
+    "employeeRole": "Role",
+    "removeEmployee": "Remove employee",
+    "removeTreatment": "Remove treatment"
   }
 }

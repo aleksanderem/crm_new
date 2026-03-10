@@ -2131,6 +2131,9 @@
     "back": "Wstecz",
     "next": "Dalej",
     "skip": "Pomiń",
-    "finish": "Zacznij"
+    "finish": "Zacznij",
+    "employeeRole": "Rola",
+    "removeEmployee": "Usuń pracownika",
+    "removeTreatment": "Usuń usługę"
   }
 }

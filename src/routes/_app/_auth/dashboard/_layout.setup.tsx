@@ -205,7 +205,7 @@ function SetupWizard() {
               <div className="space-y-2">
                 <Label htmlFor="currency">{t("onboarding.currency")}</Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger>
+                  <SelectTrigger id="currency">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -225,14 +225,21 @@ function SetupWizard() {
               <p className="text-sm text-muted-foreground">{t("onboarding.employeesDescription")}</p>
               {employees.map((emp, index) => (
                 <div key={index} className="flex gap-2">
+                  <Label htmlFor={`emp-name-${index}`} className="sr-only">
+                    {t("onboarding.employeeName")} {index + 1}
+                  </Label>
                   <Input
+                    id={`emp-name-${index}`}
                     value={emp.name}
                     onChange={(e) => updateEmployee(index, "name", e.target.value)}
                     placeholder={t("onboarding.employeeName")}
                     className="flex-1"
                   />
+                  <Label htmlFor={`emp-role-${index}`} className="sr-only">
+                    {t("onboarding.employeeRole")} {index + 1}
+                  </Label>
                   <Select value={emp.role} onValueChange={(v) => updateEmployee(index, "role", v)}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger id={`emp-role-${index}`} className="w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -242,7 +249,12 @@ function SetupWizard() {
                     </SelectContent>
                   </Select>
                   {employees.length > 1 && (
-                    <Button variant="ghost" size="icon" onClick={() => removeEmployee(index)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeEmployee(index)}
+                      aria-label={t("onboarding.removeEmployee")}
+                    >
                       ×
                     </Button>
                   )}
@@ -260,13 +272,18 @@ function SetupWizard() {
               <p className="text-sm text-muted-foreground">{t("onboarding.treatmentsDescription")}</p>
               {treatments.map((tr, index) => (
                 <div key={index} className="flex gap-2">
+                  <Label htmlFor={`tr-name-${index}`} className="sr-only">
+                    {t("onboarding.treatmentName")} {index + 1}
+                  </Label>
                   <Input
+                    id={`tr-name-${index}`}
                     value={tr.name}
                     onChange={(e) => updateTreatment(index, "name", e.target.value)}
                     placeholder={t("onboarding.treatmentName")}
                     className="flex-1"
                   />
                   <Input
+                    aria-label={t("onboarding.price")}
                     value={tr.price}
                     onChange={(e) => updateTreatment(index, "price", e.target.value)}
                     placeholder={t("onboarding.price")}
@@ -274,6 +291,7 @@ function SetupWizard() {
                     type="number"
                   />
                   <Input
+                    aria-label={t("onboarding.duration")}
                     value={tr.duration}
                     onChange={(e) => updateTreatment(index, "duration", e.target.value)}
                     placeholder={t("onboarding.duration")}
@@ -281,7 +299,12 @@ function SetupWizard() {
                     type="number"
                   />
                   {treatments.length > 1 && (
-                    <Button variant="ghost" size="icon" onClick={() => removeTreatment(index)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeTreatment(index)}
+                      aria-label={t("onboarding.removeTreatment")}
+                    >
                       ×
                     </Button>
                   )}
@@ -366,9 +389,11 @@ function SetupWizard() {
             </Button>
 
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={handleSkip} disabled={isSubmitting}>
-                {t("onboarding.skip")}
-              </Button>
+              {currentStep < STEPS.length - 1 && (
+                <Button variant="ghost" onClick={handleSkip} disabled={isSubmitting}>
+                  {t("onboarding.skip")}
+                </Button>
+              )}
               <Button onClick={handleNext} disabled={!canProceed() || isSubmitting}>
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

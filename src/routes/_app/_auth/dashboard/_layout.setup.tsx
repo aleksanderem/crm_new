@@ -1,10 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { api } from "@cvx/_generated/api";
+import { useOrganization } from "@/components/org-context";
 import { Logo } from "@/ui/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -32,6 +37,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/setup")({
 function SetupWizard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { organizationId } = useOrganization();
   const [currentStep, setCurrentStep] = useState(0);
 
   // Form state
@@ -45,7 +51,22 @@ function SetupWizard() {
   ]);
   const [schedule, setSchedule] = useState<Record<string, { start: string; end: string; enabled: boolean }>>({});
 
+  // Fix #2 & #3: Wire up backend mutations and query
+  const { data: setupStatus } = useQuery(
+    convexQuery(api.gabinet.onboarding.getSetupStatus, { organizationId })
+  );
+
+  const { mutateAsync: completeSetup } = useMutation({
+    mutationFn: useConvexMutation(api.gabinet.onboarding.completeSetup),
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fix #3: Redirect if already completed
+  if (setupStatus?.onboardingCompleted) {
+    navigate({ to: DashboardRoute.fullPath });
+    return null;
+  }
 
   const currentStepKey = STEPS[currentStep];
 
@@ -59,7 +80,6 @@ function SetupWizard() {
         return treatments.every((t) => t.name.trim().length > 0);
       case "schedule":
       case "invite":
-        return true;
       case "complete":
         return true;
       default:
@@ -69,18 +89,31 @@ function SetupWizard() {
 
   const handleNext = async () => {
     if (currentStep === STEPS.length - 1) {
-      // Complete - TODO: connect to backend mutations when ready
+      // Fix #2: Call completeSetup mutation
       setIsSubmitting(true);
-      // Simulate async work
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      navigate({ to: DashboardRoute.fullPath });
+      try {
+        await completeSetup({ organizationId });
+        navigate({ to: DashboardRoute.fullPath });
+      } catch (error) {
+        console.error("Setup failed:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       setCurrentStep((prev) => prev + 1);
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (currentStep === STEPS.length - 1) {
+      setIsSubmitting(true);
+      try {
+        await completeSetup({ organizationId });
+      } catch {
+        // ignore
+      } finally {
+        setIsSubmitting(false);
+      }
       navigate({ to: DashboardRoute.fullPath });
     } else {
       setCurrentStep((prev) => prev + 1);
@@ -265,13 +298,12 @@ function SetupWizard() {
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{t("onboarding.scheduleDescription")}</p>
               {days.map((day) => (
-                <div key={day} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={schedule[day]?.enabled || false}
-                    onChange={(e) => updateSchedule(day, "enabled", e.target.checked)}
-                    className="h-4 w-4"
+                <div key={day} className="flex items-center gap-3">
+                  {/* Fix #4: Replace bare <input type="checkbox"> with Shadcn Checkbox */}
+                  <Checkbox
                     id={`day-${day}`}
+                    checked={schedule[day]?.enabled || false}
+                    onCheckedChange={(checked) => updateSchedule(day, "enabled", !!checked)}
                   />
                   <Label htmlFor={`day-${day}`} className="w-24 capitalize">
                     {t(`onboarding.day${day.charAt(0).toUpperCase() + day.slice(1)}`)}
@@ -334,7 +366,7 @@ function SetupWizard() {
             </Button>
 
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={handleSkip}>
+              <Button variant="ghost" onClick={handleSkip} disabled={isSubmitting}>
                 {t("onboarding.skip")}
               </Button>
               <Button onClick={handleNext} disabled={!canProceed() || isSubmitting}>

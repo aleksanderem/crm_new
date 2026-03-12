@@ -173,7 +173,7 @@ Nudge: (zielony) "Szablon X — uzywany Y razy w tym miesiacu"
 
 Quick Actions: + Szablon, Uzyj teraz
 
-Note: Open rate % odlozony na przyszlosc — wymaga integracji tracking pixel w email sending (brak wsparcia w obecnym schema). Uzycia szablonow derivowane z tabeli `emails` po polu `templateId`.
+Note: Open rate % odlozony na przyszlosc — wymaga integracji tracking pixel w email sending (brak wsparcia w obecnym schema). Uzycia szablonow wymagaja dodania pola `templateId: v.optional(v.id("emailTemplates"))` do tabeli `emails` w schema (obecnie nie istnieje) oraz indexu `by_template` na `["templateId"]`. To jest prereq dla tego widgetu — bez tego pola nie mozna policzyc uzyc szablonow.
 
 ### 9. Products
 
@@ -208,7 +208,7 @@ Moje Ostatnie: 3 dokumenty z statusem (Wyslana/Draft/Podpisana)
 KPI Row:
 - Dzis (calls today)
 - Odebrane % (answer rate)
-- Sr. czas (avg duration mm:ss)
+- Sr. czas (avg duration mm:ss) — wymaga dodania pola `duration: v.optional(v.number())` (sekundy) do tabeli `calls` w schema (obecnie nie istnieje)
 
 Unique Widget: pasek wynikow rozmow (ten tydzien) — stacked bar z legenda (Sukces, Callback, Brak odpowiedzi)
 
@@ -284,7 +284,7 @@ Priorytet renderowania Column 2 (od najwyzszego):
 
 Wzajemne wykluczenie: `setDayAgendaDate()` NIE czyści `sidebarSlotContent` (i vice versa). Priorytet jest statyczny — sidebarSlotContent zawsze wygrywa. W praktyce nie powinno dojsc do konfliktu bo dayAgendaDate jest ustawiane tylko z Gabinet Calendar, ktory nie uzywa sidebarSlotContent.
 
-Czyszczenie na nawigacji: `dayAgendaDate` jest czyszczone automatycznie przy zmianie route (useEffect w SidebarSlotProvider z dependency na pathname). Dzieki temu przejscie z Calendar na np. Patients resetuje agende. `sidebarSlotContent` jest juz czyszczone w ten sposob w obecnej implementacji.
+Czyszczenie na nawigacji: NOWA implementacja — dodac useEffect w SidebarSlotProvider z dependency na pathname (z TanStack Router `useLocation()`) ktory czysci zarowno `dayAgendaDate` jak i `sidebarSlotContent` przy zmianie route. Obecna implementacja SidebarSlotProvider NIE ma tego cleanup — oba mechanizmy musza byc zbudowane. Dzieki temu przejscie z Calendar na np. Patients resetuje agende, a przejscie miedzy zakladkami czysci ewentualny custom slot content.
 
 ### 3. Patients
 
@@ -399,6 +399,14 @@ Wiele danych jest juz dostepnych przez istniejace queries w `convex/dashboard.ts
 
 5. `gabinet/employees.getTodaySchedule(organizationId)` — kto dzis pracuje z godzinami.
 
+### Schema prerequisites (zmiany w convex/schema.ts)
+
+Przed implementacja widgetow, nastepujace zmiany w schema sa wymagane:
+
+1. **Nowa tabela `recentlyViewed`** — pelna definicja w sekcji "Tracking moje ostatnie" powyzej
+2. **`emails` table: dodac pole `templateId`** — `templateId: v.optional(v.id("emailTemplates"))` + index `by_template: ["templateId"]`. Prereq dla Email Templates KPI "Uzycia miesiecznie" i widgetu "bestsellery".
+3. **`calls` table: dodac pole `duration`** — `duration: v.optional(v.number())` (wartosc w sekundach). Prereq dla Calls KPI "Sr. czas".
+
 ### Frontend components
 
 Nowe komponenty w `src/components/sidebar-widgets/`:
@@ -461,7 +469,7 @@ recentlyViewed: defineTable({
   organizationId: v.id("organizations"),
   userId: v.id("users"),
   entityType: v.string(),   // "contacts" | "companies" | "leads" | "products" | "documents" | "gabinetPatients"
-  entityId: v.string(),     // ID rekordu (string bo moze byc z roznych tabel)
+  entityId: v.string(),     // ID rekordu jako string — Convex IDs sa stringami at runtime, wiec _id z dowolnej tabeli mozna przechowac bez konwersji
   entityLabel: v.string(),  // cached display name for fast rendering
   viewedAt: v.number(),     // Date.now() timestamp
 })
@@ -524,7 +532,7 @@ Mapowanie kazdego KPI do zrodla danych. "EXISTING" = istniejacy query w `convex/
 | Activities | Zalegle/Dzis/Completion | NEW: `dashboard.getActivityStats(orgId, userId)` |
 | Calendar | Dzis/Zalegle/Tydzien | DERIVED: from `scheduledActivities` count queries |
 | Calendar | Timeline dnia | NEW: `dashboard.getDayTimeline(orgId, date)` |
-| Contacts | Total/Nowe/Bez firmy | EXISTING: `dashboard.getStats` (partial) + NEW: count unlinked |
+| Contacts | Total/Nowe/Bez firmy | EXISTING: `dashboard.getStats` (partial) + DERIVED: count contacts where companyId == undefined |
 | Contacts | Zrodla | EXISTING: `dashboard.getContactsBySource` |
 | Companies | Total/Nowe/Revenue | EXISTING: `dashboard.getStats` (partial) + `dashboard.getCompaniesByIndustry` |
 | Companies | Branze | EXISTING: `dashboard.getCompaniesByIndustry` |

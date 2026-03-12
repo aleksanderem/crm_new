@@ -1,0 +1,5 @@
+Design system reference placeholder for LLMs.
+
+Use this file for short, model-friendly notes about shared UI primitives, component naming conventions, spacing/typography expectations, and status/badge patterns once that reference is extracted from the actual codebase.
+
+Until then, consult `src/components/ui/`, `src/components/base/`, and `docs/FRONTEND.md`.

@@ -137,6 +137,50 @@ export const getConfigInternal = internalQuery({
   },
 });
 
+function normalizePhoneNumber(phone: string): string {
+  const trimmed = phone.trim();
+  const withoutWhitespace = trimmed.replace(/\s+/g, "");
+  const normalizedPrefix = withoutWhitespace.startsWith("00")
+    ? `+${withoutWhitespace.slice(2)}`
+    : withoutWhitespace;
+
+  if (normalizedPrefix.startsWith("+")) {
+    return `+${normalizedPrefix.slice(1).replace(/\D/g, "")}`;
+  }
+
+  const digits = normalizedPrefix.replace(/\D/g, "");
+  if (!digits) return trimmed;
+  if (digits.length === 9) return `+48${digits}`;
+  if (digits.startsWith("48") && digits.length === 11) return `+${digits}`;
+  return `+${digits}`;
+}
+
+export const getConfigForInbound = internalQuery({
+  args: {
+    provider: v.union(v.literal("smsapi"), v.literal("twilio")),
+    recipient: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.provider === "twilio") {
+      return await ctx.db
+        .query("orgSmsConfig")
+        .withIndex("by_providerAndFromNumber", (q) =>
+          q
+            .eq("provider", args.provider)
+            .eq("fromNumber", normalizePhoneNumber(args.recipient)),
+        )
+        .unique();
+    }
+
+    return await ctx.db
+      .query("orgSmsConfig")
+      .withIndex("by_providerAndSenderId", (q) =>
+        q.eq("provider", args.provider).eq("senderId", args.recipient),
+      )
+      .unique();
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Provider implementations
 // ---------------------------------------------------------------------------
@@ -146,7 +190,7 @@ async function sendViaSmsapi(
   to: string,
   message: string,
   senderId?: string,
-): Promise<void> {
+): Promise<{ providerMessageId?: string; metadata?: string }> {
   const params = new URLSearchParams({
     to: to.replace(/\s/g, ""),
     message,
@@ -163,10 +207,32 @@ async function sendViaSmsapi(
     body: params.toString(),
   });
 
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(`SMSAPI error: ${res.status} ${text}`);
   }
+
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : undefined;
+  } catch {
+    parsed = undefined;
+  }
+
+  const messageId =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "list" in parsed &&
+    Array.isArray((parsed as { list?: unknown[] }).list) &&
+    typeof (parsed as { list?: Array<{ id?: unknown }> }).list?.[0]?.id ===
+      "string"
+      ? ((parsed as { list?: Array<{ id?: string }> }).list?.[0]?.id ?? undefined)
+      : undefined;
+
+  return {
+    providerMessageId: messageId,
+    metadata: text || undefined,
+  };
 }
 
 async function sendViaTwilio(
@@ -175,7 +241,7 @@ async function sendViaTwilio(
   from: string,
   to: string,
   message: string,
-): Promise<void> {
+): Promise<{ providerMessageId?: string; metadata?: string }> {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const auth = btoa(`${accountSid}:${authToken}`);
 
@@ -194,10 +260,25 @@ async function sendViaTwilio(
     body: params.toString(),
   });
 
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(`Twilio error: ${res.status} ${text}`);
   }
+
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : undefined;
+  } catch {
+    parsed = undefined;
+  }
+
+  return {
+    providerMessageId:
+      typeof parsed === "object" && parsed !== null && "sid" in parsed
+        ? ((parsed as { sid?: string }).sid ?? undefined)
+        : undefined,
+    metadata: text || undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -209,30 +290,54 @@ export const sendAppointmentSms = internalAction({
     organizationId: v.id("organizations"),
     phone: v.string(),
     message: v.string(),
+    eventId: v.optional(v.id("appointmentSmsEvents")),
   },
   handler: async (ctx, args) => {
-    // Load full config (with secrets) via internal query
     const config = await ctx.runQuery(internal.sms.getConfigInternal, {
       organizationId: args.organizationId,
     });
 
-    // Silent no-op if not configured or inactive
     if (!config || !config.isActive) return null;
 
-    if (config.provider === "smsapi") {
-      await sendViaSmsapi(config.apiToken, args.phone, args.message, config.senderId);
-    } else if (config.provider === "twilio") {
-      if (!config.apiSecret || !config.fromNumber) return null; // misconfigured — silent no-op
-      await sendViaTwilio(
-        config.apiToken,
-        config.apiSecret,
-        config.fromNumber,
-        args.phone,
-        args.message,
-      );
-    }
+    try {
+      let result: { providerMessageId?: string; metadata?: string } | null = null;
 
-    return null;
+      if (config.provider === "smsapi") {
+        result = await sendViaSmsapi(
+          config.apiToken,
+          args.phone,
+          args.message,
+          config.senderId,
+        );
+      } else if (config.provider === "twilio") {
+        if (!config.apiSecret || !config.fromNumber) return null;
+        result = await sendViaTwilio(
+          config.apiToken,
+          config.apiSecret,
+          config.fromNumber,
+          args.phone,
+          args.message,
+        );
+      }
+
+      if (args.eventId) {
+        await ctx.runMutation(internal.gabinet.appointmentSms.markEventProcessed, {
+          eventId: args.eventId,
+          providerMessageId: result?.providerMessageId,
+          metadata: result?.metadata,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      if (args.eventId) {
+        await ctx.runMutation(internal.gabinet.appointmentSms.markEventFailed, {
+          eventId: args.eventId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
   },
 });
 

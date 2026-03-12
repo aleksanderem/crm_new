@@ -11,8 +11,11 @@ import {
   RefreshCw,
   Mail,
   MailOpen,
+  Send,
+  Inbox,
 } from "@/lib/ez-icons";
 import type { ActivityAction } from "@cvx/schema";
+import { useTranslation } from "react-i18next";
 
 const actionIcons: Record<ActivityAction, typeof Plus> = {
   created: Plus,
@@ -27,6 +30,8 @@ const actionIcons: Record<ActivityAction, typeof Plus> = {
   status_changed: RefreshCw,
   email_sent: Mail,
   email_received: MailOpen,
+  sms_sent: Send,
+  sms_received: Inbox,
 };
 
 const actionColors: Record<ActivityAction, string> = {
@@ -42,6 +47,8 @@ const actionColors: Record<ActivityAction, string> = {
   status_changed: "bg-pink-100 text-pink-700",
   email_sent: "bg-sky-100 text-sky-700",
   email_received: "bg-emerald-100 text-emerald-700",
+  sms_sent: "bg-violet-100 text-violet-700",
+  sms_received: "bg-lime-100 text-lime-700",
 };
 
 export interface Activity {
@@ -50,25 +57,34 @@ export interface Activity {
   description: string;
   performedByName?: string;
   createdAt: number;
+  contentSnapshot?: string;
+  metaLines?: string[];
 }
 
 interface ActivityItemProps {
   activity: Activity;
 }
 
-function timeAgo(timestamp: number): string {
+function timeAgo(timestamp: number, t: (key: string, options?: Record<string, unknown>) => string, locale: string): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("activityTimeline.relative.justNow");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) {
+    return t("activityTimeline.relative.minutesAgo", { count: minutes });
+  }
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) {
+    return t("activityTimeline.relative.hoursAgo", { count: hours });
+  }
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+  if (days < 30) {
+    return t("activityTimeline.relative.daysAgo", { count: days });
+  }
+  return new Date(timestamp).toLocaleDateString(locale);
 }
 
 export function ActivityItem({ activity }: ActivityItemProps) {
+  const { t, i18n } = useTranslation();
   const Icon = actionIcons[activity.action] ?? Pencil;
   const colorClass = actionColors[activity.action] ?? "bg-muted text-muted-foreground";
 
@@ -81,11 +97,25 @@ export function ActivityItem({ activity }: ActivityItemProps) {
       </div>
       <div className="min-w-0 flex-1 pl-2">
         <p className="text-sm">{activity.description}</p>
+        {activity.contentSnapshot && (
+          <div className="mt-2 rounded-md border bg-muted/30 p-2 text-xs whitespace-pre-wrap">
+            {activity.contentSnapshot}
+          </div>
+        )}
+        {activity.metaLines && activity.metaLines.length > 0 && (
+          <div className="mt-1 space-y-0.5">
+            {activity.metaLines.map((line, index) => (
+              <p key={`${activity._id}-meta-${index}`} className="text-[11px] text-muted-foreground">
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
           {activity.performedByName && (
             <span>{activity.performedByName}</span>
           )}
-          <span>{timeAgo(activity.createdAt)}</span>
+          <span>{timeAgo(activity.createdAt, t, i18n.language)}</span>
         </div>
       </div>
     </div>

@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidePanel } from "@/components/crm/side-panel";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
@@ -86,6 +87,9 @@ import {
   FilePlus,
   Star,
   MoreHorizontal,
+  MessageSquare,
+  Send,
+  Inbox,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -103,6 +107,7 @@ const statusColors: Record<
   string,
   "default" | "secondary" | "destructive" | "outline" | "success"
 > = {
+  pending_confirmation: "outline",
   scheduled: "secondary",
   confirmed: "default",
   in_progress: "default",
@@ -112,6 +117,7 @@ const statusColors: Record<
 };
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
+  pending_confirmation: ["scheduled", "confirmed", "cancelled"],
   scheduled: ["confirmed", "cancelled", "no_show"],
   confirmed: ["in_progress", "cancelled", "no_show"],
   in_progress: ["completed", "cancelled"],
@@ -119,6 +125,307 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   no_show: [],
 };
+
+function getSmsSummary(events: any[], appointmentStatus: string) {
+  const latestOutbound = events.find(
+    (event) =>
+      event.direction === "outbound" &&
+      event.eventType === "appointment_confirmation_request",
+  );
+  const latestInbound = events.find(
+    (event) =>
+      event.direction === "inbound" &&
+      event.eventType === "appointment_confirmation_reply",
+  );
+
+  if (latestInbound) {
+    if (latestInbound.processingStatus === "processed") {
+      if (latestInbound.parsedIntent === "confirm") {
+        return { labelKey: "gabinet.appointmentDetail.sms.summaryConfirmed", tone: "default" as const };
+      }
+      if (latestInbound.parsedIntent === "cancel") {
+        return { labelKey: "gabinet.appointmentDetail.sms.summaryCancelled", tone: "destructive" as const };
+      }
+    }
+
+    if (latestInbound.processingStatus === "failed") {
+      return { labelKey: "gabinet.appointmentDetail.sms.summaryFailed", tone: "destructive" as const };
+    }
+
+    return { labelKey: "gabinet.appointmentDetail.sms.summaryIgnored", tone: "secondary" as const };
+  }
+
+  if (latestOutbound) {
+    if (latestOutbound.processingStatus === "failed") {
+      return { labelKey: "gabinet.appointmentDetail.sms.summaryFailed", tone: "destructive" as const };
+    }
+    if (latestOutbound.processingStatus === "pending") {
+      return { labelKey: "gabinet.appointmentDetail.sms.summaryQueued", tone: "outline" as const };
+    }
+    return { labelKey: "gabinet.appointmentDetail.sms.summarySent", tone: "secondary" as const };
+  }
+
+  if (appointmentStatus === "pending_confirmation") {
+    return { labelKey: "gabinet.appointmentDetail.sms.summaryAwaitingRequest", tone: "outline" as const };
+  }
+
+  return { labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory", tone: "secondary" as const };
+}
+
+function getActivityContentSnapshot(activity: any, t: any) {
+  const metadata =
+    activity?.metadata && typeof activity.metadata === "object"
+      ? (activity.metadata as Record<string, unknown>)
+      : null;
+
+  const contentCandidates = [
+    metadata?.rawBody,
+    metadata?.body,
+    metadata?.message,
+    metadata?.content,
+    metadata?.text,
+    metadata?.bodyPreview,
+    metadata?.preview,
+  ];
+
+  const contentSnapshot = contentCandidates.find(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  ) as string | undefined;
+
+  const metaLines: string[] = [];
+  if (typeof metadata?.subject === "string" && metadata.subject.trim().length > 0) {
+    metaLines.push(
+      t("gabinet.appointmentDetail.history.metadata.subject", {
+        value: metadata.subject,
+      }),
+    );
+  }
+  if (
+    typeof metadata?.processingStatus === "string" &&
+    metadata.processingStatus.trim().length > 0
+  ) {
+    metaLines.push(
+      t("gabinet.appointmentDetail.history.metadata.status", {
+        value: t(`gabinet.appointmentDetail.sms.processingStatuses.${metadata.processingStatus}`, {
+          defaultValue: metadata.processingStatus,
+        }),
+      }),
+    );
+  }
+
+  return {
+    contentSnapshot,
+    metaLines,
+    metadata,
+  };
+}
+
+function getAutomationRunHistoryEntry(run: any, t: any) {
+  let payload: Record<string, unknown> | null = null;
+
+  try {
+    payload = run.payloadSnapshot ? JSON.parse(run.payloadSnapshot) : null;
+  } catch {
+    payload = null;
+  }
+
+  const contentCandidates = [
+    payload?.rawBody,
+    payload?.body,
+    payload?.message,
+    payload?.content,
+    payload?.text,
+  ];
+
+  const contentSnapshot = contentCandidates.find(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  ) as string | undefined;
+
+  const metaLines = [
+    t("gabinet.appointmentDetail.history.metadata.module", {
+      value: run.module,
+    }),
+    t("gabinet.appointmentDetail.history.metadata.status", {
+      value: t(`settings.automationRunStatuses.${run.status}`, {
+        defaultValue: run.status,
+      }),
+    }),
+    run.correlationKey
+      ? t("gabinet.appointmentDetail.history.metadata.correlation", {
+          value: run.correlationKey,
+        })
+      : null,
+  ].filter(Boolean) as string[];
+
+  return {
+    _id: `automation-${run._id}`,
+    action: "status_changed",
+    description: t("gabinet.appointmentDetail.history.descriptions.automationRun", {
+      eventType: run.eventType,
+    }),
+    createdAt: run.occurredAt ?? run.createdAt,
+    contentSnapshot,
+    metaLines,
+  };
+}
+
+function buildUnifiedHistoryEntries(
+  activities: any[],
+  smsEvents: any[],
+  workflowHistory: any[] = [],
+  automationRuns: any[] = [],
+  t: any,
+) {
+  const smsById = new Map<string, any>(
+    smsEvents.map((event) => [String(event._id), event]),
+  );
+  const linkedSmsIds = new Set<string>();
+
+  const timelineActivities = activities.map((activity) => {
+    const { contentSnapshot, metaLines, metadata } = getActivityContentSnapshot(activity, t);
+    const linkedSmsEventId =
+      typeof metadata?.appointmentSmsEventId === "string"
+        ? metadata.appointmentSmsEventId
+        : null;
+    const linkedSmsEvent = linkedSmsEventId ? smsById.get(linkedSmsEventId) : null;
+
+    if (linkedSmsEventId) {
+      linkedSmsIds.add(linkedSmsEventId);
+    }
+
+    const mergedSnapshot = linkedSmsEvent?.rawBody ?? contentSnapshot;
+    const mergedMetaLines = [...metaLines];
+
+    if (linkedSmsEvent?.parsedIntent) {
+      mergedMetaLines.push(
+        t("gabinet.appointmentDetail.history.metadata.intent", {
+          value: t(`gabinet.appointmentDetail.sms.intents.${linkedSmsEvent.parsedIntent}`, {
+            defaultValue: linkedSmsEvent.parsedIntent,
+          }),
+        }),
+      );
+    }
+    if (linkedSmsEvent?.processingError) {
+      mergedMetaLines.push(
+        t("gabinet.appointmentDetail.history.metadata.reason", {
+          value: linkedSmsEvent.processingError,
+        }),
+      );
+    }
+
+    return {
+      _id: activity._id,
+      action: activity.action,
+      description: activity.description,
+      performedByName: activity.performedByName,
+      createdAt: activity.createdAt,
+      contentSnapshot: mergedSnapshot,
+      metaLines: mergedMetaLines,
+    };
+  });
+
+  const orphanSmsEntries = smsEvents
+    .filter((event) => !linkedSmsIds.has(String(event._id)))
+    .map((event) => {
+      const isInbound = event.direction === "inbound";
+      const metaLines = [
+        t("gabinet.appointmentDetail.history.metadata.status", {
+          value: t(`gabinet.appointmentDetail.sms.processingStatuses.${event.processingStatus}`, {
+            defaultValue: event.processingStatus,
+          }),
+        }),
+        event.parsedIntent
+          ? t("gabinet.appointmentDetail.history.metadata.intent", {
+              value: t(`gabinet.appointmentDetail.sms.intents.${event.parsedIntent}`, {
+                defaultValue: event.parsedIntent,
+              }),
+            })
+          : null,
+        event.processingError
+          ? t("gabinet.appointmentDetail.history.metadata.reason", {
+              value: event.processingError,
+            })
+          : null,
+      ].filter(Boolean) as string[];
+
+      return {
+        _id: `sms-${event._id}`,
+        action: isInbound ? "sms_received" : "sms_sent",
+        description: isInbound
+          ? t("gabinet.appointmentDetail.history.descriptions.workflowSmsReceived")
+          : t("gabinet.appointmentDetail.history.descriptions.workflowSmsSent"),
+        createdAt: event.createdAt,
+        contentSnapshot: event.rawBody,
+        metaLines,
+      };
+    });
+
+  const workflowEntries = workflowHistory.map((entry) => {
+    const isEmail = entry.channel === "email";
+    const metaLines = [
+      entry.recipient
+        ? t("gabinet.appointmentDetail.history.metadata.recipient", {
+            value: entry.recipient,
+          })
+        : null,
+      entry.renderedSubject
+        ? t("gabinet.appointmentDetail.history.metadata.subject", {
+            value: entry.renderedSubject,
+          })
+        : null,
+      entry.status
+        ? t("gabinet.appointmentDetail.history.metadata.status", {
+            value: entry.status,
+          })
+        : null,
+      entry.errorMessage
+        ? t("gabinet.appointmentDetail.history.metadata.reason", {
+            value: entry.errorMessage,
+          })
+        : null,
+    ].filter(Boolean) as string[];
+
+    return {
+      _id: `workflow-${entry._id}`,
+      action: isEmail ? "email_sent" : "sms_sent",
+      description: isEmail
+        ? t("gabinet.appointmentDetail.history.descriptions.workflowEmail")
+        : t("gabinet.appointmentDetail.history.descriptions.workflowSms"),
+      createdAt: entry.processedAt ?? entry.updatedAt ?? entry.createdAt,
+      contentSnapshot: entry.renderedBody,
+      metaLines,
+    };
+  });
+
+  const automationEntries = automationRuns.map((run) =>
+    getAutomationRunHistoryEntry(run, t),
+  );
+
+  return [
+    ...timelineActivities,
+    ...orphanSmsEntries,
+    ...workflowEntries,
+    ...automationEntries,
+  ].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function getPackageUsageTotals(pkg: any) {
+  const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed)
+    ? pkg.treatmentsUsed
+    : [];
+
+  return treatmentsUsed.reduce(
+    (acc: { used: number; total: number }, treatment: any) => {
+      const usedCount = Number(treatment?.usedCount ?? 0);
+      const totalCount = Number(treatment?.totalCount ?? 0);
+      return {
+        used: acc.used + (Number.isFinite(usedCount) ? usedCount : 0),
+        total: acc.total + (Number.isFinite(totalCount) ? totalCount : 0),
+      };
+    },
+    { used: 0, total: 0 },
+  );
+}
 
 // Note Item Component
 function NoteItem({
@@ -148,7 +455,7 @@ function NoteItem({
   isSubmitting: boolean;
   isReply?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <div
@@ -164,7 +471,7 @@ function NoteItem({
               {note.authorName ?? t("common.unknown")}
             </p>
             <p className="text-xs text-muted-foreground">
-              {new Date(note.createdAt).toLocaleString("pl-PL")}
+              {new Date(note.createdAt).toLocaleString(i18n.language)}
             </p>
           </div>
         </div>
@@ -225,7 +532,7 @@ function AppointmentDetail() {
   const { appointmentId } = Route.useParams();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -281,6 +588,31 @@ function AppointmentDetail() {
     }),
   );
 
+  const { data: smsEvents = [] } = useQuery(
+    convexQuery(api.gabinet.appointmentSms.listByAppointment, {
+      organizationId,
+      appointmentId: appointmentId as Id<"gabinetAppointments">,
+    }),
+  );
+
+  const { data: activitiesData } = useQuery(
+    convexQuery(api.activities.getForEntity, {
+      organizationId,
+      entityType: "gabinetAppointment",
+      entityId: appointmentId,
+      paginationOpts: { numItems: 50, cursor: null },
+    }),
+  );
+  const activities = activitiesData?.page;
+
+  const { data: automationRuns = [] } = useQuery(
+    convexQuery(api.automation.listEntityRuns, {
+      organizationId,
+      entityType: "gabinetAppointment",
+      entityId: appointmentId,
+    }),
+  );
+
   // Initialize internal notes from appointment data
   useEffect(() => {
     if (detail?.appointment.internalNotes) {
@@ -320,7 +652,7 @@ function AppointmentDetail() {
         return `${pat.firstName[0]}${pat.lastName[0]}`;
       return "?";
     };
-    const fmtDate = (d: string) => new Date(d).toLocaleDateString("pl-PL");
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString(i18n.language);
     const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
     const empName = emp
       ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.email
@@ -498,7 +830,7 @@ function AppointmentDetail() {
                         : t("gabinet.appointments.cancelledAt", "Anulowano")}
                     </span>
                     <span className="font-medium text-xs">
-                      {new Date(appt.updatedAt).toLocaleString("pl-PL")}
+                      {new Date(appt.updatedAt).toLocaleString(i18n.language)}
                     </span>
                   </div>
                 </>
@@ -579,11 +911,12 @@ function AppointmentDetail() {
     loyaltyTier,
     loyaltyTransactions,
     allPatientPayments,
+    workflowHistory,
   } = detail;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("pl-PL", {
+    return d.toLocaleDateString(i18n.language, {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -595,7 +928,7 @@ function AppointmentDetail() {
   };
 
   const formatDateTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString("pl-PL");
+    return new Date(timestamp).toLocaleString(i18n.language);
   };
 
   const getPatientInitials = () => {
@@ -832,6 +1165,24 @@ function AppointmentDetail() {
   const outstanding = treatmentPrice - totalPaid;
 
   const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
+  const latestOutboundSms = smsEvents.find(
+    (event) =>
+      event.direction === "outbound" &&
+      event.eventType === "appointment_confirmation_request",
+  );
+  const latestInboundSms = smsEvents.find(
+    (event) =>
+      event.direction === "inbound" &&
+      event.eventType === "appointment_confirmation_reply",
+  );
+  const smsSummary = getSmsSummary(smsEvents, appointment.status);
+  const unifiedHistoryEntries = buildUnifiedHistoryEntries(
+    activities ?? [],
+    smsEvents,
+    workflowHistory ?? [],
+    automationRuns,
+    t,
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -1092,6 +1443,77 @@ function AppointmentDetail() {
                   </CardContent>
                 </Card>
 
+                {/* SMS Confirmation Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2.5">
+                      <MessageSquare className="h-4 w-4" variant="stroke" />
+                      {t("gabinet.appointmentDetail.sms.title")}
+                    </CardTitle>
+                    <CardDescription>
+                      {t("gabinet.appointmentDetail.sms.description")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={smsSummary.tone}>
+                        {t(smsSummary.labelKey)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {t(`gabinet.appointments.statuses.${appointment.status}`)}
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-lg border p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Send className="h-4 w-4" variant="stroke" />
+                          {t("gabinet.appointmentDetail.sms.lastOutbound")}
+                        </div>
+                        {latestOutboundSms ? (
+                          <>
+                            <p className="text-sm">{latestOutboundSms.rawBody}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestOutboundSms.processingStatus}`)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            {t("gabinet.appointmentDetail.sms.noOutbound")}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg border p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Inbox className="h-4 w-4" variant="stroke" />
+                          {t("gabinet.appointmentDetail.sms.lastInbound")}
+                        </div>
+                        {latestInboundSms ? (
+                          <>
+                            <p className="text-sm">{latestInboundSms.rawBody}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("gabinet.appointmentDetail.sms.parsedIntent")}: {t(`gabinet.appointmentDetail.sms.intents.${latestInboundSms.parsedIntent ?? "unknown"}`)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestInboundSms.processingStatus}`)}
+                            </p>
+                            {latestInboundSms.processingError && (
+                              <p className="text-xs text-muted-foreground">
+                                {t("gabinet.appointmentDetail.sms.processingReason")}: {latestInboundSms.processingError}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            {t("gabinet.appointmentDetail.sms.noInbound")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Prepayment Status Card */}
                 {appointment.prepaymentRequired && (
                   <Card>
@@ -1298,7 +1720,7 @@ function AppointmentDetail() {
                                 <td className="p-3 text-sm text-muted-foreground">
                                   {new Date(
                                     payment.createdAt,
-                                  ).toLocaleDateString("pl-PL")}
+                                  ).toLocaleDateString(i18n.language)}
                                 </td>
                                 <td className="p-3">
                                   <Badge
@@ -1345,6 +1767,37 @@ function AppointmentDetail() {
 
               {/* History Tab */}
               <TabsContent value="history" className="m-0 space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2.5">
+                      <Activity className="h-4 w-4" variant="stroke" />
+                      {t("detail.tabs.timeline", "Timeline")}
+                    </CardTitle>
+                    <CardDescription>
+                      {t(
+                        "gabinet.appointmentDetail.history.unifiedDescription",
+                        "Unified operational history for this appointment, including messages and workflow events.",
+                      )}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ActivityTimeline
+                      activities={
+                        unifiedHistoryEntries?.map((entry) => ({
+                          _id: entry._id,
+                          action: entry.action,
+                          description: entry.description,
+                          performedByName: entry.performedByName,
+                          createdAt: entry.createdAt,
+                          contentSnapshot: entry.contentSnapshot,
+                          metaLines: entry.metaLines,
+                        })) ?? []
+                      }
+                      maxHeight="400px"
+                    />
+                  </CardContent>
+                </Card>
+
                 {/* Past Appointments Timeline */}
                 <Card>
                   <CardHeader>
@@ -1424,52 +1877,71 @@ function AppointmentDetail() {
                       />
                     ) : (
                       <div className="space-y-3">
-                        {patientPackageUsage.map((pkg: any) => (
-                          <div key={pkg._id} className="p-4 border rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium">
-                                {pkg.packageName ??
-                                  t("gabinet.packages.package")}
-                              </p>
-                              <Badge
-                                variant={
-                                  pkg.status === "active"
-                                    ? "success"
-                                    : "secondary"
-                                }
-                              >
-                                {t(`gabinet.packages.status.${pkg.status}`)}
-                              </Badge>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  {t("gabinet.packages.treatmentsUsed")}
-                                </span>
-                                <span>
-                                  {pkg.treatmentsUsed ?? 0} /{" "}
-                                  {pkg.treatmentsTotal ?? 0}
-                                </span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-primary transition-all"
-                                  style={{
-                                    width: `${((pkg.treatmentsUsed ?? 0) / (pkg.treatmentsTotal ?? 1)) * 100}%`,
-                                  }}
-                                />
-                              </div>
-                              {pkg.expiresAt && (
-                                <p className="text-xs text-muted-foreground">
-                                  {t("gabinet.packages.expires")}:{" "}
-                                  {new Date(pkg.expiresAt).toLocaleDateString(
-                                    "pl-PL",
-                                  )}
+                        {patientPackageUsage.map((pkg: any) => {
+                          const totals = getPackageUsageTotals(pkg);
+                          const progressPercent =
+                            totals.total > 0
+                              ? Math.min((totals.used / totals.total) * 100, 100)
+                              : 0;
+
+                          return (
+                            <div key={pkg._id} className="p-4 border rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-medium">
+                                  {pkg.packageName ??
+                                    t("gabinet.packages.package")}
                                 </p>
-                              )}
+                                <Badge
+                                  variant={
+                                    pkg.status === "active"
+                                      ? "success"
+                                      : "secondary"
+                                  }
+                                >
+                                  {t(`gabinet.packages.status.${pkg.status}`)}
+                                </Badge>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    {t("gabinet.packages.treatmentsUsed")}
+                                  </span>
+                                  <span>
+                                    {totals.used} / {totals.total}
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary transition-all"
+                                    style={{
+                                      width: `${progressPercent}%`,
+                                    }}
+                                  />
+                                </div>
+                                {Array.isArray(pkg.treatmentsUsed) &&
+                                  pkg.treatmentsUsed.length > 0 && (
+                                    <div className="text-xs text-muted-foreground space-y-1">
+                                      {pkg.treatmentsUsed.map((entry: any, index: number) => (
+                                        <p key={`${pkg._id}-${entry.treatmentId ?? index}`}>
+                                          {(entry.treatmentName as string | undefined) ??
+                                            t("gabinet.treatments.treatment")}
+                                          : {entry.usedCount ?? 0} / {entry.totalCount ?? 0}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                {pkg.expiresAt && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {t("gabinet.packages.expires")}:{" "}
+                                    {new Date(pkg.expiresAt).toLocaleDateString(
+                                      "pl-PL",
+                                    )}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
@@ -1578,7 +2050,7 @@ function AppointmentDetail() {
                               {allPatientPayments[0]
                                 ? new Date(
                                     allPatientPayments[0].createdAt,
-                                  ).toLocaleDateString("pl-PL")
+                                  ).toLocaleDateString(i18n.language)
                                 : "-"}
                             </p>
                           </div>
@@ -1623,7 +2095,7 @@ function AppointmentDetail() {
                                     <td className="p-3 text-sm text-muted-foreground">
                                       {new Date(
                                         payment.createdAt,
-                                      ).toLocaleDateString("pl-PL")}
+                                      ).toLocaleDateString(i18n.language)}
                                     </td>
                                     <td className="p-3">
                                       <Badge

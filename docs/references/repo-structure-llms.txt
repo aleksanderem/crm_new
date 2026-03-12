@@ -1,0 +1,11 @@
+Repo documentation map for LLMs:
+- AGENTS.md: workspace-level operating behavior.
+- CLAUDE.md: repo rules, task tracking, coding/testing constraints.
+- WORKFLOW.md: Symphony pilot execution contract.
+- ARCHITECTURE.md: top-level architecture map and documentation layout.
+- docs/design-docs/: durable design rationale.
+- docs/product-specs/: user/problem-oriented specs.
+- docs/exec-plans/: active/completed execution plans and tech debt tracker.
+- docs/generated/: machine-derived or source-of-truth landing pages.
+- docs/references/: lightweight LLM-friendly references like this file.
+- docs/automation/: rule loading, atomized rules, retrospectives.

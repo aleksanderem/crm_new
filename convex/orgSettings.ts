@@ -27,6 +27,7 @@ export const upsert = mutation({
     timezone: v.optional(v.string()),
     reminderEnabled: v.optional(v.boolean()),
     reminderHoursBefore: v.optional(v.number()),
+    appointmentWorkflowConfig: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -48,6 +49,10 @@ export const upsert = mutation({
       allowCustomLostReason: args.allowCustomLostReason ?? false,
       lostReasonRequired: args.lostReasonRequired ?? false,
       defaultCurrency: args.defaultCurrency,
+      timezone: args.timezone,
+      reminderEnabled: args.reminderEnabled,
+      reminderHoursBefore: args.reminderHoursBefore,
+      appointmentWorkflowConfig: args.appointmentWorkflowConfig,
       createdAt: now,
       updatedAt: now,
     });

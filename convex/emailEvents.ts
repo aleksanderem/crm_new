@@ -192,16 +192,42 @@ export const updateLogStatus = internalMutation({
     ),
     bindingId: v.optional(v.id("emailEventBindings")),
     templateId: v.optional(v.id("emailTemplates")),
+    renderedSubject: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const processedAt = Date.now();
     await ctx.db.patch(args.logId, {
       status: args.status,
       bindingId: args.bindingId,
       templateId: args.templateId,
+      renderedSubject: args.renderedSubject,
+      renderedBody: args.renderedBody,
       errorMessage: args.errorMessage,
-      processedAt: Date.now(),
+      processedAt,
     });
+
+    const entry = await ctx.db.get(args.logId);
+    if (!entry?.idempotencyKey) return;
+
+    const history = await ctx.db
+      .query("appointmentWorkflowHistory")
+      .withIndex("by_idempotencyKey", (q) =>
+        q.eq("idempotencyKey", entry.idempotencyKey!),
+      )
+      .unique();
+
+    if (history) {
+      await ctx.db.patch(history._id, {
+        status: args.status,
+        renderedSubject: args.renderedSubject ?? history.renderedSubject,
+        renderedBody: args.renderedBody ?? history.renderedBody,
+        errorMessage: args.errorMessage,
+        processedAt,
+        updatedAt: processedAt,
+      });
+    }
   },
 });
 

@@ -40,14 +40,36 @@ export const triggerEmailEvent = internalMutation({
      * Variables are substituted into email template placeholders via {{key}}.
      */
     payload: v.optional(v.string()),
+    source: v.optional(v.string()),
+    relatedEntityType: v.optional(v.string()),
+    relatedEntityId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
     triggeredBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    if (args.idempotencyKey) {
+      const existing = await ctx.db
+        .query("emailEventLog")
+        .withIndex("by_orgAndIdempotency", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("idempotencyKey", args.idempotencyKey),
+        )
+        .unique();
+      if (existing) {
+        return existing._id;
+      }
+    }
+
     const logId = await ctx.db.insert("emailEventLog", {
       organizationId: args.organizationId,
       eventType: args.eventType,
       status: "pending",
       payload: args.payload,
+      source: args.source,
+      relatedEntityType: args.relatedEntityType,
+      relatedEntityId: args.relatedEntityId,
+      idempotencyKey: args.idempotencyKey,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       triggeredBy: args.triggeredBy,

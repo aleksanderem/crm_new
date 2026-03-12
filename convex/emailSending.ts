@@ -120,6 +120,7 @@ export const sendTemplateEmail = internalAction({
         status: "failed",
         bindingId: args.bindingId,
         templateId: args.templateId,
+        renderedBody: args.variables,
         errorMessage:
           "Template not found or belongs to a different organization",
       });
@@ -162,6 +163,8 @@ export const sendTemplateEmail = internalAction({
         status: "failed",
         bindingId: args.bindingId,
         templateId: args.templateId,
+        renderedSubject: subject,
+        renderedBody: html,
         errorMessage: "RESEND_API_KEY not configured",
       });
       return;
@@ -185,6 +188,8 @@ export const sendTemplateEmail = internalAction({
         status: "sent",
         bindingId: args.bindingId,
         templateId: args.templateId,
+        renderedSubject: subject,
+        renderedBody: html,
       });
     } catch (err) {
       await ctx.runMutation(internal.emailEvents.updateLogStatus, {
@@ -192,6 +197,8 @@ export const sendTemplateEmail = internalAction({
         status: "failed",
         bindingId: args.bindingId,
         templateId: args.templateId,
+        renderedSubject: subject,
+        renderedBody: html,
         errorMessage: err instanceof Error ? err.message : "Unknown send error",
       });
     }

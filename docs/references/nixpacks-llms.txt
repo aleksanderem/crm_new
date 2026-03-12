@@ -1,0 +1,5 @@
+Nixpacks reference placeholder for LLMs.
+
+Use this file for short deployment-oriented notes if the repository later standardizes on Nixpacks-based build or runtime conventions.
+
+No project-specific Nixpacks guidance has been curated here yet.

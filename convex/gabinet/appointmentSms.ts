@@ -1,0 +1,567 @@
+import { internal } from "../_generated/api";
+import { Doc, Id } from "../_generated/dataModel";
+import { query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
+import { verifyOrgAccess } from "../_helpers/auth";
+import { logActivity } from "../_helpers/activities";
+import { checkPermission } from "../_helpers/permissions";
+import { v } from "convex/values";
+
+const CONFIRM_REPLY_KEYWORDS = new Set(["TAK", "T", "YES", "Y"]);
+const CANCEL_REPLY_KEYWORDS = new Set(["NIE", "N", "NO"]);
+
+export function normalizePhoneNumber(phone: string): string {
+  const trimmed = phone.trim();
+  const withoutWhitespace = trimmed.replace(/\s+/g, "");
+  const normalizedPrefix = withoutWhitespace.startsWith("00")
+    ? `+${withoutWhitespace.slice(2)}`
+    : withoutWhitespace;
+
+  if (normalizedPrefix.startsWith("+")) {
+    return `+${normalizedPrefix.slice(1).replace(/\D/g, "")}`;
+  }
+
+  const digits = normalizedPrefix.replace(/\D/g, "");
+  if (!digits) return trimmed;
+  if (digits.length === 9) return `+48${digits}`;
+  if (digits.startsWith("48") && digits.length === 11) return `+${digits}`;
+  return `+${digits}`;
+}
+
+export function normalizeSmsBody(body: string): string {
+  return body
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+export function parseAppointmentSmsIntent(body: string) {
+  const normalized = normalizeSmsBody(body);
+  const [firstToken = ""] = normalized.split(" ");
+
+  if (CONFIRM_REPLY_KEYWORDS.has(normalized) || CONFIRM_REPLY_KEYWORDS.has(firstToken)) {
+    return "confirm" as const;
+  }
+
+  if (CANCEL_REPLY_KEYWORDS.has(normalized) || CANCEL_REPLY_KEYWORDS.has(firstToken)) {
+    return "cancel" as const;
+  }
+
+  return "unknown" as const;
+}
+
+function buildConfirmationMessage(args: {
+  date: string;
+  startTime: string;
+  organizationName?: string;
+}) {
+  const prefix = args.organizationName ? `${args.organizationName}: ` : "";
+  return `${prefix}Prosimy potwierdzić wizytę ${args.date} o ${args.startTime}. Odpowiedz TAK aby potwierdzić, NIE aby odwołać.`;
+}
+
+async function logSmsSharedActivities(
+  ctx: MutationCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    appointmentId?: Id<"gabinetAppointments">;
+    patientId?: Id<"gabinetPatients">;
+    action: "sms_sent" | "sms_received";
+    description: string;
+    performedBy: Id<"users">;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  const entityTargets: Array<{ entityType: string; entityId: string }> = [];
+
+  if (args.appointmentId) {
+    entityTargets.push({
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+    });
+  }
+
+  let patientContactId: Id<"contacts"> | undefined;
+  if (args.patientId) {
+    entityTargets.push({
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+    });
+
+    const patient = await ctx.db.get(args.patientId);
+    if (patient?.organizationId === args.organizationId && patient.contactId) {
+      patientContactId = patient.contactId;
+    }
+  }
+
+  if (patientContactId) {
+    entityTargets.push({
+      entityType: "contact",
+      entityId: patientContactId,
+    });
+  }
+
+  await Promise.all(
+    entityTargets.map((target) =>
+      logActivity(ctx, {
+        organizationId: args.organizationId,
+        entityType: target.entityType,
+        entityId: target.entityId,
+        action: args.action,
+        description: args.description,
+        metadata: args.metadata,
+        performedBy: args.performedBy,
+      }),
+    ),
+  );
+}
+
+export const listByAppointment = query({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    return await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const queueAutomationSms = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    phone: v.string(),
+    message: v.string(),
+    eventType: v.string(),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const appointment = await ctx.db.get(args.appointmentId);
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      return null;
+    }
+
+    const config = await ctx.db
+      .query("orgSmsConfig")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+
+    const normalizedPhone = normalizePhoneNumber(args.phone);
+    const now = Date.now();
+    const correlationKey = `automation:${args.eventType}:${appointment._id}`;
+
+    const existingEvent = await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+      .unique();
+    if (existingEvent) {
+      return existingEvent._id;
+    }
+
+    const eventId = await ctx.db.insert("appointmentSmsEvents", {
+      organizationId: args.organizationId,
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      normalizedPhone,
+      direction: "outbound",
+      provider: config?.provider ?? "unconfigured",
+      eventType: "appointment_confirmation_request",
+      correlationKey,
+      rawBody: args.message,
+      normalizedBody: normalizeSmsBody(args.message),
+      processingStatus: "pending",
+      metadata: JSON.stringify({
+        trigger: "automation",
+        sourceEventType: args.eventType,
+      }),
+      idempotencyKey: args.idempotencyKey,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await logSmsSharedActivities(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      action: "sms_sent",
+      description: `Sent automated SMS for ${args.eventType}`,
+      performedBy: appointment.employeeId,
+      metadata: {
+        appointmentSmsEventId: eventId,
+        direction: "outbound",
+        eventType: args.eventType,
+        correlationKey,
+      },
+    });
+
+    await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+      organizationId: args.organizationId,
+      phone: args.phone,
+      message: args.message,
+      eventId,
+    });
+
+    return eventId;
+  },
+});
+
+export const queueConfirmationRequest = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    reminderId: v.optional(v.id("appointmentReminders")),
+    trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
+  },
+  handler: async (ctx, args) => {
+    const appointment = await ctx.db.get(args.appointmentId);
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      return null;
+    }
+
+    if (
+      appointment.status === "confirmed" ||
+      appointment.status === "cancelled" ||
+      appointment.status === "completed" ||
+      appointment.status === "no_show"
+    ) {
+      return null;
+    }
+
+    const patient = await ctx.db.get(appointment.patientId);
+    if (!patient?.phone) {
+      return null;
+    }
+
+    const org = await ctx.db.get(args.organizationId);
+    const config = await ctx.db
+      .query("orgSmsConfig")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+
+    const normalizedPhone = normalizePhoneNumber(patient.phone);
+    const message = buildConfirmationMessage({
+      date: appointment.date,
+      startTime: appointment.startTime,
+      organizationName: org?.name,
+    });
+    const now = Date.now();
+    const correlationKey = `appointment-confirmation:${appointment._id}`;
+    const idempotencyKey = args.reminderId
+      ? `outbound:${args.reminderId}`
+      : `${correlationKey}:${now}`;
+
+    const existingEvent = await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", idempotencyKey))
+      .unique();
+    if (existingEvent) {
+      return existingEvent._id;
+    }
+
+    const eventMetadata = {
+      trigger: args.trigger ?? "reminder",
+      reminderId: args.reminderId ?? null,
+    };
+
+    const eventId = await ctx.db.insert("appointmentSmsEvents", {
+      organizationId: args.organizationId,
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      normalizedPhone,
+      direction: "outbound",
+      provider: config?.provider ?? "unconfigured",
+      eventType: "appointment_confirmation_request",
+      correlationKey,
+      rawBody: message,
+      normalizedBody: normalizeSmsBody(message),
+      processingStatus: "pending",
+      metadata: JSON.stringify(eventMetadata),
+      idempotencyKey,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await logSmsSharedActivities(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      action: "sms_sent",
+      description: `Sent appointment confirmation SMS for ${appointment.date} at ${appointment.startTime}`,
+      performedBy: appointment.employeeId,
+      metadata: {
+        appointmentSmsEventId: eventId,
+        direction: "outbound",
+        eventType: "appointment_confirmation_request",
+        correlationKey,
+        ...eventMetadata,
+      },
+    });
+
+    await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+      organizationId: args.organizationId,
+      phone: patient.phone,
+      message,
+      eventId,
+    });
+
+    return eventId;
+  },
+});
+
+export const markEventProcessed = internalMutation({
+  args: {
+    eventId: v.id("appointmentSmsEvents"),
+    providerMessageId: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.eventId, {
+      providerMessageId: args.providerMessageId,
+      metadata: args.metadata,
+      processingStatus: "processed",
+      processedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const markEventFailed = internalMutation({
+  args: {
+    eventId: v.id("appointmentSmsEvents"),
+    error: v.string(),
+    metadata: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.eventId, {
+      processingStatus: "failed",
+      processingError: args.error,
+      metadata: args.metadata,
+      processedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const processIncomingMessage = internalMutation({
+  args: {
+    provider: v.union(v.literal("twilio"), v.literal("smsapi")),
+    to: v.string(),
+    from: v.string(),
+    body: v.string(),
+    providerMessageId: v.optional(v.string()),
+    webhookSignatureVerified: v.optional(v.boolean()),
+    idempotencyKey: v.string(),
+    metadata: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    duplicate: boolean;
+    eventId?: Id<"appointmentSmsEvents">;
+    processingStatus: "pending" | "processed" | "ignored" | "failed";
+    reason?: string;
+    appointmentId?: Id<"gabinetAppointments">;
+  }> => {
+    const duplicate = await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+      .unique();
+
+    if (duplicate) {
+      return {
+        duplicate: true,
+        eventId: duplicate._id,
+        processingStatus: duplicate.processingStatus,
+      };
+    }
+
+    const config: Doc<"orgSmsConfig"> | null = await ctx.runQuery(
+      internal.sms.getConfigForInbound,
+      {
+        provider: args.provider,
+        recipient: args.to,
+      },
+    );
+
+    if (!config) {
+      return {
+        duplicate: false,
+        processingStatus: "ignored" as const,
+        reason: "No matching SMS configuration for inbound recipient",
+      };
+    }
+
+    const normalizedPhone = normalizePhoneNumber(args.from);
+    const normalizedBody = normalizeSmsBody(args.body);
+    const parsedIntent = parseAppointmentSmsIntent(args.body);
+    const now = Date.now();
+
+    const outboundEvents = await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_orgAndPhone", (q) =>
+        q.eq("organizationId", config.organizationId).eq("normalizedPhone", normalizedPhone),
+      )
+      .order("desc")
+      .collect();
+
+    const matchingOutbound = outboundEvents.find(
+      (event) =>
+        event.direction === "outbound" &&
+        event.eventType === "appointment_confirmation_request" &&
+        !!event.appointmentId,
+    );
+
+    const eventId: Id<"appointmentSmsEvents"> = await ctx.db.insert("appointmentSmsEvents", {
+      organizationId: config.organizationId,
+      appointmentId: matchingOutbound?.appointmentId,
+      patientId: matchingOutbound?.patientId,
+      normalizedPhone,
+      direction: "inbound",
+      provider: args.provider,
+      eventType: "appointment_confirmation_reply",
+      providerMessageId: args.providerMessageId,
+      correlationKey: matchingOutbound?.correlationKey,
+      replyToEventId: matchingOutbound?._id,
+      rawBody: args.body,
+      normalizedBody,
+      parsedIntent,
+      processingStatus: "pending",
+      webhookSignatureVerified: args.webhookSignatureVerified,
+      metadata: args.metadata,
+      idempotencyKey: args.idempotencyKey,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const matchingAppointment = matchingOutbound?.appointmentId
+      ? await ctx.db.get(matchingOutbound.appointmentId)
+      : null;
+
+    if (
+      matchingAppointment &&
+      matchingAppointment.organizationId === config.organizationId &&
+      (matchingOutbound?.appointmentId || matchingOutbound?.patientId)
+    ) {
+      await logSmsSharedActivities(ctx, {
+        organizationId: config.organizationId,
+        appointmentId: matchingOutbound?.appointmentId,
+        patientId: matchingOutbound?.patientId,
+        action: "sms_received",
+        description: `Received appointment confirmation reply: ${normalizedBody}`,
+        performedBy: matchingAppointment.employeeId,
+        metadata: {
+          appointmentSmsEventId: eventId,
+          direction: "inbound",
+          eventType: "appointment_confirmation_reply",
+          parsedIntent,
+          correlationKey: matchingOutbound?.correlationKey,
+          replyToEventId: matchingOutbound?._id,
+          providerMessageId: args.providerMessageId,
+          webhookSignatureVerified: args.webhookSignatureVerified,
+        },
+      });
+    }
+
+    await ctx.runMutation(internal.automation.emitEvent, {
+      organizationId: config.organizationId,
+      module: "gabinet",
+      eventType: "gabinet.appointment.sms_reply_received",
+      entityType: matchingOutbound?.appointmentId ? "gabinetAppointment" : undefined,
+      entityId: matchingOutbound?.appointmentId
+        ? String(matchingOutbound.appointmentId)
+        : undefined,
+      actorUserId: matchingAppointment?.employeeId,
+      correlationKey: matchingOutbound?.correlationKey,
+      eventIdempotencyKey: `automation-event:${config.organizationId}:${args.idempotencyKey}`,
+      payload: JSON.stringify({
+        organizationId: String(config.organizationId),
+        appointmentId: matchingOutbound?.appointmentId
+          ? String(matchingOutbound.appointmentId)
+          : null,
+        patientId: matchingOutbound?.patientId
+          ? String(matchingOutbound.patientId)
+          : null,
+        provider: args.provider,
+        providerMessageId: args.providerMessageId,
+        normalizedPhone,
+        body: args.body,
+        normalizedBody,
+        parsedIntent,
+        webhookSignatureVerified: args.webhookSignatureVerified,
+      }),
+      occurredAt: now,
+    });
+
+    if (parsedIntent === "unknown") {
+      await ctx.db.patch(eventId, {
+        processingStatus: "ignored",
+        processingError: "Reply body did not match TAK/NIE contract",
+        processedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { duplicate: false, eventId, processingStatus: "ignored" as const };
+    }
+
+    if (!matchingOutbound?.appointmentId) {
+      await ctx.db.patch(eventId, {
+        processingStatus: "ignored",
+        processingError: "No outbound appointment confirmation event found for this phone",
+        processedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { duplicate: false, eventId, processingStatus: "ignored" as const };
+    }
+
+    const transitionResult: {
+      processingStatus: "processed" | "ignored";
+      reason?: string;
+    } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
+      organizationId: config.organizationId,
+      appointmentId: matchingOutbound.appointmentId,
+      intent: parsedIntent,
+      smsEventId: eventId,
+    });
+
+    await ctx.db.patch(eventId, {
+      processingStatus: transitionResult.processingStatus,
+      processingError: transitionResult.reason,
+      processedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return {
+      duplicate: false,
+      eventId,
+      processingStatus: transitionResult.processingStatus,
+      reason: transitionResult.reason,
+      appointmentId: matchingOutbound.appointmentId,
+    };
+  },
+});
+
+export const getLatestByAppointmentInternal = internalQuery({
+  args: {
+    appointmentId: v.id("gabinetAppointments"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("appointmentSmsEvents")
+      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+      .order("desc")
+      .collect();
+  },
+});

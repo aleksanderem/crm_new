@@ -1,6 +1,36 @@
-import { expect, test, describe } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../_test_helpers";
+
+const activeContexts = new Set<ReturnType<typeof createTestCtx>>();
+
+function createManagedTestCtx() {
+  const t = createTestCtx();
+  activeContexts.add(t);
+  return t;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      text: async () => JSON.stringify({ sid: "SM_TEST_123" }),
+    })) as unknown as typeof fetch,
+  );
+});
+
+afterEach(async () => {
+  for (const t of activeContexts) {
+    await t.finishAllScheduledFunctions(() => {
+      vi.runAllTimers();
+    });
+  }
+  activeContexts.clear();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 async function createAppointment(
   t: ReturnType<typeof import("convex-test").convexTest>,
@@ -28,7 +58,7 @@ async function createAppointment(
 
 describe("appointment state machine", () => {
   test("new appointment starts as scheduled", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -44,7 +74,7 @@ describe("appointment state machine", () => {
   });
 
   test("scheduled -> confirmed", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -62,8 +92,34 @@ describe("appointment state machine", () => {
     expect(appt?.status).toBe("confirmed");
   });
 
+  test("pending_confirmation -> confirmed", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(apptId, {
+        status: "pending_confirmation",
+        updatedAt: Date.now(),
+      });
+    });
+
+    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+      organizationId,
+      appointmentId: apptId,
+      status: "confirmed",
+    });
+
+    const appt = await t.run(async (ctx) => ctx.db.get(apptId));
+    expect(appt?.status).toBe("confirmed");
+  });
+
   test("confirmed -> in_progress", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -83,7 +139,7 @@ describe("appointment state machine", () => {
   });
 
   test("in_progress -> completed", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -106,7 +162,7 @@ describe("appointment state machine", () => {
   });
 
   test("scheduled -> cancelled", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -123,7 +179,7 @@ describe("appointment state machine", () => {
   });
 
   test("scheduled -> no_show", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -141,7 +197,7 @@ describe("appointment state machine", () => {
 
   // Invalid transitions
   test("cannot go scheduled -> completed directly", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -157,7 +213,7 @@ describe("appointment state machine", () => {
   });
 
   test("cannot go scheduled -> in_progress directly", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -173,7 +229,7 @@ describe("appointment state machine", () => {
   });
 
   test("cannot transition from completed", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -201,7 +257,7 @@ describe("appointment state machine", () => {
   });
 
   test("cannot transition from cancelled", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -221,7 +277,7 @@ describe("appointment state machine", () => {
   });
 
   test("dual write: scheduledActivity created with appointment", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
@@ -243,7 +299,7 @@ describe("appointment state machine", () => {
   });
 
   test("completing appointment marks scheduledActivity as completed", async () => {
-    const t = createTestCtx();
+    const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 

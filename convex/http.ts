@@ -14,6 +14,94 @@ import {
 import Stripe from "stripe";
 import { Doc } from "@cvx/_generated/dataModel";
 
+function normalizeWebhookValue(value: FormDataEntryValue | unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value instanceof File) return undefined;
+  return undefined;
+}
+
+async function getRequestPayload(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    const formData = await request.formData();
+    const payload: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      const normalized = normalizeWebhookValue(value);
+      if (normalized !== undefined) payload[key] = normalized;
+    });
+    return payload;
+  }
+
+  if (contentType.includes("application/json")) {
+    const json = await request.json();
+    if (json && typeof json === "object") {
+      return Object.fromEntries(
+        Object.entries(json as Record<string, unknown>).flatMap(([key, value]) => {
+          if (typeof value === "string") return [[key, value]];
+          if (typeof value === "number" || typeof value === "boolean") {
+            return [[key, String(value)]];
+          }
+          return [];
+        }),
+      );
+    }
+  }
+
+  const text = await request.text();
+  const params = new URLSearchParams(text);
+  return Object.fromEntries(params.entries());
+}
+
+function getFirstPayloadValue(
+  payload: Record<string, string>,
+  keys: string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return undefined;
+}
+
+async function computeTwilioSignature(
+  url: string,
+  params: Record<string, string>,
+  authToken: string,
+) {
+  const data = `${url}${Object.keys(params)
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => `${key}${params[key]}`)
+    .join("")}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(authToken),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(data),
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
+
+async function verifyTwilioRequest(
+  request: Request,
+  params: Record<string, string>,
+  authToken: string,
+) {
+  const signature = request.headers.get("X-Twilio-Signature");
+  if (!signature) return false;
+  const expected = await computeTwilioSignature(request.url, params, authToken);
+  return signature === expected;
+}
+
 const http = httpRouter();
 
 /**
@@ -363,6 +451,69 @@ http.route({
       return new Response("OK", { status: 200 });
     } catch (err) {
       console.error("Inbound email error:", err);
+      return new Response("Error", { status: 500 });
+    }
+  }),
+});
+
+http.route({
+  path: "/sms/inbound",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const payload = await getRequestPayload(request);
+      const provider = getFirstPayloadValue(payload, ["provider", "Provider"]);
+      const to = getFirstPayloadValue(payload, ["To", "to", "recipient", "msisdn"]);
+      const from = getFirstPayloadValue(payload, ["From", "from", "sender", "phone"]);
+      const body = getFirstPayloadValue(payload, ["Body", "body", "message", "text"]);
+      const providerMessageId = getFirstPayloadValue(payload, [
+        "MessageSid",
+        "messageSid",
+        "message_id",
+        "id",
+      ]);
+
+      if (!provider || !to || !from || !body) {
+        return new Response("Missing inbound SMS fields", { status: 400 });
+      }
+
+      if (provider !== "twilio" && provider !== "smsapi") {
+        return new Response("Unsupported SMS provider", { status: 400 });
+      }
+
+      let webhookSignatureVerified: boolean | undefined;
+      if (provider === "twilio") {
+        const config = await ctx.runQuery(internal.sms.getConfigForInbound, {
+          provider,
+          recipient: to,
+        });
+        if (!config?.apiSecret) {
+          return new Response("No matching Twilio configuration", { status: 200 });
+        }
+        webhookSignatureVerified = await verifyTwilioRequest(request, payload, config.apiSecret);
+        if (!webhookSignatureVerified) {
+          return new Response("Invalid Twilio signature", { status: 401 });
+        }
+      }
+
+      const idempotencyKey = providerMessageId
+        ? `${provider}:${providerMessageId}`
+        : `${provider}:${to}:${from}:${body.trim()}`;
+
+      await ctx.runMutation(internal.gabinet.appointmentSms.processIncomingMessage, {
+        provider,
+        to,
+        from,
+        body,
+        providerMessageId,
+        webhookSignatureVerified,
+        idempotencyKey,
+        metadata: JSON.stringify(payload),
+      });
+
+      return new Response("OK", { status: 200 });
+    } catch (err) {
+      console.error("Inbound SMS error:", err);
       return new Response("Error", { status: 500 });
     }
   }),

@@ -35,9 +35,13 @@ import {
   PlayCircle,
   XCircle,
   AlertTriangle,
+  MessageSquare,
+  Send,
+  Inbox,
 } from "@/lib/ez-icons";
 
 const STATUS_KEYS: Record<string, string> = {
+  pending_confirmation: "gabinet.appointments.statuses.pending_confirmation",
   scheduled: "gabinet.appointments.statuses.scheduled",
   confirmed: "gabinet.appointments.statuses.confirmed",
   in_progress: "gabinet.appointments.statuses.in_progress",
@@ -47,6 +51,7 @@ const STATUS_KEYS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  pending_confirmation: "bg-amber-100 text-amber-800",
   scheduled: "bg-blue-100 text-blue-800",
   confirmed: "bg-green-100 text-green-800",
   in_progress: "bg-yellow-100 text-yellow-800",
@@ -56,6 +61,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
+  pending_confirmation: ["scheduled", "confirmed", "cancelled"],
   scheduled: ["confirmed", "cancelled", "no_show"],
   confirmed: ["in_progress", "cancelled", "no_show"],
   in_progress: ["completed", "cancelled"],
@@ -63,6 +69,81 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   no_show: [],
 };
+
+function getSmsSummary(events: any[], appointmentStatus: string) {
+  const latestOutbound = events.find(
+    (event) =>
+      event.direction === "outbound" &&
+      event.eventType === "appointment_confirmation_request",
+  );
+  const latestInbound = events.find(
+    (event) =>
+      event.direction === "inbound" &&
+      event.eventType === "appointment_confirmation_reply",
+  );
+
+  if (latestInbound) {
+    if (latestInbound.processingStatus === "processed") {
+      if (latestInbound.parsedIntent === "confirm") {
+        return {
+          labelKey: "gabinet.appointmentDetail.sms.summaryConfirmed",
+          className: "bg-green-100 text-green-800",
+        };
+      }
+      if (latestInbound.parsedIntent === "cancel") {
+        return {
+          labelKey: "gabinet.appointmentDetail.sms.summaryCancelled",
+          className: "bg-red-100 text-red-700",
+        };
+      }
+    }
+
+    if (latestInbound.processingStatus === "failed") {
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryFailed",
+        className: "bg-red-100 text-red-700",
+      };
+    }
+
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summaryIgnored",
+      className: "bg-slate-100 text-slate-700",
+    };
+  }
+
+  if (latestOutbound) {
+    if (latestOutbound.processingStatus === "failed") {
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryFailed",
+        className: "bg-red-100 text-red-700",
+      };
+    }
+
+    if (latestOutbound.processingStatus === "pending") {
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryQueued",
+        className: "bg-amber-100 text-amber-800",
+      };
+    }
+
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summarySent",
+      className: "bg-blue-100 text-blue-800",
+    };
+  }
+
+  if (appointmentStatus === "pending_confirmation") {
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summaryAwaitingRequest",
+      className: "bg-amber-100 text-amber-800",
+    };
+  }
+
+  return {
+    labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory",
+    className: "bg-slate-100 text-slate-700",
+  };
+}
 
 interface AppointmentDetailDialogProps {
   organizationId: Id<"organizations">;
@@ -103,6 +184,14 @@ export function AppointmentDetailDialog({
     enabled: !!appointment,
   });
 
+  const { data: smsEvents = [] } = useQuery({
+    ...convexQuery(api.gabinet.appointmentSms.listByAppointment, {
+      organizationId,
+      appointmentId: (appointmentId as Id<"gabinetAppointments">) ?? ("" as Id<"gabinetAppointments">),
+    }),
+    enabled: !!appointment,
+  });
+
   const [editing, setEditing] = useState(false);
   const [editDate, setEditDate] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
@@ -121,6 +210,17 @@ export function AppointmentDetailDialog({
     (t) => t._id === appointment.treatmentId
   );
   const nextStatuses = VALID_TRANSITIONS[appointment.status] ?? [];
+  const latestOutboundSms = smsEvents.find(
+    (event) =>
+      event.direction === "outbound" &&
+      event.eventType === "appointment_confirmation_request",
+  );
+  const latestInboundSms = smsEvents.find(
+    (event) =>
+      event.direction === "inbound" &&
+      event.eventType === "appointment_confirmation_reply",
+  );
+  const smsSummary = getSmsSummary(smsEvents, appointment.status);
 
   const startEdit = () => {
     setEditDate(appointment.date);
@@ -200,6 +300,8 @@ export function AppointmentDetailDialog({
 
   const statusIcon = (status: string) => {
     switch (status) {
+      case "pending_confirmation":
+        return <MessageSquare className="h-3.5 w-3.5" />;
       case "confirmed":
         return <CheckCircle className="h-3.5 w-3.5" />;
       case "in_progress":
@@ -395,6 +497,73 @@ export function AppointmentDetailDialog({
                   </div>
                   <div className="text-sm font-medium">
                     {appointment.startTime} – {appointment.endTime}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.title")}
+                      </div>
+                      <div className="text-sm font-medium">
+                        {t("gabinet.appointmentDetail.sms.description")}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge className={smsSummary.className}>
+                    {t(smsSummary.labelKey)}
+                  </Badge>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-md bg-background p-2">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Send className="h-3.5 w-3.5" />
+                      {t("gabinet.appointmentDetail.sms.lastOutbound")}
+                    </div>
+                    {latestOutboundSms ? (
+                      <div className="space-y-1">
+                        <div className="text-sm">{latestOutboundSms.rawBody}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestOutboundSms.processingStatus}`)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.noOutbound")}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-md bg-background p-2">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Inbox className="h-3.5 w-3.5" />
+                      {t("gabinet.appointmentDetail.sms.lastInbound")}
+                    </div>
+                    {latestInboundSms ? (
+                      <div className="space-y-1">
+                        <div className="text-sm">{latestInboundSms.rawBody}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t("gabinet.appointmentDetail.sms.parsedIntent")}: {t(`gabinet.appointmentDetail.sms.intents.${latestInboundSms.parsedIntent ?? "unknown"}`)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestInboundSms.processingStatus}`)}
+                        </div>
+                        {latestInboundSms.processingError && (
+                          <div className="text-xs text-muted-foreground">
+                            {t("gabinet.appointmentDetail.sms.processingReason")}: {latestInboundSms.processingError}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.noInbound")}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

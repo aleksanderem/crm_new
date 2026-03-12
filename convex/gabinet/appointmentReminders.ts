@@ -156,15 +156,40 @@ export const sendReminder = internalMutation({
       });
     }
 
-    // Send appointment.reminder SMS if patient has phone
+    const reminderPayload = {
+      organizationId: String(reminder.organizationId),
+      appointmentId: String(appointment._id),
+      patientId: String(appointment.patientId),
+      treatmentId: String(appointment.treatmentId),
+      employeeId: String(appointment.employeeId),
+      date: appointment.date,
+      startTime: appointment.startTime,
+      patientEmail: patient?.email,
+      patientPhone: patient?.phone,
+      patientName,
+      treatmentName,
+    };
+
+    await ctx.runMutation(internal.automation.emitEvent, {
+      organizationId: reminder.organizationId,
+      module: "gabinet",
+      eventType: "gabinet.appointment.reminder_due",
+      entityType: "gabinetAppointment",
+      entityId: String(appointment._id),
+      actorUserId: appointment.createdBy,
+      correlationKey: `appointment:${appointment._id}`,
+      eventIdempotencyKey: `automation-event:${reminder.organizationId}:${appointment._id}:reminder:${reminder._id}`,
+      payload: JSON.stringify(reminderPayload),
+      occurredAt: Date.now(),
+    });
+
+    // Queue appointment confirmation SMS if patient has phone
     if (patient?.phone) {
-      const org = await ctx.db.get(reminder.organizationId);
-      const orgName = org?.name ?? "";
-      const smsMessage = `Przypomnienie: jutro wizyta o ${appointment.startTime}.${orgName ? " " + orgName : ""}`;
-      await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+      await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
         organizationId: reminder.organizationId,
-        phone: patient.phone,
-        message: smsMessage,
+        appointmentId: appointment._id,
+        reminderId: reminder._id,
+        trigger: "reminder",
       });
     }
 

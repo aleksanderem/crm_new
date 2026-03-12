@@ -122,6 +122,8 @@ export const activityActionValidator = v.union(
   v.literal("status_changed"),
   v.literal("email_sent"),
   v.literal("email_received"),
+  v.literal("sms_sent"),
+  v.literal("sms_received"),
 );
 export type ActivityAction = Infer<typeof activityActionValidator>;
 
@@ -130,6 +132,31 @@ export const emailDirectionValidator = v.union(
   v.literal("outbound"),
 );
 export type EmailDirection = Infer<typeof emailDirectionValidator>;
+
+export const appointmentSmsDirectionValidator = v.union(
+  v.literal("inbound"),
+  v.literal("outbound"),
+);
+export type AppointmentSmsDirection = Infer<
+  typeof appointmentSmsDirectionValidator
+>;
+
+export const appointmentSmsIntentValidator = v.union(
+  v.literal("confirm"),
+  v.literal("cancel"),
+  v.literal("unknown"),
+);
+export type AppointmentSmsIntent = Infer<typeof appointmentSmsIntentValidator>;
+
+export const appointmentSmsProcessingStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("processed"),
+  v.literal("ignored"),
+  v.literal("failed"),
+);
+export type AppointmentSmsProcessingStatus = Infer<
+  typeof appointmentSmsProcessingStatusValidator
+>;
 
 export const invitationStatusValidator = v.union(
   v.literal("pending"),
@@ -184,6 +211,113 @@ export const gabinetAppointmentStatusValidator = v.union(
 export type GabinetAppointmentStatus = Infer<
   typeof gabinetAppointmentStatusValidator
 >;
+
+export const appointmentWorkflowEventValidator = v.union(
+  v.literal("appointment_created"),
+);
+export type AppointmentWorkflowEvent = Infer<
+  typeof appointmentWorkflowEventValidator
+>;
+
+export const appointmentWorkflowChannelValidator = v.union(
+  v.literal("email"),
+  v.literal("sms"),
+);
+export type AppointmentWorkflowChannel = Infer<
+  typeof appointmentWorkflowChannelValidator
+>;
+
+export const appointmentWorkflowStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("sent"),
+  v.literal("failed"),
+  v.literal("skipped"),
+);
+export type AppointmentWorkflowStatus = Infer<
+  typeof appointmentWorkflowStatusValidator
+>;
+
+export const automationModuleValidator = v.union(
+  v.literal("crm"),
+  v.literal("gabinet"),
+  v.literal("platform"),
+);
+export type AutomationModule = Infer<typeof automationModuleValidator>;
+
+export const automationConditionOperatorValidator = v.union(
+  v.literal("equals"),
+  v.literal("not_equals"),
+  v.literal("contains"),
+  v.literal("greater_than"),
+  v.literal("less_than"),
+  v.literal("is_truthy"),
+  v.literal("is_falsy"),
+);
+export type AutomationConditionOperator = Infer<
+  typeof automationConditionOperatorValidator
+>;
+
+const automationConditionValueValidator = v.union(
+  v.string(),
+  v.number(),
+  v.boolean(),
+);
+
+export const automationConditionValidator = v.object({
+  path: v.string(),
+  operator: automationConditionOperatorValidator,
+  value: v.optional(automationConditionValueValidator),
+});
+export type AutomationCondition = Infer<typeof automationConditionValidator>;
+
+export const automationRuleActionValidator = v.union(
+  v.object({
+    type: v.literal("send_email"),
+    delayMs: v.optional(v.number()),
+    templateEventType: v.string(),
+    recipientEmailPath: v.string(),
+    recipientNamePath: v.optional(v.string()),
+  }),
+  v.object({
+    type: v.literal("send_sms"),
+    delayMs: v.optional(v.number()),
+    phonePath: v.string(),
+    messageTemplate: v.string(),
+  }),
+  v.object({
+    type: v.literal("create_notification"),
+    delayMs: v.optional(v.number()),
+    userIdPath: v.string(),
+    titleTemplate: v.string(),
+    messageTemplate: v.string(),
+    linkTemplate: v.optional(v.string()),
+  }),
+  v.object({
+    type: v.literal("write_activity"),
+    delayMs: v.optional(v.number()),
+    activityAction: activityActionValidator,
+    descriptionTemplate: v.string(),
+    entityTypePath: v.optional(v.string()),
+    entityIdPath: v.optional(v.string()),
+  }),
+);
+export type AutomationRuleAction = Infer<typeof automationRuleActionValidator>;
+
+export const automationRunStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("processed"),
+  v.literal("failed"),
+  v.literal("skipped"),
+);
+export type AutomationRunStatus = Infer<typeof automationRunStatusValidator>;
+
+export const automationStepStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("processed"),
+  v.literal("failed"),
+  v.literal("skipped"),
+);
+export type AutomationStepStatus = Infer<typeof automationStepStatusValidator>;
 
 export const gabinetDocTypeValidator = v.union(
   v.literal("consent"),
@@ -769,6 +903,7 @@ const schema = defineSchema({
     // Appointment reminder settings
     reminderEnabled: v.optional(v.boolean()),
     reminderHoursBefore: v.optional(v.number()), // default 24
+    appointmentWorkflowConfig: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),
@@ -1604,7 +1739,41 @@ const schema = defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_org", ["organizationId"]),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_providerAndFromNumber", ["provider", "fromNumber"])
+    .index("by_providerAndSenderId", ["provider", "senderId"]),
+
+  appointmentSmsEvents: defineTable({
+    organizationId: v.id("organizations"),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    patientId: v.optional(v.id("gabinetPatients")),
+    normalizedPhone: v.string(),
+    direction: appointmentSmsDirectionValidator,
+    provider: v.string(),
+    eventType: v.string(),
+    providerMessageId: v.optional(v.string()),
+    correlationKey: v.optional(v.string()),
+    replyToEventId: v.optional(v.id("appointmentSmsEvents")),
+    rawBody: v.optional(v.string()),
+    normalizedBody: v.optional(v.string()),
+    parsedIntent: v.optional(appointmentSmsIntentValidator),
+    processingStatus: appointmentSmsProcessingStatusValidator,
+    processingError: v.optional(v.string()),
+    webhookSignatureVerified: v.optional(v.boolean()),
+    metadata: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_appointment", ["appointmentId", "createdAt"])
+    .index("by_orgAndPhone", ["organizationId", "normalizedPhone", "createdAt"])
+    .index("by_providerAndMessageId", ["provider", "providerMessageId"])
+    .index("by_processingStatus", ["processingStatus", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_correlationKey", ["correlationKey", "createdAt"])
+    .index("by_replyToEvent", ["replyToEventId", "createdAt"]),
 
   // --- Gabinet: Patient Portal (Phase 6) ---
 
@@ -1653,6 +1822,99 @@ const schema = defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_appointment", ["appointmentId"])
     .index("by_orgAndStatus", ["organizationId", "status"]),
+
+  appointmentWorkflowHistory: defineTable({
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    workflowEvent: appointmentWorkflowEventValidator,
+    channel: appointmentWorkflowChannelValidator,
+    direction: v.literal("outbound"),
+    source: v.string(),
+    recipient: v.string(),
+    recipientName: v.optional(v.string()),
+    status: appointmentWorkflowStatusValidator,
+    renderedSubject: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
+    emailEventLogId: v.optional(v.id("emailEventLog")),
+    errorMessage: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_appointment", ["appointmentId", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
+
+  automationRules: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    module: automationModuleValidator,
+    eventType: v.string(),
+    entityType: v.optional(v.string()),
+    conditions: v.array(automationConditionValidator),
+    actions: v.array(automationRuleActionValidator),
+    enabled: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_orgAndEnabled", ["organizationId", "enabled"])
+    .index("by_orgAndModule", ["organizationId", "module"])
+    .index("by_orgAndEventType", ["organizationId", "eventType"]),
+
+  automationRuns: defineTable({
+    organizationId: v.id("organizations"),
+    ruleId: v.optional(v.id("automationRules")),
+    module: automationModuleValidator,
+    eventType: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    eventIdempotencyKey: v.string(),
+    correlationKey: v.optional(v.string()),
+    payloadSnapshot: v.string(),
+    actorUserId: v.optional(v.id("users")),
+    status: automationRunStatusValidator,
+    errorMessage: v.optional(v.string()),
+    occurredAt: v.number(),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndEventType", ["organizationId", "eventType"])
+    .index("by_entity", ["entityType", "entityId", "createdAt"])
+    .index("by_eventIdempotencyKey", ["eventIdempotencyKey"])
+    .index("by_rule", ["ruleId", "createdAt"]),
+
+  automationRunSteps: defineTable({
+    organizationId: v.id("organizations"),
+    runId: v.id("automationRuns"),
+    ruleId: v.optional(v.id("automationRules")),
+    actionIndex: v.number(),
+    actionType: v.string(),
+    idempotencyKey: v.string(),
+    status: automationStepStatusValidator,
+    recipient: v.optional(v.string()),
+    recipientName: v.optional(v.string()),
+    linkedEntityType: v.optional(v.string()),
+    linkedEntityId: v.optional(v.string()),
+    renderedSubject: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
+    metadataSnapshot: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    emailEventLogId: v.optional(v.id("emailEventLog")),
+    appointmentSmsEventId: v.optional(v.id("appointmentSmsEvents")),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_run", ["runId", "actionIndex"])
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
 
   // --- Platform: Email Event Bus ---
 
@@ -1704,6 +1966,12 @@ const schema = defineSchema({
       v.literal("skipped"),
     ),
     payload: v.optional(v.string()),
+    source: v.optional(v.string()),
+    relatedEntityType: v.optional(v.string()),
+    relatedEntityId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    renderedSubject: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
     triggeredBy: v.optional(v.id("users")),
     processedAt: v.optional(v.number()),
@@ -1712,7 +1980,8 @@ const schema = defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndEventType", ["organizationId", "eventType"])
-    .index("by_orgAndCreatedAt", ["organizationId", "createdAt"]),
+    .index("by_orgAndCreatedAt", ["organizationId", "createdAt"])
+    .index("by_orgAndIdempotency", ["organizationId", "idempotencyKey"]),
 
   // ---------------------------------------------------------------------------
   // Email Sequences

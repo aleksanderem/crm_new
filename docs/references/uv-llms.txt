@@ -1,0 +1,5 @@
+uv reference placeholder for LLMs.
+
+Use this file for short notes if Python tooling in this repository later adopts `uv` conventions that autonomous agents should follow.
+
+No project-specific `uv` guidance has been curated here yet.

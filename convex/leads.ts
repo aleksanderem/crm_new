@@ -7,6 +7,7 @@ import { checkPermission } from "./_helpers/permissions";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
+import { internal } from "./_generated/api";
 
 export const list = query({
   args: {
@@ -360,6 +361,28 @@ export const update = mutation({
           link: `/leads/${leadId}`,
         });
       }
+
+      await ctx.runMutation(internal.automation.emitEvent, {
+        organizationId,
+        module: "crm",
+        eventType: "crm.lead.status_changed",
+        entityType: "lead",
+        entityId: String(leadId),
+        actorUserId: user._id,
+        correlationKey: `lead:${leadId}`,
+        eventIdempotencyKey: `automation-event:${organizationId}:${leadId}:${now}:status:${updates.status}`,
+        payload: JSON.stringify({
+          organizationId: String(organizationId),
+          leadId: String(leadId),
+          title: lead.title,
+          oldStatus: lead.status,
+          newStatus: updates.status,
+          assignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
+          ownerId: String(leadOwner),
+          createdBy: String(lead.createdBy),
+        }),
+        occurredAt: now,
+      });
     } else {
       await logActivity(ctx, {
         organizationId,
@@ -648,6 +671,29 @@ export const moveToStage = mutation({
           });
         }
       }
+
+      await ctx.runMutation(internal.automation.emitEvent, {
+        organizationId: args.organizationId,
+        module: "crm",
+        eventType: "crm.lead.stage_changed",
+        entityType: "lead",
+        entityId: String(args.leadId),
+        actorUserId: user._id,
+        correlationKey: `lead:${args.leadId}`,
+        eventIdempotencyKey: `automation-event:${args.organizationId}:${args.leadId}:${now}:stage:${args.pipelineStageId}`,
+        payload: JSON.stringify({
+          organizationId: String(args.organizationId),
+          leadId: String(args.leadId),
+          title: lead.title,
+          fromStageId: lead.pipelineStageId ? String(lead.pipelineStageId) : null,
+          toStageId: String(args.pipelineStageId),
+          oldStatus: lead.status,
+          newStatus: updateData.status,
+          ownerId: String(lead.assignedTo ?? lead.createdBy),
+          createdBy: String(lead.createdBy),
+        }),
+        occurredAt: now,
+      });
     }
 
     return args.leadId;

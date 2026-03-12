@@ -1,4 +1,4 @@
-import { query, mutation } from "../_generated/server";
+import { query, mutation, internalMutation, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -13,7 +13,7 @@ import {
   getAvailableSlots,
   checkEmployeeQualification,
 } from "./_availability";
-import { Id } from "../_generated/dataModel";
+import { Id, Doc } from "../_generated/dataModel";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
 
@@ -26,6 +26,225 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   no_show: [],
 };
+
+function getSmsTargetStatus(intent: "confirm" | "cancel") {
+  return intent === "confirm" ? "confirmed" : "cancelled";
+}
+
+async function emitAutomationEvent(
+  ctx: MutationCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    module: "gabinet" | "crm" | "platform";
+    eventType: string;
+    entityType?: string;
+    entityId?: string;
+    actorUserId?: Id<"users">;
+    correlationKey?: string;
+    eventIdempotencyKey: string;
+    payload: Record<string, unknown>;
+  },
+) {
+  await ctx.runMutation(internal.automation.emitEvent, {
+    organizationId: args.organizationId,
+    module: args.module,
+    eventType: args.eventType,
+    entityType: args.entityType,
+    entityId: args.entityId,
+    actorUserId: args.actorUserId,
+    correlationKey: args.correlationKey,
+    eventIdempotencyKey: args.eventIdempotencyKey,
+    payload: JSON.stringify(args.payload),
+    occurredAt: Date.now(),
+  });
+}
+
+async function applyAppointmentStatusChange(
+  ctx: MutationCtx,
+  args: {
+    appointment: Doc<"gabinetAppointments">;
+    organizationId: Id<"organizations">;
+    nextStatus: Doc<"gabinetAppointments">["status"];
+    actorUserId: Id<"users">;
+    auditAction: string;
+    auditDetails: string;
+    activityDescription: string;
+    notificationTitle: string;
+    notificationMessage: string;
+    cancellationReason?: string;
+    sendCancellationNotifications?: boolean;
+  },
+) {
+  const now = Date.now();
+  const patch: Record<string, unknown> = {
+    status: args.nextStatus,
+    updatedAt: now,
+  };
+
+  if (args.nextStatus === "cancelled") {
+    patch.cancelledAt = now;
+    patch.cancelledBy = args.actorUserId;
+    patch.cancellationReason = args.cancellationReason;
+  }
+
+  await ctx.db.patch(args.appointment._id, patch);
+
+  if (args.nextStatus === "cancelled" && args.sendCancellationNotifications !== false) {
+    const patient = await ctx.db.get(args.appointment.patientId);
+    const treatment = await ctx.db.get(args.appointment.treatmentId);
+    if (patient?.email) {
+      const employee = await ctx.db.get(args.appointment.employeeId);
+      const patientName = patient
+        ? `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`
+        : "Patient";
+      const treatmentName = treatment?.name ?? "Treatment";
+      const employeeName = employee?.name ?? "Specjalista";
+      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+        organizationId: args.organizationId,
+        eventType: "appointment.cancelled",
+        recipientEmail: patient.email,
+        recipientName: patientName,
+        payload: JSON.stringify({
+          patientName,
+          appointmentDate: args.appointment.date,
+          appointmentTime: args.appointment.startTime,
+          treatmentName,
+          employeeName,
+        }),
+        triggeredBy: args.actorUserId,
+      });
+    }
+    if (patient?.phone) {
+      const smsMessage = `Twoja wizyta dnia ${args.appointment.date} o ${args.appointment.startTime} została odwołana.`;
+      await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
+        organizationId: args.organizationId,
+        phone: patient.phone,
+        message: smsMessage,
+      });
+    }
+  }
+
+  if (args.appointment.scheduledActivityId) {
+    const activityPatch: Record<string, unknown> = { updatedAt: Date.now() };
+    if (
+      args.nextStatus === "completed" ||
+      args.nextStatus === "cancelled" ||
+      args.nextStatus === "no_show"
+    ) {
+      activityPatch.isCompleted = true;
+      activityPatch.completedAt = Date.now();
+    }
+    await ctx.db.patch(args.appointment.scheduledActivityId, activityPatch);
+  }
+
+  if (
+    args.nextStatus === "cancelled" ||
+    args.nextStatus === "completed" ||
+    args.nextStatus === "no_show"
+  ) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.appointmentReminders.cancelRemindersInternal,
+      { appointmentId: args.appointment._id },
+    );
+  }
+
+  if (args.nextStatus === "completed") {
+    await handleAppointmentCompletion(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: args.appointment._id,
+      patientId: args.appointment.patientId,
+      treatmentId: args.appointment.treatmentId,
+      packageUsageId: args.appointment.packageUsageId as
+        | Id<"gabinetPackageUsage">
+        | undefined,
+      userId: args.actorUserId,
+    });
+  }
+
+  await logActivity(ctx, {
+    organizationId: args.organizationId,
+    entityType: "gabinetAppointment",
+    entityId: args.appointment._id,
+    action: "status_changed",
+    description: args.activityDescription,
+    metadata: {
+      oldStatus: args.appointment.status,
+      newStatus: args.nextStatus,
+    },
+    performedBy: args.actorUserId,
+  });
+
+  await logAudit(ctx, {
+    organizationId: args.organizationId,
+    userId: args.actorUserId,
+    action: args.auditAction,
+    entityType: "gabinetAppointment",
+    entityId: args.appointment._id,
+    details: args.auditDetails,
+  });
+
+  if (args.appointment.createdBy !== args.actorUserId) {
+    await createNotificationDirect(ctx, {
+      organizationId: args.organizationId,
+      userId: args.appointment.createdBy,
+      type: "appointment_status_changed",
+      title: args.notificationTitle,
+      message: args.notificationMessage,
+    });
+  }
+  if (
+    args.appointment.employeeId !== args.actorUserId &&
+    args.appointment.employeeId !== args.appointment.createdBy
+  ) {
+    await createNotificationDirect(ctx, {
+      organizationId: args.organizationId,
+      userId: args.appointment.employeeId,
+      type: "appointment_status_changed",
+      title: args.notificationTitle,
+      message: args.notificationMessage,
+    });
+  }
+
+  await emitAutomationEvent(ctx, {
+    organizationId: args.organizationId,
+    module: "gabinet",
+    eventType:
+      args.nextStatus === "cancelled"
+        ? "gabinet.appointment.cancelled"
+        : args.nextStatus === "completed"
+          ? "gabinet.appointment.completed"
+          : args.nextStatus === "no_show"
+            ? "gabinet.appointment.no_show"
+            : args.nextStatus === "confirmed"
+              ? "gabinet.appointment.confirmed"
+              : "gabinet.appointment.status_changed",
+    entityType: "gabinetAppointment",
+    entityId: String(args.appointment._id),
+    actorUserId: args.actorUserId,
+    correlationKey: `appointment:${args.appointment._id}`,
+    eventIdempotencyKey: [
+      "automation-event",
+      String(args.organizationId),
+      String(args.appointment._id),
+      String(args.nextStatus),
+      String(now),
+    ].join(":"),
+    payload: {
+      organizationId: String(args.organizationId),
+      appointmentId: String(args.appointment._id),
+      patientId: String(args.appointment.patientId),
+      employeeId: String(args.appointment.employeeId),
+      treatmentId: String(args.appointment.treatmentId),
+      status: args.nextStatus,
+      previousStatus: args.appointment.status,
+      date: args.appointment.date,
+      startTime: args.appointment.startTime,
+      cancellationReason: args.cancellationReason,
+      createdBy: String(args.appointment.createdBy),
+    },
+  });
+}
 
 function generateRecurringDates(
   startDate: string,
@@ -438,35 +657,33 @@ export const create = mutation({
       recurringIndex: isRecurring ? 0 : undefined,
     });
 
-    // Send appointment.created email if patient has email
-    if (patient?.email) {
-      const employee = await ctx.db.get(args.employeeId);
-      const employeeName = employee?.name ?? "Specjalista";
-      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
-        organizationId: args.organizationId,
-        eventType: "appointment.created",
-        recipientEmail: patient.email,
-        recipientName: patientName,
-        payload: JSON.stringify({
-          patientName,
-          appointmentDate: args.date,
-          appointmentTime: args.startTime,
-          treatmentName,
-          employeeName,
-        }),
-        triggeredBy: user._id,
-      });
-    }
-
-    // Send appointment.created SMS if patient has phone
-    if (patient?.phone) {
-      const smsMessage = `Twoja wizyta dnia ${args.date} o ${args.startTime} została potwierdzona.`;
-      await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
-        organizationId: args.organizationId,
-        phone: patient.phone,
-        message: smsMessage,
-      });
-    }
+    await emitAutomationEvent(ctx, {
+      organizationId: args.organizationId,
+      module: "gabinet",
+      eventType: "gabinet.appointment.created",
+      entityType: "gabinetAppointment",
+      entityId: String(firstId),
+      actorUserId: user._id,
+      correlationKey: `appointment:${firstId}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${firstId}:created`,
+      payload: {
+        organizationId: String(args.organizationId),
+        appointmentId: String(firstId),
+        patientId: String(args.patientId),
+        treatmentId: String(args.treatmentId),
+        employeeId: String(args.employeeId),
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        status: "scheduled",
+        patientEmail: patient?.email,
+        patientPhone: patient?.phone,
+        patientName,
+        treatmentName,
+        employeeName: args.employeeId,
+        createdBy: String(user._id),
+      },
+    });
 
     // Dual write: create shared calendar event
     const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
@@ -706,6 +923,36 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    const payload = {
+      organizationId: String(organizationId),
+      appointmentId: String(appointmentId),
+      patientId: String(appt.patientId),
+      treatmentId: String(args.treatmentId ?? appt.treatmentId),
+      employeeId: String(newEmployee),
+      date: newDate,
+      startTime: newStart,
+      endTime: newEnd,
+      previousStatus: appt.status,
+      status: status ?? appt.status,
+      createdBy: String(appt.createdBy),
+      updatedFields: Object.keys(updates),
+    };
+
+    await emitAutomationEvent(ctx, {
+      organizationId,
+      module: "gabinet",
+      eventType:
+        args.date || args.startTime || args.endTime
+          ? "gabinet.appointment.rescheduled"
+          : "gabinet.appointment.updated",
+      entityType: "gabinetAppointment",
+      entityId: String(appointmentId),
+      actorUserId: user._id,
+      correlationKey: `appointment:${appointmentId}`,
+      eventIdempotencyKey: `automation-event:${organizationId}:${appointmentId}:${patch.updatedAt}:${args.date || args.startTime || args.endTime ? "rescheduled" : "updated"}`,
+      payload,
+    });
+
     return appointmentId;
   },
 });
@@ -742,138 +989,83 @@ export const updateStatus = mutation({
       );
     }
 
-    const patch: Record<string, unknown> = {
-      status: args.status,
-      updatedAt: Date.now(),
-    };
-
-    if (args.status === "cancelled") {
-      patch.cancelledAt = Date.now();
-      patch.cancelledBy = user._id;
-    }
-
-    await ctx.db.patch(args.appointmentId, patch);
-
-    // Send appointment.cancelled email + SMS if status changed to cancelled
-    if (args.status === "cancelled") {
-      const patient = await ctx.db.get(appt.patientId);
-      const treatment = await ctx.db.get(appt.treatmentId);
-      if (patient?.email) {
-        const employee = await ctx.db.get(appt.employeeId);
-        const patientName = patient
-          ? `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`
-          : "Patient";
-        const treatmentName = treatment?.name ?? "Treatment";
-        const employeeName = employee?.name ?? "Specjalista";
-        await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
-          organizationId: args.organizationId,
-          eventType: "appointment.cancelled",
-          recipientEmail: patient.email,
-          recipientName: patientName,
-          payload: JSON.stringify({
-            patientName,
-            appointmentDate: appt.date,
-            appointmentTime: appt.startTime,
-            treatmentName,
-            employeeName,
-          }),
-          triggeredBy: user._id,
-        });
-      }
-      // Send cancellation SMS if patient has phone
-      if (patient?.phone) {
-        const smsMessage = `Twoja wizyta dnia ${appt.date} o ${appt.startTime} została odwołana.`;
-        await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
-          organizationId: args.organizationId,
-          phone: patient.phone,
-          message: smsMessage,
-        });
-      }
-    }
-
-    // Sync to scheduledActivity
-    if (appt.scheduledActivityId) {
-      const activityPatch: Record<string, unknown> = { updatedAt: Date.now() };
-      if (
-        args.status === "completed" ||
-        args.status === "cancelled" ||
-        args.status === "no_show"
-      ) {
-        activityPatch.isCompleted = true;
-        activityPatch.completedAt = Date.now();
-      }
-      await ctx.db.patch(appt.scheduledActivityId, activityPatch);
-    }
-
-    // Cancel pending reminders when appointment is terminal
-    if (
-      args.status === "cancelled" ||
-      args.status === "completed" ||
-      args.status === "no_show"
-    ) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.gabinet.appointmentReminders.cancelRemindersInternal,
-        { appointmentId: args.appointmentId },
-      );
-    }
-
-    // On completion: award loyalty points + deduct package usage
-    if (args.status === "completed") {
-      await handleAppointmentCompletion(ctx, {
-        organizationId: args.organizationId,
-        appointmentId: args.appointmentId,
-        patientId: appt.patientId,
-        treatmentId: appt.treatmentId,
-        packageUsageId: appt.packageUsageId as
-          | Id<"gabinetPackageUsage">
-          | undefined,
-        userId: user._id,
-      });
-    }
-
-    await logActivity(ctx, {
+    await applyAppointmentStatusChange(ctx, {
+      appointment: appt,
       organizationId: args.organizationId,
-      entityType: "gabinetAppointment",
-      entityId: args.appointmentId,
-      action: "status_changed",
-      description: `Status changed from ${appt.status} to ${args.status}`,
-      performedBy: user._id,
-    });
-
-    await logAudit(ctx, {
-      organizationId: args.organizationId,
-      userId: user._id,
-      action: "status_changed",
-      entityType: "gabinetAppointment",
-      entityId: args.appointmentId,
-      details: JSON.stringify({
+      nextStatus: args.status,
+      actorUserId: user._id,
+      auditAction: "status_changed",
+      auditDetails: JSON.stringify({
         oldStatus: appt.status,
         newStatus: args.status,
       }),
+      activityDescription: `Status changed from ${appt.status} to ${args.status}`,
+      notificationTitle: "Appointment status changed",
+      notificationMessage: `Appointment status changed to "${args.status}"`,
     });
 
-    // Notify appointment creator and employee about status change
-    if (appt.createdBy !== user._id) {
-      await createNotificationDirect(ctx, {
-        organizationId: args.organizationId,
-        userId: appt.createdBy,
-        type: "appointment_status_changed",
-        title: "Appointment status changed",
-        message: `Appointment status changed to "${args.status}"`,
-      });
-    }
-    if (appt.employeeId !== user._id && appt.employeeId !== appt.createdBy) {
-      await createNotificationDirect(ctx, {
-        organizationId: args.organizationId,
-        userId: appt.employeeId,
-        type: "appointment_status_changed",
-        title: "Appointment status changed",
-        message: `Appointment status changed to "${args.status}"`,
-      });
+    return args.appointmentId;
+  },
+});
+
+export const applySmsReplyTransition = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    intent: v.union(v.literal("confirm"), v.literal("cancel")),
+    smsEventId: v.id("appointmentSmsEvents"),
+  },
+  handler: async (ctx, args) => {
+    const appointment = await ctx.db.get(args.appointmentId);
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      return {
+        processingStatus: "ignored" as const,
+        reason: "Appointment not found",
+      };
     }
 
-    return args.appointmentId;
+    const targetStatus = getSmsTargetStatus(args.intent);
+    const allowed = VALID_TRANSITIONS[appointment.status];
+    if (!allowed?.includes(targetStatus)) {
+      return {
+        processingStatus: "ignored" as const,
+        reason: `Cannot transition from ${appointment.status} to ${targetStatus}`,
+      };
+    }
+
+    await applyAppointmentStatusChange(ctx, {
+      appointment,
+      organizationId: args.organizationId,
+      nextStatus: targetStatus,
+      actorUserId: appointment.employeeId,
+      auditAction: "status_changed_via_sms",
+      auditDetails: JSON.stringify({
+        oldStatus: appointment.status,
+        newStatus: targetStatus,
+        intent: args.intent,
+        source: "sms_reply",
+        smsEventId: args.smsEventId,
+      }),
+      activityDescription:
+        args.intent === "confirm"
+          ? "Appointment confirmed via SMS reply"
+          : "Appointment cancelled via SMS reply",
+      notificationTitle:
+        args.intent === "confirm"
+          ? "Appointment confirmed via SMS"
+          : "Appointment cancelled via SMS",
+      notificationMessage:
+        args.intent === "confirm"
+          ? 'Appointment status changed to "confirmed" from patient SMS reply'
+          : 'Appointment status changed to "cancelled" from patient SMS reply',
+      cancellationReason:
+        args.intent === "cancel" ? "Cancelled by patient SMS reply" : undefined,
+    });
+
+    return {
+      processingStatus: "processed" as const,
+      reason: undefined,
+    };
   },
 });
 
@@ -1163,6 +1355,7 @@ export const getFullDetail = query({
       loyaltyBalance,
       loyaltyTransactions,
       allPatientPayments,
+      workflowHistory,
     ] = await Promise.all([
       // Patient
       ctx.db.get(appointment.patientId),
@@ -1243,6 +1436,12 @@ export const getFullDetail = query({
         )
         .order("desc")
         .take(50),
+      // Appointment workflow history
+      ctx.db
+        .query("appointmentWorkflowHistory")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+        .order("desc")
+        .collect(),
     ]);
 
     // Get treatment details for history appointments
@@ -1273,6 +1472,7 @@ export const getFullDetail = query({
       loyaltyTier: loyaltyBalance?.tier ?? null,
       loyaltyTransactions,
       allPatientPayments,
+      workflowHistory,
     };
   },
 });

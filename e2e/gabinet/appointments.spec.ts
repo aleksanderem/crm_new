@@ -4,19 +4,183 @@ import {
   navigateTo,
   assertNoErrorBoundary,
   getBodyText,
+  testId,
 } from "../helpers/common";
 
 test.describe("Gabinet — Appointments", () => {
   test.setTimeout(120_000);
 
-  test.beforeEach(async ({ page }) => {
+  async function navigateToAuthenticatedRoute(
+    page: import("@playwright/test").Page,
+    path: string,
+  ) {
+    await navigateTo(page, path);
+    if (page.url().includes("/login")) {
+      await loginAndGoToDashboard(page);
+      await navigateTo(page, path);
+    }
+  }
+
+  async function openAutomationsPage(page: import("@playwright/test").Page) {
     await loginAndGoToDashboard(page);
+
+    const settingsLink = page.locator('a[href="/dashboard/settings"]').first();
+    await expect(settingsLink).toBeVisible({ timeout: 5000 });
+    await settingsLink.click();
+    await waitForApp(page, 12000);
+
+    const automationsLink = page
+      .locator('a[href="/dashboard/settings/automations"]')
+      .first();
+    await expect(automationsLink).toBeVisible({ timeout: 5000 });
+    await automationsLink.click();
+    await waitForApp(page, 12000);
+
+    await expect(page.getByTestId("automation-create-rule-button")).toBeVisible({
+      timeout: 10000,
+    });
+  }
+
+  async function getAutomationRuleCard(
+    page: import("@playwright/test").Page,
+    ruleName: string,
+  ) {
+    const ruleCard = page
+      .locator('[data-testid^="automation-rule-"]')
+      .filter({ hasText: ruleName })
+      .first();
+    await expect(ruleCard).toBeVisible({ timeout: 10000 });
+    return ruleCard;
+  }
+
+  async function createAutomationRule(
+    page: import("@playwright/test").Page,
+    name: string,
+  ) {
+    await openAutomationsPage(page);
+    await page.getByTestId("automation-create-rule-button").click();
+
+    const dialog = page.locator('[role="dialog"]').last();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    await dialog.getByTestId("automation-name-input").fill(name);
+    const description = dialog.getByTestId("automation-description-input");
+    if (await description.isVisible().catch(() => false)) {
+      await description.fill("Playwright automation verification rule");
+    }
+    await dialog.getByTestId("automation-sms-message-input").fill(
+      "{{patientName}}, test automation {{date}} {{startTime}}",
+    );
+    await dialog.getByTestId("automation-save-button").click();
+    await waitForApp(page);
+
+    await getAutomationRuleCard(page, name);
+  }
+
+  async function editAutomationRule(
+    page: import("@playwright/test").Page,
+    currentName: string,
+    nextName: string,
+  ) {
+    const ruleCard = await getAutomationRuleCard(page, currentName);
+    await ruleCard.getByRole("button", { name: /edit|edytuj/i }).click();
+
+    const dialog = page.locator('[role="dialog"]').last();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog.getByTestId("automation-name-input").fill(nextName);
+    await dialog.getByTestId("automation-save-button").click();
+    await waitForApp(page);
+
+    await getAutomationRuleCard(page, nextName);
+  }
+
+  async function toggleAutomationRule(
+    page: import("@playwright/test").Page,
+    ruleName: string,
+  ) {
+    const ruleCard = await getAutomationRuleCard(page, ruleName);
+    const switchRoot = ruleCard.getByRole("switch").first();
+    const initialState = await switchRoot.getAttribute("aria-checked");
+
+    await switchRoot.click();
+    await waitForApp(page);
+    await expect(switchRoot).toHaveAttribute(
+      "aria-checked",
+      initialState === "true" ? "false" : "true",
+    );
+
+    await switchRoot.click();
+    await waitForApp(page);
+    await expect(switchRoot).toHaveAttribute("aria-checked", initialState ?? "true");
+  }
+
+  async function selectFirstOption(
+    page: import("@playwright/test").Page,
+    triggerTestId: string,
+  ) {
+    const dialog = page.locator('[role="dialog"]').last();
+    await dialog.getByTestId(triggerTestId).click();
+    const option = page.locator('[role="option"]').filter({ hasText: /\S/ }).first();
+    await expect(option).toBeVisible({ timeout: 5000 });
+    await option.click();
+    await page.waitForTimeout(300);
+  }
+
+  async function createAppointmentFromCalendar(
+    page: import("@playwright/test").Page,
+  ) {
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
+    await page.getByTestId("calendar-create-appointment-button").click();
+
+    const dialog = page.locator('[role="dialog"]').last();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    await selectFirstOption(page, "appointment-patient-trigger");
+    await selectFirstOption(page, "appointment-treatment-trigger");
+    await selectFirstOption(page, "appointment-employee-trigger");
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    await dialog
+      .getByTestId("appointment-date-input")
+      .fill(tomorrow.toISOString().split("T")[0]);
+    await dialog.getByTestId("appointment-start-time-input").fill("15:00");
+    await dialog.getByTestId("appointment-end-time-input").fill("15:30");
+
+    await dialog.getByTestId("appointment-submit-button").click();
+    await waitForApp(page, 12000);
+    await expect(dialog).toBeHidden({ timeout: 10000 });
+    await assertNoErrorBoundary(page);
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies();
+    await loginAndGoToDashboard(page);
+  });
+
+  test("automation rule lifecycle triggers visible run", async ({ page }) => {
+    const initialRuleName = testId("automation-rule");
+    const updatedRuleName = `${initialRuleName}-updated`;
+
+    await createAutomationRule(page, initialRuleName);
+    await editAutomationRule(page, initialRuleName, updatedRuleName);
+    await toggleAutomationRule(page, updatedRuleName);
+
+    await createAppointmentFromCalendar(page);
+
+    await openAutomationsPage(page);
+    await getAutomationRuleCard(page, updatedRuleName);
+    await expect(page.locator('[data-testid^="automation-run-"]').first()).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.locator("body")).toContainText(/gabinet\.appointment\.created/i);
+    await assertNoErrorBoundary(page);
   });
 
   // ─── 12.1 Appointment Creation ─────────────────────────────
 
   test("calendar page loads", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await assertNoErrorBoundary(page);
 
     const bodyText = await getBodyText(page);
@@ -24,7 +188,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("create button opens appointment dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -52,7 +216,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("patient selector shows patients in dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -90,7 +254,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("treatment selector shows categories in dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -128,7 +292,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("employee selector shows employees in dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -166,7 +330,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("date and time inputs are present in dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -200,7 +364,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.2 Recurring Appointments ──────────────────────────
 
   test("recurring toggle shows frequency options", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -247,12 +411,10 @@ test.describe("Gabinet — Appointments", () => {
 
   // ─── 12.4 Status Transitions ──────────────────────────────
 
-  test("appointment detail dialog has status controls", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+  test("appointment detail dialog has status controls and sms summary", async ({ page }) => {
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
-    // Try to find and click an existing appointment in the calendar
-    // Calendar events are usually styled elements with appointment data
     const appointmentEl = page
       .locator(
         '[data-appointment-id], [class*="appointment"], [class*="event"]'
@@ -266,14 +428,23 @@ test.describe("Gabinet — Appointments", () => {
       const dialog = page.locator('[role="dialog"]');
       if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
         const dialogText = await dialog.innerText();
-        // Should show status-related info
         const hasStatus =
           dialogText.includes("Status") ||
           dialogText.includes("scheduled") ||
           dialogText.includes("Zaplanowana") ||
           dialogText.includes("Potwierdzona") ||
-          dialogText.includes("confirmed");
+          dialogText.includes("confirmed") ||
+          dialogText.includes("Oczekuje na potwierdzenie") ||
+          dialogText.includes("Pending Confirmation");
+        const hasSmsSummary =
+          dialogText.includes("Potwierdzenie SMS") ||
+          dialogText.includes("SMS confirmation") ||
+          dialogText.includes("Ostatnia wiadomość wychodząca") ||
+          dialogText.includes("Last outbound") ||
+          dialogText.includes("Ostatnia odpowiedź pacjenta") ||
+          dialogText.includes("Last inbound");
         expect(hasStatus).toBe(true);
+        expect(hasSmsSummary).toBe(true);
 
         await page.keyboard.press("Escape");
       }
@@ -281,7 +452,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("cancel appointment shows reason dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     const appointmentEl = page
@@ -315,7 +486,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 13.3 Filters continued ──────────────────────────────
 
   test("filtered appointments display per employee", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     // Find employee filter
     const filterTrigger = page
@@ -344,7 +515,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 13.3 & 13.4 — Appointment Display ────────────────────
 
   test("appointment click opens detail dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     // Look for any clickable appointment element in the calendar grid
@@ -373,7 +544,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("edit from detail dialog works", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     const appointmentEl = page
@@ -407,7 +578,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.1 Appointment Creation (continued) ─────────────────
 
   test("submit appointment form creates appointment", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -498,7 +669,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("created appointment appears in calendar view", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     // After creating an appointment (previous test), verify calendar shows events
@@ -519,7 +690,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.1 continued — Available slots ───────────────────────
 
   test("available slots load from backend in appointment dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -583,7 +754,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.2 Recurring Appointments (continued) ────────────────
 
   test("recurring frequency selector works", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -664,7 +835,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.3 Conflict Detection ────────────────────────────────
 
   test("overlapping appointment shows warning", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -732,7 +903,7 @@ test.describe("Gabinet — Appointments", () => {
   test("scheduled appointment shows confirm transition button", async ({
     page,
   }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     const appointmentEl = page
@@ -779,7 +950,7 @@ test.describe("Gabinet — Appointments", () => {
   test("appointment detail shows patient and treatment info", async ({
     page,
   }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     const appointmentEl = page
@@ -822,7 +993,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("cancel appointment opens cancel reason dialog", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     const appointmentEl = page
@@ -880,7 +1051,7 @@ test.describe("Gabinet — Appointments", () => {
   test("completed and cancelled appointments have no status transitions", async ({
     page,
   }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     // This is a structural test — verify the page loads without errors
@@ -894,7 +1065,7 @@ test.describe("Gabinet — Appointments", () => {
   // ─── 12.2 Recurring Appointments — Series Creation ────────────
 
   test("recurring appointment submit creates series", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
 
     const createBtn = page
       .locator(
@@ -1008,7 +1179,7 @@ test.describe("Gabinet — Appointments", () => {
   });
 
   test("recurring series instances appear in calendar", async ({ page }) => {
-    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
     await page.waitForTimeout(2000);
 
     // After creating recurring appointments, navigate through weeks

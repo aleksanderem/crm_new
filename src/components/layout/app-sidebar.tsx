@@ -498,16 +498,16 @@ interface SettingsNavItem {
 }
 
 const settingsNav: SettingsNavItem[] = [
-  { labelKey: "settings.general", to: "/dashboard/settings" },
-  { labelKey: "settings.profile", to: "/dashboard/settings/profile" },
-  { labelKey: "settings.billing", to: "/dashboard/settings/billing" },
-  { labelKey: "settings.pipelines", to: "/dashboard/settings/pipelines" },
+  { labelKey: "settingsNav.general", to: "/dashboard/settings" },
+  { labelKey: "settingsNav.profile", to: "/dashboard/settings/profile" },
+  { labelKey: "settingsNav.billing", to: "/dashboard/settings/billing" },
+  { labelKey: "settingsNav.pipelines", to: "/dashboard/settings/pipelines" },
   {
-    labelKey: "settings.customFields",
+    labelKey: "settingsNav.customFields",
     to: "/dashboard/settings/custom-fields",
   },
   {
-    labelKey: "settings.activityTypes",
+    labelKey: "settingsNav.activityTypes",
     to: "/dashboard/settings/activity-types",
   },
   {
@@ -515,27 +515,37 @@ const settingsNav: SettingsNavItem[] = [
     to: "/dashboard/settings/lost-reasons",
   },
   { labelKey: "settingsNav.sources", to: "/dashboard/settings/sources" },
-  { labelKey: "settings.team", to: "/dashboard/settings/team" },
-  { labelKey: "settings.permissions", to: "/dashboard/settings/permissions" },
-  { labelKey: "settings.auditLog", to: "/dashboard/settings/audit-log" },
-  { labelKey: "settings.email", to: "/dashboard/settings/email" },
-  { labelKey: "settings.sms", to: "/dashboard/settings/sms" },
+  { labelKey: "settingsNav.team", to: "/dashboard/settings/team" },
+  { labelKey: "settingsNav.permissions", to: "/dashboard/settings/permissions" },
+  { labelKey: "settingsNav.auditLog", to: "/dashboard/settings/audit-log" },
+  { labelKey: "settingsNav.email", to: "/dashboard/settings/email" },
+  { labelKey: "settingsNav.sms", to: "/dashboard/settings/sms" },
   {
-    labelKey: "settings.emailTemplates",
+    labelKey: "settingsNav.automations",
+    to: "/dashboard/settings/automations",
+  },
+  {
+    labelKey: "settingsNav.emailTemplates",
     to: "/dashboard/settings/email-templates",
   },
   {
-    labelKey: "settings.emailEvents",
+    labelKey: "settingsNav.emailEvents",
     to: "/dashboard/settings/email-events",
   },
   {
-    labelKey: "settings.emailSequences",
+    labelKey: "settingsNav.emailSequences",
     to: "/dashboard/settings/email-sequences",
   },
-  { labelKey: "settings.integrations", to: "/dashboard/settings/integrations" },
-  { labelKey: "settings.organization", to: "/dashboard/settings/organization" },
   {
-    labelKey: "settings.documentTemplates",
+    labelKey: "settingsNav.integrations",
+    to: "/dashboard/settings/integrations",
+  },
+  {
+    labelKey: "settingsNav.organization",
+    to: "/dashboard/settings/organization",
+  },
+  {
+    labelKey: "settingsNav.documentTemplates",
     to: "/dashboard/settings/document-templates",
   },
   {

@@ -154,7 +154,7 @@ export function AppointmentDialog({
           <div className="space-y-1.5">
             <Label>{t("gabinet.appointments.patient")}</Label>
             <Select value={patientId} onValueChange={setPatientId}>
-              <SelectTrigger className="h-9"><SelectValue placeholder={t("gabinet.appointments.selectPatient")} /></SelectTrigger>
+              <SelectTrigger className="h-9" data-testid="appointment-patient-trigger"><SelectValue placeholder={t("gabinet.appointments.selectPatient")} /></SelectTrigger>
               <SelectContent>
                 {(patients?.page ?? []).map((p) => (
                   <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
@@ -166,7 +166,7 @@ export function AppointmentDialog({
           <div className="space-y-1.5">
             <Label>{t("gabinet.appointments.treatment")}</Label>
             <Select value={treatmentId} onValueChange={handleTreatmentChange}>
-              <SelectTrigger className="h-9"><SelectValue placeholder={t("gabinet.appointments.selectTreatment")} /></SelectTrigger>
+              <SelectTrigger className="h-9" data-testid="appointment-treatment-trigger"><SelectValue placeholder={t("gabinet.appointments.selectTreatment")} /></SelectTrigger>
               <SelectContent>
                 {(treatments ?? []).map((tr) => (
                   <SelectItem key={tr._id} value={tr._id}>
@@ -180,7 +180,7 @@ export function AppointmentDialog({
           <div className="space-y-1.5">
             <Label>{t("gabinet.appointments.employee")}</Label>
             <Select value={employeeId} onValueChange={setEmployeeId}>
-              <SelectTrigger className="h-9"><SelectValue placeholder={t("gabinet.appointments.selectEmployee")} /></SelectTrigger>
+              <SelectTrigger className="h-9" data-testid="appointment-employee-trigger"><SelectValue placeholder={t("gabinet.appointments.selectEmployee")} /></SelectTrigger>
               <SelectContent>
                 {(employees ?? []).map((emp) => (
                   <SelectItem key={emp._id} value={emp.userId}>
@@ -195,15 +195,30 @@ export function AppointmentDialog({
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>{t("gabinet.appointments.date")}</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                data-testid="appointment-date-input"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>{t("gabinet.appointments.startTime")}</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                data-testid="appointment-start-time-input"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>{t("gabinet.appointments.endTime")}</Label>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                data-testid="appointment-end-time-input"
+              />
             </div>
           </div>
 
@@ -286,7 +301,11 @@ export function AppointmentDialog({
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !patientId || !treatmentId}>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || !patientId || !treatmentId}
+              data-testid="appointment-submit-button"
+            >
               {submitting ? t("common.saving") : t("gabinet.appointments.createAppointment")}
             </Button>
           </div>

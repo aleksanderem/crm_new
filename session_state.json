@@ -1,18 +1,18 @@
 {
-  "session_id": "S0060",
-  "started_at": "2026-03-07T21:50:00Z",
-  "last_updated": "2026-03-07T22:02:00Z",
+  "session_id": "S0061",
+  "started_at": "2026-03-11T15:50:09Z",
+  "last_updated": "2026-03-12T20:23:00Z",
   "status": "active",
-  "focus": "Document signing system — Phase A+B+C implementation",
+  "focus": "Automation settings CRUD and end-to-end appointment-trigger verification",
   "tasks_snapshot": {
-    "total": 19,
+    "total": 10,
     "not_started": 0,
     "in_progress": 1,
-    "passing": 15,
+    "passing": 9,
     "failing": 0,
-    "blocked": 3
+    "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": ["AUT-01", "AUT-02", "AUT-03"],
   "blockers": [],
-  "notes": "Implemented document signing system: schema (done S0059), backend signatureRequests + sms (Phase A), send-for-signing dialog (Phase B), public signing page /sign/$token (Phase C). All deployed to Convex."
+  "notes": "SMS-08 applies low-risk i18n cleanup on the shared automations/settings surfaces and appointment history: fixed object-valued sidebar keys via settingsNav leaves, localized automations status/action/date copy, localized activity timeline relative time, and localized appointment history metadata/descriptions. Frontend typecheck passes. Browser checks confirm the settings sidebar no longer shows fallback/object errors and the automations page no longer shows raw English status/action labels; appointment history tab no longer shows the targeted English workflow/automation labels on the verified appointment route. Remaining unrelated nav gaps still visible in Gabinet workspace snapshot (e.g. nav.gabinet.* labels), outside this task scope."
 }

@@ -71,6 +71,7 @@
     "activities": "Aktywności",
     "calendar": "Kalendarz",
     "inbox": "Skrzynka",
+    "emailTemplates": "Szablony e-mail",
     "documents": "Dokumenty",
     "contacts": "Kontakty",
     "companies": "Firmy",
@@ -527,7 +528,71 @@
     "email": "Email",
     "integrations": "Integracje",
     "sms": "SMS",
-    "emailSequences": "Sekwencje email"
+    "emailSequences": "Sekwencje email",
+    "automations": "Automatyzacje",
+    "automationsDescription": "Twórz i zarządzaj regułami automatyzacji Gabinetu, a wyniki sprawdzaj w ostatnich uruchomieniach.",
+    "automationRules": "Reguły automatyzacji",
+    "automationRuns": "Ostatnie uruchomienia",
+    "automationCatalog": "Katalog wyzwalaczy",
+    "automationActions": "Obsługiwane akcje",
+    "automationNoRules": "Nie skonfigurowano jeszcze żadnych reguł automatyzacji.",
+    "automationNoRuns": "Nie zarejestrowano jeszcze żadnych uruchomień automatyzacji.",
+    "automationCreateRule": "Nowa reguła",
+    "automationEditRule": "Edytuj regułę",
+    "automationNamePlaceholder": "np. Powiadom specjalistę o nowej wizycie",
+    "automationDescriptionPlaceholder": "Opcjonalna notatka wewnętrzna dla zespołu",
+    "automationEventLabel": "Zdarzenie wyzwalające",
+    "automationActionLabel": "Preset akcji",
+    "automationEnabled": "Reguła włączona",
+    "automationEnabledHint": "Wyłączone reguły pozostają widoczne, ale nie przetworzą kolejnych zdarzeń.",
+    "automationToggle": "Włączona",
+    "automationSmsRecipientLabel": "Ścieżka odbiorcy SMS",
+    "automationSmsMessageLabel": "Szablon wiadomości SMS",
+    "automationSmsMessagePlaceholder": "Użyj pól takich jak {{patientName}}, {{date}}, {{startTime}} i {{treatmentName}}.",
+    "automationNotificationRecipientLabel": "Ścieżka odbiorcy powiadomienia",
+    "automationNotificationTitleLabel": "Szablon tytułu powiadomienia",
+    "automationNotificationTitlePlaceholder": "np. Nowa wizyta: {{patientName}}",
+    "automationNotificationMessageLabel": "Szablon treści powiadomienia",
+    "automationNotificationMessagePlaceholder": "np. {{patientName}} ma wizytę {{date}} o {{startTime}}.",
+    "automationNotificationLinkLabel": "Opcjonalny szablon linku",
+    "automationNotificationLinkPlaceholder": "/dashboard/gabinet/appointments/{{appointmentId}}",
+    "automationRuleCreated": "Utworzono regułę automatyzacji.",
+    "automationRuleUpdated": "Zaktualizowano regułę automatyzacji.",
+    "automationRuleDeleted": "Usunięto regułę automatyzacji.",
+    "automationRuleEnabled": "Włączono regułę automatyzacji.",
+    "automationRuleDisabled": "Wyłączono regułę automatyzacji.",
+    "automationSaveError": "Nie udało się zapisać reguły automatyzacji.",
+    "automationToggleError": "Nie udało się zmienić stanu reguły automatyzacji.",
+    "automationDeleteError": "Nie udało się usunąć reguły automatyzacji.",
+    "automationDeleteConfirmTitle": "Usunąć regułę automatyzacji?",
+    "automationDeleteConfirmDescription": "Usunąć trwale \"{{name}}\"? To usunie tylko regułę, bez wcześniejszych uruchomień.",
+    "automationLastRunLabel": "Ostatnie uruchomienie: {{status}}",
+    "automationActionCount_one": "{{count}} akcja",
+    "automationActionCount_few": "{{count}} akcje",
+    "automationActionCount_many": "{{count}} akcji",
+    "automationActionCount_other": "{{count}} akcji",
+    "automationRuleStates": {
+      "enabled": "Włączona",
+      "disabled": "Wyłączona"
+    },
+    "automationRunStatuses": {
+      "processed": "Przetworzono",
+      "failed": "Błąd",
+      "skipped": "Pominięto",
+      "pending": "Oczekuje"
+    },
+    "automationPresets": {
+      "send_sms": "Wyślij SMS do pacjenta",
+      "create_notification": "Powiadom przypisanego pracownika"
+    },
+    "automationEventTypes": {
+      "gabinet": {
+        "appointment": {
+          "created": "Utworzono wizytę",
+          "status_changed": "Zmieniono status wizyty"
+        }
+      }
+    }
   },
   "leadForm": {
     "title": "Tytuł",
@@ -843,10 +908,43 @@
     "all": "Cały okres"
   },
   "settingsNav": {
+    "general": "Ogólne",
+    "profile": "Profil",
+    "billing": "Rozliczenia",
+    "customFields": "Pola niestandardowe",
+    "activityTypes": "Typy aktywności",
     "lostReasons": "Powody przegrania",
     "sources": "Źródła",
-    "email": "E-mail",
-    "organization": "Organizacja"
+    "team": "Zespół",
+    "permissions": "Uprawnienia",
+    "auditLog": "Dziennik audytu",
+    "email": "Email",
+    "sms": "SMS",
+    "automations": "Automatyzacje",
+    "emailTemplates": "Szablony e-mail",
+    "emailEvents": "Zdarzenia email",
+    "emailSequences": "Sekwencje email",
+    "integrations": "Integracje",
+    "organization": "Organizacja",
+    "documentTemplates": "Szablony dokumentów",
+    "pipelines": "Pipeline"
+  },
+  "activityTimeline": {
+    "relative": {
+      "justNow": "przed chwilą",
+      "minutesAgo_one": "{{count}} min temu",
+      "minutesAgo_few": "{{count}} min temu",
+      "minutesAgo_many": "{{count}} min temu",
+      "minutesAgo_other": "{{count}} min temu",
+      "hoursAgo_one": "{{count}} godz. temu",
+      "hoursAgo_few": "{{count}} godz. temu",
+      "hoursAgo_many": "{{count}} godz. temu",
+      "hoursAgo_other": "{{count}} godz. temu",
+      "daysAgo_one": "{{count}} d temu",
+      "daysAgo_few": "{{count}} d temu",
+      "daysAgo_many": "{{count}} d temu",
+      "daysAgo_other": "{{count}} d temu"
+    }
   },
   "lostReasons": {
     "title": "Powody przegrania",
@@ -1408,6 +1506,7 @@
       "availableSlots": "Dostępne terminy",
       "noAvailableSlots": "Brak dostępnych terminów dla tego pracownika w tym dniu.",
       "statuses": {
+        "pending_confirmation": "Oczekuje na potwierdzenie",
         "scheduled": "Zaplanowana",
         "confirmed": "Potwierdzona",
         "in_progress": "W trakcie",
@@ -1450,13 +1549,62 @@
       "time": "Godzina",
       "changeStatus": "Zmień status",
       "statusChanged": "Status wizyty zmieniony",
+      "history": {
+        "unifiedDescription": "Ujednolicona historia operacyjna tej wizyty, w tym wiadomości i zdarzenia workflow.",
+        "metadata": {
+          "subject": "Temat: {{value}}",
+          "status": "Status: {{value}}",
+          "module": "Moduł: {{value}}",
+          "correlation": "Korelacja: {{value}}",
+          "intent": "Intencja: {{value}}",
+          "reason": "Powód: {{value}}",
+          "recipient": "Odbiorca: {{value}}"
+        },
+        "descriptions": {
+          "automationRun": "Uruchomienie automatyzacji: {{eventType}}",
+          "workflowSmsReceived": "Odebrano SMS w workflow wizyty",
+          "workflowSmsSent": "Wysłano SMS w workflow wizyty",
+          "workflowEmail": "E-mail workflow wizyty",
+          "workflowSms": "SMS workflow wizyty"
+        }
+      },
       "cancelAppointment": "Anuluj wizytę",
       "cancelConfirm": "Czy na pewno chcesz anulować tę wizytę?",
       "cancelReason": "Powód anulowania",
       "cancelReasonPlaceholder": "Opcjonalnie podaj powód...",
       "confirmCancel": "Anuluj wizytę",
       "cancelled": "Wizyta anulowana",
-      "recurringInfo": "Ta wizyta jest częścią serii cyklicznej"
+      "recurringInfo": "Ta wizyta jest częścią serii cyklicznej",
+      "sms": {
+        "title": "Potwierdzenie SMS",
+        "description": "Podgląd ostatniej prośby o potwierdzenie i odpowiedzi pacjenta.",
+        "lastOutbound": "Ostatnia wiadomość wychodząca",
+        "lastInbound": "Ostatnia odpowiedź pacjenta",
+        "parsedIntent": "Rozpoznana intencja",
+        "processingStatus": "Status przetwarzania",
+        "processingReason": "Powód",
+        "noOutbound": "Nie wysłano jeszcze prośby o potwierdzenie.",
+        "noInbound": "Brak odpowiedzi pacjenta.",
+        "summaryAwaitingRequest": "Oczekuje na wysyłkę",
+        "summaryQueued": "W kolejce do wysyłki",
+        "summarySent": "Wysłano prośbę",
+        "summaryConfirmed": "Potwierdzono przez SMS",
+        "summaryCancelled": "Odwołano przez SMS",
+        "summaryIgnored": "Odpowiedź bez zmiany statusu",
+        "summaryFailed": "Błąd przetwarzania SMS",
+        "summaryNoHistory": "Brak historii SMS",
+        "intents": {
+          "confirm": "Potwierdzenie",
+          "cancel": "Odwołanie",
+          "unknown": "Nieznana"
+        },
+        "processingStatuses": {
+          "pending": "Oczekuje",
+          "processed": "Przetworzono",
+          "ignored": "Zignorowano",
+          "failed": "Błąd"
+        }
+      }
     },
     "calendar": {
       "today": "Dziś",

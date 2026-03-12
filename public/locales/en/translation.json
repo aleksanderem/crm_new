@@ -71,6 +71,7 @@
     "activities": "Activities",
     "calendar": "Calendar",
     "inbox": "Inbox",
+    "emailTemplates": "Email Templates",
     "documents": "Documents",
     "contacts": "Contacts",
     "companies": "Companies",
@@ -527,7 +528,69 @@
     "emailSequences": "Email Sequences",
     "email": "Email",
     "integrations": "Integrations",
-    "sms": "SMS"
+    "sms": "SMS",
+    "automations": "Automations",
+    "automationsDescription": "Create and manage Gabinet automation rules, then verify results in recent runs.",
+    "automationRules": "Automation Rules",
+    "automationRuns": "Recent Runs",
+    "automationCatalog": "Trigger Catalog",
+    "automationActions": "Supported Actions",
+    "automationNoRules": "No automation rules configured yet.",
+    "automationNoRuns": "No automation runs recorded yet.",
+    "automationCreateRule": "New rule",
+    "automationEditRule": "Edit rule",
+    "automationNamePlaceholder": "e.g. Notify employee about new appointment",
+    "automationDescriptionPlaceholder": "Optional internal note for your team",
+    "automationEventLabel": "Trigger event",
+    "automationActionLabel": "Action preset",
+    "automationEnabled": "Rule enabled",
+    "automationEnabledHint": "Disabled rules stay visible but will not process future events.",
+    "automationToggle": "Enabled",
+    "automationSmsRecipientLabel": "SMS recipient path",
+    "automationSmsMessageLabel": "SMS message template",
+    "automationSmsMessagePlaceholder": "Use fields like {{patientName}}, {{date}}, {{startTime}} and {{treatmentName}}.",
+    "automationNotificationRecipientLabel": "Notification recipient path",
+    "automationNotificationTitleLabel": "Notification title template",
+    "automationNotificationTitlePlaceholder": "e.g. New appointment: {{patientName}}",
+    "automationNotificationMessageLabel": "Notification message template",
+    "automationNotificationMessagePlaceholder": "e.g. {{patientName}} has an appointment on {{date}} at {{startTime}}.",
+    "automationNotificationLinkLabel": "Optional link template",
+    "automationNotificationLinkPlaceholder": "/dashboard/gabinet/appointments/{{appointmentId}}",
+    "automationRuleCreated": "Automation rule created.",
+    "automationRuleUpdated": "Automation rule updated.",
+    "automationRuleDeleted": "Automation rule deleted.",
+    "automationRuleEnabled": "Automation rule enabled.",
+    "automationRuleDisabled": "Automation rule disabled.",
+    "automationSaveError": "Could not save automation rule.",
+    "automationToggleError": "Could not update automation rule state.",
+    "automationDeleteError": "Could not delete automation rule.",
+    "automationDeleteConfirmTitle": "Delete automation rule?",
+    "automationDeleteConfirmDescription": "Delete \"{{name}}\" permanently? This only removes the rule, not past runs.",
+    "automationLastRunLabel": "Last run: {{status}}",
+    "automationActionCount_one": "{{count}} action",
+    "automationActionCount_other": "{{count}} actions",
+    "automationRuleStates": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "automationRunStatuses": {
+      "processed": "Processed",
+      "failed": "Failed",
+      "skipped": "Skipped",
+      "pending": "Pending"
+    },
+    "automationPresets": {
+      "send_sms": "Send SMS to patient",
+      "create_notification": "Notify assigned employee"
+    },
+    "automationEventTypes": {
+      "gabinet": {
+        "appointment": {
+          "created": "Appointment created",
+          "status_changed": "Appointment status changed"
+        }
+      }
+    }
   },
   "leadForm": {
     "title": "Title",
@@ -843,10 +906,37 @@
     "all": "All time"
   },
   "settingsNav": {
+    "general": "General",
+    "profile": "Profile",
+    "billing": "Billing",
+    "customFields": "Custom Fields",
+    "activityTypes": "Activity Types",
     "lostReasons": "Lost Reasons",
     "sources": "Sources",
+    "team": "Team",
+    "permissions": "Permissions",
+    "auditLog": "Audit Log",
     "email": "Email",
-    "organization": "Organization"
+    "sms": "SMS",
+    "automations": "Automations",
+    "emailTemplates": "Email Templates",
+    "emailEvents": "Email Events",
+    "emailSequences": "Email Sequences",
+    "integrations": "Integrations",
+    "organization": "Organization",
+    "documentTemplates": "Document Templates",
+    "pipelines": "Pipelines"
+  },
+  "activityTimeline": {
+    "relative": {
+      "justNow": "just now",
+      "minutesAgo_one": "{{count}}m ago",
+      "minutesAgo_other": "{{count}}m ago",
+      "hoursAgo_one": "{{count}}h ago",
+      "hoursAgo_other": "{{count}}h ago",
+      "daysAgo_one": "{{count}}d ago",
+      "daysAgo_other": "{{count}}d ago"
+    }
   },
   "lostReasons": {
     "title": "Lost Reasons",
@@ -1407,6 +1497,7 @@
       "availableSlots": "Available slots",
       "noAvailableSlots": "No available slots for this employee on this date.",
       "statuses": {
+        "pending_confirmation": "Pending Confirmation",
         "scheduled": "Scheduled",
         "confirmed": "Confirmed",
         "in_progress": "In Progress",
@@ -1449,13 +1540,62 @@
       "time": "Time",
       "changeStatus": "Change status",
       "statusChanged": "Appointment status changed",
+      "history": {
+        "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
+        "metadata": {
+          "subject": "Subject: {{value}}",
+          "status": "Status: {{value}}",
+          "module": "Module: {{value}}",
+          "correlation": "Correlation: {{value}}",
+          "intent": "Intent: {{value}}",
+          "reason": "Reason: {{value}}",
+          "recipient": "Recipient: {{value}}"
+        },
+        "descriptions": {
+          "automationRun": "Automation run: {{eventType}}",
+          "workflowSmsReceived": "Received SMS in appointment workflow",
+          "workflowSmsSent": "Sent SMS in appointment workflow",
+          "workflowEmail": "Appointment workflow email",
+          "workflowSms": "Appointment workflow SMS"
+        }
+      },
       "cancelAppointment": "Cancel appointment",
       "cancelConfirm": "Are you sure you want to cancel this appointment?",
       "cancelReason": "Cancellation reason",
       "cancelReasonPlaceholder": "Optionally provide a reason...",
       "confirmCancel": "Cancel appointment",
       "cancelled": "Appointment cancelled",
-      "recurringInfo": "This appointment is part of a recurring series"
+      "recurringInfo": "This appointment is part of a recurring series",
+      "sms": {
+        "title": "SMS confirmation",
+        "description": "Shows the latest confirmation request and patient reply.",
+        "lastOutbound": "Latest outbound message",
+        "lastInbound": "Latest patient reply",
+        "parsedIntent": "Parsed intent",
+        "processingStatus": "Processing status",
+        "processingReason": "Reason",
+        "noOutbound": "No confirmation request has been sent yet.",
+        "noInbound": "No patient reply yet.",
+        "summaryAwaitingRequest": "Waiting to send",
+        "summaryQueued": "Queued for delivery",
+        "summarySent": "Request sent",
+        "summaryConfirmed": "Confirmed via SMS",
+        "summaryCancelled": "Cancelled via SMS",
+        "summaryIgnored": "Reply did not change status",
+        "summaryFailed": "SMS processing failed",
+        "summaryNoHistory": "No SMS history",
+        "intents": {
+          "confirm": "Confirm",
+          "cancel": "Cancel",
+          "unknown": "Unknown"
+        },
+        "processingStatuses": {
+          "pending": "Pending",
+          "processed": "Processed",
+          "ignored": "Ignored",
+          "failed": "Failed"
+        }
+      }
     },
     "calendar": {
       "today": "Today",

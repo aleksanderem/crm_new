@@ -33,6 +33,7 @@ import { Route as AppAuthOnboardingLayoutImport } from './routes/_app/_auth/onbo
 import { Route as AppAuthDashboardLayoutImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
+import { Route as AppAuthDashboardLayoutSetupImport } from './routes/_app/_auth/dashboard/_layout.setup'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutCheckoutImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
@@ -64,6 +65,7 @@ import { Route as AppAuthDashboardLayoutSettingsEmailEventsImport } from './rout
 import { Route as AppAuthDashboardLayoutSettingsEmailImport } from './routes/_app/_auth/dashboard/_layout.settings.email'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
+import { Route as AppAuthDashboardLayoutSettingsAutomationsImport } from './routes/_app/_auth/dashboard/_layout.settings.automations'
 import { Route as AppAuthDashboardLayoutSettingsAuditLogImport } from './routes/_app/_auth/dashboard/_layout.settings.audit-log'
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
 import { Route as AppAuthDashboardLayoutLeadsNewImport } from './routes/_app/_auth/dashboard/_layout.leads.new'
@@ -229,6 +231,12 @@ const AppAuthOnboardingLayoutUsernameRoute =
   AppAuthOnboardingLayoutUsernameImport.update({
     path: '/username',
     getParentRoute: () => AppAuthOnboardingLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSetupRoute =
+  AppAuthDashboardLayoutSetupImport.update({
+    path: '/setup',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
 const AppAuthDashboardLayoutSettingsRoute =
@@ -414,6 +422,12 @@ const AppAuthDashboardLayoutSettingsCustomFieldsRoute =
 const AppAuthDashboardLayoutSettingsBillingRoute =
   AppAuthDashboardLayoutSettingsBillingImport.update({
     path: '/billing',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsAutomationsRoute =
+  AppAuthDashboardLayoutSettingsAutomationsImport.update({
+    path: '/automations',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -827,6 +841,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/setup': {
+      id: '/_app/_auth/dashboard/_layout/setup'
+      path: '/setup'
+      fullPath: '/dashboard/setup'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSetupImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/onboarding/_layout/username': {
       id: '/_app/_auth/onboarding/_layout/username'
       path: '/username'
@@ -930,6 +951,13 @@ declare module '@tanstack/react-router' {
       path: '/audit-log'
       fullPath: '/dashboard/settings/audit-log'
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAuditLogImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/automations': {
+      id: '/_app/_auth/dashboard/_layout/settings/automations'
+      path: '/automations'
+      fullPath: '/dashboard/settings/automations'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAutomationsImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
     '/_app/_auth/dashboard/_layout/settings/billing': {
@@ -1286,6 +1314,7 @@ export const routeTree = rootRoute.addChildren({
             AppAuthDashboardLayoutSettingsRoute.addChildren({
               AppAuthDashboardLayoutSettingsActivityTypesRoute,
               AppAuthDashboardLayoutSettingsAuditLogRoute,
+              AppAuthDashboardLayoutSettingsAutomationsRoute,
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
               AppAuthDashboardLayoutSettingsEmailRoute,
@@ -1306,6 +1335,7 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsDocumentTemplatesNewRoute,
               AppAuthDashboardLayoutSettingsDocumentTemplatesIndexRoute,
             }),
+          AppAuthDashboardLayoutSetupRoute,
           AppAuthDashboardLayoutIndexRoute,
           AppAuthDashboardLayoutCompaniesCompanyIdRoute,
           AppAuthDashboardLayoutCompaniesNewRoute,
@@ -1471,6 +1501,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/calendar-preview",
         "/_app/_auth/dashboard/_layout/checkout",
         "/_app/_auth/dashboard/_layout/settings",
+        "/_app/_auth/dashboard/_layout/setup",
         "/_app/_auth/dashboard/_layout/",
         "/_app/_auth/dashboard/_layout/companies/$companyId",
         "/_app/_auth/dashboard/_layout/companies/new",
@@ -1578,6 +1609,7 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/_app/_auth/dashboard/_layout/settings/activity-types",
         "/_app/_auth/dashboard/_layout/settings/audit-log",
+        "/_app/_auth/dashboard/_layout/settings/automations",
         "/_app/_auth/dashboard/_layout/settings/billing",
         "/_app/_auth/dashboard/_layout/settings/custom-fields",
         "/_app/_auth/dashboard/_layout/settings/email",
@@ -1598,6 +1630,10 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/document-templates/new",
         "/_app/_auth/dashboard/_layout/settings/document-templates/"
       ]
+    },
+    "/_app/_auth/dashboard/_layout/setup": {
+      "filePath": "_app/_auth/dashboard/_layout.setup.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/onboarding/_layout/username": {
       "filePath": "_app/_auth/onboarding/_layout.username.tsx",
@@ -1657,6 +1693,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/settings/audit-log": {
       "filePath": "_app/_auth/dashboard/_layout.settings.audit-log.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/automations": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.automations.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/billing": {

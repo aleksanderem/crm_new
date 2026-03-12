@@ -548,6 +548,7 @@ function GabinetCalendarPage() {
             {/* Create button */}
             <Button
               size="sm"
+              data-testid="calendar-create-appointment-button"
               onClick={() => {
                 setCreateDefaultDate(formatDateStr(currentDate));
                 setCreateDefaultTime(undefined);

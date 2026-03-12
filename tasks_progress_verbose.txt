@@ -218,6 +218,17 @@ S0058. Phase H committed 9c81fa0:
 
 === SESSION S0058 COMPLETE === 2026-03-07T11:00:00Z
 All 15 document template tasks PASSING. Full system implemented:
+
+---
+
+S0061. SMS backend slices progress:
+- Added reusable appointment status transition helper in convex/gabinet/appointments.ts and wired internal.gabinet.appointments.applySmsReplyTransition for TAK/NIE processing.
+- Switched reminder SMS flow to queue outbound confirmation events via convex/gabinet/appointmentSms.ts instead of sending generic reminder text directly.
+- Added /sms/inbound webhook in convex/http.ts with provider parsing, Twilio signature verification, idempotency key derivation, and routing into appointmentSms.processIncomingMessage.
+- Removed immediate "appointment created" confirmation SMS from appointment create flow so the pilot uses the confirmation-request path rather than auto-confirming by SMS copy.
+- Normalized appointmentSms internals: getConfigForInbound reuse, internalQuery for getLatestByAppointmentInternal, and explicit typings to satisfy convex/tsconfig.
+- Verification: npx tsc -p convex/tsconfig.json --pretty false passes.
+- Next: implement SMS state/timeline UI in appointment detail surfaces, then add focused backend tests and WORKFLOW.md.
 - Backend: schema, data source registry, templates CRUD, fields CRUD, instances CRUD+rendering (DT-01..05)
 - RBAC: document_templates + document_instances permissions (DT-17)
 - UI Components: template editor, field panel/config, source picker, template picker, document viewer, signature pad (DT-06,07,09,11)
@@ -265,5 +276,171 @@ S0059. Minor observations (not blocking):
 - Settings sidebar nav labels showing i18n keys instead of Polish text (pre-existing i18n issue, not related to document templates)
 - Category on saved template shows "Inny" instead of "Umowa" — likely form state not being captured for category select on initial save
 - DT-12 platform document instance routes (files) not created — components exist but no standalone /dashboard/documents/$instanceId routes
+
+---
+
+=== SESSION S0061 START === 2026-03-11T15:50:09Z
+Focus: Symphony pilot + Gabinet 2-way SMS appointment confirmation
+Continuing from: S0060 (tracking state normalized from stale active session)
+Active tasks: SMS-01, SMS-02, SMS-03, SMS-04, SMS-05, SMS-06
+
+---
+
+S0061. SMS-07 shared activity propagation plan:
+- Add explicit ActivityAction values `sms_sent` and `sms_received` in the shared schema so timeline semantics stay distinct from email.
+- Hook shared `logActivity` writes into the durable outbound and inbound insert points in `convex/gabinet/appointmentSms.ts`.
+- Fan out only through persisted links: appointment, patient, and linked CRM contact via `gabinetPatients.contactId`.
+- Keep lead propagation intentionally out of scope; do not infer CRM lead linkage from generic relationships.
+- Verification target: focused Convex coverage for fan-out and idempotency plus focused browser checks that appointment, patient, and contact surfaces render dedicated SMS history states.
+
+---
+
+S0061. Implementation plan:
+- Add durable appointment SMS event/correlation storage plus outbound send path for confirmation requests.
+- Add inbound SMS webhook processing with idempotency, reply parsing (TAK/NIE), and system-driven appointment transitions.
+- Add staff-facing SMS confirmation visibility in appointment detail UI, focused tests, and repo-local WORKFLOW.md for the Symphony pilot lane.
+
+S0061. Investigation notes:
+- Existing appointment workflow already supports pending_confirmation in backend transitions, but both appointment detail UIs omit that status in badges/transitions.
+- Existing reminder scheduler already has a deterministic appointment timing hook and SMS provider abstraction; pilot can reuse reminder timing without adding new settings scope.
+- Existing SMS config only indexes by organization, so inbound provider routing needs additional config indexes or a direct inbound lookup helper.
+- Existing updateStatus mutation centralizes audit/notification/reminder side effects; inbound reply handling should call appointment domain logic rather than patching appointment state in the webhook layer.
+
+S0061. Current best guess:
+- Keep appointments in scheduled/pending_confirmation-compatible flow, send dedicated confirmation SMS via the existing reminder timing lane, support verified Twilio inbound plus structured fallback handling, and stop Symphony automation at Human Review.
+
+S0061. Next verification step:
+- Implement schema/module changes first, then wire UI summary and focused tests, then run lint/typecheck/focused tests.
+
+S0061. Automation workflow/rules scaffolding:
+- Added WORKFLOW.md in repo root as the Symphony pilot contract with Linear states, concurrency 1, isolated workspaces, proof-of-work requirements, and Human Review stop.
+- Added docs/automation/README.md to define how workflow, rules, and retrospectives fit together.
+- Added rule files for loading precedence, Convex backend work, Gabinet UI work, testing/evidence expectations, and module boundaries.
+- Added backend retrospective documenting what we learned while implementing the SMS confirmation backend: domain-owned transitions, durable correlation, provider-aware inbound lookup, idempotency, and current audit attribution compromise.
+- Intentional operating model: backend lessons are now written down retrospectively; UI-specific rules will be expanded during the SMS confirmation UI slice instead of being guessed up front.
+
+S0061. Documentation IA + atomized rules follow-through:
+- Added top-level documentation spine requested by user: ARCHITECTURE.md plus docs/DESIGN.md, FRONTEND.md, PLANS.md, PRODUCT_SENSE.md, QUALITY_SCORE.md, RELIABILITY.md, SECURITY.md.
+- Seeded proposed subtrees under docs/: design-docs, exec-plans, generated, product-specs, references.
+- Added first durable product spec for the SMS appointment confirmation pilot and an active execution plan entry.
+- Atomized automation rules into smaller packs under docs/automation/rules/{harness,backend,ui,testing,architecture}/ and converted old coarse files into compatibility entry points.
+- Next: implement SMS-05 UI surfaces using the new UI rule pack, then expand UI-specific rules/retrospective from real implementation findings.
+
+S0061. Linear pilot structure created:
+- Team confirmed: CRM.
+- Added workflow states in Linear: Human Review, Rework, Merging.
+- Created dedicated project: Symphony Pilot — SMS Appointment Confirmation (slugId a0ef8a4e051b).
+- Created issues CRM-1..CRM-6 mapped to SMS-01..SMS-06.
+- Added blocker graph in Linear to match repo slice dependencies: CRM-1 blocks CRM-2/3, CRM-3 blocks CRM-4, CRM-2+4 block CRM-5, and CRM-1..5 block CRM-6.
+- Next: move immediately into SMS-05 staff UI implementation and keep extending UI-specific rules from real findings.
+
+S0061. SMS-05 UI slice progress:
+- Added pending_confirmation to both appointment detail surfaces so UI status options now align with backend transitions.
+- Added compact SMS visibility block to the dialog and full appointment route: summary badge + latest outbound request + latest inbound reply + parsed intent + processing status/reason.
+- Added new PL/EN i18n keys for SMS confirmation copy and pending_confirmation status label.
+- Promoted a concrete UI lesson into docs/automation/rules/ui/operator-clarity.md: the smallest useful operator surface is summary badge plus outbound/inbound two-column snapshot.
+- Verification: `npx tsc -p tsconfig.app.json --pretty false` passes after the UI edits.
+
+---
+
+S0061. SMS-07 verification regression:
+- First focused run used repo-root `npx vitest` and failed before test logic with `import.meta.glob is not a function` from `convex-test`.
+- Root cause: `convex-test` expects the established `cd convex && npx vitest ...` execution path used earlier in SMS-06.
+- Next: re-run from `convex/` to get real SMS-07 failures, then fix only the implementation/test regressions surfaced there.
+
+---
+
+S0061. SMS-06 verification slice progress:
+- Added new focused Convex coverage in `convex/tests/appointmentSms.test.ts` for outbound confirmation persistence, inbound TAK idempotency, inbound NIE cancellation side effects, and terminal-state ignore handling.
+- Extended `convex/tests/appointmentStateMachine.test.ts` with `pending_confirmation -> confirmed` coverage so UI/backend status alignment now has test evidence.
+- Added focused Playwright assertion in `e2e/gabinet/appointments.spec.ts` that the appointment detail dialog exposes both status controls and the SMS summary block.
+- Introduced managed convex-test cleanup with fake timers plus scheduled-function draining so scheduled jobs no longer leak as unhandled transaction writes during the focused Convex runs.
+- Stubbed `fetch` in the focused Convex test files to keep scheduled SMS delivery deterministic and avoid live Twilio auth failures during local verification.
+- Updated `e2e/helpers/auth.ts` to use the shared real test user credentials via env-backed defaults, try `/dashboard` first for already-authenticated sessions, and only fall back to the password login form when needed.
+- Verification: `cd convex && npx vitest run tests/appointmentSms.test.ts tests/appointmentStateMachine.test.ts --reporter=verbose` passes (17/17).
+- Verification: `npx playwright test e2e/gabinet/appointments.spec.ts -g "status controls and sms summary"` now passes after the auth helper stabilization.
+- Result: SMS-06 now has focused backend + browser evidence for the pilot lane.
+- Blast radius browser check: `e2e/gabinet/appointments.spec.ts` completed with 10 passed / 13 skipped, and `e2e/gabinet/appointment-lifecycle.spec.ts` completed with 2 passed / 1 skipped, using the real shared test user flow.
+
+---
+
+S0061. SMS-07 shared activity propagation progress:
+- Extended `ActivityAction` with `sms_sent` and `sms_received` and updated the shared timeline icon/color mappings.
+- Added shared activity fan-out in `convex/gabinet/appointmentSms.ts` at the durable outbound/inbound event insert points for appointment, patient, and linked contact only.
+- Kept lead propagation explicitly out of scope and added a shared activity card to the full appointment detail history tab so the appointment surface now uses the same timeline primitive as patient/contact.
+- Focused verification: `cd convex && npx vitest run tests/appointmentSms.test.ts tests/appointmentStateMachine.test.ts --reporter=verbose` passes (17/17).
+- Focused verification: `npx playwright test e2e/gabinet/appointments.spec.ts -g "appointment detail dialog has status controls and sms summary"` passes.
+- Typecheck: `npx tsc -p convex/tsconfig.json --pretty false && npx tsc -p tsconfig.app.json --pretty false` passes after fixing the test fetch stub cast and simplifying the new activity lookup helper for `convex-test`.
+
+---
+
+S0061. Appointment history + package usage frontend follow-up:
+- Fixed the appointment history package usage crash in `_layout.gabinet.appointments.$appointmentId.lazy.tsx` by deriving totals from `treatmentsUsed[]` (`usedCount`/`totalCount`) instead of rendering/arithmetic on the array value.
+- Added per-treatment usage breakdown lines under each active package card to keep usage operator-readable without redesigning the card.
+- Built a unified history feed in the appointment History tab by merging shared activity rows with durable SMS events and preserving content visibility through timeline `contentSnapshot` + metadata lines.
+- Extended `ActivityItem` with optional content/meta rendering so operators can inspect message body snapshots directly in the timeline.
+- Added EN/PL i18n key `gabinet.appointmentDetail.history.unifiedDescription` for the new history card description.
+- Validation: `npx tsc -p tsconfig.app.json --pretty false` passes.
+
+---
+
+S0061. Backend validation slice start:
+- Scope: validate the appointment workflow/history backend slice around `convex/gabinet/appointments.ts`, `convex/gabinet/appointmentWorkflow.ts`, `convex/emailEvents.ts`, `convex/orgSettings.ts`, and `convex/schema.ts`.
+- Plan: inspect the targeted backend files with context-mode, run the smallest focused Convex tests for appointment workflow/history behavior, then run any needed typechecks.
+- Goal: report concrete pass/fail status, exact failing files/errors if any, and only patch code if validation exposes a blocking defect.
+
+---
+
+S0061. UI validation rerun for appointment workflow/history slice (2026-03-12):
+- Revalidated the targeted UI slice without code changes.
+- `npx tsc -p tsconfig.app.json --pretty false`: PASS.
+- `npx playwright test e2e/gabinet/appointments.spec.ts -g "appointment detail dialog has status controls and sms summary"`: PASS.
+- `cd convex && npx vitest run tests/appointmentSms.test.ts tests/appointmentStateMachine.test.ts --reporter=verbose`: PASS (17/17).
+- Research confirms `_layout.gabinet.appointments.$appointmentId.lazy.tsx` contains unified history assembly and package usage totals derived from `treatmentsUsed[]`, while `activity-item.tsx` renders dedicated SMS actions and `contentSnapshot`.
+- Remaining gap: there is no focused Playwright assertion that explicitly opens the full appointment route History tab or verifies active package usage breakdown lines; those behaviors are currently covered by implementation review plus app typecheck, not by a dedicated browser assertion.
+
+---
+
+S0061. Backend validation results (2026-03-12):
+- `cd /Users/alfred/.openclaw/workspace/projects/crm_new/convex && npx vitest run tests/appointmentSms.test.ts tests/appointmentStateMachine.test.ts --reporter=verbose`: PASS (2 files, 17 tests).
+- `cd /Users/alfred/.openclaw/workspace/projects/crm_new && npx tsc -p convex/tsconfig.json --pretty false`: PASS (no errors).
+- `cd /Users/alfred/.openclaw/workspace/projects/crm_new/convex && npx vitest run tests/appointmentWorkflow.test.ts --reporter=verbose`: FAIL because `convex/tests/appointmentWorkflow.test.ts` does not exist; Vitest reported `No test files found`.
+- Research confirms `convex/gabinet/appointmentWorkflow.ts` exists but exposes only workflow-config/event-dispatch primitives, while appointment state transitions for the SMS/history slice remain centered in `convex/gabinet/appointments.ts` (`updateStatus`, `applySmsReplyTransition`) and `convex/gabinet/appointmentSms.ts` (`queueConfirmationRequest`, `processIncomingMessage`).
+- `convex/emailEvents.ts` writes to `appointmentWorkflowHistory`, and `convex/orgSettings.ts` stores `appointmentWorkflowConfig`; neither surfaced validation failures in this slice.
+- Current assessment: backend implementation for the appointment workflow/history slice is passing the targeted checks. Remaining gap is missing dedicated coverage for `convex/gabinet/appointmentWorkflow.ts`, which is a test coverage issue rather than a runtime/typecheck defect.
+
+---
+
+S0061. Shared automation UI slice progress (2026-03-12):
+- Added `/dashboard/settings/automations` route as the first shared automation settings surface backed by `api.automation.listRules`, `listRuns`, `listEventCatalog`, and `listActionTypes`.
+- Added a settings sidebar entry and EN/PL translation keys under `settings.*` for automations labels and empty states.
+- Extended the full appointment History tab to merge `api.automation.listEntityRuns` results into the existing unified history feed with minimal blast radius, reusing the existing timeline component instead of adding a new renderer.
+- Next: run frontend typecheck so TanStack route generation picks up the new settings route and verify there are no route/type regressions.
+
+---
+
+S0061. SMS-08 i18n cleanup progress (2026-03-12):
+- Fixed settings sidebar label sources in `src/components/layout/app-sidebar.tsx` by switching touched entries to flat `settingsNav.*` leaves and adding the missing leaf translations for the visible settings items touched during verification.
+- Localized the automations settings page in `_layout.settings.automations.tsx`: enabled/disabled badges, action-count pluralization, run-status labels, and date formatting now use translation keys plus `i18n.language`.
+- Localized shared relative time in `src/components/activity-timeline/activity-item.tsx` with new `activityTimeline.relative.*` keys while preserving the existing threshold logic.
+- Localized appointment history metadata/descriptions in `_layout.gabinet.appointments.$appointmentId.lazy.tsx` and switched touched date formatting from hard-coded `pl-PL` to the active i18n language.
+- Added only the needed EN/PL keys in `public/locales/en/translation.json` and `public/locales/pl/translation.json` for settingsNav leaves, automation status/action labels, relative time, and appointment history metadata/descriptions.
+- Verification: `npx tsc -p tsconfig.app.json --pretty false` passes.
+- Browser verification: `/dashboard/settings/automations` no longer shows object-fallback text and no longer shows raw English Enabled/Disabled/action-count labels in the tested PL session.
+- Browser verification: opened a seeded appointment from `/dashboard/gabinet/calendar`, navigated to the full appointment route History tab, and confirmed the targeted English workflow/automation labels are absent on the verified route. Remaining `nav.gabinet.*` labels are still visible in the Gabinet workspace shell but are outside this task scope.
+
+---
+
+S0061. Automation E2E verification wiring (2026-03-12):
+- Added stable Playwright hooks for the full automation loop: `calendar-create-appointment-button` on the Gabinet calendar create CTA, appointment dialog field testids for patient/treatment/employee/date/time/submit, and `automation-run-*` on recent-run cards.
+- Reworked the focused Playwright helpers in `e2e/gabinet/appointments.spec.ts` to use stable automation rule cards instead of brittle parent traversal, plus a reusable appointment creation helper built on the new dialog selectors.
+- Added a focused end-to-end test that creates an automation rule, edits it, toggles it off/on, creates an appointment through the calendar, then verifies a recent automation run is visible on the settings page.
+- Next: run app typecheck and the focused Playwright test, then update tracking with pass/fail evidence.
+- Focused Playwright run failed on first attempt: the new automation test landed on `/login` before clicking `automation-create-rule-button`, so the click timed out waiting for the settings page instead of the automations UI.
+- Current fix path: make the focused test re-establish auth if a route navigation bounces to login, then rerun the targeted test.
+- Root cause turned out to be direct deep-link navigation under Playwright: authenticated `/dashboard` loaded, but direct `page.goto("/dashboard/settings/automations")` bounced back to `/login` in this environment. The stable browser path is to enter `/dashboard/settings` first and then click the sidebar settings link for Automations.
+- Final focused verification now passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` (1 passed).
+- Backend lifecycle verification also passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (5/5 passed).
+- App typecheck was rerun alongside the final verification flow; no TypeScript regressions were surfaced in the focused run.
 
 ---

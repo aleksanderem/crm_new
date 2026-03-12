@@ -1,266 +1,101 @@
 {
-  "session_id": "S0058",
-  "date": "2026-03-07",
+  "session_id": "S0061",
+  "date": "2026-03-12",
   "tasks": [
     {
-      "id": "354f9094",
-      "name": "gabinet_wysiwyg_template_editor",
-      "status": "blocked",
-      "created_session": "S0056",
-      "last_updated_session": "S0057",
-      "note": "Superseded by platform-level document template system. Existing TipTap editor will be migrated in task DT-02. Keep blocked until DT-02 starts."
-    },
-    {
-      "id": "7ec167f5",
-      "name": "layout_auto_hide_column2",
-      "status": "blocked",
-      "created_session": "S0056",
-      "last_updated_session": "S0057",
-      "note": "Carried from S0056. Unrelated to document system. Status unclear — needs review."
-    },
-    {
-      "id": "720e1ca7",
-      "name": "move_patient_cards_to_middle_sidebar",
-      "status": "blocked",
-      "created_session": "S0056",
-      "last_updated_session": "S0057",
-      "note": "Carried from S0056. Unrelated to document system. Status unclear — needs review."
-    },
-
-    {
-      "id": "DT-01",
-      "name": "data_source_registry_and_types",
+      "id": "SMS-01",
+      "name": "correlation_model_for_appointment_sms",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0057",
-      "etap": 1,
-      "description": "DataSourceDefinition type, central registry (getAllDataSources, getDataSource, resolveSource), bazowe source'y (system, current_user, org), source'y Gabinet (patient, employee, appointment), source'y CRM (contact, company, lead, deal). Query listAvailableSources(module) for UI discovery.",
-      "files": [
-        "convex/documentDataSources.ts",
-        "convex/gabinet/documentDataSources.ts",
-        "convex/crm/documentDataSources.ts",
-        "src/lib/document-data-sources.ts"
-      ],
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Add durable appointment SMS event/correlation storage with indexes for appointment, organization+phone, provider message id, correlation key, and processing status.",
+      "files": ["convex/schema.ts", "convex/gabinet/appointmentSms.ts", "convex/sms.ts"],
       "depends_on": []
     },
     {
-      "id": "DT-02",
-      "name": "schema_tables",
+      "id": "SMS-02",
+      "name": "outbound_confirmation_sms_flow",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0057",
-      "etap": 1,
-      "description": "Add documentTemplates, documentTemplateFields, documentInstances tables to convex/schema.ts with all indexes.",
-      "files": ["convex/schema.ts"],
-      "depends_on": []
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Send dedicated confirmation SMS for appointments through existing provider abstraction, persist outbound event records, and reuse reminder timing/settings where appropriate.",
+      "files": ["convex/gabinet/appointments.ts", "convex/gabinet/appointmentReminders.ts", "convex/sms.ts", "convex/gabinet/appointmentSms.ts"],
+      "depends_on": ["SMS-01"]
     },
     {
-      "id": "DT-03",
-      "name": "backend_templates_crud",
+      "id": "SMS-03",
+      "name": "inbound_sms_webhook_and_parser",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0057",
-      "etap": 1,
-      "description": "convex/documentTemplates.ts — create, update, archive, publish (draft→active), duplicate. Queries: list (filters), getById, listActive (user access control check).",
-      "files": ["convex/documentTemplates.ts"],
-      "depends_on": ["DT-02"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Add inbound SMS HTTP route, provider-aware parsing, normalization, signature verification where supported, and idempotent correlation lookup for TAK/NIE replies.",
+      "files": ["convex/http.ts", "convex/gabinet/appointmentSms.ts", "convex/sms.ts"],
+      "depends_on": ["SMS-01"]
     },
     {
-      "id": "DT-04",
-      "name": "backend_template_fields_crud",
+      "id": "SMS-04",
+      "name": "reply_driven_appointment_transitions",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0057",
-      "etap": 1,
-      "description": "convex/documentTemplateFields.ts — create, update, remove, reorder. Query: listByTemplate.",
-      "files": ["convex/documentTemplateFields.ts"],
-      "depends_on": ["DT-02"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Centralize SMS-driven appointment confirm/cancel transitions in appointment domain logic with audit log, activity log, notification, reminder cancellation, and terminal-state guards.",
+      "files": ["convex/gabinet/appointments.ts", "convex/gabinet/appointmentSms.ts"],
+      "depends_on": ["SMS-03"]
     },
     {
-      "id": "DT-05",
-      "name": "backend_instances_crud_and_rendering",
+      "id": "SMS-05",
+      "name": "staff_ui_for_sms_confirmation_state",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0057",
-      "etap": 1,
-      "description": "convex/documentInstances.ts — create (resolve sources + render HTML), update draft, workflow transitions (status machine), sign (add signature to slot), archive. Queries: list (filters), getById, listByResolvedSource. renderTemplate function: content + bindings + values → HTML snapshot.",
-      "files": ["convex/documentInstances.ts"],
-      "depends_on": ["DT-01", "DT-02", "DT-04"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Expose SMS confirmation state and compact timeline in appointment detail surfaces, align pending_confirmation UI with backend transitions, and optionally add read-only operational controls.",
+      "files": ["src/components/gabinet/calendar/appointment-detail-dialog.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "public/locales/pl/translation.json", "public/locales/en/translation.json"],
+      "depends_on": ["SMS-02", "SMS-04"]
     },
     {
-      "id": "DT-06",
-      "name": "ui_template_editor",
+      "id": "SMS-06",
+      "name": "pilot_verification_observability_and_workflow",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 2,
-      "description": "TipTap editor with {{field:key}} badge nodes (inline, non-editable, draggable, double-click to edit). {{ autocomplete dropdown. Toolbar 'Insert field' button. Migrate and generalize from gabinet/template-editor.tsx.",
-      "files": ["src/components/documents/template-editor.tsx"],
-      "depends_on": ["DT-03", "DT-04"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Add focused tests, deterministic inbound fixtures, failure markers, and repo-local WORKFLOW.md for the Symphony pilot lane with manual stop at Human Review.",
+      "files": ["WORKFLOW.md", "ARCHITECTURE.md", "docs/automation/README.md", "docs/automation/rules/00-rule-loading.md", "docs/automation/rules/convex-backend.md", "docs/automation/rules/gabinet-ui.md", "docs/automation/rules/testing-and-evidence.md", "docs/automation/rules/module-boundaries.md", "docs/automation/rules/harness/index.md", "docs/automation/rules/harness/loading-order.md", "docs/automation/rules/harness/rule-selection.md", "docs/automation/rules/harness/rule-promotion.md", "docs/automation/rules/harness/human-review-bias.md", "docs/automation/rules/backend/index.md", "docs/automation/rules/backend/domain-ownership.md", "docs/automation/rules/backend/side-effects.md", "docs/automation/rules/backend/inbound-integrations.md", "docs/automation/rules/backend/correlation-and-idempotency.md", "docs/automation/rules/backend/read-vs-write.md", "docs/automation/rules/backend/provider-routing.md", "docs/automation/rules/backend/audit-attribution.md", "docs/automation/rules/backend/incremental-validation.md", "docs/automation/rules/ui/index.md", "docs/automation/rules/ui/gabinet-surfaces.md", "docs/automation/rules/ui/status-model-alignment.md", "docs/automation/rules/ui/i18n.md", "docs/automation/rules/ui/operator-clarity.md", "docs/automation/rules/ui/evidence-first-ui.md", "docs/automation/rules/testing/index.md", "docs/automation/rules/testing/validation-levels.md", "docs/automation/rules/testing/evidence-bundle.md", "docs/automation/rules/testing/artifact-placement.md", "docs/automation/rules/testing/review-note-quality.md", "docs/automation/rules/architecture/index.md", "docs/automation/rules/architecture/module-boundaries.md", "docs/automation/retrospectives/2026-03-11-sms-backend-retrospective.md", "docs/DESIGN.md", "docs/FRONTEND.md", "docs/PLANS.md", "docs/PRODUCT_SENSE.md", "docs/QUALITY_SCORE.md", "docs/RELIABILITY.md", "docs/SECURITY.md", "docs/design-docs/index.md", "docs/design-docs/core-beliefs.md", "docs/product-specs/index.md", "docs/product-specs/sms-appointment-confirmation-pilot.md", "docs/exec-plans/active/sms-appointment-confirmation-pilot.md", "docs/exec-plans/tech-debt-tracker.md", "docs/generated/db-schema.md", "docs/references/repo-structure-llms.txt", "docs/references/design-system-reference-llms.txt", "docs/references/nixpacks-llms.txt", "docs/references/uv-llms.txt", "convex/tests/appointmentStateMachine.test.ts", "convex/tests/appointmentSms.test.ts", "e2e/gabinet/appointments.spec.ts", "e2e/gabinet/appointment-lifecycle.spec.ts"],
+      "depends_on": ["SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05"]
     },
     {
-      "id": "DT-07",
-      "name": "ui_template_field_panel_and_config",
+      "id": "SMS-07",
+      "name": "shared_sms_activity_propagation",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 2,
-      "description": "Side panel: field list with drag-and-drop sort, add/edit/delete buttons, binding info display. 'Available data sources' tree section. source-field-picker.tsx: cascading selects source→field. template-field-config.tsx: modal with label, key, type, binding toggle (manual vs source), validation, options (for select), width.",
-      "files": [
-        "src/components/documents/template-field-panel.tsx",
-        "src/components/documents/template-field-config.tsx",
-        "src/components/documents/source-field-picker.tsx"
-      ],
-      "depends_on": ["DT-01", "DT-04"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Propagate durable outbound and inbound appointment SMS events into the shared activity system for appointment, patient, and linked CRM contact timelines using explicit sms_sent and sms_received actions, while keeping lead propagation out of scope.",
+      "files": ["convex/schema.ts", "convex/gabinet/appointmentSms.ts", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "convex/tests/appointmentSms.test.ts", "convex/tests/appointmentStateMachine.test.ts", "e2e/gabinet/appointments.spec.ts"],
+      "depends_on": ["SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06"]
     },
     {
-      "id": "DT-08",
-      "name": "ui_template_admin_routes",
-      "status": "in_progress",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 2,
-      "description": "Settings → Document Templates routes. List page (table with filters, actions: edit/duplicate/archive). New template page (full-screen editor + field panel + settings). Edit template page ($id). Header: name, category, module select, requiredSources, description, preview button, save draft / publish.",
-      "files": [
-        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.tsx",
-        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.new.tsx",
-        "src/routes/_app/_auth/dashboard/_layout.settings.document-templates.$id.tsx"
-      ],
-      "depends_on": ["DT-06", "DT-07"]
-    },
-    {
-      "id": "DT-09",
-      "name": "ui_template_picker",
+      "id": "SMS-08",
+      "name": "automation_ui_i18n_cleanup",
       "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 3,
-      "description": "Dialog: list of available templates grouped by category, filtered by user access + module + requiredSources compatibility. Search, source requirement badges, greyed-out incompatible templates with tooltip. Step 1a: source-instance-picker for missing required sources (entity search).",
-      "files": [
-        "src/components/documents/template-picker.tsx",
-        "src/components/documents/source-instance-picker.tsx"
-      ],
-      "depends_on": ["DT-03", "DT-01"]
-    },
-    {
-      "id": "DT-10",
-      "name": "ui_document_from_template",
-      "status": "in_progress",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 3,
-      "description": "Split view: field form (40%) + live HTML preview (60%). Fields sorted/grouped, width half/full, bound fields pre-filled with source data + 'auto-filled' indicator + 'restore from source' on override. Live preview debounce 300ms, unfilled = orange placeholder. Mobile: tabs. Title field with default. Actions: save draft, approve, cancel (dirty check).",
-      "files": ["src/components/documents/document-from-template.tsx"],
-      "depends_on": ["DT-05", "DT-09"]
-    },
-    {
-      "id": "DT-11",
-      "name": "ui_document_viewer",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 3,
-      "description": "Read-only rendered HTML. Header: title, status badge, metadata, resolved source links. Signature section: slots with status, sign button (opens pad), auto-signed transition. Actions per status (edit/approve/reject/sign/pdf/archive/restore). Migrate and generalize from gabinet/document-viewer.tsx.",
-      "files": [
-        "src/components/documents/document-viewer.tsx",
-        "src/components/documents/signature-pad.tsx"
-      ],
-      "depends_on": ["DT-05"]
-    },
-    {
-      "id": "DT-12",
-      "name": "ui_document_routes",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 3,
-      "description": "Platform document routes. /dashboard/documents — instance list (table: title, template, category, status, source badges, author, date; filters). /dashboard/documents/$instanceId — instance view (viewer + actions).",
-      "files": [
-        "src/routes/_app/_auth/dashboard/_layout.documents.index.tsx",
-        "src/routes/_app/_auth/dashboard/_layout.documents.$instanceId.tsx",
-        "src/components/documents/document-instance-table.tsx"
-      ],
-      "depends_on": ["DT-10", "DT-11"]
-    },
-    {
-      "id": "DT-13",
-      "name": "integration_module_gabinet",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 4,
-      "description": "DocumentFromTemplateDialog wrapper (sources map + module prop). Patient card: Documents tab with filtered instance list + 'New from template' button (sources: {patient: patientId}). Appointment view: button + list (sources: {patient, appointment}).",
-      "files": [
-        "src/components/documents/document-from-template-dialog.tsx"
-      ],
-      "depends_on": ["DT-10", "DT-12"]
-    },
-    {
-      "id": "DT-14",
-      "name": "integration_module_crm",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 4,
-      "description": "Contact card: Documents tab + button (sources: {contact}). Company card: Documents tab + button (sources: {company}). Deal card: Documents tab + button (sources: {deal, contact, company}).",
-      "files": [],
-      "depends_on": ["DT-13"]
-    },
-    {
-      "id": "DT-15",
-      "name": "workflow_signatures_pdf",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 5,
-      "description": "Workflow transition validation (required fields check before approve). Signature pad integration in viewer. PDF export: client-side html2canvas + jsPDF, signatures appended, save to Convex storage, re-download. Notifications: review request, signature request.",
-      "files": [
-        "src/components/documents/pdf-export.tsx"
-      ],
-      "depends_on": ["DT-11", "DT-12"]
-    },
-    {
-      "id": "DT-16",
-      "name": "migration_gabinet_documents",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 6,
-      "description": "Migration script: gabinetDocumentTemplates → documentTemplates + documentTemplateFields (auto-create fields with bindings from old {{patient.X}} placeholders). gabinetDocuments → documentInstances. Update Gabinet routes to use new system. Deprecate old tables.",
-      "files": [],
-      "depends_on": ["DT-13", "DT-15"]
-    },
-    {
-      "id": "DT-17",
-      "name": "rbac_permissions",
-      "status": "passing",
-      "created_session": "S0057",
-      "last_updated_session": "S0058",
-      "etap": 1,
-      "description": "Add document_templates (view/create/edit/delete) and document_instances (view/create/edit/approve/sign/delete) to orgPermissions. Enforce in all backend mutations and queries. Per-template accessControl check in listActive.",
-      "files": [
-        "convex/permissions.ts",
-        "convex/documentTemplates.ts",
-        "convex/documentInstances.ts"
-      ],
-      "depends_on": ["DT-03", "DT-05"]
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Localize the shared automations settings surface, settings sidebar labels, shared activity relative time, and appointment history metadata/descriptions so touched UI no longer leaks object-fallback or mixed-language strings.",
+      "files": ["src/components/layout/app-sidebar.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json", "session_state.json"],
+      "depends_on": ["SMS-07"]
     }
   ],
-  "reason": "S0057: Full task breakdown for platform-level document template system with Data Source Registry. 6 etaps, 15 tasks (DT-01 through DT-17), dependency chain ensures correct build order.",
-  "thinking_process": "Decomposed docs/document-templates-system.md plan into implementable tasks. Each task maps to a concrete set of files. Dependencies reflect build order: schema first, then backend CRUD, then UI components, then routes, then module integrations, then workflow/PDF, then migration. See verbose file for etap grouping and rationale.",
-  "connected_tasks": ["DT-01","DT-02","DT-03","DT-04","DT-05","DT-06","DT-07","DT-08","DT-09","DT-10","DT-11","DT-12","DT-13","DT-14","DT-15","DT-16","DT-17"],
+  "reason": "S0061: Finish the shared automation slice with stable end-to-end verification for create, edit, toggle, trigger, and run visibility.",
+  "thinking_process": "Kept the verification fix narrow: add stable testids only where the Playwright loop was brittle, reuse the existing settings sidebar flow for automations navigation because direct deep-linking to the route bounced to login in this environment, and verify the slice with focused Playwright plus focused Convex automation lifecycle tests and app typecheck.",
+  "connected_tasks": ["SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07"],
   "how_to_test": [
-    {"id": 1, "name": "M1: Admin creates template with 3+ field types (text, date, select), publishes, visible to users", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 2, "name": "M2: User selects template from entity context, bound fields auto-filled, override works, live preview updates", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 3, "name": "M3: Full workflow: draft → pending_review → approved → pending_signature → signed", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 4, "name": "M4: Signature pad, save, auto-signed when all slots done, signed = immutable", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 5, "name": "M5: PDF export with content + signatures, save to storage, re-download", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 6, "name": "M6: Edit active template creates new version, old instances keep snapshot", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 7, "name": "M7: Access control: no-access user doesn't see template, no-approve user doesn't see approve button", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 8, "name": "M8: Same template used from CRM contact context and Gabinet patient context — core unchanged", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 9, "name": "M9: New module = 1 data source file, zero core changes, new sources appear in editor", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 10, "name": "M10: Template with multiple sources (patient + appointment + org) resolves all correctly", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 11, "name": "M15: Migrated Gabinet documents readable with signatures preserved", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"},
-    {"id": 12, "name": "M16: CRM file-based documents untouched", "status": "not_started", "is_ok": null, "data_for_next_step": [], "session_id": "S0057"}
+    {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
+    {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},
+    {"id": 3, "name": "Inbound NIE reply cancels appointment and preserves audit/notification side effects", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers cancellation path", "Test asserts cancellationReason, audit action status_changed_via_sms, and notification emission for a non-actor creator"], "session_id": "S0061"},
+    {"id": 4, "name": "Late or terminal-state replies are recorded but do not mutate appointment state", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers completed appointment reply handling", "Ignored inbound event preserves appointment terminal state and stores processingError reason"], "session_id": "S0061"},
+    {"id": 5, "name": "Appointment detail UI shows pending confirmation and SMS timeline/status information", "status": "done", "is_ok": true, "data_for_next_step": ["Dialog and full appointment route render SMS summary/history surfaces", "pending_confirmation remains in the UI status maps", "ActivityTimeline now renders distinct SMS iconography"], "session_id": "S0061"},
+    {"id": 6, "name": "Repo preflight passes: lint, typecheck, focused unit/integration tests, focused Playwright smoke", "status": "done", "is_ok": true, "data_for_next_step": ["Focused Convex tests pass: appointmentSms.test.ts + appointmentStateMachine.test.ts (17/17)", "Focused Playwright appointment SMS smoke passes", "Typecheck passes for convex/tsconfig.json and tsconfig.app.json"], "session_id": "S0061"},
+    {"id": 7, "name": "WORKFLOW.md encodes Linear pilot states, bounded concurrency, isolated workspaces, and Human Review stop", "status": "done", "is_ok": true, "data_for_next_step": ["Linear project created: Symphony Pilot — SMS Appointment Confirmation (slugId a0ef8a4e051b)", "Workflow states added: Human Review, Rework, Merging", "Issues created: CRM-1..CRM-6 with blocker graph matching the pilot slices"], "session_id": "S0061"},
+    {"id": 8, "name": "Outbound and inbound SMS events fan out shared activities to appointment, patient, and linked contact without duplicate inbound activity rows", "status": "done", "is_ok": true, "data_for_next_step": ["Outbound sms_sent fan-out verified for appointment, patient, and linked contact", "Inbound sms_received fan-out verified for appointment, patient, and linked contact with duplicate retries still producing one inbound activity row per entity"], "session_id": "S0061"},
+    {"id": 9, "name": "Shared history surfaces render dedicated SMS actions while lead history stays unchanged", "status": "done", "is_ok": true, "data_for_next_step": ["ActivityTimeline has dedicated SMS icon/color mappings", "A seeded lead receives no inferred SMS activity rows in focused backend verification"], "session_id": "S0061"},
+    {"id": 10, "name": "Shared automation/settings i18n cleanup removes fallback sidebar labels and mixed-language appointment history copy", "status": "done", "is_ok": true, "data_for_next_step": ["`npx tsc -p tsconfig.app.json --pretty false` passes after the i18n updates", "Browser check on `/dashboard/settings/automations` shows no object-fallback text and no raw English Enabled/Disabled/actions labels", "Browser check on the verified appointment route History tab shows no targeted English Module/Correlation/workflow/automation labels; unrelated `nav.gabinet.*` labels remain outside this task scope"], "session_id": "S0061"}
   ]
 }

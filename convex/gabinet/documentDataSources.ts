@@ -83,10 +83,9 @@ const appointmentSource: DataSourceDefinition = {
     const appt = await ctx.db.get(appointmentId as any) as any;
     if (!appt) return {};
     const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId as any) as any : null;
-    const startDate = appt.startTime ? new Date(appt.startTime) : null;
     return {
-      date: startDate ? startDate.toISOString().split("T")[0] : "",
-      time: startDate ? startDate.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) : "",
+      date: appt.date ?? "",
+      time: appt.startTime ?? "",
       treatment: treatment?.name ?? "",
       status: appt.status ?? "",
       notes: appt.notes ?? "",

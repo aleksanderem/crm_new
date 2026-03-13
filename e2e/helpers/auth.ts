@@ -87,12 +87,19 @@ export async function login(page: Page, creds = TEST_USER) {
 export async function loginAndGoToDashboard(page: Page) {
   await login(page);
 
-  const url = page.url();
-  if (!url.includes("/dashboard")) {
+  if (!page.url().includes("/dashboard")) {
     await page.goto(`${BASE_URL}/dashboard`, {
       waitUntil: "domcontentloaded",
       timeout: 10000,
     });
     await waitForApp(page);
+  }
+
+  if (page.url().includes("/login")) {
+    await login(page);
+  }
+
+  if (!page.url().includes("/dashboard")) {
+    throw new Error(`Dashboard navigation failed, current URL: ${page.url()}`);
   }
 }

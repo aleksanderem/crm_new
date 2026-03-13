@@ -538,11 +538,15 @@
     "automationNoRules": "Nie skonfigurowano jeszcze żadnych reguł automatyzacji.",
     "automationNoRuns": "Nie zarejestrowano jeszcze żadnych uruchomień automatyzacji.",
     "automationCreateRule": "Nowa reguła",
+    "automationCreatePageDescription": "Utwórz nową automatyzację w prostym, prowadzonym trybie.",
     "automationEditRule": "Edytuj regułę",
+    "automationEditPageDescription": "Zaktualizuj regułę automatyzacji \"{{name}}\".",
+    "automationNotFoundDescription": "Nie udało się znaleźć wskazanej reguły automatyzacji.",
     "automationNamePlaceholder": "np. Powiadom specjalistę o nowej wizycie",
     "automationDescriptionPlaceholder": "Opcjonalna notatka wewnętrzna dla zespołu",
     "automationEventLabel": "Zdarzenie wyzwalające",
     "automationActionLabel": "Preset akcji",
+    "automationActionTypeLabel": "Typ akcji",
     "automationEnabled": "Reguła włączona",
     "automationEnabledHint": "Wyłączone reguły pozostają widoczne, ale nie przetworzą kolejnych zdarzeń.",
     "automationToggle": "Włączona",
@@ -567,6 +571,7 @@
     "automationDeleteConfirmTitle": "Usunąć regułę automatyzacji?",
     "automationDeleteConfirmDescription": "Usunąć trwale \"{{name}}\"? To usunie tylko regułę, bez wcześniejszych uruchomień.",
     "automationLastRunLabel": "Ostatnie uruchomienie: {{status}}",
+    "automationRunsSubtitle": "Moduł: {{module}}",
     "automationActionCount_one": "{{count}} akcja",
     "automationActionCount_few": "{{count}} akcje",
     "automationActionCount_many": "{{count}} akcji",
@@ -584,6 +589,279 @@
     "automationPresets": {
       "send_sms": "Wyślij SMS do pacjenta",
       "create_notification": "Powiadom przypisanego pracownika"
+    },
+    "automationActionTypes": {
+      "send_sms": "Wyślij SMS",
+      "send_sms_request": "Wyślij prośbę SMS",
+      "send_email": "Wyślij e-mail",
+      "create_notification": "Utwórz powiadomienie",
+      "write_activity": "Zapisz aktywność",
+      "update_field": "Aktualizuj pole"
+    },
+    "automationActionsMore": "+{{count}} więcej",
+    "automationBuilderTitle": "Edytor grafu",
+    "automationBuilderTriggerNode": "Wyzwalacz: {{event}}",
+    "automationBuilderConditionNode": "Warunek",
+    "automationBuilderActionNode": "Akcja: {{action}}",
+    "automationBuilderConditionLabel": "Dodaj warunek",
+    "automationBuilderConditionValue": "Wartość warunku",
+    "automationSimple": {
+      "title": "Tryb prosty",
+      "description": "Wybierz typowy cel automatyzacji, uzupełnij kilka pól biznesowych i sprawdź podsumowanie przed zapisem.",
+      "pageDescription": "Utwórz typową automatyzację Gabinetu w krótkim, prowadzonym przepływie.",
+      "editPageDescription": "Zaktualizuj \"{{name}}\" w prowadzonym przepływie.",
+      "entryTitle": "Zacznij od typowej automatyzacji",
+      "entryDescription": "Użyj prowadzonego przepływu dla najczęstszych automatyzacji Gabinetu albo przejdź do trybu zaawansowanego dla własnej logiki.",
+      "openAdvanced": "Otwórz tryb zaawansowany",
+      "selected": "Wybrane",
+      "noPresets": "Przy obecnej konfiguracji zdarzeń i kanałów nie ma dostępnych prostych automatyzacji.",
+      "detailsTitle": "Uzupełnij szczegóły biznesowe",
+      "enabledLabel": "Automatyzacja jest aktywna",
+      "enabledHint": "Nieaktywne automatyzacje pozostają zapisane, ale nie uruchomią się dla nowych zdarzeń.",
+      "notificationTitleLabel": "Tytuł powiadomienia",
+      "notificationMessageLabel": "Treść powiadomienia",
+      "messageLabel": "Treść SMS",
+      "activityTextLabel": "Treść aktywności",
+      "messageHint": "Nadal możesz używać pól zdarzenia, takich jak {{patientName}}, {{date}} i {{startTime}}.",
+      "statusFilterLabel": "Uruchamiaj tylko wtedy, gdy wizyta zmieni status na",
+      "statusFilterPlaceholder": "Wybierz status wizyty",
+      "reviewTitle": "Sprawdź przed zapisem",
+      "reviewDescription": "Przed zapisaniem przeczytaj podsumowanie opisane prostym językiem.",
+      "reviewGoal": "Cel",
+      "reviewRuleName": "Nazwa reguły",
+      "steps": {
+        "goal": "Cel",
+        "details": "Szczegóły",
+        "review": "Podsumowanie"
+      },
+      "statusOptions": {
+        "scheduled": "Zaplanowana",
+        "pending_confirmation": "Oczekuje na potwierdzenie",
+        "confirmed": "Potwierdzona",
+        "in_progress": "W trakcie",
+        "completed": "Zakończona",
+        "cancelled": "Anulowana",
+        "no_show": "Nieobecność"
+      },
+      "review": {
+        "enabled": "Ta automatyzacja jest włączona i uruchomi się automatycznie.",
+        "disabled": "Ta automatyzacja jest zapisana jako wyłączona i nie uruchomi się, dopóki jej nie włączysz.",
+        "when": {
+          "appointment_created_sms": "Gdy zostanie utworzona nowa wizyta, wyślij ten SMS do pacjenta.",
+          "appointment_reminder_sms": "Gdy nadejdzie czas przypomnienia o wizycie, wyślij ten SMS do pacjenta.",
+          "appointment_created_notify_staff": "Gdy zostanie utworzona nowa wizyta, powiadom przypisanego pracownika.",
+          "appointment_status_notify_staff": "Gdy wizyta zmieni status na {{status}}, powiadom przypisanego pracownika.",
+          "appointment_status_write_activity": "Gdy wizyta zmieni status na {{status}}, zapisz aktywność przy tej wizycie."
+        },
+        "action": {
+          "appointment_created_sms": "Treść SMS: {{message}}",
+          "appointment_reminder_sms": "Treść SMS: {{message}}",
+          "appointment_created_notify_staff": "Tytuł powiadomienia: {{title}} Treść: {{message}}",
+          "appointment_status_notify_staff": "Tytuł powiadomienia: {{title}} Treść: {{message}}",
+          "appointment_status_write_activity": "Treść aktywności: {{message}}"
+        }
+      },
+      "presets": {
+        "appointment_created_sms": {
+          "title": "Wyślij SMS po nowej wizycie",
+          "description": "Wyślij SMS z potwierdzeniem do pacjenta zaraz po utworzeniu wizyty."
+        },
+        "appointment_reminder_sms": {
+          "title": "Wyślij SMS z przypomnieniem przed wizytą",
+          "description": "Wyślij SMS z przypomnieniem, gdy nadejdzie czas przypomnienia o wizycie."
+        },
+        "appointment_created_notify_staff": {
+          "title": "Powiadom pracownika o nowej wizycie",
+          "description": "Wyślij powiadomienie w aplikacji do przypisanego pracownika po utworzeniu nowej wizyty."
+        },
+        "appointment_status_notify_staff": {
+          "title": "Powiadom pracownika po zmianie statusu",
+          "description": "Wyślij powiadomienie w aplikacji, gdy wizyta zmieni się na wybrany status."
+        },
+        "appointment_status_write_activity": {
+          "title": "Zapisz aktywność po zmianie statusu",
+          "description": "Dodaj wpis aktywności przy wizycie, gdy zmieni się ona na wybrany status."
+        }
+      },
+      "defaults": {
+        "appointment_created_sms": {
+          "name": "Wyślij pacjentowi SMS po nowej wizycie",
+          "message": "{{patientName}}, Twoja wizyta została zapisana na {{date}} o {{startTime}}."
+        },
+        "appointment_reminder_sms": {
+          "name": "Wyślij SMS z przypomnieniem przed wizytą",
+          "message": "Przypomnienie: {{patientName}}, Twoja wizyta jest {{date}} o {{startTime}}."
+        },
+        "appointment_created_notify_staff": {
+          "name": "Powiadom pracownika o nowej wizycie",
+          "message": "{{patientName}} ma nową wizytę {{date}} o {{startTime}}.",
+          "notificationTitle": "Nowa wizyta: {{patientName}}"
+        },
+        "appointment_status_notify_staff": {
+          "name": "Powiadom pracownika o zmianie statusu wizyty",
+          "message": "{{patientName}} ma status {{status}} dla wizyty {{date}} o {{startTime}}.",
+          "notificationTitle": "Zmiana statusu wizyty"
+        },
+        "appointment_status_write_activity": {
+          "name": "Zapisz aktywność dla zmiany statusu wizyty",
+          "message": "Status wizyty zmienił się na {{status}} dla {{patientName}}."
+        }
+      }
+    },
+    "automationPlayground": {
+      "title": "Konfiguracja automatyzacji",
+      "description": "Wybierz, co ma uruchamiać automatyzację, dodaj opcjonalne warunki i zdecyduj, co ma się wydarzyć dalej.",
+      "pageDescription": "Utwórz automatyzację w prostym biznesowym widoku bez technicznej konfiguracji.",
+      "editPageDescription": "Zaktualizuj \"{{name}}\" w prostym biznesowym widoku automatyzacji.",
+      "entityLabel": "Obszar",
+      "entityAppointment": "Wizyta",
+      "eventLabel": "Kiedy to się wydarzy",
+      "statusLabel": "Tylko dla tego statusu",
+      "statusAny": "Dowolny status",
+      "actionLabel": "Następnie wykonaj",
+      "enabledLabel": "Automatyzacja jest aktywna",
+      "enabledHint": "Wyłączone automatyzacje pozostają zapisane, ale nie uruchamiają się dla nowych zdarzeń.",
+      "filtersEmpty": "Ta automatyzacja uruchomi się dla każdej pasującej wizyty, jeśli nie dodasz warunku.",
+      "addFilter": "Dodaj warunek",
+      "addAction": "Dodaj akcję",
+      "actionCardTitle": "Akcja {{index}}",
+      "filterFieldLabel": "Pole",
+      "filterOperatorLabel": "Zasada",
+      "filterValueLabel": "Wartość",
+      "smsMessageLabel": "Treść SMS",
+      "smsMessageHint": "Nadal możesz używać placeholderów takich jak {{patientName}}, {{date}} i {{startTime}}.",
+      "notificationTitleLabel": "Tytuł powiadomienia",
+      "notificationMessageLabel": "Treść powiadomienia",
+      "activityMessageLabel": "Treść wpisu aktywności",
+      "emailModeLabel": "Tryb treści e-maila",
+      "emailTemplateLabel": "Szablon e-maila",
+      "emailTemplatePlaceholder": "Wybierz szablon",
+      "emailTemplateEmpty": "Brak aktywnych szablonów.",
+      "emailSubjectLabel": "Temat e-maila",
+      "emailBodyLabel": "Treść e-maila",
+      "events": {
+        "created": "Zostanie utworzona nowa wizyta",
+        "statusChanged": "Zmieni się status wizyty",
+        "reminderDue": "Nadejdzie czas przypomnienia o wizycie",
+        "smsReplyReceived": "Zostanie odebrana odpowiedź SMS"
+      },
+      "groups": {
+        "patient": "Dane pacjenta",
+        "appointment": "Dane wizyty",
+        "message": "Dane wiadomości",
+        "other": "Inne dane"
+      },
+      "operators": {
+        "equals": "jest",
+        "notEquals": "nie jest",
+        "contains": "zawiera",
+        "greaterThan": "jest większe niż",
+        "lessThan": "jest mniejsze niż"
+      },
+      "statuses": {
+        "scheduled": "Zaplanowana",
+        "pending_confirmation": "Oczekuje na potwierdzenie",
+        "confirmed": "Potwierdzona",
+        "in_progress": "W trakcie",
+        "completed": "Zakończona",
+        "cancelled": "Anulowana",
+        "no_show": "Nieobecność"
+      },
+      "replyIntents": {
+        "confirm": "odpowiedź potwierdzająca",
+        "cancel": "odpowiedź anulująca",
+        "unknown": "inna odpowiedź"
+      },
+      "replyIntentLabel": "Tylko dla tej intencji odpowiedzi",
+      "replyIntentDescription": "Uruchamiaj tę automatyzację tylko wtedy, gdy przychodząca odpowiedź SMS pasuje do {{replyIntent}}.",
+      "replyIntentAny": "Dowolna odpowiedź",
+      "recipients": {
+        "patientEmail": "Odbiorca: e-mail pacjenta",
+        "assignedEmployee": "Odbiorca: przypisany pracownik"
+      },
+      "emailModes": {
+        "manual": "Napisz ręcznie",
+        "template": "Użyj szablonu"
+      },
+      "capabilities": {
+        "configRequired": "Ta akcja wymaga dodatkowej konfiguracji, zanim będzie mogła działać.",
+        "configRequiredShort": "Wymaga konfiguracji"
+      },
+      "updateField": {
+        "targetLabel": "Rekord do aktualizacji",
+        "fieldLabel": "Pole",
+        "valueLabel": "Nowa wartość",
+        "permissionHint": "Automatyzacje mogą aktualizować tylko bezpieczne, wspierane pola.",
+        "customFieldShort": "pole własne",
+        "targets": {
+          "patient": "Pacjent",
+          "appointment": "Wizyta",
+          "employee": "Pracownik"
+        }
+      },
+      "variablePicker": {
+        "insert": "Wstaw zmienną"
+      },
+      "sections": {
+        "basics": {
+          "title": "Podstawy",
+          "description": "Nadaj automatyzacji jasną nazwę i zdecyduj, czy ma być od razu aktywna."
+        },
+        "trigger": {
+          "title": "Wyzwalacz",
+          "description": "Wybierz zdarzenie wizyty, które ma uruchamiać automatyzację."
+        },
+        "eventSettings": {
+          "title": "Szczegóły zdarzenia",
+          "description": "Jeśli chcesz, zawęź wyzwalacz do konkretnego statusu wizyty albo intencji odpowiedzi SMS."
+        },
+        "filters": {
+          "title": "Warunki",
+          "description": "Opcjonalnie ogranicz automatyzację do wizyt pasujących do biznesowych pól."
+        },
+        "action": {
+          "title": "Akcje",
+          "description": "Złóż jedną lub kilka akcji, które mają wykonać się po spełnieniu wyzwalacza."
+        },
+        "summary": {
+          "title": "Podsumowanie",
+          "description": "Przed zapisem sprawdź wynik opisany prostym językiem."
+        }
+      },
+      "summary": {
+        "trigger": "Ta automatyzacja uruchomi się, gdy {{event}}.",
+        "triggerWithStatus": "Ta automatyzacja uruchomi się, gdy {{event}}, a nowy status będzie ustawiony na {{status}}.",
+        "triggerWithReplyIntent": "Ta automatyzacja uruchomi się, gdy {{event}}, a odpowiedź będzie pasować do {{replyIntent}}.",
+        "sendSms": "System wyśle SMS o treści: {{message}}",
+        "sendSmsRequest": "System wyśle prośbę o odpowiedź SMS: {{message}}",
+        "sendEmailTemplate": "System wyśle szablon e-maila \"{{template}}\".",
+        "sendEmailManual": "System wyśle e-mail z tematem \"{{subject}}\".",
+        "createNotification": "System utworzy powiadomienie \"{{title}}\" z treścią \"{{message}}\".",
+        "writeActivity": "System zapisze wpis aktywności: {{message}}",
+        "updateField": "System zaktualizuje pole \"{{field}}\" w obiekcie {{entity}} na \"{{value}}\".",
+        "actionLine": "{{index}}. {{summary}}",
+        "filters": "Dodatkowo sprawdzi {{count}} warunek.",
+        "filters_other": "Dodatkowo sprawdzi {{count}} warunki.",
+        "noFilters": "Nie są wymagane żadne dodatkowe warunki."
+      },
+      "defaults": {
+        "name": "Reaguj na zdarzenie wizyty",
+        "smsMessage": "{{patientName}}, kontaktujemy się w sprawie Twojej wizyty {{date}} o {{startTime}}.",
+        "smsRequestMessage": "Odpowiedz, aby potwierdzić wizytę {{date}} o {{startTime}}.",
+        "notificationTitle": "Aktualizacja wizyty",
+        "notificationMessage": "Pojawiła się aktualizacja wizyty wymagająca uwagi.",
+        "activityMessage": "Zdarzenie wizyty zostało zapisane automatycznie.",
+        "emailSubject": "Aktualizacja wizyty",
+        "emailBody": "Cześć {{patientName}}, kontaktujemy się w sprawie Twojej wizyty {{date}} o {{startTime}}."
+      },
+      "legacy": {
+        "title": "Ta reguła używa starszej logiki",
+        "description": "Tej starszej automatyzacji nie można jeszcze bezpiecznie edytować w nowym widoku. Nadal możesz zmienić jej nazwę, włączyć lub wyłączyć ją albo usunąć.",
+        "editPageDescription": "Sprawdź \"{{name}}\" i skorzystaj z bezpiecznych akcji dostępnych dla starszych reguł automatyzacji.",
+        "summaryLabel": "Podsumowanie obecnej reguły",
+        "enabledHint": "Nadal możesz włączyć lub wyłączyć tę regułę bez zmiany jej logiki."
+      },
+      "unavailable": "Konfiguracja automatyzacji nie jest dostępna dla bieżącej konfiguracji organizacji."
     },
     "automationEventTypes": {
       "gabinet": {

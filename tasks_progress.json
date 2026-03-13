@@ -1,6 +1,6 @@
 {
   "session_id": "S0061",
-  "date": "2026-03-12",
+  "date": "2026-03-13",
   "tasks": [
     {
       "id": "SMS-01",
@@ -81,11 +81,41 @@
       "description": "Localize the shared automations settings surface, settings sidebar labels, shared activity relative time, and appointment history metadata/descriptions so touched UI no longer leaks object-fallback or mixed-language strings.",
       "files": ["src/components/layout/app-sidebar.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json", "session_state.json"],
       "depends_on": ["SMS-07"]
+    },
+    {
+      "id": "AUT-05",
+      "name": "automation_full_page_editor_routes",
+      "status": "passing",
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Move automation create/edit flows from the settings modal into dedicated full-page routes while preserving the overview page, shared graph builder, backend payload compatibility, and focused verification.",
+      "files": ["src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx", "src/components/settings/automation-builder/automation-graph-builder.tsx", "e2e/gabinet/appointments.spec.ts", "public/locales/en/translation.json", "public/locales/pl/translation.json", "session_state.json"],
+      "depends_on": ["AUT-01", "AUT-02", "AUT-03", "AUT-04"]
+    },
+    {
+      "id": "AUT-06",
+      "name": "automation_simple_mode_wizard",
+      "status": "passing",
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Default automation new/edit routes to a business-friendly simple-mode wizard backed by a frontend Gabinet preset catalog, classify supported existing rules back into simple mode on edit, preserve the backend payload contract, and keep the graph builder as an explicit advanced-mode fallback.",
+      "files": ["src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx", "src/components/settings/automation-builder/automation-graph-builder.tsx", "src/components/settings/automation-builder/automation-simple-mode.tsx", "src/components/settings/automation-builder/automation-simple-presets.ts", "public/locales/en/translation.json", "public/locales/pl/translation.json", "e2e/gabinet/appointments.spec.ts", "convex/tests/automation.test.ts"],
+      "depends_on": ["AUT-05"]
+    },
+    {
+      "id": "AUT-07",
+      "name": "automation_richer_business_editor_rollout",
+      "status": "passing",
+      "created_session": "S0061",
+      "last_updated_session": "S0061",
+      "description": "Expand the automation backend contract and Gabinet-first business editor to support structured action capabilities, multi-action rules, SMS reply triggers, business recipient mapping, variable insertion, email template/manual composition, and safe permission-aware field updates while preserving backward-compatible execution and strict unsupported-rule fallback.",
+      "files": ["convex/automation.ts", "convex/schema.ts", "src/components/settings/automation-builder/automation-simple-mode.tsx", "src/components/settings/automation-builder/automation-simple-presets.ts", "src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx", "src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json", "convex/tests/automation.test.ts", "e2e/gabinet/appointments.spec.ts"],
+      "depends_on": ["AUT-06", "SMS-07"]
     }
   ],
-  "reason": "S0061: Finish the shared automation slice with stable end-to-end verification for create, edit, toggle, trigger, and run visibility.",
-  "thinking_process": "Kept the verification fix narrow: add stable testids only where the Playwright loop was brittle, reuse the existing settings sidebar flow for automations navigation because direct deep-linking to the route bounced to login in this environment, and verify the slice with focused Playwright plus focused Convex automation lifecycle tests and app typecheck.",
-  "connected_tasks": ["SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07"],
+  "reason": "S0061: Implement the richer automation business editor rollout for Gabinet by expanding the backend rule/action model first, then refactoring the frontend simple-mode experience around ordered multi-action composition and strict legacy fallback.",
+  "thinking_process": "AUT-07 richer editor rollout is now verified again end-to-end. The overview route now summarizes multi-action rules instead of only the first action, EN/PL translations cover the new multi-action/reply-intent/email/update-field editor copy, and the focused E2E flow was updated for repeated action-card selectors plus a truly unsupported legacy fixture so strict fallback coverage still holds.",
+  "connected_tasks": ["SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07"],
   "how_to_test": [
     {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
     {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},
@@ -96,6 +126,11 @@
     {"id": 7, "name": "WORKFLOW.md encodes Linear pilot states, bounded concurrency, isolated workspaces, and Human Review stop", "status": "done", "is_ok": true, "data_for_next_step": ["Linear project created: Symphony Pilot — SMS Appointment Confirmation (slugId a0ef8a4e051b)", "Workflow states added: Human Review, Rework, Merging", "Issues created: CRM-1..CRM-6 with blocker graph matching the pilot slices"], "session_id": "S0061"},
     {"id": 8, "name": "Outbound and inbound SMS events fan out shared activities to appointment, patient, and linked contact without duplicate inbound activity rows", "status": "done", "is_ok": true, "data_for_next_step": ["Outbound sms_sent fan-out verified for appointment, patient, and linked contact", "Inbound sms_received fan-out verified for appointment, patient, and linked contact with duplicate retries still producing one inbound activity row per entity"], "session_id": "S0061"},
     {"id": 9, "name": "Shared history surfaces render dedicated SMS actions while lead history stays unchanged", "status": "done", "is_ok": true, "data_for_next_step": ["ActivityTimeline has dedicated SMS icon/color mappings", "A seeded lead receives no inferred SMS activity rows in focused backend verification"], "session_id": "S0061"},
-    {"id": 10, "name": "Shared automation/settings i18n cleanup removes fallback sidebar labels and mixed-language appointment history copy", "status": "done", "is_ok": true, "data_for_next_step": ["`npx tsc -p tsconfig.app.json --pretty false` passes after the i18n updates", "Browser check on `/dashboard/settings/automations` shows no object-fallback text and no raw English Enabled/Disabled/actions labels", "Browser check on the verified appointment route History tab shows no targeted English Module/Correlation/workflow/automation labels; unrelated `nav.gabinet.*` labels remain outside this task scope"], "session_id": "S0061"}
+    {"id": 10, "name": "Shared automation/settings i18n cleanup removes fallback sidebar labels and mixed-language appointment history copy", "status": "done", "is_ok": true, "data_for_next_step": ["`npx tsc -p tsconfig.app.json --pretty false` passes after the i18n updates", "Browser check on `/dashboard/settings/automations` shows no object-fallback text and no raw English Enabled/Disabled/actions labels", "Browser check on the verified appointment route History tab shows no targeted English Module/Correlation/workflow/automation labels; unrelated `nav.gabinet.*` labels remain outside this task scope"], "session_id": "S0061"},
+    {"id": 11, "name": "Automation full-page route migration keeps overview on index route and verifies dedicated create/edit pages", "status": "done", "is_ok": true, "data_for_next_step": ["`src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx` now renders `<Outlet />` only", "Overview lives in `_layout.settings.automations.index.tsx` while `new` and `$ruleId` reuse `AutomationGraphBuilder`", "Focused verification passed: app typecheck, convex/tests/automation.test.ts (9/9), Playwright automation lifecycle (1/1)"], "session_id": "S0061"},
+    {"id": 12, "name": "Simple automation wizard creates common Gabinet rule without technical fields and review step explains the rule in plain language", "status": "done", "is_ok": true, "data_for_next_step": ["Preset-backed 3-step wizard now powers the default create/edit flow for supported Gabinet automations", "Focused browser coverage verifies plain-language review copy and successful save back to the overview"], "session_id": "S0061"},
+    {"id": 13, "name": "Edit route opens supported rules in Simple mode with prefilled values and unsupported rules in Advanced mode with safe explanation", "status": "done", "is_ok": true, "data_for_next_step": ["Supported preset-backed rules classify back into Simple mode with prefilled values", "Unsupported advanced-only rules fall back safely to Advanced mode with explanatory UI"], "session_id": "S0061"},
+    {"id": 14, "name": "Focused verification covers overview, simple create/edit, advanced fallback, toggle/delete, backend contract compatibility, and visible automation runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (9/9)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1)"], "session_id": "S0061"},
+    {"id": 15, "name": "Richer automation editor verification covers always-visible SMS/email capabilities, reply-SMS trigger/action, multi-action composition, email template/manual authoring, variable insertion, safe field updates, strict edit hydration, and recent runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false` after overview/i18n cleanup and the `smsRequestMessage` locale default fix", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (12/12)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1) with action-card scoping and a truly unsupported legacy fallback fixture"], "session_id": "S0061"}
   ]
 }

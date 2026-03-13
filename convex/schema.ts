@@ -244,6 +244,44 @@ export const automationModuleValidator = v.union(
 );
 export type AutomationModule = Infer<typeof automationModuleValidator>;
 
+export const automationTriggerSourceValidator = v.union(
+  v.literal("domain_event"),
+  v.literal("communication_reply"),
+);
+export type AutomationTriggerSource = Infer<typeof automationTriggerSourceValidator>;
+
+export const automationVariableTypeValidator = v.union(
+  v.literal("string"),
+  v.literal("number"),
+  v.literal("boolean"),
+  v.literal("date"),
+  v.literal("datetime"),
+  v.literal("id"),
+);
+export type AutomationVariableType = Infer<typeof automationVariableTypeValidator>;
+
+export const automationVariableDefinitionValidator = v.object({
+  key: v.string(),
+  path: v.string(),
+  label: v.string(),
+  type: automationVariableTypeValidator,
+  group: v.optional(v.string()),
+});
+export type AutomationVariableDefinition = Infer<
+  typeof automationVariableDefinitionValidator
+>;
+
+export const automationTriggerDefinitionValidator = v.object({
+  module: automationModuleValidator,
+  eventType: v.string(),
+  entityType: v.optional(v.string()),
+  source: automationTriggerSourceValidator,
+  label: v.optional(v.string()),
+});
+export type AutomationTriggerDefinition = Infer<
+  typeof automationTriggerDefinitionValidator
+>;
+
 export const automationConditionOperatorValidator = v.union(
   v.literal("equals"),
   v.literal("not_equals"),
@@ -270,6 +308,16 @@ export const automationConditionValidator = v.object({
 });
 export type AutomationCondition = Infer<typeof automationConditionValidator>;
 
+export const automationFieldValueTypeValidator = v.union(
+  v.literal("string"),
+  v.literal("number"),
+  v.literal("boolean"),
+  v.literal("date"),
+);
+export type AutomationFieldValueType = Infer<
+  typeof automationFieldValueTypeValidator
+>;
+
 export const automationRuleActionValidator = v.union(
   v.object({
     type: v.literal("send_email"),
@@ -279,7 +327,30 @@ export const automationRuleActionValidator = v.union(
     recipientNamePath: v.optional(v.string()),
   }),
   v.object({
+    type: v.literal("send_email"),
+    mode: v.literal("template"),
+    delayMs: v.optional(v.number()),
+    templateId: v.id("emailTemplates"),
+    recipientEmailPath: v.string(),
+    recipientNamePath: v.optional(v.string()),
+  }),
+  v.object({
+    type: v.literal("send_email"),
+    mode: v.literal("manual"),
+    delayMs: v.optional(v.number()),
+    recipientEmailPath: v.string(),
+    recipientNamePath: v.optional(v.string()),
+    subjectTemplate: v.string(),
+    bodyTemplate: v.string(),
+  }),
+  v.object({
     type: v.literal("send_sms"),
+    delayMs: v.optional(v.number()),
+    phonePath: v.string(),
+    messageTemplate: v.string(),
+  }),
+  v.object({
+    type: v.literal("send_sms_request"),
     delayMs: v.optional(v.number()),
     phonePath: v.string(),
     messageTemplate: v.string(),
@@ -300,8 +371,63 @@ export const automationRuleActionValidator = v.union(
     entityTypePath: v.optional(v.string()),
     entityIdPath: v.optional(v.string()),
   }),
+  v.object({
+    type: v.literal("update_field"),
+    delayMs: v.optional(v.number()),
+    targetEntityType: v.union(
+      v.literal("gabinetPatient"),
+      v.literal("gabinetAppointment"),
+      v.literal("gabinetEmployee"),
+    ),
+    targetIdPath: v.optional(v.string()),
+    fieldKind: v.union(v.literal("standard"), v.literal("custom")),
+    fieldKey: v.string(),
+    valueTemplate: v.string(),
+    valueType: automationFieldValueTypeValidator,
+  }),
 );
 export type AutomationRuleAction = Infer<typeof automationRuleActionValidator>;
+
+export const automationGraphNodeValidator = v.union(
+  v.object({
+    id: v.string(),
+    type: v.literal("trigger"),
+    positionX: v.number(),
+    positionY: v.number(),
+    trigger: automationTriggerDefinitionValidator,
+  }),
+  v.object({
+    id: v.string(),
+    type: v.literal("condition"),
+    positionX: v.number(),
+    positionY: v.number(),
+    condition: automationConditionValidator,
+  }),
+  v.object({
+    id: v.string(),
+    type: v.literal("action"),
+    positionX: v.number(),
+    positionY: v.number(),
+    action: automationRuleActionValidator,
+  }),
+);
+export type AutomationGraphNode = Infer<typeof automationGraphNodeValidator>;
+
+export const automationGraphEdgeValidator = v.object({
+  id: v.string(),
+  source: v.string(),
+  target: v.string(),
+  branch: v.optional(
+    v.union(v.literal("default"), v.literal("true"), v.literal("false")),
+  ),
+});
+export type AutomationGraphEdge = Infer<typeof automationGraphEdgeValidator>;
+
+export const automationGraphValidator = v.object({
+  nodes: v.array(automationGraphNodeValidator),
+  edges: v.array(automationGraphEdgeValidator),
+});
+export type AutomationGraph = Infer<typeof automationGraphValidator>;
 
 export const automationRunStatusValidator = v.union(
   v.literal("pending"),
@@ -1853,6 +1979,9 @@ const schema = defineSchema({
     module: automationModuleValidator,
     eventType: v.string(),
     entityType: v.optional(v.string()),
+    trigger: v.optional(automationTriggerDefinitionValidator),
+    graph: v.optional(automationGraphValidator),
+    definitionVersion: v.optional(v.number()),
     conditions: v.array(automationConditionValidator),
     actions: v.array(automationRuleActionValidator),
     enabled: v.boolean(),

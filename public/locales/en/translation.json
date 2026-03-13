@@ -538,11 +538,15 @@
     "automationNoRules": "No automation rules configured yet.",
     "automationNoRuns": "No automation runs recorded yet.",
     "automationCreateRule": "New rule",
+    "automationCreatePageDescription": "Create a new automation with a guided setup.",
     "automationEditRule": "Edit rule",
+    "automationEditPageDescription": "Update the automation rule \"{{name}}\".",
+    "automationNotFoundDescription": "The requested automation rule could not be found.",
     "automationNamePlaceholder": "e.g. Notify employee about new appointment",
     "automationDescriptionPlaceholder": "Optional internal note for your team",
     "automationEventLabel": "Trigger event",
     "automationActionLabel": "Action preset",
+    "automationActionTypeLabel": "Action type",
     "automationEnabled": "Rule enabled",
     "automationEnabledHint": "Disabled rules stay visible but will not process future events.",
     "automationToggle": "Enabled",
@@ -567,6 +571,7 @@
     "automationDeleteConfirmTitle": "Delete automation rule?",
     "automationDeleteConfirmDescription": "Delete \"{{name}}\" permanently? This only removes the rule, not past runs.",
     "automationLastRunLabel": "Last run: {{status}}",
+    "automationRunsSubtitle": "Module: {{module}}",
     "automationActionCount_one": "{{count}} action",
     "automationActionCount_other": "{{count}} actions",
     "automationRuleStates": {
@@ -582,6 +587,279 @@
     "automationPresets": {
       "send_sms": "Send SMS to patient",
       "create_notification": "Notify assigned employee"
+    },
+    "automationActionTypes": {
+      "send_sms": "Send SMS",
+      "send_sms_request": "Send SMS request",
+      "send_email": "Send email",
+      "create_notification": "Create notification",
+      "write_activity": "Write activity",
+      "update_field": "Update field"
+    },
+    "automationActionsMore": "+{{count}} more",
+    "automationBuilderTitle": "Graph builder",
+    "automationBuilderTriggerNode": "Trigger: {{event}}",
+    "automationBuilderConditionNode": "Condition",
+    "automationBuilderActionNode": "Action: {{action}}",
+    "automationBuilderConditionLabel": "Add condition",
+    "automationBuilderConditionValue": "Condition value",
+    "automationSimple": {
+      "title": "Simple mode",
+      "description": "Choose a common automation goal, fill in a few business details, and review what will happen before saving.",
+      "pageDescription": "Create a common Gabinet automation with a short guided setup.",
+      "editPageDescription": "Update \"{{name}}\" with the guided setup.",
+      "entryTitle": "Start with a common automation",
+      "entryDescription": "Use the guided flow for the most common Gabinet automations, or switch to Advanced mode for custom logic.",
+      "openAdvanced": "Open advanced mode",
+      "selected": "Selected",
+      "noPresets": "No simple automations are available with the current event and channel configuration.",
+      "detailsTitle": "Fill in the business details",
+      "enabledLabel": "Automation is active",
+      "enabledHint": "Inactive automations stay saved but will not run for new events.",
+      "notificationTitleLabel": "Notification title",
+      "notificationMessageLabel": "Notification text",
+      "messageLabel": "SMS text",
+      "activityTextLabel": "Activity text",
+      "messageHint": "You can still use event fields like {{patientName}}, {{date}}, and {{startTime}}.",
+      "statusFilterLabel": "Run only when the appointment changes to",
+      "statusFilterPlaceholder": "Choose appointment status",
+      "reviewTitle": "Review before saving",
+      "reviewDescription": "Check the plain-language summary below before you save this automation.",
+      "reviewGoal": "Goal",
+      "reviewRuleName": "Rule name",
+      "steps": {
+        "goal": "Goal",
+        "details": "Details",
+        "review": "Review"
+      },
+      "statusOptions": {
+        "scheduled": "Scheduled",
+        "pending_confirmation": "Pending confirmation",
+        "confirmed": "Confirmed",
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No-show"
+      },
+      "review": {
+        "enabled": "This automation is enabled and will run automatically.",
+        "disabled": "This automation is saved as disabled and will not run until you enable it.",
+        "when": {
+          "appointment_created_sms": "When a new appointment is created, send this SMS to the patient.",
+          "appointment_reminder_sms": "When an appointment reminder becomes due, send this SMS to the patient.",
+          "appointment_created_notify_staff": "When a new appointment is created, notify the assigned staff member.",
+          "appointment_status_notify_staff": "When an appointment changes to {{status}}, notify the assigned staff member.",
+          "appointment_status_write_activity": "When an appointment changes to {{status}}, write an activity entry on the appointment."
+        },
+        "action": {
+          "appointment_created_sms": "SMS text: {{message}}",
+          "appointment_reminder_sms": "SMS text: {{message}}",
+          "appointment_created_notify_staff": "Notification title: {{title}} Message: {{message}}",
+          "appointment_status_notify_staff": "Notification title: {{title}} Message: {{message}}",
+          "appointment_status_write_activity": "Activity note: {{message}}"
+        }
+      },
+      "presets": {
+        "appointment_created_sms": {
+          "title": "Send SMS after a new appointment",
+          "description": "Send a confirmation SMS to the patient right after the appointment is created."
+        },
+        "appointment_reminder_sms": {
+          "title": "Send reminder SMS before an appointment",
+          "description": "Send a reminder SMS when the appointment reminder becomes due."
+        },
+        "appointment_created_notify_staff": {
+          "title": "Notify staff after a new appointment",
+          "description": "Send an in-app notification to the assigned employee when a new appointment is created."
+        },
+        "appointment_status_notify_staff": {
+          "title": "Notify staff after a status change",
+          "description": "Send an in-app notification when an appointment changes to a selected status."
+        },
+        "appointment_status_write_activity": {
+          "title": "Write activity after a status change",
+          "description": "Add an appointment activity entry when an appointment changes to a selected status."
+        }
+      },
+      "defaults": {
+        "appointment_created_sms": {
+          "name": "Send patient SMS after new appointment",
+          "message": "{{patientName}}, your appointment is booked for {{date}} at {{startTime}}."
+        },
+        "appointment_reminder_sms": {
+          "name": "Send reminder SMS before appointment",
+          "message": "Reminder: {{patientName}}, your appointment is on {{date}} at {{startTime}}."
+        },
+        "appointment_created_notify_staff": {
+          "name": "Notify staff about new appointment",
+          "message": "{{patientName}} has a new appointment on {{date}} at {{startTime}}.",
+          "notificationTitle": "New appointment: {{patientName}}"
+        },
+        "appointment_status_notify_staff": {
+          "name": "Notify staff about appointment status change",
+          "message": "{{patientName}} changed to {{status}} for {{date}} at {{startTime}}.",
+          "notificationTitle": "Appointment status changed"
+        },
+        "appointment_status_write_activity": {
+          "name": "Write activity for appointment status change",
+          "message": "Appointment status changed to {{status}} for {{patientName}}."
+        }
+      }
+    },
+    "automationPlayground": {
+      "title": "Automation setup",
+      "description": "Choose what should trigger the automation, add optional conditions, and decide what should happen next.",
+      "pageDescription": "Create a business-friendly automation without technical setup.",
+      "editPageDescription": "Update \"{{name}}\" with the business-friendly automation setup.",
+      "entityLabel": "Area",
+      "entityAppointment": "Appointment",
+      "eventLabel": "When this happens",
+      "statusLabel": "Only for this status",
+      "statusAny": "Any status",
+      "actionLabel": "Then do this",
+      "enabledLabel": "Automation is active",
+      "enabledHint": "Disabled automations stay saved but do not run for new events.",
+      "filtersEmpty": "This automation will run for every matching appointment unless you add a condition.",
+      "addFilter": "Add condition",
+      "addAction": "Add action",
+      "actionCardTitle": "Action {{index}}",
+      "filterFieldLabel": "Field",
+      "filterOperatorLabel": "Rule",
+      "filterValueLabel": "Value",
+      "smsMessageLabel": "SMS message",
+      "smsMessageHint": "You can still use placeholders like {{patientName}}, {{date}}, and {{startTime}}.",
+      "notificationTitleLabel": "Notification title",
+      "notificationMessageLabel": "Notification message",
+      "activityMessageLabel": "Activity note",
+      "emailModeLabel": "Email content mode",
+      "emailTemplateLabel": "Email template",
+      "emailTemplatePlaceholder": "Choose a template",
+      "emailTemplateEmpty": "No active templates are available.",
+      "emailSubjectLabel": "Email subject",
+      "emailBodyLabel": "Email body",
+      "events": {
+        "created": "A new appointment is created",
+        "statusChanged": "An appointment status changes",
+        "reminderDue": "An appointment reminder becomes due",
+        "smsReplyReceived": "An SMS reply is received"
+      },
+      "groups": {
+        "patient": "Patient details",
+        "appointment": "Appointment details",
+        "message": "Message details",
+        "other": "Other details"
+      },
+      "operators": {
+        "equals": "is",
+        "notEquals": "is not",
+        "contains": "contains",
+        "greaterThan": "is greater than",
+        "lessThan": "is less than"
+      },
+      "statuses": {
+        "scheduled": "Scheduled",
+        "pending_confirmation": "Pending confirmation",
+        "confirmed": "Confirmed",
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No-show"
+      },
+      "replyIntents": {
+        "confirm": "confirmation reply",
+        "cancel": "cancellation reply",
+        "unknown": "other reply"
+      },
+      "replyIntentLabel": "Only for this reply intent",
+      "replyIntentDescription": "Run this automation only when the incoming SMS reply matches {{replyIntent}}.",
+      "replyIntentAny": "Any reply",
+      "recipients": {
+        "patientEmail": "Recipient: patient email",
+        "assignedEmployee": "Recipient: assigned employee"
+      },
+      "emailModes": {
+        "manual": "Write manually",
+        "template": "Use template"
+      },
+      "capabilities": {
+        "configRequired": "This action needs additional configuration before it can run.",
+        "configRequiredShort": "Needs setup"
+      },
+      "updateField": {
+        "targetLabel": "Record to update",
+        "fieldLabel": "Field",
+        "valueLabel": "New value",
+        "permissionHint": "Only safe, supported fields can be updated by automations.",
+        "customFieldShort": "custom field",
+        "targets": {
+          "patient": "Patient",
+          "appointment": "Appointment",
+          "employee": "Employee"
+        }
+      },
+      "variablePicker": {
+        "insert": "Insert variable"
+      },
+      "sections": {
+        "basics": {
+          "title": "Basics",
+          "description": "Give the automation a clear name and decide whether it should start active."
+        },
+        "trigger": {
+          "title": "Trigger",
+          "description": "Choose the appointment event that should start this automation."
+        },
+        "eventSettings": {
+          "title": "Event details",
+          "description": "Narrow the trigger to a specific appointment status or SMS reply intent if needed."
+        },
+        "filters": {
+          "title": "Conditions",
+          "description": "Optionally limit the automation to appointments matching business-friendly fields."
+        },
+        "action": {
+          "title": "Actions",
+          "description": "Compose one or more actions that should run after the trigger matches."
+        },
+        "summary": {
+          "title": "Summary",
+          "description": "Review the plain-language result before saving."
+        }
+      },
+      "summary": {
+        "trigger": "This runs when {{event}}.",
+        "triggerWithStatus": "This runs when {{event}} and the new status is {{status}}.",
+        "triggerWithReplyIntent": "This runs when {{event}} and the reply matches {{replyIntent}}.",
+        "sendSms": "It sends this SMS: {{message}}",
+        "sendSmsRequest": "It sends an SMS reply request: {{message}}",
+        "sendEmailTemplate": "It sends the email template \"{{template}}\".",
+        "sendEmailManual": "It sends an email with the subject \"{{subject}}\".",
+        "createNotification": "It creates a notification titled \"{{title}}\" with the message \"{{message}}\".",
+        "writeActivity": "It writes this activity note: {{message}}",
+        "updateField": "It updates {{entity}} field \"{{field}}\" to \"{{value}}\".",
+        "actionLine": "{{index}}. {{summary}}",
+        "filters": "It also checks {{count}} additional condition.",
+        "filters_other": "It also checks {{count}} additional conditions.",
+        "noFilters": "No extra conditions are required."
+      },
+      "defaults": {
+        "name": "Follow up on appointment event",
+        "smsMessage": "{{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}.",
+        "smsRequestMessage": "Please reply to confirm your appointment on {{date}} at {{startTime}}.",
+        "notificationTitle": "Appointment update",
+        "notificationMessage": "There is an appointment update that needs attention.",
+        "activityMessage": "Appointment event recorded automatically.",
+        "emailSubject": "Appointment update",
+        "emailBody": "Hello {{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}."
+      },
+      "legacy": {
+        "title": "This rule uses legacy logic",
+        "description": "This older automation cannot be safely edited in the new setup yet. You can still rename it, turn it on or off, or delete it.",
+        "editPageDescription": "Review \"{{name}}\" and use the safe actions available for older automation rules.",
+        "summaryLabel": "Current rule summary",
+        "enabledHint": "You can still turn this rule on or off without changing its logic."
+      },
+      "unavailable": "Automation setup is not available for the current organization configuration."
     },
     "automationEventTypes": {
       "gabinet": {

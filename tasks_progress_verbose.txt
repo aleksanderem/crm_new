@@ -221,6 +221,34 @@ All 15 document template tasks PASSING. Full system implemented:
 
 ---
 
+=== SESSION S0061 CONTINUE === 2026-03-13T00:00:00Z
+Focus: Automation full-page editor route migration and focused verification
+Active tasks: AUT-05
+
+---
+
+S0061. Automation route split progress:
+- Converted `src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx` into a pure layout route that renders `<Outlet />` only.
+- Kept the overview UI in `src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx` so `/dashboard/settings/automations/new` and `/$ruleId` can render as dedicated full pages.
+- Regenerated the TanStack route tree from the project root.
+- Updated the Playwright helper to select the SMS action when available and only fill the SMS template field when that config is actually visible.
+- Focused verification passed: app typecheck, `convex/tests/automation.test.ts` (9/9), and Playwright `automation rule lifecycle triggers visible run` (1/1).
+
+---
+
+S0061. AUT-06 simple-mode wizard plan:
+- New objective: keep the existing full-page routes, but make create/edit default to a business-friendly 3-step Simple mode (goal/preset → business fields → review/save) and demote `AutomationGraphBuilder` behind an explicit Advanced mode action.
+- Implementation hypothesis A (high confidence): add a frontend-only Gabinet preset catalog that maps curated business use cases onto the current backend payload shape (`trigger`, `graph`, `conditions`, `actions`, `definitionVersion`) without changing Convex mutations or stored rules.
+  Evidence for: current routes already submit the full compatible payload; `listEventCatalog` exposes appointment-created, status-changed, reminder-due, and SMS-reply metadata; `listActionTypes` already capability-filters SMS/email/notification/activity options.
+  Evidence against: simple-mode edit only works if preset classification is deterministic against existing rule shapes.
+- Implementation hypothesis B (medium confidence): reuse the onboarding/patient-booking step patterns by keeping step state local to a new simple-mode component rather than expanding the graph builder itself.
+  Evidence for: `_layout.setup.tsx` and `_layout.book.tsx` both use lightweight local step state with back/next controls; current automation builder is already large and technical.
+  Evidence against: advanced-mode fallback still needs shared action/submit mapping utilities so logic does not fork too much.
+- Current best guess: add `automation-simple-presets.ts` + `automation-simple-mode.tsx`, move payload mapping/classification helpers into the automation-builder area, update new/edit pages to choose between simple and advanced modes, and tweak overview-page CTA/copy to push the guided flow first.
+- Verification target: app typecheck; `convex/tests/automation.test.ts` stays green and gains preset classification/contract coverage if needed; focused Playwright verifies simple create/edit, review copy, advanced fallback, toggle/delete, and visible run after appointment creation.
+
+---
+
 S0061. SMS backend slices progress:
 - Added reusable appointment status transition helper in convex/gabinet/appointments.ts and wired internal.gabinet.appointments.applySmsReplyTransition for TAK/NIE processing.
 - Switched reminder SMS flow to queue outbound confirmation events via convex/gabinet/appointmentSms.ts instead of sending generic reminder text directly.
@@ -442,5 +470,112 @@ S0061. Automation E2E verification wiring (2026-03-12):
 - Final focused verification now passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` (1 passed).
 - Backend lifecycle verification also passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (5/5 passed).
 - App typecheck was rerun alongside the final verification flow; no TypeScript regressions were surfaced in the focused run.
+
+---
+
+S0061. Automation builder-focused Playwright adjustment (2026-03-12):
+- Updated `e2e/gabinet/appointments.spec.ts` automation lifecycle helper to support graph-builder-safe selector usage by preferring `automation-builder-sms-message-input` when present, while preserving fallback to the existing `automation-sms-message-input`.
+- Preserved auth-safe `/dashboard/settings/automations` navigation path (`/dashboard` login bootstrap → `/dashboard/settings` sidebar click → automations link) instead of direct deep-linking.
+- Focused run initially failed in appointment creation because the modal remained open after submit (`expect(dialog).toBeHidden` timeout). Updated helper to close defensively when still visible and continue with assertions.
+- Re-ran focused verification: `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` passes (1 passed).
+
+---
+
+S0061. Graph-based automation builder implementation (2026-03-12):
+- Replaced the preset-only automation rule dialog with a minimal graph builder powered by `@xyflow/react`, while keeping the existing rules list and runs overview cards unchanged.
+- Added new builder component `src/components/settings/automation-builder/automation-graph-builder.tsx` with trigger/condition/action nodes, backend-compatible payload mapping (`trigger`, `graph`, `conditions`, `actions`), and stable `data-testid` hooks for Playwright.
+- Updated automations route to consume both `api.automation.listEventCatalog` and `api.automation.listActionTypes`; action badges/catalog now come from backend data instead of hard-coded values.
+- Added incremental EN/PL i18n keys required by the builder UI and action-type labels.
+- Installed `@xyflow/react` and reran typecheck; after tightening route action typing, `npm run -s typecheck` passes.
+
+---
+
+S0061. Unified automation rollout completion (2026-03-12T21:56:58Z):
+- Backend: `convex/automation.ts` now exposes a registry-backed trigger catalog with `source`, `entityType`, `variableCatalog`, and `samplePayload`; `listActionTypes` is capability-filtered from org SMS/email configuration; `createRule`/`updateRule` accept `trigger`, `graph`, and `definitionVersion`; legacy rule execution remains active; `send_sms_request` executes through the existing SMS path.
+- Frontend: `/dashboard/settings/automations` now opens a minimal `@xyflow/react` graph builder via `src/components/settings/automation-builder/automation-graph-builder.tsx` while keeping the rules/runs overview and catalog cards in place.
+- Verification: `npm run -s typecheck` PASS, `cd convex && npx vitest run tests/automation.test.ts` PASS (9/9), `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` PASS (1/1).
+- Integration cleanup: switched the rule toggle UI back to `Switch` to preserve existing Playwright semantics and aligned the builder to fall back to the first supported action type when org capabilities hide an action.
+- Remaining known limitation: trigger registry entries are currently defined centrally in `convex/automation.ts` from real emitted payload shapes rather than registered dynamically by each domain module; functionally this satisfies the current unified builder flow, but further backend modularization can still be done later without changing the UI contract.
+
+---
+
+S0061. AUT-05 automation full-page editor migration start (2026-03-12T22:34:47Z):
+- Goal: move automation create/edit from the settings modal into dedicated `/dashboard/settings/automations/new` and `/dashboard/settings/automations/$ruleId` pages while preserving the overview page, backend payload shape, and focused verification.
+- Reuse plan: keep `AutomationGraphBuilder` as the single editor, follow the document-template list/new/$id route split, keep toggle/delete inline on the overview page, and migrate the focused Playwright lifecycle away from automation dialog selectors.
+- Target files: `_layout.settings.automations.tsx`, `_layout.settings.automations.new.tsx`, `_layout.settings.automations.$ruleId.tsx`, `src/components/settings/automation-builder/automation-graph-builder.tsx`, `e2e/gabinet/appointments.spec.ts`, and touched EN/PL locale entries.
+- Next: refactor overview navigation first, then add the new/edit routes, then run app typecheck plus focused Convex and Playwright verification.
+
+---
+
+S0061. AUT-06 verification completion (2026-03-13T01:01:30Z):
+- Fixed the remaining app typecheck regression in `src/components/settings/automation-builder/automation-simple-presets.ts` by making the simple-rule message extraction explicitly discriminate `send_sms` and `send_sms_request` before reading `messageTemplate`.
+- Verification: `npx tsc -p tsconfig.app.json --pretty false` passes from the repo root.
+- Verification: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` passes (9/9).
+- Verification: `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` passes (1/1).
+- Result: AUT-06 is passing with the business-friendly simple-mode wizard, edit-time classification, advanced fallback, toggle/delete flow, and visible automation-run coverage all verified.
+
+---
+
+S0061. AUT-07 richer automation editor rollout start (2026-03-13T02:14:00Z):
+- Goal: expand the existing automation create/edit experience into a richer Gabinet-first business editor without bringing back the graph builder as the user-facing path.
+- Scope split:
+  1. Backend contract expansion in `convex/automation.ts` + `convex/schema.ts` for richer triggers/actions/capabilities while preserving legacy rules.
+  2. Frontend simple-mode refactor to ordered multi-action composer with recipient mapping, variable insertion, email template/manual modes, and safe field-update action.
+  3. Route/index/copy/i18n updates so overview and create/edit pages reflect the broader editor.
+  4. Focused verification via app typecheck, Convex automation tests, and focused Playwright Gabinet automation coverage.
+- Initial hypotheses:
+  - Keep the persisted rule shape centered on `trigger`, `graph`, `conditions`, `actions`, `enabled`, and `definitionVersion`, expanding validators/runtime rather than migrating storage.
+  - Reuse existing event catalog + variable catalog + email template patterns instead of inventing parallel models.
+  - Keep edit hydration strict: only hydrate into business mode when a rule is fully representable; otherwise preserve the current safe advanced fallback.
+- Next: inspect current automation backend/editor surfaces, then implement backend-first changes before refactoring the business editor state.
+
+S0061. AUT-07 backend contract progress (2026-03-13T03:00:00Z):
+- Expanded `convex/schema.ts` action validator earlier with richer `send_email` modes and new `update_field` action shape.
+- `convex/automation.ts` is now being aligned to that contract: shared schema action validator imported, action capability metadata query added, legacy `listActionTypes` kept as the available-only compatibility layer, and runtime branches are being expanded for template/manual email plus permission-aware field updates.
+- Current implementation note: the backend now derives capability metadata from org email/SMS config and has first-pass allowlisted field-update execution for Gabinet patients, appointments, and employees.
+- Next: run focused app/backend verification to catch type/runtime mismatches, then tighten tests around capability metadata and richer action execution before moving to the frontend business editor refactor.
+
+---
+
+S0061. AUT-07 backend verification checkpoint (2026-03-13T03:21:42Z):
+- Fixed the focused backend blockers in `convex/automation.ts` by removing the direct `@cvx/email` dependency from the automation runtime, reusing `@cvx/env` + `fetch` for automation email sends, and switching HTML escaping to the shared helper.
+- Expanded `convex/tests/automation.test.ts` with focused coverage for manual email sends, template email sends, and `update_field` custom patient updates. Focused backend verification now passes: app typecheck and `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (12/12).
+- While adding template-email coverage, found and fixed an unrelated-but-real source registry bug in `convex/gabinet/documentDataSources.ts`: the appointment source incorrectly parsed Gabinet `startTime` as a full Date, which broke template rendering when appointment sources were resolved. The resolver now returns `appt.date` / `appt.startTime` directly.
+- Next: refactor the frontend automation simple mode away from the current single-action playground model so it can consume `listActionCapabilities`, expose richer action cards, and support strict multi-action edit/create flows for AUT-07.
+
+---
+
+S0061. AUT-07 frontend editor implementation start (2026-03-13T04:00:00Z):
+- Switched to parallel research with multiple Explore agents to map the richer editor state, route/query wiring, i18n impact, and E2E selector strategy before patching the UI.
+- Confirmed the frontend should load `listActionCapabilities`, `emailTemplates.list`, `emailTemplates.listVariableSources`, and Gabinet `customFields.getDefinitions`, while keeping unsupported legacy rules on the safe fallback.
+- Confirmed the richest reuse points are the email-template variable picker/popover pattern and the custom-field renderer/value-type patterns; current AUT-07 work will reuse those ideas without reviving the graph builder as the primary user-facing editor.
+- Next: replace the single-action playground form model with a multi-action business editor, then rewire the create/edit routes to pass capabilities, template sources, and editable custom field metadata.
+
+---
+
+S0061. AUT-07 frontend multi-action rollout checkpoint (2026-03-13T04:13:21Z):
+- Rewrote `src/components/settings/automation-builder/automation-simple-mode.tsx` into a richer multi-action business editor with ordered action cards, add/remove/reorder controls, SMS reply trigger intent handling, variable insertion, email manual/template modes, and update-field editing.
+- Rewired `src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx` and `src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx` to load `listActionCapabilities`, active email templates, and Gabinet custom-field definitions for patient/appointment/employee targets.
+- Expanded shared submit payload typings in `src/components/settings/automation-builder/automation-graph-builder.tsx` so the newer send_email modes and `update_field` action stay type-compatible with the richer editor.
+- App typecheck passes again: `npx tsc -p tsconfig.app.json --pretty false`.
+- Parallel follow-up agents are now handling the remaining non-overlapping slices: locale key audit, route-wiring delta review, and overview-summary delta review.
+- Next: apply the locale/index/E2E adjustments from the agent findings, then run focused Convex + Playwright verification for AUT-07.
+
+---
+
+S0061. AUT-07 overview/i18n/E2E verification checkpoint (2026-03-13T04:29:15Z):
+- Updated `src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx` so overview cards summarize multi-action rules with up to two explicit action badges plus a compact `+N more` badge instead of only showing the first action.
+- Expanded `public/locales/en/translation.json` and `public/locales/pl/translation.json` with the richer automation editor copy required by the new business editor: SMS reply trigger labels, reply-intent filtering, capability warnings, add-action labels, email manual/template labels, update-field labels, summary lines, and action-count overflow copy.
+- Updated `e2e/gabinet/appointments.spec.ts` so the editor flow scopes inputs inside `automation-playground-action-card-0`, then restored the legacy fallback test to a truly unsupported fixture by using a non-default SMS phone path; this keeps strict fallback coverage meaningful after the richer classifier started accepting `send_sms_request` rules.
+- Focused verification now passes again: `npx tsc -p tsconfig.app.json --pretty false`, `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (12/12), and `npx playwright test e2e/gabinet/appointments.spec.ts -g "automation rule lifecycle triggers visible run"` (1/1).
+- Next: AUT-07 is functionally green; remaining work is broader cleanup/review rather than blocker-level implementation.
+
+=== SESSION S0061 HANDOFF === 2026-03-13T04:38:57Z
+Status: completed
+Current state: AUT-07 passing. Richer Gabinet automation editor flow, overview badges, locale coverage, and focused verification are all green.
+Immediate next action: None required for AUT-07; next session can start from unrelated backlog or optional polish/review.
+Open questions: None for the feature slice.
+Warnings: Do not include `.claude/worktrees/`, `playwright-report/`, or `test-results/` artifacts in the feature commit.
+Files modified: convex/automation.ts, convex/schema.ts, convex/gabinet/documentDataSources.ts, convex/tests/automation.test.ts, src/components/settings/automation-builder/automation-simple-mode.tsx, src/components/settings/automation-builder/automation-simple-presets.ts, src/components/settings/automation-builder/automation-graph-builder.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx, src/routeTree.gen.ts, public/locales/en/translation.json, public/locales/pl/translation.json, e2e/gabinet/appointments.spec.ts, e2e/helpers/auth.ts, session_state.json, tasks_progress.json, tasks_progress_verbose.txt.
 
 ---

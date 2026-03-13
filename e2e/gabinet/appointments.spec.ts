@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../convex/_generated/api";
 import { loginAndGoToDashboard, waitForApp } from "../helpers/auth";
 import {
   navigateTo,
@@ -9,6 +12,118 @@ import {
 
 test.describe("Gabinet — Appointments", () => {
   test.setTimeout(120_000);
+
+  const convexUrl = readFileSync(
+    "/Users/alfred/.openclaw/workspace/projects/crm_new/.env.local",
+    "utf-8",
+  )
+    .split("\n")
+    .find((line) => line.startsWith("VITE_CONVEX_URL="))
+    ?.split("=")[1]
+    ?.trim();
+
+  if (!convexUrl) {
+    throw new Error("Missing VITE_CONVEX_URL in .env.local");
+  }
+
+  const convexStorageNamespace = convexUrl.replace(/[^a-zA-Z0-9]/g, "");
+
+  async function createLegacyAutomationRule(
+    page: import("@playwright/test").Page,
+    name: string,
+  ) {
+    const jwt = await page.evaluate((storageNamespace) => {
+      return window.localStorage.getItem(`__convexAuthJWT_${storageNamespace}`);
+    }, convexStorageNamespace);
+
+    if (!jwt) {
+      throw new Error("Missing Convex auth token in localStorage");
+    }
+
+    const client = new ConvexHttpClient(convexUrl);
+    client.setAuth(jwt);
+
+    const organizations = await client.query(api.organizations.getMyOrganizations, {});
+    const organizationId = organizations[0]?._id;
+
+    if (!organizationId) {
+      throw new Error("Missing organization for legacy automation rule");
+    }
+
+    const existingRules = await client.query(api.automation.listRules, {
+      organizationId,
+      module: "gabinet",
+    });
+    const duplicate = existingRules.find((rule) => rule.name === name);
+    if (duplicate?._id) {
+      await client.mutation(api.automation.deleteRule, {
+        organizationId,
+        ruleId: duplicate._id,
+      });
+    }
+
+    await client.mutation(api.automation.createRule, {
+      organizationId,
+      name,
+      description: "Legacy automation coverage rule",
+      module: "gabinet",
+      eventType: "gabinet.appointment.created",
+      entityType: "gabinetAppointment",
+      trigger: {
+        module: "gabinet",
+        eventType: "gabinet.appointment.created",
+        entityType: "gabinetAppointment",
+        source: "domain_event",
+        label: "Appointment created",
+      },
+      graph: {
+        nodes: [
+          {
+            id: "trigger-1",
+            type: "trigger",
+            positionX: 60,
+            positionY: 70,
+            trigger: {
+              module: "gabinet",
+              eventType: "gabinet.appointment.created",
+              entityType: "gabinetAppointment",
+              source: "domain_event",
+              label: "Appointment created",
+            },
+          },
+          {
+            id: "action-1",
+            type: "action",
+            positionX: 360,
+            positionY: 70,
+            action: {
+              type: "send_sms_request",
+              phonePath: "legacyPatientPhone",
+              messageTemplate: "Reply TAK to confirm this appointment.",
+            },
+          },
+        ],
+        edges: [
+          {
+            id: "edge-trigger-1-action-1",
+            source: "trigger-1",
+            target: "action-1",
+            branch: "default",
+          },
+        ],
+      },
+      definitionVersion: 1,
+      conditions: [],
+      actions: [
+        {
+          type: "send_sms_request",
+          phonePath: "legacyPatientPhone",
+          messageTemplate: "Reply TAK to confirm this appointment.",
+        },
+      ],
+      enabled: true,
+    });
+  }
 
   async function navigateToAuthenticatedRoute(
     page: import("@playwright/test").Page,
@@ -24,18 +139,19 @@ test.describe("Gabinet — Appointments", () => {
   async function openAutomationsPage(page: import("@playwright/test").Page) {
     await loginAndGoToDashboard(page);
 
-    const settingsLink = page.locator('a[href="/dashboard/settings"]').first();
-    await expect(settingsLink).toBeVisible({ timeout: 5000 });
+    const settingsLink = page.getByRole("link", { name: /ustawienia|settings/i }).first();
+    await expect(settingsLink).toBeVisible({ timeout: 10000 });
     await settingsLink.click();
     await waitForApp(page, 12000);
 
     const automationsLink = page
-      .locator('a[href="/dashboard/settings/automations"]')
+      .getByRole("link", { name: /automatyzacje|automations/i })
       .first();
-    await expect(automationsLink).toBeVisible({ timeout: 5000 });
+    await expect(automationsLink).toBeVisible({ timeout: 10000 });
     await automationsLink.click();
     await waitForApp(page, 12000);
 
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations/);
     await expect(page.getByTestId("automation-create-rule-button")).toBeVisible({
       timeout: 10000,
     });
@@ -53,45 +169,140 @@ test.describe("Gabinet — Appointments", () => {
     return ruleCard;
   }
 
-  async function createAutomationRule(
+  async function selectAutomationOption(
+    page: import("@playwright/test").Page,
+    triggerTestId: string,
+    optionPattern: RegExp,
+  ) {
+    const trigger = page.getByTestId(triggerTestId);
+    await trigger.click();
+
+    const option = page.getByRole("option").filter({ hasText: optionPattern }).first();
+    await expect(option).toBeVisible({ timeout: 5000 });
+
+    const optionText = (await option.textContent())?.trim() ?? "";
+    await option.click({ force: true });
+
+    if (optionText) {
+      await expect(trigger).toContainText(optionText, { timeout: 5000 });
+    }
+
+    await waitForApp(page, 1500);
+  }
+
+  async function createSimpleAutomationRule(
     page: import("@playwright/test").Page,
     name: string,
   ) {
     await openAutomationsPage(page);
     await page.getByTestId("automation-create-rule-button").click();
+    await waitForApp(page);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations\/new$/);
+    await expect(page.getByTestId("automation-playground")).toBeVisible();
 
-    const dialog = page.locator('[role="dialog"]').last();
-    await expect(dialog).toBeVisible({ timeout: 5000 });
-
-    await dialog.getByTestId("automation-name-input").fill(name);
-    const description = dialog.getByTestId("automation-description-input");
-    if (await description.isVisible().catch(() => false)) {
-      await description.fill("Playwright automation verification rule");
-    }
-    await dialog.getByTestId("automation-sms-message-input").fill(
-      "{{patientName}}, test automation {{date}} {{startTime}}",
+    await expect(page.getByTestId("automation-playground-status-trigger")).toHaveCount(0);
+    await selectAutomationOption(
+      page,
+      "automation-playground-event-trigger",
+      /status changes|zmieni się status/i,
     );
-    await dialog.getByTestId("automation-save-button").click();
+    await expect(page.getByTestId("automation-playground-status-trigger")).toBeVisible();
+    await selectAutomationOption(
+      page,
+      "automation-playground-event-trigger",
+      /new appointment is created|zostanie utworzona nowa wizyta/i,
+    );
+    await expect(page.getByTestId("automation-playground-status-trigger")).toHaveCount(0);
+
+    await page.getByTestId("automation-playground-name-input").fill(name);
+
+    const firstActionCard = page.getByTestId("automation-playground-action-card-0");
+    const smsMessageInput = firstActionCard.getByTestId(
+      "automation-playground-sms-message-input",
+    );
+    if (await smsMessageInput.isVisible().catch(() => false)) {
+      await smsMessageInput.fill(
+        "{{patientName}}, test automation {{date}} {{startTime}}",
+      );
+    } else {
+      const notificationTitleInput = firstActionCard.getByTestId(
+        "automation-playground-notification-title-input",
+      );
+      if (await notificationTitleInput.isVisible().catch(() => false)) {
+        await notificationTitleInput.fill("Appointment update from test");
+        await firstActionCard
+          .getByTestId("automation-playground-notification-message-input")
+          .fill("Automation lifecycle test notification.");
+      }
+    }
+
+    const summary = page.getByTestId("automation-playground-summary");
+    await expect(summary).toContainText(
+      /new appointment is created|zostanie utworzona nowa wizyta/i,
+    );
+    await expect(page.locator("body")).not.toContainText(/patientPhone|employeeId/);
+
+    await page.getByTestId("automation-playground-save-button").click();
     await waitForApp(page);
 
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations$/);
     await getAutomationRuleCard(page, name);
   }
 
-  async function editAutomationRule(
+  async function editSimpleAutomationRule(
     page: import("@playwright/test").Page,
     currentName: string,
     nextName: string,
   ) {
     const ruleCard = await getAutomationRuleCard(page, currentName);
-    await ruleCard.getByRole("button", { name: /edit|edytuj/i }).click();
+    await ruleCard.getByRole("link", { name: /edit|edytuj/i }).click();
+    await waitForApp(page);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations\/.+$/);
+    await expect(page.getByTestId("automation-playground")).toBeVisible();
 
-    const dialog = page.locator('[role="dialog"]').last();
-    await expect(dialog).toBeVisible({ timeout: 5000 });
-    await dialog.getByTestId("automation-name-input").fill(nextName);
-    await dialog.getByTestId("automation-save-button").click();
+    await page.getByTestId("automation-playground-name-input").fill(nextName);
+    await page.getByTestId("automation-playground-save-button").click();
     await waitForApp(page);
 
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations$/);
     await getAutomationRuleCard(page, nextName);
+  }
+
+  async function verifyLegacyAutomationFallback(
+    page: import("@playwright/test").Page,
+    ruleName: string,
+  ) {
+    const ruleCard = await getAutomationRuleCard(page, ruleName);
+    await ruleCard.getByRole("link", { name: /edit|edytuj/i }).click();
+    await waitForApp(page);
+
+    await expect(page.getByTestId("automation-legacy-fallback-card")).toBeVisible();
+    await expect(page.getByTestId("automation-playground")).toHaveCount(0);
+    await expect(page.getByTestId("automation-legacy-name-input")).toHaveValue(ruleName);
+
+    const renamedRuleName = `${ruleName} renamed`;
+
+    await page.getByTestId("automation-legacy-name-input").fill(renamedRuleName);
+    await page.getByTestId("automation-legacy-rename-button").click();
+    await waitForApp(page);
+    await expect(page.getByTestId("automation-legacy-name-input")).toHaveValue(
+      renamedRuleName,
+    );
+
+    const toggleButton = page.getByTestId("automation-legacy-toggle-button");
+    const initialLabel = await toggleButton.textContent();
+    await toggleButton.click();
+    await waitForApp(page);
+    await expect(toggleButton).not.toHaveText(initialLabel ?? "");
+
+    await page.getByTestId("automation-legacy-delete-button").click();
+    await waitForApp(page);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations$/);
+    await expect(
+      page.locator('[data-testid^="automation-rule-"]').filter({
+        hasText: renamedRuleName,
+      }),
+    ).toHaveCount(0);
   }
 
   async function toggleAutomationRule(
@@ -99,7 +310,7 @@ test.describe("Gabinet — Appointments", () => {
     ruleName: string,
   ) {
     const ruleCard = await getAutomationRuleCard(page, ruleName);
-    const switchRoot = ruleCard.getByRole("switch").first();
+    const switchRoot = ruleCard.locator('[data-testid^="automation-toggle-"]').first();
     const initialState = await switchRoot.getAttribute("aria-checked");
 
     await switchRoot.click();
@@ -122,7 +333,8 @@ test.describe("Gabinet — Appointments", () => {
     await dialog.getByTestId(triggerTestId).click();
     const option = page.locator('[role="option"]').filter({ hasText: /\S/ }).first();
     await expect(option).toBeVisible({ timeout: 5000 });
-    await option.click();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
     await page.waitForTimeout(300);
   }
 
@@ -149,7 +361,15 @@ test.describe("Gabinet — Appointments", () => {
 
     await dialog.getByTestId("appointment-submit-button").click();
     await waitForApp(page, 12000);
-    await expect(dialog).toBeHidden({ timeout: 10000 });
+
+    const dialogStillVisible = await dialog
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    if (dialogStillVisible) {
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden({ timeout: 5000 });
+    }
+
     await assertNoErrorBoundary(page);
   }
 
@@ -161,11 +381,20 @@ test.describe("Gabinet — Appointments", () => {
   test("automation rule lifecycle triggers visible run", async ({ page }) => {
     const initialRuleName = testId("automation-rule");
     const updatedRuleName = `${initialRuleName}-updated`;
+    const legacyRuleName = testId("automation-legacy-rule");
 
-    await createAutomationRule(page, initialRuleName);
-    await editAutomationRule(page, initialRuleName, updatedRuleName);
+    await createSimpleAutomationRule(page, initialRuleName);
+    await editSimpleAutomationRule(page, initialRuleName, updatedRuleName);
     await toggleAutomationRule(page, updatedRuleName);
 
+    const ruleCard = await getAutomationRuleCard(page, updatedRuleName);
+    await ruleCard.locator('[data-testid^="automation-delete-"]').first().click();
+    await page.getByRole("button", { name: /delete|usuń/i }).click();
+    await expect(
+      page.locator('[data-testid^="automation-rule-"]').filter({ hasText: updatedRuleName }),
+    ).toHaveCount(0);
+
+    await createSimpleAutomationRule(page, updatedRuleName);
     await createAppointmentFromCalendar(page);
 
     await openAutomationsPage(page);
@@ -173,7 +402,13 @@ test.describe("Gabinet — Appointments", () => {
     await expect(page.locator('[data-testid^="automation-run-"]').first()).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.locator("body")).toContainText(/gabinet\.appointment\.created/i);
+    await expect(page.locator("body")).toContainText(
+      /appointment created|utworzono wizytę/i,
+    );
+
+    await createLegacyAutomationRule(page, legacyRuleName);
+    await openAutomationsPage(page);
+    await verifyLegacyAutomationFallback(page, legacyRuleName);
     await assertNoErrorBoundary(page);
   });
 

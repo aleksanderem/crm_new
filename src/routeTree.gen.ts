@@ -80,6 +80,7 @@ import { Route as AppAuthDashboardLayoutContactsContactIdImport } from './routes
 import { Route as AppAuthDashboardLayoutCompaniesNewImport } from './routes/_app/_auth/dashboard/_layout.companies.new'
 import { Route as AppAuthDashboardLayoutCompaniesCompanyIdImport } from './routes/_app/_auth/dashboard/_layout.companies.$companyId'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.index'
+import { Route as AppAuthDashboardLayoutSettingsAutomationsIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.index'
 import { Route as AppAuthDashboardLayoutGabinetTreatmentsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.index'
 import { Route as AppAuthDashboardLayoutGabinetPatientsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.index'
 import { Route as AppAuthDashboardLayoutGabinetPackagesIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.packages.index'
@@ -88,6 +89,8 @@ import { Route as AppAuthDashboardLayoutGabinetDocumentsIndexImport } from './ro
 import { Route as AppAuthDashboardLayoutGabinetCalendarIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.new'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.$id'
+import { Route as AppAuthDashboardLayoutSettingsAutomationsNewImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.new'
+import { Route as AppAuthDashboardLayoutSettingsAutomationsRuleIdImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
 import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.reminders'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
@@ -527,6 +530,12 @@ const AppAuthDashboardLayoutSettingsDocumentTemplatesIndexRoute =
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsAutomationsIndexRoute =
+  AppAuthDashboardLayoutSettingsAutomationsIndexImport.update({
+    path: '/',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsAutomationsRoute,
+  } as any)
+
 const AppAuthDashboardLayoutGabinetTreatmentsIndexRoute =
   AppAuthDashboardLayoutGabinetTreatmentsIndexImport.update({
     path: '/gabinet/treatments/',
@@ -577,6 +586,18 @@ const AppAuthDashboardLayoutSettingsDocumentTemplatesIdRoute =
   AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport.update({
     path: '/document-templates/$id',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsAutomationsNewRoute =
+  AppAuthDashboardLayoutSettingsAutomationsNewImport.update({
+    path: '/new',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsAutomationsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsAutomationsRuleIdRoute =
+  AppAuthDashboardLayoutSettingsAutomationsRuleIdImport.update({
+    path: '/$ruleId',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsAutomationsRoute,
   } as any)
 
 const AppAuthDashboardLayoutGabinetSettingsSchedulingRoute =
@@ -1219,6 +1240,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsSchedulingImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/settings/automations/$ruleId': {
+      id: '/_app/_auth/dashboard/_layout/settings/automations/$ruleId'
+      path: '/$ruleId'
+      fullPath: '/dashboard/settings/automations/$ruleId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAutomationsRuleIdImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsAutomationsImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/automations/new': {
+      id: '/_app/_auth/dashboard/_layout/settings/automations/new'
+      path: '/new'
+      fullPath: '/dashboard/settings/automations/new'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAutomationsNewImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsAutomationsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/document-templates/$id': {
       id: '/_app/_auth/dashboard/_layout/settings/document-templates/$id'
       path: '/document-templates/$id'
@@ -1275,6 +1310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsIndexImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/settings/automations/': {
+      id: '/_app/_auth/dashboard/_layout/settings/automations/'
+      path: '/'
+      fullPath: '/dashboard/settings/automations/'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsAutomationsIndexImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsAutomationsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/document-templates/': {
       id: '/_app/_auth/dashboard/_layout/settings/document-templates/'
       path: '/document-templates'
@@ -1314,7 +1356,12 @@ export const routeTree = rootRoute.addChildren({
             AppAuthDashboardLayoutSettingsRoute.addChildren({
               AppAuthDashboardLayoutSettingsActivityTypesRoute,
               AppAuthDashboardLayoutSettingsAuditLogRoute,
-              AppAuthDashboardLayoutSettingsAutomationsRoute,
+              AppAuthDashboardLayoutSettingsAutomationsRoute:
+                AppAuthDashboardLayoutSettingsAutomationsRoute.addChildren({
+                  AppAuthDashboardLayoutSettingsAutomationsRuleIdRoute,
+                  AppAuthDashboardLayoutSettingsAutomationsNewRoute,
+                  AppAuthDashboardLayoutSettingsAutomationsIndexRoute,
+                }),
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
               AppAuthDashboardLayoutSettingsEmailRoute,
@@ -1697,7 +1744,12 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/settings/automations": {
       "filePath": "_app/_auth/dashboard/_layout.settings.automations.tsx",
-      "parent": "/_app/_auth/dashboard/_layout/settings"
+      "parent": "/_app/_auth/dashboard/_layout/settings",
+      "children": [
+        "/_app/_auth/dashboard/_layout/settings/automations/$ruleId",
+        "/_app/_auth/dashboard/_layout/settings/automations/new",
+        "/_app/_auth/dashboard/_layout/settings/automations/"
+      ]
     },
     "/_app/_auth/dashboard/_layout/settings/billing": {
       "filePath": "_app/_auth/dashboard/_layout.settings.billing.tsx",
@@ -1847,6 +1899,14 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.scheduling.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
+    "/_app/_auth/dashboard/_layout/settings/automations/$ruleId": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/automations"
+    },
+    "/_app/_auth/dashboard/_layout/settings/automations/new": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.automations.new.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/automations"
+    },
     "/_app/_auth/dashboard/_layout/settings/document-templates/$id": {
       "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.$id.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
@@ -1878,6 +1938,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/gabinet/treatments/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.treatments.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/settings/automations/": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.automations.index.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/automations"
     },
     "/_app/_auth/dashboard/_layout/settings/document-templates/": {
       "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.index.tsx",

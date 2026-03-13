@@ -1,2 +1,9 @@
 export { KpiRow, type KpiItem } from "./kpi-row";
 export { NudgeCard } from "./nudge-card";
+export { MiniFunnel, type FunnelStage } from "./mini-funnel";
+export { BarRanking, type RankingItem } from "./bar-ranking";
+export { SourceBar, type SourceSegment } from "./source-bar";
+export { TypeTags, type TagItem } from "./type-tags";
+export { StaffLoad, type StaffLoadItem } from "./staff-load";
+export { StaffSchedule, type ScheduleItem } from "./staff-schedule";
+export { WaitingList, type WaitingItem } from "./waiting-list";

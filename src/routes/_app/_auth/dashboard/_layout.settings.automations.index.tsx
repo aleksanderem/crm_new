@@ -48,9 +48,7 @@ type RuleRecord = AutomationRuleRecord & {
 };
 
 function getActionTypes(rule: RuleRecord) {
-  const actionTypes = rule.actions.map((action) => action.type);
-  if (actionTypes.length === 0) return ["send_sms"];
-  return Array.from(new Set(actionTypes));
+  return Array.from(new Set(rule.actions.map((action) => action.type)));
 }
 
 function AutomationSettingsOverview() {
@@ -61,7 +59,11 @@ function AutomationSettingsOverview() {
   const updateRule = useMutation(api.automation.updateRule);
   const deleteRule = useMutation(api.automation.deleteRule);
 
-  const { data: rules = [] } = useQuery(
+  const {
+    data: rules = [],
+    isPending: isRulesPending,
+    isError: isRulesError,
+  } = useQuery(
     convexQuery(api.automation.listRules, {
       organizationId,
       module: "gabinet",
@@ -70,7 +72,11 @@ function AutomationSettingsOverview() {
 
   const typedRules = rules as RuleRecord[];
 
-  const { data: runs = [] } = useQuery(
+  const {
+    data: runs = [],
+    isPending: isRunsPending,
+    isError: isRunsError,
+  } = useQuery(
     convexQuery(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
@@ -135,7 +141,13 @@ function AutomationSettingsOverview() {
             <CardDescription>{typedRules.length}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {typedRules.length === 0 ? (
+            {isRulesError ? (
+              <p className="text-sm text-destructive">
+                {t("settings.automationLoadError")}
+              </p>
+            ) : isRulesPending ? (
+              <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+            ) : typedRules.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("settings.automationNoRules")}
               </p>
@@ -258,7 +270,13 @@ function AutomationSettingsOverview() {
             <CardDescription>{runs.length}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {runs.length === 0 ? (
+            {isRunsError ? (
+              <p className="text-sm text-destructive">
+                {t("settings.automationLoadError")}
+              </p>
+            ) : isRunsPending ? (
+              <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+            ) : runs.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("settings.automationNoRuns")}
               </p>

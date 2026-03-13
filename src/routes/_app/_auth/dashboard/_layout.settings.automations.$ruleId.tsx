@@ -52,47 +52,75 @@ function EditAutomationRulePage() {
   const updateRule = useMutation(api.automation.updateRule);
   const deleteRule = useMutation(api.automation.deleteRule);
 
-  const { data: rules } = useQuery(
+  const {
+    data: rules,
+    isPending: isRulesPending,
+    isError: isRulesError,
+  } = useQuery(
     convexQuery(api.automation.listRules, {
       organizationId,
       module: "gabinet",
     }),
   );
 
-  const { data: eventCatalog } = useQuery(
+  const {
+    data: eventCatalog,
+    isPending: isEventCatalogPending,
+    isError: isEventCatalogError,
+  } = useQuery(
     convexQuery(api.automation.listEventCatalog, {
       organizationId,
     }),
   );
 
-  const { data: actionCapabilities } = useQuery(
+  const {
+    data: actionCapabilities,
+    isPending: isActionCapabilitiesPending,
+    isError: isActionCapabilitiesError,
+  } = useQuery(
     convexQuery(api.automation.listActionCapabilities, {
       organizationId,
     }),
   );
 
-  const { data: emailTemplates } = useQuery(
+  const {
+    data: emailTemplates,
+    isPending: isEmailTemplatesPending,
+    isError: isEmailTemplatesError,
+  } = useQuery(
     convexQuery(api.emailTemplates.list, {
       organizationId,
       activeOnly: true,
     }),
   );
 
-  const { data: patientCustomFields } = useQuery(
+  const {
+    data: patientCustomFields,
+    isPending: isPatientCustomFieldsPending,
+    isError: isPatientCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetPatient",
     }),
   );
 
-  const { data: appointmentCustomFields } = useQuery(
+  const {
+    data: appointmentCustomFields,
+    isPending: isAppointmentCustomFieldsPending,
+    isError: isAppointmentCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetAppointment",
     }),
   );
 
-  const { data: employeeCustomFields } = useQuery(
+  const {
+    data: employeeCustomFields,
+    isPending: isEmployeeCustomFieldsPending,
+    isError: isEmployeeCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetEmployee",
@@ -101,11 +129,29 @@ function EditAutomationRulePage() {
 
   const gabinetEvents = useMemo(
     () =>
-      ((eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]).filter(
+      (eventCatalog ?? []).filter(
         (event) => event.module === "gabinet",
-      ),
+      ) as AutomationBuilderEventCatalogEntry[],
     [eventCatalog],
   );
+
+  const isLoading =
+    isRulesPending ||
+    isEventCatalogPending ||
+    isActionCapabilitiesPending ||
+    isEmailTemplatesPending ||
+    isPatientCustomFieldsPending ||
+    isAppointmentCustomFieldsPending ||
+    isEmployeeCustomFieldsPending;
+
+  const isError =
+    isRulesError ||
+    isEventCatalogError ||
+    isActionCapabilitiesError ||
+    isEmailTemplatesError ||
+    isPatientCustomFieldsError ||
+    isAppointmentCustomFieldsError ||
+    isEmployeeCustomFieldsError;
 
   const typedRules = (rules ?? []) as RuleRecord[];
   const rule = typedRules.find((item) => item._id === ruleId);
@@ -209,20 +255,12 @@ function EditAutomationRulePage() {
     }
   };
 
-  if (
-    !rules ||
-    !eventCatalog ||
-    !actionCapabilities ||
-    !emailTemplates ||
-    !patientCustomFields ||
-    !appointmentCustomFields ||
-    !employeeCustomFields
-  ) {
+  if (isLoading || isError) {
     return (
       <div className="space-y-6">
         <PageHeader
           title={t("settings.automationEditRule")}
-          description={t("common.loading")}
+          description={isError ? t("settings.automationLoadError") : t("common.loading")}
           actions={
             <Button asChild variant="outline">
               <Link to="/dashboard/settings/automations">
@@ -232,6 +270,13 @@ function EditAutomationRulePage() {
             </Button>
           }
         />
+        {isError ? (
+          <Card>
+            <CardContent className="py-6 text-sm text-destructive">
+              {t("settings.automationLoadError")}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     );
   }

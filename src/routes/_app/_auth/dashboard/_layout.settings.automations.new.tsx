@@ -18,6 +18,13 @@ import {
   type AutomationEmailTemplateRecord,
 } from "@/components/settings/automation-builder/automation-simple-presets";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,40 +42,64 @@ function NewAutomationRulePage() {
 
   const createRule = useMutation(api.automation.createRule);
 
-  const { data: eventCatalog } = useQuery(
+  const {
+    data: eventCatalog,
+    isPending: isEventCatalogPending,
+    isError: isEventCatalogError,
+  } = useQuery(
     convexQuery(api.automation.listEventCatalog, {
       organizationId,
     }),
   );
 
-  const { data: actionCapabilities } = useQuery(
+  const {
+    data: actionCapabilities,
+    isPending: isActionCapabilitiesPending,
+    isError: isActionCapabilitiesError,
+  } = useQuery(
     convexQuery(api.automation.listActionCapabilities, {
       organizationId,
     }),
   );
 
-  const { data: emailTemplates } = useQuery(
+  const {
+    data: emailTemplates,
+    isPending: isEmailTemplatesPending,
+    isError: isEmailTemplatesError,
+  } = useQuery(
     convexQuery(api.emailTemplates.list, {
       organizationId,
       activeOnly: true,
     }),
   );
 
-  const { data: patientCustomFields } = useQuery(
+  const {
+    data: patientCustomFields,
+    isPending: isPatientCustomFieldsPending,
+    isError: isPatientCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetPatient",
     }),
   );
 
-  const { data: appointmentCustomFields } = useQuery(
+  const {
+    data: appointmentCustomFields,
+    isPending: isAppointmentCustomFieldsPending,
+    isError: isAppointmentCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetAppointment",
     }),
   );
 
-  const { data: employeeCustomFields } = useQuery(
+  const {
+    data: employeeCustomFields,
+    isPending: isEmployeeCustomFieldsPending,
+    isError: isEmployeeCustomFieldsError,
+  } = useQuery(
     convexQuery(api.customFields.getDefinitions, {
       organizationId,
       entityType: "gabinetEmployee",
@@ -77,11 +108,27 @@ function NewAutomationRulePage() {
 
   const gabinetEvents = useMemo(
     () =>
-      ((eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]).filter(
+      (eventCatalog ?? []).filter(
         (event) => event.module === "gabinet",
-      ),
+      ) as AutomationBuilderEventCatalogEntry[],
     [eventCatalog],
   );
+
+  const isLoading =
+    isEventCatalogPending ||
+    isActionCapabilitiesPending ||
+    isEmailTemplatesPending ||
+    isPatientCustomFieldsPending ||
+    isAppointmentCustomFieldsPending ||
+    isEmployeeCustomFieldsPending;
+
+  const isError =
+    isEventCatalogError ||
+    isActionCapabilitiesError ||
+    isEmailTemplatesError ||
+    isPatientCustomFieldsError ||
+    isAppointmentCustomFieldsError ||
+    isEmployeeCustomFieldsError;
 
   const handleCancel = () => {
     navigate({ to: "/dashboard/settings/automations" });
@@ -120,14 +167,11 @@ function NewAutomationRulePage() {
       <PageHeader
         title={t("settings.automationCreateRule")}
         description={
-          !eventCatalog ||
-          !actionCapabilities ||
-          !emailTemplates ||
-          !patientCustomFields ||
-          !appointmentCustomFields ||
-          !employeeCustomFields
-            ? t("common.loading")
-            : t("settings.automationPlayground.pageDescription")
+          isError
+            ? t("settings.automationLoadError")
+            : isLoading
+              ? t("common.loading")
+              : t("settings.automationPlayground.pageDescription")
         }
         actions={
           <Button asChild variant="outline">
@@ -139,12 +183,17 @@ function NewAutomationRulePage() {
         }
       />
 
-      {!eventCatalog ||
-      !actionCapabilities ||
-      !emailTemplates ||
-      !patientCustomFields ||
-      !appointmentCustomFields ||
-      !employeeCustomFields ? null : (
+      {isError ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("settings.automationCreateRule")}</CardTitle>
+            <CardDescription>{t("settings.automationLoadError")}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-destructive">
+            {t("settings.automationLoadError")}
+          </CardContent>
+        </Card>
+      ) : isLoading ? null : (
         <AutomationSimpleMode
           eventCatalog={gabinetEvents}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}

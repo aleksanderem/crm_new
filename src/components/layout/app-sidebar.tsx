@@ -59,6 +59,26 @@ import { CalendarMiniMonth } from "@/components/application/calendar/base-compon
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
+import { InsightsWidgets } from "@/components/sidebar-widgets/crm/insights-widgets";
+import { DealsWidgets } from "@/components/sidebar-widgets/crm/deals-widgets";
+import { ContactsWidgets } from "@/components/sidebar-widgets/crm/contacts-widgets";
+import { CompaniesWidgets } from "@/components/sidebar-widgets/crm/companies-widgets";
+import { ActivitiesWidgets } from "@/components/sidebar-widgets/crm/activities-widgets";
+import { CalendarWidgets } from "@/components/sidebar-widgets/crm/calendar-widgets";
+import { InboxWidgets } from "@/components/sidebar-widgets/crm/inbox-widgets";
+import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-templates-widgets";
+import { ProductsWidgets } from "@/components/sidebar-widgets/crm/products-widgets";
+import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-widgets";
+import { CallsWidgets } from "@/components/sidebar-widgets/crm/calls-widgets";
+import { GabinetDashboardWidgets } from "@/components/sidebar-widgets/gabinet/dashboard-widgets";
+import { GabinetCalendarWidgets } from "@/components/sidebar-widgets/gabinet/calendar-widgets";
+import { GabinetPatientsWidgets } from "@/components/sidebar-widgets/gabinet/patients-widgets";
+import { GabinetTreatmentsWidgets } from "@/components/sidebar-widgets/gabinet/treatments-widgets";
+import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/employees-widgets";
+import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
+import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
+import { GabinetReportsWidgets } from "@/components/sidebar-widgets/gabinet/reports-widgets";
+import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 
 type Workspace = "crm" | "gabinet";
 
@@ -83,6 +103,7 @@ interface ContextAction {
 interface PageContext {
   titleKey: string;
   actions: ContextAction[];
+  widgets?: React.ComponentType<{ organizationId: string }>;
 }
 
 const crmNav: NavItem[] = [
@@ -151,6 +172,7 @@ const gabinetNav: NavItem[] = [
 const pageContexts: Record<string, PageContext> = {
   dashboard: {
     titleKey: "nav.insights",
+    widgets: InsightsWidgets,
     actions: [
       {
         label: "nav.actions.viewPipeline",
@@ -173,6 +195,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   contacts: {
     titleKey: "nav.contacts",
+    widgets: ContactsWidgets,
     actions: [
       {
         label: "nav.actions.addContact",
@@ -187,6 +210,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   companies: {
     titleKey: "nav.companies",
+    widgets: CompaniesWidgets,
     actions: [
       {
         label: "nav.actions.addCompany",
@@ -205,6 +229,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   leads: {
     titleKey: "nav.deals",
+    widgets: DealsWidgets,
     actions: [
       {
         label: "nav.actions.addDeal",
@@ -233,6 +258,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   activities: {
     titleKey: "nav.activities",
+    widgets: ActivitiesWidgets,
     actions: [
       {
         label: "nav.actions.addActivity",
@@ -259,6 +285,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   calendar: {
     titleKey: "nav.calendar",
+    widgets: CalendarWidgets,
     actions: [
       {
         label: "nav.actions.addActivity",
@@ -275,6 +302,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   documents: {
     titleKey: "nav.documents",
+    widgets: DocumentsWidgets,
     actions: [
       {
         label: "nav.actions.uploadDocument",
@@ -301,6 +329,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   products: {
     titleKey: "nav.products",
+    widgets: ProductsWidgets,
     actions: [
       {
         label: "nav.actions.addProduct",
@@ -319,6 +348,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   calls: {
     titleKey: "nav.calls",
+    widgets: CallsWidgets,
     actions: [
       {
         label: "nav.actions.logCall",
@@ -342,6 +372,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   inbox: {
     titleKey: "nav.inbox",
+    widgets: InboxWidgets,
     actions: [
       {
         label: "nav.actions.composeEmail",
@@ -362,9 +393,19 @@ const pageContexts: Record<string, PageContext> = {
       },
     ],
   },
+  "email-templates": {
+    titleKey: "nav.emailTemplates",
+    widgets: EmailTemplatesWidgets,
+    actions: [],
+  },
 };
 
 const gabinetPageContexts: Record<string, PageContext> = {
+  dashboard: {
+    titleKey: "nav.gabinet.dashboard",
+    actions: [],
+    widgets: GabinetDashboardWidgets,
+  },
   calendar: {
     titleKey: "nav.gabinet.calendar",
     actions: [
@@ -386,6 +427,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         dispatch: "filterByTreatment",
       },
     ],
+    widgets: GabinetCalendarWidgets,
   },
   patients: {
     titleKey: "nav.gabinet.patients",
@@ -408,6 +450,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         dispatch: "openFilter",
       },
     ],
+    widgets: GabinetPatientsWidgets,
   },
   treatments: {
     titleKey: "nav.gabinet.treatments",
@@ -434,6 +477,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         href: "/dashboard/gabinet/settings",
       },
     ],
+    widgets: GabinetTreatmentsWidgets,
   },
   packages: {
     titleKey: "nav.gabinet.packages",
@@ -445,6 +489,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "gabinet_packages",
       },
     ],
+    widgets: GabinetPackagesWidgets,
   },
   employees: {
     titleKey: "nav.gabinet.employees",
@@ -456,6 +501,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "gabinet_employees",
       },
     ],
+    widgets: GabinetEmployeesWidgets,
   },
   documents: {
     titleKey: "nav.gabinet.documents",
@@ -467,16 +513,24 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "documents",
       },
     ],
+    widgets: GabinetDocumentsWidgets,
+  },
+  reports: {
+    titleKey: "nav.gabinet.reports",
+    actions: [],
+    widgets: GabinetReportsWidgets,
   },
 };
 
 const gabinetRouteKeys = [
+  "dashboard",
   "calendar",
   "patients",
   "treatments",
   "packages",
   "employees",
   "documents",
+  "reports",
 ];
 
 const entityRouteKeys = [
@@ -489,6 +543,7 @@ const entityRouteKeys = [
   "calls",
   "inbox",
   "calendar",
+  "email-templates",
 ];
 
 interface SettingsNavItem {
@@ -581,7 +636,7 @@ export function AppSidebar() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
-  const { content: sidebarSlotContent, wideContent } = useSidebarSlot();
+  const { content: sidebarSlotContent, wideContent, dayAgendaDate } = useSidebarSlot();
   const { can: canCreate } = usePermissions("create");
 
   const { data: activeProducts } = useQuery(
@@ -780,48 +835,64 @@ export function AppSidebar() {
           </div>
         ) : (
           <>
-            {/* Context title when on entity page */}
-            {pageContext && (
-              <div className="px-4 pb-1 text-lg font-semibold">
-                {t(pageContext.titleKey)}
+            {/* Day Agenda Takeover — highest priority after sidebarSlotContent */}
+            {dayAgendaDate ? (
+              <div className="flex-1 overflow-y-auto px-3 pb-4">
+                <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
               </div>
-            )}
+            ) : (
+              <>
+                {/* Context title when on entity page */}
+                {pageContext && (
+                  <div className="px-4 pb-1 text-lg font-semibold">
+                    {t(pageContext.titleKey)}
+                  </div>
+                )}
 
-            {/* Contextual actions section */}
-            {pageContext && (
-              <div className="mt-3 flex flex-col px-4">
-                <p className="text-foreground/70 mb-2 text-sm">
-                  {t("nav.sections.actions")}
-                </p>
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  {pageContext.actions
-                    .filter((action) => {
-                      if (!action.permissionFeature) return true;
-                      return canCreate(action.permissionFeature);
-                    })
-                    .map((action) => (
-                      <button
-                        key={action.label}
-                        type="button"
-                        className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
-                        onClick={() => {
-                          if (action.quickCreate) {
-                            openQuickCreate(action.quickCreate);
-                          } else if (action.dispatch) {
-                            dispatch(action.dispatch);
-                          } else if (action.href) {
-                            navigateTo(action.href);
-                          }
-                        }}
-                      >
-                        <action.icon className="size-4" variant="stroke" />
-                        <span className="text-center leading-tight">
-                          {t(action.label)}
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              </div>
+                {/* Widget stack */}
+                {pageContext?.widgets && organizationId && (
+                  <div className="flex flex-col gap-2 px-3 pb-2">
+                    <pageContext.widgets organizationId={organizationId} />
+                  </div>
+                )}
+
+                {/* Contextual actions section */}
+                {pageContext && (
+                  <div className="mt-3 flex flex-col px-4">
+                    <p className="text-foreground/70 mb-2 text-sm">
+                      {t("nav.sections.actions")}
+                    </p>
+                    <div className="mb-4 grid grid-cols-2 gap-4">
+                      {pageContext.actions
+                        .filter((action) => {
+                          if (!action.permissionFeature) return true;
+                          return canCreate(action.permissionFeature);
+                        })
+                        .map((action) => (
+                          <button
+                            key={action.label}
+                            type="button"
+                            className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
+                            onClick={() => {
+                              if (action.quickCreate) {
+                                openQuickCreate(action.quickCreate);
+                              } else if (action.dispatch) {
+                                dispatch(action.dispatch);
+                              } else if (action.href) {
+                                navigateTo(action.href);
+                              }
+                            }}
+                          >
+                            <action.icon className="size-4" variant="stroke" />
+                            <span className="text-center leading-tight">
+                              {t(action.label)}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

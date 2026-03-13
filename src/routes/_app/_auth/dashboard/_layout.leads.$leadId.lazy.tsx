@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -225,6 +225,7 @@ function LeadDetail() {
   const createContactMutation = useMutation(api.contacts.create);
   const createCompanyMutation = useMutation(api.companies.create);
   const setCustomFields = useMutation(api.customFields.setValues);
+  const trackView = useMutation(api.recentlyViewed.track);
   const createNote = useMutation(api.notes.create);
   const createScheduledActivity = useMutation(api.scheduledActivities.create);
   const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
@@ -330,6 +331,12 @@ function LeadDetail() {
       leadId: leadId as Id<"leads">,
     })
   );
+
+  useEffect(() => {
+    if (lead && organizationId) {
+      trackView({ organizationId, entityType: "leads", entityId: lead._id, entityLabel: lead.title });
+    }
+  }, [lead?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pipelineId = lead?.stage?.pipelineId;
   const { data: stages } = useQuery({

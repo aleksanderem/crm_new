@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -77,6 +77,7 @@ function CompanyDetail() {
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
   const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
   const setCustomFields = useMutation(api.customFields.setValues);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -172,6 +173,12 @@ function CompanyDetail() {
       companyId: companyId as Id<"companies">,
     })
   );
+
+  useEffect(() => {
+    if (company && organizationId) {
+      trackView({ organizationId, entityType: "companies", entityId: company._id, entityLabel: company.name });
+    }
+  }, [company?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {

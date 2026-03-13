@@ -210,6 +210,8 @@
       "visitTrend": "Trend wizyt",
       "attendance": "Frekwencja",
       "noAppointments": "Brak wizyt w tym dniu",
+      "dayAgendaSummary": "{{total}} wizyt · {{unconfirmed}} niepotwierdz.",
+      "bookAppointment": "Umów wizytę na {{date}}",
       "packages": "Pakiety"
     }
   },

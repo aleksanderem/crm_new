@@ -210,6 +210,8 @@
       "visitTrend": "Visit Trend",
       "attendance": "Attendance",
       "noAppointments": "No appointments this day",
+      "dayAgendaSummary": "{{total}} appts · {{unconfirmed}} unconfirmed",
+      "bookAppointment": "Book appointment on {{date}}",
       "packages": "Packages"
     }
   },

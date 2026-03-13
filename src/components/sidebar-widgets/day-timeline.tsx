@@ -11,7 +11,7 @@ interface DayTimelineProps {
 }
 
 export function DayTimeline({ organizationId, date }: DayTimelineProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { setDayAgendaDate } = useSidebarSlot();
   const agenda = useQuery(api.gabinet.sidebarWidgets.getDayAgenda, {
     organizationId: organizationId as any,
@@ -20,9 +20,10 @@ export function DayTimeline({ organizationId, date }: DayTimelineProps) {
 
   if (!agenda) return null;
 
+  const locale = i18n.language === "pl" ? "pl-PL" : "en-US";
   const dateObj = new Date(date + "T00:00:00");
-  const dayName = dateObj.toLocaleDateString("pl-PL", { weekday: "long" });
-  const dateStr = dateObj.toLocaleDateString("pl-PL", { day: "numeric", month: "long" });
+  const dayName = dateObj.toLocaleDateString(locale, { weekday: "long" });
+  const dateStr = dateObj.toLocaleDateString(locale, { day: "numeric", month: "long" });
 
   return (
     <div className="flex flex-col gap-2">
@@ -33,8 +34,10 @@ export function DayTimeline({ organizationId, date }: DayTimelineProps) {
             {dayName}, {dateStr}
           </div>
           <div className="text-muted-foreground text-[10px]">
-            {agenda.totalAppointments} wizyt · {agenda.totalAppointments - agenda.confirmedCount}{" "}
-            niepotwierdz.
+            {t("sidebar.gabinet.dayAgendaSummary", {
+              total: agenda.totalAppointments,
+              unconfirmed: agenda.totalAppointments - agenda.confirmedCount,
+            })}
           </div>
         </div>
         <button
@@ -102,7 +105,7 @@ export function DayTimeline({ organizationId, date }: DayTimelineProps) {
                 </div>
                 <div className="text-muted-foreground ml-0.5 text-[9px]">
                   {appt.employeeName}
-                  {!appt.confirmed && <span className="text-amber-500"> · niepotwierdzona</span>}
+                  {!appt.confirmed && <span className="text-amber-500"> · {t("sidebar.gabinet.unconfirmed")}</span>}
                 </div>
               </div>
             );
@@ -115,7 +118,7 @@ export function DayTimeline({ organizationId, date }: DayTimelineProps) {
         type="button"
         className="bg-primary/10 hover:bg-primary/20 text-primary w-full rounded-md border border-primary/30 px-3 py-1.5 text-center text-xs font-medium transition-colors"
       >
-        + Umów wizytę na {dateStr}
+        + {t("sidebar.gabinet.bookAppointment", { date: dateStr })}
       </button>
     </div>
   );

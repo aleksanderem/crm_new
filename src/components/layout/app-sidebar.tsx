@@ -70,6 +70,14 @@ import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-te
 import { ProductsWidgets } from "@/components/sidebar-widgets/crm/products-widgets";
 import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-widgets";
 import { CallsWidgets } from "@/components/sidebar-widgets/crm/calls-widgets";
+import { GabinetDashboardWidgets } from "@/components/sidebar-widgets/gabinet/dashboard-widgets";
+import { GabinetCalendarWidgets } from "@/components/sidebar-widgets/gabinet/calendar-widgets";
+import { GabinetPatientsWidgets } from "@/components/sidebar-widgets/gabinet/patients-widgets";
+import { GabinetTreatmentsWidgets } from "@/components/sidebar-widgets/gabinet/treatments-widgets";
+import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/employees-widgets";
+import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
+import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
+import { GabinetReportsWidgets } from "@/components/sidebar-widgets/gabinet/reports-widgets";
 
 type Workspace = "crm" | "gabinet";
 
@@ -392,6 +400,11 @@ const pageContexts: Record<string, PageContext> = {
 };
 
 const gabinetPageContexts: Record<string, PageContext> = {
+  dashboard: {
+    titleKey: "nav.gabinet.dashboard",
+    actions: [],
+    widgets: GabinetDashboardWidgets,
+  },
   calendar: {
     titleKey: "nav.gabinet.calendar",
     actions: [
@@ -413,6 +426,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         dispatch: "filterByTreatment",
       },
     ],
+    widgets: GabinetCalendarWidgets,
   },
   patients: {
     titleKey: "nav.gabinet.patients",
@@ -435,6 +449,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         dispatch: "openFilter",
       },
     ],
+    widgets: GabinetPatientsWidgets,
   },
   treatments: {
     titleKey: "nav.gabinet.treatments",
@@ -461,6 +476,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         href: "/dashboard/gabinet/settings",
       },
     ],
+    widgets: GabinetTreatmentsWidgets,
   },
   packages: {
     titleKey: "nav.gabinet.packages",
@@ -472,6 +488,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "gabinet_packages",
       },
     ],
+    widgets: GabinetPackagesWidgets,
   },
   employees: {
     titleKey: "nav.gabinet.employees",
@@ -483,6 +500,7 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "gabinet_employees",
       },
     ],
+    widgets: GabinetEmployeesWidgets,
   },
   documents: {
     titleKey: "nav.gabinet.documents",
@@ -494,16 +512,24 @@ const gabinetPageContexts: Record<string, PageContext> = {
         permissionFeature: "documents",
       },
     ],
+    widgets: GabinetDocumentsWidgets,
+  },
+  reports: {
+    titleKey: "nav.gabinet.reports",
+    actions: [],
+    widgets: GabinetReportsWidgets,
   },
 };
 
 const gabinetRouteKeys = [
+  "dashboard",
   "calendar",
   "patients",
   "treatments",
   "packages",
   "employees",
   "documents",
+  "reports",
 ];
 
 const entityRouteKeys = [

@@ -267,6 +267,100 @@ export const getDocumentsKpis = query({
   },
 });
 
+// --- Staff Load (Gabinet Calendar) ---
+export const getStaffLoad = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndDate", (q) =>
+        q.eq("organizationId", args.organizationId).eq("date", todayStr),
+      )
+      .collect();
+
+    const employees = await ctx.db
+      .query("gabinetEmployees")
+      .withIndex("by_orgAndActive", (q) =>
+        q.eq("organizationId", args.organizationId).eq("isActive", true),
+      )
+      .collect();
+
+    const countMap = new Map<string, number>();
+    for (const appt of appointments) {
+      const key = String(appt.employeeId);
+      countMap.set(key, (countMap.get(key) ?? 0) + 1);
+    }
+
+    return employees
+      .map((e) => ({
+        name: [e.firstName, e.lastName].filter(Boolean).join(" ") || "Employee",
+        appointmentCount: countMap.get(String(e.userId)) ?? 0,
+        maxCapacity: 8,
+      }))
+      .filter((e) => e.appointmentCount > 0)
+      .sort((a, b) => b.appointmentCount - a.appointmentCount);
+  },
+});
+
+// --- Today's Schedule (Gabinet Employees) ---
+export const getTodaySchedule = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sunday, 1=Monday...
+    const todayStr = today.toISOString().split("T")[0];
+
+    const schedules = await ctx.db
+      .query("gabinetEmployeeSchedules")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const todaySchedules = schedules.filter(
+      (s) => s.dayOfWeek === dayOfWeek && s.isWorking,
+    );
+
+    const employees = await ctx.db
+      .query("gabinetEmployees")
+      .withIndex("by_orgAndActive", (q) =>
+        q.eq("organizationId", args.organizationId).eq("isActive", true),
+      )
+      .collect();
+
+    const approvedLeaves = await ctx.db
+      .query("gabinetLeaves")
+      .withIndex("by_orgAndStatus", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "approved"),
+      )
+      .collect();
+
+    const onLeaveUserIds = new Set(
+      approvedLeaves
+        .filter((l) => l.startDate <= todayStr && l.endDate >= todayStr)
+        .map((l) => String(l.userId)),
+    );
+
+    return todaySchedules
+      .map((s) => {
+        const employee = employees.find((e) => e.userId === s.userId);
+        if (!employee) return null;
+        const name =
+          [employee.firstName, employee.lastName].filter(Boolean).join(" ") || "Employee";
+        const status: "working" | "break" | "off" = onLeaveUserIds.has(String(s.userId))
+          ? "off"
+          : "working";
+        return { name, startTime: s.startTime, endTime: s.endTime, status };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  },
+});
+
 // --- Reports KPIs ---
 export const getReportsKpis = query({
   args: { organizationId: v.id("organizations") },

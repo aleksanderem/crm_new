@@ -2,12 +2,16 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
+import { MiniFunnel } from "../mini-funnel";
+import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 
 export function DealsWidgets({ organizationId }: { organizationId: string }) {
   const { t } = useTranslation();
+  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.sidebarWidgets.getDealsKpis, { organizationId: organizationId as any });
   const nudges = useQuery(api.nudges.getDealsNudges, { organizationId: organizationId as any });
+  const stages = useQuery(api.sidebarWidgets.getLeadsByStage, { organizationId: organizationId as any });
 
   if (!kpis) return null;
 
@@ -23,6 +27,8 @@ export function DealsWidgets({ organizationId }: { organizationId: string }) {
       {nudges?.map((n) => (
         <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
+      {stages && stages.length > 0 && <MiniFunnel stages={stages} />}
+      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id as string} />}
     </>
   );
 }

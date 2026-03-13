@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
+import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 
 export function InboxWidgets({ organizationId }: { organizationId: string }) {
@@ -30,6 +31,7 @@ export function InboxWidgets({ organizationId }: { organizationId: string }) {
       {nudges?.map((n) => (
         <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
+      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id as string} />}
     </>
   );
 }

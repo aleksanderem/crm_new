@@ -2,12 +2,14 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
+import { StaffSchedule } from "../staff-schedule";
 import { useTranslation } from "react-i18next";
 
 export function GabinetEmployeesWidgets({ organizationId }: { organizationId: string }) {
   const { t } = useTranslation();
   const kpis = useQuery(api.gabinet.sidebarWidgets.getEmployeesKpis, { organizationId: organizationId as any });
   const nudges = useQuery(api.gabinet.nudges.getLeaveNudges, { organizationId: organizationId as any });
+  const schedule = useQuery(api.gabinet.sidebarWidgets.getTodaySchedule, { organizationId: organizationId as any });
 
   if (!kpis) return null;
 
@@ -27,6 +29,7 @@ export function GabinetEmployeesWidgets({ organizationId }: { organizationId: st
       {nudges?.map((n) => (
         <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
+      {schedule && schedule.length > 0 && <StaffSchedule items={schedule} />}
     </>
   );
 }

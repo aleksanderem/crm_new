@@ -83,6 +83,7 @@ interface ContextAction {
 interface PageContext {
   titleKey: string;
   actions: ContextAction[];
+  widgets?: React.ComponentType<{ organizationId: string }>;
 }
 
 const crmNav: NavItem[] = [
@@ -581,7 +582,7 @@ export function AppSidebar() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
-  const { content: sidebarSlotContent, wideContent } = useSidebarSlot();
+  const { content: sidebarSlotContent, wideContent, dayAgendaDate } = useSidebarSlot();
   const { can: canCreate } = usePermissions("create");
 
   const { data: activeProducts } = useQuery(
@@ -780,48 +781,67 @@ export function AppSidebar() {
           </div>
         ) : (
           <>
-            {/* Context title when on entity page */}
-            {pageContext && (
-              <div className="px-4 pb-1 text-lg font-semibold">
-                {t(pageContext.titleKey)}
-              </div>
-            )}
-
-            {/* Contextual actions section */}
-            {pageContext && (
-              <div className="mt-3 flex flex-col px-4">
-                <p className="text-foreground/70 mb-2 text-sm">
-                  {t("nav.sections.actions")}
-                </p>
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  {pageContext.actions
-                    .filter((action) => {
-                      if (!action.permissionFeature) return true;
-                      return canCreate(action.permissionFeature);
-                    })
-                    .map((action) => (
-                      <button
-                        key={action.label}
-                        type="button"
-                        className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
-                        onClick={() => {
-                          if (action.quickCreate) {
-                            openQuickCreate(action.quickCreate);
-                          } else if (action.dispatch) {
-                            dispatch(action.dispatch);
-                          } else if (action.href) {
-                            navigateTo(action.href);
-                          }
-                        }}
-                      >
-                        <action.icon className="size-4" variant="stroke" />
-                        <span className="text-center leading-tight">
-                          {t(action.label)}
-                        </span>
-                      </button>
-                    ))}
+            {/* Day Agenda Takeover — highest priority after sidebarSlotContent */}
+            {dayAgendaDate ? (
+              <div className="flex-1 overflow-y-auto px-3 pb-4">
+                {/* DayTimeline component will be added in Phase 3 */}
+                <div className="text-muted-foreground text-sm px-1">
+                  Agenda: {dayAgendaDate}
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Context title when on entity page */}
+                {pageContext && (
+                  <div className="px-4 pb-1 text-lg font-semibold">
+                    {t(pageContext.titleKey)}
+                  </div>
+                )}
+
+                {/* Widget stack */}
+                {pageContext?.widgets && organizationId && (
+                  <div className="flex flex-col gap-2 px-3 pb-2">
+                    <pageContext.widgets organizationId={organizationId} />
+                  </div>
+                )}
+
+                {/* Contextual actions section */}
+                {pageContext && (
+                  <div className="mt-3 flex flex-col px-4">
+                    <p className="text-foreground/70 mb-2 text-sm">
+                      {t("nav.sections.actions")}
+                    </p>
+                    <div className="mb-4 grid grid-cols-2 gap-4">
+                      {pageContext.actions
+                        .filter((action) => {
+                          if (!action.permissionFeature) return true;
+                          return canCreate(action.permissionFeature);
+                        })
+                        .map((action) => (
+                          <button
+                            key={action.label}
+                            type="button"
+                            className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
+                            onClick={() => {
+                              if (action.quickCreate) {
+                                openQuickCreate(action.quickCreate);
+                              } else if (action.dispatch) {
+                                dispatch(action.dispatch);
+                              } else if (action.href) {
+                                navigateTo(action.href);
+                              }
+                            }}
+                          >
+                            <action.icon className="size-4" variant="stroke" />
+                            <span className="text-center leading-tight">
+                              {t(action.label)}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

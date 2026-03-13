@@ -1,19 +1,18 @@
 {
-  "session_id": "S0065",
-  "session_uuid": "d6abb315-1935-440e-a562-3c8dcb8177cf",
-  "started_at": "2026-03-13T08:07:23Z",
-  "last_updated": "2026-03-13T09:05:00Z",
+  "session_id": "S0070",
+  "started_at": "2026-03-13T14:49:18Z",
+  "last_updated": "2026-03-13T14:49:18Z",
   "status": "active",
-  "focus": "Tighten session tracking and continue focused cleanup",
+  "focus": "Repo cleanup and next automation scope expansion prep",
   "tasks_snapshot": {
     "total": 3,
-    "not_started": 0,
-    "in_progress": 0,
-    "passing": 3,
+    "not_started": 1,
+    "in_progress": 2,
+    "passing": 0,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": [17, 19],
   "blockers": [],
-  "notes": "S0065 added durable session_uuid tracking, tightened gabinet sidebar nudge hot paths to use existing indexes for active packages/usages and recent appointments, removed dead frontend code/imports in crm mini charts and gabinet dashboard/reports routes, cleaned the touched sidebar widget slice by replacing local `as any` query args with typed organization/user ids, aligned `app-sidebar` widget props to org ids, fixed the gabinet quick actions icon import, replaced the remaining JSON.stringify-based nudge keys in the touched widget slice, tightened KpiRow color typing, and kept the cleanup scoped to already touched files."
+  "notes": "S0070 is resolving the remaining package/session diffs, then pivoting into the next Gabinet automation scope expansion beyond appointment-only flows."
 }

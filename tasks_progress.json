@@ -1,5 +1,5 @@
 {
-  "session_id": "S0065",
+  "session_id": "S0070",
   "session_uuid": "d6abb315-1935-440e-a562-3c8dcb8177cf",
   "date": "2026-03-13",
   "tasks": [
@@ -144,9 +144,9 @@
       "depends_on": ["SIDEBAR-01", "SIDEBAR-02"]
     }
   ],
-  "reason": "S0065: Tighten session tracking hygiene and simplify the touched sidebar/nudge diff without expanding scope, including typed cleanup, lighter nudge keys, and stricter KpiRow typing in the already touched sidebar widget slice.",
-  "thinking_process": "After sidebar nudge i18n was green, the most useful follow-up was cleanup within already touched files. I added durable session_uuid metadata to edited tracking files, fixed malformed task JSON, removed dead frontend code that broke app typecheck, replaced per-lead filter/sort work in convex/nudges.ts with a single pass map, reduced gabinet nudge hot-path scans by using existing by_orgAndActive/by_orgAndStatus/by_orgAndDate indexes where available, then cleaned the touched sidebar widget/frontend shell slice by replacing local `as any` query args with typed organization/user ids, updating shared widget prop contracts where needed, fixing the gabinet quick-actions icon import, replacing the remaining JSON.stringify-based nudge keys with lighter index-based keys in the touched widgets, tightening KpiRow color typing to remove stringly color handling, and keeping verification focused on the same slice.",
-  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07"],
+  "reason": "S0070: finish the remaining repo cleanup cleanly, refresh tracking into the new session, and prepare a clean base for the next broader Gabinet automation rollout.",
+  "thinking_process": "The remaining diff is now small and easy to reason about. `package.json` plus `package-lock.json` form a coherent dependency slice: an explicit `@primereact/core` React override and a `tailwind-merge` bump to `^3.5.0` with matching lockfile updates. `session_state.json` should move forward into S0070 rather than be reverted. After committing the dependency cleanup, the repo should be clean enough to resume the next automation scope expansion without leftover noise.",
+  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19],
   "how_to_test": [
     {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
     {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},

@@ -666,3 +666,18 @@ S0065. Simplify cleanup in touched files:
 - Next: continue only with similarly scoped cleanup in already touched files, keeping `session_uuid` in edited session tracking files.
 
 ---
+
+=== SESSION S0070 START === 2026-03-13T14:49:18Z
+Focus: Repo cleanup and next automation scope expansion prep
+Continuing from: S0069 (completed)
+Active tasks: #17, #19
+
+---
+
+S0070. Repo cleanup investigation:
+- Confirmed only three files were still dirty: `package.json`, `package-lock.json`, and `session_state.json`.
+- Verified the package diff is small and coherent: add the `@primereact/core` React override and bump `tailwind-merge` from `^3.4.1` to `^3.5.0`, with matching lockfile updates.
+- The package changes are self-contained enough for a dedicated cleanup commit; `session_state.json` is being advanced into the new tracked session rather than reverted.
+- Next: update `tasks_progress.json` for S0070, commit the package cleanup, then keep the repo clean before resuming the broader Gabinet automation scope rollout.
+
+---

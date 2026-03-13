@@ -18,13 +18,15 @@ export function InsightsWidgets({ organizationId }: { organizationId: string }) 
         items={[
           {
             label: t("sidebar.revenue"),
-            value: `${Math.round(kpis.revenue / 1000)}K`,
+            value: kpis.revenue >= 1000 ? `${Math.round(kpis.revenue / 1000)}K` : kpis.revenue,
             color: "text-emerald-500",
-            trend: { value: Math.abs(kpis.revenueTrend), positive: kpis.revenueTrend >= 0 },
+            trend: kpis.revenueTrend !== 0
+              ? { value: Math.abs(kpis.revenueTrend), positive: kpis.revenueTrend > 0 }
+              : undefined,
           },
           {
             label: t("sidebar.pipeline"),
-            value: `${Math.round(kpis.pipelineValue / 1000)}K`,
+            value: kpis.pipelineValue >= 1000 ? `${Math.round(kpis.pipelineValue / 1000)}K` : kpis.pipelineValue,
             color: "text-primary",
           },
         ]}
@@ -36,8 +38,8 @@ export function InsightsWidgets({ organizationId }: { organizationId: string }) 
           { label: t("sidebar.winRate"), value: `${kpis.winRate}%` },
         ]}
       />
-      {nudges?.map((n, i) => (
-        <NudgeCard key={i} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n) => (
+        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
     </>
   );

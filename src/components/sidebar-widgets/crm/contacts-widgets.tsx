@@ -20,8 +20,8 @@ export function ContactsWidgets({ organizationId }: { organizationId: string }) 
           { label: t("sidebar.unlinked"), value: kpis.unlinked },
         ]}
       />
-      {nudges?.map((n, i) => (
-        <NudgeCard key={i} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n) => (
+        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
     </>
   );

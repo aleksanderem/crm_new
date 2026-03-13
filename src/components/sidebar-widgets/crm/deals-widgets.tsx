@@ -16,12 +16,12 @@ export function DealsWidgets({ organizationId }: { organizationId: string }) {
       <KpiRow
         items={[
           { label: t("sidebar.open"), value: kpis.openCount, color: "text-primary" },
-          { label: t("sidebar.pipeline"), value: `${Math.round(kpis.pipelineValue / 1000)}K` },
+          { label: t("sidebar.pipeline"), value: kpis.pipelineValue >= 1000 ? `${Math.round(kpis.pipelineValue / 1000)}K` : kpis.pipelineValue },
           { label: t("sidebar.winRate"), value: `${kpis.winRate}%`, color: "text-emerald-500" },
         ]}
       />
-      {nudges?.map((n, i) => (
-        <NudgeCard key={i} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n) => (
+        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
     </>
   );

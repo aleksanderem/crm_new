@@ -27,8 +27,8 @@ export function InboxWidgets({ organizationId }: { organizationId: string }) {
           { label: t("sidebar.todayReceived"), value: kpis.todayReceived },
         ]}
       />
-      {nudges?.map((n, i) => (
-        <NudgeCard key={i} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n) => (
+        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
     </>
   );

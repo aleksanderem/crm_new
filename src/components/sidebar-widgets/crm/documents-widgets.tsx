@@ -20,8 +20,8 @@ export function DocumentsWidgets({ organizationId }: { organizationId: string })
           { label: t("sidebar.pendingSignature"), value: kpis.pendingSignature },
         ]}
       />
-      {nudges?.map((n, i) => (
-        <NudgeCard key={i} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n) => (
+        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
     </>
   );

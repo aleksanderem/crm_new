@@ -14,7 +14,7 @@ export function CompaniesWidgets({ organizationId }: { organizationId: string })
       items={[
         { label: t("sidebar.total"), value: kpis.total },
         { label: t("sidebar.newThisMonth"), value: kpis.newThisMonth },
-        { label: t("sidebar.revenue"), value: `${Math.round(kpis.totalRevenue / 1000)}K` },
+        { label: t("sidebar.revenue"), value: kpis.totalRevenue >= 1000 ? `${Math.round(kpis.totalRevenue / 1000)}K` : kpis.totalRevenue },
       ]}
     />
   );

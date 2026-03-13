@@ -154,7 +154,8 @@
   },
   "sidebar": {
     "todayActivities": "Dzisiejsze aktywności ({{count}})",
-    "openDeals": "Otwarte transakcje ({{count}})"
+    "openDeals": "Otwarte transakcje ({{count}})",
+    "recentItems": "Ostatnio oglądane"
   },
   "pagination": {
     "rowsPerPage": "Wierszy na stronę",

@@ -154,7 +154,8 @@
   },
   "sidebar": {
     "todayActivities": "Today's Activities ({{count}})",
-    "openDeals": "Open Deals ({{count}})"
+    "openDeals": "Open Deals ({{count}})",
+    "recentItems": "Recently Viewed"
   },
   "pagination": {
     "rowsPerPage": "Rows per page",

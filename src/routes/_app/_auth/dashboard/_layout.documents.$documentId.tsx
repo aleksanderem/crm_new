@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -31,6 +32,7 @@ function DocumentDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const removeDocument = useMutation(api.documents.remove);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   const { data: doc, isLoading } = useQuery(
     convexQuery(api.documents.getById, {
@@ -38,6 +40,12 @@ function DocumentDetail() {
       documentId: documentId as Id<"documents">,
     })
   );
+
+  useEffect(() => {
+    if (doc && organizationId) {
+      trackView({ organizationId, entityType: "documents", entityId: doc._id, entityLabel: doc.name });
+    }
+  }, [doc?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (

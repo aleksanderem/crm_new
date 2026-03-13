@@ -8,3 +8,4 @@ export { StaffLoad, type StaffLoadItem } from "./staff-load";
 export { StaffSchedule, type ScheduleItem } from "./staff-schedule";
 export { WaitingList, type WaitingItem } from "./waiting-list";
 export { SmartAgenda } from "./smart-agenda";
+export { RecentItems } from "./recent-items";

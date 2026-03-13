@@ -4,6 +4,7 @@ import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
 import { MiniFunnel } from "../mini-funnel";
 import { SmartAgenda } from "../smart-agenda";
+import { RecentItems } from "../recent-items";
 import { useTranslation } from "react-i18next";
 
 export function DealsWidgets({ organizationId }: { organizationId: string }) {
@@ -29,6 +30,7 @@ export function DealsWidgets({ organizationId }: { organizationId: string }) {
       ))}
       {stages && stages.length > 0 && <MiniFunnel stages={stages} />}
       {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id as string} />}
+      <RecentItems organizationId={organizationId} entityType="leads" linkPrefix="/dashboard/leads/" />
     </>
   );
 }

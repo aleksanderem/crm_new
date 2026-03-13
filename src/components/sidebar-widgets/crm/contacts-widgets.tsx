@@ -3,6 +3,7 @@ import { api } from "@cvx/_generated/api";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
 import { SourceBar } from "../source-bar";
+import { RecentItems } from "../recent-items";
 import { useTranslation } from "react-i18next";
 
 export function ContactsWidgets({ organizationId }: { organizationId: string }) {
@@ -26,6 +27,7 @@ export function ContactsWidgets({ organizationId }: { organizationId: string }) 
         <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
       {sources && sources.length > 0 && <SourceBar segments={sources} />}
+      <RecentItems organizationId={organizationId} entityType="contacts" linkPrefix="/dashboard/contacts/" />
     </>
   );
 }

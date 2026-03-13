@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
+import { RecentItems } from "../recent-items";
 import { useTranslation } from "react-i18next";
 
 export function DocumentsWidgets({ organizationId }: { organizationId: string }) {
@@ -23,6 +24,7 @@ export function DocumentsWidgets({ organizationId }: { organizationId: string })
       {nudges?.map((n) => (
         <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
       ))}
+      <RecentItems organizationId={organizationId} entityType="documents" linkPrefix="/dashboard/documents/" />
     </>
   );
 }

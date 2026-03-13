@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -55,6 +55,7 @@ function PatientDetail() {
   const { t } = useTranslation();
   const updatePatient = useMutation(api.gabinet.patients.update);
   const removePatient = useMutation(api.gabinet.patients.remove);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +70,13 @@ function PatientDetail() {
       patientId: patientId as Id<"gabinetPatients">,
     }),
   );
+
+  useEffect(() => {
+    if (patient && organizationId) {
+      const label = `${patient.firstName} ${patient.lastName}`.trim();
+      trackView({ organizationId, entityType: "gabinetPatients", entityId: patient._id, entityLabel: label });
+    }
+  }, [patient?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {

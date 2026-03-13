@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -77,6 +77,7 @@ function ContactDetail() {
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
   const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
   const setCustomFields = useMutation(api.customFields.setValues);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -173,6 +174,13 @@ function ContactDetail() {
       contactId: contactId as Id<"contacts">,
     })
   );
+
+  useEffect(() => {
+    if (contact && organizationId) {
+      const label = `${contact.firstName} ${contact.lastName ?? ""}`.trim();
+      trackView({ organizationId, entityType: "contacts", entityId: contact._id, entityLabel: label });
+    }
+  }, [contact?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {

@@ -25,3 +25,10 @@ dist-ssr
 
 # Environment
 .env
+
+# Generated reports and local tooling
+playwright-report/
+test-results/
+.claude/worktrees/
+.claude/launch.json
+.npmrc

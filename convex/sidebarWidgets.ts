@@ -8,7 +8,6 @@ export const getInsightsKpis = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
     const thisMonthStart = new Date();
     thisMonthStart.setDate(1);
     thisMonthStart.setHours(0, 0, 0, 0);
@@ -98,7 +97,6 @@ export const getContactsKpis = query({
     return {
       total: contacts.length,
       newThisWeek: contacts.filter((c) => c.createdAt >= weekAgo).length,
-      unlinked: contacts.filter((c) => !c.companyId).length,
     };
   },
 });
@@ -277,7 +275,7 @@ export const getDocumentsKpis = query({
     return {
       total: docs.length,
       newThisMonth: docs.filter((d) => d.createdAt >= monthStart.getTime()).length,
-      pendingSignature: docs.filter((d) => d.status === "pending_signature").length,
+      pendingSent: docs.filter((d) => d.status === "sent").length,
     };
   },
 });
@@ -310,27 +308,64 @@ export const getCalendarKpis = query({
 
 // --- Upcoming Events (Smart Agenda) ---
 export const getUpcomingEvents = query({
-  args: { organizationId: v.id("organizations"), userId: v.id("users"), limit: v.optional(v.number()) },
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    onlyMine: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     const now = Date.now();
-    const limit = args.limit ?? 3;
+    const limit = args.limit ?? 5;
+    const onlyMine = args.onlyMine ?? false;
 
     const scheduled = await ctx.db
       .query("scheduledActivities")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    return scheduled
-      .filter((a) => a.ownerId === args.userId && a.dueDate && a.dueDate >= now && !a.isCompleted)
+    const filtered = scheduled
+      .filter((a) => {
+        if (a.isCompleted || !a.dueDate || a.dueDate < now) return false;
+        if (onlyMine && a.ownerId !== args.userId) return false;
+        return true;
+      })
       .sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0))
-      .slice(0, limit)
-      .map((a) => ({
+      .slice(0, limit);
+
+    // Resolve owner info
+    const ownerIds = [...new Set(filtered.map((a) => a.ownerId))];
+    const owners = await Promise.all(ownerIds.map((id) => ctx.db.get(id)));
+    const ownerMap = new Map(owners.filter(Boolean).map((u) => [u!._id, u!]));
+
+    // Build link for each event
+    function buildLink(a: (typeof filtered)[0]) {
+      if (a.linkedEntityType && a.linkedEntityId) {
+        const typeToRoute: Record<string, string> = {
+          contacts: "/dashboard/contacts/",
+          companies: "/dashboard/companies/",
+          leads: "/dashboard/leads/",
+        };
+        const route = typeToRoute[a.linkedEntityType];
+        if (route) return `${route}${a.linkedEntityId}`;
+      }
+      return null;
+    }
+
+    return filtered.map((a) => {
+      const owner = ownerMap.get(a.ownerId);
+      return {
         id: a._id,
         title: a.title,
         startTime: a.dueDate!,
         type: a.activityType,
-      }));
+        link: buildLink(a),
+        ownerId: a.ownerId,
+        ownerName: owner?.name ?? owner?.email ?? "?",
+        ownerImage: owner?.image ?? null,
+      };
+    });
   },
 });
 
@@ -480,5 +515,75 @@ export const getEmailTemplatesKpis = query({
       usagesThisMonth: thisMonthEmails.length,
       topTemplateName,
     };
+  },
+});
+
+// --- Top Companies (by won deal value) ---
+export const getTopCompanies = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const companies = await ctx.db
+      .query("companies")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const companyValues: { label: string; value: number }[] = [];
+    for (const company of companies) {
+      const companyLeads = leads.filter(
+        (l) => l.companyId === company._id && l.status === "won"
+      );
+      const totalValue = companyLeads.reduce((sum, l) => sum + (l.value ?? 0), 0);
+      if (totalValue > 0) {
+        companyValues.push({ label: company.name, value: totalValue });
+      }
+    }
+
+    return companyValues
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  },
+});
+
+// --- Top Templates (by email usage) ---
+export const getTopTemplates = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const emails = await ctx.db
+      .query("emails")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    // Count emails by templateId (emails that used a template)
+    const templateCounts = new Map<string, number>();
+    for (const email of emails) {
+      if (email.templateId) {
+        templateCounts.set(
+          String(email.templateId),
+          (templateCounts.get(String(email.templateId)) ?? 0) + 1
+        );
+      }
+    }
+
+    // Look up template names
+    const results: { label: string; value: number }[] = [];
+    for (const [templateId, count] of templateCounts) {
+      const template = await ctx.db.get(templateId as any);
+      if (template && "name" in template) {
+        results.push({ label: template.name as string, value: count });
+      }
+    }
+
+    return results
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
   },
 });

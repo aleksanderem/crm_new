@@ -4,7 +4,11 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { seedTestUser } from "../_test_helpers";
 
-const modules = import.meta.glob("../**/*.*s");
+const modules = (
+  import.meta as ImportMeta & {
+    glob: (pattern: string) => Record<string, () => Promise<unknown>>;
+  }
+).glob("../**/*.*s");
 
 function createCtx() {
   return convexTest(schema, modules);

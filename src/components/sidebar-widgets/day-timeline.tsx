@@ -1,12 +1,13 @@
 import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { X } from "@/lib/ez-icons";
 import { cn } from "@/utils/misc";
 import { useTranslation } from "react-i18next";
 
 interface DayTimelineProps {
-  organizationId: string;
+  organizationId: Id<"organizations">;
   date: string;
 }
 
@@ -14,7 +15,7 @@ export function DayTimeline({ organizationId, date }: DayTimelineProps) {
   const { t, i18n } = useTranslation();
   const { setDayAgendaDate } = useSidebarSlot();
   const agenda = useQuery(api.gabinet.sidebarWidgets.getDayAgenda, {
-    organizationId: organizationId as any,
+    organizationId,
     date,
   });
 

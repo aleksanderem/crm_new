@@ -221,6 +221,13 @@ All 15 document template tasks PASSING. Full system implemented:
 
 ---
 
+S0065. Sidebar cleanup follow-up:
+- Replaced the remaining `JSON.stringify(...)` nudge keys in `crm/products-widgets.tsx`, `crm/insights-widgets.tsx`, and `gabinet/global-nudges.tsx` with lighter `${n.message}-${index}` keys.
+- Tightened `src/components/sidebar-widgets/kpi-row.tsx` by replacing stringly color handling with a `KpiColor` union and explicit accent-color map.
+- Next: rerun focused app/convex typecheck and ESLint for the touched sidebar slice.
+
+---
+
 === SESSION S0061 CONTINUE === 2026-03-13T00:00:00Z
 Focus: Automation full-page editor route migration and focused verification
 Active tasks: AUT-05
@@ -577,5 +584,85 @@ Immediate next action: None required for AUT-07; next session can start from unr
 Open questions: None for the feature slice.
 Warnings: Do not include `.claude/worktrees/`, `playwright-report/`, or `test-results/` artifacts in the feature commit.
 Files modified: convex/automation.ts, convex/schema.ts, convex/gabinet/documentDataSources.ts, convex/tests/automation.test.ts, src/components/settings/automation-builder/automation-simple-mode.tsx, src/components/settings/automation-builder/automation-simple-presets.ts, src/components/settings/automation-builder/automation-graph-builder.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.index.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx, src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx, src/routeTree.gen.ts, public/locales/en/translation.json, public/locales/pl/translation.json, e2e/gabinet/appointments.spec.ts, e2e/helpers/auth.ts, session_state.json, tasks_progress.json, tasks_progress_verbose.txt.
+
+---
+
+=== SESSION S0063 START === 2026-03-13T07:15:00Z
+Focus: Finish sidebar widget enrichment verification and fixes
+Continuing from: S0062 (completed handoff; reopening follow-up validation)
+Active tasks: #11, #12
+
+---
+
+S0063. Sidebar widget enrichment progress:
+- Audited frontend/sidebar wiring and backend gabinet nudges with parallel agents plus focused local checks.
+- Fixed `src/components/sidebar-widgets/smart-agenda.tsx` to use locale-aware agenda labels/date-time formatting and removed remaining hard-coded PL fallbacks from the touched copy.
+- Added missing `sidebar.agenda*` translation keys in both `public/locales/en/translation.json` and `public/locales/pl/translation.json`.
+- Fixed `convex/gabinet/nudges.ts` so expiring package nudges exclude already-expired usages, active-package-with-usage logic only counts active usages, and "no recent visit" uses appointment date while excluding cancelled/no_show visits.
+- Fixed the remaining convex typecheck blocker in `convex/tests/recentlyViewed.test.ts` by typing `import.meta.glob` explicitly instead of relying on missing convex-side Vite ambient types.
+- Verification: `npx tsc -p tsconfig.app.json --pretty false` PASS, `npx tsc -p convex/tsconfig.json --pretty false` PASS, `cd convex && npx vitest run tests/recentlyViewed.test.ts --reporter=verbose` PASS (5/5).
+
+---
+
+=== SESSION S0063 HANDOFF === 2026-03-13T07:16:00Z
+Status: completed
+Current state: Sidebar widget enrichment follow-up is green after focused fixes and verification.
+Immediate next action: None required for the sidebar slice unless we later choose to internationalize backend-generated nudge message strings more broadly.
+Open questions: Whether backend nudge contracts should later return translation keys + params instead of ready-to-render Polish strings.
+Warnings: Do not touch `.claude/worktrees/`; user has unrelated work there.
+Files modified: convex/gabinet/nudges.ts, convex/tests/recentlyViewed.test.ts, src/components/sidebar-widgets/smart-agenda.tsx, public/locales/en/translation.json, public/locales/pl/translation.json, session_state.json, tasks_progress.json, tasks_progress_verbose.txt.
+
+---
+
+=== SESSION S0064 START === 2026-03-13T07:49:43Z
+Session UUID: d6abb315-1935-440e-a562-3c8dcb8177cf
+Focus: Internationalize sidebar nudges
+Continuing from: S0063
+Active tasks: #13
+
+---
+
+S0064. Sidebar nudge internationalization progress:
+- Confirmed the backend/frontend contract was already partly migrated: `convex/nudges.ts` and `convex/gabinet/nudges.ts` now emit translation keys plus `messageValues`, `src/components/sidebar-widgets/nudge-card.tsx` resolves them through `t(...)`, and touched sidebar widgets already forward `messageValues`.
+- Added the missing `sidebar.nudges.*` translation tree to both `public/locales/en/translation.json` and `public/locales/pl/translation.json` so all CRM and Gabinet nudge keys have localized copy.
+- Re-checked the touched slice with focused validation: app typecheck PASS, convex typecheck PASS, and JSON validation confirms all 20 nudge keys exist in both locale files.
+- User preference note during execution: avoid parallel processes/subagents for this slice.
+
+---
+
+=== SESSION S0064 HANDOFF === 2026-03-13T07:54:20Z
+Session UUID: d6abb315-1935-440e-a562-3c8dcb8177cf
+Status: completed
+Current state: Sidebar nudge internationalization is complete and the translation-key nudge contract is fully wired in EN/PL.
+Immediate next action: None required for the sidebar nudge slice.
+Open questions: None.
+Warnings: Do not touch `.claude/worktrees/`; user has unrelated work there.
+Files modified: public/locales/en/translation.json, public/locales/pl/translation.json, session_state.json, tasks_progress.json, tasks_progress_verbose.txt.
+
+---
+
+=== SESSION S0065 START === 2026-03-13T08:07:23Z
+Session UUID: d6abb315-1935-440e-a562-3c8dcb8177cf
+Focus: Tighten session tracking and continue focused cleanup
+Continuing from: S0064
+Active tasks: #13
+Last updated: 2026-03-13T08:54:44Z
+
+---
+
+S0065. Session tracking hygiene:
+- Added durable `session_uuid` metadata to `session_state.json` and `tasks_progress.json`.
+- Backfilled the active verbose log section so edited session notes also carry the unique session identifier.
+- Fixed the malformed JSON task separator introduced in `tasks_progress.json` so the tracking file remains structurally valid before further work.
+
+S0065. Simplify cleanup in touched files:
+- Reviewed the touched sidebar/nudge diff manually and then with subagent follow-up, keeping fixes constrained to already touched files.
+- Improved `convex/nudges.ts` by replacing per-lead `filter(...).sort(...)[0]` work with a single `Map` of latest activity timestamps keyed by lead id.
+- Improved `convex/gabinet/nudges.ts` first by batching linked contact reads, then by cutting broader scans: active packages now use `by_orgAndActive`, active package usage now uses `by_orgAndStatus`, and recent appointments now use `by_orgAndDate` bounded to the last 90 days.
+- Removed dead frontend code/imports causing typecheck churn: deleted unused `maxValue` in `src/components/crm/mini-charts.tsx`, removed unused `Skeleton` import from `src/routes/_app/_auth/dashboard/_layout.gabinet.index.tsx`, deleted the unused `KpiStatCard` helper from `src/routes/_app/_auth/dashboard/_layout.gabinet.reports.lazy.tsx`, and then removed its leftover dead imports.
+- Cleaned the touched sidebar widget slice by replacing local `as any` Convex query args with typed ids in shared widgets (`smart-agenda`, `recent-items`, `day-timeline`) and the already touched CRM/Gabinet widget components.
+- Aligned `src/components/layout/app-sidebar.tsx` so widget component props now use `Id<"organizations">`, matching the typed sidebar widgets, and fixed the gabinet quick-actions icon import by switching the missing `CalendarPlus` symbol to `CalendarCheck`.
+- Verification after cleanup: `npx tsc -p tsconfig.app.json --pretty false` PASS and `npx tsc -p convex/tsconfig.json --pretty false` PASS.
+- Next: continue only with similarly scoped cleanup in already touched files, keeping `session_uuid` in edited session tracking files.
 
 ---

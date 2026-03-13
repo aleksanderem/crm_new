@@ -2,6 +2,7 @@ import { Link, useMatchRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import {
@@ -78,6 +79,8 @@ import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/em
 import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
 import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
 import { GabinetReportsWidgets } from "@/components/sidebar-widgets/gabinet/reports-widgets";
+import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
+import { GabinetGlobalNudges } from "@/components/sidebar-widgets/gabinet/global-nudges";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 
 type Workspace = "crm" | "gabinet";
@@ -103,7 +106,7 @@ interface ContextAction {
 interface PageContext {
   titleKey: string;
   actions: ContextAction[];
-  widgets?: React.ComponentType<{ organizationId: string }>;
+  widgets?: React.ComponentType<{ organizationId: Id<"organizations"> }>;
 }
 
 const crmNav: NavItem[] = [
@@ -298,6 +301,16 @@ const pageContexts: Record<string, PageContext> = {
         icon: CalendarCheck,
         dispatch: "goToToday",
       },
+      {
+        label: "nav.actions.filterByType",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.viewActivities",
+        icon: ClipboardList,
+        href: "/dashboard/activities",
+      },
     ],
   },
   documents: {
@@ -396,14 +409,53 @@ const pageContexts: Record<string, PageContext> = {
   "email-templates": {
     titleKey: "nav.emailTemplates",
     widgets: EmailTemplatesWidgets,
-    actions: [],
+    actions: [
+      {
+        label: "nav.actions.addTemplate",
+        icon: PlusCircle,
+        quickCreate: "emailTemplate",
+      },
+      {
+        label: "nav.actions.searchTemplates",
+        icon: SearchIcon,
+        dispatch: "openSearch",
+      },
+      {
+        label: "nav.actions.composeEmail",
+        icon: Send,
+        dispatch: "composeEmail",
+      },
+    ],
   },
 };
 
 const gabinetPageContexts: Record<string, PageContext> = {
   dashboard: {
     titleKey: "nav.gabinet.dashboard",
-    actions: [],
+    actions: [
+      {
+        label: "nav.actions.bookAppointment",
+        icon: CalendarCheck,
+        quickCreate: "appointment",
+        permissionFeature: "gabinet_appointments",
+      },
+      {
+        label: "nav.actions.viewCalendar",
+        icon: Calendar,
+        href: "/dashboard/gabinet/calendar",
+      },
+      {
+        label: "nav.actions.addPatient",
+        icon: UserPlus,
+        quickCreate: "patient",
+        permissionFeature: "gabinet_patients",
+      },
+      {
+        label: "nav.actions.todaysSchedule",
+        icon: Clock,
+        dispatch: "viewTodaySchedule",
+      },
+    ],
     widgets: GabinetDashboardWidgets,
   },
   calendar: {
@@ -488,6 +540,21 @@ const gabinetPageContexts: Record<string, PageContext> = {
         quickCreate: "package",
         permissionFeature: "gabinet_packages",
       },
+      {
+        label: "nav.actions.filterByStatus",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.viewExpiring",
+        icon: Clock,
+        dispatch: "viewExpiring",
+      },
+      {
+        label: "nav.actions.assignPackage",
+        icon: Gift,
+        dispatch: "assignPackage",
+      },
     ],
     widgets: GabinetPackagesWidgets,
   },
@@ -499,6 +566,21 @@ const gabinetPageContexts: Record<string, PageContext> = {
         icon: UserPlus,
         quickCreate: "employee",
         permissionFeature: "gabinet_employees",
+      },
+      {
+        label: "nav.actions.manageSchedules",
+        icon: Calendar,
+        dispatch: "manageSchedules",
+      },
+      {
+        label: "nav.actions.viewLeaves",
+        icon: CalendarCheck,
+        dispatch: "viewLeaves",
+      },
+      {
+        label: "nav.actions.filterByRole",
+        icon: Filter,
+        dispatch: "openFilter",
       },
     ],
     widgets: GabinetEmployeesWidgets,
@@ -512,12 +594,48 @@ const gabinetPageContexts: Record<string, PageContext> = {
         quickCreate: "document",
         permissionFeature: "documents",
       },
+      {
+        label: "nav.actions.createFromTemplate",
+        icon: FileText,
+        dispatch: "createFromTemplate",
+      },
+      {
+        label: "nav.actions.filterByStatus",
+        icon: Filter,
+        dispatch: "openFilter",
+      },
+      {
+        label: "nav.actions.pendingSignatures",
+        icon: CheckCircle,
+        dispatch: "pendingSignatures",
+      },
     ],
     widgets: GabinetDocumentsWidgets,
   },
   reports: {
     titleKey: "nav.gabinet.reports",
-    actions: [],
+    actions: [
+      {
+        label: "nav.actions.exportReport",
+        icon: Download,
+        dispatch: "exportReport",
+      },
+      {
+        label: "nav.actions.filterByDate",
+        icon: Calendar,
+        dispatch: "filterByDate",
+      },
+      {
+        label: "nav.actions.viewTreatmentStats",
+        icon: BarChart3,
+        dispatch: "viewTreatmentStats",
+      },
+      {
+        label: "nav.actions.viewRevenueReport",
+        icon: TrendingUp,
+        dispatch: "viewRevenueReport",
+      },
+    ],
     widgets: GabinetReportsWidgets,
   },
 };
@@ -684,13 +802,20 @@ export function AppSidebar() {
     !isSettingsRoute &&
     !activeEntity &&
     matchRoute({ to: "/dashboard" }) !== false;
-  const pageContext = activeEntity
-    ? pageContexts[activeEntity]
-    : activeGabinetEntity
-      ? gabinetPageContexts[activeGabinetEntity]
-      : isDashboardHome
-        ? pageContexts.dashboard
-        : null;
+  const isGabinetDashboardHome =
+    activeWorkspace === "gabinet" &&
+    !isSettingsRoute &&
+    !activeGabinetEntity;
+  let pageContext: PageContext | null = null;
+  if (activeEntity) {
+    pageContext = pageContexts[activeEntity];
+  } else if (activeGabinetEntity) {
+    pageContext = gabinetPageContexts[activeGabinetEntity];
+  } else if (isGabinetDashboardHome) {
+    pageContext = gabinetPageContexts.dashboard;
+  } else if (isDashboardHome) {
+    pageContext = pageContexts.dashboard;
+  }
 
   return (
     <>
@@ -841,7 +966,7 @@ export function AppSidebar() {
                 <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
               </div>
             ) : (
-              <>
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
                 {/* Context title when on entity page */}
                 {pageContext && (
                   <div className="px-4 pb-1 text-lg font-semibold">
@@ -849,20 +974,20 @@ export function AppSidebar() {
                   </div>
                 )}
 
-                {/* Widget stack */}
-                {pageContext?.widgets && organizationId && (
+                {/* Global nudges — gabinet only, always above actions */}
+                {activeWorkspace === "gabinet" && organizationId && (
                   <div className="flex flex-col gap-2 px-3 pb-2">
-                    <pageContext.widgets organizationId={organizationId} />
+                    <GabinetGlobalNudges organizationId={organizationId} />
                   </div>
                 )}
 
-                {/* Contextual actions section */}
+                {/* Contextual actions section — above widgets */}
                 {pageContext && (
-                  <div className="mt-3 flex flex-col px-4">
+                  <div className="flex flex-col px-4">
                     <p className="text-foreground/70 mb-2 text-sm">
                       {t("nav.sections.actions")}
                     </p>
-                    <div className="mb-4 grid grid-cols-2 gap-4">
+                    <div className="mb-3 grid grid-cols-2 gap-4">
                       {pageContext.actions
                         .filter((action) => {
                           if (!action.permissionFeature) return true;
@@ -892,24 +1017,35 @@ export function AppSidebar() {
                     </div>
                   </div>
                 )}
-              </>
+
+                {/* Widget stack */}
+                {pageContext?.widgets && organizationId && (
+                  <div className="flex flex-col gap-2 px-3 pb-2">
+                    <pageContext.widgets organizationId={organizationId} />
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}
 
-        {/* Mini calendar - pushed to bottom by spacer */}
+        {/* Bottom-pinned elements — always visible, never scroll */}
+
+        {/* Quick actions dropdown — gabinet only */}
+        {activeWorkspace === "gabinet" && !isSettingsRoute && (
+          <GabinetQuickActionsDropdown />
+        )}
+
+        {/* Mini calendar */}
         {miniCalState.visible &&
           miniCalState.selectedDate &&
           miniCalState.onDateChange && (
-            <>
-              <div className="flex-1" />
-              <CalendarMiniMonth
-                selectedDate={miniCalState.selectedDate}
-                onDateChange={miniCalState.onDateChange}
-                highlightedDates={miniCalState.highlightedDates}
-                className="border-t-0 px-3 py-3"
-              />
-            </>
+            <CalendarMiniMonth
+              selectedDate={miniCalState.selectedDate}
+              onDateChange={miniCalState.onDateChange}
+              highlightedDates={miniCalState.highlightedDates}
+              className="border-t-0 px-3 py-3"
+            />
           )}
       </div>
     </>

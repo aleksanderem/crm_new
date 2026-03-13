@@ -12,7 +12,9 @@
     "add": "Add",
     "search": "Search",
     "reset": "Reset",
+    "refresh": "Refresh",
     "close": "Close",
+    "menu": "Menu",
     "confirm": "Confirm",
     "saving": "Saving...",
     "loading": "Loading...",
@@ -136,7 +138,21 @@
       "sortByPrice": "Sort by Price",
       "manageCategories": "Manage Categories",
       "filterByEmployee": "Filter by Employee",
-      "filterByTreatment": "Filter by Treatment"
+      "filterByTreatment": "Filter by Treatment",
+      "viewActivities": "Activity List",
+      "addTemplate": "Add Template",
+      "searchTemplates": "Search Templates",
+      "viewCalendar": "Calendar",
+      "todaysSchedule": "Today's Schedule",
+      "viewExpiring": "Expiring",
+      "assignPackage": "Assign Package",
+      "manageSchedules": "Work Schedules",
+      "viewLeaves": "Leaves",
+      "filterByRole": "Filter by Role",
+      "pendingSignatures": "Pending Signatures",
+      "filterByDate": "Filter by Date",
+      "viewTreatmentStats": "Treatment Stats",
+      "viewRevenueReport": "Revenue Report"
     },
     "workspace": {
       "crm": "CRM",
@@ -176,6 +192,9 @@
     "newThisMonth": "New/month",
     "newThisWeek": "New/week",
     "pendingSignature": "Pending Signature",
+    "pendingSent": "Pending",
+    "topCompanies": "Top Companies",
+    "topTemplates": "Top Templates",
     "todayCalls": "Calls Today",
     "answerRate": "Answer Rate",
     "avgDuration": "Avg Duration",
@@ -184,6 +203,70 @@
     "unlinked": "Unlinked",
     "smartAgenda": "SMART AGENDA",
     "upcoming": "Upcoming",
+    "agendaToday": "Today",
+    "agendaTomorrow": "Tomorrow",
+    "agendaAll": "All",
+    "agendaMine": "Mine",
+    "agendaCall": "Call",
+    "agendaEmail": "Email",
+    "agendaMeeting": "Meeting",
+    "agendaEvent": "Event",
+    "nudges": {
+      "insights": {
+        "closingThisWeek": "{{count}} open deals are due this week.",
+        "overdueActivities": "{{count}} scheduled activities are overdue."
+      },
+      "deals": {
+        "stale": "{{count}} open deals have had no activity for 7+ days."
+      },
+      "contacts": {
+        "unlinkedCompany": "{{count}} contacts are not linked to any company."
+      },
+      "inbox": {
+        "unanswered": "{{count}} inbound emails have been unread for over 48 hours."
+      },
+      "activities": {
+        "overdueOldest": "{{count}} activities are overdue. Oldest delay: {{days}}d."
+      },
+      "documents": {
+        "pendingApproval": "{{count}} documents are still pending approval."
+      },
+      "calendar": {
+        "yesterdayOverdue": "{{count}} tasks from yesterday are still overdue."
+      },
+      "companies": {
+        "noContacts": "{{count}} companies have no linked contacts.",
+        "noIndustry": "{{count}} companies are missing industry."
+      },
+      "calls": {
+        "noOutcome": "{{count}} calls from today have no outcome yet."
+      },
+      "products": {
+        "unused": "{{count}} products are not used in any deals."
+      },
+      "gabinet": {
+        "appointments": {
+          "unconfirmedSms": "{{count}} today's appointments are still unconfirmed — send SMS reminders."
+        },
+        "leave": {
+          "pendingApproval": "{{count}} leave requests are waiting for approval."
+        },
+        "packages": {
+          "expiringSoon": "{{count}} package usages expire within 30 days.",
+          "noUsage": "{{count}} active packages have no active usage."
+        },
+        "documents": {
+          "pendingSignature": "{{count}} gabinet documents are waiting for signature."
+        },
+        "patients": {
+          "missingContact": "{{count}} patients are missing phone and email contact details.",
+          "noRecentVisit": "{{count}} patients have no recent visit in the last 90 days."
+        },
+        "treatments": {
+          "noPrice": "{{count}} active treatments have no price set."
+        }
+      }
+    },
     "gabinet": {
       "todayAppointments": "Today's Appts",
       "confirmedToday": "Confirmed",
@@ -209,6 +292,8 @@
       "thisMonthAppointments": "Appts/month",
       "visitTrend": "Visit Trend",
       "attendance": "Attendance",
+      "topTreatments": "Top Treatments",
+      "staffLoad": "Staff Load",
       "noAppointments": "No appointments this day",
       "dayAgendaSummary": "{{total}} appts · {{unconfirmed}} unconfirmed",
       "bookAppointment": "Book appointment on {{date}}",

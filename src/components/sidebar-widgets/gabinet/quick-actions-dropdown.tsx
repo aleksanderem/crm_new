@@ -1,0 +1,109 @@
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  CalendarCheck,
+  UserPlus,
+  Calendar,
+  Users,
+  Package,
+  FileText,
+  Settings,
+  Stethoscope,
+  Plus,
+} from "@/lib/ez-icons";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useSidebarActions } from "@/components/layout/sidebar-context";
+
+export function GabinetQuickActionsDropdown() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { openQuickCreate } = useSidebarActions();
+
+  return (
+    <div className="border-t px-3 py-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-full gap-2">
+            <Plus className="size-4" />
+            {t("sidebar.gabinet.quickActions", "Szybkie akcje")}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-60 p-2"
+          side="top"
+          align="center"
+          sideOffset={8}
+        >
+          {/* Create actions — open modals */}
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => openQuickCreate("appointment")}
+          >
+            <CalendarCheck className="text-foreground size-5" />
+            {t("sidebar.gabinet.bookAppointment", "Umów wizytę")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => openQuickCreate("patient")}
+          >
+            <UserPlus className="text-foreground size-5" />
+            {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          {/* Navigation actions */}
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+          >
+            <Calendar className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToCalendar", "Kalendarz")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/patients" })}
+          >
+            <Users className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToPatients", "Klienci")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/treatments" })}
+          >
+            <Stethoscope className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToTreatments", "Zabiegi")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/packages" })}
+          >
+            <Package className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToPackages", "Pakiety")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/documents" })}
+          >
+            <FileText className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToDocuments", "Dokumenty")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/settings" })}
+          >
+            <Settings className="text-foreground size-5" />
+            {t("sidebar.gabinet.goToSettings", "Ustawienia")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}

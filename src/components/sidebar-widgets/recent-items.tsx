@@ -1,10 +1,11 @@
 import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Clock } from "@/lib/ez-icons";
 
 interface RecentItemsProps {
-  organizationId: string;
+  organizationId: Id<"organizations">;
   entityType: string;
   linkPrefix: string;
 }
@@ -12,7 +13,7 @@ interface RecentItemsProps {
 export function RecentItems({ organizationId, entityType, linkPrefix }: RecentItemsProps) {
   const { t } = useTranslation();
   const items = useQuery(api.recentlyViewed.list, {
-    organizationId: organizationId as any,
+    organizationId,
     entityType,
     limit: 3,
   });
@@ -20,20 +21,26 @@ export function RecentItems({ organizationId, entityType, linkPrefix }: RecentIt
   if (!items?.length) return null;
 
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-[9px] font-medium uppercase tracking-wider">
+    <div className="flex flex-col gap-1.5">
+      <span className="text-muted-foreground text-[9px] font-semibold uppercase tracking-wider">
         {t("sidebar.recentItems")}
       </span>
-      {items.map((item) => (
-        <a
-          key={item.entityId}
-          href={`${linkPrefix}${item.entityId}`}
-          className="hover:bg-muted/50 flex items-center gap-2 rounded px-1 py-0.5 transition-colors"
-        >
-          <Clock className="text-muted-foreground h-3 w-3 shrink-0" variant="stroke" />
-          <span className="text-foreground min-w-0 truncate text-[10px]">{item.entityLabel}</span>
-        </a>
-      ))}
+      <div className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <a
+            key={item.entityId}
+            href={`${linkPrefix}${item.entityId}`}
+            className="hover:bg-muted/50 group flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors"
+          >
+            <span className="bg-muted flex h-5 w-5 shrink-0 items-center justify-center rounded">
+              <Clock className="text-muted-foreground h-3 w-3 transition-colors group-hover:text-foreground" variant="stroke" />
+            </span>
+            <span className="text-foreground group-hover:text-primary min-w-0 truncate text-[10px] font-medium transition-colors">
+              {item.entityLabel}
+            </span>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

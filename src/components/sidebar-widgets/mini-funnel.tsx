@@ -14,23 +14,44 @@ export function MiniFunnel({ stages }: MiniFunnelProps) {
   const maxCount = Math.max(...stages.map((s) => s.count), 1);
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {stages.map((stage) => (
-        <div key={stage.label} className="flex items-center gap-1.5">
-          <span className="text-muted-foreground w-16 shrink-0 truncate text-[10px]">
-            {stage.label}
-          </span>
-          <div className="bg-muted/50 h-2.5 flex-1 overflow-hidden rounded-full">
-            <div
-              className={cn("h-full rounded-full transition-all", stage.color)}
-              style={{ width: `${(stage.count / maxCount) * 100}%` }}
-            />
+    <div className="flex flex-col gap-1">
+      {stages.map((stage, idx) => {
+        const pct = (stage.count / maxCount) * 100;
+        const conversionRate =
+          idx > 0 && stages[idx - 1].count > 0
+            ? ((stage.count / stages[idx - 1].count) * 100).toFixed(0)
+            : null;
+
+        return (
+          <div key={stage.label} className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              {/* Colored dot */}
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: `hsl(var(--${stage.color.replace("bg-", "")}))` }}
+              />
+              <span className="text-foreground min-w-0 flex-1 truncate text-[10px] font-medium">
+                {stage.label}
+              </span>
+              <span className="text-foreground shrink-0 text-[10px] font-semibold tabular-nums">
+                {stage.count}
+              </span>
+              {conversionRate && (
+                <span className="text-muted-foreground shrink-0 text-[8px] tabular-nums">
+                  {conversionRate}%
+                </span>
+              )}
+            </div>
+            {/* Funnel bar — width narrows with each stage */}
+            <div className="ml-3.5 h-1.5 overflow-hidden rounded-full bg-transparent">
+              <div
+                className={cn("h-full rounded-full transition-all", stage.color)}
+                style={{ width: `${pct}%`, opacity: 1 - idx * 0.08 }}
+              />
+            </div>
           </div>
-          <span className="text-foreground w-5 text-right text-[10px] font-medium tabular-nums">
-            {stage.count}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

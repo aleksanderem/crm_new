@@ -83,7 +83,6 @@ export const getPatientsKpis = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const now = Date.now();
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -445,7 +444,7 @@ export const getDayAgenda = query({
           treatmentName: treatment?.name ?? "—",
           treatmentDuration: treatment?.duration ?? 0,
           employeeName: employee
-            ? [employee.firstName, employee.lastName].filter(Boolean).join(" ") || "Employee"
+            ? employee.name || "Employee"
             : "—",
           confirmed: appt.status === "confirmed" || appt.status === "completed",
         };
@@ -457,6 +456,229 @@ export const getDayAgenda = query({
       appointments: enriched,
       totalAppointments: enriched.length,
       confirmedCount: enriched.filter((a) => a.confirmed).length,
+    };
+  },
+});
+
+// --- Dashboard Weekly Appointments (sparkline data) ---
+export const getWeeklyAppointments = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const today = new Date();
+    const days: { day: string; appointments: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const dayLabel = d.toLocaleDateString("pl-PL", { weekday: "short" });
+
+      const appts = await ctx.db
+        .query("gabinetAppointments")
+        .withIndex("by_orgAndDate", (q) =>
+          q.eq("organizationId", args.organizationId).eq("date", dateStr),
+        )
+        .collect();
+
+      days.push({ day: dayLabel, appointments: appts.length });
+    }
+
+    return days;
+  },
+});
+
+// --- Dashboard Monthly Patients (sparkline data) ---
+export const getMonthlyNewPatients = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const patients = await ctx.db
+      .query("gabinetPatients")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const now = new Date();
+    const months: { month: string; patients: number }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const prefix =
+        d.getFullYear() +
+        "-" +
+        String(d.getMonth() + 1).padStart(2, "0");
+      const label = d.toLocaleDateString("pl-PL", { month: "short" });
+
+      const count = patients.filter((p) => {
+        const created = new Date(p.createdAt);
+        const createdPrefix =
+          created.getFullYear() +
+          "-" +
+          String(created.getMonth() + 1).padStart(2, "0");
+        return createdPrefix === prefix;
+      }).length;
+
+      months.push({ month: label, patients: count });
+    }
+
+    return months;
+  },
+});
+
+// --- Dashboard Weekly Completed Treatments (sparkline data) ---
+export const getWeeklyCompletedTreatments = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const today = new Date();
+    const days: { day: string; completed: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const dayLabel = d.toLocaleDateString("pl-PL", { weekday: "short" });
+
+      const appts = await ctx.db
+        .query("gabinetAppointments")
+        .withIndex("by_orgAndDate", (q) =>
+          q.eq("organizationId", args.organizationId).eq("date", dateStr),
+        )
+        .collect();
+
+      const completed = appts.filter((a) => a.status === "completed").length;
+      days.push({ day: dayLabel, completed });
+    }
+
+    return days;
+  },
+});
+
+// --- Top Treatments Ranking ---
+export const getTopTreatments = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const treatments = await ctx.db
+      .query("gabinetTreatments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    // Count appointments per treatment
+    const treatmentCounts = new Map<string, number>();
+    for (const appt of appointments) {
+      if (appt.treatmentId) {
+        treatmentCounts.set(
+          String(appt.treatmentId),
+          (treatmentCounts.get(String(appt.treatmentId)) ?? 0) + 1,
+        );
+      }
+    }
+
+    const treatmentMap = new Map(
+      treatments.map((t) => [String(t._id), t.name]),
+    );
+
+    const results: { label: string; value: number }[] = [];
+    for (const [treatmentId, count] of treatmentCounts) {
+      const name = treatmentMap.get(treatmentId);
+      if (name) {
+        results.push({ label: name, value: count });
+      }
+    }
+
+    return results.sort((a, b) => b.value - a.value).slice(0, 5);
+  },
+});
+
+// --- Monthly Appointments (last 6 months, for area chart) ---
+export const getMonthlyAppointments = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const now = new Date();
+    const oldestMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      .toISOString()
+      .split("T")[0];
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      .toISOString()
+      .split("T")[0];
+
+    const allAppointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndDate", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .gte("date", oldestMonthStart)
+          .lt("date", nextMonthStart),
+      )
+      .collect();
+    const months: { month: string; appointments: number; completed: number }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const prefix =
+        d.getFullYear() +
+        "-" +
+        String(d.getMonth() + 1).padStart(2, "0");
+      const label = d.toLocaleDateString("pl-PL", { month: "short" });
+
+      const monthAppts = allAppointments.filter((a) => a.date.startsWith(prefix));
+      const completedCount = monthAppts.filter((a) => a.status === "completed").length;
+
+      months.push({ month: label, appointments: monthAppts.length, completed: completedCount });
+    }
+
+    return months;
+  },
+});
+
+// --- Appointment Status Distribution (for donut chart) ---
+export const getAppointmentStatusDistribution = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const now = new Date();
+    const thisMonthPrefix =
+      now.getFullYear() +
+      "-" +
+      String(now.getMonth() + 1).padStart(2, "0");
+    const thisMonthStart = `${thisMonthPrefix}-01`;
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      .toISOString()
+      .split("T")[0];
+
+    const thisMonth = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndDate", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .gte("date", thisMonthStart)
+          .lt("date", nextMonthStart),
+      )
+      .collect();
+
+    const statusCounts: Record<string, number> = {};
+    for (const appt of thisMonth) {
+      statusCounts[appt.status] = (statusCounts[appt.status] ?? 0) + 1;
+    }
+
+    return {
+      total: thisMonth.length,
+      statuses: Object.entries(statusCounts)
+        .map(([status, count]) => ({ status, count }))
+        .sort((a, b) => b.count - a.count),
     };
   },
 });

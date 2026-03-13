@@ -15,27 +15,32 @@ export function SourceBar({ segments }: SourceBarProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex h-3 overflow-hidden rounded-full">
+      {/* Stacked bar with rounded caps and segment gaps */}
+      <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
         {segments.map((seg) => (
           <div
             key={seg.label}
-            className={cn("h-full shrink-0", seg.color)}
+            className={cn("h-full shrink-0 first:rounded-l-full last:rounded-r-full", seg.color)}
             style={{ width: `${(seg.count / total) * 100}%` }}
           />
         ))}
       </div>
+
+      {/* Legend with percentage */}
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {segments.map((seg) => (
-          <div key={seg.label} className="flex items-center gap-1">
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", seg.color)} />
-            <span className="text-muted-foreground text-[10px] truncate">
-              {seg.label}
-            </span>
-            <span className="text-foreground text-[10px] font-medium tabular-nums">
-              {seg.count}
-            </span>
-          </div>
-        ))}
+        {segments.map((seg) => {
+          const pct = ((seg.count / total) * 100).toFixed(0);
+          return (
+            <div key={seg.label} className="flex items-center gap-1">
+              <span className={cn("h-2 w-2 shrink-0 rounded-sm", seg.color)} />
+              <span className="text-muted-foreground text-[9px] truncate">{seg.label}</span>
+              <span className="text-foreground text-[9px] font-semibold tabular-nums">
+                {seg.count}
+              </span>
+              <span className="text-muted-foreground text-[8px] tabular-nums">({pct}%)</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

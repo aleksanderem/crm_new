@@ -1,18 +1,19 @@
 {
-  "session_id": "S0061",
-  "started_at": "2026-03-11T15:50:09Z",
-  "last_updated": "2026-03-13T04:38:57Z",
-  "status": "completed",
-  "focus": "Implement richer Gabinet-first automation business editor rollout",
+  "session_id": "S0065",
+  "session_uuid": "d6abb315-1935-440e-a562-3c8dcb8177cf",
+  "started_at": "2026-03-13T08:07:23Z",
+  "last_updated": "2026-03-13T09:05:00Z",
+  "status": "active",
+  "focus": "Tighten session tracking and continue focused cleanup",
   "tasks_snapshot": {
-    "total": 15,
+    "total": 3,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 15,
+    "passing": 3,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0061 completed AUT-07. The richer Gabinet automation editor is shipped with multi-action overview badges, full EN/PL editor copy, action-card-aware E2E coverage, and focused typecheck/backend/browser verification all green."
+  "notes": "S0065 added durable session_uuid tracking, tightened gabinet sidebar nudge hot paths to use existing indexes for active packages/usages and recent appointments, removed dead frontend code/imports in crm mini charts and gabinet dashboard/reports routes, cleaned the touched sidebar widget slice by replacing local `as any` query args with typed organization/user ids, aligned `app-sidebar` widget props to org ids, fixed the gabinet quick actions icon import, replaced the remaining JSON.stringify-based nudge keys in the touched widget slice, tightened KpiRow color typing, and kept the cleanup scoped to already touched files."
 }

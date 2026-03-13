@@ -12,7 +12,9 @@
     "add": "Dodaj",
     "search": "Szukaj",
     "reset": "Resetuj",
+    "refresh": "Odśwież",
     "close": "Zamknij",
+    "menu": "Menu",
     "confirm": "Potwierdź",
     "saving": "Zapisywanie...",
     "loading": "Ładowanie...",
@@ -111,7 +113,7 @@
       "viewUnread": "Nieprzeczytane",
       "activate": "Aktywuj/Dezaktywuj",
       "bookAppointment": "Umów wizytę",
-      "addPatient": "Dodaj pacjenta",
+      "addPatient": "Dodaj klienta",
       "addTreatment": "Dodaj zabieg",
       "addPackage": "Dodaj pakiet",
       "addEmployee": "Dodaj pracownika",
@@ -130,19 +132,33 @@
       "createFromTemplate": "Z szablonu",
       "bulkActions": "Akcje grupowe",
       "categoryFilter": "Filtr kategorii",
-      "searchPatients": "Szukaj pacjentów",
+      "searchPatients": "Szukaj klientów",
       "filterByStatus": "Filtruj wg statusu",
-      "viewPatientStats": "Statystyki pacjentów",
+      "viewPatientStats": "Statystyki klientów",
       "sortByPrice": "Sortuj wg ceny",
       "manageCategories": "Zarządzaj kategoriami",
       "filterByEmployee": "Filtruj wg pracownika",
-      "filterByTreatment": "Filtruj wg zabiegu"
+      "filterByTreatment": "Filtruj wg zabiegu",
+      "viewActivities": "Lista aktywności",
+      "addTemplate": "Dodaj szablon",
+      "searchTemplates": "Szukaj szablonów",
+      "viewCalendar": "Kalendarz",
+      "todaysSchedule": "Grafik na dziś",
+      "viewExpiring": "Wygasające",
+      "assignPackage": "Przypisz pakiet",
+      "manageSchedules": "Grafiki pracy",
+      "viewLeaves": "Urlopy",
+      "filterByRole": "Filtruj wg roli",
+      "pendingSignatures": "Oczekujące podpisy",
+      "filterByDate": "Filtruj wg daty",
+      "viewTreatmentStats": "Statystyki zabiegów",
+      "viewRevenueReport": "Raport przychodów"
     },
     "workspace": {
       "crm": "CRM",
       "crmDesc": "Sprzedaż i kontakty",
       "gabinet": "Gabinet",
-      "gabinetDesc": "Klinika i pacjenci"
+      "gabinetDesc": "Klinika i klienci"
     },
     "gabinet": "Gabinet",
     "settings": "Ustawienia",
@@ -176,6 +192,9 @@
     "newThisMonth": "Nowe w mies.",
     "newThisWeek": "Nowe w tyg.",
     "pendingSignature": "Do podpisu",
+    "pendingSent": "Oczekujące",
+    "topCompanies": "Top firmy",
+    "topTemplates": "Top szablony",
     "todayCalls": "Dziś połączeń",
     "answerRate": "Odebrane",
     "avgDuration": "Śr. czas",
@@ -184,13 +203,77 @@
     "unlinked": "Bez powiązań",
     "smartAgenda": "SMART AGENDA",
     "upcoming": "Nadchodzące",
+    "agendaToday": "Dziś",
+    "agendaTomorrow": "Jutro",
+    "agendaAll": "Wszystkie",
+    "agendaMine": "Moje",
+    "agendaCall": "Rozmowa",
+    "agendaEmail": "E-mail",
+    "agendaMeeting": "Spotkanie",
+    "agendaEvent": "Wydarzenie",
+    "nudges": {
+      "insights": {
+        "closingThisWeek": "{{count}} otwartych transakcji domyka się w tym tygodniu.",
+        "overdueActivities": "{{count}} zaplanowanych aktywności jest zaległych."
+      },
+      "deals": {
+        "stale": "{{count}} otwartych transakcji nie miało aktywności od ponad 7 dni."
+      },
+      "contacts": {
+        "unlinkedCompany": "{{count}} kontaktów nie jest powiązanych z firmą."
+      },
+      "inbox": {
+        "unanswered": "{{count}} przychodzących e-maili pozostaje nieprzeczytanych od ponad 48 godzin."
+      },
+      "activities": {
+        "overdueOldest": "{{count}} aktywności jest zaległych. Najstarsze opóźnienie: {{days}} d."
+      },
+      "documents": {
+        "pendingApproval": "{{count}} dokumentów nadal czeka na akceptację."
+      },
+      "calendar": {
+        "yesterdayOverdue": "{{count}} zadań z wczoraj nadal jest zaległych."
+      },
+      "companies": {
+        "noContacts": "{{count}} firm nie ma powiązanych kontaktów.",
+        "noIndustry": "{{count}} firm nie ma uzupełnionej branży."
+      },
+      "calls": {
+        "noOutcome": "{{count}} dzisiejszych połączeń nie ma jeszcze wyniku."
+      },
+      "products": {
+        "unused": "{{count}} produktów nie jest używanych w żadnych dealach."
+      },
+      "gabinet": {
+        "appointments": {
+          "unconfirmedSms": "{{count}} dzisiejszych wizyt nadal jest niepotwierdzonych — wyślij SMS."
+        },
+        "leave": {
+          "pendingApproval": "{{count}} wniosków urlopowych czeka na akceptację."
+        },
+        "packages": {
+          "expiringSoon": "{{count}} użyć pakietów wygasa w ciągu 30 dni.",
+          "noUsage": "{{count}} aktywnych pakietów nie ma aktywnego użycia."
+        },
+        "documents": {
+          "pendingSignature": "{{count}} dokumentów Gabinetu czeka na podpis."
+        },
+        "patients": {
+          "missingContact": "{{count}} klientów nie ma telefonu ani e-maila kontaktowego.",
+          "noRecentVisit": "{{count}} klientów nie miało wizyty w ostatnich 90 dniach."
+        },
+        "treatments": {
+          "noPrice": "{{count}} aktywnych zabiegów nie ma ustawionej ceny."
+        }
+      }
+    },
     "gabinet": {
       "todayAppointments": "Wizyty dziś",
       "confirmedToday": "Potwierdzone",
       "todayCount": "Dziś wizyt",
       "confirmed": "Potwierdzone",
       "unconfirmed": "Niepotwierdzone",
-      "totalPatients": "Pacjenci",
+      "totalPatients": "Klienci",
       "newThisMonth": "Nowi/mies.",
       "total": "Wszystkie",
       "totalTreatments": "Zabiegi",
@@ -209,6 +292,8 @@
       "thisMonthAppointments": "Wizyty/mies.",
       "visitTrend": "Trend wizyt",
       "attendance": "Frekwencja",
+      "topTreatments": "Top zabiegi",
+      "staffLoad": "Obciążenie zespołu",
       "noAppointments": "Brak wizyt w tym dniu",
       "dayAgendaSummary": "{{total}} wizyt · {{unconfirmed}} niepotwierdz.",
       "bookAppointment": "Umów wizytę na {{date}}",
@@ -646,7 +731,7 @@
       "pending": "Oczekuje"
     },
     "automationPresets": {
-      "send_sms": "Wyślij SMS do pacjenta",
+      "send_sms": "Wyślij SMS do klienta",
       "create_notification": "Powiadom przypisanego pracownika"
     },
     "automationActionTypes": {
@@ -706,8 +791,8 @@
         "enabled": "Ta automatyzacja jest włączona i uruchomi się automatycznie.",
         "disabled": "Ta automatyzacja jest zapisana jako wyłączona i nie uruchomi się, dopóki jej nie włączysz.",
         "when": {
-          "appointment_created_sms": "Gdy zostanie utworzona nowa wizyta, wyślij ten SMS do pacjenta.",
-          "appointment_reminder_sms": "Gdy nadejdzie czas przypomnienia o wizycie, wyślij ten SMS do pacjenta.",
+          "appointment_created_sms": "Gdy zostanie utworzona nowa wizyta, wyślij ten SMS do klienta.",
+          "appointment_reminder_sms": "Gdy nadejdzie czas przypomnienia o wizycie, wyślij ten SMS do klienta.",
           "appointment_created_notify_staff": "Gdy zostanie utworzona nowa wizyta, powiadom przypisanego pracownika.",
           "appointment_status_notify_staff": "Gdy wizyta zmieni status na {{status}}, powiadom przypisanego pracownika.",
           "appointment_status_write_activity": "Gdy wizyta zmieni status na {{status}}, zapisz aktywność przy tej wizycie."
@@ -723,7 +808,7 @@
       "presets": {
         "appointment_created_sms": {
           "title": "Wyślij SMS po nowej wizycie",
-          "description": "Wyślij SMS z potwierdzeniem do pacjenta zaraz po utworzeniu wizyty."
+          "description": "Wyślij SMS z potwierdzeniem do klienta zaraz po utworzeniu wizyty."
         },
         "appointment_reminder_sms": {
           "title": "Wyślij SMS z przypomnieniem przed wizytą",
@@ -744,7 +829,7 @@
       },
       "defaults": {
         "appointment_created_sms": {
-          "name": "Wyślij pacjentowi SMS po nowej wizycie",
+          "name": "Wyślij klientowi SMS po nowej wizycie",
           "message": "{{patientName}}, Twoja wizyta została zapisana na {{date}} o {{startTime}}."
         },
         "appointment_reminder_sms": {
@@ -805,7 +890,7 @@
         "smsReplyReceived": "Zostanie odebrana odpowiedź SMS"
       },
       "groups": {
-        "patient": "Dane pacjenta",
+        "patient": "Dane klienta",
         "appointment": "Dane wizyty",
         "message": "Dane wiadomości",
         "other": "Inne dane"
@@ -835,7 +920,7 @@
       "replyIntentDescription": "Uruchamiaj tę automatyzację tylko wtedy, gdy przychodząca odpowiedź SMS pasuje do {{replyIntent}}.",
       "replyIntentAny": "Dowolna odpowiedź",
       "recipients": {
-        "patientEmail": "Odbiorca: e-mail pacjenta",
+        "patientEmail": "Odbiorca: e-mail klienta",
         "assignedEmployee": "Odbiorca: przypisany pracownik"
       },
       "emailModes": {
@@ -853,7 +938,7 @@
         "permissionHint": "Automatyzacje mogą aktualizować tylko bezpieczne, wspierane pola.",
         "customFieldShort": "pole własne",
         "targets": {
-          "patient": "Pacjent",
+          "patient": "Klient",
           "appointment": "Wizyta",
           "employee": "Pracownik"
         }
@@ -1327,7 +1412,7 @@
       "activity": "Aktywność",
       "call": "Połączenie",
       "document": "Dokument",
-      "patient": "Pacjent",
+      "patient": "Klient",
       "appointment": "Wizyta",
       "treatment": "Zabieg",
       "package": "Pakiet",
@@ -1344,7 +1429,7 @@
       "call": "Zarejestruj rozmowę telefoniczną",
       "document": "Prześlij lub utwórz dokument",
       "product": "Dodaj produkt do katalogu",
-      "patient": "Zarejestruj nowego pacjenta",
+      "patient": "Zarejestruj nowego klienta",
       "appointment": "Zarezerwuj wizytę w kalendarzu",
       "treatment": "Dodaj nowy rodzaj zabiegu",
       "package": "Utwórz pakiet zabiegów",
@@ -1359,7 +1444,7 @@
       "product": "Nowy produkt",
       "call": "Zarejestruj połączenie",
       "document": "Nowy dokument",
-      "patient": "Nowy pacjent",
+      "patient": "Nowy klient",
       "appointment": "Nowa wizyta",
       "treatment": "Nowy zabieg",
       "package": "Nowy pakiet",
@@ -1379,7 +1464,7 @@
     "logCall": "Zarejestruj połączenie",
     "importCsv": "Importuj CSV",
     "exportCsv": "Eksportuj CSV",
-    "newPatient": "Nowy pacjent",
+    "newPatient": "Nowy klient",
     "newAppointment": "Nowa wizyta",
     "newTreatment": "Nowy zabieg",
     "newPackage": "Nowy pakiet",
@@ -1576,21 +1661,21 @@
   },
   "gabinet": {
     "patients": {
-      "title": "Pacjenci",
-      "description": "Zarządzaj pacjentami kliniki",
-      "addPatient": "Dodaj pacjenta",
-      "createPatient": "Utwórz pacjenta",
-      "createDescription": "Dodaj nowego pacjenta do kliniki",
-      "searchPlaceholder": "Szukaj pacjentów...",
-      "emptyTitle": "Brak pacjentów",
-      "emptyDescription": "Dodaj pierwszego pacjenta, aby rozpocząć",
-      "confirmDelete": "Czy na pewno chcesz dezaktywować tego pacjenta?",
+      "title": "Klienci",
+      "description": "Zarządzaj klientami kliniki",
+      "addPatient": "Dodaj klienta",
+      "createPatient": "Utwórz klienta",
+      "createDescription": "Dodaj nowego klienta do kliniki",
+      "searchPlaceholder": "Szukaj klientów...",
+      "emptyTitle": "Brak klientów",
+      "emptyDescription": "Dodaj pierwszego klienta, aby rozpocząć",
+      "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
       "views": {
-        "all": "Wszyscy pacjenci",
+        "all": "Wszyscy klienci",
         "active": "Aktywni",
         "inactive": "Nieaktywni"
       },
-      "contact": "Pacjent",
+      "contact": "Klient",
       "firstName": "Imię",
       "lastName": "Nazwisko",
       "pesel": "PESEL",
@@ -1621,14 +1706,14 @@
         "loyalty": "Lojalność",
         "activity": "Aktywność"
       },
-      "byDay": "Pacjenci wg dnia",
-      "bySource": "Pacjenci wg źródła",
+      "byDay": "Klienci wg dnia",
+      "bySource": "Klienci wg źródła",
       "appointmentHistory": "Historia wizyt",
       "history": "Historia",
       "noHistory": "Brak historii",
-      "noHistoryDesc": "Pacjent nie ma wcześniejszych wizyt",
-      "patient": "Pacjent",
-      "lastAppointments": "Ostatnie wizyty pacjenta"
+      "noHistoryDesc": "Klient nie ma wcześniejszych wizyt",
+      "patient": "Klient",
+      "lastAppointments": "Ostatnie wizyty klienta"
     },
     "treatments": {
       "title": "Zabiegi",
@@ -1803,7 +1888,7 @@
     },
     "appointments": {
       "createAppointment": "Nowa wizyta",
-      "patient": "Pacjent",
+      "patient": "Klient",
       "treatment": "Zabieg",
       "package": "Pakiet",
       "employee": "Pracownik",
@@ -1815,11 +1900,11 @@
       "recurring": "Wizyta cykliczna",
       "frequency": "Częstotliwość",
       "count": "Powtórzenia",
-      "selectPatient": "Wybierz pacjenta",
-      "searchPatient": "Szukaj pacjenta lub kontaktu...",
-      "existingPatients": "Pacjenci",
-      "fromCrmContacts": "Kontakty CRM (utwórz pacjenta)",
-      "creatingPatient": "Tworzenie pacjenta...",
+      "selectPatient": "Wybierz klienta",
+      "searchPatient": "Szukaj klienta lub kontaktu...",
+      "existingPatients": "Klienci",
+      "fromCrmContacts": "Kontakty CRM (utwórz klienta)",
+      "creatingPatient": "Tworzenie klienta...",
       "searchingContacts": "Szukam kontaktów CRM...",
       "typeToSearch": "Wpisz min. 2 znaki aby wyszukać",
       "selectTreatment": "Wybierz zabieg",
@@ -1914,14 +1999,14 @@
       "recurringInfo": "Ta wizyta jest częścią serii cyklicznej",
       "sms": {
         "title": "Potwierdzenie SMS",
-        "description": "Podgląd ostatniej prośby o potwierdzenie i odpowiedzi pacjenta.",
+        "description": "Podgląd ostatniej prośby o potwierdzenie i odpowiedzi klienta.",
         "lastOutbound": "Ostatnia wiadomość wychodząca",
-        "lastInbound": "Ostatnia odpowiedź pacjenta",
+        "lastInbound": "Ostatnia odpowiedź klienta",
         "parsedIntent": "Rozpoznana intencja",
         "processingStatus": "Status przetwarzania",
         "processingReason": "Powód",
         "noOutbound": "Nie wysłano jeszcze prośby o potwierdzenie.",
-        "noInbound": "Brak odpowiedzi pacjenta.",
+        "noInbound": "Brak odpowiedzi klienta.",
         "summaryAwaitingRequest": "Oczekuje na wysyłkę",
         "summaryQueued": "W kolejce do wysyłki",
         "summarySent": "Wysłano prośbę",
@@ -2009,7 +2094,7 @@
       },
       "activePackages": "Aktywne pakiety",
       "noActivePackages": "Brak aktywnych pakietów",
-      "noActivePackagesDesc": "Pacjent nie ma aktywnych pakietów zabiegowych",
+      "noActivePackagesDesc": "Klient nie ma aktywnych pakietów zabiegowych",
       "package": "Pakiet",
       "packageUsage": "Wykorzystanie pakietów",
       "treatmentsUsed": "Wykorzystane zabiegi",
@@ -2018,7 +2103,7 @@
     },
     "documents": {
       "title": "Dokumenty medyczne",
-      "description": "Zarządzaj dokumentami pacjentów, zgodami i kartotekami",
+      "description": "Zarządzaj dokumentami klientów, zgodami i kartotekami",
       "createDocument": "Nowy dokument",
       "titleField": "Tytuł",
       "type": "Typ",
@@ -2030,7 +2115,7 @@
         "final": "Finalny"
       },
       "date": "Data",
-      "patient": "Pacjent",
+      "patient": "Klient",
       "template": "Szablon",
       "content": "Treść",
       "noTemplate": "Bez szablonu",
@@ -2043,8 +2128,8 @@
       "signatureRequested": "Prośba o podpis wysłana",
       "signed": "Dokument podpisany",
       "emptyTitle": "Brak dokumentów",
-      "emptyDescription": "Utwórz dokumenty medyczne dla swoich pacjentów",
-      "noDocuments": "Brak dokumentów dla tego pacjenta",
+      "emptyDescription": "Utwórz dokumenty medyczne dla swoich klientów",
+      "noDocuments": "Brak dokumentów dla tego klienta",
       "types": {
         "consent": "Zgoda",
         "medical_record": "Karta medyczna",
@@ -2113,7 +2198,7 @@
       "title": "Panel Gabinetu",
       "description": "Przegląd operacji kliniki",
       "todayAppointments": "Dzisiejsze wizyty",
-      "totalPatients": "Pacjenci",
+      "totalPatients": "Klienci",
       "totalTreatments": "Zabiegi",
       "pendingLeaves": "Oczekujące urlopy",
       "todaySchedule": "Dzisiejszy harmonogram",
@@ -2121,7 +2206,7 @@
       "pendingLeaveRequests": "Oczekujące wnioski urlopowe",
       "noPendingLeaves": "Brak oczekujących wniosków",
       "goToCalendar": "Otwórz kalendarz",
-      "goToPatients": "Pacjenci",
+      "goToPatients": "Klienci",
       "goToPackages": "Pakiety",
       "goToDocuments": "Dokumenty"
     },
@@ -2131,7 +2216,7 @@
       "totalAppointments": "Wizyty ogółem",
       "completed": "Zakończone",
       "cancelled": "Anulowane",
-      "totalPatients": "Pacjenci ogółem",
+      "totalPatients": "Klienci ogółem",
       "last30days": "Ostatnie 30 dni",
       "completionRate": "wskaźnik realizacji",
       "treatmentPopularity": "Popularność zabiegów",
@@ -2257,7 +2342,7 @@
       "product": "Produkty",
       "call": "Połączenia",
       "pipeline": "Pipeline",
-      "gabinetPatient": "Pacjenci",
+      "gabinetPatient": "Klienci",
       "gabinetTreatment": "Zabiegi",
       "gabinetAppointment": "Wizyty",
       "gabinetPackage": "Pakiety",
@@ -2266,7 +2351,7 @@
     }
   },
   "patientPortal": {
-    "title": "Portal Pacjenta",
+    "title": "Portal Klienta",
     "logout": "Wyloguj",
     "nav": {
       "dashboard": "Strona główna",
@@ -2278,7 +2363,7 @@
       "mainNav": "Nawigacja główna"
     },
     "login": {
-      "title": "Portal Pacjenta",
+      "title": "Portal Klienta",
       "description": "Zaloguj się, aby uzyskać dostęp do dokumentacji medycznej",
       "emailPlaceholder": "twoj@email.pl",
       "sendCode": "Wyślij kod",
@@ -2514,7 +2599,7 @@
   },
   "sms": {
     "title": "Ustawienia SMS",
-    "description": "Skonfiguruj dostawcę SMS do powiadomień pacjentów i OTP.",
+    "description": "Skonfiguruj dostawcę SMS do powiadomień klientów i OTP.",
     "provider": "Dostawca",
     "apiToken": "Token API",
     "apiSecret": "Sekret API (Auth Token)",

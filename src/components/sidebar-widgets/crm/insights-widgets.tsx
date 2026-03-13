@@ -1,13 +1,18 @@
 import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
+import { MiniFunnel } from "../mini-funnel";
+import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 
-export function InsightsWidgets({ organizationId }: { organizationId: string }) {
+export function InsightsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getInsightsKpis, { organizationId: organizationId as any });
-  const nudges = useQuery(api.nudges.getInsightsNudges, { organizationId: organizationId as any });
+  const user = useQuery(api.app.getCurrentUser);
+  const kpis = useQuery(api.sidebarWidgets.getInsightsKpis, { organizationId });
+  const nudges = useQuery(api.nudges.getInsightsNudges, { organizationId });
+  const stages = useQuery(api.sidebarWidgets.getLeadsByStage, { organizationId });
 
   if (!kpis) return null;
 
@@ -38,9 +43,17 @@ export function InsightsWidgets({ organizationId }: { organizationId: string }) 
           { label: t("sidebar.winRate"), value: `${kpis.winRate}%` },
         ]}
       />
-      {nudges?.map((n) => (
-        <NudgeCard key={n.message} message={n.message} severity={n.severity} icon={n.icon} />
+      {nudges?.map((n, index) => (
+        <NudgeCard
+          key={`${n.message}-${index}`}
+          message={n.message}
+          messageValues={n.messageValues}
+          severity={n.severity}
+          icon={n.icon}
+        />
       ))}
+      {stages && stages.length > 0 && <MiniFunnel stages={stages} />}
+      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
     </>
   );
 }

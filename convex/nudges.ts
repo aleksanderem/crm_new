@@ -5,6 +5,7 @@ import { verifyOrgAccess } from "./_helpers/auth";
 
 export interface NudgeData {
   message: string;
+  messageValues?: Record<string, string | number>;
   severity: "red" | "yellow" | "green";
   icon?: string;
 }
@@ -28,7 +29,8 @@ export const getInsightsNudges = query({
     const closingThisWeek = leads.filter((l) => l.expectedCloseDate && l.expectedCloseDate <= weekEnd);
     if (closingThisWeek.length > 0) {
       nudges.push({
-        message: `${closingThisWeek.length} deali do zamkniecia w tym tygodniu`,
+        message: "sidebar.nudges.insights.closingThisWeek",
+        messageValues: { count: closingThisWeek.length },
         severity: "red",
       });
     }
@@ -41,7 +43,8 @@ export const getInsightsNudges = query({
     const overdue = scheduled.filter((a) => a.dueDate && a.dueDate < now && !a.isCompleted);
     if (overdue.length > 0) {
       nudges.push({
-        message: `${overdue.length} zaleglych aktywnosci`,
+        message: "sidebar.nudges.insights.overdueActivities",
+        messageValues: { count: overdue.length },
         severity: "yellow",
       });
     }
@@ -69,19 +72,24 @@ export const getDealsNudges = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const staleLeads = [];
-    for (const lead of leads) {
-      // activities table is an activity LOG — filter by entityId matching lead
-      const leadActivities = activities.filter((a) => a.entityId === String(lead._id));
-      const lastActivity = leadActivities.sort((a, b) => b.createdAt - a.createdAt)[0];
-      if (!lastActivity || lastActivity.createdAt < sevenDaysAgo) {
-        staleLeads.push(lead);
+    const lastActivityByLead = new Map<string, number>();
+    for (const activity of activities) {
+      if (!activity.entityId) continue;
+      const previous = lastActivityByLead.get(activity.entityId);
+      if (previous === undefined || activity.createdAt > previous) {
+        lastActivityByLead.set(activity.entityId, activity.createdAt);
       }
     }
 
+    const staleLeads = leads.filter((lead) => {
+      const lastActivityAt = lastActivityByLead.get(String(lead._id));
+      return lastActivityAt === undefined || lastActivityAt < sevenDaysAgo;
+    });
+
     if (staleLeads.length > 0) {
       return [{
-        message: `${staleLeads.length} dealow bez aktywnosci >7 dni`,
+        message: "sidebar.nudges.deals.stale",
+        messageValues: { count: staleLeads.length },
         severity: "yellow",
       }];
     }
@@ -114,7 +122,8 @@ export const getContactsNudges = query({
     const unlinked = contacts.filter((c) => !contactsWithCompany.has(String(c._id)));
     if (unlinked.length > 0) {
       return [{
-        message: `${unlinked.length} kontaktow bez przypisanej firmy`,
+        message: "sidebar.nudges.contacts.unlinkedCompany",
+        messageValues: { count: unlinked.length },
         severity: "yellow",
       }];
     }
@@ -140,7 +149,8 @@ export const getInboxNudges = query({
 
     if (unanswered.length > 0) {
       return [{
-        message: `${unanswered.length} maili bez odpowiedzi >48h`,
+        message: "sidebar.nudges.inbox.unanswered",
+        messageValues: { count: unanswered.length },
         severity: "red",
       }];
     }
@@ -168,7 +178,8 @@ export const getActivitiesNudges = query({
       const oldest = overdue.sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0))[0];
       const daysOld = Math.floor((now - (oldest.dueDate ?? now)) / (24 * 60 * 60 * 1000));
       return [{
-        message: `${overdue.length} aktywnosci po terminie — najstarsza ${daysOld} dni temu`,
+        message: "sidebar.nudges.activities.overdueOldest",
+        messageValues: { count: overdue.length, days: daysOld },
         severity: "red",
       }];
     }
@@ -187,10 +198,11 @@ export const getDocumentsNudges = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const pending = docs.filter((d) => d.status === "pending_signature");
+    const pending = docs.filter((d) => d.status === "sent");
     if (pending.length > 0) {
       return [{
-        message: `${pending.length} dokumentow oczekuje na podpis klienta`,
+        message: "sidebar.nudges.documents.pendingApproval",
+        messageValues: { count: pending.length },
         severity: "yellow",
       }];
     }
@@ -219,7 +231,119 @@ export const getCalendarNudges = query({
 
     if (yesterdayOverdue.length > 0) {
       return [{
-        message: `${yesterdayOverdue.length} zaleglych aktywnosci z wczoraj`,
+        message: "sidebar.nudges.calendar.yesterdayOverdue",
+        messageValues: { count: yesterdayOverdue.length },
+        severity: "yellow",
+      }];
+    }
+    return [];
+  },
+});
+
+// --- Companies nudges ---
+export const getCompaniesNudges = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<NudgeData[]> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const nudges: NudgeData[] = [];
+
+    const companies = await ctx.db
+      .query("companies")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    // Companies with no contacts linked (via objectRelationships)
+    const relationships = await ctx.db
+      .query("objectRelationships")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const companiesWithContacts = new Set(
+      relationships
+        .filter((r) => r.sourceType === "company" && r.targetType === "contact")
+        .map((r) => r.sourceId)
+    );
+    // Also check reverse: contact→company
+    const companiesLinkedFromContacts = new Set(
+      relationships
+        .filter((r) => r.sourceType === "contact" && r.targetType === "company")
+        .map((r) => r.targetId)
+    );
+
+    const noContacts = companies.filter(
+      (c) => !companiesWithContacts.has(String(c._id)) && !companiesLinkedFromContacts.has(String(c._id))
+    );
+    if (noContacts.length > 0) {
+      nudges.push({
+        message: "sidebar.nudges.companies.noContacts",
+        messageValues: { count: noContacts.length },
+        severity: "yellow",
+      });
+    }
+
+    // Companies missing industry
+    const noIndustry = companies.filter((c) => !c.industry);
+    if (noIndustry.length > 3) {
+      nudges.push({
+        message: "sidebar.nudges.companies.noIndustry",
+        messageValues: { count: noIndustry.length },
+        severity: "yellow",
+      });
+    }
+
+    return nudges.slice(0, 2);
+  },
+});
+
+// --- Calls nudges ---
+export const getCallsNudges = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<NudgeData[]> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const calls = await ctx.db
+      .query("calls")
+      .withIndex("by_orgAndDate", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const todayCalls = calls.filter((c) => c.callDate >= todayStart.getTime());
+    const noOutcome = todayCalls.filter((c) => !c.outcome);
+
+    if (noOutcome.length > 0) {
+      return [{
+        message: "sidebar.nudges.calls.noOutcome",
+        messageValues: { count: noOutcome.length },
+        severity: "yellow",
+      }];
+    }
+    return [];
+  },
+});
+
+// --- Products nudges ---
+export const getProductsNudges = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<NudgeData[]> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const dealProducts = await ctx.db
+      .query("dealProducts")
+      .collect();
+
+    const usedProductIds = new Set(dealProducts.map((dp) => String(dp.productId)));
+    const unused = products.filter((p) => !usedProductIds.has(String(p._id)));
+
+    if (unused.length > 0) {
+      return [{
+        message: "sidebar.nudges.products.unused",
+        messageValues: { count: unused.length },
         severity: "yellow",
       }];
     }

@@ -1,25 +1,11 @@
-import { useId } from "react";
-import { Area, AreaChart, Bar, BarChart } from "recharts";
+import { cn } from "@/utils/misc";
 import {
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useTranslation } from "react-i18next";
 import type { TimeRange } from "./types";
 
 export interface MiniChartData {
@@ -27,134 +13,115 @@ export interface MiniChartData {
   value: number;
 }
 
-const TIME_RANGE_OPTIONS: TimeRange[] = [
-  "last7days",
-  "last30days",
-  "thisMonth",
-  "last3months",
-  "all",
-];
-
 export interface MiniChartCardProps {
   title: string;
   data: MiniChartData[];
-  chartType: "line" | "bar";
-  timeRange: TimeRange;
-  onTimeRangeChange: (range: TimeRange) => void;
+  /** @deprecated kept for backwards compat — ignored */
+  chartType?: "line" | "bar";
+  /** @deprecated kept for backwards compat — ignored */
+  timeRange?: TimeRange;
+  /** @deprecated kept for backwards compat — ignored */
+  onTimeRangeChange?: (range: TimeRange) => void;
   isLoading?: boolean;
   accentColor?: string;
 }
 
-const chartConfig = {
-  value: { label: "Count", color: "var(--chart-2)" },
-} satisfies ChartConfig;
+const ACCENT_COLORS = [
+  "bg-primary",
+  "bg-chart-2",
+  "bg-chart-3",
+  "bg-chart-4",
+  "bg-chart-5",
+  "bg-muted-foreground/40",
+];
 
-function MiniChartCard({
+function MetricCard({
   title,
   data,
-  chartType,
-  timeRange,
-  onTimeRangeChange,
   isLoading = false,
 }: MiniChartCardProps) {
-  const { t } = useTranslation();
-  const gradientId = useId();
-
   if (isLoading) {
     return (
-      <Card className="gap-4">
-        <CardHeader className="gap-1">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-7 w-20" />
+      <Card className="gap-0 py-0">
+        <CardHeader className="gap-1 px-4 pt-4 pb-3">
           <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-16" />
         </CardHeader>
-        <div className="overflow-hidden px-6">
-          <Skeleton className="h-21 w-full" />
-        </div>
+        <CardContent className="space-y-2 px-4 pb-4">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-4/5" />
+          <Skeleton className="h-3 w-3/5" />
+        </CardContent>
       </Card>
     );
   }
 
   const total = data.reduce((sum, d) => sum + d.value, 0);
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const topItems = sorted.slice(0, 5);
 
   return (
-    <Card className="gap-4">
-      <CardHeader className="gap-1">
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-        <span className="text-2xl font-semibold">{total.toLocaleString()}</span>
-        <Select
-          value={timeRange}
-          onValueChange={(val) => onTimeRangeChange(val as TimeRange)}
-        >
-          <SelectTrigger className="text-muted-foreground h-auto w-fit gap-1 border-0 p-0 text-sm shadow-none focus:ring-0">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TIME_RANGE_OPTIONS.map((opt) => (
-              <SelectItem key={opt} value={opt}>
-                {t(`timeRange.${opt}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <Card className="gap-0 py-0">
+      <CardHeader className="gap-0.5 px-4 pt-4 pb-3">
+        <CardTitle className="text-muted-foreground text-xs font-medium tracking-wide">
+          {title}
+        </CardTitle>
+        <span className="text-2xl font-semibold tabular-nums tracking-tight">
+          {total.toLocaleString("pl-PL")}
+        </span>
       </CardHeader>
 
-      <ChartContainer config={chartConfig} className="h-21 w-full overflow-hidden px-2.75">
-        {chartType === "bar" ? (
-          <BarChart
-            accessibilityLayer
-            data={data}
-            barSize={12}
-            margin={{ left: 0, right: 0 }}
-          >
-            <Bar
-              dataKey="value"
-              fill="var(--color-value)"
-              background={{
-                fill: "color-mix(in oklab, var(--primary) 10%, transparent)",
-                radius: 12,
-              }}
-              radius={12}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-          </BarChart>
-        ) : (
-          <AreaChart
-            data={data}
-            margin={{ left: 0, right: 0 }}
-            className="stroke-2"
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="10%"
-                  stopColor="var(--chart-2)"
-                  stopOpacity={0.4}
-                />
-                <stop
-                  offset="90%"
-                  stopColor="var(--chart-2)"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Area
-              dataKey="value"
-              type="natural"
-              fill={`url(#${gradientId})`}
-              stroke="var(--chart-2)"
-              stackId="a"
-            />
-          </AreaChart>
-        )}
-      </ChartContainer>
+      {topItems.length > 0 && (
+        <CardContent className="px-4 pb-4 pt-0">
+          {/* Stacked segment bar */}
+          {total > 0 && (
+            <div className="mb-3 flex h-2 w-full overflow-hidden rounded-full">
+              {topItems.map((item, i) => {
+                const pct = (item.value / total) * 100;
+                if (pct < 1) return null;
+                return (
+                  <div
+                    key={item.label}
+                    className={cn("h-full first:rounded-l-full last:rounded-r-full", ACCENT_COLORS[i % ACCENT_COLORS.length])}
+                    style={{ width: `${pct}%` }}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Item breakdown */}
+          <div className="space-y-1.5">
+            {topItems.map((item, i) => {
+              const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <div key={item.label} className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      ACCENT_COLORS[i % ACCENT_COLORS.length],
+                    )}
+                  />
+                  <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+                    {item.label}
+                  </span>
+                  <span className="text-foreground text-xs font-medium tabular-nums">
+                    {item.value.toLocaleString("pl-PL")}
+                  </span>
+                  <span className="text-muted-foreground w-8 text-right text-[10px] tabular-nums">
+                    {pct}%
+                  </span>
+                </div>
+              );
+            })}
+            {sorted.length > 5 && (
+              <div className="text-muted-foreground text-[10px]">
+                +{sorted.length - 5} więcej
+              </div>
+            )}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -167,10 +134,10 @@ export interface MiniChartsRowProps {
 export function MiniChartsRow({ leftChart, rightChart }: MiniChartsRowProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <MiniChartCard {...leftChart} />
-      <MiniChartCard {...rightChart} />
+      <MetricCard {...leftChart} />
+      <MetricCard {...rightChart} />
     </div>
   );
 }
 
-export { MiniChartCard };
+export { MetricCard as MiniChartCard };

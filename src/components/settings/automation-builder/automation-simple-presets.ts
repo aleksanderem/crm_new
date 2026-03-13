@@ -142,6 +142,7 @@ export const AUTOMATION_PLAYGROUND_EVENT_TYPES = [
   "gabinet.appointment.status_changed",
   "gabinet.appointment.reminder_due",
   "gabinet.appointment.sms_reply_received",
+  "gabinet.patient.created",
 ] as const;
 
 export const AUTOMATION_PLAYGROUND_ACTION_TYPES = [
@@ -366,47 +367,87 @@ function getDefaultActivityAction(eventType: AutomationPlaygroundEventType) {
   return "created" as const;
 }
 
-function canUseDefaultNotificationLink(linkTemplate?: string) {
-  return !linkTemplate || linkTemplate === AUTOMATION_NOTIFICATION_LINK_TEMPLATE;
+function isPatientEventType(eventType: AutomationPlaygroundEventType) {
+  return eventType === "gabinet.patient.created";
+}
+
+function canUseSupportedNotificationLink(
+  eventType: AutomationPlaygroundEventType,
+  linkTemplate?: string,
+) {
+  if (!linkTemplate) return true;
+
+  return isPatientEventType(eventType)
+    ? linkTemplate === "/dashboard/gabinet/patients/{{patientId}}"
+    : linkTemplate === AUTOMATION_NOTIFICATION_LINK_TEMPLATE;
 }
 
 export function createAutomationPlaygroundActionDraft(
   actionType: AutomationPlaygroundActionType,
   t: (key: string, options?: Record<string, unknown>) => string,
+  eventType?: AutomationPlaygroundEventType,
 ): AutomationPlaygroundActionDraft {
   switch (actionType) {
     case "send_sms":
       return {
         id: createActionId(),
         type: "send_sms",
-        messageTemplate: t("settings.automationPlayground.defaults.smsMessage"),
+        messageTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientSmsMessage"
+            : "settings.automationPlayground.defaults.smsMessage",
+        ),
       };
     case "send_sms_request":
       return {
         id: createActionId(),
         type: "send_sms_request",
-        messageTemplate: t("settings.automationPlayground.defaults.smsRequestMessage"),
+        messageTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientSmsRequestMessage"
+            : "settings.automationPlayground.defaults.smsRequestMessage",
+        ),
       };
     case "send_email":
       return {
         id: createActionId(),
         type: "send_email",
         mode: "manual",
-        subjectTemplate: t("settings.automationPlayground.defaults.emailSubject"),
-        bodyTemplate: t("settings.automationPlayground.defaults.emailBody"),
+        subjectTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientEmailSubject"
+            : "settings.automationPlayground.defaults.emailSubject",
+        ),
+        bodyTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientEmailBody"
+            : "settings.automationPlayground.defaults.emailBody",
+        ),
       };
     case "create_notification":
       return {
         id: createActionId(),
         type: "create_notification",
-        titleTemplate: t("settings.automationPlayground.defaults.notificationTitle"),
-        messageTemplate: t("settings.automationPlayground.defaults.notificationMessage"),
+        titleTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientNotificationTitle"
+            : "settings.automationPlayground.defaults.notificationTitle",
+        ),
+        messageTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientNotificationMessage"
+            : "settings.automationPlayground.defaults.notificationMessage",
+        ),
       };
     case "write_activity":
       return {
         id: createActionId(),
         type: "write_activity",
-        descriptionTemplate: t("settings.automationPlayground.defaults.activityMessage"),
+        descriptionTemplate: t(
+          isPatientEventType(eventType ?? "gabinet.appointment.created")
+            ? "settings.automationPlayground.defaults.patientActivityMessage"
+            : "settings.automationPlayground.defaults.activityMessage",
+        ),
       };
     case "update_field":
       return {
@@ -424,12 +465,22 @@ export function createAutomationPlaygroundActionDraft(
 export function getAvailableAutomationPlaygroundEvents(
   eventCatalog: AutomationBuilderEventCatalogEntry[],
 ) {
-  return eventCatalog.filter(
-    (event) =>
-      event.module === "gabinet" &&
-      event.entityType === "gabinetAppointment" &&
-      isSupportedEventType(event.eventType),
+  const eventOrder = new Map(
+    AUTOMATION_PLAYGROUND_EVENT_TYPES.map((eventType, index) => [eventType, index]),
   );
+
+  return eventCatalog
+    .filter(
+      (event) =>
+        event.module === "gabinet" &&
+        (event.entityType === "gabinetAppointment" || event.entityType === "gabinetPatient") &&
+        isSupportedEventType(event.eventType),
+    )
+    .sort(
+      (left, right) =>
+        (eventOrder.get(left.eventType as AutomationPlaygroundEventType) ?? Number.MAX_SAFE_INTEGER) -
+        (eventOrder.get(right.eventType as AutomationPlaygroundEventType) ?? Number.MAX_SAFE_INTEGER),
+    );
 }
 
 export function getAvailableAutomationPlaygroundActionCapabilities(
@@ -554,10 +605,12 @@ export function buildAutomationPlaygroundSubmitPayload(
       case "create_notification":
         return {
           type: "create_notification",
-          userIdPath: "employeeId",
+          userIdPath: isPatientEventType(form.eventType) ? "createdBy" : "employeeId",
           titleTemplate: action.titleTemplate.trim(),
           messageTemplate: action.messageTemplate.trim(),
-          linkTemplate: AUTOMATION_NOTIFICATION_LINK_TEMPLATE,
+          linkTemplate: isPatientEventType(form.eventType)
+            ? "/dashboard/gabinet/patients/{{patientId}}"
+            : AUTOMATION_NOTIFICATION_LINK_TEMPLATE,
         };
       case "write_activity":
         return {
@@ -698,9 +751,11 @@ function classifyAutomationPlaygroundAction(
   }
 
   if (action.type === "create_notification") {
+    const expectedUserIdPath = isPatientEventType(eventType) ? "createdBy" : "employeeId";
+
     if (
-      action.userIdPath !== "employeeId" ||
-      !canUseDefaultNotificationLink(action.linkTemplate)
+      action.userIdPath !== expectedUserIdPath ||
+      !canUseSupportedNotificationLink(eventType, action.linkTemplate)
     ) {
       return null;
     }

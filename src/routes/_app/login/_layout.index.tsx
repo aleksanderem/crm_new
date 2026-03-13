@@ -33,16 +33,23 @@ type LoginStep =
 function Login() {
   const [step, setStep] = useState<LoginStep>("choose");
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const { data: user } = useQuery({
+    ...convexQuery(api.app.getCurrentUser, {}),
+    enabled: isAuthenticated,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated || !user) return;
-    if (!user.username) {
-      navigate({ to: OnboardingUsernameRoute.fullPath });
+    if (isLoading || !isAuthenticated) return;
+    if (!user) {
+      navigate({ to: DashboardRoute.fullPath, replace: true });
       return;
     }
-    navigate({ to: DashboardRoute.fullPath });
+    if (!user.username) {
+      navigate({ to: OnboardingUsernameRoute.fullPath, replace: true });
+      return;
+    }
+    navigate({ to: DashboardRoute.fullPath, replace: true });
   }, [isLoading, isAuthenticated, user, navigate]);
 
   if (step === "choose") {

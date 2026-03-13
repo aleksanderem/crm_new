@@ -1,11 +1,11 @@
 import { Page, expect } from "@playwright/test";
-import { waitForApp } from "./auth";
+import { BASE_URL, waitForApp } from "./auth";
 
 /**
  * Navigate to a dashboard route and wait for it to load.
  */
 export async function navigateTo(page: Page, path: string) {
-  await page.goto(`http://localhost:5173${path}`, {
+  await page.goto(`${BASE_URL}${path}`, {
     waitUntil: "domcontentloaded",
     timeout: 10000,
   });

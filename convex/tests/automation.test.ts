@@ -347,6 +347,74 @@ describe("automation lifecycle", () => {
     ).toBe(true);
   });
 
+  test("patient created event processes notification preset and records a processed run", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await t.withIdentity(identity).mutation(api.automation.createRule, {
+      organizationId,
+      name: "Notify patient creator",
+      module: "gabinet",
+      eventType: "gabinet.patient.created",
+      entityType: "gabinetPatient",
+      conditions: [],
+      actions: [
+        {
+          type: "create_notification",
+          userIdPath: "createdBy",
+          titleTemplate: "New patient: {{patientName}}",
+          messageTemplate: "{{patientName}} was added to the patient base.",
+          linkTemplate: "/dashboard/gabinet/patients/{{patientId}}",
+        },
+      ],
+      enabled: true,
+    });
+
+    const patientId = await t.withIdentity(identity).mutation(api.gabinet.patients.create, {
+      organizationId,
+      firstName: "Anna",
+      lastName: "Nowak",
+      email: "anna@example.com",
+      phone: "500600701",
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+      organizationId,
+      module: "gabinet",
+      entityType: "gabinetPatient",
+      entityId: String(patientId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "gabinet.patient.created");
+    const steps = run
+      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+          organizationId,
+          runId: run._id,
+        })
+      : [];
+    const notifications = await t.run(async (ctx) =>
+      ctx.db
+        .query("notifications")
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+        .collect(),
+    );
+
+    expect(run?.status).toBe("processed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("processed");
+    expect(steps[0]?.actionType).toBe("create_notification");
+    expect(notifications.some((notification) => notification.userId === userId)).toBe(true);
+    expect(
+      notifications.some(
+        (notification) =>
+          notification.title.includes("New patient: Anna Nowak") &&
+          notification.link === `/dashboard/gabinet/patients/${patientId}`,
+      ),
+    ).toBe(true);
+  });
+
   test("appointment created event processes SMS preset and stores step outcome", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
@@ -445,6 +513,13 @@ describe("automation lifecycle", () => {
     );
     expect(smsReply?.source).toBe("communication_reply");
     expect(smsReply?.variableCatalog.some((v) => v.path === "parsedIntent")).toBe(true);
+
+    const patientCreated = catalog.find(
+      (entry) => entry.eventType === "gabinet.patient.created",
+    );
+    expect(patientCreated?.source).toBe("domain_event");
+    expect(patientCreated?.entityType).toBe("gabinetPatient");
+    expect(patientCreated?.variableCatalog.some((v) => v.path === "patientEmail")).toBe(true);
   });
 
   test("listActionCapabilities exposes always-visible capability metadata and listActionTypes keeps compatible available actions", async () => {

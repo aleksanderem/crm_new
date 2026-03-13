@@ -681,3 +681,18 @@ S0070. Repo cleanup investigation:
 - Next: update `tasks_progress.json` for S0070, commit the package cleanup, then keep the repo clean before resuming the broader Gabinet automation scope rollout.
 
 ---
+
+S0070. Patient-created automation slice:
+- Added `gabinet.patient.created` to the automation event registry and now emit that event from `convex/gabinet/patients.ts` immediately after patient creation activity logging.
+- Expanded the simple automation editor/preset layer to recognize patient events, keep event ordering deterministic, and generate patient-aware defaults and recipient hints for notification/email actions.
+- Added EN/PL locale coverage for the patient-created trigger plus patient-specific default copy, and generalized a few appointment-only helper descriptions to Gabinet-wide wording.
+- Added focused backend coverage in `convex/tests/automation.test.ts` for event-catalog exposure and a processed notification run triggered by `api.gabinet.patients.create`.
+- Extended the existing Playwright automation lifecycle spec to create a patient-created rule, trigger a patient through the authenticated Convex client, and assert a visible patient-created automation run from the overview.
+- Restored the over-generalized `filtersEmpty` copy in both locale files and fixed the missing comma regression so EN/PL locale JSON parses again.
+- Started a fresh Vite frontend on `127.0.0.1:4173` to bypass stale optimize-dep state from the older local dev servers.
+- Narrowed the manual login failure to frontend auth navigation, not bad credentials: after `signIn("password", ...)` the login route waited too strictly on both `isAuthenticated` and `api.app.getCurrentUser` before leaving `/login`, which could strand a valid session on the login screen.
+- Fixed the login redirect flow in `src/routes/_app/login/_layout.index.tsx` so authenticated users leave `/login` immediately, while still preferring onboarding when a loaded user exists without `username`; also aligned the protected auth layout redirect to use replace navigation.
+- Hardened the focused E2E helpers around the fresh base URL and workspace switching so the automation overview can be reopened reliably after creating a Gabinet appointment.
+- Verification status is now fully green for this slice: locale JSON validation, app typecheck, convex typecheck, `convex/tests/automation.test.ts` (13/13), and Playwright `automation rule lifecycle triggers visible run` (1/1) all pass.
+
+---

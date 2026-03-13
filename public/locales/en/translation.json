@@ -859,6 +859,7 @@
       "editPageDescription": "Update \"{{name}}\" with the business-friendly automation setup.",
       "entityLabel": "Area",
       "entityAppointment": "Appointment",
+      "entityPatient": "Patient",
       "eventLabel": "When this happens",
       "statusLabel": "Only for this status",
       "statusAny": "Any status",
@@ -887,7 +888,8 @@
         "created": "A new appointment is created",
         "statusChanged": "An appointment status changes",
         "reminderDue": "An appointment reminder becomes due",
-        "smsReplyReceived": "An SMS reply is received"
+        "smsReplyReceived": "An SMS reply is received",
+        "patientCreated": "A new patient is created"
       },
       "groups": {
         "patient": "Patient details",
@@ -921,7 +923,9 @@
       "replyIntentAny": "Any reply",
       "recipients": {
         "patientEmail": "Recipient: patient email",
-        "assignedEmployee": "Recipient: assigned employee"
+        "patientEmailPatient": "Recipient: patient record email",
+        "assignedEmployee": "Recipient: assigned employee",
+        "createdBy": "Recipient: user who created the patient"
       },
       "emailModes": {
         "manual": "Write manually",
@@ -991,12 +995,19 @@
       "defaults": {
         "name": "Follow up on appointment event",
         "smsMessage": "{{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}.",
+        "patientSmsMessage": "{{patientName}}, your patient profile has been created successfully.",
         "smsRequestMessage": "Please reply to confirm your appointment on {{date}} at {{startTime}}.",
+        "patientSmsRequestMessage": "{{patientName}}, reply to confirm we can contact you about your patient profile.",
         "notificationTitle": "Appointment update",
+        "patientNotificationTitle": "New patient created",
         "notificationMessage": "There is an appointment update that needs attention.",
+        "patientNotificationMessage": "A new patient profile for {{patientName}} was created and may need review.",
         "activityMessage": "Appointment event recorded automatically.",
+        "patientActivityMessage": "Patient profile created automatically recorded.",
         "emailSubject": "Appointment update",
-        "emailBody": "Hello {{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}."
+        "patientEmailSubject": "Patient profile created",
+        "emailBody": "Hello {{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}.",
+        "patientEmailBody": "Hello {{patientName}}, your patient profile has been created successfully."
       },
       "legacy": {
         "title": "This rule uses legacy logic",
@@ -1012,6 +1023,9 @@
         "appointment": {
           "created": "Appointment created",
           "status_changed": "Appointment status changed"
+        },
+        "patient": {
+          "created": "Patient created"
         }
       }
     }

@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
-import { loginAndGoToDashboard, waitForApp } from "../helpers/auth";
+import {
+  loginAndGoToDashboard,
+  resetStoredBrowserState,
+  waitForApp,
+} from "../helpers/auth";
 import {
   navigateTo,
   assertNoErrorBoundary,
@@ -28,10 +32,7 @@ test.describe("Gabinet — Appointments", () => {
 
   const convexStorageNamespace = convexUrl.replace(/[^a-zA-Z0-9]/g, "");
 
-  async function createLegacyAutomationRule(
-    page: import("@playwright/test").Page,
-    name: string,
-  ) {
+  async function getConvexClientContext(page: import("@playwright/test").Page) {
     const jwt = await page.evaluate((storageNamespace) => {
       return window.localStorage.getItem(`__convexAuthJWT_${storageNamespace}`);
     }, convexStorageNamespace);
@@ -47,8 +48,17 @@ test.describe("Gabinet — Appointments", () => {
     const organizationId = organizations[0]?._id;
 
     if (!organizationId) {
-      throw new Error("Missing organization for legacy automation rule");
+      throw new Error("Missing organization for authenticated automation flow");
     }
+
+    return { client, organizationId };
+  }
+
+  async function createLegacyAutomationRule(
+    page: import("@playwright/test").Page,
+    name: string,
+  ) {
+    const { client, organizationId } = await getConvexClientContext(page);
 
     const existingRules = await client.query(api.automation.listRules, {
       organizationId,
@@ -130,28 +140,65 @@ test.describe("Gabinet — Appointments", () => {
     path: string,
   ) {
     await navigateTo(page, path);
+    await waitForApp(page, 12000);
+
+    if (!page.url().includes("/login")) {
+      return;
+    }
+
+    const hasStoredJwt = await page.evaluate(() =>
+      Object.keys(window.localStorage).some((key) => key.startsWith("__convexAuthJWT_")),
+    );
+
+    if (hasStoredJwt) {
+      await navigateTo(page, "/dashboard");
+      await waitForApp(page, 12000);
+    } else {
+      await loginAndGoToDashboard(page);
+    }
+
+    await navigateTo(page, path);
+    await waitForApp(page, 12000);
+
     if (page.url().includes("/login")) {
       await loginAndGoToDashboard(page);
       await navigateTo(page, path);
+      await waitForApp(page, 12000);
     }
   }
 
   async function openAutomationsPage(page: import("@playwright/test").Page) {
-    await loginAndGoToDashboard(page);
+    if (page.url().includes("/login") || !page.url().includes("/dashboard")) {
+      await loginAndGoToDashboard(page);
+    }
 
-    const settingsLink = page.getByRole("link", { name: /ustawienia|settings/i }).first();
+    let settingsLink = page.locator('a[href="/dashboard/settings"]').first();
+    const hasSettingsLink = await settingsLink.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (!hasSettingsLink) {
+      const crmDashboardLink = page.locator('a[href="/dashboard"]').first();
+      if (await crmDashboardLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await crmDashboardLink.click();
+        await waitForApp(page, 12000);
+      } else {
+        await loginAndGoToDashboard(page);
+      }
+      settingsLink = page.locator('a[href="/dashboard/settings"]').first();
+    }
+
     await expect(settingsLink).toBeVisible({ timeout: 10000 });
     await settingsLink.click();
     await waitForApp(page, 12000);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/?$/);
 
     const automationsLink = page
-      .getByRole("link", { name: /automatyzacje|automations/i })
+      .locator('a[href="/dashboard/settings/automations"], a[href="/dashboard/settings/automations/"]')
       .first();
     await expect(automationsLink).toBeVisible({ timeout: 10000 });
     await automationsLink.click();
     await waitForApp(page, 12000);
 
-    await expect(page).toHaveURL(/\/dashboard\/settings\/automations/);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations\/?$/);
     await expect(page.getByTestId("automation-create-rule-button")).toBeVisible({
       timeout: 10000,
     });
@@ -173,8 +220,9 @@ test.describe("Gabinet — Appointments", () => {
     page: import("@playwright/test").Page,
     triggerTestId: string,
     optionPattern: RegExp,
+    scope?: import("@playwright/test").Page | import("@playwright/test").Locator,
   ) {
-    const trigger = page.getByTestId(triggerTestId);
+    const trigger = (scope ?? page).getByTestId(triggerTestId);
     await trigger.click();
 
     const option = page.getByRole("option").filter({ hasText: optionPattern }).first();
@@ -247,6 +295,64 @@ test.describe("Gabinet — Appointments", () => {
 
     await expect(page).toHaveURL(/\/dashboard\/settings\/automations$/);
     await getAutomationRuleCard(page, name);
+  }
+
+  async function createPatientCreatedAutomationRule(
+    page: import("@playwright/test").Page,
+    name: string,
+  ) {
+    await openAutomationsPage(page);
+    await page.getByTestId("automation-create-rule-button").click();
+    await waitForApp(page);
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations\/new$/);
+    await expect(page.getByTestId("automation-playground")).toBeVisible();
+
+    await selectAutomationOption(
+      page,
+      "automation-playground-event-trigger",
+      /new patient is created|zostanie utworzony nowy klient/i,
+    );
+
+    await page.getByTestId("automation-playground-name-input").fill(name);
+
+    const firstActionCard = page.getByTestId("automation-playground-action-card-0");
+    await selectAutomationOption(
+      page,
+      "automation-playground-action-trigger",
+      /notification|powiadomienie/i,
+      firstActionCard,
+    );
+    await firstActionCard
+      .getByTestId("automation-playground-notification-title-input")
+      .fill("Patient created from test");
+    await firstActionCard
+      .getByTestId("automation-playground-notification-message-input")
+      .fill("Patient-created automation browser test notification.");
+
+    const summary = page.getByTestId("automation-playground-summary");
+    await expect(summary).toContainText(/new patient is created|zostanie utworzony nowy klient/i);
+    await expect(page.locator("body")).not.toContainText(/patientPhone|employeeId/);
+
+    await page.getByTestId("automation-playground-save-button").click();
+    await waitForApp(page);
+
+    await expect(page).toHaveURL(/\/dashboard\/settings\/automations$/);
+    await getAutomationRuleCard(page, name);
+  }
+
+  async function createPatientViaApi(
+    page: import("@playwright/test").Page,
+    firstName: string,
+    lastName: string,
+  ) {
+    const { client, organizationId } = await getConvexClientContext(page);
+    return client.mutation(api.gabinet.patients.create, {
+      organizationId,
+      firstName,
+      lastName,
+      email: `${testId("patient")}@example.com`,
+      phone: "500600799",
+    });
   }
 
   async function editSimpleAutomationRule(
@@ -375,12 +481,14 @@ test.describe("Gabinet — Appointments", () => {
 
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
+    await resetStoredBrowserState(page);
     await loginAndGoToDashboard(page);
   });
 
   test("automation rule lifecycle triggers visible run", async ({ page }) => {
     const initialRuleName = testId("automation-rule");
     const updatedRuleName = `${initialRuleName}-updated`;
+    const patientRuleName = testId("patient-automation-rule");
     const legacyRuleName = testId("automation-legacy-rule");
 
     await createSimpleAutomationRule(page, initialRuleName);
@@ -405,6 +513,17 @@ test.describe("Gabinet — Appointments", () => {
     await expect(page.locator("body")).toContainText(
       /appointment created|utworzono wizytę/i,
     );
+
+    await createPatientCreatedAutomationRule(page, patientRuleName);
+    await createPatientViaApi(page, "Ewa", "Testowa");
+
+    await openAutomationsPage(page);
+    await getAutomationRuleCard(page, patientRuleName);
+    await expect(
+      page.locator('[data-testid^="automation-run-"]').filter({
+        hasText: /patient created|utworzono klienta/i,
+      }).first(),
+    ).toBeVisible({ timeout: 15000 });
 
     await createLegacyAutomationRule(page, legacyRuleName);
     await openAutomationsPage(page);

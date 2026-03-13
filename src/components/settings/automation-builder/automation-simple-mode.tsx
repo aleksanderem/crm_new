@@ -197,6 +197,10 @@ function getEventLabel(
       return t("settings.automationPlayground.events.smsReplyReceived", {
         defaultValue: "An appointment SMS reply is received",
       });
+    case "gabinet.patient.created":
+      return t("settings.automationPlayground.events.patientCreated", {
+        defaultValue: "A new patient is created",
+      });
     default:
       return eventType;
   }
@@ -330,7 +334,13 @@ function createDefaultForm(
     eventStatus: "",
     replyIntent: "",
     filters: [],
-    actions: [createAutomationPlaygroundActionDraft(firstActionType, t)],
+    actions: [
+      createAutomationPlaygroundActionDraft(
+        firstActionType,
+        t,
+        eventType as AutomationPlaygroundFormValue["eventType"],
+      ),
+    ],
   };
 }
 
@@ -760,7 +770,7 @@ export function AutomationSimpleMode({
             ...current,
             actions: [
               ...current.actions,
-              createAutomationPlaygroundActionDraft(nextActionType, t),
+              createAutomationPlaygroundActionDraft(nextActionType, t, current.eventType),
             ],
           }
         : current,
@@ -886,7 +896,11 @@ export function AutomationSimpleMode({
             <div className="space-y-2">
               <Label>{t("settings.automationPlayground.entityLabel")}</Label>
               <div className="flex h-10 items-center rounded-md border px-3 text-sm">
-                {t("settings.automationPlayground.entityAppointment")}
+                {form.eventType === "gabinet.patient.created"
+                  ? t("settings.automationPlayground.entityPatient", {
+                      defaultValue: "Patient",
+                    })
+                  : t("settings.automationPlayground.entityAppointment")}
               </div>
             </div>
             <div className="space-y-2">
@@ -1292,6 +1306,7 @@ export function AutomationSimpleMode({
                             createAutomationPlaygroundActionDraft(
                               value as AutomationPlaygroundActionType,
                               t,
+                              form.eventType,
                             ),
                           )
                         }
@@ -1419,16 +1434,25 @@ export function AutomationSimpleMode({
                                     type: "send_email",
                                     mode: "manual",
                                     subjectTemplate: t(
-                                      "settings.automationPlayground.defaults.emailSubject",
+                                      form.eventType === "gabinet.patient.created"
+                                        ? "settings.automationPlayground.defaults.patientEmailSubject"
+                                        : "settings.automationPlayground.defaults.emailSubject",
                                       {
-                                        defaultValue: "Appointment update",
+                                        defaultValue:
+                                          form.eventType === "gabinet.patient.created"
+                                            ? "Patient update"
+                                            : "Appointment update",
                                       },
                                     ),
                                     bodyTemplate: t(
-                                      "settings.automationPlayground.defaults.emailBody",
+                                      form.eventType === "gabinet.patient.created"
+                                        ? "settings.automationPlayground.defaults.patientEmailBody"
+                                        : "settings.automationPlayground.defaults.emailBody",
                                       {
                                         defaultValue:
-                                          "Hello {{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}.",
+                                          form.eventType === "gabinet.patient.created"
+                                            ? "Hello {{patientName}}, a new patient profile was created in your clinic."
+                                            : "Hello {{patientName}}, we are contacting you about your appointment on {{date}} at {{startTime}}.",
                                       },
                                     ),
                                   },
@@ -1558,9 +1582,17 @@ export function AutomationSimpleMode({
                       </>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {t("settings.automationPlayground.recipients.patientEmail", {
-                        defaultValue: "This email is sent to the patient email on the appointment.",
-                      })}
+                      {t(
+                        form.eventType === "gabinet.patient.created"
+                          ? "settings.automationPlayground.recipients.patientEmailPatient"
+                          : "settings.automationPlayground.recipients.patientEmail",
+                        {
+                          defaultValue:
+                            form.eventType === "gabinet.patient.created"
+                              ? "This email is sent to the patient email on the patient record."
+                              : "This email is sent to the patient email on the appointment.",
+                        },
+                      )}
                     </p>
                   </div>
                 )}
@@ -1620,9 +1652,17 @@ export function AutomationSimpleMode({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {t("settings.automationPlayground.recipients.assignedEmployee", {
-                        defaultValue: "This notification goes to the employee linked to the appointment.",
-                      })}
+                      {t(
+                        form.eventType === "gabinet.patient.created"
+                          ? "settings.automationPlayground.recipients.createdBy"
+                          : "settings.automationPlayground.recipients.assignedEmployee",
+                        {
+                          defaultValue:
+                            form.eventType === "gabinet.patient.created"
+                              ? "This notification goes to the user who created the patient."
+                              : "This notification goes to the employee linked to the appointment.",
+                        },
+                      )}
                     </p>
                   </div>
                 )}

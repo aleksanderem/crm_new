@@ -1,4 +1,5 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
@@ -153,6 +154,30 @@ export const create = mutation({
       action: "created",
       description: `Created patient ${args.firstName} ${args.lastName}`,
       performedBy: user._id,
+    });
+
+    await ctx.runMutation(internal.automation.emitEvent, {
+      organizationId: args.organizationId,
+      module: "gabinet",
+      eventType: "gabinet.patient.created",
+      entityType: "gabinetPatient",
+      entityId: String(patientId),
+      actorUserId: user._id,
+      correlationKey: `patient:${patientId}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${patientId}:created`,
+      payload: JSON.stringify({
+        organizationId: String(args.organizationId),
+        patientId: String(patientId),
+        contactId: args.contactId ? String(args.contactId) : undefined,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        patientName: `${args.firstName}${args.lastName ? ` ${args.lastName}` : ""}`,
+        patientEmail: args.email,
+        patientPhone: args.phone,
+        referralSource: args.referralSource,
+        createdBy: String(user._id),
+      }),
+      occurredAt: now,
     });
 
     return patientId;

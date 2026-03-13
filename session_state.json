@@ -1,18 +1,18 @@
 {
   "session_id": "S0070",
   "started_at": "2026-03-13T14:49:18Z",
-  "last_updated": "2026-03-13T14:49:18Z",
+  "last_updated": "2026-03-13T19:18:38Z",
   "status": "active",
-  "focus": "Repo cleanup and next automation scope expansion prep",
+  "focus": "Broaden Gabinet automation scope with patient-created trigger coverage",
   "tasks_snapshot": {
     "total": 3,
-    "not_started": 1,
-    "in_progress": 2,
-    "passing": 0,
+    "not_started": 0,
+    "in_progress": 1,
+    "passing": 2,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [17, 19],
+  "active_task_ids": [18],
   "blockers": [],
-  "notes": "S0070 is resolving the remaining package/session diffs, then pivoting into the next Gabinet automation scope expansion beyond appointment-only flows."
+  "notes": "S0070 has finished the repo cleanup slices and extended the Gabinet automation rollout with the first non-appointment trigger (`gabinet.patient.created`). Focused app/convex typechecks, locale JSON validation, backend automation tests, and the focused Playwright automation lifecycle spec are now green. The stale Vite `504 Outdated Optimize Dep` issue was bypassed by running a fresh frontend on 4173, and the login redirect race was narrowed to frontend auth navigation that depended too strictly on `getCurrentUser` before leaving `/login`."
 }

@@ -861,6 +861,7 @@
       "editPageDescription": "Zaktualizuj \"{{name}}\" w prostym biznesowym widoku automatyzacji.",
       "entityLabel": "Obszar",
       "entityAppointment": "Wizyta",
+      "entityPatient": "Klient",
       "eventLabel": "Kiedy to się wydarzy",
       "statusLabel": "Tylko dla tego statusu",
       "statusAny": "Dowolny status",
@@ -889,7 +890,8 @@
         "created": "Zostanie utworzona nowa wizyta",
         "statusChanged": "Zmieni się status wizyty",
         "reminderDue": "Nadejdzie czas przypomnienia o wizycie",
-        "smsReplyReceived": "Zostanie odebrana odpowiedź SMS"
+        "smsReplyReceived": "Zostanie odebrana odpowiedź SMS",
+        "patientCreated": "Zostanie utworzony nowy klient"
       },
       "groups": {
         "patient": "Dane klienta",
@@ -923,7 +925,9 @@
       "replyIntentAny": "Dowolna odpowiedź",
       "recipients": {
         "patientEmail": "Odbiorca: e-mail klienta",
-        "assignedEmployee": "Odbiorca: przypisany pracownik"
+        "patientEmailPatient": "Odbiorca: e-mail z karty klienta",
+        "assignedEmployee": "Odbiorca: przypisany pracownik",
+        "createdBy": "Odbiorca: użytkownik, który utworzył klienta"
       },
       "emailModes": {
         "manual": "Napisz ręcznie",
@@ -993,12 +997,19 @@
       "defaults": {
         "name": "Reaguj na zdarzenie wizyty",
         "smsMessage": "{{patientName}}, kontaktujemy się w sprawie Twojej wizyty {{date}} o {{startTime}}.",
+        "patientSmsMessage": "{{patientName}}, Twój profil klienta został utworzony pomyślnie.",
         "smsRequestMessage": "Odpowiedz, aby potwierdzić wizytę {{date}} o {{startTime}}.",
+        "patientSmsRequestMessage": "{{patientName}}, odpowiedz, aby potwierdzić, że możemy kontaktować się w sprawie Twojego profilu klienta.",
         "notificationTitle": "Aktualizacja wizyty",
+        "patientNotificationTitle": "Utworzono nowego klienta",
         "notificationMessage": "Pojawiła się aktualizacja wizyty wymagająca uwagi.",
+        "patientNotificationMessage": "Utworzono nowy profil klienta {{patientName}}, który może wymagać sprawdzenia.",
         "activityMessage": "Zdarzenie wizyty zostało zapisane automatycznie.",
+        "patientActivityMessage": "Utworzenie profilu klienta zostało zapisane automatycznie.",
         "emailSubject": "Aktualizacja wizyty",
-        "emailBody": "Cześć {{patientName}}, kontaktujemy się w sprawie Twojej wizyty {{date}} o {{startTime}}."
+        "patientEmailSubject": "Utworzono profil klienta",
+        "emailBody": "Cześć {{patientName}}, kontaktujemy się w sprawie Twojej wizyty {{date}} o {{startTime}}.",
+        "patientEmailBody": "Cześć {{patientName}}, Twój profil klienta został utworzony pomyślnie."
       },
       "legacy": {
         "title": "Ta reguła używa starszej logiki",
@@ -1014,6 +1025,9 @@
         "appointment": {
           "created": "Utworzono wizytę",
           "status_changed": "Zmieniono status wizyty"
+        },
+        "patient": {
+          "created": "Utworzono klienta"
         }
       }
     }

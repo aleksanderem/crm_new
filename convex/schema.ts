@@ -778,6 +778,7 @@ const schema = defineSchema({
     outcome: callOutcomeValidator,
     callDate: v.number(),
     note: v.optional(v.string()),
+    duration: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1024,6 +1025,7 @@ const schema = defineSchema({
     gmailMessageId: v.optional(v.string()),
     gmailThreadId: v.optional(v.string()),
     sentBy: v.optional(v.id("users")),
+    templateId: v.optional(v.id("emailTemplates")),
     sentAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1035,6 +1037,7 @@ const schema = defineSchema({
     .index("by_company", ["companyId", "sentAt"])
     .index("by_lead", ["leadId", "sentAt"])
     .index("by_messageId", ["messageId"])
+    .index("by_template", ["organizationId", "templateId"])
     .searchIndex("search_emails", {
       searchField: "subject",
       filterFields: ["organizationId", "direction"],
@@ -2032,6 +2035,17 @@ const schema = defineSchema({
   })
     .index("by_sequence", ["sequenceId"])
     .index("by_org", ["organizationId"]),
+
+  recentlyViewed: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    entityType: v.string(),
+    entityId: v.string(),
+    entityLabel: v.string(),
+    viewedAt: v.number(),
+  })
+    .index("by_user_type", ["organizationId", "userId", "entityType", "viewedAt"])
+    .index("by_entity", ["entityId"]),
 });
 
 export default schema;

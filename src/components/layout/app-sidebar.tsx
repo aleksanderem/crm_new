@@ -59,6 +59,17 @@ import { CalendarMiniMonth } from "@/components/application/calendar/base-compon
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
+import { InsightsWidgets } from "@/components/sidebar-widgets/crm/insights-widgets";
+import { DealsWidgets } from "@/components/sidebar-widgets/crm/deals-widgets";
+import { ContactsWidgets } from "@/components/sidebar-widgets/crm/contacts-widgets";
+import { CompaniesWidgets } from "@/components/sidebar-widgets/crm/companies-widgets";
+import { ActivitiesWidgets } from "@/components/sidebar-widgets/crm/activities-widgets";
+import { CalendarWidgets } from "@/components/sidebar-widgets/crm/calendar-widgets";
+import { InboxWidgets } from "@/components/sidebar-widgets/crm/inbox-widgets";
+import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-templates-widgets";
+import { ProductsWidgets } from "@/components/sidebar-widgets/crm/products-widgets";
+import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-widgets";
+import { CallsWidgets } from "@/components/sidebar-widgets/crm/calls-widgets";
 
 type Workspace = "crm" | "gabinet";
 
@@ -152,6 +163,7 @@ const gabinetNav: NavItem[] = [
 const pageContexts: Record<string, PageContext> = {
   dashboard: {
     titleKey: "nav.insights",
+    widgets: InsightsWidgets,
     actions: [
       {
         label: "nav.actions.viewPipeline",
@@ -174,6 +186,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   contacts: {
     titleKey: "nav.contacts",
+    widgets: ContactsWidgets,
     actions: [
       {
         label: "nav.actions.addContact",
@@ -188,6 +201,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   companies: {
     titleKey: "nav.companies",
+    widgets: CompaniesWidgets,
     actions: [
       {
         label: "nav.actions.addCompany",
@@ -206,6 +220,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   leads: {
     titleKey: "nav.deals",
+    widgets: DealsWidgets,
     actions: [
       {
         label: "nav.actions.addDeal",
@@ -234,6 +249,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   activities: {
     titleKey: "nav.activities",
+    widgets: ActivitiesWidgets,
     actions: [
       {
         label: "nav.actions.addActivity",
@@ -260,6 +276,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   calendar: {
     titleKey: "nav.calendar",
+    widgets: CalendarWidgets,
     actions: [
       {
         label: "nav.actions.addActivity",
@@ -276,6 +293,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   documents: {
     titleKey: "nav.documents",
+    widgets: DocumentsWidgets,
     actions: [
       {
         label: "nav.actions.uploadDocument",
@@ -302,6 +320,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   products: {
     titleKey: "nav.products",
+    widgets: ProductsWidgets,
     actions: [
       {
         label: "nav.actions.addProduct",
@@ -320,6 +339,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   calls: {
     titleKey: "nav.calls",
+    widgets: CallsWidgets,
     actions: [
       {
         label: "nav.actions.logCall",
@@ -343,6 +363,7 @@ const pageContexts: Record<string, PageContext> = {
   },
   inbox: {
     titleKey: "nav.inbox",
+    widgets: InboxWidgets,
     actions: [
       {
         label: "nav.actions.composeEmail",
@@ -362,6 +383,11 @@ const pageContexts: Record<string, PageContext> = {
         permissionFeature: "contacts",
       },
     ],
+  },
+  "email-templates": {
+    titleKey: "nav.emailTemplates",
+    widgets: EmailTemplatesWidgets,
+    actions: [],
   },
 };
 
@@ -490,6 +516,7 @@ const entityRouteKeys = [
   "calls",
   "inbox",
   "calendar",
+  "email-templates",
 ];
 
 interface SettingsNavItem {

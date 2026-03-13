@@ -78,6 +78,7 @@ import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/em
 import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
 import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
 import { GabinetReportsWidgets } from "@/components/sidebar-widgets/gabinet/reports-widgets";
+import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 
 type Workspace = "crm" | "gabinet";
 
@@ -837,10 +838,7 @@ export function AppSidebar() {
             {/* Day Agenda Takeover — highest priority after sidebarSlotContent */}
             {dayAgendaDate ? (
               <div className="flex-1 overflow-y-auto px-3 pb-4">
-                {/* DayTimeline component will be added in Phase 3 */}
-                <div className="text-muted-foreground text-sm px-1">
-                  Agenda: {dayAgendaDate}
-                </div>
+                <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
               </div>
             ) : (
               <>

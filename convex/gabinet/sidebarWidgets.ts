@@ -414,3 +414,49 @@ export const getReportsKpis = query({
     };
   },
 });
+
+// --- Day Agenda (Column 2 takeover) ---
+export const getDayAgenda = query({
+  args: { organizationId: v.id("organizations"), date: v.string() },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndDate", (q) =>
+        q.eq("organizationId", args.organizationId).eq("date", args.date),
+      )
+      .collect();
+
+    const sorted = appointments.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    const enriched = await Promise.all(
+      sorted.map(async (appt) => {
+        const patient = appt.patientId ? await ctx.db.get(appt.patientId) : null;
+        const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
+        const employee = appt.employeeId ? await ctx.db.get(appt.employeeId) : null;
+
+        return {
+          id: appt._id,
+          startTime: appt.startTime,
+          endTime: appt.endTime,
+          status: appt.status,
+          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "—",
+          treatmentName: treatment?.name ?? "—",
+          treatmentDuration: treatment?.duration ?? 0,
+          employeeName: employee
+            ? [employee.firstName, employee.lastName].filter(Boolean).join(" ") || "Employee"
+            : "—",
+          confirmed: appt.status === "confirmed" || appt.status === "completed",
+        };
+      }),
+    );
+
+    return {
+      date: args.date,
+      appointments: enriched,
+      totalAppointments: enriched.length,
+      confirmedCount: enriched.filter((a) => a.confirmed).length,
+    };
+  },
+});

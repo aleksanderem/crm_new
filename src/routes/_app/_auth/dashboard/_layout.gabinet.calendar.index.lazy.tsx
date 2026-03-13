@@ -32,6 +32,7 @@ import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
 import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -60,6 +61,7 @@ function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { setDayAgendaDate } = useSidebarSlot();
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
@@ -350,7 +352,8 @@ function GabinetCalendarPage() {
   const handleDayClick = useCallback((date: string) => {
     setCurrentDate(new Date(date + "T00:00:00"));
     setViewMode("day");
-  }, []);
+    setDayAgendaDate(date);
+  }, [setDayAgendaDate]);
 
   const handleAppointmentClick = useCallback(
     (id: string) => {

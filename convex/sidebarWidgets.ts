@@ -308,6 +308,132 @@ export const getCalendarKpis = query({
   },
 });
 
+// --- Upcoming Events (Smart Agenda) ---
+export const getUpcomingEvents = query({
+  args: { organizationId: v.id("organizations"), userId: v.id("users"), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const now = Date.now();
+    const limit = args.limit ?? 3;
+
+    const scheduled = await ctx.db
+      .query("scheduledActivities")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    return scheduled
+      .filter((a) => a.ownerId === args.userId && a.dueDate && a.dueDate >= now && !a.isCompleted)
+      .sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0))
+      .slice(0, limit)
+      .map((a) => ({
+        id: a._id,
+        title: a.title,
+        startTime: a.dueDate!,
+        type: a.activityType,
+      }));
+  },
+});
+
+// --- Leads by Stage (Mini Funnel) ---
+export const getLeadsByStage = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const openLeads = leads.filter((l) => l.status === "open");
+
+    const stageColors = [
+      "bg-blue-500", "bg-violet-500", "bg-amber-500", "bg-emerald-500",
+      "bg-rose-500", "bg-cyan-500", "bg-orange-500", "bg-pink-500",
+    ];
+
+    return stages
+      .sort((a, b) => a.order - b.order)
+      .map((stage, i) => ({
+        label: stage.name,
+        count: openLeads.filter((l) => l.pipelineStageId === stage._id).length,
+        color: stage.color ?? stageColors[i % stageColors.length],
+      }))
+      .filter((s) => s.count > 0);
+  },
+});
+
+// --- Contacts by Source (Source Bar) ---
+export const getContactsBySource = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const sourceColors = [
+      "bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-amber-500",
+      "bg-rose-500", "bg-cyan-500", "bg-orange-500",
+    ];
+
+    const sourceCounts = new Map<string, number>();
+    for (const c of contacts) {
+      const src = c.source ?? "unknown";
+      sourceCounts.set(src, (sourceCounts.get(src) ?? 0) + 1);
+    }
+
+    const entries = Array.from(sourceCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+
+    const total = entries.reduce((s, [, c]) => s + c, 0) || 1;
+
+    return entries.map(([label, count], i) => ({
+      label,
+      count,
+      pct: Math.round((count / total) * 100),
+      color: sourceColors[i % sourceColors.length],
+    }));
+  },
+});
+
+// --- Top Products (Bar Ranking) ---
+export const getTopProducts = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const dealProducts = await ctx.db
+      .query("dealProducts")
+      .collect();
+
+    const countMap = new Map<string, number>();
+    for (const dp of dealProducts) {
+      const key = String(dp.productId);
+      countMap.set(key, (countMap.get(key) ?? 0) + 1);
+    }
+
+    return products
+      .map((p) => ({ label: p.name, value: countMap.get(String(p._id)) ?? 0 }))
+      .filter((p) => p.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  },
+});
+
 // --- Email Templates ---
 export const getEmailTemplatesKpis = query({
   args: { organizationId: v.id("organizations") },

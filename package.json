@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "overrides": {
+    "@primereact/core": {
+      "react": "$react"
+    }
+  },
   "scripts": {
     "start": "npm run dev",
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
@@ -28,9 +33,9 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@epic-web/client-hints": "^1.3.2",
     "@grapesjs/react": "^2.0.0",
     "@grapesjs/studio-sdk": "^1.0.60",
-    "@epic-web/client-hints": "^1.3.2",
     "@internationalized/date": "^3.11.0",
     "@primereact/core": "^11.0.0-alpha.10",
     "@primereact/types": "^11.0.0-alpha.1",
@@ -106,7 +111,7 @@
     "resend": "^3.2.0",
     "sonner": "^2.0.7",
     "stripe": "^16.6.0",
-    "tailwind-merge": "^3.4.1",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-react-aria-components": "^2.0.1",
     "tippy.js": "^6.3.7",

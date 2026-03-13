@@ -237,3 +237,238 @@ export const listActive = query({
     return results;
   },
 });
+
+// --- Treatment Detail Page queries/mutations ---
+
+export const getTreatmentStats = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const allAppointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndTreatment", (q) =>
+        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
+      )
+      .collect();
+
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const thisMonthAppointments = allAppointments.filter((a) => a.date >= monthStart);
+    const completedAppointments = allAppointments.filter((a) => a.status === "completed");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    const revenue = completedAppointments.length * (treatment?.price ?? 0);
+
+    return {
+      totalAppointments: allAppointments.length,
+      thisMonthAppointments: thisMonthAppointments.length,
+      completedAppointments: completedAppointments.length,
+      revenue,
+    };
+  },
+});
+
+export const listTreatmentAppointments = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    status: v.optional(v.string()),
+    employeeId: v.optional(v.id("users")),
+    dateFrom: v.optional(v.string()),
+    dateTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    let appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndTreatment", (q) =>
+        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
+      )
+      .collect();
+
+    if (args.status) {
+      appointments = appointments.filter((a) => a.status === args.status);
+    }
+    if (args.employeeId) {
+      appointments = appointments.filter((a) => a.employeeId === args.employeeId);
+    }
+    if (args.dateFrom) {
+      appointments = appointments.filter((a) => a.date >= args.dateFrom!);
+    }
+    if (args.dateTo) {
+      appointments = appointments.filter((a) => a.date <= args.dateTo!);
+    }
+
+    // Sort by date descending
+    appointments.sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
+
+    // Enrich with patient and employee names
+    const enriched = await Promise.all(
+      appointments.map(async (apt) => {
+        const patient = await ctx.db.get(apt.patientId);
+        const employeeUser = await ctx.db.get(apt.employeeId);
+        return {
+          ...apt,
+          patientName: patient
+            ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
+            : "—",
+          employeeName: employeeUser?.name ?? employeeUser?.email ?? "—",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const getTreatmentEmployees = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    // Employees store qualifiedTreatmentIds — query from that side
+    const allEmployees = await ctx.db
+      .query("gabinetEmployees")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const assigned = allEmployees.filter((emp) =>
+      emp.qualifiedTreatmentIds.includes(args.treatmentId)
+    );
+
+    // Enrich with user info
+    const enriched = await Promise.all(
+      assigned.map(async (emp) => {
+        const user = await ctx.db.get(emp.userId);
+        return {
+          _id: emp._id,
+          userId: emp.userId,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          role: emp.role,
+          specialization: emp.specialization,
+          isActive: emp.isActive,
+          color: emp.color,
+          userName: user?.name ?? user?.email ?? "—",
+          userImage: user?.image,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const getTreatmentDocumentTemplates = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    const templateIds = treatment.requiredDocumentTemplateIds ?? [];
+    const templates = await Promise.all(
+      templateIds.map(async (id) => ctx.db.get(id))
+    );
+
+    return templates.filter(
+      (t): t is NonNullable<typeof t> => t !== null
+    );
+  },
+});
+
+export const setRequiredDocumentTemplates = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    templateIds: v.array(v.id("gabinetDocumentTemplates")),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    await ctx.db.patch(args.treatmentId, {
+      requiredDocumentTemplateIds: args.templateIds,
+      updatedAt: Date.now(),
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      action: "updated",
+      description: `Updated required documents for treatment "${treatment.name}"`,
+      performedBy: user._id,
+    });
+
+    return args.treatmentId;
+  },
+});
+
+export const saveTreatmentParameters = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    parameters: v.array(
+      v.object({
+        name: v.string(),
+        value: v.string(),
+        unit: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    await ctx.db.patch(args.treatmentId, {
+      parameters: args.parameters,
+      updatedAt: Date.now(),
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      action: "updated",
+      description: `Updated parameters for treatment "${treatment.name}"`,
+      performedBy: user._id,
+    });
+
+    return args.treatmentId;
+  },
+});

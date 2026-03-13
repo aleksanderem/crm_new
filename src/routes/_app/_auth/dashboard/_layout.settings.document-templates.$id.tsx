@@ -96,7 +96,7 @@ const STATUS_LABELS: Record<Status, string> = {
 const SIGNATURE_ROLE_OPTIONS: { value: SignatureRole; label: string }[] = [
   { value: "author", label: "Autor" },
   { value: "client", label: "Klient" },
-  { value: "patient", label: "Pacjent" },
+  { value: "patient", label: "Klient" },
   { value: "employee", label: "Pracownik" },
   { value: "witness", label: "Swiadek" },
 ];

@@ -91,6 +91,7 @@ import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport } fro
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.$id'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsNewImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.new'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsRuleIdImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId'
+import { Route as AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
 import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.reminders'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
@@ -598,6 +599,12 @@ const AppAuthDashboardLayoutSettingsAutomationsRuleIdRoute =
   AppAuthDashboardLayoutSettingsAutomationsRuleIdImport.update({
     path: '/$ruleId',
     getParentRoute: () => AppAuthDashboardLayoutSettingsAutomationsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute =
+  AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdImport.update({
+    path: '/gabinet/treatments/$treatmentId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
 const AppAuthDashboardLayoutGabinetSettingsSchedulingRoute =
@@ -1240,6 +1247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsSchedulingImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId'
+      path: '/gabinet/treatments/$treatmentId'
+      fullPath: '/dashboard/gabinet/treatments/$treatmentId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/settings/automations/$ruleId': {
       id: '/_app/_auth/dashboard/_layout/settings/automations/$ruleId'
       path: '/$ruleId'
@@ -1416,6 +1430,7 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetSettingsLeavesRoute,
           AppAuthDashboardLayoutGabinetSettingsRemindersRoute,
           AppAuthDashboardLayoutGabinetSettingsSchedulingRoute,
+          AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute,
           AppAuthDashboardLayoutGabinetCalendarIndexRoute,
           AppAuthDashboardLayoutGabinetDocumentsIndexRoute,
           AppAuthDashboardLayoutGabinetEmployeesIndexRoute,
@@ -1582,6 +1597,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/settings/leaves",
         "/_app/_auth/dashboard/_layout/gabinet/settings/reminders",
         "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling",
+        "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId",
         "/_app/_auth/dashboard/_layout/gabinet/calendar/",
         "/_app/_auth/dashboard/_layout/gabinet/documents/",
         "/_app/_auth/dashboard/_layout/gabinet/employees/",
@@ -1897,6 +1913,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.scheduling.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/settings/automations/$ruleId": {

@@ -507,6 +507,72 @@ export const listPatientsForEmployee = query({
   },
 });
 
+/**
+ * Returns patients for an employee enriched with visit summary data
+ * (visit count, last visit date, treatments used, statuses).
+ * Used by the employee detail "Klienci" tab for search & filtering.
+ */
+export const listPatientsWithStatsForEmployee = query({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "gabinet_appointments",
+      "view",
+    );
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    let appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndEmployee", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("employeeId", args.employeeId),
+      )
+      .collect();
+    if (perm.scope === "own") {
+      appointments = appointments.filter((r) => r.createdBy === user._id);
+    }
+
+    // Group appointments by patient
+    const byPatient = new Map<Id<"gabinetPatients">, typeof appointments>();
+    for (const apt of appointments) {
+      const patientId = apt.patientId;
+      if (!byPatient.has(patientId)) byPatient.set(patientId, []);
+      byPatient.get(patientId)!.push(apt);
+    }
+
+    const results = await Promise.all(
+      Array.from(byPatient.entries()).map(async ([patientId, patientApts]) => {
+        const patient = await ctx.db.get(patientId);
+        if (!patient) return null;
+
+        const sortedAppointments = [...patientApts].sort((a, b) => b.date.localeCompare(a.date));
+        const lastVisitDate = sortedAppointments[0]?.date ?? null;
+        const firstVisitDate = sortedAppointments[sortedAppointments.length - 1]?.date ?? null;
+        const treatmentIds = [...new Set(patientApts.map((a) => a.treatmentId))];
+        const statuses = [...new Set(patientApts.map((a) => a.status))];
+
+        return {
+          ...patient,
+          visitCount: patientApts.length,
+          lastVisitDate,
+          firstVisitDate,
+          treatmentIds,
+          statuses,
+        };
+      }),
+    );
+
+    return results.filter((result) => result !== null);
+  },
+});
+
 export const getAvailableSlotsQuery = query({
   args: {
     organizationId: v.id("organizations"),
@@ -1455,6 +1521,36 @@ export const getFullDetail = query({
       historyTreatments.filter(Boolean).map((t) => [t!._id, t]),
     );
 
+    // Enrich package usage with package names and treatment names
+    const pkgUsagePkgIds = [...new Set(patientPackageUsage.map((u) => u.packageId))];
+    const pkgUsageTreatmentIds = [
+      ...new Set(patientPackageUsage.flatMap((u) => u.treatmentsUsed.map((t) => t.treatmentId))),
+    ];
+    const [pkgDefs, pkgTreatmentDefs] = await Promise.all([
+      Promise.all(pkgUsagePkgIds.map((id) => ctx.db.get(id))),
+      Promise.all(pkgUsageTreatmentIds.map((id) => ctx.db.get(id))),
+    ]);
+    const pkgDefMap = new Map(pkgDefs.filter(Boolean).map((p) => [p!._id, p!]));
+    const pkgTreatmentMap = new Map(pkgTreatmentDefs.filter(Boolean).map((t) => [t!._id, t!]));
+
+    const enrichedPatientPackageUsage = patientPackageUsage.map((u) => {
+      const pkgDef = pkgDefMap.get(u.packageId);
+      const enrichedTreatments = u.treatmentsUsed.map((t) => ({
+        ...t,
+        treatmentName: pkgTreatmentMap.get(t.treatmentId)?.name ?? null,
+      }));
+      const totalUsed = enrichedTreatments.reduce((s, t) => s + t.usedCount, 0);
+      const totalCount = enrichedTreatments.reduce((s, t) => s + t.totalCount, 0);
+      return {
+        ...u,
+        packageName: pkgDef?.name ?? null,
+        treatmentsUsed: enrichedTreatments,
+        totalUsed,
+        totalCount,
+        progressPercent: totalCount > 0 ? Math.round((totalUsed / totalCount) * 100) : 0,
+      };
+    });
+
     return {
       appointment,
       patient,
@@ -1463,7 +1559,7 @@ export const getFullDetail = query({
       documents,
       payments,
       notes,
-      patientPackageUsage,
+      patientPackageUsage: enrichedPatientPackageUsage,
       patientHistory: patientHistory.map((a) => ({
         ...a,
         treatment: treatmentMap.get(a.treatmentId),

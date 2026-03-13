@@ -223,6 +223,98 @@ export const bulkSetEmployeeSchedule = mutation({
   },
 });
 
+/**
+ * Save a full weekly schedule period with optional effectiveFrom/effectiveTo dates.
+ * Each call creates or upserts 7 day entries sharing the same effective date range.
+ * To manage multiple periods, call with different effectiveFrom values.
+ */
+export const saveSchedulePeriod = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    effectiveFrom: v.optional(v.string()),
+    effectiveTo: v.optional(v.string()),
+    hours: v.array(v.object({
+      dayOfWeek: v.number(),
+      startTime: v.string(),
+      endTime: v.string(),
+      isWorking: v.boolean(),
+      breakStart: v.optional(v.string()),
+      breakEnd: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const now = Date.now();
+
+    for (const h of args.hours) {
+      // Find existing entry matching org+user+day+effectiveFrom
+      const candidates = await ctx.db
+        .query("gabinetEmployeeSchedules")
+        .withIndex("by_orgUserAndDay", (q) =>
+          q.eq("organizationId", args.organizationId)
+            .eq("userId", args.userId)
+            .eq("dayOfWeek", h.dayOfWeek)
+        )
+        .collect();
+
+      const existing = candidates.find(
+        (c) => (c.effectiveFrom ?? "") === (args.effectiveFrom ?? "")
+      );
+
+      const data = {
+        ...h,
+        effectiveFrom: args.effectiveFrom,
+        effectiveTo: args.effectiveTo,
+      };
+
+      if (existing) {
+        await ctx.db.patch(existing._id, { ...data, updatedAt: now });
+      } else {
+        await ctx.db.insert("gabinetEmployeeSchedules", {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          ...data,
+          createdBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+  },
+});
+
+/**
+ * Remove all schedule entries for a given period (matching effectiveFrom).
+ */
+export const removeSchedulePeriod = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    effectiveFrom: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+
+    const all = await ctx.db
+      .query("gabinetEmployeeSchedules")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
+      )
+      .collect();
+
+    const toRemove = all.filter(
+      (s) => (s.effectiveFrom ?? "") === (args.effectiveFrom ?? "")
+    );
+
+    for (const s of toRemove) {
+      await ctx.db.delete(s._id);
+    }
+  },
+});
+
 export const listEmployeeSchedules = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {

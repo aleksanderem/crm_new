@@ -4,12 +4,10 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EllipsisVerticalIcon } from "@/lib/ez-icons";
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -26,9 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   type ChartConfig,
@@ -51,13 +47,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// shadcn/studio statistics blocks
+import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
+import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
+import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
+import StatisticsSalesGrowthCard from "@/components/shadcn-studio/blocks/statistics-sales-growth-card";
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/reports"
 )({
   component: GabinetReports,
 });
 
-const listItems = ["Share", "Update", "Refresh"];
 
 const DONUT_COLORS = [
   "var(--primary)",
@@ -124,6 +125,9 @@ function bucketizePairs(
 }
 
 function CardMenu() {
+  const { t } = useTranslation();
+  const items = [t("common.share"), t("common.update"), t("common.refresh")];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -133,13 +137,13 @@ function CardMenu() {
           className="text-muted-foreground size-6 rounded-full"
         >
           <EllipsisVerticalIcon className="h-4 w-4" variant="stroke" />
-          <span className="sr-only">Menu</span>
+          <span className="sr-only">{t("common.menu")}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
-          {listItems.map((item, index) => (
-            <DropdownMenuItem key={index}>{item}</DropdownMenuItem>
+          {items.map((item) => (
+            <DropdownMenuItem key={item}>{item}</DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>
@@ -148,97 +152,6 @@ function CardMenu() {
 }
 
 /* ─── KPI Statistics Card ─── */
-
-function KpiStatCard({
-  title,
-  description,
-  value,
-  chartData,
-  chartType,
-}: {
-  title: string;
-  description: string;
-  value: string;
-  chartData: { index: number; count: number }[];
-  chartType: "bar" | "area";
-}) {
-  const gradientId = useId();
-  const chartConfig = {
-    count: { label: title, color: "var(--chart-2)" },
-  } satisfies ChartConfig;
-
-  return (
-    <Card className="gap-4">
-      <CardHeader className="gap-1">
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-        <span className="text-2xl font-semibold">{value}</span>
-        <CardDescription className="text-muted-foreground text-sm">
-          {description}
-        </CardDescription>
-      </CardHeader>
-
-      <ChartContainer
-        config={chartConfig}
-        className="h-21 w-full overflow-hidden px-2.75"
-      >
-        {chartType === "bar" ? (
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            barSize={12}
-            margin={{ left: 0, right: 0 }}
-          >
-            <Bar
-              dataKey="count"
-              fill="var(--color-count)"
-              background={{
-                fill: "color-mix(in oklab, var(--primary) 10%, transparent)",
-                radius: 12,
-              }}
-              radius={12}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-          </BarChart>
-        ) : (
-          <AreaChart
-            data={chartData}
-            margin={{ left: 0, right: 0 }}
-            className="stroke-2"
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="10%"
-                  stopColor="var(--chart-2)"
-                  stopOpacity={0.4}
-                />
-                <stop
-                  offset="90%"
-                  stopColor="var(--chart-2)"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Area
-              dataKey="count"
-              type="natural"
-              fill={`url(#${gradientId})`}
-              stroke="var(--chart-2)"
-              stackId="a"
-            />
-          </AreaChart>
-        )}
-      </ChartContainer>
-    </Card>
-  );
-}
 
 /* ─── Revenue Summary Card ─── */
 
@@ -1146,33 +1059,38 @@ function GabinetReports() {
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiStatCard
+        <StatisticsOrderCard
           title={t("gabinet.reports.totalAppointments")}
           description={rangeLabel}
           value={totalAppointments.toLocaleString()}
-          chartData={dailyChartPoints}
-          chartType="bar"
+          changePercentage={`${completionRate}% ${t("gabinet.reports.completionRate")}`}
+          chartData={dailyChartPoints.map((d) => ({ day: String(d.index), orders: d.count }))}
         />
-        <KpiStatCard
+        <StatisticsSalesGrowthCard
           title={t("gabinet.reports.completed")}
           description={`${completionRate}% ${t("gabinet.reports.completionRate")}`}
           value={completedCount.toLocaleString()}
-          chartData={completedChartPoints}
-          chartType="area"
+          changePercentage={rangeLabel}
+          chartData={completedChartPoints.map((d) => ({ date: String(d.index), sales: d.count }))}
+          gradientId="fillCompleted"
         />
-        <KpiStatCard
+        <StatisticsProfitCard
           title={t("gabinet.reports.cancelled")}
           description={rangeLabel}
           value={cancelledCount.toLocaleString()}
-          chartData={cancelledChartPoints}
-          chartType="bar"
+          changePercentage={
+            totalAppointments > 0
+              ? `${Math.round((cancelledCount / totalAppointments) * 100)}%`
+              : "0%"
+          }
+          chartData={cancelledChartPoints.map((d) => ({ month: String(d.index), profit: d.count }))}
         />
-        <KpiStatCard
+        <StatisticsImpressionCard
           title={t("gabinet.reports.totalPatients")}
           description={rangeLabel}
           value={totalPatients.toLocaleString()}
-          chartData={revenueChartPoints}
-          chartType="area"
+          changePercentage={rangeLabel}
+          chartData={revenueChartPoints.map((d) => ({ month: String(d.index), impression: d.count }))}
         />
       </div>
 

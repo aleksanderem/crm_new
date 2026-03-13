@@ -72,6 +72,15 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       { firstName: "Robert", lastName: "Jankowski", email: "robert.j@example.com", phone: "+48 780 333 555", dateOfBirth: "1960-02-28", gender: "male" as const, pesel: "60022876543", medicalNotes: "Nadciśnienie, kardiolog kontrola co 6 mies.", bloodType: "B-", emergencyContactName: "Jolanta Jankowska", emergencyContactPhone: "+48 780 333 556" },
       { firstName: "Zofia", lastName: "Mazur", email: "zofia.mazur@example.com", phone: "+48 505 444 666", dateOfBirth: "2000-08-07", gender: "female" as const },
       { firstName: "Krzysztof", lastName: "Krawczyk", email: "k.krawczyk@example.com", phone: "+48 600 777 888", dateOfBirth: "1955-10-20", gender: "male" as const, allergies: "Jod, Aspiryna", bloodType: "AB+" },
+      // Additional patients for richer data set
+      { firstName: "Aleksandra", lastName: "Piotrowska", email: "aleksandra.p@example.com", phone: "+48 512 888 101", dateOfBirth: "1993-02-14", gender: "female" as const, bloodType: "A+", referralSource: "Znajomy" },
+      { firstName: "Stanisław", lastName: "Grabowski", email: "s.grabowski@example.com", phone: "+48 601 222 303", dateOfBirth: "1958-07-09", gender: "male" as const, pesel: "58070912345", medicalNotes: "Osteoporoza, kontrola co 3 mies.", bloodType: "O-" },
+      { firstName: "Monika", lastName: "Kowalczyk", email: "monika.k@example.com", phone: "+48 530 444 505", dateOfBirth: "1987-11-28", gender: "female" as const, allergies: "Nikiel" },
+      { firstName: "Jakub", lastName: "Wróbel", email: "jakub.wrobel@example.com", phone: "+48 790 666 707", dateOfBirth: "1999-04-01", gender: "male" as const },
+      { firstName: "Barbara", lastName: "Nowicka", email: "barbara.n@example.com", phone: "+48 515 777 808", dateOfBirth: "1970-12-15", gender: "female" as const, bloodType: "B+", emergencyContactName: "Tadeusz Nowicki", emergencyContactPhone: "+48 515 777 809" },
+      { firstName: "Łukasz", lastName: "Olszewski", email: "lukasz.o@example.com", phone: "+48 660 888 909", dateOfBirth: "1983-06-22", gender: "male" as const, medicalNotes: "Refluks żołądkowy" },
+      { firstName: "Natalia", lastName: "Sikora", email: "natalia.sikora@example.com", phone: "+48 502 999 010", dateOfBirth: "1996-09-05", gender: "female" as const, referralSource: "Instagram" },
+      { firstName: "Damian", lastName: "Jabłoński", email: "damian.j@example.com", phone: "+48 780 111 212", dateOfBirth: "1978-03-17", gender: "male" as const, pesel: "78031798765", allergies: "Lidokaina", bloodType: "AB-" },
     ];
 
     const patientIds: Id<"gabinetPatients">[] = [];
@@ -117,6 +126,10 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       { name: "Botox", category: "Medycyna estetyczna", duration: 30, price: 800, color: "#f97316" },
       { name: "Peeling chemiczny", category: "Medycyna estetyczna", duration: 40, price: 350, color: "#ef4444" },
       { name: "Szczepienie ochronne", category: "Profilaktyka", duration: 15, price: 80, color: "#06b6d4", requiresApproval: true },
+      // Additional treatments
+      { name: "Drenaż limfatyczny", category: "Fizjoterapia", duration: 60, price: 160, color: "#0d9488" },
+      { name: "Peeling kawitacyjny", category: "Medycyna estetyczna", duration: 45, price: 280, color: "#e11d48" },
+      { name: "Krioterapia miejscowa", category: "Fizjoterapia", duration: 20, price: 90, color: "#0ea5e9" },
     ];
 
     const treatmentIds: Id<"gabinetTreatments">[] = [];
@@ -151,8 +164,8 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     const employeeConfigs = [
       { role: "doctor" as const, specialization: "Medycyna rodzinna", color: "#3b82f6", license: "LEK-2015/12345", treatments: [0, 1, 2, 3, 4, 11] },
       { role: "nurse" as const, specialization: "Pielęgniarstwo", color: "#10b981", license: "PIE-2018/67890", treatments: [4, 11] },
-      { role: "therapist" as const, specialization: "Fizjoterapia", color: "#f59e0b", license: "FIZ-2020/11111", treatments: [5, 6, 7] },
-      { role: "doctor" as const, specialization: "Medycyna estetyczna", color: "#ec4899", license: "LEK-2012/99999", treatments: [0, 1, 8, 9, 10] },
+      { role: "therapist" as const, specialization: "Fizjoterapia", color: "#f59e0b", license: "FIZ-2020/11111", treatments: [5, 6, 7, 12, 14] },
+      { role: "doctor" as const, specialization: "Medycyna estetyczna", color: "#ec4899", license: "LEK-2012/99999", treatments: [0, 1, 8, 9, 10, 13] },
       { role: "receptionist" as const, specialization: undefined, color: "#6b7280", treatments: [] },
     ];
 
@@ -310,47 +323,81 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     }
 
     // ============================================================
-    // 8. APPOINTMENTS (next 14 days)
+    // 8. APPOINTMENTS (current week + next 2 weeks + past)
     // ============================================================
     const appointmentSlots = [
-      { daysOffset: 1, startTime: "09:00", endTime: "09:30", patientIdx: 0, treatmentIdx: 0, empIdx: 0 },
-      { daysOffset: 1, startTime: "09:30", endTime: "10:15", patientIdx: 1, treatmentIdx: 1, empIdx: 0 },
-      { daysOffset: 1, startTime: "10:30", endTime: "11:00", patientIdx: 2, treatmentIdx: 3, empIdx: 0 },
-      { daysOffset: 1, startTime: "09:00", endTime: "10:00", patientIdx: 3, treatmentIdx: 5, empIdx: 2 },
-      { daysOffset: 1, startTime: "10:00", endTime: "10:45", patientIdx: 4, treatmentIdx: 6, empIdx: 2 },
+      // --- Today (day 0) ---
+      { daysOffset: 0, startTime: "08:30", endTime: "09:00", patientIdx: 0, treatmentIdx: 0, empIdx: 0, status: "confirmed" as const },
+      { daysOffset: 0, startTime: "09:00", endTime: "09:45", patientIdx: 1, treatmentIdx: 1, empIdx: 0, status: "confirmed" as const },
+      { daysOffset: 0, startTime: "10:00", endTime: "11:00", patientIdx: 12, treatmentIdx: 5, empIdx: 2, status: "scheduled" as const },
+      { daysOffset: 0, startTime: "11:00", endTime: "11:45", patientIdx: 13, treatmentIdx: 6, empIdx: 2, status: "scheduled" as const },
+      { daysOffset: 0, startTime: "14:00", endTime: "14:45", patientIdx: 7, treatmentIdx: 8, empIdx: 3, status: "confirmed" as const },
+      { daysOffset: 0, startTime: "15:00", endTime: "15:45", patientIdx: 14, treatmentIdx: 13, empIdx: 3, status: "scheduled" as const },
+      // --- Tomorrow (day 1) ---
+      { daysOffset: 1, startTime: "08:00", endTime: "08:30", patientIdx: 2, treatmentIdx: 0, empIdx: 0 },
+      { daysOffset: 1, startTime: "09:00", endTime: "09:45", patientIdx: 3, treatmentIdx: 1, empIdx: 0 },
+      { daysOffset: 1, startTime: "10:00", endTime: "11:00", patientIdx: 15, treatmentIdx: 12, empIdx: 2 },
+      { daysOffset: 1, startTime: "11:00", endTime: "11:30", patientIdx: 4, treatmentIdx: 7, empIdx: 2 },
+      { daysOffset: 1, startTime: "14:00", endTime: "14:45", patientIdx: 16, treatmentIdx: 8, empIdx: 3, status: "confirmed" as const },
+      // --- Day 2 ---
       { daysOffset: 2, startTime: "08:30", endTime: "09:00", patientIdx: 5, treatmentIdx: 0, empIdx: 0 },
       { daysOffset: 2, startTime: "09:00", endTime: "09:30", patientIdx: 6, treatmentIdx: 2, empIdx: 0 },
-      { daysOffset: 2, startTime: "14:00", endTime: "14:45", patientIdx: 7, treatmentIdx: 8, empIdx: 3 },
-      { daysOffset: 2, startTime: "15:00", endTime: "15:30", patientIdx: 8, treatmentIdx: 9, empIdx: 3 },
-      { daysOffset: 3, startTime: "08:00", endTime: "08:30", patientIdx: 9, treatmentIdx: 0, empIdx: 0 },
+      { daysOffset: 2, startTime: "10:00", endTime: "10:20", patientIdx: 17, treatmentIdx: 14, empIdx: 2 },
+      { daysOffset: 2, startTime: "14:00", endTime: "14:45", patientIdx: 18, treatmentIdx: 9, empIdx: 3 },
+      { daysOffset: 2, startTime: "15:00", endTime: "15:30", patientIdx: 8, treatmentIdx: 10, empIdx: 3 },
+      // --- Day 3 ---
+      { daysOffset: 3, startTime: "08:00", endTime: "08:30", patientIdx: 9, treatmentIdx: 0, empIdx: 0, status: "confirmed" as const },
       { daysOffset: 3, startTime: "09:00", endTime: "10:00", patientIdx: 10, treatmentIdx: 5, empIdx: 2 },
       { daysOffset: 3, startTime: "10:00", endTime: "10:30", patientIdx: 11, treatmentIdx: 7, empIdx: 2 },
-      { daysOffset: 3, startTime: "13:00", endTime: "13:45", patientIdx: 0, treatmentIdx: 10, empIdx: 3 },
+      { daysOffset: 3, startTime: "13:00", endTime: "13:45", patientIdx: 19, treatmentIdx: 13, empIdx: 3 },
+      // --- Day 4 ---
       { daysOffset: 4, startTime: "08:00", endTime: "08:15", patientIdx: 1, treatmentIdx: 4, empIdx: 1 },
-      { daysOffset: 4, startTime: "09:00", endTime: "09:30", patientIdx: 2, treatmentIdx: 0, empIdx: 0 },
-      { daysOffset: 4, startTime: "10:00", endTime: "10:45", patientIdx: 3, treatmentIdx: 1, empIdx: 0 },
-      { daysOffset: 4, startTime: "14:00", endTime: "14:30", patientIdx: 4, treatmentIdx: 2, empIdx: 0 },
-      { daysOffset: 5, startTime: "09:00", endTime: "10:00", patientIdx: 5, treatmentIdx: 5, empIdx: 2 },
+      { daysOffset: 4, startTime: "09:00", endTime: "09:30", patientIdx: 12, treatmentIdx: 0, empIdx: 0 },
+      { daysOffset: 4, startTime: "10:00", endTime: "10:45", patientIdx: 13, treatmentIdx: 1, empIdx: 0 },
+      { daysOffset: 4, startTime: "14:00", endTime: "14:30", patientIdx: 14, treatmentIdx: 2, empIdx: 0 },
+      // --- Day 5 ---
+      { daysOffset: 5, startTime: "09:00", endTime: "10:00", patientIdx: 15, treatmentIdx: 12, empIdx: 2 },
       { daysOffset: 5, startTime: "10:00", endTime: "10:45", patientIdx: 6, treatmentIdx: 6, empIdx: 2 },
-      { daysOffset: 5, startTime: "11:00", endTime: "11:45", patientIdx: 7, treatmentIdx: 8, empIdx: 3 },
+      { daysOffset: 5, startTime: "11:00", endTime: "11:45", patientIdx: 16, treatmentIdx: 8, empIdx: 3 },
+      // --- Week 2 (days 7-12) ---
       { daysOffset: 7, startTime: "08:00", endTime: "08:30", patientIdx: 8, treatmentIdx: 0, empIdx: 0 },
-      { daysOffset: 7, startTime: "09:00", endTime: "09:20", patientIdx: 9, treatmentIdx: 3, empIdx: 0 },
+      { daysOffset: 7, startTime: "09:00", endTime: "09:20", patientIdx: 17, treatmentIdx: 3, empIdx: 0 },
       { daysOffset: 7, startTime: "10:00", endTime: "10:15", patientIdx: 10, treatmentIdx: 11, empIdx: 0 },
+      { daysOffset: 7, startTime: "14:00", endTime: "15:00", patientIdx: 18, treatmentIdx: 12, empIdx: 2 },
+      { daysOffset: 8, startTime: "09:00", endTime: "09:30", patientIdx: 0, treatmentIdx: 0, empIdx: 0, status: "confirmed" as const },
       { daysOffset: 8, startTime: "13:00", endTime: "13:30", patientIdx: 11, treatmentIdx: 9, empIdx: 3 },
-      { daysOffset: 8, startTime: "14:00", endTime: "14:40", patientIdx: 0, treatmentIdx: 10, empIdx: 3 },
-      // Past appointments (completed/no_show)
-      { daysOffset: -1, startTime: "09:00", endTime: "09:30", patientIdx: 0, treatmentIdx: 0, empIdx: 0, status: "completed" as const },
-      { daysOffset: -1, startTime: "10:00", endTime: "11:00", patientIdx: 1, treatmentIdx: 5, empIdx: 2, status: "completed" as const },
+      { daysOffset: 8, startTime: "14:00", endTime: "14:40", patientIdx: 19, treatmentIdx: 10, empIdx: 3 },
+      { daysOffset: 9, startTime: "08:30", endTime: "09:00", patientIdx: 3, treatmentIdx: 0, empIdx: 0 },
+      { daysOffset: 9, startTime: "10:00", endTime: "10:45", patientIdx: 5, treatmentIdx: 1, empIdx: 0 },
+      { daysOffset: 9, startTime: "14:00", endTime: "15:00", patientIdx: 7, treatmentIdx: 5, empIdx: 2 },
+      { daysOffset: 10, startTime: "09:00", endTime: "09:30", patientIdx: 14, treatmentIdx: 2, empIdx: 0 },
+      { daysOffset: 10, startTime: "11:00", endTime: "11:45", patientIdx: 16, treatmentIdx: 13, empIdx: 3 },
+      // --- Week 3 (days 14-18) ---
+      { daysOffset: 14, startTime: "08:00", endTime: "08:30", patientIdx: 2, treatmentIdx: 0, empIdx: 0 },
+      { daysOffset: 14, startTime: "10:00", endTime: "10:45", patientIdx: 15, treatmentIdx: 6, empIdx: 2 },
+      { daysOffset: 15, startTime: "09:00", endTime: "09:45", patientIdx: 18, treatmentIdx: 1, empIdx: 0 },
+      { daysOffset: 15, startTime: "14:00", endTime: "14:45", patientIdx: 19, treatmentIdx: 8, empIdx: 3 },
+      // --- Past appointments (completed/no_show/cancelled) ---
+      { daysOffset: -1, startTime: "08:00", endTime: "08:30", patientIdx: 0, treatmentIdx: 0, empIdx: 0, status: "completed" as const },
+      { daysOffset: -1, startTime: "09:00", endTime: "09:45", patientIdx: 1, treatmentIdx: 1, empIdx: 0, status: "completed" as const },
+      { daysOffset: -1, startTime: "10:00", endTime: "11:00", patientIdx: 12, treatmentIdx: 5, empIdx: 2, status: "completed" as const },
+      { daysOffset: -1, startTime: "14:00", endTime: "14:45", patientIdx: 7, treatmentIdx: 8, empIdx: 3, status: "completed" as const },
       { daysOffset: -2, startTime: "08:00", endTime: "08:30", patientIdx: 2, treatmentIdx: 0, empIdx: 0, status: "completed" as const },
+      { daysOffset: -2, startTime: "09:00", endTime: "09:30", patientIdx: 13, treatmentIdx: 2, empIdx: 0, status: "completed" as const },
       { daysOffset: -2, startTime: "14:00", endTime: "14:45", patientIdx: 3, treatmentIdx: 8, empIdx: 3, status: "completed" as const },
       { daysOffset: -3, startTime: "09:00", endTime: "09:30", patientIdx: 4, treatmentIdx: 2, empIdx: 0, status: "no_show" as const },
+      { daysOffset: -3, startTime: "10:00", endTime: "10:45", patientIdx: 14, treatmentIdx: 6, empIdx: 2, status: "completed" as const },
+      { daysOffset: -4, startTime: "08:30", endTime: "09:15", patientIdx: 15, treatmentIdx: 1, empIdx: 0, status: "cancelled" as const, cancelReason: "Klient odwołał — choroba" },
       { daysOffset: -5, startTime: "10:00", endTime: "10:45", patientIdx: 5, treatmentIdx: 1, empIdx: 0, status: "completed" as const },
+      { daysOffset: -5, startTime: "14:00", endTime: "14:30", patientIdx: 16, treatmentIdx: 9, empIdx: 3, status: "no_show" as const },
+      { daysOffset: -7, startTime: "09:00", endTime: "09:45", patientIdx: 17, treatmentIdx: 12, empIdx: 2, status: "cancelled" as const, cancelReason: "Zmiana terminu" },
     ];
 
     const appointmentIds: Id<"gabinetAppointments">[] = [];
     for (const slot of appointmentSlots) {
       const empIdx = Math.min(slot.empIdx, employeeUserIds.length - 1);
-      const id = await ctx.db.insert("gabinetAppointments", {
+      const status = slot.status ?? "scheduled";
+      const apptData: Record<string, unknown> = {
         organizationId: orgId,
         patientId: patientIds[slot.patientIdx % patientIds.length],
         treatmentId: treatmentIds[slot.treatmentIdx % treatmentIds.length],
@@ -358,12 +405,18 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
         date: ts(slot.daysOffset),
         startTime: slot.startTime,
         endTime: slot.endTime,
-        status: slot.status ?? "scheduled",
+        status,
         isRecurring: false,
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      if (status === "cancelled" && "cancelReason" in slot) {
+        apptData.cancelledAt = now;
+        apptData.cancelledBy = userId;
+        apptData.cancellationReason = (slot as any).cancelReason;
+      }
+      const id = await ctx.db.insert("gabinetAppointments", apptData as any);
       appointmentIds.push(id);
     }
 
@@ -522,25 +575,25 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       {
         name: "Zgoda na zabieg",
         type: "consent" as const,
-        content: "Ja, {{patient.firstName}} {{patient.lastName}}, wyrażam zgodę na przeprowadzenie zabiegu {{treatment.name}} w dniu {{appointment.date}}.\n\nOświadczam, że zostałem/am poinformowany/a o:\n- przebiegu zabiegu\n- możliwych powikłaniach\n- alternatywnych metodach leczenia\n\nData: {{appointment.date}}\nPodpis pacjenta: _______________",
+        content: "Ja, {{patient.firstName}} {{patient.lastName}}, wyrażam zgodę na przeprowadzenie zabiegu {{treatment.name}} w dniu {{appointment.date}}.\n\nOświadczam, że zostałem/am poinformowany/a o:\n- przebiegu zabiegu\n- możliwych powikłaniach\n- alternatywnych metodach leczenia\n\nData: {{appointment.date}}\nPodpis klienta: _______________",
         requiresSignature: true,
       },
       {
         name: "Karta wizyty",
         type: "medical_record" as const,
-        content: "KARTA WIZYTY\n\nPacjent: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nData wizyty: {{appointment.date}}\nLekarz: {{employee.name}}\n\nRozpoznanie:\n\n\nZalecenia:\n\n\nPrzepisy leków:\n\n\nNastępna wizyta:",
+        content: "KARTA WIZYTY\n\nKlient: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nData wizyty: {{appointment.date}}\nLekarz: {{employee.name}}\n\nRozpoznanie:\n\n\nZalecenia:\n\n\nPrzepisy leków:\n\n\nNastępna wizyta:",
         requiresSignature: false,
       },
       {
         name: "Skierowanie",
         type: "referral" as const,
-        content: "SKIEROWANIE\n\nSkierowuję pacjenta {{patient.firstName}} {{patient.lastName}} (PESEL: {{patient.pesel}})\ndo: ________________________________\nw celu: ________________________________\n\nRozpoznanie: ________________________________\nBadania dotychczasowe: ________________________________\n\nData: {{appointment.date}}\nLekarz: {{employee.name}}\nNr prawa wyk. zawodu: {{employee.license}}",
+        content: "SKIEROWANIE\n\nSkierowuję klienta {{patient.firstName}} {{patient.lastName}} (PESEL: {{patient.pesel}})\ndo: ________________________________\nw celu: ________________________________\n\nRozpoznanie: ________________________________\nBadania dotychczasowe: ________________________________\n\nData: {{appointment.date}}\nLekarz: {{employee.name}}\nNr prawa wyk. zawodu: {{employee.license}}",
         requiresSignature: true,
       },
       {
         name: "Recepta",
         type: "prescription" as const,
-        content: "RECEPTA\n\nPacjent: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nAdres: {{patient.address}}\n\nRp.\n1. ________________________________\n   Dawkowanie: ________________________________\n\n2. ________________________________\n   Dawkowanie: ________________________________\n\nData wystawienia: {{appointment.date}}\nLekarz: {{employee.name}}\nNr PWZ: {{employee.license}}",
+        content: "RECEPTA\n\nKlient: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nAdres: {{patient.address}}\n\nRp.\n1. ________________________________\n   Dawkowanie: ________________________________\n\n2. ________________________________\n   Dawkowanie: ________________________________\n\nData wystawienia: {{appointment.date}}\nLekarz: {{employee.name}}\nNr PWZ: {{employee.license}}",
         requiresSignature: true,
       },
     ];
@@ -570,7 +623,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     await ctx.db.insert("gabinetDocuments", {
       organizationId: orgId,
       patientId: patientIds[0],
-      appointmentId: appointmentIds[25], // first past appointment
+      appointmentId: appointmentIds[43], // first past appointment (daysOffset -1, patientIdx 0)
       templateId: templateIds[0],
       title: "Zgoda na zabieg — Anna Kowalska",
       type: "consent",
@@ -591,7 +644,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     await ctx.db.insert("gabinetDocuments", {
       organizationId: orgId,
       patientId: patientIds[1],
-      appointmentId: appointmentIds[26],
+      appointmentId: appointmentIds[44], // second past appointment (daysOffset -1, patientIdx 1)
       templateId: templateIds[1],
       title: "Karta wizyty — Jan Nowak",
       type: "medical_record",

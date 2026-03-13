@@ -139,7 +139,7 @@ const CONDITIONS: ConditionDef[] = [
   // Gabinet
   {
     key: "if_patient_allergies",
-    label: "Jeśli pacjent ma alergie",
+    label: "Jeśli klient ma alergie",
     module: "gabinet",
     fieldPath: "globalData.patient.data.allergies",
     trueLabel: "Alergie:",
@@ -147,7 +147,7 @@ const CONDITIONS: ConditionDef[] = [
   },
   {
     key: "if_patient_emergency",
-    label: "Jeśli pacjent ma kontakt awaryjny",
+    label: "Jeśli klient ma kontakt awaryjny",
     module: "gabinet",
     fieldPath: "globalData.patient.data.emergencyContact",
     trueLabel: "Kontakt awaryjny:",

@@ -13,7 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus, Download } from "@/lib/ez-icons";
+import { ChevronLeft, ChevronRight, Plus, Download, Search, X } from "@/lib/ez-icons";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { PrintSchedule } from "@/components/gabinet/calendar/print-schedule";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,6 +71,9 @@ function GabinetCalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [clientSearch, setClientSearch] = useState("");
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -263,23 +268,34 @@ function GabinetCalendarPage() {
     return employeeSchedules.get(`${dow}`) ?? null;
   }, [viewMode, currentDate, employeeSchedules]);
 
-  // Transform appointments for view components
+  // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
     if (!rawAppointments) return [];
-    return rawAppointments.map((a) => {
-      const treatment = treatmentMap.get(a.treatmentId);
-      return {
-        _id: a._id,
-        date: a.date,
-        startTime: a.startTime,
-        endTime: a.endTime,
-        patientName: patientMap.get(a.patientId) ?? "",
-        treatmentName: treatment?.name ?? "",
-        status: a.status,
-        color: a.color ?? treatment?.color,
-      };
-    });
-  }, [rawAppointments, patientMap, treatmentMap]);
+    const searchLower = clientSearch.toLowerCase().trim();
+    return rawAppointments
+      .filter((a) => {
+        if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) return false;
+        if (statusFilter !== "all" && a.status !== statusFilter) return false;
+        if (searchLower) {
+          const name = patientMap.get(a.patientId) ?? "";
+          if (!name.toLowerCase().includes(searchLower)) return false;
+        }
+        return true;
+      })
+      .map((a) => {
+        const treatment = treatmentMap.get(a.treatmentId);
+        return {
+          _id: a._id,
+          date: a.date,
+          startTime: a.startTime,
+          endTime: a.endTime,
+          patientName: patientMap.get(a.patientId) ?? "",
+          treatmentName: treatment?.name ?? "",
+          status: a.status,
+          color: a.color ?? treatment?.color,
+        };
+      });
+  }, [rawAppointments, patientMap, treatmentMap, treatmentFilter, statusFilter, clientSearch]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -457,6 +473,31 @@ function GabinetCalendarPage() {
     });
   }, [currentDate, viewMode, i18n.language]);
 
+  // Active filter count (excluding employee which is the primary filter)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (treatmentFilter !== "all") count++;
+    if (statusFilter !== "all") count++;
+    if (clientSearch.trim()) count++;
+    return count;
+  }, [treatmentFilter, statusFilter, clientSearch]);
+
+  const clearAllFilters = useCallback(() => {
+    setEmployeeFilter("all");
+    setTreatmentFilter("all");
+    setStatusFilter("all");
+    setClientSearch("");
+  }, []);
+
+  const statusOptions = [
+    "scheduled",
+    "confirmed",
+    "in_progress",
+    "completed",
+    "cancelled",
+    "no_show",
+  ] as const;
+
   function getEmployeeName(emp: {
     firstName?: string;
     lastName?: string;
@@ -478,43 +519,104 @@ function GabinetCalendarPage() {
     >
       <div className="flex h-[calc(100vh-4rem)] flex-col">
         {/* Toolbar */}
-        <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-2 md:flex-row md:items-center md:justify-between">
-          {/* Row 1: nav arrows + date title */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateDate(-1)}
-              aria-label={t("gabinet.calendar.previousPeriod")}
-            >
-              <ChevronLeft className="h-4 w-4" variant="stroke" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={goToday}>
-              {t("gabinet.calendar.today", "Dzis")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateDate(1)}
-              aria-label={t("gabinet.calendar.nextPeriod")}
-            >
-              <ChevronRight className="h-4 w-4" variant="stroke" />
-            </Button>
-            <h2 className="ml-2 text-sm font-semibold">{title}</h2>
+        <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-2">
+          {/* Row 1: nav arrows + date title + view switcher + actions */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateDate(-1)}
+                aria-label={t("gabinet.calendar.previousPeriod")}
+              >
+                <ChevronLeft className="h-4 w-4" variant="stroke" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToday}>
+                {t("gabinet.calendar.today", "Dzis")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateDate(1)}
+                aria-label={t("gabinet.calendar.nextPeriod")}
+              >
+                <ChevronRight className="h-4 w-4" variant="stroke" />
+              </Button>
+              <h2 className="ml-2 text-sm font-semibold">{title}</h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* View switcher */}
+              <div className="flex rounded-md border">
+                {(["day", "week", "month"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    variant={viewMode === mode ? "default" : "ghost"}
+                    size="sm"
+                    className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
+                    onClick={() => setViewMode(mode)}
+                  >
+                    {t(
+                      `gabinet.calendar.view.${mode}`,
+                      mode.charAt(0).toUpperCase() + mode.slice(1),
+                    )}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Print button — hidden on mobile */}
+              <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:flex">
+                <Download className="mr-1 h-4 w-4" variant="stroke" />
+                {t("gabinet.calendar.print", "Drukuj")}
+              </Button>
+
+              {/* Create button */}
+              <Button
+                size="sm"
+                data-testid="calendar-create-appointment-button"
+                onClick={() => {
+                  setCreateDefaultDate(formatDateStr(currentDate));
+                  setCreateDefaultTime(undefined);
+                  setCreateDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" variant="stroke" />
+                {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+              </Button>
+            </div>
           </div>
 
-          {/* Row 2: controls (full-width row on mobile, inline on md+) */}
+          {/* Row 2: filters */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Client search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" variant="stroke" />
+              <Input
+                placeholder={t("gabinet.calendar.searchClient", "Szukaj klienta...")}
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                className="h-8 w-full pl-8 text-xs sm:w-[180px]"
+              />
+              {clientSearch && (
+                <button
+                  onClick={() => setClientSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" variant="stroke" />
+                </button>
+              )}
+            </div>
+
             {/* Employee filter */}
             <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
               <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
                 <SelectValue
-                  placeholder={t("gabinet.calendar.allEmployees", "Wszyscy")}
+                  placeholder={t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                 />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  {t("gabinet.calendar.allEmployees", "Wszyscy")}
+                  {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                 </SelectItem>
                 {(employees ?? []).map((emp) => (
                   <SelectItem key={emp._id} value={emp.userId}>
@@ -524,43 +626,59 @@ function GabinetCalendarPage() {
               </SelectContent>
             </Select>
 
-            {/* View switcher */}
-            <div className="flex rounded-md border">
-              {(["day", "week", "month"] as const).map((mode) => (
-                <Button
-                  key={mode}
-                  variant={viewMode === mode ? "default" : "ghost"}
-                  size="sm"
-                  className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
-                  onClick={() => setViewMode(mode)}
-                >
-                  {t(
-                    `gabinet.calendar.view.${mode}`,
-                    mode.charAt(0).toUpperCase() + mode.slice(1),
-                  )}
-                </Button>
-              ))}
-            </div>
+            {/* Treatment filter */}
+            <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
+              <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
+                <SelectValue
+                  placeholder={t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
+                </SelectItem>
+                {(treatmentsPage?.page ?? []).map((tr) => (
+                  <SelectItem key={tr._id} value={tr._id}>
+                    {tr.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Print button — hidden on mobile */}
-            <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:flex">
-              <Download className="mr-1 h-4 w-4" variant="stroke" />
-              {t("gabinet.calendar.print", "Drukuj")}
-            </Button>
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-full text-xs sm:w-[160px]">
+                <SelectValue
+                  placeholder={t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
+                </SelectItem>
+                {statusOptions.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {t(`gabinet.appointments.statuses.${s}`, s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Create button */}
-            <Button
-              size="sm"
-              data-testid="calendar-create-appointment-button"
-              onClick={() => {
-                setCreateDefaultDate(formatDateStr(currentDate));
-                setCreateDefaultTime(undefined);
-                setCreateDialogOpen(true);
-              }}
-            >
-              <Plus className="mr-1 h-4 w-4" variant="stroke" />
-              {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
-            </Button>
+            {/* Active filter indicator + clear */}
+            {activeFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs"
+                onClick={clearAllFilters}
+              >
+                <X className="h-3.5 w-3.5" variant="stroke" />
+                {t("gabinet.calendar.clearFilters", "Wyczyść filtry")}
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                  {activeFilterCount}
+                </Badge>
+              </Button>
+            )}
           </div>
         </div>
 

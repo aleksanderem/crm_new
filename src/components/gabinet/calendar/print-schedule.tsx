@@ -55,7 +55,7 @@ export function PrintSchedule({ date, appointments }: PrintScheduleProps) {
           <thead>
             <tr className="border-b-2 border-gray-800">
               <th className="px-2 py-1 text-left">{t("gabinet.calendar.printTime", "Godzina")}</th>
-              <th className="px-2 py-1 text-left">{t("gabinet.calendar.printPatient", "Pacjent")}</th>
+              <th className="px-2 py-1 text-left">{t("gabinet.calendar.printPatient", "Klient")}</th>
               <th className="px-2 py-1 text-left">{t("gabinet.calendar.printTreatment", "Zabieg")}</th>
               <th className="px-2 py-1 text-left">{t("gabinet.calendar.printEmployee", "Pracownik")}</th>
               <th className="px-2 py-1 text-left">{t("gabinet.calendar.printStatus", "Status")}</th>

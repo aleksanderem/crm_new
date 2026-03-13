@@ -125,13 +125,13 @@ async function seedHandler(ctx: MutationCtx, orgId: GenericId<"organizations">, 
     const consentId = await ctx.db.insert("documentTemplates", {
       organizationId: orgId,
       name: "Zgoda na przetwarzanie danych osobowych",
-      description: "Formularz zgody RODO dla pacjentów gabinetu",
+      description: "Formularz zgody RODO dla klientów gabinetu",
       category: "consent",
       module: "gabinet",
       requiredSources: ["patient"],
       requiresSignature: true,
       signatureSlots: [
-        { id: "s1", role: "patient", label: "Pacjent", signerType: "external", verificationMethod: "click" },
+        { id: "s1", role: "patient", label: "Klient", signerType: "external", verificationMethod: "click" },
       ],
       accessControl: accessAll,
       content: `<h1 style="text-align:center">ZGODA NA PRZETWARZANIE DANYCH OSOBOWYCH</h1>
@@ -146,7 +146,7 @@ async function seedHandler(ctx: MutationCtx, orgId: GenericId<"organizations">, 
     });
 
     const consentFields = [
-      { fieldKey: "patient_name", label: "Imię i nazwisko pacjenta", type: "text" as const, sortOrder: 0, binding: { source: "patient", field: "fullName" }, validation: { required: true } },
+      { fieldKey: "patient_name", label: "Imię i nazwisko klienta", type: "text" as const, sortOrder: 0, binding: { source: "patient", field: "fullName" }, validation: { required: true } },
       { fieldKey: "org_name", label: "Nazwa gabinetu", type: "text" as const, sortOrder: 1, validation: { required: true } },
       { fieldKey: "consent_date", label: "Data zgody", type: "date" as const, sortOrder: 2, validation: { required: true } },
     ];

@@ -332,3 +332,176 @@ export const getPatientPackages = query({
       .collect();
   },
 });
+
+// --- Batch usage: consume multiple treatments from a package in one visit ---
+
+export const usePackageTreatmentsBatch = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    usageId: v.id("gabinetPackageUsage"),
+    items: v.array(
+      v.object({
+        treatmentId: v.id("gabinetTreatments"),
+        quantity: v.number(),
+      }),
+    ),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    if (args.items.length === 0) throw new Error("No treatments to record");
+
+    const usage = await ctx.db.get(args.usageId);
+    if (!usage || usage.organizationId !== args.organizationId) throw new Error("Package usage not found");
+    if (usage.status !== "active") throw new Error("Package is not active");
+    if (usage.expiresAt && usage.expiresAt < Date.now()) throw new Error("Package has expired");
+
+    // Validate all items before applying any
+    for (const item of args.items) {
+      if (item.quantity < 1) throw new Error("Quantity must be at least 1");
+      const entry = usage.treatmentsUsed.find((t) => t.treatmentId === item.treatmentId);
+      if (!entry) throw new Error(`Treatment ${item.treatmentId} not in package`);
+      if (entry.usedCount + item.quantity > entry.totalCount) {
+        throw new Error(
+          `Not enough remaining for treatment ${item.treatmentId}: ${entry.totalCount - entry.usedCount} left, ${item.quantity} requested`,
+        );
+      }
+    }
+
+    // Apply all increments
+    const updatedTreatments = usage.treatmentsUsed.map((t) => {
+      const item = args.items.find((i) => i.treatmentId === t.treatmentId);
+      if (!item) return t;
+      return { ...t, usedCount: t.usedCount + item.quantity };
+    });
+
+    const allUsed = updatedTreatments.every((t) => t.usedCount >= t.totalCount);
+
+    await ctx.db.patch(args.usageId, {
+      treatmentsUsed: updatedTreatments,
+      status: allUsed ? "completed" : "active",
+      updatedAt: Date.now(),
+    });
+
+    // Log activity
+    const pkg = await ctx.db.get(usage.packageId);
+    const totalUsed = args.items.reduce((sum, i) => sum + i.quantity, 0);
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPackage",
+      entityId: usage.packageId,
+      action: "updated",
+      description: `Used ${totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
+      performedBy: user._id,
+    });
+  },
+});
+
+// --- Enriched package usage details (with treatment names, package name, progress) ---
+
+export const getPatientPackagesEnriched = query({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const usages = await ctx.db
+      .query("gabinetPackageUsage")
+      .withIndex("by_orgAndPatient", (q) =>
+        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId),
+      )
+      .collect();
+
+    // Collect unique package and treatment IDs
+    const packageIds = [...new Set(usages.map((u) => u.packageId))];
+    const treatmentIds = [
+      ...new Set(usages.flatMap((u) => u.treatmentsUsed.map((t) => t.treatmentId))),
+    ];
+
+    const [packages, treatments] = await Promise.all([
+      Promise.all(packageIds.map((id) => ctx.db.get(id))),
+      Promise.all(treatmentIds.map((id) => ctx.db.get(id))),
+    ]);
+
+    const pkgMap = new Map(packages.filter(Boolean).map((p) => [p!._id, p!]));
+    const treatmentMap = new Map(treatments.filter(Boolean).map((t) => [t!._id, t!]));
+
+    return usages.map((u) => {
+      const pkg = pkgMap.get(u.packageId);
+      const enrichedTreatments = u.treatmentsUsed.map((t) => {
+        const tr = treatmentMap.get(t.treatmentId);
+        return {
+          ...t,
+          treatmentName: tr?.name ?? null,
+        };
+      });
+      const totalUsed = enrichedTreatments.reduce((s, t) => s + t.usedCount, 0);
+      const totalCount = enrichedTreatments.reduce((s, t) => s + t.totalCount, 0);
+      return {
+        ...u,
+        packageName: pkg?.name ?? null,
+        treatmentsUsed: enrichedTreatments,
+        totalUsed,
+        totalCount,
+        progressPercent: totalCount > 0 ? Math.round((totalUsed / totalCount) * 100) : 0,
+      };
+    });
+  },
+});
+
+// --- Enriched active usage counts with per-treatment breakdown ---
+
+export const getActiveUsageDetails = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const activeUsages = await ctx.db
+      .query("gabinetPackageUsage")
+      .withIndex("by_orgAndStatus", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "active"),
+      )
+      .collect();
+
+    // Group by packageId with aggregated treatment progress
+    const byPackage: Record<
+      string,
+      {
+        count: number;
+        treatmentProgress: Record<
+          string,
+          { usedCount: number; totalCount: number }
+        >;
+      }
+    > = {};
+
+    for (const u of activeUsages) {
+      if (!byPackage[u.packageId]) {
+        byPackage[u.packageId] = { count: 0, treatmentProgress: {} };
+      }
+      byPackage[u.packageId].count += 1;
+      for (const t of u.treatmentsUsed) {
+        const key = t.treatmentId;
+        if (!byPackage[u.packageId].treatmentProgress[key]) {
+          byPackage[u.packageId].treatmentProgress[key] = {
+            usedCount: 0,
+            totalCount: 0,
+          };
+        }
+        byPackage[u.packageId].treatmentProgress[key].usedCount += t.usedCount;
+        byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalCount;
+      }
+    }
+
+    return byPackage;
+  },
+});

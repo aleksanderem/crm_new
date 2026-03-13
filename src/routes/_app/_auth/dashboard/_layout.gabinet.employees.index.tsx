@@ -25,6 +25,11 @@ import { toast } from "sonner";
 import { Id, Doc } from "@cvx/_generated/dataModel";
 import { ColumnDef } from "@tanstack/react-table";
 
+// shadcn/studio statistics blocks
+import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
+import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
+import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
 )({
@@ -55,6 +60,23 @@ function EmployeesIndex() {
   const { data: treatments } = useQuery(
     convexQuery(api.gabinet.treatments.listActive, { organizationId })
   );
+
+  const { data: kpis } = useQuery(
+    convexQuery(api.gabinet.sidebarWidgets.getEmployeesKpis, { organizationId })
+  );
+
+  const { data: staffLoad } = useQuery(
+    convexQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId })
+  );
+
+  // Build sparkline for staff load
+  const staffChartData = useMemo(() => {
+    if (!staffLoad?.length) return undefined;
+    return staffLoad.slice(0, 7).map((s) => ({
+      day: s.name.split(" ")[0] ?? s.name,
+      orders: s.appointmentCount,
+    }));
+  }, [staffLoad]);
 
   // Users not yet registered as employees
   const availableUsers = useMemo(() => {
@@ -275,6 +297,37 @@ function EmployeesIndex() {
           </Button>
         }
       />
+
+      {/* KPI Statistics Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatisticsOrderCard
+          title={t("gabinet.employees.activeEmployees", "Aktywni pracownicy")}
+          description={t("gabinet.employees.currentlyActive", "Obecnie aktywni")}
+          value={String(kpis?.activeCount ?? 0)}
+          changePercentage={`${(employees ?? []).length} ${t("gabinet.employees.totalShort", "łącznie")}`}
+          chartData={staffChartData}
+        />
+        <StatisticsProfitCard
+          title={t("gabinet.employees.onLeave", "Na urlopie")}
+          description={t("gabinet.employees.today", "Dziś")}
+          value={String(kpis?.onLeave ?? 0)}
+          changePercentage={
+            kpis && kpis.onLeave > 0
+              ? t("gabinet.employees.absent", "nieobecni")
+              : t("gabinet.employees.allPresent", "wszyscy obecni")
+          }
+        />
+        <StatisticsImpressionCard
+          title={t("gabinet.employees.pendingLeaveReqs", "Wnioski urlopowe")}
+          description={t("gabinet.employees.awaitingApproval", "Oczekujące")}
+          value={String(kpis?.pendingLeaveRequests ?? 0)}
+          changePercentage={
+            kpis && kpis.pendingLeaveRequests > 0
+              ? t("gabinet.employees.requiresAction", "wymaga akcji")
+              : t("gabinet.employees.noPending", "brak oczekujących")
+          }
+        />
+      </div>
 
       <QuickActionBar
         actions={[

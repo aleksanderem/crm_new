@@ -1335,6 +1335,20 @@ const schema = defineSchema({
     requiresApproval: v.optional(v.boolean()),
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    // Treatment detail: configurable parameters (key-value pairs)
+    parameters: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          value: v.string(),
+          unit: v.optional(v.string()),
+        }),
+      ),
+    ),
+    // Treatment detail: required document templates for this treatment
+    requiredDocumentTemplateIds: v.optional(
+      v.array(v.id("gabinetDocumentTemplates")),
+    ),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1436,6 +1450,43 @@ const schema = defineSchema({
     isActive: v.boolean(),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Detailed employee data (beauty salon context)
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()), // YYYY-MM-DD
+    pesel: v.optional(v.string()),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        postalCode: v.optional(v.string()),
+      }),
+    ),
+    employmentType: v.optional(
+      v.union(
+        v.literal("umowa_o_prace"),
+        v.literal("umowa_zlecenie"),
+        v.literal("b2b"),
+        v.literal("staz"),
+      ),
+    ),
+    endDate: v.optional(v.string()), // YYYY-MM-DD
+    position: v.optional(v.string()),
+    department: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    yearsOfExperience: v.optional(v.number()),
+    certifications: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          dateObtained: v.optional(v.string()),
+          expiryDate: v.optional(v.string()),
+        }),
+      ),
+    ),
+    baseSalary: v.optional(v.number()),
+    commissionPercent: v.optional(v.number()),
+    bankAccount: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1529,6 +1580,7 @@ const schema = defineSchema({
     .index("by_orgAndEmployee", ["organizationId", "employeeId"])
     .index("by_orgAndEmployeeAndDate", ["organizationId", "employeeId", "date"])
     .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndTreatment", ["organizationId", "treatmentId"])
     .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"]),
 
   // --- Gabinet: Packages & Loyalty (Phase 4) ---

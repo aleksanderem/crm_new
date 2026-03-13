@@ -2,7 +2,7 @@ import type { DataSourceDefinition } from "../documentDataSources";
 
 const patientSource: DataSourceDefinition = {
   key: "patient",
-  label: "Pacjent",
+  label: "Klient",
   module: "gabinet",
   fields: [
     { key: "firstName", label: "Imię", type: "text" },

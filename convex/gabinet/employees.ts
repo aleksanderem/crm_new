@@ -207,6 +207,43 @@ export const update = mutation({
     isActive: v.optional(v.boolean()),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Detailed employee data
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    pesel: v.optional(v.string()),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        postalCode: v.optional(v.string()),
+      }),
+    ),
+    employmentType: v.optional(
+      v.union(
+        v.literal("umowa_o_prace"),
+        v.literal("umowa_zlecenie"),
+        v.literal("b2b"),
+        v.literal("staz"),
+      ),
+    ),
+    endDate: v.optional(v.string()),
+    position: v.optional(v.string()),
+    department: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    yearsOfExperience: v.optional(v.number()),
+    certifications: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          dateObtained: v.optional(v.string()),
+          expiryDate: v.optional(v.string()),
+        }),
+      ),
+    ),
+    baseSalary: v.optional(v.number()),
+    commissionPercent: v.optional(v.number()),
+    bankAccount: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);

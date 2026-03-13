@@ -28,13 +28,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Plus, Trash2, Package, Pencil } from "@/lib/ez-icons";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
+
+// shadcn/studio statistics blocks
+import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
+import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
+import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/packages/"
@@ -62,6 +74,14 @@ function PackagesIndex() {
 
   const { data: activeUsageCounts } = useQuery(
     convexQuery(api.gabinet.packages.getActiveUsageCounts, { organizationId })
+  );
+
+  const { data: activeUsageDetails } = useQuery(
+    convexQuery(api.gabinet.packages.getActiveUsageDetails, { organizationId })
+  );
+
+  const { data: pkgKpis } = useQuery(
+    convexQuery(api.gabinet.sidebarWidgets.getPackagesKpis, { organizationId })
   );
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -196,6 +216,15 @@ function PackagesIndex() {
 
   const items = packages?.page ?? [];
 
+  // Build a treatment name lookup from loaded treatments
+  const treatmentNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tr of treatments ?? []) {
+      map.set(tr._id, tr.name);
+    }
+    return map;
+  }, [treatments]);
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
@@ -204,6 +233,32 @@ function PackagesIndex() {
           <Plus className="mr-2 h-4 w-4" variant="stroke" />
           {t("gabinet.packages.addPackage")}
         </Button>
+      </div>
+
+      {/* KPI Statistics Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatisticsOrderCard
+          title={t("gabinet.packages.totalPackages", "Pakiety")}
+          description={t("gabinet.packages.inCatalog", "W ofercie")}
+          value={String(pkgKpis?.totalPackages ?? 0)}
+          changePercentage={`${pkgKpis?.activePackages ?? 0} ${t("gabinet.packages.active", "aktywnych")}`}
+        />
+        <StatisticsProfitCard
+          title={t("gabinet.packages.activePackages", "Aktywne wykupione")}
+          description={t("gabinet.packages.inUse", "W użyciu")}
+          value={String(pkgKpis?.activePackages ?? 0)}
+          changePercentage={t("gabinet.packages.byPatients", "u klientów")}
+        />
+        <StatisticsImpressionCard
+          title={t("gabinet.packages.expiringSoon", "Wygasające")}
+          description={t("gabinet.packages.next30Days", "W ciągu 30 dni")}
+          value={String(pkgKpis?.expiringPackages ?? 0)}
+          changePercentage={
+            pkgKpis && pkgKpis.expiringPackages > 0
+              ? t("gabinet.packages.needsRenewal", "do odnowienia")
+              : t("gabinet.packages.allGood", "wszystko ok")
+          }
+        />
       </div>
 
       <QuickActionBar
@@ -226,40 +281,121 @@ function PackagesIndex() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((pkg) => (
-            <div key={pkg._id} className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-medium">{pkg.name}</h3>
-                  {pkg.description && <p className="text-sm text-muted-foreground">{pkg.description}</p>}
-                </div>
-                <Badge variant={pkg.isActive ? "default" : "secondary"}>
-                  {pkg.isActive ? t("gabinet.packages.active") : t("gabinet.packages.inactive")}
-                </Badge>
-              </div>
-              <div className="text-2xl font-bold">{pkg.totalPrice} {pkg.currency ?? "PLN"}</div>
-              <div className="text-xs text-muted-foreground">
-                {pkg.treatments.length} {t("gabinet.packages.treatments")}
-                {pkg.validityDays && ` · ${pkg.validityDays} ${t("gabinet.packages.days")}`}
-                {pkg.discountPercent && ` · ${pkg.discountPercent}% ${t("gabinet.packages.discount")}`}
-              </div>
-              {(activeUsageCounts?.[pkg._id] ?? 0) > 0 && (
-                <div className="text-xs">
-                  <Badge variant="outline" className="text-xs">
-                    {activeUsageCounts![pkg._id]} {t("gabinet.packages.activeUses", "active uses")}
+          {items.map((pkg) => {
+            const usageDetail = activeUsageDetails?.[pkg._id];
+            const activeCount = activeUsageCounts?.[pkg._id] ?? 0;
+
+            return (
+              <div key={pkg._id} className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-medium">{pkg.name}</h3>
+                    {pkg.description && <p className="text-sm text-muted-foreground">{pkg.description}</p>}
+                  </div>
+                  <Badge variant={pkg.isActive ? "default" : "secondary"}>
+                    {pkg.isActive ? t("gabinet.packages.active") : t("gabinet.packages.inactive")}
                   </Badge>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(pkg)}>
-                  <Pencil className="mr-1 h-4 w-4" variant="stroke" /> {t("detail.actions.edit")}
-                </Button>
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => confirmDelete(pkg._id)}>
-                  <Trash2 className="mr-1 h-4 w-4" variant="stroke" /> {t("common.delete")}
-                </Button>
+                <div className="text-2xl font-bold">{pkg.totalPrice} {pkg.currency ?? "PLN"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {pkg.treatments.length} {t("gabinet.packages.treatments")}
+                  {pkg.validityDays && ` · ${pkg.validityDays} ${t("gabinet.packages.days")}`}
+                  {pkg.discountPercent && ` · ${pkg.discountPercent}% ${t("gabinet.packages.discount")}`}
+                </div>
+
+                {/* Per-treatment progress bars */}
+                {activeCount > 0 && usageDetail && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs font-medium text-muted-foreground">{t("gabinet.packages.treatmentProgress")}</p>
+                    {pkg.treatments.map((tr) => {
+                      const progress = usageDetail.treatmentProgress[tr.treatmentId];
+                      const usedCount = progress?.usedCount ?? 0;
+                      const totalCount = progress?.totalCount ?? 0;
+                      const remaining = totalCount - usedCount;
+                      const percent = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
+                      const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
+                      const treatmentName = treatmentNameMap.get(tr.treatmentId) ?? t("gabinet.packages.treatment");
+
+                      // Color coding: green when plenty, amber when <30%, red when <10%
+                      let progressColor = "bg-emerald-500";
+                      let statusLabel = t("gabinet.packages.plentyRemaining");
+                      if (remainingRatio <= 0) {
+                        progressColor = "bg-red-500";
+                        statusLabel = t("gabinet.packages.fullyUsed");
+                      } else if (remainingRatio < 0.1) {
+                        progressColor = "bg-red-500";
+                        statusLabel = t("gabinet.packages.almostExhausted");
+                      } else if (remainingRatio < 0.3) {
+                        progressColor = "bg-amber-500";
+                        statusLabel = t("gabinet.packages.runningLow");
+                      }
+
+                      return (
+                        <TooltipProvider key={tr.treatmentId}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="truncate max-w-[60%]">{treatmentName}</span>
+                                  <span className="text-muted-foreground tabular-nums">
+                                    {usedCount} / {totalCount}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all rounded-full ${progressColor}`}
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{treatmentName}: {statusLabel}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {t("gabinet.packages.totalRemaining", { remaining, total: totalCount })}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+
+                    {/* Overall package completion */}
+                    {(() => {
+                      const overallUsed = Object.values(usageDetail.treatmentProgress).reduce((s, p) => s + p.usedCount, 0);
+                      const overallTotal = Object.values(usageDetail.treatmentProgress).reduce((s, p) => s + p.totalCount, 0);
+                      const overallPercent = overallTotal > 0 ? Math.round((overallUsed / overallTotal) * 100) : 0;
+                      return (
+                        <div className="pt-1 border-t mt-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium">{t("gabinet.packages.overallProgress")}</span>
+                            <span className="text-muted-foreground tabular-nums">{t("gabinet.packages.completionPercent", { percent: overallPercent })}</span>
+                          </div>
+                          <Progress value={overallPercent} className="h-2 mt-1" />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {activeCount > 0 && (
+                  <div className="text-xs">
+                    <Badge variant="outline" className="text-xs">
+                      {activeCount} {t("gabinet.packages.activeUses")}
+                    </Badge>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(pkg)}>
+                    <Pencil className="mr-1 h-4 w-4" variant="stroke" /> {t("detail.actions.edit")}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => confirmDelete(pkg._id)}>
+                    <Trash2 className="mr-1 h-4 w-4" variant="stroke" /> {t("common.delete")}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -102,7 +102,7 @@ export const migrateGabinetDocuments = internalMutation({
         signatureSlots.push({
           id: "patient",
           role: "patient",
-          label: "Podpis pacjenta",
+          label: "Podpis klienta",
         });
         signatureSlots.push({
           id: "employee",
@@ -243,7 +243,7 @@ export const migrateGabinetDocuments = internalMutation({
       if (oldDoc.signatureData) {
         signatures.push({
           slotId: "patient",
-          slotLabel: "Podpis pacjenta",
+          slotLabel: "Podpis klienta",
           signatureData: oldDoc.signatureData,
           signedAt: oldDoc.signedAt,
         });

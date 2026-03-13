@@ -112,7 +112,7 @@ export const sendReminder = internalMutation({
     const treatment = await ctx.db.get(appointment.treatmentId);
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName ?? ""}`.trim()
-      : "Pacjent";
+      : "Klient";
     const treatmentName = treatment?.name ?? "Wizyta";
 
     // Send in-app notification to the employee assigned to the appointment

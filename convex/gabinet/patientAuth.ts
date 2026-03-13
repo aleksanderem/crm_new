@@ -105,7 +105,7 @@ export const sendPortalOtp = mutation({
     // Send OTP via email (fallback to console if Resend not configured)
     if (AUTH_RESEND_KEY) {
       const org = await ctx.db.get(args.organizationId);
-      const orgName = org?.name ?? "Portal Pacjenta";
+      const orgName = org?.name ?? "Portal Klienta";
       await sendEmail({
         to: args.email,
         subject: `Twój kod weryfikacyjny - ${orgName}`,
@@ -113,7 +113,7 @@ export const sendPortalOtp = mutation({
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
             <h2 style="margin: 0 0 16px; color: #1a1a1a;">Kod weryfikacyjny</h2>
             <p style="margin: 0 0 24px; color: #666;">
-              Twój jednorazowy kod do zalogowania się do portalu pacjenta:
+              Twój jednorazowy kod do zalogowania się do portalu klienta:
             </p>
             <div style="background: #f5f5f5; border-radius: 8px; padding: 24px; text-align: center;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">${otp}</span>

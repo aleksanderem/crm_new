@@ -557,6 +557,14 @@ function AppointmentDetail() {
   const [isBodyChartSaving, setIsBodyChartSaving] = useState(false);
   const [bodyChartModalOpen, setBodyChartModalOpen] = useState(false);
 
+  // Package usage dialog state
+  const [usageDialogOpen, setUsageDialogOpen] = useState(false);
+  const [usageDialogPkgId, setUsageDialogPkgId] = useState<string | null>(null);
+  const [usageDialogItems, setUsageDialogItems] = useState<
+    Array<{ treatmentId: string; treatmentName: string; remaining: number; qty: number }>
+  >([]);
+  const [isUsageSubmitting, setIsUsageSubmitting] = useState(false);
+
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
 
@@ -569,6 +577,9 @@ function AppointmentDetail() {
   const updateNote = useMutation(api.notes.update);
   const deleteNote = useMutation(api.notes.remove);
   const togglePinNote = useMutation(api.notes.togglePin);
+
+  // Package usage mutation
+  const usePackageTreatmentsBatch = useMutation(api.gabinet.packages.usePackageTreatmentsBatch);
 
   // Note state
   const [newNoteContent, setNewNoteContent] = useState("");
@@ -724,7 +735,7 @@ function AppointmentDetail() {
                   size="sm"
                   className="w-full justify-between text-xs h-7 px-2"
                 >
-                  {t("gabinet.patients.actions", "Akcje pacjenta")}
+                  {t("gabinet.patients.actions", "Akcje klienta")}
                   <MoreHorizontal size={14} variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
@@ -735,7 +746,7 @@ function AppointmentDetail() {
                     params={{ patientId: pat?._id ?? "" }}
                   >
                     <Eye size={14} variant="stroke" className="mr-2" />
-                    {t("gabinet.patients.viewProfile", "Profil pacjenta")}
+                    {t("gabinet.patients.viewProfile", "Profil klienta")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -1883,62 +1894,125 @@ function AppointmentDetail() {
                             totals.total > 0
                               ? Math.min((totals.used / totals.total) * 100, 100)
                               : 0;
+                          const overallRemainingRatio = totals.total > 0 ? (totals.total - totals.used) / totals.total : 1;
+                          let overallBarColor = "bg-emerald-500";
+                          if (overallRemainingRatio <= 0) overallBarColor = "bg-red-500";
+                          else if (overallRemainingRatio < 0.1) overallBarColor = "bg-red-500";
+                          else if (overallRemainingRatio < 0.3) overallBarColor = "bg-amber-500";
 
                           return (
-                            <div key={pkg._id} className="p-4 border rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={pkg._id} className="p-4 border rounded-lg space-y-3">
+                              <div className="flex items-center justify-between">
                                 <p className="font-medium">
                                   {pkg.packageName ??
                                     t("gabinet.packages.package")}
                                 </p>
-                                <Badge
-                                  variant={
-                                    pkg.status === "active"
-                                      ? "success"
-                                      : "secondary"
-                                  }
-                                >
-                                  {t(`gabinet.packages.status.${pkg.status}`)}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {pkg.status === "active" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setUsageDialogPkgId(pkg._id);
+                                        setUsageDialogItems(
+                                          (pkg.treatmentsUsed ?? [])
+                                            .filter((e: any) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                                            .map((e: any) => ({
+                                              treatmentId: e.treatmentId,
+                                              treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                                              remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                                              qty: 0,
+                                            })),
+                                        );
+                                        setUsageDialogOpen(true);
+                                      }}
+                                    >
+                                      <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                                      {t("gabinet.packages.useMultiple")}
+                                    </Button>
+                                  )}
+                                  <Badge
+                                    variant={
+                                      pkg.status === "active"
+                                        ? "success"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {t(`gabinet.packages.status.${pkg.status}`)}
+                                  </Badge>
+                                </div>
                               </div>
-                              <div className="space-y-2">
+
+                              {/* Overall progress */}
+                              <div className="space-y-1">
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-muted-foreground">
-                                    {t("gabinet.packages.treatmentsUsed")}
+                                    {t("gabinet.packages.overallProgress")}
                                   </span>
-                                  <span>
-                                    {totals.used} / {totals.total}
+                                  <span className="tabular-nums">
+                                    {t("gabinet.packages.completionPercent", { percent: Math.round(progressPercent) })}
                                   </span>
                                 </div>
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
-                                    className="h-full bg-primary transition-all"
+                                    className={`h-full transition-all rounded-full ${overallBarColor}`}
                                     style={{
                                       width: `${progressPercent}%`,
                                     }}
                                   />
                                 </div>
-                                {Array.isArray(pkg.treatmentsUsed) &&
-                                  pkg.treatmentsUsed.length > 0 && (
-                                    <div className="text-xs text-muted-foreground space-y-1">
-                                      {pkg.treatmentsUsed.map((entry: any, index: number) => (
-                                        <p key={`${pkg._id}-${entry.treatmentId ?? index}`}>
-                                          {(entry.treatmentName as string | undefined) ??
-                                            t("gabinet.treatments.treatment")}
-                                          : {entry.usedCount ?? 0} / {entry.totalCount ?? 0}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  )}
-                                {pkg.expiresAt && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {t("gabinet.packages.expires")}:{" "}
-                                    {new Date(pkg.expiresAt).toLocaleDateString(
-                                      "pl-PL",
-                                    )}
-                                  </p>
-                                )}
                               </div>
+
+                              {/* Per-treatment progress bars */}
+                              {Array.isArray(pkg.treatmentsUsed) &&
+                                pkg.treatmentsUsed.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                      {t("gabinet.packages.perTreatmentProgress")}
+                                    </p>
+                                    {pkg.treatmentsUsed.map((entry: any, index: number) => {
+                                      const usedCount = entry.usedCount ?? 0;
+                                      const totalCount = entry.totalCount ?? 0;
+                                      const remaining = totalCount - usedCount;
+                                      const pct = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
+                                      const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
+                                      let barColor = "bg-emerald-500";
+                                      let statusLabel = t("gabinet.packages.plentyRemaining");
+                                      if (remainingRatio <= 0) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.fullyUsed"); }
+                                      else if (remainingRatio < 0.1) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.almostExhausted"); }
+                                      else if (remainingRatio < 0.3) { barColor = "bg-amber-500"; statusLabel = t("gabinet.packages.runningLow"); }
+
+                                      return (
+                                        <div key={`${pkg._id}-${entry.treatmentId ?? index}`} className="space-y-1">
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="truncate max-w-[50%]">
+                                              {entry.treatmentName ?? t("gabinet.treatments.treatment")}
+                                            </span>
+                                            <span className="text-muted-foreground tabular-nums">
+                                              {usedCount} / {totalCount}
+                                              <span className="ml-1.5 text-[10px]">({statusLabel})</span>
+                                            </span>
+                                          </div>
+                                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                              className={`h-full transition-all rounded-full ${barColor}`}
+                                              style={{ width: `${pct}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                              {pkg.expiresAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  {t("gabinet.packages.expires")}:{" "}
+                                  {new Date(pkg.expiresAt).toLocaleDateString(
+                                    i18n.language,
+                                  )}
+                                </p>
+                              )}
                             </div>
                           );
                         })}
@@ -2469,6 +2543,91 @@ function AppointmentDetail() {
           onClose={() => setViewingDocInstanceId(null)}
         />
       )}
+
+      {/* Multi-treatment package usage dialog */}
+      <Dialog open={usageDialogOpen} onOpenChange={setUsageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.packages.useMultiple")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.packages.useMultipleDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {usageDialogItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {t("gabinet.packages.allTreatmentsExhausted")}
+              </p>
+            ) : (
+              usageDialogItems.map((item, idx) => (
+                <div key={item.treatmentId} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("gabinet.packages.availableRemaining", { remaining: item.remaining })}
+                    </p>
+                  </div>
+                  <Input
+                    type="number"
+                    className="w-20"
+                    min={0}
+                    max={item.remaining}
+                    value={item.qty}
+                    onChange={(e) => {
+                      const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                      setUsageDialogItems((prev) =>
+                        prev.map((it, i) => (i === idx ? { ...it, qty: val } : it)),
+                      );
+                    }}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUsageDialogOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              disabled={
+                isUsageSubmitting ||
+                usageDialogItems.every((it) => it.qty === 0)
+              }
+              onClick={async () => {
+                if (!usageDialogPkgId) return;
+                const items = usageDialogItems
+                  .filter((it) => it.qty > 0)
+                  .map((it) => ({
+                    treatmentId: it.treatmentId as Id<"gabinetTreatments">,
+                    quantity: it.qty,
+                  }));
+                if (items.length === 0) return;
+                setIsUsageSubmitting(true);
+                try {
+                  await usePackageTreatmentsBatch({
+                    organizationId,
+                    usageId: usageDialogPkgId as Id<"gabinetPackageUsage">,
+                    items,
+                    appointmentId: appointmentId as Id<"gabinetAppointments">,
+                  });
+                  toast.success(t("gabinet.packages.usageRecorded"));
+                  setUsageDialogOpen(false);
+                  refetch();
+                } catch (e: any) {
+                  toast.error(e.message);
+                } finally {
+                  setIsUsageSubmitting(false);
+                }
+              }}
+            >
+              {isUsageSubmitting ? t("common.saving") : t("gabinet.packages.recordUsage")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

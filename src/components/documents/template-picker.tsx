@@ -33,7 +33,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  patient: "Pacjent",
+  patient: "Klient",
   contact: "Kontakt",
   company: "Firma",
   lead: "Szansa",

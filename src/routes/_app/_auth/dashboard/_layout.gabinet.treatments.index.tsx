@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -25,6 +25,11 @@ import { useTranslation } from "react-i18next";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
+// shadcn/studio statistics blocks
+import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
+import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
+import StatisticsSalesGrowthCard from "@/components/shadcn-studio/blocks/statistics-sales-growth-card";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/",
 )({
@@ -42,17 +47,34 @@ function formatCurrency(amount: number, currency?: string): string {
 
 function TreatmentsIndex() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { organizationId } = useOrganization();
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
+
+  const { data: kpis } = useQuery(
+    convexQuery(api.gabinet.sidebarWidgets.getTreatmentsKpis, { organizationId })
+  );
+
+  const { data: topTreatments } = useQuery(
+    convexQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId })
+  );
+
+  // Build sparkline from top treatments data
+  const treatmentChartData = useMemo(() => {
+    if (!topTreatments?.length) return undefined;
+    return topTreatments.slice(0, 7).map((item) => ({
+      day: item.label.slice(0, 8),
+      orders: item.value,
+    }));
+  }, [topTreatments]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [_sortAscending, setSortAscending] = useState(true);
 
   // Sidebar dispatch handlers
   useSidebarDispatch("openFilter", () => {
@@ -62,8 +84,13 @@ function TreatmentsIndex() {
     else onViewChange("active");
   });
   useSidebarDispatch("sortByPrice", () => {
-    // Toggle price sort direction
-    setSortAscending((prev) => !prev);
+    setSorting((current) => {
+      const priceSort = current.find((entry) => entry.id === "price");
+      if (!priceSort) {
+        return [{ id: "price", desc: false }];
+      }
+      return [{ id: "price", desc: !priceSort.desc }];
+    });
   });
 
   const systemViews = useMemo(
@@ -408,6 +435,38 @@ function TreatmentsIndex() {
         filterableFields={filterableFields}
       />
 
+      {/* KPI Statistics Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatisticsOrderCard
+          title={t("gabinet.treatments.totalTreatments", "Zabiegi")}
+          description={t("gabinet.treatments.inCatalog", "W katalogu")}
+          value={String(kpis?.totalTreatments ?? 0)}
+          changePercentage={
+            kpis?.popularTreatment
+              ? `★ ${kpis.popularTreatment}`
+              : ""
+          }
+          chartData={treatmentChartData}
+        />
+        <StatisticsProfitCard
+          title={t("gabinet.treatments.completedThisMonth", "Wykonane w tym mies.")}
+          description={t("gabinet.treatments.thisMonth", "Ten miesiąc")}
+          value={String(kpis?.completedThisMonth ?? 0)}
+          changePercentage={t("gabinet.treatments.appointments", "wizyt")}
+        />
+        <StatisticsSalesGrowthCard
+          title={t("gabinet.treatments.popular", "Najpopularniejszy")}
+          description={t("gabinet.treatments.byAppointments", "Wg wizyt")}
+          value={kpis?.popularTreatment ?? "—"}
+          changePercentage={
+            kpis?.completedThisMonth
+              ? `${kpis.completedThisMonth} ${t("gabinet.treatments.thisMonthShort", "w tym mies.")}`
+              : ""
+          }
+          gradientId="fillTreatments"
+        />
+      </div>
+
       <QuickActionBar
         actions={[
           {
@@ -451,7 +510,12 @@ function TreatmentsIndex() {
           ]}
           onBulkAction={handleBulkAction}
           rowActions={rowActions}
-          onRowClick={(row) => openEditPanel(row)}
+          onRowClick={(row) =>
+            navigate({
+              to: "/dashboard/gabinet/treatments/$treatmentId",
+              params: { treatmentId: row._id },
+            })
+          }
           totalCount={filteredTreatments.length}
           filterableColumns={
             categoryOptions.length > 0

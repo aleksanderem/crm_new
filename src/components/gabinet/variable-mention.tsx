@@ -13,11 +13,11 @@ export interface TemplateVariable {
 }
 
 export const TEMPLATE_VARIABLES: TemplateVariable[] = [
-  { key: "patient.firstName", label: "Imię pacjenta", category: "patient", aliases: ["name", "first"] },
-  { key: "patient.lastName", label: "Nazwisko pacjenta", category: "patient", aliases: ["surname", "last"] },
-  { key: "patient.email", label: "E-mail pacjenta", category: "patient", aliases: ["mail"] },
-  { key: "patient.phone", label: "Telefon pacjenta", category: "patient", aliases: ["phone", "tel"] },
-  { key: "patient.pesel", label: "PESEL pacjenta", category: "patient", aliases: ["id"] },
+  { key: "patient.firstName", label: "Imię klienta", category: "patient", aliases: ["name", "first"] },
+  { key: "patient.lastName", label: "Nazwisko klienta", category: "patient", aliases: ["surname", "last"] },
+  { key: "patient.email", label: "E-mail klienta", category: "patient", aliases: ["mail"] },
+  { key: "patient.phone", label: "Telefon klienta", category: "patient", aliases: ["phone", "tel"] },
+  { key: "patient.pesel", label: "PESEL klienta", category: "patient", aliases: ["id"] },
   { key: "patient.dateOfBirth", label: "Data urodzenia", category: "patient", aliases: ["birth", "dob"] },
   { key: "date", label: "Dzisiejsza data", category: "system", aliases: ["today", "now"] },
 ];
@@ -51,7 +51,7 @@ function findVariables(query: string) {
 function groupedLabel(category: TemplateVariableCategory) {
   switch (category) {
     case "patient":
-      return "Pacjent";
+      return "Klient";
     case "appointment":
       return "Wizyta";
     case "organization":
@@ -214,7 +214,7 @@ export const VariableMentionCurly = Mention.extend({
 });
 
 export const TEMPLATE_VARIABLE_CATEGORIES = [
-  { id: "patient", label: "Pacjent" },
+  { id: "patient", label: "Klient" },
   { id: "appointment", label: "Wizyta" },
   { id: "organization", label: "Organizacja" },
   { id: "system", label: "System" },

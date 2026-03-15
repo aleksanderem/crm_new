@@ -1,18 +1,19 @@
 {
-  "session_id": "S0070",
-  "started_at": "2026-03-13T14:49:18Z",
-  "last_updated": "2026-03-13T19:18:38Z",
+  "session_id": "S0072",
+  "session_uuid": "db8b1e31-9f67-4b1e-a5ad-7a2e9c8f41d2",
+  "started_at": "2026-03-15T00:00:00Z",
+  "last_updated": "2026-03-15T15:06:20Z",
   "status": "active",
-  "focus": "Broaden Gabinet automation scope with patient-created trigger coverage",
+  "focus": "Implement shared activity envelope and automation RBAC follow-up in isolated worktree",
   "tasks_snapshot": {
-    "total": 3,
+    "total": 2,
     "not_started": 0,
     "in_progress": 1,
-    "passing": 2,
+    "passing": 1,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [18],
+  "active_task_ids": ["ACT-01"],
   "blockers": [],
-  "notes": "S0070 has finished the repo cleanup slices and extended the Gabinet automation rollout with the first non-appointment trigger (`gabinet.patient.created`). Focused app/convex typechecks, locale JSON validation, backend automation tests, and the focused Playwright automation lifecycle spec are now green. The stale Vite `504 Outdated Optimize Dep` issue was bypassed by running a fresh frontend on 4173, and the login redirect race was narrowed to frontend auth navigation that depended too strictly on `getCurrentUser` before leaving `/login`."
+  "notes": "S0072: Design/fact-check is complete. An isolated git worktree was created at .worktrees/shared-activity-envelope-rbac on branch feat/shared-activity-envelope-rbac; baseline app and Convex typechecks are clean, so implementation can proceed task-by-task from the approved plan."
 }

@@ -1,7 +1,7 @@
 {
-  "session_id": "S0070",
-  "session_uuid": "d6abb315-1935-440e-a562-3c8dcb8177cf",
-  "date": "2026-03-13",
+  "session_id": "S0071",
+  "session_uuid": "a7c2e4f1-8b3d-4a9e-b5c6-2d1f0e3a4b5c",
+  "date": "2026-03-14",
   "tasks": [
     {
       "id": "SMS-01",
@@ -142,11 +142,41 @@
       "description": "Replace backend-generated sidebar nudge copy with translation keys plus interpolation values, add matching EN/PL locale entries, and verify the nudge contract remains green.",
       "files": ["convex/nudges.ts", "convex/gabinet/nudges.ts", "src/components/sidebar-widgets/nudge-card.tsx", "src/components/sidebar-widgets/crm/contacts-widgets.tsx", "src/components/sidebar-widgets/crm/deals-widgets.tsx", "src/components/sidebar-widgets/crm/activities-widgets.tsx", "src/components/sidebar-widgets/crm/calendar-widgets.tsx", "src/components/sidebar-widgets/crm/companies-widgets.tsx", "src/components/sidebar-widgets/crm/insights-widgets.tsx", "src/components/sidebar-widgets/crm/inbox-widgets.tsx", "src/components/sidebar-widgets/crm/calls-widgets.tsx", "src/components/sidebar-widgets/crm/products-widgets.tsx", "src/components/sidebar-widgets/crm/documents-widgets.tsx", "src/components/sidebar-widgets/gabinet/patients-widgets.tsx", "src/components/sidebar-widgets/gabinet/employees-widgets.tsx", "src/components/sidebar-widgets/gabinet/packages-widgets.tsx", "src/components/sidebar-widgets/gabinet/treatments-widgets.tsx", "src/components/sidebar-widgets/gabinet/documents-widgets.tsx", "src/components/sidebar-widgets/gabinet/calendar-widgets.tsx", "src/components/sidebar-widgets/gabinet/dashboard-widgets.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
       "depends_on": ["SIDEBAR-01", "SIDEBAR-02"]
+    },
+    {
+      "id": "DOC-01",
+      "name": "magazyn_module_reference_blueprint",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Create a dedicated `docs/modules/magazyn.md` blueprint that turns the onboarding example into a reusable module reference covering ownership, shell identity, permissions, product activation, cross-module integrations, automation events, and verification expectations.",
+      "files": ["docs/modules/magazyn.md", "docs/modules/module-onboarding.md", "ARCHITECTURE.md", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": []
+    },
+    {
+      "id": "VAR-01",
+      "name": "treatment_variants_feature",
+      "status": "passing",
+      "created_session": "S0071",
+      "last_updated_session": "S0071",
+      "description": "Add treatment variants to gabinet treatments system with schema, backend CRUD with inheritance resolution, frontend Variants tab with create/edit dialog, override toggles, and full EN/PL i18n.",
+      "files": ["convex/schema/gabinet.ts", "convex/gabinet/treatments.ts", "src/routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json"],
+      "depends_on": []
+    },
+    {
+      "id": "ACT-01",
+      "name": "design_activity_format_and_automation_rbac_followup",
+      "status": "in_progress",
+      "created_session": "S0072",
+      "last_updated_session": "S0072",
+      "description": "Design the requested follow-up after the automation RBAC review: align shared activity records and timeline presentation across touched modules, clarify scope for package assignment, notes, and client email events, and define the RBAC remediation path before implementation.",
+      "files": ["convex/automation.ts", "convex/activities.ts", "convex/_helpers/activities.ts", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.leads.$leadId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.contacts.$contactId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.companies.$companyId.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId.tsx", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": []
     }
   ],
-  "reason": "S0070: complete the first broader Gabinet automation slice beyond appointments by wiring `gabinet.patient.created` through the backend event registry, business editor copy/defaults, tests, and focused browser coverage.",
-  "thinking_process": "The patient-created trigger remains the smallest safe expansion beyond appointment-only automation: it reuses the existing pipeline, exercises the richer editor against a second Gabinet entity type, and proves that non-appointment runs stay visible in the overview. Verification is now green end to end: app and convex typechecks pass, locale JSON is fixed, focused backend automation coverage passes, and the focused Playwright automation lifecycle spec passes against a fresh frontend on port 4173. During verification I also fixed a real frontend auth-navigation issue where the login page could stay on `/login` after successful credential submission because redirect logic waited too strictly on `getCurrentUser` before leaving the page." ,
-  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19],
+  "reason": "S0072: Move from approved design into implementation in an isolated worktree, starting with the backend activity envelope contract.",
+  "thinking_process": "The design and fact-check pass are complete, and the implementation branch now exists in `.worktrees/shared-activity-envelope-rbac` with clean app/Convex baselines. Execution should follow the approved plan incrementally: backend envelope helper first, then publisher migrations, RBAC alignment, presenter rollout, and final verification/review.",
+  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19, "VAR-01", "ACT-01"],
   "how_to_test": [
     {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
     {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},
@@ -164,6 +194,7 @@
     {"id": 14, "name": "Focused verification covers overview, simple create/edit, advanced fallback, toggle/delete, backend contract compatibility, and visible automation runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (9/9)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1)"], "session_id": "S0061"},
     {"id": 15, "name": "Richer automation editor verification covers always-visible SMS/email capabilities, reply-SMS trigger/action, multi-action composition, email template/manual authoring, variable insertion, safe field updates, strict edit hydration, and recent runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false` after overview/i18n cleanup and the `smsRequestMessage` locale default fix", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (12/12)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1) with action-card scoping and a truly unsupported legacy fallback fixture"], "session_id": "S0061"},
     {"id": 16, "name": "Sidebar widget follow-up verification fixes SmartAgenda i18n, gabinet nudge edge cases, and convex test typing without regressions", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false` after typing `import.meta.glob` in `convex/tests/recentlyViewed.test.ts`", "Focused backend verification passes: `cd convex && npx vitest run tests/recentlyViewed.test.ts --reporter=verbose` (5/5)", "SmartAgenda now has EN/PL agenda-specific locale keys and locale-aware date/time formatting", "Gabinet package nudges now exclude already-expired active usages from the expiring-soon count and only treat active usages as package usage"], "session_id": "S0063"},
-    {"id": 17, "name": "Sidebar nudge internationalization adds full EN/PL locale coverage for the translation-key nudge contract", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false`", "All 20 sidebar nudge keys resolve in both locale files via focused JSON validation", "NudgeCard resolves translation keys with `messageValues` and touched widgets pass `messageValues` through"], "session_id": "S0064"}
+    {"id": 17, "name": "Sidebar nudge internationalization adds full EN/PL locale coverage for the translation-key nudge contract", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false`", "All 20 sidebar nudge keys resolve in both locale files via focused JSON validation", "NudgeCard resolves translation keys with `messageValues` and touched widgets pass `messageValues` through"], "session_id": "S0064"},
+    {"id": 18, "name": "Treatment variants: schema, backend, frontend, i18n all pass typecheck", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --noEmit`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --noEmit`", "gabinetTreatmentVariants table added with by_treatment and by_org indexes", "5 backend functions: listVariants, getVariant, createVariant, updateVariant, deleteVariant", "Variants tab with list view and create/edit dialog with override toggles", "Full EN/PL locale coverage under gabinet.treatmentDetail.variants.*"], "session_id": "S0071"}
   ]
 }

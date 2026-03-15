@@ -454,6 +454,14 @@ S0061. Shared automation UI slice progress (2026-03-12):
 
 ---
 
+S0072. Implementation kickoff:
+- Design/fact-check artifacts for shared activity envelope + automation RBAC are complete.
+- Created isolated worktree `.worktrees/shared-activity-envelope-rbac` on branch `feat/shared-activity-envelope-rbac` after adding `.worktrees/` to `.gitignore` and committing `0552325 chore: ignore local worktrees` on main.
+- Baseline in worktree is clean: `npx tsc -p tsconfig.app.json --pretty false` PASS and `npx tsc -p convex/tsconfig.json --pretty false` PASS.
+- Next: execute plan Task 1 in the worktree via subagent-driven development, starting with the backend activity envelope helper and focused Convex tests.
+
+---
+
 S0061. SMS-08 i18n cleanup progress (2026-03-12):
 - Fixed settings sidebar label sources in `src/components/layout/app-sidebar.tsx` by switching touched entries to flat `settingsNav.*` leaves and adding the missing leaf translations for the visible settings items touched during verification.
 - Localized the automations settings page in `_layout.settings.automations.tsx`: enabled/disabled badges, action-count pluralization, run-status labels, and date formatting now use translation keys plus `i18n.language`.
@@ -696,3 +704,129 @@ S0070. Patient-created automation slice:
 - Verification status is now fully green for this slice: locale JSON validation, app typecheck, convex typecheck, `convex/tests/automation.test.ts` (13/13), and Playwright `automation rule lifecycle triggers visible run` (1/1) all pass.
 
 ---
+
+S0070. Module manifest + registry refactor plan:
+- Start with a low-blast-radius extraction: move CRM and Gabinet sidebar/workspace/settings/page-context metadata out of `src/components/layout/app-sidebar.tsx` and `workspace-switcher.tsx` into `src/modules/**` manifests plus a central registry.
+- Keep existing route paths and product gating semantics unchanged by deriving visible modules from `productSubscriptions.getActiveProducts` and retaining route-prefix workspace fallback during the migration.
+- Extend the same registry pattern into automation discovery by splitting event/action metadata out of `convex/automation.ts` into composable registry helpers while leaving execution behavior and current rule payloads backward compatible.
+- Extract Convex schema ownership into platform/CRM/Gabinet/automation fragments with `convex/schema.ts` remaining the single composition root and public validator export surface.
+- Verification target for this slice: app typecheck, convex typecheck, focused automation tests, and manual parity checks for sidebar/workspace/settings behavior.
+
+---
+
+S0070. Schema fragmentation + focused verification progress:
+- Completed the frontend shell milestone already in flight by keeping module/workspace/sidebar discovery in `src/modules/**` manifests plus `src/modules/registry.ts`; shared shell files now render registry data instead of owning CRM/Gabinet metadata.
+- Mechanically split Convex schema ownership into fragment factories under `convex/schema/platform.ts`, `convex/schema/crm.ts`, `convex/schema/gabinet.ts`, and `convex/schema/automation.ts`.
+- Kept `convex/schema.ts` as the public validator/type export surface and the only `defineSchema(...)` composition root to minimize blast radius for existing imports.
+- Exported `pricesValidator` from `convex/schema.ts` so the platform fragment can reuse the same validator definitions instead of redefining them.
+- Hit one implementation error while generating fragments (`NameError` in the local Python rewrite script from accidentally treating validator names as Python variables inside a formatted string). Re-ran generation with plain string assembly and verified the schema root plus fragments were written correctly.
+- Fixed stale app typecheck noise in the automation routes by removing the unsafe typed filter cast and using `useMemo<AutomationBuilderEventCatalogEntry[]>` for Gabinet event filtering in both `_layout.settings.automations.new.tsx` and `_layout.settings.automations.$ruleId.tsx`.
+- Focused verification after the schema split is green: `npx tsc -p tsconfig.app.json --pretty false` EXIT:0, `npx tsc -p convex/tsconfig.json --pretty false` EXIT:0, and `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` passes 13/13.
+- Current assessment: schema fragmentation is complete and behavior-preserving for the checked surfaces; the remaining architectural work item is automation registry extraction rather than more schema reshaping.
+- Files modified this slice: `convex/schema.ts`, `convex/schema/platform.ts`, `convex/schema/crm.ts`, `convex/schema/gabinet.ts`, `convex/schema/automation.ts`, `src/routes/_app/_auth/dashboard/_layout.settings.automations.new.tsx`, `src/routes/_app/_auth/dashboard/_layout.settings.automations.$ruleId.tsx`.
+- Next: move into phase-2 automation registry extraction by pulling event/action discovery metadata out of `convex/automation.ts` into composable helpers while keeping current execution and test behavior unchanged.
+
+---
+
+S0070. Automation registry extraction + focused verification progress:
+- Created `convex/automationRegistry.ts` as the shared home for automation discovery metadata and helper logic, including the event catalog registry, action capability registry, event catalog shaping, and legacy trigger resolution.
+- Updated `convex/automation.ts` to import `buildActionCapabilities`, `listEventCatalogEntries`, and `resolveRuleTrigger` from the registry helper instead of owning duplicated inline event/action registry definitions.
+- Kept the backend discovery contract unchanged for the existing consumers: `listEventCatalog` still returns the same event metadata shape, `listActionCapabilities` and `listActionTypes` still capability-filter from org email/SMS availability, and `listRules` still hydrates legacy-compatible triggers.
+- Focused verification after the automation registry wiring is green: `npx tsc -p tsconfig.app.json --pretty false` PASS, `npx tsc -p convex/tsconfig.json --pretty false` PASS, and `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` passes 13/13.
+- Current assessment: the planned registry-driven architecture slice is complete for this phase. Frontend module manifests/shared registry, automation discovery extraction, schema fragmentation, and focused verification are all in place.
+- Files modified this slice: `convex/automation.ts`, `convex/automationRegistry.ts`, `session_state.json`, `tasks_progress.json`, `tasks_progress_verbose.txt`.
+- Next: if work continues in this lane, the next sensible step is broader parity verification or the later bridge/entity-lifecycle registry follow-up rather than more mechanical extraction in the current files.
+
+---
+
+S0070. Magazyn module blueprint documentation:
+- Extracted the inline inventory example into a dedicated `docs/modules/magazyn.md` reference so future work has a reusable module-specific ownership and integration blueprint, not just a section inside the onboarding guide.
+- The new doc captures Magazyn user flows, ownership boundaries, route/product identity, file layout, entity model, permission surface, product activation expectations, Gabinet/CRM integrations, shared-platform surfaces, automation events, and verification rules.
+- Updated `docs/modules/module-onboarding.md` to point the Magazyn example at the dedicated blueprint and updated `ARCHITECTURE.md` so the new module reference is discoverable from the repo’s top-level architecture map.
+- Updated `session_state.json` and `tasks_progress.json` so the current session reflects the documentation expansion in addition to the completed registry-driven architecture refactor.
+- Next: if this lane continues, the natural follow-up is to turn `docs/modules/magazyn.md` into either a concrete implementation checklist or actual manifest/schema/permission scaffolding.
+
+---
+
+=== SESSION S0071 START === 2026-03-14T10:00:00Z
+Focus: Add treatment variants to gabinet treatments system
+New session for treatment variants feature
+
+---
+
+S0071. Task #VAR-01: treatment_variants_feature
+
+Schema changes (convex/schema/gabinet.ts):
+- Added shortDescription (optional string) and image (optional Id<"_storage">) to gabinetTreatments table
+- Created gabinetTreatmentVariants table with organizationId, treatmentId, name, price, duration, description, shortDescription, image, isActive, sortOrder
+- Added indexes: by_treatment [treatmentId], by_org [organizationId]
+
+Backend (convex/gabinet/treatments.ts):
+- listVariants: returns variants sorted by sortOrder with resolved inherited fields + inheritance flags
+- getVariant: single variant with resolved inheritance
+- createVariant: creates variant with optional field overrides, logs activity
+- updateVariant: patches variant, supports clearPrice/clearDuration/etc. to reset to inherited
+- deleteVariant: hard-deletes variant, logs activity
+
+Frontend (treatment detail page):
+- Added Variants tab trigger between Employees and Appointments
+- Variants tab shows list of variants with name, price, duration, short description
+- Each field shows "(inherited)" / "(odziedziczone)" label when value comes from parent
+- Inherited values rendered in dimmed italic style for clear visual distinction
+- Add variant button opens dialog with all fields
+- Edit/delete actions per variant row
+- Dialog uses Switch toggles for each overridable field (price, duration, descriptions)
+- When toggle is off, shows parent value in italic; when on, shows editable input
+- shortDescription card added to left sidebar info section
+
+i18n (public/locales/en/translation.json, public/locales/pl/translation.json):
+- Added tabs.variants key
+- Added variants.* namespace with 20+ keys covering all UI strings
+- Added shortDescription key at treatmentDetail level
+
+Verification:
+- npx tsc -p tsconfig.app.json --noEmit: PASS (clean)
+- npx tsc -p convex/tsconfig.json --noEmit: PASS (clean)
+
+---
+
+=== SESSION S0071 HANDOFF === 2026-03-14T10:45:00Z
+Status: completed
+Current state: VAR-01 passing, all typechecks green
+Files modified:
+  - convex/schema/gabinet.ts (schema: new fields + new table)
+  - convex/gabinet/treatments.ts (5 new backend functions)
+  - src/routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId.tsx (Variants tab + dialog + sidebar updates)
+  - public/locales/en/translation.json (EN i18n keys)
+  - public/locales/pl/translation.json (PL i18n keys)
+  - session_state.json, tasks_progress.json, tasks_progress_verbose.txt (tracking)
+
+=== SESSION S0072 START === 2026-03-15T00:00:00Z
+Focus: Design shared activity timeline normalization and automation RBAC follow-up
+Continuing from: S0071 (completed)
+Active tasks: ACT-01
+
+---
+
+S0072. Design kickoff:
+- User asked to continue the activity-format and RBAC follow-up and then commit.
+- Per brainstorming workflow, implementation is blocked until a design is presented and approved.
+- Registered ACT-01 in task tracking and updated session_state.json for the new session.
+- Current context from prior investigation: `api.activities.getForEntity` returns raw activity rows, several entity detail routes map only `_id`/`action`/`description`/`createdAt` into `ActivityTimeline`, while the appointment route already has a richer adapter for content snapshots and metadata lines.
+- Cross-module review found the automation RBAC gap: rule mutations call `verifyOrgAccess`, but the expanded automation `update_field` execution path relies on custom permission resolution rather than direct `checkPermission`.
+- Scope confirmation from user: the unified activity format should cover everything, including detail timelines, global activity feeds, and aggregated/list-style surfaces.
+- Architectural preference from user: keep the backend activity contract simpler and preserve modularity by using a shared frontend adapter/presenter layer rather than pushing heavy normalization into the backend.
+- Additional clarification from user: the key design concern is the contract by which entities/modules send activity information into the backend — it should be as standardized/opinionated as possible without breaking flexibility or modular boundaries.
+- User selected the preferred direction: a strongly opinionated shared envelope plus flexible module payload (Option A).
+- Proposed 3 approaches and recommended Approach 1: shared required activity envelope + flexible module payload + shared frontend presenter, with Approach 2 rejected as too presentation-heavy in backend contract and Approach 3 rejected as too loose.
+- User approved Approach 1.
+- Design section 1 (architecture) presented and approved.
+- Design section 2 (publishing contract and backend flow) presented and approved.
+- Design section 3 (frontend presenter/rendering and rollout) presented and approved.
+- Next: write the approved spec to `docs/superpowers/specs/2026-03-15-shared-activity-envelope-and-automation-rbac-design.md`, run the spec review loop, fix any factual or architectural issues found, and only then ask the user to review the spec file.
+- Spec review round 1 returned issues around overclaiming current surfaces, persistence/index ambiguity for the new envelope, preserving current automation descriptor/allowlist constraints, missing fan-out dedupe semantics, and undefined legacy-vs-new fallback precedence.
+- Updated the spec to clarify rollout targets vs currently evidenced consumers, define the transitional persistence contract and index implications, preserve existing automation descriptor/allowlist constraints, add mandatory `eventKey` dedupe semantics for fan-out, and define deterministic read fallback precedence.
+- Spec review round 2: APPROVED for user review.
+- User reviewed the spec and asked to proceed to implementation planning.
+- Entered the writing-plans workflow.
+- Gathering existing plan format, testing commands, and codebase constraints before writing the implementation plan file.

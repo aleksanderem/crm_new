@@ -984,6 +984,132 @@ describe("automation lifecycle", () => {
     );
   });
 
+  test("lead status changed event processes update_field action for supported lead field", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const leadId = await t.withIdentity(identity).mutation(api.leads.create, {
+      organizationId,
+      title: "Automation Lead",
+      status: "open",
+    });
+
+    await t.withIdentity(identity).mutation(api.automation.createRule, {
+      organizationId,
+      name: "Annotate lead status changes",
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      conditions: [],
+      actions: [
+        {
+          type: "update_field",
+          targetEntityType: "lead",
+          fieldKind: "standard",
+          fieldKey: "notes",
+          valueTemplate: "Status changed to {{newStatus}}",
+          valueType: "string",
+        },
+      ],
+      enabled: true,
+    });
+
+    await t.withIdentity(identity).mutation(api.leads.update, {
+      organizationId,
+      leadId,
+      status: "won",
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+      organizationId,
+      module: "crm",
+      entityType: "lead",
+      entityId: String(leadId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
+    const steps = run
+      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+          organizationId,
+          runId: run._id,
+        })
+      : [];
+    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+
+    expect(run?.status).toBe("processed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("processed");
+    expect(steps[0]?.actionType).toBe("update_field");
+    expect(steps[0]?.linkedEntityType).toBe("lead");
+    expect(steps[0]?.linkedEntityId).toBe(String(leadId));
+    expect(steps[0]?.renderedBody).toBe("standard:notes=Status changed to won");
+    expect(lead?.notes).toBe("Status changed to won");
+  });
+
+  test("lead status changed update_field fails closed for unsupported custom lead fields", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const leadId = await t.withIdentity(identity).mutation(api.leads.create, {
+      organizationId,
+      title: "Unsupported lead update",
+      status: "open",
+    });
+
+    await t.withIdentity(identity).mutation(api.automation.createRule, {
+      organizationId,
+      name: "Attempt custom lead field update",
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      conditions: [],
+      actions: [
+        {
+          type: "update_field",
+          targetEntityType: "lead",
+          fieldKind: "custom",
+          fieldKey: "automationTag",
+          valueTemplate: "{{newStatus}}",
+          valueType: "string",
+        },
+      ],
+      enabled: true,
+    });
+
+    await t.withIdentity(identity).mutation(api.leads.update, {
+      organizationId,
+      leadId,
+      status: "lost",
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+      organizationId,
+      module: "crm",
+      entityType: "lead",
+      entityId: String(leadId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
+    const steps = run
+      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+          organizationId,
+          runId: run._id,
+        })
+      : [];
+    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+
+    expect(run?.status).toBe("failed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("failed");
+    expect(steps[0]?.actionType).toBe("update_field");
+    expect(steps[0]?.errorMessage).toContain("Custom lead field updates are not supported");
+    expect(lead?.notes).toBeUndefined();
+  });
+
   test("send_sms_request action stays compatible with legacy SMS execution path", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

@@ -472,3 +472,228 @@ export const saveTreatmentParameters = mutation({
     return args.treatmentId;
   },
 });
+
+// --- Treatment Variants ---
+
+export const listVariants = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    const variants = await ctx.db
+      .query("gabinetTreatmentVariants")
+      .withIndex("by_treatment", (q) => q.eq("treatmentId", args.treatmentId))
+      .collect();
+
+    // Sort by sortOrder, then by creation time
+    variants.sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a._creationTime - b._creationTime);
+
+    // Resolve inherited fields
+    return variants.map((variant) => ({
+      ...variant,
+      resolvedPrice: variant.price ?? treatment.price,
+      resolvedDuration: variant.duration ?? treatment.duration,
+      resolvedDescription: variant.description ?? treatment.description,
+      resolvedShortDescription: variant.shortDescription ?? treatment.shortDescription,
+      resolvedImage: variant.image ?? treatment.image,
+      priceInherited: variant.price === undefined,
+      durationInherited: variant.duration === undefined,
+      descriptionInherited: variant.description === undefined,
+      shortDescriptionInherited: variant.shortDescription === undefined,
+      imageInherited: variant.image === undefined,
+    }));
+  },
+});
+
+export const getVariant = query({
+  args: {
+    organizationId: v.id("organizations"),
+    variantId: v.id("gabinetTreatmentVariants"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const variant = await ctx.db.get(args.variantId);
+    if (!variant || variant.organizationId !== args.organizationId) {
+      throw new Error("Variant not found");
+    }
+
+    const treatment = await ctx.db.get(variant.treatmentId);
+    if (!treatment) throw new Error("Parent treatment not found");
+
+    return {
+      ...variant,
+      resolvedPrice: variant.price ?? treatment.price,
+      resolvedDuration: variant.duration ?? treatment.duration,
+      resolvedDescription: variant.description ?? treatment.description,
+      resolvedShortDescription: variant.shortDescription ?? treatment.shortDescription,
+      resolvedImage: variant.image ?? treatment.image,
+      priceInherited: variant.price === undefined,
+      durationInherited: variant.duration === undefined,
+      descriptionInherited: variant.description === undefined,
+      shortDescriptionInherited: variant.shortDescription === undefined,
+      imageInherited: variant.image === undefined,
+    };
+  },
+});
+
+export const createVariant = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    name: v.string(),
+    price: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    description: v.optional(v.string()),
+    shortDescription: v.optional(v.string()),
+    image: v.optional(v.id("_storage")),
+    isActive: v.optional(v.boolean()),
+    sortOrder: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    const variantId = await ctx.db.insert("gabinetTreatmentVariants", {
+      organizationId: args.organizationId,
+      treatmentId: args.treatmentId,
+      name: args.name,
+      price: args.price,
+      duration: args.duration,
+      description: args.description,
+      shortDescription: args.shortDescription,
+      image: args.image,
+      isActive: args.isActive ?? true,
+      sortOrder: args.sortOrder,
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      action: "updated",
+      description: `Added variant "${args.name}" to treatment "${treatment.name}"`,
+      performedBy: user._id,
+    });
+
+    return variantId;
+  },
+});
+
+export const updateVariant = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    variantId: v.id("gabinetTreatmentVariants"),
+    name: v.optional(v.string()),
+    price: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    description: v.optional(v.string()),
+    shortDescription: v.optional(v.string()),
+    image: v.optional(v.id("_storage")),
+    isActive: v.optional(v.boolean()),
+    sortOrder: v.optional(v.number()),
+    // Allow explicitly clearing overrides back to inherited
+    clearPrice: v.optional(v.boolean()),
+    clearDuration: v.optional(v.boolean()),
+    clearDescription: v.optional(v.boolean()),
+    clearShortDescription: v.optional(v.boolean()),
+    clearImage: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const variant = await ctx.db.get(args.variantId);
+    if (!variant || variant.organizationId !== args.organizationId) {
+      throw new Error("Variant not found");
+    }
+
+    const treatment = await ctx.db.get(variant.treatmentId);
+    if (!treatment) throw new Error("Parent treatment not found");
+
+    const updates: Record<string, unknown> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.isActive !== undefined) updates.isActive = args.isActive;
+    if (args.sortOrder !== undefined) updates.sortOrder = args.sortOrder;
+
+    // Handle overridable fields — set or clear
+    if (args.clearPrice) updates.price = undefined;
+    else if (args.price !== undefined) updates.price = args.price;
+
+    if (args.clearDuration) updates.duration = undefined;
+    else if (args.duration !== undefined) updates.duration = args.duration;
+
+    if (args.clearDescription) updates.description = undefined;
+    else if (args.description !== undefined) updates.description = args.description;
+
+    if (args.clearShortDescription) updates.shortDescription = undefined;
+    else if (args.shortDescription !== undefined) updates.shortDescription = args.shortDescription;
+
+    if (args.clearImage) updates.image = undefined;
+    else if (args.image !== undefined) updates.image = args.image;
+
+    await ctx.db.patch(args.variantId, updates);
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: variant.treatmentId,
+      action: "updated",
+      description: `Updated variant "${variant.name}" of treatment "${treatment.name}"`,
+      performedBy: user._id,
+    });
+
+    return args.variantId;
+  },
+});
+
+export const deleteVariant = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    variantId: v.id("gabinetTreatmentVariants"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "delete");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const variant = await ctx.db.get(args.variantId);
+    if (!variant || variant.organizationId !== args.organizationId) {
+      throw new Error("Variant not found");
+    }
+
+    const treatment = await ctx.db.get(variant.treatmentId);
+
+    await ctx.db.delete(args.variantId);
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: variant.treatmentId,
+      action: "updated",
+      description: `Deleted variant "${variant.name}" from treatment "${treatment?.name ?? "unknown"}"`,
+      performedBy: user._id,
+    });
+
+    return args.variantId;
+  },
+});

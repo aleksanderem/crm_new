@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -16,6 +16,7 @@ import {
   type AutomationActionCapability,
   type AutomationCustomFieldDefinition,
   type AutomationEmailTemplateRecord,
+  type AutomationUpdateFieldTargetEntityType,
 } from "@/components/settings/automation-builder/automation-simple-presets";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,62 +74,49 @@ function NewAutomationRulePage() {
     }),
   );
 
-  const {
-    data: patientCustomFields,
-    isPending: isPatientCustomFieldsPending,
-    isError: isPatientCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetPatient",
-    }),
+  const customFieldEntityTypes = useMemo<AutomationUpdateFieldTargetEntityType[]>(
+    () => ["gabinetPatient", "gabinetAppointment", "gabinetEmployee", "lead"],
+    [],
   );
 
-  const {
-    data: appointmentCustomFields,
-    isPending: isAppointmentCustomFieldsPending,
-    isError: isAppointmentCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetAppointment",
-    }),
-  );
+  const customFieldResults = useQueries({
+    queries: customFieldEntityTypes.map((entityType) =>
+      convexQuery(api.customFields.getDefinitions, {
+        organizationId,
+        entityType,
+      }),
+    ),
+  });
 
-  const {
-    data: employeeCustomFields,
-    isPending: isEmployeeCustomFieldsPending,
-    isError: isEmployeeCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetEmployee",
-    }),
-  );
+  const customFieldsByEntityType = useMemo<
+    Partial<Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>>
+  >(() => {
+    return customFieldEntityTypes.reduce(
+      (acc, entityType, index) => {
+        acc[entityType] =
+          (customFieldResults[index]?.data as AutomationCustomFieldDefinition[] | undefined) ?? [];
+        return acc;
+      },
+      {} as Partial<
+        Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>
+      >,
+    );
+  }, [customFieldEntityTypes, customFieldResults]);
 
-  const gabinetEvents = useMemo(
-    () =>
-      (eventCatalog ?? []).filter(
-        (event) => event.module === "gabinet",
-      ) as AutomationBuilderEventCatalogEntry[],
-    [eventCatalog],
-  );
+  const isCustomFieldsPending = customFieldResults.some((result) => result.isPending);
+  const isCustomFieldsError = customFieldResults.some((result) => result.isError);
 
   const isLoading =
     isEventCatalogPending ||
     isActionCapabilitiesPending ||
     isEmailTemplatesPending ||
-    isPatientCustomFieldsPending ||
-    isAppointmentCustomFieldsPending ||
-    isEmployeeCustomFieldsPending;
+    isCustomFieldsPending;
 
   const isError =
     isEventCatalogError ||
     isActionCapabilitiesError ||
     isEmailTemplatesError ||
-    isPatientCustomFieldsError ||
-    isAppointmentCustomFieldsError ||
-    isEmployeeCustomFieldsError;
+    isCustomFieldsError;
 
   const handleCancel = () => {
     navigate({ to: "/dashboard/settings/automations" });
@@ -195,12 +183,10 @@ function NewAutomationRulePage() {
         </Card>
       ) : isLoading ? null : (
         <AutomationSimpleMode
-          eventCatalog={gabinetEvents}
+          eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
           emailTemplates={emailTemplates as AutomationEmailTemplateRecord[]}
-          patientCustomFields={patientCustomFields as AutomationCustomFieldDefinition[]}
-          appointmentCustomFields={appointmentCustomFields as AutomationCustomFieldDefinition[]}
-          employeeCustomFields={employeeCustomFields as AutomationCustomFieldDefinition[]}
+          customFieldsByEntityType={customFieldsByEntityType}
           isSubmitting={isSubmitting}
           onCancel={handleCancel}
           onSubmit={handleSubmit}

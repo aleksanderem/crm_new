@@ -21,6 +21,11 @@ import { renderTemplateString } from "./emailTemplates";
 import { escapeHtml } from "./_helpers/html";
 import { DEFAULT_PERMISSIONS } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
+import {
+  buildActionCapabilities,
+  listEventCatalogEntries,
+  resolveRuleTrigger,
+} from "./automationRegistry";
 
 const automationModuleValidator = v.union(
   v.literal("crm"),
@@ -59,295 +64,6 @@ const automationEventArgsValidator = {
   correlationKey: v.optional(v.string()),
 };
 
-type EventCatalogVariable = {
-  key: string;
-  path: string;
-  label: string;
-  type: "string" | "number" | "boolean" | "date" | "datetime" | "id";
-  group?: string;
-};
-
-type EventCatalogEntry = {
-  module: "crm" | "gabinet" | "platform";
-  eventType: string;
-  label: string;
-  entityType?: string;
-  source: "domain_event" | "communication_reply";
-  samplePayload: Record<string, unknown>;
-  variables: EventCatalogVariable[];
-};
-
-const EVENT_REGISTRY: EventCatalogEntry[] = [
-  {
-    module: "gabinet",
-    eventType: "gabinet.patient.created",
-    label: "Patient created",
-    entityType: "gabinetPatient",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      patientId: "patient_123",
-      contactId: "contact_123",
-      firstName: "Jan",
-      lastName: "Kowalski",
-      patientName: "Jan Kowalski",
-      patientEmail: "jan@example.com",
-      patientPhone: "500600700",
-      referralSource: "Website",
-      createdBy: "user_123",
-    },
-    variables: [
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "firstName", path: "firstName", label: "Patient first name", type: "string", group: "patient" },
-      { key: "lastName", path: "lastName", label: "Patient last name", type: "string", group: "patient" },
-      { key: "patientName", path: "patientName", label: "Patient name", type: "string", group: "patient" },
-      { key: "patientPhone", path: "patientPhone", label: "Patient phone", type: "string", group: "patient" },
-      { key: "patientEmail", path: "patientEmail", label: "Patient email", type: "string", group: "patient" },
-      { key: "referralSource", path: "referralSource", label: "Referral source", type: "string", group: "patient" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-  {
-    module: "gabinet",
-    eventType: "gabinet.appointment.created",
-    label: "Appointment created",
-    entityType: "gabinetAppointment",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      appointmentId: "appt_123",
-      patientId: "patient_123",
-      treatmentId: "treatment_123",
-      employeeId: "user_123",
-      date: "2026-03-17",
-      startTime: "10:00",
-      endTime: "10:30",
-      status: "scheduled",
-      patientEmail: "jan@example.com",
-      patientPhone: "500600700",
-      patientName: "Jan Kowalski",
-      treatmentName: "Consultation",
-      employeeName: "Dr. Example",
-      createdBy: "user_123",
-    },
-    variables: [
-      { key: "appointmentId", path: "appointmentId", label: "Appointment ID", type: "id", group: "appointment" },
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "patientName", path: "patientName", label: "Patient name", type: "string", group: "patient" },
-      { key: "patientPhone", path: "patientPhone", label: "Patient phone", type: "string", group: "patient" },
-      { key: "patientEmail", path: "patientEmail", label: "Patient email", type: "string", group: "patient" },
-      { key: "employeeId", path: "employeeId", label: "Employee ID", type: "id", group: "appointment" },
-      { key: "date", path: "date", label: "Appointment date", type: "date", group: "appointment" },
-      { key: "startTime", path: "startTime", label: "Start time", type: "string", group: "appointment" },
-      { key: "endTime", path: "endTime", label: "End time", type: "string", group: "appointment" },
-      { key: "status", path: "status", label: "Status", type: "string", group: "appointment" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-  {
-    module: "gabinet",
-    eventType: "gabinet.appointment.updated",
-    label: "Appointment updated",
-    entityType: "gabinetAppointment",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      appointmentId: "appt_123",
-      patientId: "patient_123",
-      treatmentId: "treatment_123",
-      employeeId: "user_123",
-      date: "2026-03-17",
-      startTime: "11:00",
-      endTime: "11:30",
-      previousStatus: "scheduled",
-      status: "scheduled",
-      createdBy: "user_123",
-      updatedFields: ["startTime", "endTime"],
-    },
-    variables: [
-      { key: "appointmentId", path: "appointmentId", label: "Appointment ID", type: "id", group: "appointment" },
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "employeeId", path: "employeeId", label: "Employee ID", type: "id", group: "appointment" },
-      { key: "date", path: "date", label: "Appointment date", type: "date", group: "appointment" },
-      { key: "startTime", path: "startTime", label: "Start time", type: "string", group: "appointment" },
-      { key: "endTime", path: "endTime", label: "End time", type: "string", group: "appointment" },
-      { key: "status", path: "status", label: "Status", type: "string", group: "appointment" },
-      { key: "previousStatus", path: "previousStatus", label: "Previous status", type: "string", group: "appointment" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-  {
-    module: "gabinet",
-    eventType: "gabinet.appointment.status_changed",
-    label: "Appointment status changed",
-    entityType: "gabinetAppointment",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      appointmentId: "appt_123",
-      patientId: "patient_123",
-      employeeId: "user_123",
-      treatmentId: "treatment_123",
-      status: "confirmed",
-      previousStatus: "scheduled",
-      date: "2026-03-17",
-      startTime: "10:00",
-      cancellationReason: null,
-      createdBy: "user_123",
-    },
-    variables: [
-      { key: "appointmentId", path: "appointmentId", label: "Appointment ID", type: "id", group: "appointment" },
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "employeeId", path: "employeeId", label: "Employee ID", type: "id", group: "appointment" },
-      { key: "status", path: "status", label: "Status", type: "string", group: "appointment" },
-      { key: "previousStatus", path: "previousStatus", label: "Previous status", type: "string", group: "appointment" },
-      { key: "date", path: "date", label: "Appointment date", type: "date", group: "appointment" },
-      { key: "startTime", path: "startTime", label: "Start time", type: "string", group: "appointment" },
-      { key: "cancellationReason", path: "cancellationReason", label: "Cancellation reason", type: "string", group: "appointment" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-  {
-    module: "gabinet",
-    eventType: "gabinet.appointment.reminder_due",
-    label: "Appointment reminder due",
-    entityType: "gabinetAppointment",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      appointmentId: "appt_123",
-      patientId: "patient_123",
-      treatmentId: "treatment_123",
-      employeeId: "user_123",
-      date: "2026-03-17",
-      startTime: "10:00",
-      patientEmail: "jan@example.com",
-      patientPhone: "500600700",
-      patientName: "Jan Kowalski",
-      treatmentName: "Consultation",
-    },
-    variables: [
-      { key: "appointmentId", path: "appointmentId", label: "Appointment ID", type: "id", group: "appointment" },
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "patientName", path: "patientName", label: "Patient name", type: "string", group: "patient" },
-      { key: "patientPhone", path: "patientPhone", label: "Patient phone", type: "string", group: "patient" },
-      { key: "patientEmail", path: "patientEmail", label: "Patient email", type: "string", group: "patient" },
-      { key: "date", path: "date", label: "Appointment date", type: "date", group: "appointment" },
-      { key: "startTime", path: "startTime", label: "Start time", type: "string", group: "appointment" },
-      { key: "treatmentName", path: "treatmentName", label: "Treatment name", type: "string", group: "appointment" },
-    ],
-  },
-  {
-    module: "gabinet",
-    eventType: "gabinet.appointment.sms_reply_received",
-    label: "Appointment SMS reply received",
-    entityType: "gabinetAppointment",
-    source: "communication_reply",
-    samplePayload: {
-      organizationId: "org_123",
-      appointmentId: "appt_123",
-      patientId: "patient_123",
-      provider: "twilio",
-      providerMessageId: "SM123",
-      normalizedPhone: "+48500600700",
-      body: "TAK",
-      normalizedBody: "tak",
-      parsedIntent: "confirm",
-      webhookSignatureVerified: true,
-    },
-    variables: [
-      { key: "appointmentId", path: "appointmentId", label: "Appointment ID", type: "id", group: "appointment" },
-      { key: "patientId", path: "patientId", label: "Patient ID", type: "id", group: "patient" },
-      { key: "provider", path: "provider", label: "SMS provider", type: "string", group: "message" },
-      { key: "providerMessageId", path: "providerMessageId", label: "Provider message ID", type: "string", group: "message" },
-      { key: "normalizedPhone", path: "normalizedPhone", label: "Sender phone", type: "string", group: "message" },
-      { key: "body", path: "body", label: "Reply body", type: "string", group: "message" },
-      { key: "parsedIntent", path: "parsedIntent", label: "Parsed intent", type: "string", group: "message" },
-      { key: "webhookSignatureVerified", path: "webhookSignatureVerified", label: "Webhook signature verified", type: "boolean", group: "message" },
-    ],
-  },
-  {
-    module: "crm",
-    eventType: "crm.lead.status_changed",
-    label: "Lead status changed",
-    entityType: "lead",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      leadId: "lead_123",
-      title: "Enterprise Plan Deal",
-      oldStatus: "new",
-      newStatus: "won",
-      assignedTo: "user_123",
-      ownerId: "user_123",
-      createdBy: "user_123",
-    },
-    variables: [
-      { key: "leadId", path: "leadId", label: "Lead ID", type: "id", group: "lead" },
-      { key: "title", path: "title", label: "Lead title", type: "string", group: "lead" },
-      { key: "oldStatus", path: "oldStatus", label: "Previous status", type: "string", group: "lead" },
-      { key: "newStatus", path: "newStatus", label: "New status", type: "string", group: "lead" },
-      { key: "assignedTo", path: "assignedTo", label: "Assigned user", type: "id", group: "ownership" },
-      { key: "ownerId", path: "ownerId", label: "Lead owner", type: "id", group: "ownership" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-  {
-    module: "crm",
-    eventType: "crm.lead.stage_changed",
-    label: "Lead stage changed",
-    entityType: "lead",
-    source: "domain_event",
-    samplePayload: {
-      organizationId: "org_123",
-      leadId: "lead_123",
-      title: "Enterprise Plan Deal",
-      fromStageId: "stage_1",
-      toStageId: "stage_2",
-      oldStatus: "new",
-      newStatus: "qualified",
-      ownerId: "user_123",
-      createdBy: "user_123",
-    },
-    variables: [
-      { key: "leadId", path: "leadId", label: "Lead ID", type: "id", group: "lead" },
-      { key: "title", path: "title", label: "Lead title", type: "string", group: "lead" },
-      { key: "fromStageId", path: "fromStageId", label: "From stage", type: "id", group: "pipeline" },
-      { key: "toStageId", path: "toStageId", label: "To stage", type: "id", group: "pipeline" },
-      { key: "oldStatus", path: "oldStatus", label: "Previous status", type: "string", group: "lead" },
-      { key: "newStatus", path: "newStatus", label: "New status", type: "string", group: "lead" },
-      { key: "ownerId", path: "ownerId", label: "Lead owner", type: "id", group: "ownership" },
-      { key: "createdBy", path: "createdBy", label: "Created by user ID", type: "id", group: "audit" },
-    ],
-  },
-];
-
-function mapLegacyTriggerSource(eventType: string): "domain_event" | "communication_reply" {
-  return eventType.endsWith("sms_reply_received") ? "communication_reply" : "domain_event";
-}
-
-function resolveRuleTrigger(rule: {
-  module: "crm" | "gabinet" | "platform";
-  eventType: string;
-  entityType?: string;
-  trigger?: {
-    module: "crm" | "gabinet" | "platform";
-    eventType: string;
-    entityType?: string;
-    source: "domain_event" | "communication_reply";
-    label?: string;
-  };
-}) {
-  return (
-    rule.trigger ?? {
-      module: rule.module,
-      eventType: rule.eventType,
-      entityType: rule.entityType,
-      source: mapLegacyTriggerSource(rule.eventType),
-    }
-  );
-}
-
 function getPathValue(payload: Record<string, unknown>, path: string) {
   const normalized = path.replace(/^payload\./, "");
   return normalized.split(".").reduce<unknown>((acc, key) => {
@@ -373,74 +89,11 @@ function applyTemplate(template: string, payload: Record<string, unknown>) {
   });
 }
 
-type AutomationActionType =
-  | "send_email"
-  | "send_sms"
-  | "send_sms_request"
-  | "create_notification"
-  | "write_activity"
-  | "update_field";
-
-type AutomationActionCapability = {
-  type: AutomationActionType;
-  available: boolean;
-  availability: "available" | "config_required";
-  missingConfigReason?: string;
-  recipientModes?: string[];
-  contentModes?: string[];
-};
-
 type AutomationTargetEntityType =
   | "gabinetPatient"
   | "gabinetAppointment"
-  | "gabinetEmployee";
-
-type AutomationEditFeature =
-  | "gabinet_patients"
-  | "gabinet_appointments"
-  | "gabinet_employees";
-
-const AUTOMATION_ACTION_CAPABILITIES: Array<{
-  type: AutomationActionType;
-  needsEmail?: boolean;
-  needsSms?: boolean;
-  recipientModes?: string[];
-  contentModes?: string[];
-}> = [
-  {
-    type: "send_sms",
-    needsSms: true,
-    recipientModes: ["patient_phone"],
-    contentModes: ["manual"],
-  },
-  {
-    type: "send_sms_request",
-    needsSms: true,
-    recipientModes: ["patient_phone"],
-    contentModes: ["manual"],
-  },
-  {
-    type: "send_email",
-    needsEmail: true,
-    recipientModes: ["patient_email"],
-    contentModes: ["template", "manual"],
-  },
-  {
-    type: "create_notification",
-    recipientModes: ["employee_user"],
-    contentModes: ["manual"],
-  },
-  {
-    type: "write_activity",
-    recipientModes: ["entity_context"],
-    contentModes: ["manual"],
-  },
-  {
-    type: "update_field",
-    recipientModes: ["entity_context"],
-    contentModes: ["template_value"],
-  },
-];
+  | "gabinetEmployee"
+  | "lead";
 
 const STANDARD_FIELD_ALLOWLIST: Record<AutomationTargetEntityType, Set<string>> = {
   gabinetPatient: new Set([
@@ -476,6 +129,113 @@ const STANDARD_FIELD_ALLOWLIST: Record<AutomationTargetEntityType, Set<string>> 
     "color",
     "notes",
   ]),
+  lead: new Set([
+    "title",
+    "value",
+    "currency",
+    "status",
+    "priority",
+    "expectedCloseDate",
+    "source",
+    "companyId",
+    "assignedTo",
+    "notes",
+    "tags",
+    "lostReason",
+  ]),
+};
+
+type AutomationUpdateFieldDescriptor = {
+  table: "gabinetPatients" | "gabinetAppointments" | "gabinetEmployees" | "leads";
+  linkedEntityType: AutomationTargetEntityType;
+  permissionFeature: Feature;
+  requireAdmin?: boolean;
+  notFoundMessage: string;
+  unsupportedStandardFieldMessage: string;
+  unsupportedCustomFieldMessage: string;
+  supportsCustom: boolean;
+  resolveTargetId: (payload: Record<string, unknown>, run: { entityType?: string; entityId?: string }) =>
+    | string
+    | undefined;
+  canEditOwn: (
+    entity: Record<string, unknown>,
+    actorUserId: Id<"users"> | undefined,
+  ) => boolean;
+};
+
+const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
+  AutomationTargetEntityType,
+  AutomationUpdateFieldDescriptor
+> = {
+  gabinetPatient: {
+    table: "gabinetPatients",
+    linkedEntityType: "gabinetPatient",
+    permissionFeature: "gabinet_patients",
+    notFoundMessage: "Patient not found",
+    unsupportedStandardFieldMessage: "Unsupported patient field update target",
+    unsupportedCustomFieldMessage: "Custom patient field updates are not supported",
+    supportsCustom: true,
+    resolveTargetId: (payload, run) => {
+      if (run.entityType === "gabinetPatient" && run.entityId) {
+        return run.entityId;
+      }
+      const patientId = stringifyValue(getPathValue(payload, "patientId"));
+      return patientId || undefined;
+    },
+    canEditOwn: (entity, actorUserId) => entity.createdBy === actorUserId,
+  },
+  gabinetAppointment: {
+    table: "gabinetAppointments",
+    linkedEntityType: "gabinetAppointment",
+    permissionFeature: "gabinet_appointments",
+    notFoundMessage: "Appointment not found",
+    unsupportedStandardFieldMessage: "Unsupported appointment field update target",
+    unsupportedCustomFieldMessage: "Custom appointment field updates are not supported",
+    supportsCustom: false,
+    resolveTargetId: (payload, run) => {
+      if (run.entityType === "gabinetAppointment" && run.entityId) {
+        return run.entityId;
+      }
+      const appointmentId = stringifyValue(getPathValue(payload, "appointmentId"));
+      return appointmentId || undefined;
+    },
+    canEditOwn: (entity, actorUserId) => entity.createdBy === actorUserId,
+  },
+  gabinetEmployee: {
+    table: "gabinetEmployees",
+    linkedEntityType: "gabinetEmployee",
+    permissionFeature: "gabinet_employees",
+    requireAdmin: true,
+    notFoundMessage: "Employee not found",
+    unsupportedStandardFieldMessage: "Unsupported employee field update target",
+    unsupportedCustomFieldMessage: "Custom employee field updates are not supported",
+    supportsCustom: false,
+    resolveTargetId: (_payload, run) => {
+      if (run.entityType === "gabinetEmployee" && run.entityId) {
+        return run.entityId;
+      }
+      return undefined;
+    },
+    canEditOwn: (entity, actorUserId) => entity.createdBy === actorUserId,
+  },
+  lead: {
+    table: "leads",
+    linkedEntityType: "lead",
+    permissionFeature: "leads",
+    notFoundMessage: "Lead not found",
+    unsupportedStandardFieldMessage: "Unsupported lead field update target",
+    unsupportedCustomFieldMessage: "Custom lead field updates are not supported",
+    supportsCustom: false,
+    resolveTargetId: (payload, run) => {
+      if (run.entityType === "lead" && run.entityId) {
+        return run.entityId;
+      }
+      const leadId = stringifyValue(getPathValue(payload, "leadId"));
+      return leadId || undefined;
+    },
+    canEditOwn: (entity, actorUserId) =>
+      entity.createdBy === actorUserId || entity.assignedTo === actorUserId,
+  },
 };
 
 async function sendAutomationEmail(args: {
@@ -507,31 +267,6 @@ async function sendAutomationEmail(args: {
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, "");
-}
-
-function buildActionCapabilities(options: { hasEmail: boolean; hasSms: boolean }) {
-  return AUTOMATION_ACTION_CAPABILITIES.map<AutomationActionCapability>((capability) => {
-    const needsEmail = capability.needsEmail === true;
-    const needsSms = capability.needsSms === true;
-    const available = needsEmail
-      ? options.hasEmail
-      : needsSms
-        ? options.hasSms
-        : true;
-
-    return {
-      type: capability.type,
-      available,
-      availability: available ? "available" : "config_required",
-      missingConfigReason: available
-        ? undefined
-        : needsEmail
-          ? "Configure a default email account to enable email actions."
-          : "Configure an active SMS provider to enable SMS actions.",
-      recipientModes: capability.recipientModes,
-      contentModes: capability.contentModes,
-    };
-  });
 }
 
 function buildEmailTemplateSourceInstances(
@@ -609,7 +344,7 @@ function resolveAutomationTargetId(
     entityType?: string;
     entityId?: string;
   },
-  targetEntityType: AutomationTargetEntityType,
+  descriptor: AutomationUpdateFieldDescriptor,
   targetIdPath?: string,
 ) {
   if (targetIdPath) {
@@ -617,34 +352,14 @@ function resolveAutomationTargetId(
     return explicitId || undefined;
   }
 
-  if (targetEntityType === "gabinetAppointment") {
-    if (run.entityType === "gabinetAppointment" && run.entityId) {
-      return run.entityId;
-    }
-    const appointmentId = stringifyValue(getPathValue(payload, "appointmentId"));
-    return appointmentId || undefined;
-  }
-
-  if (targetEntityType === "gabinetPatient") {
-    if (run.entityType === "gabinetPatient" && run.entityId) {
-      return run.entityId;
-    }
-    const patientId = stringifyValue(getPathValue(payload, "patientId"));
-    return patientId || undefined;
-  }
-
-  if (run.entityType === "gabinetEmployee" && run.entityId) {
-    return run.entityId;
-  }
-
-  return undefined;
+  return descriptor.resolveTargetId(payload, run);
 }
 
 async function getAutomationEditPermission(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   actorUserId: Id<"users"> | undefined,
-  feature: AutomationEditFeature,
+  feature: Feature,
   options?: { requireAdmin?: boolean },
 ): Promise<{ allowed: boolean; scope: Scope; reason?: string }> {
   if (!actorUserId) {
@@ -787,174 +502,92 @@ async function applyUpdateFieldAction(
     };
   },
 ) {
+  const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.action.targetEntityType];
   const targetId = resolveAutomationTargetId(
     args.payload,
     args.run,
-    args.action.targetEntityType,
+    descriptor,
     args.action.targetIdPath,
   );
   if (!targetId) {
     throw new Error("Missing field update target");
   }
 
-  const renderedValue = applyTemplate(args.action.valueTemplate, args.payload);
-  const coercedValue = coerceAutomationFieldValue(renderedValue, args.action.valueType);
-  const now = Date.now();
-
-  if (args.action.targetEntityType === "gabinetPatient") {
-    const permission = await getAutomationEditPermission(
-      ctx,
-      args.organizationId,
-      args.actorUserId,
-      "gabinet_patients",
-    );
-    if (!permission.allowed) {
-      throw new Error(permission.reason ?? "Permission denied");
-    }
-
-    const patientId = targetId as Id<"gabinetPatients">;
-    const patient = await ctx.db.get(patientId);
-    if (!patient || patient.organizationId !== args.organizationId) {
-      throw new Error("Patient not found");
-    }
-    if (permission.scope === "own" && patient.createdBy !== args.actorUserId) {
-      throw new Error("Permission denied: you can only edit your own records");
-    }
-
-    if (args.action.fieldKind === "custom") {
-      const existingCustomFields =
-        patient.customFields && typeof patient.customFields === "object"
-          ? (patient.customFields as Record<string, unknown>)
-          : {};
-      await ctx.db.patch(patientId, {
-        customFields: {
-          ...existingCustomFields,
-          [args.action.fieldKey]: coercedValue,
-        },
-        updatedAt: now,
-      });
-    } else {
-      if (!STANDARD_FIELD_ALLOWLIST.gabinetPatient.has(args.action.fieldKey)) {
-        throw new Error("Unsupported patient field update target");
-      }
-      await ctx.db.patch(patientId, {
-        [args.action.fieldKey]: coercedValue,
-        updatedAt: now,
-      } as never);
-    }
-
-    if (args.actorUserId) {
-      await logActivity(ctx, {
-        organizationId: args.organizationId,
-        entityType: "gabinetPatient",
-        entityId: patientId,
-        action: "updated",
-        description: `Updated patient field ${args.action.fieldKey} via automation`,
-        performedBy: args.actorUserId,
-      });
-    }
-
-    return {
-      linkedEntityType: "gabinetPatient",
-      linkedEntityId: String(patientId),
-      renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
-    };
-  }
-
-  if (args.action.targetEntityType === "gabinetAppointment") {
-    const permission = await getAutomationEditPermission(
-      ctx,
-      args.organizationId,
-      args.actorUserId,
-      "gabinet_appointments",
-    );
-    if (!permission.allowed) {
-      throw new Error(permission.reason ?? "Permission denied");
-    }
-
-    const appointmentId = targetId as Id<"gabinetAppointments">;
-    const appointment = await ctx.db.get(appointmentId);
-    if (!appointment || appointment.organizationId !== args.organizationId) {
-      throw new Error("Appointment not found");
-    }
-    if (permission.scope === "own" && appointment.createdBy !== args.actorUserId) {
-      throw new Error("Permission denied: you can only edit your own records");
-    }
-    if (args.action.fieldKind === "custom") {
-      throw new Error("Custom appointment field updates are not supported");
-    }
-    if (!STANDARD_FIELD_ALLOWLIST.gabinetAppointment.has(args.action.fieldKey)) {
-      throw new Error("Unsupported appointment field update target");
-    }
-
-    await ctx.db.patch(appointmentId, {
-      [args.action.fieldKey]: coercedValue,
-      updatedAt: now,
-    } as never);
-
-    if (args.actorUserId) {
-      await logActivity(ctx, {
-        organizationId: args.organizationId,
-        entityType: "gabinetAppointment",
-        entityId: appointmentId,
-        action: "updated",
-        description: `Updated appointment field ${args.action.fieldKey} via automation`,
-        performedBy: args.actorUserId,
-      });
-    }
-
-    return {
-      linkedEntityType: "gabinetAppointment",
-      linkedEntityId: String(appointmentId),
-      renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
-    };
-  }
-
   const permission = await getAutomationEditPermission(
     ctx,
     args.organizationId,
     args.actorUserId,
-    "gabinet_employees",
-    { requireAdmin: true },
+    descriptor.permissionFeature,
+    descriptor.requireAdmin ? { requireAdmin: true } : undefined,
   );
   if (!permission.allowed) {
     throw new Error(permission.reason ?? "Permission denied");
   }
 
-  const employeeId = targetId as Id<"gabinetEmployees">;
-  const employee = await ctx.db.get(employeeId);
-  if (!employee || employee.organizationId !== args.organizationId) {
-    throw new Error("Employee not found");
+  const entityId = targetId as Id<
+    "gabinetPatients" | "gabinetAppointments" | "gabinetEmployees" | "leads"
+  >;
+  const entity = (await ctx.db.get(entityId as never)) as
+    | ({ organizationId: Id<"organizations">; customFields?: unknown } & Record<string, unknown>)
+    | null;
+  if (!entity || entity.organizationId !== args.organizationId) {
+    throw new Error(descriptor.notFoundMessage);
   }
-  if (permission.scope === "own" && employee.createdBy !== args.actorUserId) {
+  if (permission.scope === "own" && !descriptor.canEditOwn(entity, args.actorUserId)) {
     throw new Error("Permission denied: you can only edit your own records");
   }
-  if (args.action.fieldKind === "custom") {
-    throw new Error("Custom employee field updates are not supported");
-  }
-  if (!STANDARD_FIELD_ALLOWLIST.gabinetEmployee.has(args.action.fieldKey)) {
-    throw new Error("Unsupported employee field update target");
-  }
 
-  await ctx.db.patch(employeeId, {
-    [args.action.fieldKey]: coercedValue,
-    updatedAt: now,
-  } as never);
+  const renderedValue = applyTemplate(args.action.valueTemplate, args.payload);
+  const coercedValue = coerceAutomationFieldValue(renderedValue, args.action.valueType);
+  const now = Date.now();
+
+  if (args.action.fieldKind === "custom") {
+    if (!descriptor.supportsCustom) {
+      throw new Error(descriptor.unsupportedCustomFieldMessage);
+    }
+
+    const existingCustomFields =
+      entity.customFields && typeof entity.customFields === "object"
+        ? (entity.customFields as Record<string, unknown>)
+        : {};
+    await ctx.db.patch(entityId as never, {
+      customFields: {
+        ...existingCustomFields,
+        [args.action.fieldKey]: coercedValue,
+      },
+      updatedAt: now,
+    } as never);
+  } else {
+    if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.action.fieldKey)) {
+      throw new Error(descriptor.unsupportedStandardFieldMessage);
+    }
+    await ctx.db.patch(entityId as never, {
+      [args.action.fieldKey]: coercedValue,
+      updatedAt: now,
+    } as never);
+  }
 
   if (args.actorUserId) {
+    const activityLabelByEntity: Record<AutomationTargetEntityType, string> = {
+      gabinetPatient: "patient",
+      gabinetAppointment: "appointment",
+      gabinetEmployee: "employee",
+      lead: "lead",
+    };
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
-      entityType: "gabinetEmployee",
-      entityId: employeeId,
+      entityType: descriptor.linkedEntityType,
+      entityId,
       action: "updated",
-      description: `Updated employee field ${args.action.fieldKey} via automation`,
+      description: `Updated ${activityLabelByEntity[descriptor.linkedEntityType]} field ${args.action.fieldKey} via automation`,
       performedBy: args.actorUserId,
     });
   }
 
   return {
-    linkedEntityType: "gabinetEmployee",
-    linkedEntityId: String(employeeId),
+    linkedEntityType: descriptor.linkedEntityType,
+    linkedEntityId: String(entityId),
     renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
   };
 }
@@ -1229,15 +862,7 @@ export const listEventCatalog = query({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 
-    return EVENT_REGISTRY.map((event) => ({
-      module: event.module,
-      eventType: event.eventType,
-      label: event.label,
-      entityType: event.entityType,
-      source: event.source,
-      variableCatalog: event.variables,
-      samplePayload: event.samplePayload,
-    }));
+    return listEventCatalogEntries();
   },
 });
 

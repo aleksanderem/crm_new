@@ -66,7 +66,6 @@ function AutomationSettingsOverview() {
   } = useQuery(
     convexQuery(api.automation.listRules, {
       organizationId,
-      module: "gabinet",
     }),
   );
 
@@ -79,7 +78,6 @@ function AutomationSettingsOverview() {
   } = useQuery(
     convexQuery(api.automation.listRuns, {
       organizationId,
-      module: "gabinet",
       limit: 20,
     }),
   );

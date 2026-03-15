@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -14,8 +14,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,12 +109,31 @@ function TreatmentDetail() {
   const [aptDateFrom, setAptDateFrom] = useState("");
   const [aptDateTo, setAptDateTo] = useState("");
 
+  // Variants tab state
+  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
+  const [editingVariant, setEditingVariant] = useState<string | null>(null);
+  const [variantForm, setVariantForm] = useState({
+    name: "",
+    price: "" as string,
+    duration: "" as string,
+    description: "",
+    shortDescription: "",
+    isActive: true,
+    overridePrice: false,
+    overrideDuration: false,
+    overrideDescription: false,
+    overrideShortDescription: false,
+  });
+
   // Mutations
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
   const saveTreatmentParameters = useMutation(api.gabinet.treatments.saveTreatmentParameters);
   const setRequiredDocumentTemplates = useMutation(api.gabinet.treatments.setRequiredDocumentTemplates);
   const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
+  const createVariantMut = useMutation(api.gabinet.treatments.createVariant);
+  const updateVariantMut = useMutation(api.gabinet.treatments.updateVariant);
+  const deleteVariantMut = useMutation(api.gabinet.treatments.deleteVariant);
 
   // Queries
   const { data: treatment, isLoading } = useQuery(
@@ -139,6 +169,13 @@ function TreatmentDetail() {
 
   const { data: treatmentDocTemplates } = useQuery(
     convexQuery(api.gabinet.treatments.getTreatmentDocumentTemplates, {
+      organizationId,
+      treatmentId: treatmentId as Id<"gabinetTreatments">,
+    }),
+  );
+
+  const { data: variants } = useQuery(
+    convexQuery(api.gabinet.treatments.listVariants, {
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
     }),
@@ -317,6 +354,110 @@ function TreatmentDetail() {
     toast.success(t("common.saved"));
   };
 
+  // --- Variant handlers ---
+
+  const resetVariantForm = useCallback(() => {
+    setVariantForm({
+      name: "",
+      price: "",
+      duration: "",
+      description: "",
+      shortDescription: "",
+      isActive: true,
+      overridePrice: false,
+      overrideDuration: false,
+      overrideDescription: false,
+      overrideShortDescription: false,
+    });
+    setEditingVariant(null);
+  }, []);
+
+  const openCreateVariantDialog = useCallback(() => {
+    resetVariantForm();
+    setVariantDialogOpen(true);
+  }, [resetVariantForm]);
+
+  const openEditVariantDialog = useCallback(
+    (variant: NonNullable<typeof variants>[number]) => {
+      setEditingVariant(variant._id);
+      setVariantForm({
+        name: variant.name,
+        price: variant.price !== undefined ? String(variant.price) : "",
+        duration: variant.duration !== undefined ? String(variant.duration) : "",
+        description: variant.description ?? "",
+        shortDescription: variant.shortDescription ?? "",
+        isActive: variant.isActive ?? true,
+        overridePrice: !variant.priceInherited,
+        overrideDuration: !variant.durationInherited,
+        overrideDescription: !variant.descriptionInherited,
+        overrideShortDescription: !variant.shortDescriptionInherited,
+      });
+      setVariantDialogOpen(true);
+    },
+    [],
+  );
+
+  const handleSaveVariant = async () => {
+    if (!variantForm.name.trim()) return;
+    setIsSubmitting(true);
+    try {
+      if (editingVariant) {
+        await updateVariantMut({
+          organizationId,
+          variantId: editingVariant as Id<"gabinetTreatmentVariants">,
+          name: variantForm.name,
+          ...(variantForm.overridePrice
+            ? { price: parseFloat(variantForm.price) || 0 }
+            : { clearPrice: true }),
+          ...(variantForm.overrideDuration
+            ? { duration: parseInt(variantForm.duration) || 0 }
+            : { clearDuration: true }),
+          ...(variantForm.overrideDescription
+            ? { description: variantForm.description || undefined }
+            : { clearDescription: true }),
+          ...(variantForm.overrideShortDescription
+            ? { shortDescription: variantForm.shortDescription || undefined }
+            : { clearShortDescription: true }),
+          isActive: variantForm.isActive,
+        });
+        toast.success(t("gabinet.treatmentDetail.variants.saved"));
+      } else {
+        await createVariantMut({
+          organizationId,
+          treatmentId: treatmentId as Id<"gabinetTreatments">,
+          name: variantForm.name,
+          ...(variantForm.overridePrice
+            ? { price: parseFloat(variantForm.price) || 0 }
+            : {}),
+          ...(variantForm.overrideDuration
+            ? { duration: parseInt(variantForm.duration) || 0 }
+            : {}),
+          ...(variantForm.overrideDescription && variantForm.description
+            ? { description: variantForm.description }
+            : {}),
+          ...(variantForm.overrideShortDescription && variantForm.shortDescription
+            ? { shortDescription: variantForm.shortDescription }
+            : {}),
+          isActive: variantForm.isActive,
+        });
+        toast.success(t("gabinet.treatmentDetail.variants.created"));
+      }
+      setVariantDialogOpen(false);
+      resetVariantForm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteVariant = async (variantId: string) => {
+    if (!window.confirm(t("gabinet.treatmentDetail.variants.confirmDelete"))) return;
+    await deleteVariantMut({
+      organizationId,
+      variantId: variantId as Id<"gabinetTreatmentVariants">,
+    });
+    toast.success(t("gabinet.treatmentDetail.variants.deleted"));
+  };
+
   const statusBadgeVariant = (status: string) => {
     switch (status) {
       case "completed":
@@ -485,6 +626,22 @@ function TreatmentDetail() {
                 </CardContent>
               </Card>
 
+              {/* Short description card */}
+              {treatment.shortDescription && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">
+                      {t("gabinet.treatmentDetail.shortDescription")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {treatment.shortDescription}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Description card */}
               {treatment.description && (
                 <Card>
@@ -555,6 +712,9 @@ function TreatmentDetail() {
                 </TabsTrigger>
                 <TabsTrigger value="employees" className={tabTriggerClass}>
                   {t("gabinet.treatmentDetail.tabs.employees")}
+                </TabsTrigger>
+                <TabsTrigger value="variants" className={tabTriggerClass}>
+                  {t("gabinet.treatmentDetail.tabs.variants")}
                 </TabsTrigger>
                 <TabsTrigger value="appointments" className={tabTriggerClass}>
                   {t("gabinet.treatmentDetail.tabs.appointments")}
@@ -941,6 +1101,105 @@ function TreatmentDetail() {
                 </div>
               </TabsContent>
 
+              {/* ========== Variants Tab ========== */}
+              <TabsContent value="variants" className="m-0 p-6">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">
+                          {t("gabinet.treatmentDetail.variants.title")}
+                        </CardTitle>
+                        <Button size="sm" onClick={openCreateVariantDialog}>
+                          <Plus className="h-4 w-4 mr-1" variant="stroke" />
+                          {t("gabinet.treatmentDetail.variants.addVariant")}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.treatmentDetail.variants.description")}
+                      </p>
+
+                      {(variants ?? []).length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">
+                          {t("gabinet.treatmentDetail.variants.noVariants")}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(variants ?? []).map((variant) => (
+                            <div
+                              key={variant._id}
+                              className="flex items-center justify-between rounded-md border p-4"
+                            >
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{variant.name}</span>
+                                  <Badge
+                                    variant={(variant.isActive ?? true) ? "default" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {(variant.isActive ?? true)
+                                      ? t("gabinet.treatmentDetail.variants.active")
+                                      : t("gabinet.treatmentDetail.variants.inactive")}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className={variant.priceInherited ? "text-muted-foreground/60 italic" : "text-primary font-medium"}>
+                                    {formatCurrency(variant.resolvedPrice, treatment.currency ?? undefined)}
+                                    {variant.priceInherited && (
+                                      <span className="ml-1 text-xs">
+                                        ({t("gabinet.treatmentDetail.variants.inherited")})
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className={variant.durationInherited ? "text-muted-foreground/60 italic" : "text-primary"}>
+                                    {variant.resolvedDuration} min
+                                    {variant.durationInherited && (
+                                      <span className="ml-1 text-xs">
+                                        ({t("gabinet.treatmentDetail.variants.inherited")})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                {variant.resolvedShortDescription && (
+                                  <p className={`text-xs ${variant.shortDescriptionInherited ? "text-muted-foreground/60 italic" : "text-muted-foreground"}`}>
+                                    {variant.resolvedShortDescription}
+                                    {variant.shortDescriptionInherited && (
+                                      <span className="ml-1">
+                                        ({t("gabinet.treatmentDetail.variants.inherited")})
+                                      </span>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => openEditVariantDialog(variant)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => handleDeleteVariant(variant._id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
               {/* ========== Appointments Tab ========== */}
               <TabsContent value="appointments" className="m-0 p-6">
                 <div className="space-y-4">
@@ -1075,6 +1334,233 @@ function TreatmentDetail() {
           isSubmitting={isSubmitting}
         />
       </SidePanel>
+
+      {/* Variant create/edit dialog */}
+      <Dialog
+        open={variantDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVariantDialogOpen(false);
+            resetVariantForm();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingVariant
+                ? t("gabinet.treatmentDetail.variants.editVariant")
+                : t("gabinet.treatmentDetail.variants.addVariant")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("gabinet.treatmentDetail.variants.description")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Variant name */}
+            <div className="space-y-2">
+              <Label>{t("gabinet.treatmentDetail.variants.name")}</Label>
+              <Input
+                value={variantForm.name}
+                onChange={(e) =>
+                  setVariantForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder={t("gabinet.treatmentDetail.variants.namePlaceholder")}
+              />
+            </div>
+
+            {/* Active toggle */}
+            <div className="flex items-center justify-between">
+              <Label>{t("gabinet.treatmentDetail.variants.active")}</Label>
+              <Switch
+                checked={variantForm.isActive}
+                onCheckedChange={(checked) =>
+                  setVariantForm((prev) => ({ ...prev, isActive: checked }))
+                }
+              />
+            </div>
+
+            {/* Price override */}
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{t("gabinet.treatmentDetail.variants.price")}</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {variantForm.overridePrice
+                      ? t("gabinet.treatmentDetail.variants.overridden")
+                      : t("gabinet.treatmentDetail.variants.inherited")}
+                  </span>
+                  <Switch
+                    checked={variantForm.overridePrice}
+                    onCheckedChange={(checked) =>
+                      setVariantForm((prev) => ({
+                        ...prev,
+                        overridePrice: checked,
+                        price: checked ? (prev.price || String(treatment.price)) : "",
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              {variantForm.overridePrice ? (
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={variantForm.price}
+                  onChange={(e) =>
+                    setVariantForm((prev) => ({ ...prev, price: e.target.value }))
+                  }
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic">
+                  {t("gabinet.treatmentDetail.variants.parentValue", {
+                    value: formatCurrency(treatment.price, treatment.currency ?? undefined),
+                  })}
+                </p>
+              )}
+            </div>
+
+            {/* Duration override */}
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{t("gabinet.treatmentDetail.variants.duration")}</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {variantForm.overrideDuration
+                      ? t("gabinet.treatmentDetail.variants.overridden")
+                      : t("gabinet.treatmentDetail.variants.inherited")}
+                  </span>
+                  <Switch
+                    checked={variantForm.overrideDuration}
+                    onCheckedChange={(checked) =>
+                      setVariantForm((prev) => ({
+                        ...prev,
+                        overrideDuration: checked,
+                        duration: checked ? (prev.duration || String(treatment.duration)) : "",
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              {variantForm.overrideDuration ? (
+                <Input
+                  type="number"
+                  value={variantForm.duration}
+                  onChange={(e) =>
+                    setVariantForm((prev) => ({ ...prev, duration: e.target.value }))
+                  }
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic">
+                  {t("gabinet.treatmentDetail.variants.parentValue", {
+                    value: `${treatment.duration} min`,
+                  })}
+                </p>
+              )}
+            </div>
+
+            {/* Short Description override */}
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{t("gabinet.treatmentDetail.variants.shortDescription")}</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {variantForm.overrideShortDescription
+                      ? t("gabinet.treatmentDetail.variants.overridden")
+                      : t("gabinet.treatmentDetail.variants.inherited")}
+                  </span>
+                  <Switch
+                    checked={variantForm.overrideShortDescription}
+                    onCheckedChange={(checked) =>
+                      setVariantForm((prev) => ({
+                        ...prev,
+                        overrideShortDescription: checked,
+                        shortDescription: checked ? (prev.shortDescription || (treatment.shortDescription ?? "")) : "",
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              {variantForm.overrideShortDescription ? (
+                <Input
+                  value={variantForm.shortDescription}
+                  onChange={(e) =>
+                    setVariantForm((prev) => ({ ...prev, shortDescription: e.target.value }))
+                  }
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic">
+                  {treatment.shortDescription
+                    ? t("gabinet.treatmentDetail.variants.parentValue", {
+                        value: treatment.shortDescription,
+                      })
+                    : "—"}
+                </p>
+              )}
+            </div>
+
+            {/* Description override */}
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{t("gabinet.treatmentDetail.variants.description")}</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {variantForm.overrideDescription
+                      ? t("gabinet.treatmentDetail.variants.overridden")
+                      : t("gabinet.treatmentDetail.variants.inherited")}
+                  </span>
+                  <Switch
+                    checked={variantForm.overrideDescription}
+                    onCheckedChange={(checked) =>
+                      setVariantForm((prev) => ({
+                        ...prev,
+                        overrideDescription: checked,
+                        description: checked ? (prev.description || (treatment.description ?? "")) : "",
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              {variantForm.overrideDescription ? (
+                <Textarea
+                  value={variantForm.description}
+                  onChange={(e) =>
+                    setVariantForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  rows={3}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic line-clamp-2">
+                  {treatment.description
+                    ? t("gabinet.treatmentDetail.variants.parentValue", {
+                        value: treatment.description,
+                      })
+                    : "—"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVariantDialogOpen(false);
+                resetVariantForm();
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleSaveVariant}
+              disabled={!variantForm.name.trim() || isSubmitting}
+            >
+              {isSubmitting ? t("common.saving") : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

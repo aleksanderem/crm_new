@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -18,6 +18,7 @@ import {
   type AutomationCustomFieldDefinition,
   type AutomationEmailTemplateRecord,
   type AutomationRuleRecord,
+  type AutomationUpdateFieldTargetEntityType,
 } from "@/components/settings/automation-builder/automation-simple-presets";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,6 @@ function EditAutomationRulePage() {
   } = useQuery(
     convexQuery(api.automation.listRules, {
       organizationId,
-      module: "gabinet",
     }),
   );
 
@@ -94,64 +94,51 @@ function EditAutomationRulePage() {
     }),
   );
 
-  const {
-    data: patientCustomFields,
-    isPending: isPatientCustomFieldsPending,
-    isError: isPatientCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetPatient",
-    }),
+  const customFieldEntityTypes = useMemo<AutomationUpdateFieldTargetEntityType[]>(
+    () => ["gabinetPatient", "gabinetAppointment", "gabinetEmployee", "lead"],
+    [],
   );
 
-  const {
-    data: appointmentCustomFields,
-    isPending: isAppointmentCustomFieldsPending,
-    isError: isAppointmentCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetAppointment",
-    }),
-  );
+  const customFieldResults = useQueries({
+    queries: customFieldEntityTypes.map((entityType) =>
+      convexQuery(api.customFields.getDefinitions, {
+        organizationId,
+        entityType,
+      }),
+    ),
+  });
 
-  const {
-    data: employeeCustomFields,
-    isPending: isEmployeeCustomFieldsPending,
-    isError: isEmployeeCustomFieldsError,
-  } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "gabinetEmployee",
-    }),
-  );
+  const customFieldsByEntityType = useMemo<
+    Partial<Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>>
+  >(() => {
+    return customFieldEntityTypes.reduce(
+      (acc, entityType, index) => {
+        acc[entityType] =
+          (customFieldResults[index]?.data as AutomationCustomFieldDefinition[] | undefined) ?? [];
+        return acc;
+      },
+      {} as Partial<
+        Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>
+      >,
+    );
+  }, [customFieldEntityTypes, customFieldResults]);
 
-  const gabinetEvents = useMemo(
-    () =>
-      (eventCatalog ?? []).filter(
-        (event) => event.module === "gabinet",
-      ) as AutomationBuilderEventCatalogEntry[],
-    [eventCatalog],
-  );
+  const isCustomFieldsPending = customFieldResults.some((result) => result.isPending);
+  const isCustomFieldsError = customFieldResults.some((result) => result.isError);
 
   const isLoading =
     isRulesPending ||
     isEventCatalogPending ||
     isActionCapabilitiesPending ||
     isEmailTemplatesPending ||
-    isPatientCustomFieldsPending ||
-    isAppointmentCustomFieldsPending ||
-    isEmployeeCustomFieldsPending;
+    isCustomFieldsPending;
 
   const isError =
     isRulesError ||
     isEventCatalogError ||
     isActionCapabilitiesError ||
     isEmailTemplatesError ||
-    isPatientCustomFieldsError ||
-    isAppointmentCustomFieldsError ||
-    isEmployeeCustomFieldsError;
+    isCustomFieldsError;
 
   const typedRules = (rules ?? []) as RuleRecord[];
   const rule = typedRules.find((item) => item._id === ruleId);
@@ -159,9 +146,13 @@ function EditAutomationRulePage() {
   const playgroundValue = useMemo(
     () =>
       rule && actionCapabilities
-        ? classifyAutomationPlaygroundRule(rule, gabinetEvents, actionCapabilities)
+        ? classifyAutomationPlaygroundRule(
+            rule,
+            (eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[],
+            actionCapabilities,
+          )
         : null,
-    [actionCapabilities, gabinetEvents, rule],
+    [actionCapabilities, eventCatalog, rule],
   );
 
   const handleCancel = () => {
@@ -330,12 +321,10 @@ function EditAutomationRulePage() {
 
       {playgroundValue ? (
         <AutomationSimpleMode
-          eventCatalog={gabinetEvents}
+          eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
           emailTemplates={emailTemplates as AutomationEmailTemplateRecord[]}
-          patientCustomFields={patientCustomFields as AutomationCustomFieldDefinition[]}
-          appointmentCustomFields={appointmentCustomFields as AutomationCustomFieldDefinition[]}
-          employeeCustomFields={employeeCustomFields as AutomationCustomFieldDefinition[]}
+          customFieldsByEntityType={customFieldsByEntityType}
           initialValue={playgroundValue}
           isSubmitting={isSubmitting}
           onCancel={handleCancel}

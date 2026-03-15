@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM + Gabinet — Mapa Przepływów Danych</title>
+<style>
+  :root {
+    --bg: #0f0f12;
+    --surface: #1a1a22;
+    --surface2: #22222d;
+    --border: #2d2d3a;
+    --text: #e4e4eb;
+    --text-dim: #8888a0;
+    --accent: #6366f1;
+    --accent-dim: #4f46e5;
+
+    /* Layer colors */
+    --platform: #3b82f6;
+    --platform-bg: #1e3a5f;
+    --crm: #10b981;
+    --crm-bg: #1a3a2e;
+    --gabinet: #f59e0b;
+    --gabinet-bg: #3a2e1a;
+    --shared: #8b5cf6;
+    --shared-bg: #2a1f4a;
+    --frontend: #ec4899;
+    --frontend-bg: #3a1a2e;
+    --external: #6b7280;
+    --external-bg: #22222d;
+
+    /* Connection colors */
+    --conn-data: #3b82f6;
+    --conn-mutation: #ef4444;
+    --conn-query: #10b981;
+    --conn-link: #f59e0b;
+    --conn-event: #8b5cf6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: 1fr auto;
+    height: 100vh;
+  }
+
+  .sidebar {
+    grid-row: 1 / 3;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .sidebar h1 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .sidebar .subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+
+  .preset-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .preset-btn:hover { background: var(--border); }
+  .preset-btn.active { border-color: var(--accent); background: rgba(99,102,241,0.12); }
+
+  .layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .layer-toggle input { display: none; }
+
+  .layer-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+  }
+
+  .layer-toggle input:not(:checked) + .layer-dot { opacity: 0.25; }
+
+  .conn-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 11px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .conn-toggle input { display: none; }
+
+  .conn-line-preview {
+    width: 20px;
+    height: 2px;
+    flex-shrink: 0;
+    border-radius: 1px;
+  }
+
+  .conn-toggle input:not(:checked) + .conn-line-preview { opacity: 0.2; }
+
+  .comments-section {
+    margin-top: 16px;
+  }
+
+  .comment-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    position: relative;
+  }
+
+  .comment-item .target { font-weight: 600; color: var(--accent); font-size: 10px; }
+  .comment-item .text { margin-top: 4px; color: var(--text-dim); line-height: 1.4; }
+
+  .comment-delete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .comment-delete:hover { color: #ef4444; }
+
+  .canvas-container {
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(99,102,241,0.03), transparent 70%),
+      var(--bg);
+  }
+
+  .canvas-container:active { cursor: grabbing; }
+
+  .canvas-container svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .zoom-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zoom-btn:hover { background: var(--surface2); }
+
+  .search-box {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    margin-bottom: 12px;
+  }
+
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text-dim); }
+
+  .prompt-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .prompt-text {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+
+  .copy-btn {
+    padding: 6px 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover { background: var(--accent-dim); }
+
+  /* Node tooltip */
+  .node-tooltip {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text);
+    pointer-events: none;
+    z-index: 100;
+    max-width: 280px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none;
+  }
+
+  .node-tooltip .tt-title { font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+  .node-tooltip .tt-file { color: var(--text-dim); font-family: monospace; font-size: 10px; margin-bottom: 6px; }
+  .node-tooltip .tt-desc { color: var(--text-dim); line-height: 1.4; }
+  .node-tooltip .tt-connections { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+  .node-tooltip .tt-conn-item { font-size: 10px; color: var(--text-dim); padding: 1px 0; }
+
+  /* Comment modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 360px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+
+  .modal h3 { font-size: 14px; margin-bottom: 4px; }
+  .modal .modal-file { font-size: 11px; color: var(--text-dim); font-family: monospace; margin-bottom: 12px; }
+
+  .modal textarea {
+    width: 100%;
+    height: 80px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .modal textarea:focus { border-color: var(--accent); }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .modal-actions button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  .btn-cancel { background: var(--surface2); color: var(--text); }
+  .btn-save { background: var(--accent); color: white; border-color: var(--accent) !important; }
+
+  .node-count-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar">
+    <h1>Mapa Przepływów Danych</h1>
+    <div class="subtitle">CRM + Gabinet Kosmetyczny</div>
+
+    <input type="text" class="search-box" id="searchBox" placeholder="Szukaj komponentu...">
+
+    <div class="section-title">Widoki</div>
+    <div id="presets"></div>
+
+    <div class="section-title">Warstwy</div>
+    <div id="layers"></div>
+
+    <div class="section-title">Typy połączeń</div>
+    <div id="connTypes"></div>
+
+    <div class="comments-section">
+      <div class="section-title">Komentarze (<span id="commentCount">0</span>)</div>
+      <div id="commentsList"></div>
+    </div>
+  </div>
+
+  <div class="canvas-container" id="canvasContainer">
+    <div class="node-count-badge" id="nodeCount"></div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+      <button class="zoom-btn" onclick="zoomOut()">&minus;</button>
+      <button class="zoom-btn" onclick="resetView()" style="font-size:11px">R</button>
+    </div>
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="prompt-bar">
+    <div class="prompt-text" id="promptText">Kliknij na komponent, aby dodać komentarz. Prompt wygeneruje się automatycznie.</div>
+    <button class="copy-btn" id="copyBtn" onclick="copyPrompt()">Kopiuj</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="commentModal">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div class="modal-file" id="modalFile"></div>
+    <textarea id="modalText" placeholder="Opisz co chcesz zmienić, dodać lub naprawić..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Anuluj</button>
+      <button class="btn-save" onclick="saveComment()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div class="node-tooltip" id="tooltip">
+  <div class="tt-title" id="ttTitle"></div>
+  <div class="tt-file" id="ttFile"></div>
+  <div class="tt-desc" id="ttDesc"></div>
+  <div class="tt-connections" id="ttConns"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════
+
+const LAYERS = [
+  { id: 'platform', label: 'Platforma (Auth, Org, Billing)', color: '#3b82f6' },
+  { id: 'crm', label: 'Moduł CRM', color: '#10b981' },
+  { id: 'gabinet', label: 'Moduł Gabinet', color: '#f59e0b' },
+  { id: 'shared', label: 'Usługi Wspólne', color: '#8b5cf6' },
+  { id: 'frontend', label: 'Frontend (Routes + UI)', color: '#ec4899' },
+  { id: 'external', label: 'Zewnętrzne API', color: '#6b7280' },
+];
+
+const CONN_TYPES = [
+  { id: 'data', label: 'Przepływ danych (query)', color: '#3b82f6', dash: '' },
+  { id: 'mutation', label: 'Mutacja (zapis)', color: '#ef4444', dash: '6,3' },
+  { id: 'link', label: 'Relacja (FK)', color: '#f59e0b', dash: '2,4' },
+  { id: 'event', label: 'Zdarzenie / Hook', color: '#8b5cf6', dash: '4,4' },
+  { id: 'import', label: 'Import / Zależność', color: '#6b7280', dash: '1,3' },
+];
+
+const PRESETS = [
+  { id: 'all', label: 'Pełny System', layers: ['platform','crm','gabinet','shared','frontend','external'] },
+  { id: 'gabinet-flow', label: 'Przepływ Gabinetu', layers: ['platform','gabinet','shared','external'] },
+  { id: 'crm-flow', label: 'Przepływ CRM', layers: ['platform','crm','shared','external'] },
+  { id: 'backend', label: 'Tylko Backend', layers: ['platform','crm','gabinet','shared'] },
+  { id: 'frontend-only', label: 'Tylko Frontend', layers: ['frontend','platform'] },
+  { id: 'appointments', label: 'Cykl Wizyty', layers: ['gabinet','platform','shared','external'] },
+];
+
+// Nodes — each with id, label, subtitle (file path), layer, description, x, y
+const NODES = [
+  // ── PLATFORM ──
+  { id: 'users', label: 'Users', subtitle: 'convex/app.ts', layer: 'platform', desc: 'Tabela użytkowników, profil, onboarding, zdjęcie', x: 120, y: 80 },
+  { id: 'organizations', label: 'Organizations', subtitle: 'convex/organizations.ts', layer: 'platform', desc: 'Multi-tenant: org, seat usage, ustawienia', x: 330, y: 80 },
+  { id: 'teamMemberships', label: 'TeamMemberships', subtitle: 'convex/organizations.ts', layer: 'platform', desc: 'User ↔ Org z rolą (owner/admin/member/viewer)', x: 220, y: 160 },
+  { id: 'permissions', label: 'RBAC Permissions', subtitle: 'convex/permissions.ts', layer: 'platform', desc: 'orgPermissions: feature × action × scope matrix', x: 450, y: 160 },
+  { id: 'auth', label: 'Auth (@convex-dev/auth)', subtitle: 'convex/auth.ts', layer: 'platform', desc: 'Logowanie, rejestracja, sesje, tokeny', x: 60, y: 160 },
+  { id: 'plans', label: 'Plans & Subscriptions', subtitle: 'convex/stripe.ts', layer: 'platform', desc: 'Plany, subskrypcje Stripe, seat limits', x: 550, y: 80 },
+  { id: 'notifications', label: 'Notifications', subtitle: 'convex/notifications.ts', layer: 'platform', desc: 'In-app powiadomienia, createNotificationDirect()', x: 660, y: 160 },
+  { id: 'auditLog', label: 'Audit Log', subtitle: 'convex/auditLog.ts', layer: 'platform', desc: 'Historia zmian: logAudit(ctx, data)', x: 560, y: 160 },
+  { id: 'invitations', label: 'Invitations', subtitle: 'convex/invitations.ts', layer: 'platform', desc: 'Zaproszenia do organizacji z sprawdzaniem seat limit', x: 430, y: 80 },
+
+  // ── CRM ──
+  { id: 'contacts', label: 'Contacts', subtitle: 'convex/contacts.ts', layer: 'crm', desc: 'Kontakty: imię, email, telefon, firma, custom fields', x: 80, y: 320 },
+  { id: 'companies', label: 'Companies', subtitle: 'convex/companies.ts', layer: 'crm', desc: 'Firmy: NIP, adres, branża, powiązane kontakty', x: 230, y: 320 },
+  { id: 'leads', label: 'Leads / Deals', subtitle: 'convex/leads.ts', layer: 'crm', desc: 'Szanse sprzedaży: wartość, pipeline stage, probability', x: 380, y: 320 },
+  { id: 'pipelines', label: 'Pipelines', subtitle: 'convex/pipelines.ts', layer: 'crm', desc: 'Lejki sprzedażowe: etapy, akcje, Kanban', x: 380, y: 400 },
+  { id: 'products', label: 'Products', subtitle: 'convex/products.ts', layer: 'crm', desc: 'Katalog produktów: cena, SKU, kategoria', x: 530, y: 320 },
+  { id: 'crmDocuments', label: 'Documents', subtitle: 'convex/documents.ts', layer: 'crm', desc: 'Dokumenty CRM: umowy, oferty, załączniki', x: 530, y: 400 },
+  { id: 'emails', label: 'Emails', subtitle: 'convex/emails.ts', layer: 'crm', desc: 'Wątki email, sync z Gmail, compose, inbox', x: 80, y: 400 },
+  { id: 'calls', label: 'Calls', subtitle: 'convex/calls.ts', layer: 'crm', desc: 'Rejestr rozmów: czas trwania, notatki, nagrania', x: 230, y: 400 },
+  { id: 'activities', label: 'Activities', subtitle: 'convex/activities.ts', layer: 'crm', desc: 'Aktywności per encja: log zmian, zadania', x: 680, y: 320 },
+  { id: 'relationships', label: 'Relationships', subtitle: 'convex/relationships.ts', layer: 'crm', desc: 'Polimorficzne M:N via objectRelationships', x: 680, y: 400 },
+  { id: 'customFields', label: 'Custom Fields', subtitle: 'convex/customFields.ts', layer: 'crm', desc: 'Definicje + wartości per encja: text, number, select, date', x: 160, y: 465 },
+  { id: 'savedViews', label: 'Saved Views', subtitle: 'convex/savedViews.ts', layer: 'crm', desc: 'Zapisane filtry / widoki tabel', x: 340, y: 465 },
+
+  // ── GABINET ──
+  { id: 'patients', label: 'Klienci (Patients)', subtitle: 'convex/gabinet/patients.ts', layer: 'gabinet', desc: 'Klienci salonu: PESEL, alergie, kontakt awaryjny, link do contacts', x: 80, y: 600 },
+  { id: 'treatments', label: 'Zabiegi (Treatments)', subtitle: 'convex/gabinet/treatments.ts', layer: 'gabinet', desc: 'Katalog zabiegów: cena, czas, parametry, wymagane dokumenty', x: 280, y: 600 },
+  { id: 'appointments', label: 'Wizyty (Appointments)', subtitle: 'convex/gabinet/appointments.ts', layer: 'gabinet', desc: 'Wizyty: data, pracownik, zabieg, status workflow, przedpłata', x: 480, y: 600 },
+  { id: 'employees', label: 'Pracownicy (Employees)', subtitle: 'convex/gabinet/employees.ts', layer: 'gabinet', desc: 'Pracownicy: specjalizacje, kwalifikacje, dane HR, grafiki', x: 680, y: 600 },
+  { id: 'scheduling', label: 'Grafiki (Scheduling)', subtitle: 'convex/gabinet/scheduling.ts', layer: 'gabinet', desc: 'Okresy grafików, godziny pracy, urlopy, nadgodziny', x: 680, y: 680 },
+  { id: 'packages', label: 'Pakiety Zabiegów', subtitle: 'convex/gabinet/packages.ts', layer: 'gabinet', desc: 'Pakiety z wieloma zabiegami, zużycie, progress bary', x: 280, y: 680 },
+  { id: 'loyalty', label: 'Program Lojalnościowy', subtitle: 'convex/gabinet/loyalty.ts', layer: 'gabinet', desc: 'Punkty, tiery (bronze→platinum), transakcje earn/spend', x: 80, y: 680 },
+  { id: 'gabinetDocs', label: 'Dokumenty Gabinet', subtitle: 'convex/gabinet/documents.ts', layer: 'gabinet', desc: 'Zgody, recepty, skierowania, podpis cyfrowy', x: 480, y: 680 },
+  { id: 'docTemplates', label: 'Szablony Dokumentów', subtitle: 'convex/gabinet/documentTemplates.ts', layer: 'gabinet', desc: 'Szablony: typ, pola, wymagane przez zabiegi', x: 480, y: 750 },
+  { id: 'nudges', label: 'Nudges', subtitle: 'convex/gabinet/nudges.ts', layer: 'gabinet', desc: 'Inteligentne podpowiedzi: wizyty, urlopy, klienci', x: 180, y: 750 },
+  { id: 'patientPortal', label: 'Portal Klienta', subtitle: 'convex/gabinet/patientPortal.ts', layer: 'gabinet', desc: 'OTP login, widok wizyt/dokumentów, profil klienta', x: 80, y: 750 },
+  { id: 'reminders', label: 'Przypomnienia', subtitle: 'convex/gabinet/appointmentReminders.ts', layer: 'gabinet', desc: 'Przypomnienia o wizytach: email + SMS', x: 380, y: 750 },
+
+  // ── SHARED SERVICES ──
+  { id: 'automation', label: 'Automation Engine', subtitle: 'convex/automation.ts', layer: 'shared', desc: 'Reguły automatyzacji: zdarzenia → akcje, logi wykonania', x: 120, y: 900 },
+  { id: 'emailSending', label: 'Email Sending', subtitle: 'convex/emailSending.ts', layer: 'shared', desc: 'Wysyłka email: Resend API, szablony, kolejka', x: 320, y: 900 },
+  { id: 'sms', label: 'SMS Service', subtitle: 'convex/sms.ts', layer: 'shared', desc: 'Wysyłka SMS: konfiguracja per org, eventy', x: 520, y: 900 },
+  { id: 'docInstances', label: 'Document Instances', subtitle: 'convex/documentInstances.ts', layer: 'shared', desc: 'Instancje dokumentów: wypełnione pola, podpisy, PDF', x: 700, y: 900 },
+  { id: 'search', label: 'Global Search', subtitle: 'convex/search.ts', layer: 'shared', desc: 'Pełnotekstowe wyszukiwanie across all entities', x: 120, y: 970 },
+  { id: 'csvImport', label: 'CSV Import/Export', subtitle: 'convex/csvImport.ts', layer: 'shared', desc: 'Import/eksport kontaktów, firm, produktów, klientów', x: 320, y: 970 },
+  { id: 'emailSequences', label: 'Email Sequences', subtitle: 'convex/emailSequences.ts', layer: 'shared', desc: 'Sekwencje email: kroki, enrollments, automatyzacja', x: 520, y: 970 },
+
+  // ── FRONTEND ──
+  { id: 'appSidebar', label: 'App Sidebar', subtitle: 'src/components/layout/app-sidebar.tsx', layer: 'frontend', desc: '3-kolumnowy sidebar: nawigacja + widgety + mini kalendarz', x: 100, y: 1120 },
+  { id: 'orgContext', label: 'Org Context Provider', subtitle: 'src/components/org-context.tsx', layer: 'frontend', desc: 'useOrganization() — kontekst organizacji w całej aplikacji', x: 330, y: 1120 },
+  { id: 'sidebarWidgets', label: 'Sidebar Widgets', subtitle: 'src/components/sidebar-widgets/', layer: 'frontend', desc: 'KPI, SmartAgenda, StaffLoad, NudgeCards, BarRanking', x: 100, y: 1200 },
+  { id: 'dataTable', label: 'Data Table', subtitle: 'src/components/data-table/', layer: 'frontend', desc: 'TanStack Table: sortowanie, filtrowanie, bulk actions', x: 330, y: 1200 },
+  { id: 'kanban', label: 'Kanban Board', subtitle: 'src/components/kanban/', layer: 'frontend', desc: 'DnD pipeline board: @dnd-kit, drag between stages', x: 530, y: 1200 },
+  { id: 'gabinetCalendar', label: 'Gabinet Calendar', subtitle: 'src/components/gabinet/calendar/', layer: 'frontend', desc: 'Kalendarz wizyt: dzień/tydzień/miesiąc, filtry, drukowanie', x: 530, y: 1120 },
+  { id: 'forms', label: 'Entity Forms', subtitle: 'src/components/forms/', layer: 'frontend', desc: 'TanStack Form + Zod: kontakt, firma, lead, dokument', x: 700, y: 1120 },
+  { id: 'emailUI', label: 'Email UI', subtitle: 'src/components/email/', layer: 'frontend', desc: 'Inbox, thread view, compose dialog, entity tab', x: 700, y: 1200 },
+
+  // ── EXTERNAL ──
+  { id: 'stripe', label: 'Stripe', subtitle: 'convex/stripe.ts', layer: 'external', desc: 'Płatności: checkout, subskrypcje, webhook', x: 200, y: 1340 },
+  { id: 'resend', label: 'Resend (Email API)', subtitle: 'convex/emailSending.ts', layer: 'external', desc: 'Transakcyjne emaile: potwierdzenia, przypomnienia', x: 400, y: 1340 },
+  { id: 'google', label: 'Google (OAuth + Gmail)', subtitle: 'convex/google/', layer: 'external', desc: 'Gmail sync, Calendar sync, OAuth tokens', x: 600, y: 1340 },
+  { id: 'convexBaaS', label: 'Convex BaaS', subtitle: 'convex/', layer: 'external', desc: 'Real-time DB, serverless functions, file storage, scheduled jobs', x: 100, y: 1400 },
+];
+
+// Connections
+const CONNECTIONS = [
+  // Platform internal
+  { from: 'users', to: 'teamMemberships', type: 'link', label: 'userId' },
+  { from: 'organizations', to: 'teamMemberships', type: 'link', label: 'orgId' },
+  { from: 'teamMemberships', to: 'permissions', type: 'data', label: 'role → scope' },
+  { from: 'auth', to: 'users', type: 'mutation', label: 'create/verify' },
+  { from: 'plans', to: 'organizations', type: 'link', label: 'subscriptionId' },
+  { from: 'invitations', to: 'teamMemberships', type: 'mutation', label: 'accept → create' },
+  { from: 'invitations', to: 'plans', type: 'data', label: 'check seat limit' },
+
+  // CRM internal
+  { from: 'contacts', to: 'companies', type: 'link', label: 'companyId' },
+  { from: 'leads', to: 'contacts', type: 'link', label: 'contactId' },
+  { from: 'leads', to: 'pipelines', type: 'link', label: 'pipelineStageId' },
+  { from: 'leads', to: 'products', type: 'link', label: 'dealProducts' },
+  { from: 'emails', to: 'contacts', type: 'link', label: 'contactId' },
+  { from: 'calls', to: 'contacts', type: 'link', label: 'contactId' },
+  { from: 'activities', to: 'contacts', type: 'link', label: 'entityId (poly)' },
+  { from: 'activities', to: 'leads', type: 'link', label: 'entityId (poly)' },
+  { from: 'relationships', to: 'contacts', type: 'link', label: 'objectA/B' },
+  { from: 'customFields', to: 'contacts', type: 'data', label: 'entityType+id' },
+  { from: 'customFields', to: 'leads', type: 'data', label: 'entityType+id' },
+
+  // CRM → Platform
+  { from: 'contacts', to: 'organizations', type: 'link', label: 'organizationId' },
+  { from: 'leads', to: 'organizations', type: 'link', label: 'organizationId' },
+
+  // Gabinet internal
+  { from: 'patients', to: 'contacts', type: 'link', label: 'contactId' },
+  { from: 'appointments', to: 'patients', type: 'link', label: 'patientId' },
+  { from: 'appointments', to: 'treatments', type: 'link', label: 'treatmentId' },
+  { from: 'appointments', to: 'employees', type: 'link', label: 'employeeId' },
+  { from: 'employees', to: 'users', type: 'link', label: 'userId' },
+  { from: 'employees', to: 'treatments', type: 'link', label: 'qualifiedTreatmentIds' },
+  { from: 'scheduling', to: 'employees', type: 'link', label: 'employeeId' },
+  { from: 'packages', to: 'patients', type: 'link', label: 'patientId' },
+  { from: 'packages', to: 'treatments', type: 'link', label: 'treatmentId[]' },
+  { from: 'packages', to: 'appointments', type: 'mutation', label: 'usePackageTreatmentsBatch' },
+  { from: 'loyalty', to: 'patients', type: 'link', label: 'patientId' },
+  { from: 'gabinetDocs', to: 'patients', type: 'link', label: 'patientId' },
+  { from: 'gabinetDocs', to: 'appointments', type: 'link', label: 'appointmentId' },
+  { from: 'gabinetDocs', to: 'docTemplates', type: 'link', label: 'templateId' },
+  { from: 'treatments', to: 'docTemplates', type: 'link', label: 'requiredDocumentTemplateIds' },
+  { from: 'nudges', to: 'appointments', type: 'data', label: 'getAppointmentNudges' },
+  { from: 'nudges', to: 'patients', type: 'data', label: 'getPatientNudges' },
+  { from: 'patientPortal', to: 'patients', type: 'data', label: 'OTP → session' },
+  { from: 'reminders', to: 'appointments', type: 'event', label: 'scheduleReminder' },
+
+  // Gabinet → Platform
+  { from: 'appointments', to: 'organizations', type: 'link', label: 'organizationId' },
+  { from: 'patients', to: 'organizations', type: 'link', label: 'organizationId' },
+
+  // Gabinet → Shared
+  { from: 'reminders', to: 'emailSending', type: 'event', label: 'send reminder email' },
+  { from: 'reminders', to: 'sms', type: 'event', label: 'send reminder SMS' },
+  { from: 'gabinetDocs', to: 'docInstances', type: 'mutation', label: 'createInstance' },
+
+  // CRM → Shared
+  { from: 'emails', to: 'emailSending', type: 'mutation', label: 'send email' },
+  { from: 'automation', to: 'emailSending', type: 'event', label: 'action: send_email' },
+  { from: 'automation', to: 'contacts', type: 'event', label: 'trigger: contact.*' },
+  { from: 'automation', to: 'leads', type: 'event', label: 'trigger: lead.*' },
+  { from: 'automation', to: 'appointments', type: 'event', label: 'trigger: appointment.*' },
+  { from: 'emailSequences', to: 'emailSending', type: 'mutation', label: 'step → send' },
+  { from: 'emailSequences', to: 'contacts', type: 'link', label: 'enrollment' },
+
+  // Shared → External
+  { from: 'emailSending', to: 'resend', type: 'mutation', label: 'API call' },
+  { from: 'sms', to: 'resend', type: 'mutation', label: 'SMS via API' },
+  { from: 'emails', to: 'google', type: 'data', label: 'Gmail sync' },
+  { from: 'plans', to: 'stripe', type: 'data', label: 'Stripe webhooks' },
+
+  // Frontend → Backend (selected key flows)
+  { from: 'appSidebar', to: 'orgContext', type: 'import', label: 'useOrganization()' },
+  { from: 'sidebarWidgets', to: 'nudges', type: 'data', label: 'GabinetGlobalNudges' },
+  { from: 'sidebarWidgets', to: 'appointments', type: 'data', label: 'SmartAgenda' },
+  { from: 'gabinetCalendar', to: 'appointments', type: 'data', label: 'listByDateRange' },
+  { from: 'gabinetCalendar', to: 'employees', type: 'data', label: 'filter by employee' },
+  { from: 'dataTable', to: 'contacts', type: 'data', label: 'list query' },
+  { from: 'dataTable', to: 'leads', type: 'data', label: 'list query' },
+  { from: 'kanban', to: 'leads', type: 'mutation', label: 'drag → updateStage' },
+  { from: 'emailUI', to: 'emails', type: 'data', label: 'inbox threads' },
+  { from: 'forms', to: 'contacts', type: 'mutation', label: 'create/update' },
+  { from: 'forms', to: 'appointments', type: 'mutation', label: 'create/update' },
+
+  // Cross-module
+  { from: 'search', to: 'contacts', type: 'data', label: 'searchIndex' },
+  { from: 'search', to: 'leads', type: 'data', label: 'searchIndex' },
+  { from: 'search', to: 'patients', type: 'data', label: 'searchIndex' },
+  { from: 'search', to: 'treatments', type: 'data', label: 'searchIndex' },
+  { from: 'csvImport', to: 'contacts', type: 'mutation', label: 'bulk create' },
+  { from: 'csvImport', to: 'patients', type: 'mutation', label: 'bulk create' },
+
+  // Convex BaaS
+  { from: 'convexBaaS', to: 'organizations', type: 'data', label: 'real-time subscriptions' },
+];
+
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+
+const state = {
+  layers: {},
+  connTypes: {},
+  comments: [],
+  activePreset: 'all',
+  zoom: 0.85,
+  panX: 20,
+  panY: 10,
+  search: '',
+  modalTarget: null,
+  highlightNode: null,
+};
+
+LAYERS.forEach(l => state.layers[l.id] = true);
+CONN_TYPES.forEach(c => state.connTypes[c.id] = true);
+
+
+// ═══════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════
+
+const svg = document.getElementById('canvas');
+const container = document.getElementById('canvasContainer');
+const tooltip = document.getElementById('tooltip');
+
+function getLayerColor(layerId) {
+  const l = LAYERS.find(x => x.id === layerId);
+  return l ? l.color : '#6b7280';
+}
+
+function getLayerBg(layerId) {
+  const map = {
+    platform: 'rgba(59,130,246,0.12)',
+    crm: 'rgba(16,185,129,0.12)',
+    gabinet: 'rgba(245,158,11,0.12)',
+    shared: 'rgba(139,92,246,0.12)',
+    frontend: 'rgba(236,72,153,0.12)',
+    external: 'rgba(107,114,128,0.12)',
+  };
+  return map[layerId] || 'rgba(107,114,128,0.12)';
+}
+
+function getConnColor(type) {
+  const c = CONN_TYPES.find(x => x.id === type);
+  return c ? c.color : '#6b7280';
+}
+
+function getConnDash(type) {
+  const c = CONN_TYPES.find(x => x.id === type);
+  return c ? c.dash : '';
+}
+
+function isNodeVisible(node) {
+  if (!state.layers[node.layer]) return false;
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    return node.label.toLowerCase().includes(q) ||
+           node.subtitle.toLowerCase().includes(q) ||
+           node.desc.toLowerCase().includes(q);
+  }
+  return true;
+}
+
+function isConnVisible(conn) {
+  if (!state.connTypes[conn.type]) return false;
+  const fromNode = NODES.find(n => n.id === conn.from);
+  const toNode = NODES.find(n => n.id === conn.to);
+  return fromNode && toNode && isNodeVisible(fromNode) && isNodeVisible(toNode);
+}
+
+function renderDiagram() {
+  const W = 900;
+  const H = 1500;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.width = (W * state.zoom) + 'px';
+  svg.style.height = (H * state.zoom) + 'px';
+  svg.style.transform = `translate(${state.panX}px, ${state.panY}px)`;
+
+  let html = '';
+
+  // Defs — arrowheads
+  html += '<defs>';
+  CONN_TYPES.forEach(ct => {
+    html += `<marker id="arrow-${ct.id}" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="${ct.color}" opacity="0.7"/>
+    </marker>`;
+  });
+  html += '</defs>';
+
+  // Layer bands (background labels)
+  const bands = [
+    { layer: 'platform', y: 50, h: 180, label: 'PLATFORMA' },
+    { layer: 'crm', y: 280, h: 210, label: 'CRM' },
+    { layer: 'gabinet', y: 560, h: 230, label: 'GABINET KOSMETYCZNY' },
+    { layer: 'shared', y: 860, h: 140, label: 'USŁUGI WSPÓLNE' },
+    { layer: 'frontend', y: 1080, h: 170, label: 'FRONTEND (UI)' },
+    { layer: 'external', y: 1300, h: 130, label: 'ZEWNĘTRZNE API' },
+  ];
+
+  bands.forEach(b => {
+    if (!state.layers[b.layer]) return;
+    const color = getLayerColor(b.layer);
+    html += `<rect x="10" y="${b.y}" width="880" height="${b.h}" rx="8"
+      fill="${getLayerBg(b.layer)}" stroke="${color}" stroke-opacity="0.15" stroke-width="1"/>`;
+    html += `<text x="24" y="${b.y + 18}" fill="${color}" font-size="10" font-weight="700"
+      font-family="-apple-system,system-ui,sans-serif" opacity="0.5" letter-spacing="1.5">${b.label}</text>`;
+  });
+
+  // Connections
+  CONNECTIONS.forEach(conn => {
+    if (!isConnVisible(conn)) return;
+    const from = NODES.find(n => n.id === conn.from);
+    const to = NODES.find(n => n.id === conn.to);
+    if (!from || !to) return;
+
+    const fw = 130, fh = 40;
+    const x1 = from.x + fw/2, y1 = from.y + fh/2;
+    const x2 = to.x + fw/2, y2 = to.y + fh/2;
+
+    const dx = x2 - x1, dy = y2 - y1;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const cx = (x1 + x2) / 2 + (dy > 100 ? 30 : dy < -100 ? -30 : 0);
+    const cy = (y1 + y2) / 2;
+
+    const color = getConnColor(conn.type);
+    const dash = getConnDash(conn.type);
+    const isHighlighted = state.highlightNode && (conn.from === state.highlightNode || conn.to === state.highlightNode);
+    const opacity = state.highlightNode ? (isHighlighted ? 0.9 : 0.08) : 0.35;
+    const width = isHighlighted ? 2.5 : 1.2;
+
+    html += `<path d="M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}"
+      fill="none" stroke="${color}" stroke-width="${width}" stroke-opacity="${opacity}"
+      ${dash ? `stroke-dasharray="${dash}"` : ''}
+      marker-end="url(#arrow-${conn.type})"/>`;
+
+    // Connection label (only on highlight)
+    if (isHighlighted && conn.label) {
+      const lx = (x1 + x2) / 2 + (dy > 100 ? 15 : 0);
+      const ly = (y1 + y2) / 2 - 5;
+      html += `<text x="${lx}" y="${ly}" fill="${color}" font-size="8" font-family="monospace"
+        text-anchor="middle" opacity="0.8">${conn.label}</text>`;
+    }
+  });
+
+  // Nodes
+  const visibleNodes = NODES.filter(isNodeVisible);
+  visibleNodes.forEach(node => {
+    const w = 130, h = 40, r = 6;
+    const color = getLayerColor(node.layer);
+    const hasComment = state.comments.some(c => c.target === node.id);
+    const isHighlighted = state.highlightNode === node.id;
+    const isConnected = state.highlightNode && CONNECTIONS.some(c =>
+      (c.from === state.highlightNode && c.to === node.id) ||
+      (c.to === state.highlightNode && c.from === node.id)
+    );
+    const isDimmed = state.highlightNode && !isHighlighted && !isConnected;
+
+    html += `<g class="node" data-id="${node.id}" style="cursor:pointer;opacity:${isDimmed ? 0.15 : 1}">
+      <rect x="${node.x}" y="${node.y}" width="${w}" height="${h}" rx="${r}"
+        fill="${getLayerBg(node.layer)}"
+        stroke="${hasComment ? '#f59e0b' : color}" stroke-width="${hasComment ? 2 : 1}" stroke-opacity="${isHighlighted ? 1 : 0.5}"/>
+      ${isHighlighted ? `<rect x="${node.x-2}" y="${node.y-2}" width="${w+4}" height="${h+4}" rx="${r+1}"
+        fill="none" stroke="${color}" stroke-width="2" stroke-opacity="0.4"/>` : ''}
+      <text x="${node.x + w/2}" y="${node.y + 16}" text-anchor="middle"
+        fill="${color}" font-size="10" font-weight="600"
+        font-family="-apple-system,system-ui,sans-serif">${node.label}</text>
+      <text x="${node.x + w/2}" y="${node.y + 28}" text-anchor="middle"
+        fill="${color}" font-size="7" opacity="0.5"
+        font-family="'SF Mono','Fira Code',monospace">${node.subtitle.split('/').pop()}</text>
+      ${hasComment ? `<circle cx="${node.x + w - 6}" cy="${node.y + 6}" r="4" fill="#f59e0b"/>` : ''}
+    </g>`;
+  });
+
+  svg.innerHTML = html;
+  document.getElementById('nodeCount').textContent = `${visibleNodes.length} / ${NODES.length} komponentów`;
+
+  // Attach node events
+  svg.querySelectorAll('.node').forEach(g => {
+    const id = g.dataset.id;
+    g.addEventListener('mouseenter', (e) => showTooltip(e, id));
+    g.addEventListener('mouseleave', hideTooltip);
+    g.addEventListener('click', () => openCommentModal(id));
+    g.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      state.highlightNode = state.highlightNode === id ? null : id;
+      renderDiagram();
+    });
+  });
+
+  updatePrompt();
+}
+
+
+// ═══════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════
+
+function showTooltip(e, nodeId) {
+  const node = NODES.find(n => n.id === nodeId);
+  if (!node) return;
+
+  document.getElementById('ttTitle').textContent = node.label;
+  document.getElementById('ttFile').textContent = node.subtitle;
+  document.getElementById('ttDesc').textContent = node.desc;
+
+  const conns = CONNECTIONS.filter(c => c.from === nodeId || c.to === nodeId);
+  const connsEl = document.getElementById('ttConns');
+  if (conns.length > 0) {
+    connsEl.innerHTML = conns.map(c => {
+      const other = c.from === nodeId ? c.to : c.from;
+      const otherNode = NODES.find(n => n.id === other);
+      const dir = c.from === nodeId ? '→' : '←';
+      const color = getConnColor(c.type);
+      return `<div class="tt-conn-item"><span style="color:${color}">${dir}</span> ${otherNode?.label || other} <span style="opacity:0.5">(${c.label || c.type})</span></div>`;
+    }).join('');
+    connsEl.style.display = 'block';
+  } else {
+    connsEl.style.display = 'none';
+  }
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 16) + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+
+  // Keep in viewport
+  const rect = tooltip.getBoundingClientRect();
+  if (rect.right > window.innerWidth) {
+    tooltip.style.left = (e.clientX - rect.width - 16) + 'px';
+  }
+  if (rect.bottom > window.innerHeight) {
+    tooltip.style.top = (window.innerHeight - rect.height - 10) + 'px';
+  }
+}
+
+function hideTooltip() {
+  tooltip.style.display = 'none';
+}
+
+
+// ═══════════════════════════════════════
+// COMMENTS
+// ═══════════════════════════════════════
+
+function openCommentModal(nodeId) {
+  const node = NODES.find(n => n.id === nodeId);
+  if (!node) return;
+  state.modalTarget = nodeId;
+  document.getElementById('modalTitle').textContent = node.label;
+  document.getElementById('modalFile').textContent = node.subtitle;
+  document.getElementById('modalText').value = '';
+  document.getElementById('commentModal').classList.add('show');
+  setTimeout(() => document.getElementById('modalText').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('commentModal').classList.remove('show');
+  state.modalTarget = null;
+}
+
+function saveComment() {
+  const text = document.getElementById('modalText').value.trim();
+  if (!text || !state.modalTarget) return;
+  const node = NODES.find(n => n.id === state.modalTarget);
+  state.comments.push({
+    id: Date.now(),
+    target: state.modalTarget,
+    targetLabel: node.label,
+    targetFile: node.subtitle,
+    text
+  });
+  closeModal();
+  renderComments();
+  renderDiagram();
+}
+
+function deleteComment(id) {
+  state.comments = state.comments.filter(c => c.id !== id);
+  renderComments();
+  renderDiagram();
+}
+
+function renderComments() {
+  document.getElementById('commentCount').textContent = state.comments.length;
+  const list = document.getElementById('commentsList');
+  list.innerHTML = state.comments.map(c => `
+    <div class="comment-item">
+      <div class="target">${c.targetLabel}</div>
+      <div class="text">${c.text}</div>
+      <button class="comment-delete" onclick="deleteComment(${c.id})">&times;</button>
+    </div>
+  `).join('');
+}
+
+
+// ═══════════════════════════════════════
+// PROMPT
+// ═══════════════════════════════════════
+
+function updatePrompt() {
+  const el = document.getElementById('promptText');
+  if (state.comments.length === 0) {
+    el.textContent = 'Kliknij na komponent, aby dodać komentarz. Prompt wygeneruje się automatycznie.';
+    return;
+  }
+
+  const visibleLayers = LAYERS.filter(l => state.layers[l.id]).map(l => l.label);
+
+  let prompt = `Architektura aplikacji CRM + Gabinet Kosmetyczny.\n`;
+  prompt += `Widoczne warstwy: ${visibleLayers.join(', ')}.\n\n`;
+  prompt += `Zmiany do wprowadzenia:\n\n`;
+
+  state.comments.forEach(c => {
+    prompt += `**${c.targetLabel}** (${c.targetFile}):\n${c.text}\n\n`;
+  });
+
+  el.textContent = prompt;
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Skopiowano!';
+    setTimeout(() => btn.textContent = 'Kopiuj', 1500);
+  });
+}
+
+
+// ═══════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════
+
+function renderControls() {
+  // Presets
+  const presetsEl = document.getElementById('presets');
+  presetsEl.innerHTML = PRESETS.map(p => `
+    <button class="preset-btn ${state.activePreset === p.id ? 'active' : ''}"
+      onclick="applyPreset('${p.id}')">${p.label}</button>
+  `).join('');
+
+  // Layers
+  const layersEl = document.getElementById('layers');
+  layersEl.innerHTML = LAYERS.map(l => `
+    <label class="layer-toggle">
+      <input type="checkbox" ${state.layers[l.id] ? 'checked' : ''}
+        onchange="toggleLayer('${l.id}', this.checked)">
+      <span class="layer-dot" style="background:${l.color}"></span>
+      ${l.label}
+    </label>
+  `).join('');
+
+  // Connection types
+  const connEl = document.getElementById('connTypes');
+  connEl.innerHTML = CONN_TYPES.map(c => `
+    <label class="conn-toggle">
+      <input type="checkbox" ${state.connTypes[c.id] ? 'checked' : ''}
+        onchange="toggleConn('${c.id}', this.checked)">
+      <span class="conn-line-preview" style="background:${c.color};${c.dash ? 'background:repeating-linear-gradient(90deg,'+c.color+' 0,'+c.color+' 3px,transparent 3px,transparent 5px)' : ''}"></span>
+      ${c.label}
+    </label>
+  `).join('');
+}
+
+function applyPreset(id) {
+  const preset = PRESETS.find(p => p.id === id);
+  if (!preset) return;
+  state.activePreset = id;
+  LAYERS.forEach(l => state.layers[l.id] = preset.layers.includes(l.id));
+  state.highlightNode = null;
+  renderControls();
+  renderDiagram();
+}
+
+function toggleLayer(id, checked) {
+  state.layers[id] = checked;
+  state.activePreset = '';
+  renderControls();
+  renderDiagram();
+}
+
+function toggleConn(id, checked) {
+  state.connTypes[id] = checked;
+  renderDiagram();
+}
+
+
+// ═══════════════════════════════════════
+// PAN & ZOOM
+// ═══════════════════════════════════════
+
+function zoomIn() { state.zoom = Math.min(state.zoom * 1.2, 3); renderDiagram(); }
+function zoomOut() { state.zoom = Math.max(state.zoom / 1.2, 0.3); renderDiagram(); }
+function resetView() { state.zoom = 0.85; state.panX = 20; state.panY = 10; state.highlightNode = null; renderDiagram(); }
+
+let isPanning = false, startX, startY, startPanX, startPanY;
+
+container.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.node')) return;
+  isPanning = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  startPanX = state.panX;
+  startPanY = state.panY;
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  state.panX = startPanX + (e.clientX - startX);
+  state.panY = startPanY + (e.clientY - startY);
+  svg.style.transform = `translate(${state.panX}px, ${state.panY}px)`;
+});
+
+window.addEventListener('mouseup', () => isPanning = false);
+
+container.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.92 : 1.08;
+  state.zoom = Math.max(0.3, Math.min(3, state.zoom * delta));
+  renderDiagram();
+}, { passive: false });
+
+// Search
+document.getElementById('searchBox').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  state.highlightNode = null;
+  renderDiagram();
+});
+
+// Escape to close modal / clear highlight
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('commentModal').classList.contains('show')) {
+      closeModal();
+    } else if (state.highlightNode) {
+      state.highlightNode = null;
+      renderDiagram();
+    }
+  }
+});
+
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+
+renderControls();
+renderComments();
+renderDiagram();
+</script>
+</body>
+</html>

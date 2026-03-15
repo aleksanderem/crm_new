@@ -675,7 +675,7 @@
     "sms": "SMS",
     "emailSequences": "Sekwencje email",
     "automations": "Automatyzacje",
-    "automationsDescription": "Twórz i zarządzaj regułami automatyzacji Gabinetu, a wyniki sprawdzaj w ostatnich uruchomieniach.",
+    "automationsDescription": "Twórz i zarządzaj regułami automatyzacji dla Gabinetu i CRM, a wyniki sprawdzaj w ostatnich uruchomieniach.",
     "automationRules": "Reguły automatyzacji",
     "automationRuns": "Ostatnie uruchomienia",
     "automationCatalog": "Katalog wyzwalaczy",
@@ -891,12 +891,17 @@
         "statusChanged": "Zmieni się status wizyty",
         "reminderDue": "Nadejdzie czas przypomnienia o wizycie",
         "smsReplyReceived": "Zostanie odebrana odpowiedź SMS",
-        "patientCreated": "Zostanie utworzony nowy klient"
+        "patientCreated": "Zostanie utworzony nowy klient",
+        "leadStatusChanged": "Zmieni się status leada",
+        "leadStageChanged": "Zmieni się etap leada"
       },
       "groups": {
         "patient": "Dane klienta",
         "appointment": "Dane wizyty",
         "message": "Dane wiadomości",
+        "lead": "Dane leada",
+        "ownership": "Własność",
+        "pipeline": "Pipeline",
         "other": "Inne dane"
       },
       "operators": {
@@ -926,7 +931,9 @@
       "recipients": {
         "patientEmail": "Odbiorca: e-mail klienta",
         "patientEmailPatient": "Odbiorca: e-mail z karty klienta",
+        "leadOwnerEmail": "Odbiorca: e-mail opiekuna leada",
         "assignedEmployee": "Odbiorca: przypisany pracownik",
+        "assignedLeadOwner": "Odbiorca: przypisany opiekun leada",
         "createdBy": "Odbiorca: użytkownik, który utworzył klienta"
       },
       "emailModes": {
@@ -946,7 +953,8 @@
         "targets": {
           "patient": "Klient",
           "appointment": "Wizyta",
-          "employee": "Pracownik"
+          "employee": "Pracownik",
+          "lead": "Lead"
         }
       },
       "variablePicker": {
@@ -1779,7 +1787,8 @@
         "parameters": "Parametry zabiegowe",
         "documents": "Dokumenty",
         "employees": "Pracownicy",
-        "appointments": "Wizyty"
+        "appointments": "Wizyty",
+        "variants": "Warianty"
       },
       "treatmentParameters": "Parametry zabiegowe",
       "parametersDescription": "Konfigurowalne ustawienia opisujące sposób wykonania zabiegu — np. temperatura, rodzaj produktu, strefa aplikacji, intensywność.",
@@ -1801,7 +1810,33 @@
       "filterStatus": "Status",
       "allStatuses": "Wszystkie statusy",
       "dateFrom": "Od daty",
-      "dateTo": "Do daty"
+      "dateTo": "Do daty",
+      "shortDescription": "Krótki opis",
+      "variants": {
+        "title": "Warianty",
+        "description": "Warianty zabiegu z różnymi cenami, czasem trwania lub zakresem. Warianty dziedziczą wartości z zabiegu nadrzędnego, chyba że zostaną nadpisane.",
+        "addVariant": "Dodaj wariant",
+        "editVariant": "Edytuj wariant",
+        "deleteVariant": "Usuń wariant",
+        "confirmDelete": "Czy na pewno chcesz usunąć ten wariant?",
+        "noVariants": "Brak zdefiniowanych wariantów dla tego zabiegu",
+        "name": "Nazwa wariantu",
+        "namePlaceholder": "np. Pełny zabieg, Mini zabieg, Strefa - twarz",
+        "price": "Cena",
+        "duration": "Czas trwania (min)",
+        "shortDescription": "Krótki opis",
+        "description": "Opis",
+        "active": "Aktywny",
+        "inactive": "Nieaktywny",
+        "inherited": "Odziedziczone",
+        "overridden": "Własna wartość",
+        "inheritFromParent": "Dziedzicz z zabiegu",
+        "useCustomValue": "Użyj własnej wartości",
+        "parentValue": "Zabieg: {{value}}",
+        "saved": "Wariant zapisany",
+        "deleted": "Wariant usunięty",
+        "created": "Wariant utworzony"
+      }
     },
     "scheduling": {
       "title": "Godziny pracy",

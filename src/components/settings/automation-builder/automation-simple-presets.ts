@@ -78,7 +78,11 @@ export type AutomationRuleAction =
     }
   | {
       type: "update_field";
-      targetEntityType: "gabinetPatient" | "gabinetAppointment" | "gabinetEmployee";
+      targetEntityType:
+        | "gabinetPatient"
+        | "gabinetAppointment"
+        | "gabinetEmployee"
+        | "lead";
       targetIdPath?: string;
       fieldKind: "standard" | "custom";
       fieldKey: string;
@@ -137,12 +141,36 @@ export type AutomationCustomFieldDefinition = {
   options?: string[];
 };
 
+type AutomationSimpleModeModule = "gabinet" | "crm";
+
+type AutomationSimpleModePack = {
+  module: AutomationSimpleModeModule;
+  eventTypes: readonly string[];
+};
+
+export const AUTOMATION_SIMPLE_MODE_PACKS: Record<
+  AutomationSimpleModeModule,
+  AutomationSimpleModePack
+> = {
+  gabinet: {
+    module: "gabinet",
+    eventTypes: [
+      "gabinet.appointment.created",
+      "gabinet.appointment.status_changed",
+      "gabinet.appointment.reminder_due",
+      "gabinet.appointment.sms_reply_received",
+      "gabinet.patient.created",
+    ],
+  },
+  crm: {
+    module: "crm",
+    eventTypes: ["crm.lead.status_changed", "crm.lead.stage_changed"],
+  },
+};
+
 export const AUTOMATION_PLAYGROUND_EVENT_TYPES = [
-  "gabinet.appointment.created",
-  "gabinet.appointment.status_changed",
-  "gabinet.appointment.reminder_due",
-  "gabinet.appointment.sms_reply_received",
-  "gabinet.patient.created",
+  ...AUTOMATION_SIMPLE_MODE_PACKS.gabinet.eventTypes,
+  ...AUTOMATION_SIMPLE_MODE_PACKS.crm.eventTypes,
 ] as const;
 
 export const AUTOMATION_PLAYGROUND_ACTION_TYPES = [
@@ -202,7 +230,8 @@ export type AutomationPlaygroundField = {
 export type AutomationUpdateFieldTargetEntityType =
   | "gabinetPatient"
   | "gabinetAppointment"
-  | "gabinetEmployee";
+  | "gabinetEmployee"
+  | "lead";
 
 export type AutomationUpdateFieldValueType =
   | "string"
@@ -344,6 +373,10 @@ function getActionNodePosition(index: number, conditionCount: number) {
   };
 }
 
+function getEventModule(eventType: AutomationPlaygroundEventType) {
+  return eventType.startsWith("crm.") ? "crm" : "gabinet";
+}
+
 function getDefaultTargetIdPath(targetEntityType: AutomationUpdateFieldTargetEntityType) {
   switch (targetEntityType) {
     case "gabinetPatient":
@@ -352,6 +385,8 @@ function getDefaultTargetIdPath(targetEntityType: AutomationUpdateFieldTargetEnt
       return "appointmentId";
     case "gabinetEmployee":
       return "employeeId";
+    case "lead":
+      return "leadId";
   }
 }
 
@@ -364,11 +399,19 @@ function getDefaultActivityAction(eventType: AutomationPlaygroundEventType) {
     return "sms_received" as const;
   }
 
+  if (eventType.startsWith("crm.lead.")) {
+    return "stage_changed" as const;
+  }
+
   return "created" as const;
 }
 
 function isPatientEventType(eventType: AutomationPlaygroundEventType) {
   return eventType === "gabinet.patient.created";
+}
+
+function isLeadEventType(eventType: AutomationPlaygroundEventType) {
+  return eventType.startsWith("crm.lead.");
 }
 
 function canUseSupportedNotificationLink(
@@ -377,9 +420,15 @@ function canUseSupportedNotificationLink(
 ) {
   if (!linkTemplate) return true;
 
-  return isPatientEventType(eventType)
-    ? linkTemplate === "/dashboard/gabinet/patients/{{patientId}}"
-    : linkTemplate === AUTOMATION_NOTIFICATION_LINK_TEMPLATE;
+  if (isPatientEventType(eventType)) {
+    return linkTemplate === "/dashboard/gabinet/patients/{{patientId}}";
+  }
+
+  if (isLeadEventType(eventType)) {
+    return linkTemplate === "/dashboard/leads/{{leadId}}";
+  }
+
+  return linkTemplate === AUTOMATION_NOTIFICATION_LINK_TEMPLATE;
 }
 
 export function createAutomationPlaygroundActionDraft(
@@ -453,9 +502,13 @@ export function createAutomationPlaygroundActionDraft(
       return {
         id: createActionId(),
         type: "update_field",
-        targetEntityType: "gabinetPatient",
+        targetEntityType: isLeadEventType(eventType ?? "gabinet.appointment.created")
+          ? "lead"
+          : "gabinetPatient",
         fieldKind: "standard",
-        fieldKey: "phone",
+        fieldKey: isLeadEventType(eventType ?? "gabinet.appointment.created")
+          ? "status"
+          : "phone",
         valueTemplate: "",
         valueType: "string",
       };
@@ -470,12 +523,7 @@ export function getAvailableAutomationPlaygroundEvents(
   );
 
   return eventCatalog
-    .filter(
-      (event) =>
-        event.module === "gabinet" &&
-        (event.entityType === "gabinetAppointment" || event.entityType === "gabinetPatient") &&
-        isSupportedEventType(event.eventType),
-    )
+    .filter((event) => isSupportedEventType(event.eventType))
     .sort(
       (left, right) =>
         (eventOrder.get(left.eventType as AutomationPlaygroundEventType) ?? Number.MAX_SAFE_INTEGER) -
@@ -580,37 +628,51 @@ export function buildAutomationPlaygroundSubmitPayload(
       case "send_sms_request":
         return {
           type: action.type,
-          phonePath: "patientPhone",
+          phonePath: isLeadEventType(form.eventType) ? "leadPhone" : "patientPhone",
           messageTemplate: action.messageTemplate.trim(),
         };
-      case "send_email":
+      case "send_email": {
+        const recipientEmailPath = isLeadEventType(form.eventType)
+          ? "leadOwnerEmail"
+          : "patientEmail";
+        const recipientNamePath = isLeadEventType(form.eventType)
+          ? "leadOwnerName"
+          : "patientName";
+
         if (action.mode === "template") {
           return {
             type: "send_email",
             mode: "template",
             templateId: action.templateId as Id<"emailTemplates">,
-            recipientEmailPath: "patientEmail",
-            recipientNamePath: "patientName",
+            recipientEmailPath,
+            recipientNamePath,
           };
         }
 
         return {
           type: "send_email",
           mode: "manual",
-          recipientEmailPath: "patientEmail",
-          recipientNamePath: "patientName",
+          recipientEmailPath,
+          recipientNamePath,
           subjectTemplate: action.subjectTemplate.trim(),
           bodyTemplate: action.bodyTemplate.trim(),
         };
+      }
       case "create_notification":
         return {
           type: "create_notification",
-          userIdPath: isPatientEventType(form.eventType) ? "createdBy" : "employeeId",
+          userIdPath: isLeadEventType(form.eventType)
+            ? "assignedTo"
+            : isPatientEventType(form.eventType)
+              ? "createdBy"
+              : "employeeId",
           titleTemplate: action.titleTemplate.trim(),
           messageTemplate: action.messageTemplate.trim(),
-          linkTemplate: isPatientEventType(form.eventType)
-            ? "/dashboard/gabinet/patients/{{patientId}}"
-            : AUTOMATION_NOTIFICATION_LINK_TEMPLATE,
+          linkTemplate: isLeadEventType(form.eventType)
+            ? "/dashboard/leads/{{leadId}}"
+            : isPatientEventType(form.eventType)
+              ? "/dashboard/gabinet/patients/{{patientId}}"
+              : AUTOMATION_NOTIFICATION_LINK_TEMPLATE,
         };
       case "write_activity":
         return {
@@ -709,7 +771,8 @@ function classifyAutomationPlaygroundAction(
   }
 
   if (action.type === "send_sms" || action.type === "send_sms_request") {
-    if (action.phonePath !== "patientPhone") {
+    const expectedPhonePath = isLeadEventType(eventType) ? "leadPhone" : "patientPhone";
+    if (action.phonePath !== expectedPhonePath) {
       return null;
     }
 
@@ -721,9 +784,16 @@ function classifyAutomationPlaygroundAction(
   }
 
   if (action.type === "send_email") {
+    const expectedRecipientEmailPath = isLeadEventType(eventType)
+      ? "leadOwnerEmail"
+      : "patientEmail";
+    const expectedRecipientNamePath = isLeadEventType(eventType)
+      ? "leadOwnerName"
+      : "patientName";
+
     if (
-      action.recipientEmailPath !== "patientEmail" ||
-      (action.recipientNamePath && action.recipientNamePath !== "patientName")
+      action.recipientEmailPath !== expectedRecipientEmailPath ||
+      (action.recipientNamePath && action.recipientNamePath !== expectedRecipientNamePath)
     ) {
       return null;
     }
@@ -751,7 +821,11 @@ function classifyAutomationPlaygroundAction(
   }
 
   if (action.type === "create_notification") {
-    const expectedUserIdPath = isPatientEventType(eventType) ? "createdBy" : "employeeId";
+    const expectedUserIdPath = isLeadEventType(eventType)
+      ? "assignedTo"
+      : isPatientEventType(eventType)
+        ? "createdBy"
+        : "employeeId";
 
     if (
       action.userIdPath !== expectedUserIdPath ||
@@ -823,7 +897,11 @@ export function classifyAutomationPlaygroundRule(
     actionCapabilities,
   ).map((capability) => capability.type);
 
-  if (rule.module !== "gabinet" || !isSupportedEventType(rule.eventType)) {
+  if (!isSupportedEventType(rule.eventType)) {
+    return null;
+  }
+
+  if (getEventModule(rule.eventType) !== rule.module) {
     return null;
   }
 

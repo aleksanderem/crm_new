@@ -22,7 +22,8 @@ Use these files as the primary map before exploring deeper:
 - `CLAUDE.md` for repository rules and task tracking.
 - `WORKFLOW.md` for the Symphony pilot delivery contract.
 - `convex/schema.ts` for persistent data model truth.
-- `docs/modules/platform-core.md`, `docs/modules/crm.md`, and `docs/modules/gabinet.md` for module ownership.
+- `docs/modules/index.md` for the navigation hub across module docs.
+- `docs/modules/platform-core.md`, `docs/modules/crm.md`, `docs/modules/gabinet.md`, `docs/modules/module-onboarding.md`, and `docs/modules/magazyn.md` for module ownership, onboarding rules, and the concrete inventory-module reference blueprint.
 - `docs/design-docs/` for durable design beliefs and architecture rationale.
 - `docs/product-specs/` for user/problem-oriented feature specs.
 - `docs/exec-plans/` for implementation plans and tech debt tracking.

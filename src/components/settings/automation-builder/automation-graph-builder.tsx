@@ -144,7 +144,8 @@ export type AutomationBuilderSubmitPayload = {
                 targetEntityType:
                   | "gabinetPatient"
                   | "gabinetAppointment"
-                  | "gabinetEmployee";
+                  | "gabinetEmployee"
+                  | "lead";
                 targetIdPath?: string;
                 fieldKind: "standard" | "custom";
                 fieldKey: string;
@@ -227,7 +228,8 @@ export type AutomationBuilderSubmitPayload = {
         targetEntityType:
           | "gabinetPatient"
           | "gabinetAppointment"
-          | "gabinetEmployee";
+          | "gabinetEmployee"
+          | "lead";
         targetIdPath?: string;
         fieldKind: "standard" | "custom";
         fieldKey: string;

@@ -2,46 +2,8 @@ import { Link, useMatchRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import {
-  BarChart3,
-  Building2,
-  CalendarCheck,
-  Calendar,
-  CheckCircle,
-  Clock,
-  ClipboardList,
-  Download,
-  Eye,
-  FileText,
-  Filter,
-  Gift,
-  Heart,
-  Kanban,
-  LayoutDashboard,
-  LinkIcon,
-  Mail,
-  MailOpen,
-  Package,
-  Phone,
-  PieChart,
-  PlusCircle,
-  RefreshCw,
-  SearchIcon,
-  Send,
-  Settings,
-  Star,
-  Stethoscope,
-  TableIcon,
-  Tag,
-  TrendingUp,
-  Upload,
-  UserCog,
-  UserPlus,
-  Users,
-} from "@/lib/ez-icons";
 import {
   Sidebar,
   SidebarContent,
@@ -60,693 +22,14 @@ import { CalendarMiniMonth } from "@/components/application/calendar/base-compon
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
-import { InsightsWidgets } from "@/components/sidebar-widgets/crm/insights-widgets";
-import { DealsWidgets } from "@/components/sidebar-widgets/crm/deals-widgets";
-import { ContactsWidgets } from "@/components/sidebar-widgets/crm/contacts-widgets";
-import { CompaniesWidgets } from "@/components/sidebar-widgets/crm/companies-widgets";
-import { ActivitiesWidgets } from "@/components/sidebar-widgets/crm/activities-widgets";
-import { CalendarWidgets } from "@/components/sidebar-widgets/crm/calendar-widgets";
-import { InboxWidgets } from "@/components/sidebar-widgets/crm/inbox-widgets";
-import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-templates-widgets";
-import { ProductsWidgets } from "@/components/sidebar-widgets/crm/products-widgets";
-import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-widgets";
-import { CallsWidgets } from "@/components/sidebar-widgets/crm/calls-widgets";
-import { GabinetDashboardWidgets } from "@/components/sidebar-widgets/gabinet/dashboard-widgets";
-import { GabinetCalendarWidgets } from "@/components/sidebar-widgets/gabinet/calendar-widgets";
-import { GabinetPatientsWidgets } from "@/components/sidebar-widgets/gabinet/patients-widgets";
-import { GabinetTreatmentsWidgets } from "@/components/sidebar-widgets/gabinet/treatments-widgets";
-import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/employees-widgets";
-import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
-import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
-import { GabinetReportsWidgets } from "@/components/sidebar-widgets/gabinet/reports-widgets";
 import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
 import { GabinetGlobalNudges } from "@/components/sidebar-widgets/gabinet/global-nudges";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
+import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
 
-type Workspace = "crm" | "gabinet";
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  badge?: number;
-}
-
-interface ContextAction {
-  label: string;
-  icon: React.ElementType;
-  quickCreate?: string;
-  href?: string;
-  /** Dispatch a named action to the current page component (for filters, import/export, etc.) */
-  dispatch?: string;
-  /** RBAC feature required (checked with "create" action). Omit for non-create actions. */
-  permissionFeature?: import("@/hooks/use-permission").Feature;
-}
-
-interface PageContext {
-  titleKey: string;
-  actions: ContextAction[];
-  widgets?: React.ComponentType<{ organizationId: Id<"organizations"> }>;
-}
-
-const crmNav: NavItem[] = [
-  { label: "nav.insights", href: "/dashboard", icon: BarChart3 },
-  { label: "nav.deals", href: "/dashboard/leads", icon: TrendingUp },
-  {
-    label: "nav.activities",
-    href: "/dashboard/activities",
-    icon: CalendarCheck,
-  },
-  { label: "nav.calendar", href: "/dashboard/calendar", icon: Calendar },
-  { label: "nav.inbox", href: "/dashboard/inbox", icon: Mail },
-  { label: "nav.emailTemplates", href: "/dashboard/email-templates", icon: MailOpen },
-  { label: "nav.contacts", href: "/dashboard/contacts", icon: Users },
-  { label: "nav.companies", href: "/dashboard/companies", icon: Building2 },
-  { label: "nav.products", href: "/dashboard/products", icon: Package },
-  { label: "nav.documents", href: "/dashboard/documents", icon: FileText },
-  { label: "nav.calls", href: "/dashboard/calls", icon: Phone },
-  { label: "nav.settings", href: "/dashboard/settings", icon: Settings },
-];
-
-const gabinetNav: NavItem[] = [
-  {
-    label: "nav.gabinet.dashboard",
-    href: "/dashboard/gabinet",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "nav.gabinet.calendar",
-    href: "/dashboard/gabinet/calendar",
-    icon: Calendar,
-  },
-  {
-    label: "nav.gabinet.patients",
-    href: "/dashboard/gabinet/patients",
-    icon: Heart,
-  },
-  {
-    label: "nav.gabinet.treatments",
-    href: "/dashboard/gabinet/treatments",
-    icon: Stethoscope,
-  },
-  {
-    label: "nav.gabinet.packages",
-    href: "/dashboard/gabinet/packages",
-    icon: Gift,
-  },
-  {
-    label: "nav.gabinet.employees",
-    href: "/dashboard/gabinet/employees",
-    icon: UserCog,
-  },
-  {
-    label: "nav.gabinet.documents",
-    href: "/dashboard/gabinet/documents",
-    icon: ClipboardList,
-  },
-  {
-    label: "nav.gabinet.reports",
-    href: "/dashboard/gabinet/reports",
-    icon: PieChart,
-  },
-];
-
-// Contextual actions per entity route — designed around what users actually do on each page
-const pageContexts: Record<string, PageContext> = {
-  dashboard: {
-    titleKey: "nav.insights",
-    widgets: InsightsWidgets,
-    actions: [
-      {
-        label: "nav.actions.viewPipeline",
-        icon: Eye,
-        href: "/dashboard/leads",
-      },
-      {
-        label: "nav.actions.addDeal",
-        icon: TrendingUp,
-        quickCreate: "lead",
-        permissionFeature: "leads",
-      },
-      {
-        label: "nav.actions.todaysActivities",
-        icon: Clock,
-        href: "/dashboard/activities",
-      },
-      { label: "nav.actions.exportReport", icon: Download, href: "/dashboard" },
-    ],
-  },
-  contacts: {
-    titleKey: "nav.contacts",
-    widgets: ContactsWidgets,
-    actions: [
-      {
-        label: "nav.actions.addContact",
-        icon: UserPlus,
-        quickCreate: "contact",
-        permissionFeature: "contacts",
-      },
-      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-      { label: "nav.actions.savedViews", icon: Star, dispatch: "savedViews" },
-    ],
-  },
-  companies: {
-    titleKey: "nav.companies",
-    widgets: CompaniesWidgets,
-    actions: [
-      {
-        label: "nav.actions.addCompany",
-        icon: PlusCircle,
-        quickCreate: "company",
-        permissionFeature: "companies",
-      },
-      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-      {
-        label: "nav.actions.viewRelationships",
-        icon: LinkIcon,
-        dispatch: "viewRelationships",
-      },
-    ],
-  },
-  leads: {
-    titleKey: "nav.deals",
-    widgets: DealsWidgets,
-    actions: [
-      {
-        label: "nav.actions.addDeal",
-        icon: PlusCircle,
-        quickCreate: "lead",
-        permissionFeature: "leads",
-      },
-      {
-        label: "nav.actions.viewKanban",
-        icon: Kanban,
-        href: "/dashboard/pipelines",
-      },
-      {
-        label: "nav.actions.viewTable",
-        icon: TableIcon,
-        href: "/dashboard/leads",
-      },
-      {
-        label: "nav.actions.pipelineSettings",
-        icon: Settings,
-        href: "/dashboard/settings/pipelines",
-      },
-      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-    ],
-  },
-  activities: {
-    titleKey: "nav.activities",
-    widgets: ActivitiesWidgets,
-    actions: [
-      {
-        label: "nav.actions.addActivity",
-        icon: PlusCircle,
-        quickCreate: "activity",
-        permissionFeature: "activities",
-      },
-      {
-        label: "nav.actions.filterByType",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.calendarView",
-        icon: Calendar,
-        href: "/dashboard/calendar",
-      },
-      {
-        label: "nav.actions.upcomingOnly",
-        icon: Clock,
-        dispatch: "upcomingOnly",
-      },
-    ],
-  },
-  calendar: {
-    titleKey: "nav.calendar",
-    widgets: CalendarWidgets,
-    actions: [
-      {
-        label: "nav.actions.addActivity",
-        icon: PlusCircle,
-        quickCreate: "activity",
-        permissionFeature: "activities",
-      },
-      {
-        label: "nav.actions.goToToday",
-        icon: CalendarCheck,
-        dispatch: "goToToday",
-      },
-      {
-        label: "nav.actions.filterByType",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.viewActivities",
-        icon: ClipboardList,
-        href: "/dashboard/activities",
-      },
-    ],
-  },
-  documents: {
-    titleKey: "nav.documents",
-    widgets: DocumentsWidgets,
-    actions: [
-      {
-        label: "nav.actions.uploadDocument",
-        icon: Upload,
-        quickCreate: "document",
-        permissionFeature: "documents",
-      },
-      {
-        label: "nav.actions.createFromTemplate",
-        icon: FileText,
-        dispatch: "createFromTemplate",
-      },
-      {
-        label: "nav.actions.filterByType",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.bulkActions",
-        icon: CheckCircle,
-        dispatch: "bulkActions",
-      },
-    ],
-  },
-  products: {
-    titleKey: "nav.products",
-    widgets: ProductsWidgets,
-    actions: [
-      {
-        label: "nav.actions.addProduct",
-        icon: PlusCircle,
-        quickCreate: "product",
-        permissionFeature: "products",
-      },
-      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      { label: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
-      {
-        label: "nav.actions.categoryFilter",
-        icon: Tag,
-        dispatch: "openFilter",
-      },
-    ],
-  },
-  calls: {
-    titleKey: "nav.calls",
-    widgets: CallsWidgets,
-    actions: [
-      {
-        label: "nav.actions.logCall",
-        icon: Phone,
-        quickCreate: "call",
-        permissionFeature: "calls",
-      },
-      {
-        label: "nav.actions.addContact",
-        icon: UserPlus,
-        quickCreate: "contact",
-        permissionFeature: "contacts",
-      },
-      {
-        label: "nav.actions.addActivity",
-        icon: CalendarCheck,
-        quickCreate: "activity",
-        permissionFeature: "activities",
-      },
-    ],
-  },
-  inbox: {
-    titleKey: "nav.inbox",
-    widgets: InboxWidgets,
-    actions: [
-      {
-        label: "nav.actions.composeEmail",
-        icon: Send,
-        dispatch: "composeEmail",
-      },
-      { label: "nav.actions.viewUnread", icon: Mail, dispatch: "viewUnread" },
-      {
-        label: "nav.actions.syncGmail",
-        icon: RefreshCw,
-        href: "/dashboard/settings/email",
-      },
-      {
-        label: "nav.actions.addContact",
-        icon: UserPlus,
-        quickCreate: "contact",
-        permissionFeature: "contacts",
-      },
-    ],
-  },
-  "email-templates": {
-    titleKey: "nav.emailTemplates",
-    widgets: EmailTemplatesWidgets,
-    actions: [
-      {
-        label: "nav.actions.addTemplate",
-        icon: PlusCircle,
-        quickCreate: "emailTemplate",
-      },
-      {
-        label: "nav.actions.searchTemplates",
-        icon: SearchIcon,
-        dispatch: "openSearch",
-      },
-      {
-        label: "nav.actions.composeEmail",
-        icon: Send,
-        dispatch: "composeEmail",
-      },
-    ],
-  },
-};
-
-const gabinetPageContexts: Record<string, PageContext> = {
-  dashboard: {
-    titleKey: "nav.gabinet.dashboard",
-    actions: [
-      {
-        label: "nav.actions.bookAppointment",
-        icon: CalendarCheck,
-        quickCreate: "appointment",
-        permissionFeature: "gabinet_appointments",
-      },
-      {
-        label: "nav.actions.viewCalendar",
-        icon: Calendar,
-        href: "/dashboard/gabinet/calendar",
-      },
-      {
-        label: "nav.actions.addPatient",
-        icon: UserPlus,
-        quickCreate: "patient",
-        permissionFeature: "gabinet_patients",
-      },
-      {
-        label: "nav.actions.todaysSchedule",
-        icon: Clock,
-        dispatch: "viewTodaySchedule",
-      },
-    ],
-    widgets: GabinetDashboardWidgets,
-  },
-  calendar: {
-    titleKey: "nav.gabinet.calendar",
-    actions: [
-      {
-        label: "nav.actions.bookAppointment",
-        icon: CalendarCheck,
-        quickCreate: "appointment",
-        permissionFeature: "gabinet_appointments",
-      },
-      { label: "nav.actions.goToToday", icon: Calendar, dispatch: "goToToday" },
-      {
-        label: "nav.actions.filterByEmployee",
-        icon: UserCog,
-        dispatch: "filterByEmployee",
-      },
-      {
-        label: "nav.actions.filterByTreatment",
-        icon: Stethoscope,
-        dispatch: "filterByTreatment",
-      },
-    ],
-    widgets: GabinetCalendarWidgets,
-  },
-  patients: {
-    titleKey: "nav.gabinet.patients",
-    actions: [
-      {
-        label: "nav.actions.addPatient",
-        icon: UserPlus,
-        quickCreate: "patient",
-        permissionFeature: "gabinet_patients",
-      },
-      { label: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
-      {
-        label: "nav.actions.searchPatients",
-        icon: SearchIcon,
-        dispatch: "openSearch",
-      },
-      {
-        label: "nav.actions.filterByStatus",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-    ],
-    widgets: GabinetPatientsWidgets,
-  },
-  treatments: {
-    titleKey: "nav.gabinet.treatments",
-    actions: [
-      {
-        label: "nav.actions.addTreatment",
-        icon: PlusCircle,
-        quickCreate: "treatment",
-        permissionFeature: "gabinet_treatments",
-      },
-      {
-        label: "nav.actions.categoryFilter",
-        icon: Tag,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.sortByPrice",
-        icon: TrendingUp,
-        dispatch: "sortByPrice",
-      },
-      {
-        label: "nav.actions.manageCategories",
-        icon: Settings,
-        href: "/dashboard/gabinet/settings",
-      },
-    ],
-    widgets: GabinetTreatmentsWidgets,
-  },
-  packages: {
-    titleKey: "nav.gabinet.packages",
-    actions: [
-      {
-        label: "nav.actions.addPackage",
-        icon: PlusCircle,
-        quickCreate: "package",
-        permissionFeature: "gabinet_packages",
-      },
-      {
-        label: "nav.actions.filterByStatus",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.viewExpiring",
-        icon: Clock,
-        dispatch: "viewExpiring",
-      },
-      {
-        label: "nav.actions.assignPackage",
-        icon: Gift,
-        dispatch: "assignPackage",
-      },
-    ],
-    widgets: GabinetPackagesWidgets,
-  },
-  employees: {
-    titleKey: "nav.gabinet.employees",
-    actions: [
-      {
-        label: "nav.actions.addEmployee",
-        icon: UserPlus,
-        quickCreate: "employee",
-        permissionFeature: "gabinet_employees",
-      },
-      {
-        label: "nav.actions.manageSchedules",
-        icon: Calendar,
-        dispatch: "manageSchedules",
-      },
-      {
-        label: "nav.actions.viewLeaves",
-        icon: CalendarCheck,
-        dispatch: "viewLeaves",
-      },
-      {
-        label: "nav.actions.filterByRole",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-    ],
-    widgets: GabinetEmployeesWidgets,
-  },
-  documents: {
-    titleKey: "nav.gabinet.documents",
-    actions: [
-      {
-        label: "nav.actions.addDocument",
-        icon: PlusCircle,
-        quickCreate: "document",
-        permissionFeature: "documents",
-      },
-      {
-        label: "nav.actions.createFromTemplate",
-        icon: FileText,
-        dispatch: "createFromTemplate",
-      },
-      {
-        label: "nav.actions.filterByStatus",
-        icon: Filter,
-        dispatch: "openFilter",
-      },
-      {
-        label: "nav.actions.pendingSignatures",
-        icon: CheckCircle,
-        dispatch: "pendingSignatures",
-      },
-    ],
-    widgets: GabinetDocumentsWidgets,
-  },
-  reports: {
-    titleKey: "nav.gabinet.reports",
-    actions: [
-      {
-        label: "nav.actions.exportReport",
-        icon: Download,
-        dispatch: "exportReport",
-      },
-      {
-        label: "nav.actions.filterByDate",
-        icon: Calendar,
-        dispatch: "filterByDate",
-      },
-      {
-        label: "nav.actions.viewTreatmentStats",
-        icon: BarChart3,
-        dispatch: "viewTreatmentStats",
-      },
-      {
-        label: "nav.actions.viewRevenueReport",
-        icon: TrendingUp,
-        dispatch: "viewRevenueReport",
-      },
-    ],
-    widgets: GabinetReportsWidgets,
-  },
-};
-
-const gabinetRouteKeys = [
-  "dashboard",
-  "calendar",
-  "patients",
-  "treatments",
-  "packages",
-  "employees",
-  "documents",
-  "reports",
-];
-
-const entityRouteKeys = [
-  "contacts",
-  "companies",
-  "leads",
-  "products",
-  "documents",
-  "activities",
-  "calls",
-  "inbox",
-  "calendar",
-  "email-templates",
-];
-
-interface SettingsNavItem {
-  labelKey: string;
-  to: string;
-  section?: string;
-}
-
-const settingsNav: SettingsNavItem[] = [
-  { labelKey: "settingsNav.general", to: "/dashboard/settings" },
-  { labelKey: "settingsNav.profile", to: "/dashboard/settings/profile" },
-  { labelKey: "settingsNav.billing", to: "/dashboard/settings/billing" },
-  { labelKey: "settingsNav.pipelines", to: "/dashboard/settings/pipelines" },
-  {
-    labelKey: "settingsNav.customFields",
-    to: "/dashboard/settings/custom-fields",
-  },
-  {
-    labelKey: "settingsNav.activityTypes",
-    to: "/dashboard/settings/activity-types",
-  },
-  {
-    labelKey: "settingsNav.lostReasons",
-    to: "/dashboard/settings/lost-reasons",
-  },
-  { labelKey: "settingsNav.sources", to: "/dashboard/settings/sources" },
-  { labelKey: "settingsNav.team", to: "/dashboard/settings/team" },
-  { labelKey: "settingsNav.permissions", to: "/dashboard/settings/permissions" },
-  { labelKey: "settingsNav.auditLog", to: "/dashboard/settings/audit-log" },
-  { labelKey: "settingsNav.email", to: "/dashboard/settings/email" },
-  { labelKey: "settingsNav.sms", to: "/dashboard/settings/sms" },
-  {
-    labelKey: "settingsNav.automations",
-    to: "/dashboard/settings/automations",
-  },
-  {
-    labelKey: "settingsNav.emailTemplates",
-    to: "/dashboard/settings/email-templates",
-  },
-  {
-    labelKey: "settingsNav.emailEvents",
-    to: "/dashboard/settings/email-events",
-  },
-  {
-    labelKey: "settingsNav.emailSequences",
-    to: "/dashboard/settings/email-sequences",
-  },
-  {
-    labelKey: "settingsNav.integrations",
-    to: "/dashboard/settings/integrations",
-  },
-  {
-    labelKey: "settingsNav.organization",
-    to: "/dashboard/settings/organization",
-  },
-  {
-    labelKey: "settingsNav.documentTemplates",
-    to: "/dashboard/settings/document-templates",
-  },
-  {
-    labelKey: "gabinet.scheduling.title",
-    to: "/dashboard/gabinet/settings/scheduling",
-    section: "settings.gabinetSection",
-  },
-  {
-    labelKey: "gabinet.leaveTypes.title",
-    to: "/dashboard/gabinet/settings/leave-types",
-  },
-  {
-    labelKey: "gabinet.leaveBalances.title",
-    to: "/dashboard/gabinet/settings/leave-balances",
-  },
-  {
-    labelKey: "gabinet.leaves.title",
-    to: "/dashboard/gabinet/settings/leaves",
-  },
-  {
-    labelKey: "gabinet.documentTemplates.title",
-    to: "/dashboard/gabinet/settings/document-templates",
-  },
-  {
-    labelKey: "gabinet.reminders.title",
-    to: "/dashboard/gabinet/settings/reminders",
-  },
-];
+const routeAwareModules = [...moduleRegistry].sort(
+  (left, right) => right.workspaceRoot.length - left.workspaceRoot.length,
+);
 
 export function AppSidebar() {
   const matchRoute = useMatchRoute();
@@ -761,65 +44,41 @@ export function AppSidebar() {
     convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
   );
 
-  // During loading (undefined), show all sections to avoid flash
-  const hasCrm = !activeProducts || activeProducts.includes("crm");
-  const hasGabinet = !activeProducts || activeProducts.includes("gabinet");
+  const visibleModules = getVisibleModules(activeProducts);
+  const hasGabinet = visibleModules.some((module) => module.id === "gabinet");
 
   const { data: pendingLeaves } = useQuery({
     ...convexQuery(api.gabinet.scheduling.listLeaves, { organizationId, status: "pending" as const }),
-    enabled: !!hasGabinet,
+    enabled: hasGabinet,
   });
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
-  const isGabinetRoute = matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
-  const activeWorkspace: Workspace = isGabinetRoute ? "gabinet" : "crm";
+  const matchedModule = routeAwareModules.find((module) =>
+    matchRoute({ to: module.workspaceRoot, fuzzy: true }),
+  );
+  const activeWorkspace = matchedModule?.id ?? "crm";
+  const activeModule = getModuleById(activeWorkspace) ?? visibleModules[0] ?? moduleRegistry[0];
+  const activeModuleVisible = visibleModules.some((module) => module.id === activeModule.id);
+  const navItems = activeModuleVisible ? activeModule.primaryNav : [];
 
-  const navItems =
-    activeWorkspace === "crm" && hasCrm
-      ? crmNav
-      : activeWorkspace === "gabinet" && hasGabinet
-        ? gabinetNav
-        : [];
+  const isSettingsRoute = moduleRegistry.some((module) =>
+    module.settingsRoots.some((root) => matchRoute({ to: root, fuzzy: true })),
+  );
+  const settingsNav = visibleModules.flatMap((module) => module.settingsNav);
 
-  // Detect active entity page for contextual actions
-  const isSettingsRoute =
-    !!matchRoute({ to: "/dashboard/settings", fuzzy: true }) ||
-    !!matchRoute({ to: "/dashboard/gabinet/settings", fuzzy: true });
-  const activeEntity =
-    activeWorkspace === "crm" && !isSettingsRoute
-      ? entityRouteKeys.find((key) =>
-          matchRoute({ to: `/dashboard/${key}`, fuzzy: true }),
-        )
-      : undefined;
-  const activeGabinetEntity =
-    activeWorkspace === "gabinet" && !isSettingsRoute
-      ? gabinetRouteKeys.find((key) =>
-          matchRoute({ to: `/dashboard/gabinet/${key}`, fuzzy: true }),
-        )
-      : undefined;
-  const isDashboardHome =
-    activeWorkspace === "crm" &&
-    !isSettingsRoute &&
-    !activeEntity &&
-    matchRoute({ to: "/dashboard" }) !== false;
-  const isGabinetDashboardHome =
-    activeWorkspace === "gabinet" &&
-    !isSettingsRoute &&
-    !activeGabinetEntity;
-  let pageContext: PageContext | null = null;
-  if (activeEntity) {
-    pageContext = pageContexts[activeEntity];
-  } else if (activeGabinetEntity) {
-    pageContext = gabinetPageContexts[activeGabinetEntity];
-  } else if (isGabinetDashboardHome) {
-    pageContext = gabinetPageContexts.dashboard;
-  } else if (isDashboardHome) {
-    pageContext = pageContexts.dashboard;
-  }
+  const pageContext = !isSettingsRoute
+    ? activeModule.pageContexts.find((context) =>
+        context.matches.some((match) =>
+          matchRoute({ to: match.to, ...(match.fuzzy ? { fuzzy: true } : {}) }),
+        ),
+      ) ??
+      (activeModule.fallbackPageContextKey
+        ? activeModule.pageContexts.find((context) => context.key === activeModule.fallbackPageContextKey)
+        : null)
+    : null;
 
   return (
     <>
-      {/* Column 1: Narrow icon sidebar */}
       <Sidebar
         collapsible="icon"
         className="[&_[data-slot=sidebar-inner]]:bg-card"
@@ -846,53 +105,21 @@ export function AppSidebar() {
               <SidebarMenu>
                 {navItems.map((item) => {
                   const isActive =
-                    item.href === "/dashboard"
-                      ? matchRoute({ to: "/dashboard" }) !== false &&
-                        !matchRoute({ to: "/dashboard/leads", fuzzy: true }) &&
-                        !matchRoute({
-                          to: "/dashboard/activities",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({ to: "/dashboard/inbox", fuzzy: true }) &&
-                        !matchRoute({
-                          to: "/dashboard/contacts",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({
-                          to: "/dashboard/companies",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({
-                          to: "/dashboard/documents",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({
-                          to: "/dashboard/products",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({ to: "/dashboard/calls", fuzzy: true }) &&
-                        !matchRoute({
-                          to: "/dashboard/calendar",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({
-                          to: "/dashboard/settings",
-                          fuzzy: true,
-                        }) &&
-                        !matchRoute({ to: "/dashboard/gabinet", fuzzy: true })
+                    item.activeMatch === "exact"
+                      ? !!matchRoute({ to: item.href })
                       : !!matchRoute({ to: item.href, fuzzy: true });
 
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
-                        tooltip={t(item.label)}
+                        tooltip={t(item.labelKey)}
                         isActive={isActive}
                         asChild
                       >
                         <Link to={item.href}>
                           <item.icon variant="stroke" />
-                          <span>{t(item.label)}</span>
+                          <span>{t(item.labelKey)}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -904,31 +131,29 @@ export function AppSidebar() {
         </SidebarContent>
       </Sidebar>
 
-      {/* Column 2: Detail panel */}
       <div
         className={cn(
           "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
           wideContent ? "max-2xl:hidden lg:block" : "max-lg:hidden",
         )}
       >
-        {/* Workspace switcher */}
         <div className="px-4 pt-3 pb-2">
-          <WorkspaceSwitcher activeWorkspace={activeWorkspace} />
+          <WorkspaceSwitcher
+            activeWorkspace={activeWorkspace}
+            workspaces={visibleModules.map((module) => module.workspace)}
+          />
         </div>
 
-        {/* Settings sub-navigation */}
         {isSettingsRoute && (
           <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-            <div className="px-1 pb-2 text-lg font-semibold">
-              {t("nav.settings")}
-            </div>
+            <div className="px-1 pb-2 text-lg font-semibold">{t("nav.settings")}</div>
             {settingsNav.map((item) => {
               const isActive = !!matchRoute({ to: item.to });
               return (
                 <div key={item.to}>
-                  {item.section && (
+                  {item.sectionKey && (
                     <div className="mt-4 mb-1 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t(item.section)}
+                      {t(item.sectionKey)}
                     </div>
                   )}
                   <Link
@@ -953,40 +178,29 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Sidebar slot content (from child pages) */}
         {sidebarSlotContent ? (
-          <div className="flex-1 overflow-y-auto px-3 pb-4">
-            {sidebarSlotContent}
-          </div>
+          <div className="flex-1 overflow-y-auto px-3 pb-4">{sidebarSlotContent}</div>
         ) : (
           <>
-            {/* Day Agenda Takeover — highest priority after sidebarSlotContent */}
             {dayAgendaDate ? (
               <div className="flex-1 overflow-y-auto px-3 pb-4">
                 <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
               </div>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                {/* Context title when on entity page */}
                 {pageContext && (
-                  <div className="px-4 pb-1 text-lg font-semibold">
-                    {t(pageContext.titleKey)}
-                  </div>
+                  <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
                 )}
 
-                {/* Global nudges — gabinet only, always above actions */}
                 {activeWorkspace === "gabinet" && organizationId && (
                   <div className="flex flex-col gap-2 px-3 pb-2">
                     <GabinetGlobalNudges organizationId={organizationId} />
                   </div>
                 )}
 
-                {/* Contextual actions section — above widgets */}
                 {pageContext && (
                   <div className="flex flex-col px-4">
-                    <p className="text-foreground/70 mb-2 text-sm">
-                      {t("nav.sections.actions")}
-                    </p>
+                    <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
                     <div className="mb-3 grid grid-cols-2 gap-4">
                       {pageContext.actions
                         .filter((action) => {
@@ -995,7 +209,7 @@ export function AppSidebar() {
                         })
                         .map((action) => (
                           <button
-                            key={action.label}
+                            key={action.labelKey}
                             type="button"
                             className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
                             onClick={() => {
@@ -1009,16 +223,13 @@ export function AppSidebar() {
                             }}
                           >
                             <action.icon className="size-4" variant="stroke" />
-                            <span className="text-center leading-tight">
-                              {t(action.label)}
-                            </span>
+                            <span className="text-center leading-tight">{t(action.labelKey)}</span>
                           </button>
                         ))}
                     </div>
                   </div>
                 )}
 
-                {/* Widget stack */}
                 {pageContext?.widgets && organizationId && (
                   <div className="flex flex-col gap-2 px-3 pb-2">
                     <pageContext.widgets organizationId={organizationId} />
@@ -1029,14 +240,8 @@ export function AppSidebar() {
           </>
         )}
 
-        {/* Bottom-pinned elements — always visible, never scroll */}
+        {activeWorkspace === "gabinet" && !isSettingsRoute && <GabinetQuickActionsDropdown />}
 
-        {/* Quick actions dropdown — gabinet only */}
-        {activeWorkspace === "gabinet" && !isSettingsRoute && (
-          <GabinetQuickActionsDropdown />
-        )}
-
-        {/* Mini calendar */}
         {miniCalState.visible &&
           miniCalState.selectedDate &&
           miniCalState.onDateChange && (

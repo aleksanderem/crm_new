@@ -73,9 +73,9 @@ type Props = {
   eventCatalog: AutomationBuilderEventCatalogEntry[];
   actionCapabilities: AutomationActionCapability[];
   emailTemplates: AutomationEmailTemplateRecord[];
-  patientCustomFields: AutomationCustomFieldDefinition[];
-  appointmentCustomFields: AutomationCustomFieldDefinition[];
-  employeeCustomFields: AutomationCustomFieldDefinition[];
+  customFieldsByEntityType: Partial<
+    Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>
+  >;
   initialValue?: AutomationPlaygroundFormValue;
   isSubmitting: boolean;
   onCancel: () => void;
@@ -180,6 +180,14 @@ const STANDARD_EDITABLE_FIELDS: Record<
     { key: "color", label: "Color", valueType: "string", fieldKind: "standard" },
     { key: "notes", label: "Notes", valueType: "string", fieldKind: "standard" },
   ],
+  lead: [
+    { key: "title", label: "Title", valueType: "string", fieldKind: "standard" },
+    { key: "status", label: "Status", valueType: "string", fieldKind: "standard" },
+    { key: "priority", label: "Priority", valueType: "string", fieldKind: "standard" },
+    { key: "source", label: "Source", valueType: "string", fieldKind: "standard" },
+    { key: "value", label: "Value", valueType: "number", fieldKind: "standard" },
+    { key: "notes", label: "Notes", valueType: "string", fieldKind: "standard" },
+  ],
 };
 
 function getEventLabel(
@@ -200,6 +208,14 @@ function getEventLabel(
     case "gabinet.patient.created":
       return t("settings.automationPlayground.events.patientCreated", {
         defaultValue: "A new patient is created",
+      });
+    case "crm.lead.status_changed":
+      return t("settings.automationPlayground.events.leadStatusChanged", {
+        defaultValue: "A lead status changes",
+      });
+    case "crm.lead.stage_changed":
+      return t("settings.automationPlayground.events.leadStageChanged", {
+        defaultValue: "A lead stage changes",
       });
     default:
       return eventType;
@@ -237,6 +253,18 @@ function getGroupLabel(
       return t("settings.automationPlayground.groups.appointment");
     case "message":
       return t("settings.automationPlayground.groups.message");
+    case "lead":
+      return t("settings.automationPlayground.groups.lead", {
+        defaultValue: "Lead details",
+      });
+    case "ownership":
+      return t("settings.automationPlayground.groups.ownership", {
+        defaultValue: "Ownership",
+      });
+    case "pipeline":
+      return t("settings.automationPlayground.groups.pipeline", {
+        defaultValue: "Pipeline",
+      });
     default:
       return t("settings.automationPlayground.groups.other");
   }
@@ -285,6 +313,10 @@ function getTargetEntityLabel(
     case "gabinetEmployee":
       return t("settings.automationPlayground.updateField.targets.employee", {
         defaultValue: "Employee",
+      });
+    case "lead":
+      return t("settings.automationPlayground.updateField.targets.lead", {
+        defaultValue: "Lead",
       });
   }
 }
@@ -527,9 +559,7 @@ export function AutomationSimpleMode({
   eventCatalog,
   actionCapabilities,
   emailTemplates,
-  patientCustomFields,
-  appointmentCustomFields,
-  employeeCustomFields,
+  customFieldsByEntityType,
   initialValue,
   isSubmitting,
   onCancel,
@@ -613,25 +643,36 @@ export function AutomationSimpleMode({
   const editableFieldOptions = useMemo<
     Record<AutomationUpdateFieldTargetEntityType, EditableFieldOption[]>
   >(() => {
-    const patientCustom: EditableFieldOption[] = patientCustomFields.flatMap((field) => {
-      const valueType = mapCustomFieldValueType(field.fieldType);
-      if (!valueType) return [];
-      return [
-        {
-          key: field.fieldKey,
-          label: field.name,
-          valueType,
-          fieldKind: "custom",
-        },
-      ];
-    });
+    const buildCustomFields = (entityType: AutomationUpdateFieldTargetEntityType) =>
+      (customFieldsByEntityType[entityType] ?? []).flatMap((field) => {
+        const valueType = mapCustomFieldValueType(field.fieldType);
+        if (!valueType) return [];
+        return [
+          {
+            key: field.fieldKey,
+            label: field.name,
+            valueType,
+            fieldKind: "custom" as const,
+          },
+        ];
+      });
 
     return {
-      gabinetPatient: [...STANDARD_EDITABLE_FIELDS.gabinetPatient, ...patientCustom],
-      gabinetAppointment: STANDARD_EDITABLE_FIELDS.gabinetAppointment,
-      gabinetEmployee: STANDARD_EDITABLE_FIELDS.gabinetEmployee,
+      gabinetPatient: [
+        ...STANDARD_EDITABLE_FIELDS.gabinetPatient,
+        ...buildCustomFields("gabinetPatient"),
+      ],
+      gabinetAppointment: [
+        ...STANDARD_EDITABLE_FIELDS.gabinetAppointment,
+        ...buildCustomFields("gabinetAppointment"),
+      ],
+      gabinetEmployee: [
+        ...STANDARD_EDITABLE_FIELDS.gabinetEmployee,
+        ...buildCustomFields("gabinetEmployee"),
+      ],
+      lead: [...STANDARD_EDITABLE_FIELDS.lead],
     };
-  }, [appointmentCustomFields, employeeCustomFields, patientCustomFields]);
+  }, [customFieldsByEntityType]);
 
   useEffect(() => {
     if (!form) return;
@@ -896,10 +937,11 @@ export function AutomationSimpleMode({
             <div className="space-y-2">
               <Label>{t("settings.automationPlayground.entityLabel")}</Label>
               <div className="flex h-10 items-center rounded-md border px-3 text-sm">
-                {form.eventType === "gabinet.patient.created"
-                  ? t("settings.automationPlayground.entityPatient", {
-                      defaultValue: "Patient",
-                    })
+                {selectedEvent.entityType
+                  ? getTargetEntityLabel(
+                      selectedEvent.entityType as AutomationUpdateFieldTargetEntityType,
+                      t,
+                    )
                   : t("settings.automationPlayground.entityAppointment")}
               </div>
             </div>
@@ -1583,12 +1625,15 @@ export function AutomationSimpleMode({
                     )}
                     <p className="text-xs text-muted-foreground">
                       {t(
-                        form.eventType === "gabinet.patient.created"
-                          ? "settings.automationPlayground.recipients.patientEmailPatient"
-                          : "settings.automationPlayground.recipients.patientEmail",
+                        form.eventType.startsWith("crm.lead.")
+                          ? "settings.automationPlayground.recipients.leadOwnerEmail"
+                          : form.eventType === "gabinet.patient.created"
+                            ? "settings.automationPlayground.recipients.patientEmailPatient"
+                            : "settings.automationPlayground.recipients.patientEmail",
                         {
-                          defaultValue:
-                            form.eventType === "gabinet.patient.created"
+                          defaultValue: form.eventType.startsWith("crm.lead.")
+                            ? "This email is sent to the lead owner."
+                            : form.eventType === "gabinet.patient.created"
                               ? "This email is sent to the patient email on the patient record."
                               : "This email is sent to the patient email on the appointment.",
                         },
@@ -1653,12 +1698,15 @@ export function AutomationSimpleMode({
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {t(
-                        form.eventType === "gabinet.patient.created"
-                          ? "settings.automationPlayground.recipients.createdBy"
-                          : "settings.automationPlayground.recipients.assignedEmployee",
+                        form.eventType.startsWith("crm.lead.")
+                          ? "settings.automationPlayground.recipients.assignedLeadOwner"
+                          : form.eventType === "gabinet.patient.created"
+                            ? "settings.automationPlayground.recipients.createdBy"
+                            : "settings.automationPlayground.recipients.assignedEmployee",
                         {
-                          defaultValue:
-                            form.eventType === "gabinet.patient.created"
+                          defaultValue: form.eventType.startsWith("crm.lead.")
+                            ? "This notification goes to the assigned lead owner."
+                            : form.eventType === "gabinet.patient.created"
                               ? "This notification goes to the user who created the patient."
                               : "This notification goes to the employee linked to the appointment.",
                         },
@@ -1736,6 +1784,9 @@ export function AutomationSimpleMode({
                             </SelectItem>
                             <SelectItem value="gabinetEmployee">
                               {getTargetEntityLabel("gabinetEmployee", t)}
+                            </SelectItem>
+                            <SelectItem value="lead">
+                              {getTargetEntityLabel("lead", t)}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -1862,7 +1913,12 @@ export function AutomationSimpleMode({
         <CardContent className="space-y-3 text-sm">
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">
-              {t("settings.automationPlayground.entityAppointment")}
+              {selectedEvent.entityType
+                ? getTargetEntityLabel(
+                    selectedEvent.entityType as AutomationUpdateFieldTargetEntityType,
+                    t,
+                  )
+                : t("settings.automationPlayground.entityAppointment")}
             </Badge>
             <Badge variant="outline">{getEventLabel(form.eventType, t)}</Badge>
             <Badge variant={form.enabled ? "default" : "secondary"}>

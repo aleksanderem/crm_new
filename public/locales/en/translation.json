@@ -675,7 +675,7 @@
     "integrations": "Integrations",
     "sms": "SMS",
     "automations": "Automations",
-    "automationsDescription": "Create and manage Gabinet automation rules, then verify results in recent runs.",
+    "automationsDescription": "Create and manage automation rules across Gabinet and CRM, then verify results in recent runs.",
     "automationRules": "Automation Rules",
     "automationRuns": "Recent Runs",
     "automationCatalog": "Trigger Catalog",
@@ -889,12 +889,17 @@
         "statusChanged": "An appointment status changes",
         "reminderDue": "An appointment reminder becomes due",
         "smsReplyReceived": "An SMS reply is received",
-        "patientCreated": "A new patient is created"
+        "patientCreated": "A new patient is created",
+        "leadStatusChanged": "A lead status changes",
+        "leadStageChanged": "A lead stage changes"
       },
       "groups": {
         "patient": "Patient details",
         "appointment": "Appointment details",
         "message": "Message details",
+        "lead": "Lead details",
+        "ownership": "Ownership",
+        "pipeline": "Pipeline",
         "other": "Other details"
       },
       "operators": {
@@ -924,7 +929,9 @@
       "recipients": {
         "patientEmail": "Recipient: patient email",
         "patientEmailPatient": "Recipient: patient record email",
+        "leadOwnerEmail": "Recipient: lead owner email",
         "assignedEmployee": "Recipient: assigned employee",
+        "assignedLeadOwner": "Recipient: assigned lead owner",
         "createdBy": "Recipient: user who created the patient"
       },
       "emailModes": {
@@ -944,7 +951,8 @@
         "targets": {
           "patient": "Patient",
           "appointment": "Appointment",
-          "employee": "Employee"
+          "employee": "Employee",
+          "lead": "Lead"
         }
       },
       "variablePicker": {
@@ -1771,7 +1779,8 @@
         "parameters": "Treatment Parameters",
         "documents": "Documents",
         "employees": "Employees",
-        "appointments": "Appointments"
+        "appointments": "Appointments",
+        "variants": "Variants"
       },
       "treatmentParameters": "Treatment Parameters",
       "parametersDescription": "Configurable settings that describe how the treatment is performed — e.g. temperature, product type, application area, intensity.",
@@ -1793,7 +1802,33 @@
       "filterStatus": "Status",
       "allStatuses": "All statuses",
       "dateFrom": "From date",
-      "dateTo": "To date"
+      "dateTo": "To date",
+      "shortDescription": "Short Description",
+      "variants": {
+        "title": "Variants",
+        "description": "Treatment variants with different pricing, duration, or scope. Variants inherit values from the parent treatment unless overridden.",
+        "addVariant": "Add variant",
+        "editVariant": "Edit variant",
+        "deleteVariant": "Delete variant",
+        "confirmDelete": "Are you sure you want to delete this variant?",
+        "noVariants": "No variants defined for this treatment",
+        "name": "Variant name",
+        "namePlaceholder": "e.g. Full treatment, Mini treatment, Face zone",
+        "price": "Price",
+        "duration": "Duration (min)",
+        "shortDescription": "Short description",
+        "description": "Description",
+        "active": "Active",
+        "inactive": "Inactive",
+        "inherited": "Inherited",
+        "overridden": "Custom",
+        "inheritFromParent": "Inherit from parent",
+        "useCustomValue": "Use custom value",
+        "parentValue": "Parent: {{value}}",
+        "saved": "Variant saved",
+        "deleted": "Variant deleted",
+        "created": "Variant created"
+      }
     },
     "scheduling": {
       "title": "Working Hours",

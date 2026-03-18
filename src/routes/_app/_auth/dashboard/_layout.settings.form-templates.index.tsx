@@ -115,6 +115,8 @@ function FormTemplatesListPage() {
   const updateTemplate = useMutation(api.documents.templates.update);
   const createTemplate = useMutation(api.documents.templates.create);
   const removeTemplate = useMutation(api.documents.templates.remove);
+  // @ts-expect-error — TS2589
+  const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
 
   const filtered = (templates ?? []).filter((tpl) => {
     const t = tpl as FormTemplateRecord;
@@ -183,12 +185,29 @@ function FormTemplatesListPage() {
         title={t("settings.formTemplates.title")}
         description={t("settings.formTemplates.description")}
         actions={
-          <Button asChild size="sm">
-            <Link to="/dashboard/form-editor/new">
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("settings.formTemplates.newTemplate")}
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  // @ts-expect-error — TS2589
+                  const result = await seedTemplates({ organizationId });
+                  toast.success(`Załadowano ${result.count} szablonów`);
+                } catch (e: any) {
+                  toast.error(e.message);
+                }
+              }}
+            >
+              {t("settings.formTemplates.seedExamples", "Załaduj przykłady")}
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/dashboard/form-editor/new">
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("settings.formTemplates.newTemplate")}
+              </Link>
+            </Button>
+          </div>
         }
       />
 

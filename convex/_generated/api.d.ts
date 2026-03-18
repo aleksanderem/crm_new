@@ -43,6 +43,7 @@ import type * as documents from "../documents.js";
 import type * as documents_documents from "../documents/documents.js";
 import type * as documents_generate from "../documents/generate.js";
 import type * as documents_scopeResolver from "../documents/scopeResolver.js";
+import type * as documents_seed from "../documents/seed.js";
 import type * as documents_signing from "../documents/signing.js";
 import type * as documents_templates from "../documents/templates.js";
 import type * as email_index from "../email/index.js";
@@ -172,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   "documents/documents": typeof documents_documents;
   "documents/generate": typeof documents_generate;
   "documents/scopeResolver": typeof documents_scopeResolver;
+  "documents/seed": typeof documents_seed;
   "documents/signing": typeof documents_signing;
   "documents/templates": typeof documents_templates;
   "email/index": typeof email_index;

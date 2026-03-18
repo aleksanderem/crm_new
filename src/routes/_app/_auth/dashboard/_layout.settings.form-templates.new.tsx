@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -21,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
-import { getAvailableVariables } from "@cvx/documents/scopeResolver";
 
 const SurveyCreatorEditor = lazy(() =>
   import("@/components/documents/survey-creator-editor").then((m) => ({
@@ -115,29 +113,8 @@ function NewFormTemplatePage() {
     useState<SignatureMethod>("click");
   const [signerRole, setSignerRole] = useState<SignerRole>("client");
   const [formJson, setFormJson] = useState("{}");
-  const [variableBindings, setVariableBindings] = useState<
-    Record<string, string>
-  >({});
 
   const createTemplate = useMutation(api.documents.templates.create);
-
-  // Available variables based on selected entity types
-  const availableVariables = useMemo(() => {
-    const vars = entityTypes.flatMap((et) => {
-      try {
-        return getAvailableVariables(et as Parameters<typeof getAvailableVariables>[0]);
-      } catch {
-        return [];
-      }
-    });
-    // Deduplicate by path
-    const seen = new Set<string>();
-    return vars.filter((v) => {
-      if (seen.has(v.path)) return false;
-      seen.add(v.path);
-      return true;
-    });
-  }, [entityTypes]);
 
   const toggleModule = (mod: Module) => {
     setModules((prev) =>
@@ -188,9 +165,6 @@ function NewFormTemplatePage() {
                 signerRole,
               },
             }
-          : {}),
-        ...(Object.keys(variableBindings).length > 0
-          ? { variableBindings: JSON.stringify(variableBindings) }
           : {}),
       });
 
@@ -414,57 +388,6 @@ function NewFormTemplatePage() {
               </div>
             </div>
 
-            {/* Variable bindings — shown when entity types are selected */}
-            {entityTypes.length > 0 && availableVariables.length > 0 && (
-              <div className="mt-6 border-t pt-4">
-                <div className="mb-3">
-                  <Label className="text-sm font-medium">
-                    {t("settings.formTemplates.variableBindingsTitle")}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.formTemplates.variableBindingsDescription")}
-                  </p>
-                </div>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {availableVariables.map((variable) => (
-                    <div
-                      key={variable.path}
-                      className="flex items-center gap-3"
-                    >
-                      <div className="min-w-[180px]">
-                        <div className="text-sm font-medium">
-                          {variable.label}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {variable.path}
-                          {variable.group && (
-                            <Badge
-                              variant="outline"
-                              className="ml-2 text-xs"
-                            >
-                              {variable.group}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Input
-                        value={variableBindings[variable.path] ?? ""}
-                        onChange={(e) =>
-                          setVariableBindings((prev) => ({
-                            ...prev,
-                            [variable.path]: e.target.value,
-                          }))
-                        }
-                        placeholder={t(
-                          "settings.formTemplates.variableBindingPlaceholder",
-                        )}
-                        className="flex-1 text-sm"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         )}
       </Card>
@@ -478,7 +401,10 @@ function NewFormTemplatePage() {
             </div>
           }
         >
-          <SurveyCreatorEditor onChange={(json) => setFormJson(json)} />
+          <SurveyCreatorEditor
+            entityTypes={entityTypes}
+            onChange={(json) => setFormJson(json)}
+          />
         </Suspense>
       </div>
     </div>

@@ -1,18 +1,18 @@
 {
-  "session_id": "S0076",
-  "started_at": "2026-03-18T17:00:00Z",
-  "last_updated": "2026-03-18T17:10:00Z",
+  "session_id": "S0077",
+  "started_at": "2026-03-18T18:00:00Z",
+  "last_updated": "2026-03-18T18:45:00Z",
   "status": "completed",
-  "focus": "Replace SurveyJS with PDFme library configuration",
+  "focus": "Rework PDFme Designer integration — variable picker sidebar replaces variable bindings",
   "tasks_snapshot": {
-    "total": 1,
+    "total": 7,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 1,
+    "passing": 7,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0076: Uninstalled 5 SurveyJS packages, installed 4 @pdfme packages (v5.5.9), deleted src/lib/surveyjs/, created src/lib/pdfme/index.ts and types.ts. New lib files typecheck clean. Consumer components (survey-pdf-export-button, survey-creator-editor, form-template routes) still reference old imports -- those are next task scope."
+  "notes": "S0077: Complete PDFme Designer rework. Created src/lib/pdfme/variables.ts with variable registry + flatten helper. Rewrote PdfmeDesigner component with integrated variable picker sidebar (categorized, searchable, tracks used variables). Removed variable bindings concept from new/edit template routes. Updated previewDocumentData query to flatten scope data to dot-notation (no binding step). All typechecks pass (only pre-existing TS2589 Convex deep-type errors remain)."
 }

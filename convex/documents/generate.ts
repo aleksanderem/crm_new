@@ -2,7 +2,7 @@ import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { resolveScope, applyBindings, EntityType } from "./scopeResolver";
+import { resolveScope, EntityType } from "./scopeResolver";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -53,21 +53,22 @@ export const previewDocumentData = query({
       args.entityId,
     );
 
-    const bindings: Record<string, string> = template.variableBindings
-      ? JSON.parse(template.variableBindings)
-      : {};
-
-    const prefilledData = applyBindings(bindings, scopeData);
-
-    // Compute missing fields: bindings that didn't resolve to a value
-    const missingFields: string[] = [];
-    for (const [questionName, fieldPath] of Object.entries(bindings)) {
-      if (!(questionName in prefilledData) || prefilledData[questionName] == null) {
-        missingFields.push(fieldPath);
+    // Flatten scope data to dot-notation for direct use as PDFme inputs.
+    // Field names in templates ARE the variable paths (e.g. "patient.firstName"),
+    // so no binding transformation is needed.
+    const prefilledData: Record<string, string> = {};
+    for (const [entityType, fields] of Object.entries(scopeData)) {
+      if (typeof fields !== "object" || fields === null) continue;
+      for (const [key, value] of Object.entries(
+        fields as Record<string, unknown>,
+      )) {
+        if (value !== null && value !== undefined) {
+          prefilledData[`${entityType}.${key}`] = String(value);
+        }
       }
     }
 
-    return { prefilledData, missingFields, scopeData };
+    return { prefilledData, scopeData };
   },
 });
 

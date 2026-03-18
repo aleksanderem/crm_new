@@ -31,9 +31,12 @@ import { Route as AppPatientLayoutDocumentsImport } from './routes/_app/patient/
 import { Route as AppPatientLayoutBookImport } from './routes/_app/patient/_layout.book'
 import { Route as AppPatientLayoutAppointmentsImport } from './routes/_app/patient/_layout.appointments'
 import { Route as AppAuthOnboardingLayoutImport } from './routes/_app/_auth/onboarding/_layout'
+import { Route as AppAuthDashboardFormEditorImport } from './routes/_app/_auth/dashboard/form-editor'
 import { Route as AppAuthDashboardLayoutImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
+import { Route as AppAuthDashboardFormEditorNewImport } from './routes/_app/_auth/dashboard/form-editor.new'
+import { Route as AppAuthDashboardFormEditorIdImport } from './routes/_app/_auth/dashboard/form-editor.$id'
 import { Route as AppAuthDashboardLayoutSetupImport } from './routes/_app/_auth/dashboard/_layout.setup'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutDocumentsImport } from './routes/_app/_auth/dashboard/_layout.documents'
@@ -223,6 +226,13 @@ const AppAuthOnboardingLayoutRoute = AppAuthOnboardingLayoutImport.update({
   getParentRoute: () => AppAuthOnboardingRoute,
 } as any)
 
+const AppAuthDashboardFormEditorRoute = AppAuthDashboardFormEditorImport.update(
+  {
+    path: '/form-editor',
+    getParentRoute: () => AppAuthDashboardRoute,
+  } as any,
+)
+
 const AppAuthDashboardLayoutRoute = AppAuthDashboardLayoutImport.update({
   id: '/_layout',
   getParentRoute: () => AppAuthDashboardRoute,
@@ -238,6 +248,18 @@ const AppAuthOnboardingLayoutUsernameRoute =
   AppAuthOnboardingLayoutUsernameImport.update({
     path: '/username',
     getParentRoute: () => AppAuthOnboardingLayoutRoute,
+  } as any)
+
+const AppAuthDashboardFormEditorNewRoute =
+  AppAuthDashboardFormEditorNewImport.update({
+    path: '/new',
+    getParentRoute: () => AppAuthDashboardFormEditorRoute,
+  } as any)
+
+const AppAuthDashboardFormEditorIdRoute =
+  AppAuthDashboardFormEditorIdImport.update({
+    path: '/$id',
+    getParentRoute: () => AppAuthDashboardFormEditorRoute,
   } as any)
 
 const AppAuthDashboardLayoutSetupRoute =
@@ -763,6 +785,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutImport
       parentRoute: typeof AppAuthDashboardRoute
     }
+    '/_app/_auth/dashboard/form-editor': {
+      id: '/_app/_auth/dashboard/form-editor'
+      path: '/form-editor'
+      fullPath: '/dashboard/form-editor'
+      preLoaderRoute: typeof AppAuthDashboardFormEditorImport
+      parentRoute: typeof AppAuthDashboardImport
+    }
     '/_app/_auth/onboarding': {
       id: '/_app/_auth/onboarding'
       path: '/onboarding'
@@ -874,6 +903,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/setup'
       preLoaderRoute: typeof AppAuthDashboardLayoutSetupImport
       parentRoute: typeof AppAuthDashboardLayoutImport
+    }
+    '/_app/_auth/dashboard/form-editor/$id': {
+      id: '/_app/_auth/dashboard/form-editor/$id'
+      path: '/$id'
+      fullPath: '/dashboard/form-editor/$id'
+      preLoaderRoute: typeof AppAuthDashboardFormEditorIdImport
+      parentRoute: typeof AppAuthDashboardFormEditorImport
+    }
+    '/_app/_auth/dashboard/form-editor/new': {
+      id: '/_app/_auth/dashboard/form-editor/new'
+      path: '/new'
+      fullPath: '/dashboard/form-editor/new'
+      preLoaderRoute: typeof AppAuthDashboardFormEditorNewImport
+      parentRoute: typeof AppAuthDashboardFormEditorImport
     }
     '/_app/_auth/onboarding/_layout/username': {
       id: '/_app/_auth/onboarding/_layout/username'
@@ -1414,6 +1457,11 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetPatientsIndexRoute,
           AppAuthDashboardLayoutGabinetTreatmentsIndexRoute,
         }),
+        AppAuthDashboardFormEditorRoute:
+          AppAuthDashboardFormEditorRoute.addChildren({
+            AppAuthDashboardFormEditorIdRoute,
+            AppAuthDashboardFormEditorNewRoute,
+          }),
       }),
       AppAuthOnboardingRoute: AppAuthOnboardingRoute.addChildren({
         AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRoute.addChildren({
@@ -1531,7 +1579,8 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard",
       "parent": "/_app/_auth",
       "children": [
-        "/_app/_auth/dashboard/_layout"
+        "/_app/_auth/dashboard/_layout",
+        "/_app/_auth/dashboard/form-editor"
       ]
     },
     "/_app/_auth/dashboard/_layout": {
@@ -1579,6 +1628,14 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/packages/",
         "/_app/_auth/dashboard/_layout/gabinet/patients/",
         "/_app/_auth/dashboard/_layout/gabinet/treatments/"
+      ]
+    },
+    "/_app/_auth/dashboard/form-editor": {
+      "filePath": "_app/_auth/dashboard/form-editor.tsx",
+      "parent": "/_app/_auth/dashboard",
+      "children": [
+        "/_app/_auth/dashboard/form-editor/$id",
+        "/_app/_auth/dashboard/form-editor/new"
       ]
     },
     "/_app/_auth/onboarding": {
@@ -1675,6 +1732,14 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/setup": {
       "filePath": "_app/_auth/dashboard/_layout.setup.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/form-editor/$id": {
+      "filePath": "_app/_auth/dashboard/form-editor.$id.tsx",
+      "parent": "/_app/_auth/dashboard/form-editor"
+    },
+    "/_app/_auth/dashboard/form-editor/new": {
+      "filePath": "_app/_auth/dashboard/form-editor.new.tsx",
+      "parent": "/_app/_auth/dashboard/form-editor"
     },
     "/_app/_auth/onboarding/_layout/username": {
       "filePath": "_app/_auth/onboarding/_layout.username.tsx",

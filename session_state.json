@@ -1,18 +1,18 @@
 {
-  "session_id": "S0077",
-  "started_at": "2026-03-18T18:00:00Z",
-  "last_updated": "2026-03-18T18:45:00Z",
+  "session_id": "S0078",
+  "started_at": "2026-03-18T19:00:00Z",
+  "last_updated": "2026-03-18T19:30:00Z",
   "status": "completed",
-  "focus": "Rework PDFme Designer integration — variable picker sidebar replaces variable bindings",
+  "focus": "Full-screen document template editor — move PDFme Designer into dedicated route",
   "tasks_snapshot": {
-    "total": 7,
+    "total": 9,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 7,
+    "passing": 9,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0077: Complete PDFme Designer rework. Created src/lib/pdfme/variables.ts with variable registry + flatten helper. Rewrote PdfmeDesigner component with integrated variable picker sidebar (categorized, searchable, tracks used variables). Removed variable bindings concept from new/edit template routes. Updated previewDocumentData query to flatten scope data to dot-notation (no binding step). All typechecks pass (only pre-existing TS2589 Convex deep-type errors remain)."
+  "notes": "S0078: Complete full-screen form editor. Created 3 new routes (form-editor layout, new, $id), extracted VariablePicker component, refactored PdfmeDesigner with imperative ref API, created TemplateSettingsSheet, updated list page navigation, added EN/PL i18n keys. Typecheck passes (only pre-existing TS2589 in convex/app.ts)."
 }

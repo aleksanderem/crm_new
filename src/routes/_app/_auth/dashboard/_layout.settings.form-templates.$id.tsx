@@ -103,7 +103,6 @@ function EditFormTemplatePage() {
 
   const templateId = id as Id<"formTemplates">;
 
-  // @ts-expect-error — deep type instantiation in generated Convex API; resolves at runtime
   const template = useConvexQuery(api.documents.templates.getById, {
     organizationId,
     templateId,
@@ -443,7 +442,6 @@ function EditFormTemplatePage() {
         >
           <SurveyCreatorEditor
             initialTemplate={template.formJson}
-            entityTypes={entityTypes}
             onChange={(json) => setFormJson(json)}
           />
         </Suspense>

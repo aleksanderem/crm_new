@@ -402,7 +402,6 @@ function NewFormTemplatePage() {
           }
         >
           <SurveyCreatorEditor
-            entityTypes={entityTypes}
             onChange={(json) => setFormJson(json)}
           />
         </Suspense>

@@ -1942,7 +1942,7 @@
       "shortDescription": "Krótki opis",
       "variants": {
         "title": "Warianty",
-        "description": "Warianty zabiegu z różnymi cenami, czasem trwania lub zakresem. Warianty dziedziczą wartości z zabiegu nadrzędnego, chyba że zostaną nadpisane.",
+        "description": "Opis",
         "addVariant": "Dodaj wariant",
         "editVariant": "Edytuj wariant",
         "deleteVariant": "Usuń wariant",
@@ -1953,7 +1953,6 @@
         "price": "Cena",
         "duration": "Czas trwania (min)",
         "shortDescription": "Krótki opis",
-        "description": "Opis",
         "active": "Aktywny",
         "inactive": "Nieaktywny",
         "inherited": "Odziedziczone",
@@ -3057,5 +3056,25 @@
     "employeeRole": "Rola",
     "removeEmployee": "Usuń pracownika",
     "removeTreatment": "Usuń usługę"
+  },
+  "formEditor": {
+    "back": "Wstecz",
+    "save": "Zapisz",
+    "settingsBtn": "Ustawienia",
+    "namePlaceholder": "Nazwa szablonu...",
+    "toggleVariables": "Pokaż/ukryj zmienne",
+    "settings": {
+      "title": "Ustawienia szablonu",
+      "description": "Skonfiguruj metadane, moduły i typy encji szablonu."
+    },
+    "variablePicker": {
+      "title": "Zmienne",
+      "search": "Szukaj...",
+      "noResults": "Brak wyników",
+      "noEntityTypes": "Wybierz typy encji w ustawieniach szablonu, aby zobaczyć dostępne zmienne.",
+      "alreadyAdded": "Już dodano",
+      "addToTemplate": "Dodaj do szablonu",
+      "hint": "Kliknij + aby dodać zmienną do szablonu PDF. Nazwy pól odpowiadają ścieżkom zmiennych."
+    }
   }
 }

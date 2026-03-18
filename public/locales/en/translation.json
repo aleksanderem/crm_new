@@ -1934,7 +1934,7 @@
       "shortDescription": "Short Description",
       "variants": {
         "title": "Variants",
-        "description": "Treatment variants with different pricing, duration, or scope. Variants inherit values from the parent treatment unless overridden.",
+        "description": "Description",
         "addVariant": "Add variant",
         "editVariant": "Edit variant",
         "deleteVariant": "Delete variant",
@@ -1945,7 +1945,6 @@
         "price": "Price",
         "duration": "Duration (min)",
         "shortDescription": "Short description",
-        "description": "Description",
         "active": "Active",
         "inactive": "Inactive",
         "inherited": "Inherited",
@@ -3046,5 +3045,25 @@
     "employeeRole": "Role",
     "removeEmployee": "Remove employee",
     "removeTreatment": "Remove treatment"
+  },
+  "formEditor": {
+    "back": "Back",
+    "save": "Save",
+    "settingsBtn": "Settings",
+    "namePlaceholder": "Template name...",
+    "toggleVariables": "Show/hide variables",
+    "settings": {
+      "title": "Template Settings",
+      "description": "Configure template metadata, modules, and entity types."
+    },
+    "variablePicker": {
+      "title": "Variables",
+      "search": "Search...",
+      "noResults": "No results",
+      "noEntityTypes": "Select entity types in template settings to see available variables.",
+      "alreadyAdded": "Already added",
+      "addToTemplate": "Add to template",
+      "hint": "Click + to add a variable to the PDF template. Field names correspond to variable paths."
+    }
   }
 }

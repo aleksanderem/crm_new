@@ -184,7 +184,7 @@ function FormTemplatesListPage() {
         description={t("settings.formTemplates.description")}
         actions={
           <Button asChild size="sm">
-            <Link to="/dashboard/settings/form-templates/new">
+            <Link to="/dashboard/form-editor/new">
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("settings.formTemplates.newTemplate")}
             </Link>
@@ -230,7 +230,7 @@ function FormTemplatesListPage() {
           description={t("settings.formTemplates.emptyDescription")}
           action={
             <Button asChild>
-              <Link to="/dashboard/settings/form-templates/new">
+              <Link to="/dashboard/form-editor/new">
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("settings.formTemplates.newTemplate")}
               </Link>
@@ -266,7 +266,7 @@ function FormTemplatesListPage() {
                     className="cursor-pointer"
                     onClick={() =>
                       navigate({
-                        to: "/dashboard/settings/form-templates/$id",
+                        to: "/dashboard/form-editor/$id",
                         params: { id: template._id },
                       })
                     }
@@ -329,7 +329,7 @@ function FormTemplatesListPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate({
-                                to: "/dashboard/settings/form-templates/$id",
+                                to: "/dashboard/form-editor/$id",
                                 params: { id: template._id },
                               });
                             }}

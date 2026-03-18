@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Download } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,11 @@ interface PdfExportOptions {
     signatureData?: string; // base64 data URL
   }>;
   fileName?: string;
+  labels?: {
+    signatures: string;
+    pendingSignature: string;
+    signatureAlt: string;
+  };
 }
 
 interface PdfExportButtonProps {
@@ -33,17 +39,18 @@ interface PdfExportButtonProps {
 
 function buildSignaturesHtml(
   signatures: NonNullable<PdfExportOptions["signatures"]>,
+  labels: NonNullable<PdfExportOptions["labels"]>,
 ): string {
   const slots = signatures
     .map((sig) => {
       const signedInfo = sig.signatureData
         ? `
-          <img src="${sig.signatureData}" alt="Podpis" style="max-height:80px;display:block;margin-bottom:4px;" />
+          <img src="${sig.signatureData}" alt="${escapeHtml(labels.signatureAlt)}" style="max-height:80px;display:block;margin-bottom:4px;" />
           <span class="signature-meta">
-            ${sig.signedByName ?? ""}${sig.signedAt ? ` — ${new Date(sig.signedAt).toLocaleString("pl-PL")}` : ""}
+            ${sig.signedByName ?? ""}${sig.signedAt ? ` — ${new Date(sig.signedAt).toLocaleString()}` : ""}
           </span>
         `
-        : `<span class="signature-meta">Oczekuje na podpis</span>`;
+        : `<span class="signature-meta">${escapeHtml(labels.pendingSignature)}</span>`;
 
       return `
         <div class="signature-slot">
@@ -56,7 +63,7 @@ function buildSignaturesHtml(
 
   return `
     <div class="signatures">
-      <h4>Podpisy</h4>
+      <h4>${escapeHtml(labels.signatures)}</h4>
       ${slots}
     </div>
   `;
@@ -76,6 +83,7 @@ export async function exportDocumentToPdf({
   title,
   content,
   signatures,
+  labels,
 }: PdfExportOptions): Promise<void> {
   return new Promise<void>((resolve) => {
     const iframe = document.createElement("iframe");
@@ -95,9 +103,10 @@ export async function exportDocumentToPdf({
       return;
     }
 
+    const defaultLabels = { signatures: "Signatures", pendingSignature: "Pending signature", signatureAlt: "Signature" };
     const signaturesHtml =
       signatures && signatures.length > 0
-        ? buildSignaturesHtml(signatures)
+        ? buildSignaturesHtml(signatures, labels ?? defaultLabels)
         : "";
 
     iframeDoc.open();
@@ -205,12 +214,23 @@ export function PdfExportButton({
   fileName,
   className,
 }: PdfExportButtonProps) {
+  const { t } = useTranslation();
   const [isPrinting, setIsPrinting] = useState(false);
 
   const handleExport = async () => {
     setIsPrinting(true);
     try {
-      await exportDocumentToPdf({ title, content, signatures, fileName });
+      await exportDocumentToPdf({
+        title,
+        content,
+        signatures,
+        fileName,
+        labels: {
+          signatures: t("documents.pdfSignatures"),
+          pendingSignature: t("documents.pdfPendingSignature"),
+          signatureAlt: t("documents.signature"),
+        },
+      });
     } finally {
       setIsPrinting(false);
     }
@@ -225,7 +245,7 @@ export function PdfExportButton({
       className={cn(className)}
     >
       <Download className="mr-1 h-4 w-4" />
-      {isPrinting ? "Przygotowywanie..." : "Eksportuj PDF"}
+      {isPrinting ? t("documents.pdfExporting") : t("documents.pdfExport")}
     </Button>
   );
 }

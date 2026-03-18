@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 interface SignaturePadProps {
@@ -7,6 +8,7 @@ interface SignaturePadProps {
 }
 
 export function SignaturePad({ onSign, onCancel }: SignaturePadProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasContent, setHasContent] = useState(false);
@@ -86,10 +88,10 @@ export function SignaturePad({ onSign, onCancel }: SignaturePadProps) {
         />
       </div>
       <div className="flex justify-between">
-        <Button variant="outline" size="sm" onClick={clear}>Wyczysc</Button>
+        <Button variant="outline" size="sm" onClick={clear}>{t("gabinet.documents.clearSignature")}</Button>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel}>Anuluj</Button>
-          <Button size="sm" onClick={handleSign} disabled={!hasContent}>Potwierdz podpis</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>{t("common.cancel")}</Button>
+          <Button size="sm" onClick={handleSign} disabled={!hasContent}>{t("gabinet.documents.confirmSign")}</Button>
         </div>
       </div>
     </div>

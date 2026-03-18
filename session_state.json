@@ -1,9 +1,9 @@
 {
-  "session_id": "S0074",
-  "started_at": "2026-03-18T14:00:00Z",
-  "last_updated": "2026-03-18T14:45:00Z",
+  "session_id": "S0075",
+  "started_at": "2026-03-18T16:00:00Z",
+  "last_updated": "2026-03-18T16:30:00Z",
   "status": "completed",
-  "focus": "Public document signing flow — Phase 4 of SurveyJS document system",
+  "focus": "Audit and complete all i18n translation keys for the SurveyJS document system",
   "tasks_snapshot": {
     "total": 5,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0074: Implemented Phase 4 — public signing page at /sign/form/:token, signing email backend via Resend, auto-send on document generation, full EN/PL i18n. Zero new typecheck errors. Also fixed pre-existing docId shape bug in generate-document-dialog.tsx."
+  "notes": "S0075: Audited all t() keys in 14 document-related files. Found 66 missing keys (documents.*, settings.formTemplates.*) absent from both EN and PL. Added all keys to both locale files with natural Polish translations. Replaced hardcoded Polish strings in signature-pad.tsx (3 strings) and pdf-export.tsx (4 strings + button labels) with proper t() calls. JSON valid, EN/PL symmetric, zero new typecheck errors."
 }

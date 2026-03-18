@@ -13,6 +13,9 @@ export default defineConfig({
       "@cvx": path.resolve(__dirname, "./convex"),
     },
   },
+  optimizeDeps: {
+    include: ["@pdfme/ui", "@pdfme/schemas", "@pdfme/common", "@pdfme/generator"],
+  },
   build: {
     rollupOptions: {
       output: {

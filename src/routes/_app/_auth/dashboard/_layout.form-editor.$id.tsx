@@ -224,7 +224,7 @@ function EditFormEditorPage() {
   }
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       {/* ─── Top bar (48px) ─── */}
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3">
         {/* Left: Nav toggle + Back */}
@@ -350,7 +350,7 @@ function EditFormEditorPage() {
         </div>
 
         {/* PDFme Designer — fills all remaining space */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 h-full">
           {initialized && (
             <Suspense
               fallback={
@@ -413,6 +413,6 @@ function EditFormEditorPage() {
           </nav>
         </SheetContent>
       </Sheet>
-    </>
+    </div>
   );
 }

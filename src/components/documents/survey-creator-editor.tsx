@@ -59,12 +59,21 @@ async function loadFonts(): Promise<Font> {
     }),
   );
 
+  let hasFallback = false;
   for (const result of results) {
     if (result.status === "fulfilled") {
       const [name, data] = result.value;
-      font[name] = { data };
+      if (!hasFallback) {
+        font[name] = { data, fallback: true };
+        hasFallback = true;
+      } else {
+        font[name] = { data };
+      }
     }
   }
+
+  // If no fonts loaded at all, don't return empty — let PDFme use defaults
+  if (!hasFallback) return {} as Font;
 
   fontCache = font;
   return font;
@@ -250,7 +259,9 @@ export const PdfmeDesigner = forwardRef<PdfmeDesignerHandle, PdfmeDesignerProps>
         designerRef.current = designer;
       };
 
-      initDesigner();
+      initDesigner().catch((err) => {
+        console.error("[PdfmeDesigner] initDesigner failed:", err);
+      });
 
       return () => {
         destroyed = true;

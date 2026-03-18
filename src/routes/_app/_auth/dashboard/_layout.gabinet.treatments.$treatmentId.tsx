@@ -95,9 +95,6 @@ function TreatmentDetail() {
   const [paramValue, setParamValue] = useState("");
   const [paramUnit, setParamUnit] = useState("");
 
-  // Documents tab state
-  const [docSearchQuery, setDocSearchQuery] = useState("");
-
   // Employees tab state
   const [empSearchQuery, setEmpSearchQuery] = useState("");
 
@@ -126,7 +123,6 @@ function TreatmentDetail() {
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
   const saveTreatmentParameters = useMutation(api.gabinet.treatments.saveTreatmentParameters);
-  const setRequiredDocumentTemplates = useMutation(api.gabinet.treatments.setRequiredDocumentTemplates);
   const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
   const createVariantMut = useMutation(api.gabinet.treatments.createVariant);
   const updateVariantMut = useMutation(api.gabinet.treatments.updateVariant);
@@ -165,13 +161,6 @@ function TreatmentDetail() {
     }),
   );
 
-  const { data: treatmentDocTemplates } = useQuery(
-    convexQuery(api.gabinet.treatments.getTreatmentDocumentTemplates, {
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-    }),
-  );
-
   const { data: variants } = useQuery(
     convexQuery(api.gabinet.treatments.listVariants, {
       organizationId,
@@ -190,11 +179,6 @@ function TreatmentDetail() {
   );
   const activities = activitiesData?.page;
 
-  // All document templates for the assign picker
-  const { data: allDocTemplates } = useQuery(
-    convexQuery(api.gabinet.documentTemplates.list, { organizationId }),
-  );
-
   // All org employees for the assign picker
   const { data: allGabinetEmployees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, { organizationId }),
@@ -208,21 +192,6 @@ function TreatmentDetail() {
       trackView({ organizationId, entityType: "gabinetTreatments", entityId: treatment._id, entityLabel: treatment.name });
     }
   }, [treatment?._id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Derived: unassigned document templates
-  const assignedTemplateIds = useMemo(() => {
-    return new Set(treatment?.requiredDocumentTemplateIds ?? []);
-  }, [treatment?.requiredDocumentTemplateIds]);
-
-  const unassignedTemplates = useMemo(() => {
-    if (!allDocTemplates) return [];
-    const filtered = allDocTemplates.filter(
-      (tmpl) => tmpl.isActive && !assignedTemplateIds.has(tmpl._id),
-    );
-    if (!docSearchQuery) return filtered;
-    const q = docSearchQuery.toLowerCase();
-    return filtered.filter((tmpl) => tmpl.name.toLowerCase().includes(q));
-  }, [allDocTemplates, assignedTemplateIds, docSearchQuery]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
@@ -342,27 +311,6 @@ function TreatmentDetail() {
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
       parameters: newParams,
-    });
-    toast.success(t("common.saved"));
-  };
-
-  const handleAssignDocument = async (templateId: string) => {
-    const current = treatment!.requiredDocumentTemplateIds ?? [];
-    await setRequiredDocumentTemplates({
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-      templateIds: [...current, templateId as Id<"gabinetDocumentTemplates">],
-    });
-    setDocSearchQuery("");
-    toast.success(t("common.saved"));
-  };
-
-  const handleUnassignDocument = async (templateId: string) => {
-    const current = treatment!.requiredDocumentTemplateIds ?? [];
-    await setRequiredDocumentTemplates({
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-      templateIds: current.filter((id) => id !== templateId),
     });
     toast.success(t("common.saved"));
   };
@@ -834,93 +782,6 @@ function TreatmentDetail() {
       },
       {
         label: t("gabinet.treatmentDetail.tabs.documents"),
-        count: (treatmentDocTemplates ?? []).length,
-        content: (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("gabinet.treatmentDetail.requiredDocuments")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.treatmentDetail.documentsDescription")}
-                </p>
-
-                {/* Assigned templates */}
-                {(treatmentDocTemplates ?? []).length > 0 ? (
-                  <div className="space-y-2">
-                    {(treatmentDocTemplates ?? []).map((tmpl) => (
-                      <div
-                        key={tmpl._id}
-                        className="flex items-center justify-between rounded-md border p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                          <div>
-                            <span className="text-sm font-medium">{tmpl.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {tmpl.type}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick={() => handleUnassignDocument(tmpl._id)}
-                        >
-                          <X className="h-3.5 w-3.5" variant="stroke" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-2 text-center">
-                    {t("gabinet.treatmentDetail.noDocuments")}
-                  </p>
-                )}
-
-                {/* Add document template */}
-                <div className="border-t pt-4 space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("gabinet.treatmentDetail.addDocument")}
-                  </label>
-                  <Input
-                    value={docSearchQuery}
-                    onChange={(e) => setDocSearchQuery(e.target.value)}
-                    placeholder={t("gabinet.treatmentDetail.searchDocuments")}
-                    className="mb-2"
-                  />
-                  {unassignedTemplates.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto space-y-1">
-                      {unassignedTemplates.map((tmpl) => (
-                        <div
-                          key={tmpl._id}
-                          className="flex items-center justify-between rounded-md p-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => handleAssignDocument(tmpl._id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground" variant="stroke" />
-                            <span className="text-sm">{tmpl.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {tmpl.type}
-                            </Badge>
-                          </div>
-                          <Plus className="h-3.5 w-3.5 text-muted-foreground" variant="stroke" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ),
-      },
-      {
-        label: t("gabinet.treatmentDetail.tabs.formDocuments", "Dokumenty"),
         content: (
           <EntityDocumentsTab
             entityType="treatment"
@@ -1245,10 +1106,10 @@ function TreatmentDetail() {
       },
     ];
   }, [
-    treatment, stats, recentAppointments, treatmentAppointments, treatmentDocTemplates,
-    treatmentEmployees, variants, activities, unassignedTemplates, unassignedEmployees,
-    paramName, paramValue, paramUnit, docSearchQuery, empSearchQuery, aptStatusFilter,
-    aptDateFrom, aptDateTo, navigate, t,
+    treatment, stats, recentAppointments, treatmentAppointments,
+    treatmentEmployees, variants, activities, unassignedEmployees,
+    paramName, paramValue, paramUnit, empSearchQuery, aptStatusFilter,
+    aptDateFrom, aptDateTo, navigate, t, treatmentId, organizationId,
   ]);
 
   // --- Render ---

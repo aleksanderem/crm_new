@@ -6,7 +6,13 @@ import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
+import { ArrowLeft, Settings, PanelLeft, Menu } from "@/lib/ez-icons";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VariablePicker } from "@/components/documents/variable-picker";
@@ -45,6 +51,7 @@ function NewFormEditorPage() {
   const [saving, setSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
+  const [navOpen, setNavOpen] = useState(false);
   const [formJson, setFormJson] = useState("{}");
   const [usedPaths, setUsedPaths] = useState<Set<string>>(new Set());
 
@@ -143,7 +150,16 @@ function NewFormEditorPage() {
     <>
       {/* ─── Top bar (48px) ─── */}
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3">
-        {/* Left: Back */}
+        {/* Left: Nav toggle + Back */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+          onClick={() => setNavOpen(true)}
+          title={t("formEditor.navigation", "Nawigacja")}
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -250,6 +266,43 @@ function NewFormEditorPage() {
         settings={settings}
         onSettingsChange={setSettings}
       />
+
+      {/* Navigation overlay sidebar */}
+      <Sheet open={navOpen} onOpenChange={setNavOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetHeader className="border-b px-4 py-3">
+            <SheetTitle className="text-sm font-medium">
+              {t("formEditor.navigation", "Nawigacja")}
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="flex flex-col gap-1 p-2">
+            {[
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/dashboard/contacts", label: t("nav.contacts", "Kontakty") },
+              { href: "/dashboard/leads", label: t("nav.leads", "Leady") },
+              { href: "/dashboard/companies", label: t("nav.companies", "Firmy") },
+              { href: "/dashboard/documents", label: t("nav.documents", "Dokumenty") },
+              { href: "/dashboard/gabinet/appointments", label: t("nav.gabinet.appointments", "Wizyty") },
+              { href: "/dashboard/gabinet/patients", label: t("nav.gabinet.patients", "Pacjenci") },
+              { href: "/dashboard/gabinet/documents", label: t("nav.gabinet.documents", "Dokumenty Gabinet") },
+              { href: "/dashboard/settings/form-templates", label: t("settings.formTemplates.title", "Szablony formularzy") },
+            ].map((item) => (
+              <Button
+                key={item.href}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sm"
+                onClick={() => {
+                  setNavOpen(false);
+                  navigate({ to: item.href });
+                }}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </nav>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

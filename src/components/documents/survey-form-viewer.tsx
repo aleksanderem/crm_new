@@ -1,13 +1,19 @@
-import { useMemo } from "react";
-import { Survey } from "survey-react-ui";
-import { createSurveyModel } from "@/lib/surveyjs";
+import { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import "survey-core/survey-core.css";
+import type { Template } from "@pdfme/common";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+interface PdfmeFormViewerProps {
+  templateJson: string;
+  responseData: Record<string, string>;
+  signatureData?: string;
+  signedAt?: number;
+}
+
+// Keep old prop interface name for backward-compat
 interface SurveyFormViewerProps {
   formJson: string;
   responseData: Record<string, unknown>;
@@ -16,30 +22,59 @@ interface SurveyFormViewerProps {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Component — wraps PDFme Viewer (vanilla JS) in a React ref container
 // ---------------------------------------------------------------------------
 
-export function SurveyFormViewer({
-  formJson,
+export function PdfmeFormViewer({
+  templateJson,
   responseData,
   signatureData,
   signedAt,
-}: SurveyFormViewerProps) {
+}: PdfmeFormViewerProps) {
   const { t, i18n } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<any>(null);
 
-  const model = useMemo(() => {
-    const m = createSurveyModel(formJson);
-    m.data = responseData;
-    m.mode = "display";
-    m.showNavigationButtons = "none";
-    m.locale = i18n.language === "en" ? "en" : "pl";
-    return m;
-  }, [formJson, responseData, i18n.language]);
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    let destroyed = false;
+
+    const initViewer = async () => {
+      const { Viewer } = await import("@pdfme/ui");
+      const { text, image, barcodes } = await import("@pdfme/schemas");
+
+      if (destroyed) return;
+
+      const template: Template = JSON.parse(templateJson);
+      const inputs = [responseData];
+      const plugins = {
+        Text: text,
+        Image: image,
+        QRCode: barcodes.qrcode,
+      };
+
+      const viewer = new Viewer({
+        domContainer: containerRef.current!,
+        template,
+        inputs,
+        plugins,
+      });
+
+      viewerRef.current = viewer;
+    };
+
+    initViewer();
+
+    return () => {
+      destroyed = true;
+      viewerRef.current?.destroy();
+    };
+  }, [templateJson, responseData]);
 
   return (
     <div className="space-y-4">
-      <Survey model={model} />
-
+      <div ref={containerRef} className="min-h-[400px] w-full" />
       {signatureData && (
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground mb-2">
@@ -64,4 +99,29 @@ export function SurveyFormViewer({
   );
 }
 
-export type { SurveyFormViewerProps };
+// ---------------------------------------------------------------------------
+// Backward-compatible wrapper that maps old SurveyJS prop names to PDFme
+// ---------------------------------------------------------------------------
+
+export function SurveyFormViewer({
+  formJson,
+  responseData,
+  signatureData,
+  signedAt,
+}: SurveyFormViewerProps) {
+  // Convert Record<string, unknown> to Record<string, string>
+  const stringData = Object.fromEntries(
+    Object.entries(responseData).map(([k, v]) => [k, String(v ?? "")]),
+  );
+
+  return (
+    <PdfmeFormViewer
+      templateJson={formJson}
+      responseData={stringData}
+      signatureData={signatureData}
+      signedAt={signedAt}
+    />
+  );
+}
+
+export type { PdfmeFormViewerProps, SurveyFormViewerProps };

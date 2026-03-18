@@ -1,13 +1,17 @@
-import { useMemo } from "react";
-import { Survey } from "survey-react-ui";
-import { createSurveyModel } from "@/lib/surveyjs";
-import { useTranslation } from "react-i18next";
-import "survey-core/survey-core.css";
+import { useRef, useEffect, useCallback } from "react";
+import type { Template } from "@pdfme/common";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+interface PdfmeFormRendererProps {
+  templateJson: string;
+  prefilledData?: Record<string, string>;
+  onComplete?: (data: Record<string, string>) => void;
+}
+
+// Keep old prop interface name for backward-compat re-export
 interface SurveyFormRendererProps {
   formJson: string;
   prefilledData?: Record<string, unknown>;
@@ -17,53 +21,113 @@ interface SurveyFormRendererProps {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Component — wraps PDFme Form (vanilla JS) in a React ref container
+// ---------------------------------------------------------------------------
+
+export function PdfmeFormRenderer({
+  templateJson,
+  prefilledData,
+  onComplete,
+}: PdfmeFormRendererProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    let destroyed = false;
+
+    const initForm = async () => {
+      const { Form } = await import("@pdfme/ui");
+      const { text, image, barcodes } = await import("@pdfme/schemas");
+
+      if (destroyed) return;
+
+      const template: Template = JSON.parse(templateJson);
+      const inputs = [prefilledData ?? {}];
+      const plugins = {
+        Text: text,
+        Image: image,
+        QRCode: barcodes.qrcode,
+      };
+
+      const form = new Form({
+        domContainer: containerRef.current!,
+        template,
+        inputs,
+        plugins,
+      });
+
+      formRef.current = form;
+    };
+
+    initForm();
+
+    return () => {
+      destroyed = true;
+      formRef.current?.destroy();
+    };
+  }, [templateJson, prefilledData]);
+
+  const handleComplete = useCallback(() => {
+    if (formRef.current && onComplete) {
+      const inputs = formRef.current.getInputs();
+      onComplete(inputs[0]);
+    }
+  }, [onComplete]);
+
+  return (
+    <div className="space-y-4">
+      <div ref={containerRef} className="min-h-[500px] w-full" />
+      {onComplete && (
+        <div className="flex justify-end">
+          <button
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            onClick={handleComplete}
+          >
+            Zapisz dokument
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Backward-compatible wrapper that maps old SurveyJS prop names to PDFme
 // ---------------------------------------------------------------------------
 
 export function SurveyFormRenderer({
   formJson,
   prefilledData,
-  readOnly,
+  readOnly: _readOnly,
   onComplete,
-  onChange,
+  onChange: _onChange,
 }: SurveyFormRendererProps) {
-  const { i18n } = useTranslation();
+  // Convert Record<string, unknown> prefilled data to Record<string, string>
+  const stringPrefilled = prefilledData
+    ? Object.fromEntries(
+        Object.entries(prefilledData).map(([k, v]) => [k, String(v ?? "")]),
+      )
+    : undefined;
 
-  const model = useMemo(() => {
-    const m = createSurveyModel(formJson);
+  const handleComplete = useCallback(
+    (data: Record<string, string>) => {
+      if (onComplete) {
+        // Return as Record<string, unknown> to match old interface
+        onComplete(data as Record<string, unknown>);
+      }
+    },
+    [onComplete],
+  );
 
-    if (prefilledData) {
-      m.data = prefilledData;
-    }
-    if (readOnly) {
-      m.mode = "display";
-    }
-
-    // Sync locale with app language
-    m.locale = i18n.language === "en" ? "en" : "pl";
-
-    return m;
-  }, [formJson, prefilledData, readOnly, i18n.language]);
-
-  // Wire up callbacks — separate useMemo to avoid recreating model when
-  // only callback references change.
-  useMemo(() => {
-    model.onComplete.clear();
-    model.onValueChanged.clear();
-
-    if (onComplete) {
-      model.onComplete.add((sender) => {
-        onComplete(sender.data);
-      });
-    }
-    if (onChange) {
-      model.onValueChanged.add((sender) => {
-        onChange(sender.data);
-      });
-    }
-  }, [model, onComplete, onChange]);
-
-  return <Survey model={model} />;
+  return (
+    <PdfmeFormRenderer
+      templateJson={formJson}
+      prefilledData={stringPrefilled}
+      onComplete={onComplete ? handleComplete : undefined}
+    />
+  );
 }
 
-export type { SurveyFormRendererProps };
+export type { PdfmeFormRendererProps, SurveyFormRendererProps };

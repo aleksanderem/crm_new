@@ -1,55 +1,109 @@
-import { useCallback, useMemo } from "react";
-import { SurveyCreatorComponent, SurveyCreator } from "survey-creator-react";
-import "survey-core/survey-core.css";
-import "survey-creator-core/survey-creator-core.css";
-// Polish locale for both core and creator
-import "survey-core/i18n/polish";
-import "survey-creator-core/i18n/polish";
+import { useRef, useEffect, useCallback } from "react";
+import type { Template } from "@pdfme/common";
 
-interface SurveyCreatorEditorProps {
-  initialJson?: string; // existing form JSON to load
-  onChange?: (json: string) => void; // called when form definition changes
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface PdfmeDesignerProps {
+  initialTemplate?: string; // JSON string of Template
+  onChange?: (templateJson: string) => void;
 }
 
-export function SurveyCreatorEditor({
-  initialJson,
+// ---------------------------------------------------------------------------
+// Blank template helper
+// ---------------------------------------------------------------------------
+
+function getBlankTemplate(): Template {
+  return {
+    basePdf: { width: 210, height: 297, padding: [10, 10, 10, 10] },
+    schemas: [
+      [
+        {
+          name: "title",
+          type: "text",
+          position: { x: 10, y: 10 },
+          width: 190,
+          height: 12,
+        },
+        {
+          name: "body",
+          type: "text",
+          position: { x: 10, y: 30 },
+          width: 190,
+          height: 200,
+        },
+      ],
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Component — wraps PDFme Designer (vanilla JS) in a React ref container
+// ---------------------------------------------------------------------------
+
+export function PdfmeDesigner({
+  initialTemplate,
   onChange,
-}: SurveyCreatorEditorProps) {
-  const creator = useMemo(() => {
-    const c = new SurveyCreator({
-      showLogicTab: true,
-      showTranslationTab: false,
-      showThemeTab: false,
-      isAutoSave: true,
-      showJSONEditorTab: true, // allow switching to JSON for power users
-    });
+}: PdfmeDesignerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const designerRef = useRef<any>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-    // Set Polish locale
-    c.locale = "pl";
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-    // Load initial JSON if provided
-    if (initialJson) {
-      try {
-        c.JSON = JSON.parse(initialJson);
-      } catch {
-        // Invalid JSON, start fresh
+    let destroyed = false;
+
+    const initDesigner = async () => {
+      const { Designer } = await import("@pdfme/ui");
+      const { text, image, barcodes } = await import("@pdfme/schemas");
+
+      if (destroyed) return;
+
+      let template: Template;
+      if (initialTemplate) {
+        try {
+          template = JSON.parse(initialTemplate);
+        } catch {
+          template = getBlankTemplate();
+        }
+      } else {
+        template = getBlankTemplate();
       }
-    }
 
-    // Wire up auto-save
-    c.saveSurveyFunc = (saveNo: number, callback: (no: number, success: boolean) => void) => {
-      if (onChange) {
-        onChange(JSON.stringify(c.JSON));
-      }
-      callback(saveNo, true);
+      const plugins = {
+        Text: text,
+        Image: image,
+        QRCode: barcodes.qrcode,
+      };
+
+      const designer = new Designer({
+        domContainer: containerRef.current!,
+        template,
+        plugins,
+      });
+
+      designer.onChangeTemplate(() => {
+        if (onChangeRef.current) {
+          onChangeRef.current(JSON.stringify(designer.getTemplate()));
+        }
+      });
+
+      designerRef.current = designer;
     };
 
-    return c;
-  }, []); // intentionally empty deps — creator should be created once
+    initDesigner();
 
-  return (
-    <div className="h-[calc(100vh-200px)] w-full">
-      <SurveyCreatorComponent creator={creator} />
-    </div>
-  );
+    return () => {
+      destroyed = true;
+      designerRef.current?.destroy();
+    };
+  }, []); // mount once
+
+  return <div ref={containerRef} className="h-[calc(100vh-200px)] w-full" />;
 }
+
+// Re-export under old name for lazy() compatibility in consumer routes
+export { PdfmeDesigner as SurveyCreatorEditor };

@@ -1,19 +1,19 @@
 {
-  "session_id": "S0070",
-  "started_at": "2026-03-13T14:49:18Z",
-  "last_updated": "2026-03-18T03:26:40Z",
+  "session_id": "S0072",
+  "session_uuid": "db8b1e31-9f67-4b1e-a5ad-7a2e9c8f41d2",
+  "started_at": "2026-03-15T00:00:00Z",
+  "last_updated": "2026-03-15T15:06:20Z",
   "status": "active",
-  "focus": "Task 8 exact-batch auth artifact gap and preserved repro planning",
+  "focus": "Implement shared activity envelope and automation RBAC follow-up in isolated worktree",
   "tasks_snapshot": {
-    "total": 13,
+    "total": 2,
     "not_started": 0,
-    "in_progress": 2,
-    "passing": 10,
-    "failing": 1,
+    "in_progress": 1,
+    "passing": 1,
+    "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [27, 31],
-  "blockers": [
-    "The fresh exact Task 8 six-file rerun still exits 1 with five numbered failures across contacts, appointments, and patients; these exact-batch reds must be investigated before any new edits."
-  ],
-  "notes": "S0070: Exact rerun #2 remains the source of truth: `/tmp/task8-exact-batch-rerun2.exit` = `1` and `/tmp/task8-exact-batch-rerun2.log` = `5 failed`, `19 skipped`, `66 passed (4.4m)`. Follow-up parallel work still says the slots-domain stayed green across broader appointments-only mini-batches, so `e2e/gabinet/appointments.spec.ts:1094:3` remains unreproduced in focused scope. The best narrow auth failing path is still the saved `/tmp/auth-instability-stress.log` reproduction at `e2e/helpers/auth.ts:129`, and the patient test body itself still has stale add-button copy plus no final `hasBloodType` assertion. Fresh artifact inspection adds an important constraint: the exact-batch log references 10 screenshot/error-context files, but none of those files are present locally. The only preserved auth artifacts are 6 fallback patient auth-root-cause traces, and all 6 show successful JWT issuance plus navigation to `/dashboard/gabinet/patients` with zero trace errors and zero 4xx/5xx network responses. Current best guess therefore remains exact-batch-only concurrency/shared readiness rather than stale selectors. Current active step: preserve a fresh `--workers=6` exact-batch rerun with direct per-test traces/error-context before any TDD fix choice."}
+  "active_task_ids": ["ACT-01"],
+  "blockers": [],
+  "notes": "S0072: Design/fact-check is complete. An isolated git worktree was created at .worktrees/shared-activity-envelope-rbac on branch feat/shared-activity-envelope-rbac; baseline app and Convex typechecks are clean, so implementation can proceed task-by-task from the approved plan."
+}

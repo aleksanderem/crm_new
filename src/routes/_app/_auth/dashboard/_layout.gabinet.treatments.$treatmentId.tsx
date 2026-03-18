@@ -231,6 +231,49 @@ function TreatmentDetail() {
     return treatmentAppointments.slice(0, 10);
   }, [treatmentAppointments]);
 
+  // --- Variant handlers (hooks must be before early returns) ---
+
+  const resetVariantForm = useCallback(() => {
+    setVariantForm({
+      name: "",
+      price: "",
+      duration: "",
+      description: "",
+      shortDescription: "",
+      isActive: true,
+      overridePrice: false,
+      overrideDuration: false,
+      overrideDescription: false,
+      overrideShortDescription: false,
+    });
+    setEditingVariant(null);
+  }, []);
+
+  const openCreateVariantDialog = useCallback(() => {
+    resetVariantForm();
+    setVariantDialogOpen(true);
+  }, [resetVariantForm]);
+
+  const openEditVariantDialog = useCallback(
+    (variant: NonNullable<typeof variants>[number]) => {
+      setEditingVariant(variant._id);
+      setVariantForm({
+        name: variant.name,
+        price: variant.price !== undefined ? String(variant.price) : "",
+        duration: variant.duration !== undefined ? String(variant.duration) : "",
+        description: variant.description ?? "",
+        shortDescription: variant.shortDescription ?? "",
+        isActive: variant.isActive ?? true,
+        overridePrice: !variant.priceInherited,
+        overrideDuration: !variant.durationInherited,
+        overrideDescription: !variant.descriptionInherited,
+        overrideShortDescription: !variant.shortDescriptionInherited,
+      });
+      setVariantDialogOpen(true);
+    },
+    [],
+  );
+
   // --- Loading state ---
   if (isLoading) {
     return (
@@ -353,49 +396,6 @@ function TreatmentDetail() {
     });
     toast.success(t("common.saved"));
   };
-
-  // --- Variant handlers ---
-
-  const resetVariantForm = useCallback(() => {
-    setVariantForm({
-      name: "",
-      price: "",
-      duration: "",
-      description: "",
-      shortDescription: "",
-      isActive: true,
-      overridePrice: false,
-      overrideDuration: false,
-      overrideDescription: false,
-      overrideShortDescription: false,
-    });
-    setEditingVariant(null);
-  }, []);
-
-  const openCreateVariantDialog = useCallback(() => {
-    resetVariantForm();
-    setVariantDialogOpen(true);
-  }, [resetVariantForm]);
-
-  const openEditVariantDialog = useCallback(
-    (variant: NonNullable<typeof variants>[number]) => {
-      setEditingVariant(variant._id);
-      setVariantForm({
-        name: variant.name,
-        price: variant.price !== undefined ? String(variant.price) : "",
-        duration: variant.duration !== undefined ? String(variant.duration) : "",
-        description: variant.description ?? "",
-        shortDescription: variant.shortDescription ?? "",
-        isActive: variant.isActive ?? true,
-        overridePrice: !variant.priceInherited,
-        overrideDuration: !variant.durationInherited,
-        overrideDescription: !variant.descriptionInherited,
-        overrideShortDescription: !variant.shortDescriptionInherited,
-      });
-      setVariantDialogOpen(true);
-    },
-    [],
-  );
 
   const handleSaveVariant = async () => {
     if (!variantForm.name.trim()) return;

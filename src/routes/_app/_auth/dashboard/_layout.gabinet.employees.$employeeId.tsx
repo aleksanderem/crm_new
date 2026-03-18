@@ -9,6 +9,7 @@ import {
   EntityDetailLayout,
   type DetailField,
 } from "@/components/crm/entity-detail-layout";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
@@ -637,6 +638,16 @@ function EmployeeDetail() {
           onSavePeriod={saveSchedulePeriod}
           onRemovePeriod={removeSchedulePeriod}
           onSaveLegacy={bulkSetEmployeeSchedule}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.employees.tabs.documents", "Dokumenty"),
+      content: (
+        <EntityDocumentsTab
+          entityType="employee"
+          entityId={employeeId}
+          organizationId={organizationId}
         />
       ),
     },

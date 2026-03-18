@@ -45,6 +45,7 @@ import { DocumentFromTemplateDialog } from "@/components/documents/document-from
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/$companyId"
@@ -972,6 +973,12 @@ function CompanyDetail() {
                     </DialogContent>
                   </Dialog>
                 )}
+
+                <EntityDocumentsTab
+                  entityType="company"
+                  entityId={companyId}
+                  organizationId={organizationId}
+                />
               </>
             ),
           },

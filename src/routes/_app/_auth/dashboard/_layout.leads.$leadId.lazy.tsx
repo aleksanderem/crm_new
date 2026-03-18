@@ -65,6 +65,7 @@ import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/leads/$leadId"
@@ -1314,6 +1315,12 @@ function LeadDetail() {
               </DialogContent>
             </Dialog>
           )}
+
+          <EntityDocumentsTab
+            entityType="lead"
+            entityId={leadId}
+            organizationId={organizationId}
+          />
         </>
       ),
     },

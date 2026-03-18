@@ -15,6 +15,7 @@ import { ActivityTimeline } from "@/components/activity-timeline/activity-timeli
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -453,6 +454,16 @@ function PatientDetail() {
           onView={(instanceId) => setViewingDocId(instanceId)}
           onNewFromTemplate={() => setTemplateDialogOpen(true)}
           showNewButton
+        />
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.formDocuments", "Dokumenty"),
+      content: (
+        <EntityDocumentsTab
+          entityType="patient"
+          entityId={patientId}
+          organizationId={organizationId}
         />
       ),
     },

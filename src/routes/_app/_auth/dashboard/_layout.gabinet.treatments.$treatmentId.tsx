@@ -10,6 +10,7 @@ import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -916,6 +917,16 @@ function TreatmentDetail() {
               </CardContent>
             </Card>
           </div>
+        ),
+      },
+      {
+        label: t("gabinet.treatmentDetail.tabs.formDocuments", "Dokumenty"),
+        content: (
+          <EntityDocumentsTab
+            entityType="treatment"
+            entityId={treatmentId}
+            organizationId={organizationId}
+          />
         ),
       },
       {

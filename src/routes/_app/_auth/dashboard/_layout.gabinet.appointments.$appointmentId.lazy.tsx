@@ -48,6 +48,7 @@ import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/c
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
@@ -2046,6 +2047,16 @@ function AppointmentDetail() {
             )}
           </CardContent>
         </Card>
+      ),
+    },
+    {
+      label: t("gabinet.appointments.tabs.documents", "Dokumenty"),
+      content: (
+        <EntityDocumentsTab
+          entityType="appointment"
+          entityId={appointmentId}
+          organizationId={organizationId}
+        />
       ),
     },
     {

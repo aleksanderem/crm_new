@@ -46,6 +46,7 @@ import { DocumentInstanceTable } from "@/components/documents/document-instance-
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
+import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/$contactId"
@@ -947,6 +948,12 @@ function ContactDetail() {
               </DialogContent>
             </Dialog>
           )}
+
+          <EntityDocumentsTab
+            entityType="contact"
+            entityId={contactId}
+            organizationId={organizationId}
+          />
         </>
       ),
     },

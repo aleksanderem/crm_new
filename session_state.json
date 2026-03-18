@@ -1,18 +1,18 @@
 {
-  "session_id": "S0078",
-  "started_at": "2026-03-18T19:00:00Z",
-  "last_updated": "2026-03-18T19:30:00Z",
+  "session_id": "S0079",
+  "started_at": "2026-03-18T20:00:00Z",
+  "last_updated": "2026-03-18T20:15:00Z",
   "status": "completed",
-  "focus": "Full-screen document template editor — move PDFme Designer into dedicated route",
+  "focus": "PDFme Designer improvements: Polish UI labels, more fonts, PDF upload as base template",
   "tasks_snapshot": {
-    "total": 9,
+    "total": 3,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 9,
+    "passing": 3,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0078: Complete full-screen form editor. Created 3 new routes (form-editor layout, new, $id), extracted VariablePicker component, refactored PdfmeDesigner with imperative ref API, created TemplateSettingsSheet, updated list page navigation, added EN/PL i18n keys. Typecheck passes (only pre-existing TS2589 in convex/app.ts)."
+  "notes": "S0079: All three PDFme improvements implemented. A) lang:'pl' passed to Designer constructor for built-in Polish labels. B) Open Sans + Lato fonts loaded from /public/fonts/ via loadFonts() with Promise.allSettled + caching. C) updateBasePdf imperative method + 'Wgraj PDF' button in both form editor routes. Typecheck passes (only 3 pre-existing errors)."
 }

@@ -6,7 +6,7 @@ import {
   useImperativeHandle,
   forwardRef,
 } from "react";
-import type { Template } from "@pdfme/common";
+import type { Template, Font } from "@pdfme/common";
 import { cn } from "@/lib/utils";
 import type { VariableField } from "@/lib/pdfme/variables";
 
@@ -28,6 +28,46 @@ export interface PdfmeDesignerHandle {
   getTemplate: () => string | null;
   /** Get the set of field names currently used in the template */
   getUsedPaths: () => Set<string>;
+  /** Replace the base PDF with an uploaded PDF (ArrayBuffer or base64 string) */
+  updateBasePdf: (pdfData: string | ArrayBuffer) => void;
+}
+
+// ---------------------------------------------------------------------------
+// Font loader — fetches extra fonts (Open Sans, Lato) for Polish diacritics.
+// PDFme's built-in Roboto is used as the fallback.
+// ---------------------------------------------------------------------------
+
+let fontCache: Font | null = null;
+
+async function loadFonts(): Promise<Font> {
+  if (fontCache) return fontCache;
+
+  const fontEntries: [string, string][] = [
+    ["Open Sans", "/fonts/OpenSans-Regular.ttf"],
+    ["Open Sans Bold", "/fonts/OpenSans-Bold.ttf"],
+    ["Lato", "/fonts/Lato-Regular.ttf"],
+    ["Lato Bold", "/fonts/Lato-Bold.ttf"],
+  ];
+
+  const font: Font = {};
+
+  const results = await Promise.allSettled(
+    fontEntries.map(async ([name, url]) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${url}`);
+      return [name, await res.arrayBuffer()] as const;
+    }),
+  );
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const [name, data] = result.value;
+      font[name] = { data };
+    }
+  }
+
+  fontCache = font;
+  return font;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +181,19 @@ export const PdfmeDesigner = forwardRef<PdfmeDesignerHandle, PdfmeDesignerProps>
           return JSON.stringify(designer.getTemplate());
         },
         getUsedPaths: () => usedPaths,
+        updateBasePdf: (pdfData: string | ArrayBuffer) => {
+          const designer = designerRef.current;
+          if (!designer) return;
+          const template = designer.getTemplate() as Template;
+          const updatedTemplate: Template = {
+            ...template,
+            basePdf: pdfData,
+          };
+          designer.updateTemplate(updatedTemplate);
+          if (onChangeRef.current) {
+            onChangeRef.current(JSON.stringify(updatedTemplate));
+          }
+        },
       }),
       [usedPaths, updateUsedPaths],
     );
@@ -151,8 +204,12 @@ export const PdfmeDesigner = forwardRef<PdfmeDesignerHandle, PdfmeDesignerProps>
       let destroyed = false;
 
       const initDesigner = async () => {
-        const { Designer } = await import("@pdfme/ui");
-        const { text, image, barcodes } = await import("@pdfme/schemas");
+        const [{ Designer }, { text, image, barcodes }, extraFonts] =
+          await Promise.all([
+            import("@pdfme/ui"),
+            import("@pdfme/schemas"),
+            loadFonts(),
+          ]);
 
         if (destroyed) return;
 
@@ -177,6 +234,10 @@ export const PdfmeDesigner = forwardRef<PdfmeDesignerHandle, PdfmeDesignerProps>
           domContainer: containerRef.current!,
           template,
           plugins,
+          options: {
+            lang: "pl",
+            font: extraFonts,
+          },
         });
 
         designer.onChangeTemplate((tpl: Template) => {

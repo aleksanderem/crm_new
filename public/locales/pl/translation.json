@@ -3063,6 +3063,9 @@
     "settingsBtn": "Ustawienia",
     "namePlaceholder": "Nazwa szablonu...",
     "toggleVariables": "Pokaż/ukryj zmienne",
+    "uploadPdf": "Wgraj PDF jako tło",
+    "uploadPdfShort": "Wgraj PDF",
+    "pdfUploaded": "Wgrano PDF jako tło szablonu",
     "settings": {
       "title": "Ustawienia szablonu",
       "description": "Skonfiguruj metadane, moduły i typy encji szablonu."

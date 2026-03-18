@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
-import { Menu } from "lucide-react";
+import { Menu, FileUp } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -49,6 +49,7 @@ function NewFormEditorPage() {
   const { organizationId } = useOrganization();
   const designerRef = useRef<PdfmeDesignerHandle>(null);
 
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
@@ -147,6 +148,33 @@ function NewFormEditorPage() {
     navigate({ to: "/dashboard/settings/form-templates" });
   };
 
+  const handlePdfUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (result instanceof ArrayBuffer) {
+          // Convert to base64 data URI for PDFme
+          const bytes = new Uint8Array(result);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = btoa(binary);
+          const dataUri = `data:application/pdf;base64,${base64}`;
+          designerRef.current?.updateBasePdf(dataUri);
+          toast.success(t("formEditor.pdfUploaded", "Wgrano PDF jako tlo szablonu"));
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      // Reset input so same file can be re-uploaded
+      e.target.value = "";
+    },
+    [t],
+  );
+
   return (
     <>
       {/* ─── Top bar (48px) ─── */}
@@ -183,6 +211,27 @@ function NewFormEditorPage() {
         >
           <PanelLeft className="h-4 w-4" />
         </Button>
+
+        {/* Upload base PDF */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => pdfInputRef.current?.click()}
+          title={t("formEditor.uploadPdf", "Wgraj PDF jako tło")}
+        >
+          <FileUp className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {t("formEditor.uploadPdfShort", "Wgraj PDF")}
+          </span>
+        </Button>
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handlePdfUpload}
+        />
 
         <div className="mx-2 h-5 w-px bg-border" />
 

@@ -3052,6 +3052,9 @@
     "settingsBtn": "Settings",
     "namePlaceholder": "Template name...",
     "toggleVariables": "Show/hide variables",
+    "uploadPdf": "Upload PDF as background",
+    "uploadPdfShort": "Upload PDF",
+    "pdfUploaded": "PDF uploaded as template background",
     "settings": {
       "title": "Template Settings",
       "description": "Configure template metadata, modules, and entity types."

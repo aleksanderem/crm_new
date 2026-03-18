@@ -5,8 +5,11 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import {
+  EntityDetailLayout,
+  type DetailField,
+} from "@/components/crm/entity-detail-layout";
 import { SidePanel } from "@/components/crm/side-panel";
-import { ActivityForm } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -35,11 +36,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Pencil,
-  Settings2,
   Search,
   X,
   Calendar,
@@ -79,7 +78,6 @@ function EmployeeDetail() {
   const removeEmployee = useMutation(api.gabinet.employees.remove);
   const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
   const createNote = useMutation(api.notes.create);
-  const createScheduledActivity = useMutation(api.scheduledActivities.create);
   const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
@@ -87,14 +85,13 @@ function EmployeeDetail() {
   const bulkSetEmployeeSchedule = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
   const saveSchedulePeriod = useMutation(api.gabinet.scheduling.saveSchedulePeriod);
   const removeSchedulePeriod = useMutation(api.gabinet.scheduling.removeSchedulePeriod);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   // UI state
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
-  const [showActivityForm, setShowActivityForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAllFields, setShowAllFields] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -116,10 +113,6 @@ function EmployeeDetail() {
   const [clientTreatmentFilter, setClientTreatmentFilter] = useState<string>("all");
 
   // Queries
-  const { data: currentUser } = useQuery(
-    convexQuery(api.app.getCurrentUser, {})
-  );
-
   const { data: employee, isLoading } = useQuery(
     convexQuery(api.gabinet.employees.getById, {
       organizationId,
@@ -287,36 +280,30 @@ function EmployeeDetail() {
       .sort((a, b) => (a.effectiveFrom ?? "").localeCompare(b.effectiveFrom ?? ""));
   }, [employeeScheduleData]);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-12 w-64" />
-        <div className="flex gap-6">
-          <Skeleton className="h-96 w-[420px]" />
-          <Skeleton className="h-96 flex-1" />
-        </div>
-      </div>
-    );
-  }
+  // Track recently viewed
+  useEffect(() => {
+    if (employee && organizationId) {
+      const label =
+        employee.firstName || employee.lastName
+          ? `${employee.firstName ?? ""} ${employee.lastName ?? ""}`.trim()
+          : "Employee";
+      trackView({ organizationId, entityType: "gabinetEmployees", entityId: employee._id, entityLabel: label });
+    }
+  }, [employee?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!employee) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{t("common.notFound")}</p>
-      </div>
-    );
-  }
+  // --- Derived data (used in both layout props and tab content) ---
+  // Note: isLoading / notFound are handled by EntityDetailLayout props
 
-  // --- Derived data ---
-
-  const user = userMap.get(employee.userId);
-  const fullName =
-    employee.firstName || employee.lastName
-      ? `${employee.firstName ?? ""} ${employee.lastName ?? ""}`.trim()
-      : user?.name || user?.email || t("common.unknown");
-  const avatarFallback =
-    (employee.firstName?.[0] ?? user?.name?.[0] ?? "?") +
-    (employee.lastName?.[0] ?? "");
+  const user = employee ? userMap.get(employee.userId) : undefined;
+  const fullName = employee
+    ? (employee.firstName || employee.lastName
+        ? `${employee.firstName ?? ""} ${employee.lastName ?? ""}`.trim()
+        : user?.name || user?.email || t("common.unknown"))
+    : "";
+  const avatarFallback = employee
+    ? (employee.firstName?.[0] ?? user?.name?.[0] ?? "?") +
+      (employee.lastName?.[0] ?? "")
+    : "?";
 
   // --- Handlers ---
 
@@ -331,6 +318,7 @@ function EmployeeDetail() {
   };
 
   const handleAddTreatment = async (treatmentId: string) => {
+    if (!employee) return;
     const updated = [...employee.qualifiedTreatmentIds, treatmentId as Id<"gabinetTreatments">];
     await setQualifiedTreatments({
       organizationId,
@@ -341,47 +329,13 @@ function EmployeeDetail() {
   };
 
   const handleRemoveTreatment = async (treatmentId: string) => {
+    if (!employee) return;
     const updated = employee.qualifiedTreatmentIds.filter((id) => id !== treatmentId);
     await setQualifiedTreatments({
       organizationId,
       employeeId: employeeId as Id<"gabinetEmployees">,
       treatmentIds: updated as Id<"gabinetTreatments">[],
     });
-  };
-
-  const handleCreateActivity = async (data: {
-    title: string;
-    activityType: string;
-    dueDate: number;
-    endDate?: number;
-    description?: string;
-    note?: string;
-    isCompleted?: boolean;
-  }) => {
-    if (!currentUser) return;
-    const activityId = await createScheduledActivity({
-      organizationId,
-      title: data.title,
-      activityType: data.activityType,
-      dueDate: data.dueDate,
-      endDate: data.endDate,
-      description: data.description,
-      ownerId: currentUser._id as Id<"users">,
-      linkedEntityType: "gabinetEmployee",
-      linkedEntityId: employeeId,
-    });
-    if (data.isCompleted && activityId) {
-      await markActivityComplete({ organizationId, activityId });
-    }
-    if (data.note) {
-      await createNote({
-        organizationId,
-        entityType: "gabinetEmployee",
-        entityId: employeeId,
-        content: data.note,
-      });
-    }
-    setShowActivityForm(false);
   };
 
   const handleUpdateActivity = async (data: {
@@ -436,837 +390,313 @@ function EmployeeDetail() {
     }
   };
 
-  // Detail fields
-  const allFields = [
-    { label: t("gabinet.employees.firstName"), value: employee.firstName, fieldKey: "firstName" },
-    { label: t("gabinet.employees.lastName"), value: employee.lastName, fieldKey: "lastName" },
-    { label: t("common.email"), value: user?.email, fieldKey: "email" },
+  // Detail fields for EntityDetailLayout sidebar
+  const detailFields: DetailField[] = employee
+    ? [
+        { label: t("gabinet.employees.firstName"), value: employee.firstName, fieldKey: "firstName" },
+        { label: t("gabinet.employees.lastName"), value: employee.lastName, fieldKey: "lastName" },
+        { label: t("common.email"), value: user?.email, fieldKey: "email" },
+        {
+          label: t("gabinet.employees.role"),
+          value: t(`gabinet.employees.roles.${employee.role}`),
+          fieldKey: "role",
+        },
+        { label: t("gabinet.employees.specialization"), value: employee.specialization, fieldKey: "specialization" },
+        { label: t("gabinet.employees.license"), value: employee.licenseNumber, fieldKey: "licenseNumber" },
+        { label: t("gabinet.employees.hireDate"), value: employee.hireDate, fieldKey: "hireDate" },
+        {
+          label: t("gabinet.employees.color"),
+          value: employee.color ? (
+            <span className="flex items-center gap-2">
+              <span
+                className="inline-block h-4 w-4 rounded-full border"
+                style={{ backgroundColor: employee.color }}
+              />
+              {employee.color}
+            </span>
+          ) : undefined,
+          fieldKey: "color",
+        },
+        {
+          label: t("common.created"),
+          value: new Date(employee.createdAt).toLocaleDateString("pl-PL", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          fieldKey: "createdAt",
+        },
+      ]
+    : [];
+
+  // Actions dropdown menu
+  const actionsMenu = !employee ? undefined : (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          {t("detail.actions.actions")}
+          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
+          {t("gabinet.employees.editEmployee")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleDeactivate}
+          className="text-destructive focus:text-destructive"
+        >
+          {t("gabinet.employees.deactivate")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // Sidebar extra: notes card + treatment qualifications card
+  const sidebarExtra = !employee ? undefined : (
+    <>
+      {employee.notes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("gabinet.employees.notes")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {employee.notes}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            {t("gabinet.employees.qualifications")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {employee.qualifiedTreatmentIds.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {employee.qualifiedTreatmentIds.map((tid) => (
+                <Badge key={tid} variant="secondary" className="gap-1 pr-1">
+                  {treatmentMap.get(tid) || "..."}
+                  <button
+                    type="button"
+                    className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
+                    onClick={() => handleRemoveTreatment(tid)}
+                  >
+                    <X className="h-[18px] w-[18px]" variant="stroke" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t("gabinet.employees.noQualifications")}
+            </p>
+          )}
+
+          <div className="relative">
+            <div className="flex items-center w-full rounded-md border bg-transparent">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+              <input
+                type="text"
+                className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+                placeholder={t("gabinet.employees.addTreatment")}
+                value={treatmentSearch}
+                onChange={(e) => setTreatmentSearch(e.target.value)}
+              />
+            </div>
+            {treatmentSearch.length > 0 && availableTreatments.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                <ul className="max-h-[200px] overflow-y-auto p-1">
+                  {availableTreatments.map((tr) => (
+                    <li key={tr._id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleAddTreatment(tr._id)}
+                      >
+                        {tr.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {treatmentSearch.length > 0 && availableTreatments.length === 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                <div className="py-3 px-3 text-sm text-muted-foreground">
+                  {t("detail.relationships.noResults")}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+
+  // Header subtitle with color swatch, role badge, and inactive badge
+  const headerSubtitle = !employee ? undefined : (
+    <div className="flex items-center gap-2">
+      {employee.color && (
+        <span
+          className="h-4 w-4 rounded-full"
+          style={{ backgroundColor: employee.color }}
+        />
+      )}
+      <Badge variant={employee.isActive ? "default" : "secondary"}>
+        {t(`gabinet.employees.roles.${employee.role}`)}
+      </Badge>
+      {!employee.isActive && (
+        <Badge variant="outline" className="text-muted-foreground">
+          {t("common.inactive")}
+        </Badge>
+      )}
+    </div>
+  );
+
+  // Tabs definition
+  const tabs = !employee ? [] : [
     {
-      label: t("gabinet.employees.role"),
-      value: t(`gabinet.employees.roles.${employee.role}`),
-      fieldKey: "role",
+      label: t("gabinet.employees.tabs.agenda"),
+      content: (
+        <UpcomingAgenda
+          appointments={employeeAppointments}
+          treatmentMap={treatmentMap}
+          navigate={navigate}
+          t={t}
+          i18nLanguage={i18n.language}
+        />
+      ),
     },
-    { label: t("gabinet.employees.specialization"), value: employee.specialization, fieldKey: "specialization" },
-    { label: t("gabinet.employees.license"), value: employee.licenseNumber, fieldKey: "licenseNumber" },
-    { label: t("gabinet.employees.hireDate"), value: employee.hireDate, fieldKey: "hireDate" },
     {
-      label: t("gabinet.employees.color"),
-      value: employee.color ? (
-        <span className="flex items-center gap-2">
-          <span
-            className="inline-block h-4 w-4 rounded-full border"
-            style={{ backgroundColor: employee.color }}
-          />
-          {employee.color}
-        </span>
-      ) : undefined,
-      fieldKey: "color",
+      label: t("gabinet.employees.tabs.appointments"),
+      content: (
+        <AppointmentsTabContent
+          employeeAppointments={employeeAppointments}
+          calendarWeekStart={calendarWeekStart}
+          setCalendarWeekStart={setCalendarWeekStart}
+          calendarWeekDates={calendarWeekDates}
+          calendarAppointments={calendarAppointments}
+          appointmentsView={appointmentsView}
+          setAppointmentsView={setAppointmentsView}
+          treatmentMap={treatmentMap}
+          navigate={navigate}
+          t={t}
+          i18nLanguage={i18n.language}
+        />
+      ),
     },
     {
-      label: t("common.created"),
-      value: new Date(employee.createdAt).toLocaleDateString("pl-PL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      fieldKey: "createdAt",
+      label: t("gabinet.employees.tabs.patients"),
+      count: employeePatients?.length,
+      content: (
+        <PatientsTabContent
+          employeePatients={employeePatients}
+          filteredClients={filteredClients}
+          clientSearch={clientSearch}
+          setClientSearch={setClientSearch}
+          clientStatusFilter={clientStatusFilter}
+          setClientStatusFilter={setClientStatusFilter}
+          clientTreatmentFilter={clientTreatmentFilter}
+          setClientTreatmentFilter={setClientTreatmentFilter}
+          treatments={treatments}
+          navigate={navigate}
+          t={t}
+          i18nLanguage={i18n.language}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.employees.tabs.detailedData"),
+      content: (
+        <DetailedDataTab
+          employee={employee}
+          userEmail={user?.email}
+          treatments={treatments}
+          treatmentMap={treatmentMap}
+          organizationId={organizationId}
+          onUpdate={updateEmployee}
+          onSetTreatments={setQualifiedTreatments}
+          t={t}
+          i18nLanguage={i18n.language}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.employees.tabs.schedule"),
+      content: (
+        <FlexibleScheduleEditor
+          organizationId={organizationId}
+          userId={employee.userId as Id<"users">}
+          periods={schedulePeriods}
+          clinicHours={clinicHours ?? []}
+          onSavePeriod={saveSchedulePeriod}
+          onRemovePeriod={removeSchedulePeriod}
+          onSaveLegacy={bulkSetEmployeeSchedule}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.employees.notes"),
+      content: (
+        <NotesTabContent
+          notesData={notesData}
+          newNote={newNote}
+          setNewNote={setNewNote}
+          isAddingNote={isAddingNote}
+          setIsAddingNote={setIsAddingNote}
+          handleAddNote={handleAddNote}
+          t={t}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.employees.activity"),
+      content: (
+        <ActivityTimeline
+          activities={activities ?? []}
+          maxHeight="600px"
+        />
+      ),
     },
   ];
 
-  const defaultVisibleCount = 5;
-  const visibleFields = showAllFields ? allFields : allFields.slice(0, defaultVisibleCount);
-  const hiddenCount = allFields.length - defaultVisibleCount;
-
-  const tabTriggerClass =
-    "rounded-none border-b-2 border-transparent px-4 pb-2.5 pt-1.5 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none";
-
   return (
     <>
-      <div className="flex h-full flex-col bg-muted/30">
-        {/* Top header bar */}
-        <div className="flex items-center justify-between border-b bg-background px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                {avatarFallback}
-              </AvatarFallback>
-            </Avatar>
-            <h1 className="text-xl font-bold">{fullName}</h1>
-            {employee.color && (
-              <span
-                className="h-4 w-4 rounded-full"
-                style={{ backgroundColor: employee.color }}
-              />
-            )}
-            <Badge variant={employee.isActive ? "default" : "secondary"}>
-              {t(`gabinet.employees.roles.${employee.role}`)}
-            </Badge>
-            {!employee.isActive && (
-              <Badge variant="outline" className="text-muted-foreground">
-                {t("common.inactive")}
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {t("detail.actions.actions")}
-                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("gabinet.employees.editEmployee")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleDeactivate}
-                  className="text-destructive focus:text-destructive"
-                >
-                  {t("gabinet.employees.deactivate")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Main content: sidebar + tabs */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left sidebar */}
-          <ScrollArea className="w-[420px] shrink-0 border-r bg-background">
-            <div className="p-5 space-y-4">
-              {/* Details card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{t("gabinet.employees.details")}</CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setEditDrawerOpen(true)}
-                      >
-                        <Pencil className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Settings2 className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      {hiddenCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground"
-                          onClick={() => setShowAllFields(!showAllFields)}
-                        >
-                          {showAllFields
-                            ? t("gabinet.employees.showLess")
-                            : t("gabinet.employees.showMore", { count: hiddenCount })}
-                          {showAllFields ? (
-                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {visibleFields.map((field) => (
-                    <div key={field.fieldKey} className="flex items-start gap-4">
-                      <span className="w-28 shrink-0 text-right text-sm text-muted-foreground">
-                        {field.label}
-                      </span>
-                      <span className="text-sm font-medium text-primary">
-                        {field.value || "—"}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Notes card */}
-              {employee.notes && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{t("gabinet.employees.notes")}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {employee.notes}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Treatment Qualifications card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("gabinet.employees.qualifications")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {employee.qualifiedTreatmentIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {employee.qualifiedTreatmentIds.map((tid) => (
-                        <Badge key={tid} variant="secondary" className="gap-1 pr-1">
-                          {treatmentMap.get(tid) || "..."}
-                          <button
-                            type="button"
-                            className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
-                            onClick={() => handleRemoveTreatment(tid)}
-                          >
-                            <X className="h-[18px] w-[18px]" variant="stroke" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.employees.noQualifications")}
-                    </p>
-                  )}
-
-                  <div className="relative">
-                    <div className="flex items-center w-full rounded-md border bg-transparent">
-                      <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-                      <input
-                        type="text"
-                        className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
-                        placeholder={t("gabinet.employees.addTreatment")}
-                        value={treatmentSearch}
-                        onChange={(e) => setTreatmentSearch(e.target.value)}
-                      />
-                    </div>
-                    {treatmentSearch.length > 0 && availableTreatments.length > 0 && (
-                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                        <ul className="max-h-[200px] overflow-y-auto p-1">
-                          {availableTreatments.map((tr) => (
-                            <li key={tr._id}>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                                onClick={() => handleAddTreatment(tr._id)}
-                              >
-                                {tr.name}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {treatmentSearch.length > 0 && availableTreatments.length === 0 && (
-                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                        <div className="py-3 px-3 text-sm text-muted-foreground">
-                          {t("detail.relationships.noResults")}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </ScrollArea>
-
-          {/* Right content area with tabs */}
-          <div className="flex flex-1 flex-col overflow-hidden bg-background">
-            <Tabs defaultValue="agenda" className="flex flex-1 flex-col">
-              <div className="shrink-0 border-b px-6 pt-2">
-                <TabsList className="h-10 bg-transparent p-0 gap-0">
-                  <TabsTrigger value="agenda" className={tabTriggerClass}>
-                    {t("gabinet.employees.tabs.agenda")}
-                  </TabsTrigger>
-                  <TabsTrigger value="appointments" className={tabTriggerClass}>
-                    {t("gabinet.employees.tabs.appointments")}
-                  </TabsTrigger>
-                  <TabsTrigger value="patients" className={tabTriggerClass}>
-                    {t("gabinet.employees.tabs.patients")}
-                  </TabsTrigger>
-                  <TabsTrigger value="detailedData" className={tabTriggerClass}>
-                    {t("gabinet.employees.tabs.detailedData")}
-                  </TabsTrigger>
-                  <TabsTrigger value="schedule" className={tabTriggerClass}>
-                    {t("gabinet.employees.tabs.schedule")}
-                  </TabsTrigger>
-                  <TabsTrigger value="notes" className={tabTriggerClass}>
-                    {t("gabinet.employees.notes")}
-                  </TabsTrigger>
-                  <TabsTrigger value="history" className={tabTriggerClass}>
-                    {t("gabinet.employees.activity")}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <ScrollArea className="flex-1">
-                {/* Agenda tab — upcoming appointments grouped by day */}
-                <TabsContent value="agenda" className="m-0 p-6">
-                  <UpcomingAgenda
-                    appointments={employeeAppointments}
-                    treatmentMap={treatmentMap}
-                    navigate={navigate}
-                    t={t}
-                    i18nLanguage={i18n.language}
-                  />
-                </TabsContent>
-
-                {/* Appointments tab — calendar/list toggle */}
-                <TabsContent value="appointments" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
-                        {t("gabinet.employees.tabs.appointments")}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <div className="flex rounded-md border">
-                          <Button
-                            size="sm"
-                            variant={appointmentsView === "calendar" ? "default" : "ghost"}
-                            className="rounded-r-none h-8 px-3"
-                            onClick={() => setAppointmentsView("calendar")}
-                          >
-                            <Calendar className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={appointmentsView === "list" ? "default" : "ghost"}
-                            className="rounded-l-none h-8 px-3"
-                            onClick={() => setAppointmentsView("list")}
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-                        >
-                          <Plus className="mr-1 h-4 w-4" variant="stroke" />
-                          {t("gabinet.appointments.createAppointment")}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {!employeeAppointments || employeeAppointments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.appointments.noAppointments")}
-                        </p>
-                      </div>
-                    ) : appointmentsView === "calendar" ? (
-                      /* Weekly calendar view */
-                      <div>
-                        {/* Week navigation */}
-                        <div className="flex items-center justify-between mb-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const d = new Date(calendarWeekStart + "T00:00:00");
-                              d.setDate(d.getDate() - 7);
-                              setCalendarWeekStart(d.toISOString().split("T")[0]);
-                            }}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
-                              {new Date(calendarWeekDates[0] + "T00:00:00").toLocaleDateString(i18n.language, { day: "numeric", month: "short" })}
-                              {" – "}
-                              {new Date(calendarWeekDates[6] + "T00:00:00").toLocaleDateString(i18n.language, { day: "numeric", month: "short", year: "numeric" })}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const now = new Date();
-                                const day = now.getDay();
-                                const diff = day === 0 ? -6 : 1 - day;
-                                const monday = new Date(now);
-                                monday.setDate(now.getDate() + diff);
-                                setCalendarWeekStart(monday.toISOString().split("T")[0]);
-                              }}
-                            >
-                              {t("gabinet.employees.appointmentsView.today")}
-                            </Button>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const d = new Date(calendarWeekStart + "T00:00:00");
-                              d.setDate(d.getDate() + 7);
-                              setCalendarWeekStart(d.toISOString().split("T")[0]);
-                            }}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {/* Week grid */}
-                        <div className="rounded-lg border overflow-hidden">
-                          {/* Day headers */}
-                          <div className="grid grid-cols-7 border-b bg-muted/50">
-                            {calendarWeekDates.map((date) => {
-                              const d = new Date(date + "T00:00:00");
-                              const isToday = date === new Date().toISOString().split("T")[0];
-                              return (
-                                <div
-                                  key={date}
-                                  className={`px-2 py-2 text-center text-xs font-medium ${isToday ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
-                                >
-                                  <div>{d.toLocaleDateString(i18n.language, { weekday: "short" })}</div>
-                                  <div className={`text-lg ${isToday ? "font-bold" : ""}`}>{d.getDate()}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {/* Day columns with appointments */}
-                          <div className="grid grid-cols-7 min-h-[300px]">
-                            {calendarWeekDates.map((date) => {
-                              const dayApts = calendarAppointments
-                                .filter((a) => a.date === date)
-                                .sort((a, b) => a.startTime.localeCompare(b.startTime));
-                              return (
-                                <div key={date} className="border-r last:border-r-0 p-1 space-y-1">
-                                  {dayApts.map((apt) => {
-                                    const tName = treatmentMap.get(apt.treatmentId);
-                                    const statusColors: Record<string, string> = {
-                                      scheduled: "bg-blue-50 border-blue-200 text-blue-800",
-                                      confirmed: "bg-green-50 border-green-200 text-green-800",
-                                      in_progress: "bg-yellow-50 border-yellow-200 text-yellow-800",
-                                      completed: "bg-gray-50 border-gray-200 text-gray-600",
-                                      cancelled: "bg-red-50 border-red-200 text-red-400",
-                                      no_show: "bg-orange-50 border-orange-200 text-orange-400",
-                                    };
-                                    const cls = statusColors[apt.status] ?? statusColors.scheduled;
-                                    return (
-                                      <div
-                                        key={apt._id}
-                                        className={`rounded border-l-2 px-1.5 py-1 text-xs cursor-pointer hover:opacity-80 ${cls}`}
-                                        onClick={() =>
-                                          navigate({ to: `/dashboard/gabinet/appointments/${apt._id}` })
-                                        }
-                                      >
-                                        <div className="font-medium truncate">{apt.startTime}–{apt.endTime}</div>
-                                        <div className="truncate opacity-75">{tName ?? t("common.unknown")}</div>
-                                      </div>
-                                    );
-                                  })}
-                                  {dayApts.length === 0 && (
-                                    <div className="h-full min-h-[60px]" />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        {calendarAppointments.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center mt-4">
-                            {t("gabinet.employees.appointmentsView.noAppointmentsThisWeek")}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      /* List view */
-                      <div className="space-y-2">
-                        {[...employeeAppointments]
-                          .sort((a, b) =>
-                            (b.date + b.startTime).localeCompare(a.date + a.startTime)
-                          )
-                          .map((apt) => {
-                            const treatmentName = treatmentMap.get(apt.treatmentId);
-                            const isPast = apt.date < new Date().toISOString().split("T")[0];
-                            return (
-                              <div
-                                key={apt._id}
-                                className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
-                                onClick={() =>
-                                  navigate({ to: `/dashboard/gabinet/appointments/${apt._id}` })
-                                }
-                              >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                  <Calendar className="h-4 w-4 text-primary" variant="stroke" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {treatmentName ?? t("common.unknown")}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {apt.date} &middot; {apt.startTime}–{apt.endTime}
-                                  </p>
-                                </div>
-                                <Badge
-                                  variant={
-                                    apt.status === "completed"
-                                      ? "default"
-                                      : apt.status === "cancelled" || apt.status === "no_show"
-                                        ? "destructive"
-                                        : "secondary"
-                                  }
-                                >
-                                  {t(`gabinet.appointments.statuses.${apt.status}`)}
-                                </Badge>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Clients (Klienci) tab — with search & filtering */}
-                <TabsContent value="patients" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">
-                      {t("gabinet.employees.tabs.patients")}
-                    </h3>
-
-                    {/* Search and filters */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder={t("gabinet.employees.clientsTab.searchPlaceholder")}
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          className="pl-9 h-9"
-                        />
-                        {clientSearch && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1 h-7 w-7 p-0"
-                            onClick={() => setClientSearch("")}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                      <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
-                        <SelectTrigger className="w-[160px] h-9">
-                          <SelectValue placeholder={t("gabinet.employees.clientsTab.filterByStatus")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">{t("gabinet.employees.clientsTab.allStatuses")}</SelectItem>
-                          <SelectItem value="scheduled">{t("gabinet.appointments.statuses.scheduled")}</SelectItem>
-                          <SelectItem value="confirmed">{t("gabinet.appointments.statuses.confirmed")}</SelectItem>
-                          <SelectItem value="completed">{t("gabinet.appointments.statuses.completed")}</SelectItem>
-                          <SelectItem value="cancelled">{t("gabinet.appointments.statuses.cancelled")}</SelectItem>
-                          <SelectItem value="no_show">{t("gabinet.appointments.statuses.no_show")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={clientTreatmentFilter} onValueChange={setClientTreatmentFilter}>
-                        <SelectTrigger className="w-[180px] h-9">
-                          <SelectValue placeholder={t("gabinet.employees.clientsTab.filterByTreatment")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">{t("gabinet.employees.clientsTab.allTreatments")}</SelectItem>
-                          {treatments?.map((tr) => (
-                            <SelectItem key={tr._id} value={tr._id}>
-                              {tr.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {(clientSearch || clientStatusFilter !== "all" || clientTreatmentFilter !== "all") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9"
-                          onClick={() => {
-                            setClientSearch("");
-                            setClientStatusFilter("all");
-                            setClientTreatmentFilter("all");
-                          }}
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          {t("gabinet.employees.clientsTab.clearFilters")}
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Results count */}
-                    {employeePatients && employeePatients.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.employees.clientsTab.showing", {
-                          count: filteredClients.length,
-                          total: employeePatients.length,
-                        })}
-                      </p>
-                    )}
-
-                    {!employeePatients || employeePatients.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <User className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.employees.tabs.noPatients")}
-                        </p>
-                      </div>
-                    ) : filteredClients.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.employees.clientsTab.noResults")}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {filteredClients.map((pat) => (
-                          <div
-                            key={pat._id}
-                            className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() =>
-                              navigate({
-                                to: `/dashboard/gabinet/patients/${pat._id}`,
-                              })
-                            }
-                          >
-                            <Avatar className="h-9 w-9 border">
-                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                                {pat.firstName[0]}
-                                {pat.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">
-                                {pat.firstName} {pat.lastName}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {pat.email}
-                                {pat.phone && ` · ${pat.phone}`}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Badge variant="outline" className="text-xs">
-                                {t("gabinet.employees.clientsTab.visits", { count: pat.visitCount })}
-                              </Badge>
-                              {pat.lastVisitDate && (
-                                <span className="text-xs text-muted-foreground">
-                                  {t("gabinet.employees.clientsTab.lastVisit")}{" "}
-                                  {new Date(pat.lastVisitDate + "T00:00:00").toLocaleDateString(i18n.language, { day: "numeric", month: "short" })}
-                                </span>
-                              )}
-                              {!pat.isActive && (
-                                <Badge variant="outline" className="text-muted-foreground">
-                                  {t("common.inactive")}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Detailed Data tab — comprehensive employee information */}
-                <TabsContent value="detailedData" className="m-0 p-6">
-                  <DetailedDataTab
-                    employee={employee}
-                    userEmail={user?.email}
-                    treatments={treatments}
-                    treatmentMap={treatmentMap}
-                    organizationId={organizationId}
-                    onUpdate={updateEmployee}
-                    onSetTreatments={setQualifiedTreatments}
-                    t={t}
-                    i18nLanguage={i18n.language}
-                  />
-                </TabsContent>
-
-                {/* Activities tab (scheduled activities + form) */}
-                <TabsContent value="activities" className="m-0 p-6">
-                  <div className="space-y-4">
-                    {!showActivityForm && (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                          <h3 className="font-semibold">
-                            {t("detail.activitySection.title")}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {t("detail.activitySection.descriptionOther")}
-                          </p>
-                        </div>
-                        <Button
-                          className="bg-primary"
-                          onClick={() => setShowActivityForm(true)}
-                        >
-                          <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                          {t("detail.activitySection.add")}
-                        </Button>
-                      </div>
-                    )}
-
-                    {showActivityForm && (
-                      <div className="rounded-lg border p-5">
-                        <ActivityForm
-                          linkedEntityType="gabinetEmployee"
-                          linkedEntityLabel={fullName}
-                          onSubmit={handleCreateActivity}
-                          onCancel={() => setShowActivityForm(false)}
-                          isSubmitting={isSubmitting}
-                          activityTypes={activityTypeDefs}
-                        />
-                      </div>
-                    )}
-
-                    {scheduledActivitiesData && scheduledActivitiesData.length > 0 ? (
-                      <ul className="space-y-3">
-                        {scheduledActivitiesData.map((activity) => (
-                          <li
-                            key={activity._id}
-                            className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => {
-                              setSelectedActivityId(activity._id);
-                              setActivityDrawerOpen(true);
-                            }}
-                          >
-                            <div
-                              className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                                activity.isCompleted ? "bg-green-500" : "bg-orange-400"
-                              }`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{activity.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {activity.activityType} &middot;{" "}
-                                {new Date(activity.dueDate).toLocaleDateString("pl-PL")}
-                              </p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      !showActivityForm && (
-                        <p className="text-sm text-muted-foreground">
-                          {t("detail.activitySection.emptyContact")}
-                        </p>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Notes tab */}
-                <TabsContent value="notes" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{t("detail.notes.title")}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {t("detail.notes.descriptionAlt")}
-                        </p>
-                      </div>
-                      <Button
-                        className="bg-primary"
-                        onClick={() => setIsAddingNote(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                        {t("detail.notes.add")}
-                      </Button>
-                    </div>
-
-                    {isAddingNote && (
-                      <div className="space-y-2 rounded-lg border p-4">
-                        <Textarea
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          placeholder={t("detail.notes.placeholderAlt")}
-                          rows={4}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setIsAddingNote(false);
-                              setNewNote("");
-                            }}
-                          >
-                            {t("detail.notes.cancel")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleAddNote}
-                            disabled={!newNote.trim()}
-                          >
-                            {t("detail.notes.save")}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {notesData && notesData.length > 0 ? (
-                      <ul className="space-y-3">
-                        {notesData.map((note) => (
-                          <li
-                            key={note._id}
-                            className="rounded-lg border p-4 space-y-1"
-                          >
-                            <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(note.createdAt).toLocaleDateString("pl-PL", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      !isAddingNote && (
-                        <p className="text-sm text-muted-foreground">
-                          {t("detail.notes.empty")}
-                        </p>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Schedule tab — flexible periods */}
-                <TabsContent value="schedule" className="m-0 p-6">
-                  <FlexibleScheduleEditor
-                    organizationId={organizationId}
-                    userId={employee.userId as Id<"users">}
-                    periods={schedulePeriods}
-                    clinicHours={clinicHours ?? []}
-                    onSavePeriod={saveSchedulePeriod}
-                    onRemovePeriod={removeSchedulePeriod}
-                    onSaveLegacy={bulkSetEmployeeSchedule}
-                  />
-                </TabsContent>
-
-                {/* Activity history tab */}
-                <TabsContent value="history" className="m-0 p-6">
-                  <ActivityTimeline
-                    activities={activities ?? []}
-                    maxHeight="600px"
-                  />
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </div>
-        </div>
-      </div>
+      <EntityDetailLayout
+        variant="default"
+        isLoading={isLoading}
+        notFound={!employee && !isLoading}
+        onBack={() => navigate({ to: "/dashboard/gabinet/employees" })}
+        title={fullName}
+        headerSubtitle={headerSubtitle}
+        avatarFallback={avatarFallback}
+        actionsMenu={actionsMenu}
+        onEdit={() => setEditDrawerOpen(true)}
+        fields={detailFields}
+        expandedFieldCount={5}
+        sidebarExtra={sidebarExtra}
+        tabs={tabs}
+        defaultTab={t("gabinet.employees.tabs.agenda")}
+      />
 
       {/* Edit employee drawer */}
-      <EditEmployeeDrawer
-        open={editDrawerOpen}
-        onOpenChange={setEditDrawerOpen}
-        employee={employee}
-        organizationId={organizationId}
-        onUpdate={updateEmployee}
-        isSubmitting={isSubmitting}
-        setIsSubmitting={setIsSubmitting}
-        t={t}
-      />
+      {employee && (
+        <EditEmployeeDrawer
+          open={editDrawerOpen}
+          onOpenChange={setEditDrawerOpen}
+          employee={employee}
+          organizationId={organizationId}
+          onUpdate={updateEmployee}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+          t={t}
+        />
+      )}
 
       {/* Activity detail drawer */}
       <ActivityDetailDrawer
@@ -1283,6 +713,533 @@ function EmployeeDetail() {
         isSubmitting={isSubmitting}
       />
     </>
+  );
+}
+
+// --- Extracted tab content components ---
+
+function AppointmentsTabContent({
+  employeeAppointments,
+  calendarWeekStart,
+  setCalendarWeekStart,
+  calendarWeekDates,
+  calendarAppointments,
+  appointmentsView,
+  setAppointmentsView,
+  treatmentMap,
+  navigate,
+  t,
+  i18nLanguage,
+}: {
+  employeeAppointments: Array<{
+    _id: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+    treatmentId: string;
+  }> | undefined;
+  calendarWeekStart: string;
+  setCalendarWeekStart: (v: string) => void;
+  calendarWeekDates: string[];
+  calendarAppointments: Array<{
+    _id: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+    treatmentId: string;
+  }>;
+  appointmentsView: "calendar" | "list";
+  setAppointmentsView: (v: "calendar" | "list") => void;
+  treatmentMap: Map<string, string>;
+  navigate: (opts: { to: string }) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  i18nLanguage: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">
+          {t("gabinet.employees.tabs.appointments")}
+        </h3>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border">
+            <Button
+              size="sm"
+              variant={appointmentsView === "calendar" ? "default" : "ghost"}
+              className="rounded-r-none h-8 px-3"
+              onClick={() => setAppointmentsView("calendar")}
+            >
+              <Calendar className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={appointmentsView === "list" ? "default" : "ghost"}
+              className="rounded-l-none h-8 px-3"
+              onClick={() => setAppointmentsView("list")}
+            >
+              <ClipboardList className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+          >
+            <Plus className="mr-1 h-4 w-4" variant="stroke" />
+            {t("gabinet.appointments.createAppointment")}
+          </Button>
+        </div>
+      </div>
+
+      {!employeeAppointments || employeeAppointments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {t("gabinet.appointments.noAppointments")}
+          </p>
+        </div>
+      ) : appointmentsView === "calendar" ? (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const d = new Date(calendarWeekStart + "T00:00:00");
+                d.setDate(d.getDate() - 7);
+                setCalendarWeekStart(d.toISOString().split("T")[0]);
+              }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {new Date(calendarWeekDates[0] + "T00:00:00").toLocaleDateString(i18nLanguage, { day: "numeric", month: "short" })}
+                {" – "}
+                {new Date(calendarWeekDates[6] + "T00:00:00").toLocaleDateString(i18nLanguage, { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const now = new Date();
+                  const day = now.getDay();
+                  const diff = day === 0 ? -6 : 1 - day;
+                  const monday = new Date(now);
+                  monday.setDate(now.getDate() + diff);
+                  setCalendarWeekStart(monday.toISOString().split("T")[0]);
+                }}
+              >
+                {t("gabinet.employees.appointmentsView.today")}
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const d = new Date(calendarWeekStart + "T00:00:00");
+                d.setDate(d.getDate() + 7);
+                setCalendarWeekStart(d.toISOString().split("T")[0]);
+              }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="rounded-lg border overflow-hidden">
+            <div className="grid grid-cols-7 border-b bg-muted/50">
+              {calendarWeekDates.map((date) => {
+                const d = new Date(date + "T00:00:00");
+                const isToday = date === new Date().toISOString().split("T")[0];
+                return (
+                  <div
+                    key={date}
+                    className={`px-2 py-2 text-center text-xs font-medium ${isToday ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+                  >
+                    <div>{d.toLocaleDateString(i18nLanguage, { weekday: "short" })}</div>
+                    <div className={`text-lg ${isToday ? "font-bold" : ""}`}>{d.getDate()}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-7 min-h-[300px]">
+              {calendarWeekDates.map((date) => {
+                const dayApts = calendarAppointments
+                  .filter((a) => a.date === date)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                return (
+                  <div key={date} className="border-r last:border-r-0 p-1 space-y-1">
+                    {dayApts.map((apt) => {
+                      const tName = treatmentMap.get(apt.treatmentId);
+                      const statusColors: Record<string, string> = {
+                        scheduled: "bg-blue-50 border-blue-200 text-blue-800",
+                        confirmed: "bg-green-50 border-green-200 text-green-800",
+                        in_progress: "bg-yellow-50 border-yellow-200 text-yellow-800",
+                        completed: "bg-gray-50 border-gray-200 text-gray-600",
+                        cancelled: "bg-red-50 border-red-200 text-red-400",
+                        no_show: "bg-orange-50 border-orange-200 text-orange-400",
+                      };
+                      const cls = statusColors[apt.status] ?? statusColors.scheduled;
+                      return (
+                        <div
+                          key={apt._id}
+                          className={`rounded border-l-2 px-1.5 py-1 text-xs cursor-pointer hover:opacity-80 ${cls}`}
+                          onClick={() =>
+                            navigate({ to: `/dashboard/gabinet/appointments/${apt._id}` })
+                          }
+                        >
+                          <div className="font-medium truncate">{apt.startTime}–{apt.endTime}</div>
+                          <div className="truncate opacity-75">{tName ?? t("common.unknown")}</div>
+                        </div>
+                      );
+                    })}
+                    {dayApts.length === 0 && (
+                      <div className="h-full min-h-[60px]" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {calendarAppointments.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              {t("gabinet.employees.appointmentsView.noAppointmentsThisWeek")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {[...employeeAppointments]
+            .sort((a, b) =>
+              (b.date + b.startTime).localeCompare(a.date + a.startTime)
+            )
+            .map((apt) => {
+              const treatmentName = treatmentMap.get(apt.treatmentId);
+              const isPast = apt.date < new Date().toISOString().split("T")[0];
+              return (
+                <div
+                  key={apt._id}
+                  className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
+                  onClick={() =>
+                    navigate({ to: `/dashboard/gabinet/appointments/${apt._id}` })
+                  }
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Calendar className="h-4 w-4 text-primary" variant="stroke" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {treatmentName ?? t("common.unknown")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {apt.date} &middot; {apt.startTime}–{apt.endTime}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      apt.status === "completed"
+                        ? "default"
+                        : apt.status === "cancelled" || apt.status === "no_show"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                  >
+                    {t(`gabinet.appointments.statuses.${apt.status}`)}
+                  </Badge>
+                </div>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatientsTabContent({
+  employeePatients,
+  filteredClients,
+  clientSearch,
+  setClientSearch,
+  clientStatusFilter,
+  setClientStatusFilter,
+  clientTreatmentFilter,
+  setClientTreatmentFilter,
+  treatments,
+  navigate,
+  t,
+  i18nLanguage,
+}: {
+  employeePatients: Array<{
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    visitCount: number;
+    lastVisitDate?: string;
+    isActive: boolean;
+    statuses: string[];
+    treatmentIds: string[];
+  }> | undefined;
+  filteredClients: Array<{
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    visitCount: number;
+    lastVisitDate?: string;
+    isActive: boolean;
+  }>;
+  clientSearch: string;
+  setClientSearch: (v: string) => void;
+  clientStatusFilter: string;
+  setClientStatusFilter: (v: string) => void;
+  clientTreatmentFilter: string;
+  setClientTreatmentFilter: (v: string) => void;
+  treatments: Array<{ _id: string; name: string }> | undefined;
+  navigate: (opts: { to: string }) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  i18nLanguage: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">
+        {t("gabinet.employees.tabs.patients")}
+      </h3>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t("gabinet.employees.clientsTab.searchPlaceholder")}
+            value={clientSearch}
+            onChange={(e) => setClientSearch(e.target.value)}
+            className="pl-9 h-9"
+          />
+          {clientSearch && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1 h-7 w-7 p-0"
+              onClick={() => setClientSearch("")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder={t("gabinet.employees.clientsTab.filterByStatus")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("gabinet.employees.clientsTab.allStatuses")}</SelectItem>
+            <SelectItem value="scheduled">{t("gabinet.appointments.statuses.scheduled")}</SelectItem>
+            <SelectItem value="confirmed">{t("gabinet.appointments.statuses.confirmed")}</SelectItem>
+            <SelectItem value="completed">{t("gabinet.appointments.statuses.completed")}</SelectItem>
+            <SelectItem value="cancelled">{t("gabinet.appointments.statuses.cancelled")}</SelectItem>
+            <SelectItem value="no_show">{t("gabinet.appointments.statuses.no_show")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={clientTreatmentFilter} onValueChange={setClientTreatmentFilter}>
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder={t("gabinet.employees.clientsTab.filterByTreatment")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("gabinet.employees.clientsTab.allTreatments")}</SelectItem>
+            {treatments?.map((tr) => (
+              <SelectItem key={tr._id} value={tr._id}>
+                {tr.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(clientSearch || clientStatusFilter !== "all" || clientTreatmentFilter !== "all") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={() => {
+              setClientSearch("");
+              setClientStatusFilter("all");
+              setClientTreatmentFilter("all");
+            }}
+          >
+            <X className="h-3 w-3 mr-1" />
+            {t("gabinet.employees.clientsTab.clearFilters")}
+          </Button>
+        )}
+      </div>
+
+      {employeePatients && employeePatients.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t("gabinet.employees.clientsTab.showing", {
+            count: filteredClients.length,
+            total: employeePatients.length,
+          })}
+        </p>
+      )}
+
+      {!employeePatients || employeePatients.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <User className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {t("gabinet.employees.tabs.noPatients")}
+          </p>
+        </div>
+      ) : filteredClients.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {t("gabinet.employees.clientsTab.noResults")}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredClients.map((pat) => (
+            <div
+              key={pat._id}
+              className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() =>
+                navigate({
+                  to: `/dashboard/gabinet/patients/${pat._id}`,
+                })
+              }
+            >
+              <Avatar className="h-9 w-9 border">
+                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                  {pat.firstName[0]}
+                  {pat.lastName[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">
+                  {pat.firstName} {pat.lastName}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {pat.email}
+                  {pat.phone && ` · ${pat.phone}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="outline" className="text-xs">
+                  {t("gabinet.employees.clientsTab.visits", { count: pat.visitCount })}
+                </Badge>
+                {pat.lastVisitDate && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("gabinet.employees.clientsTab.lastVisit")}{" "}
+                    {new Date(pat.lastVisitDate + "T00:00:00").toLocaleDateString(i18nLanguage, { day: "numeric", month: "short" })}
+                  </span>
+                )}
+                {!pat.isActive && (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    {t("common.inactive")}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotesTabContent({
+  notesData,
+  newNote,
+  setNewNote,
+  isAddingNote,
+  setIsAddingNote,
+  handleAddNote,
+  t,
+}: {
+  notesData: Array<{ _id: string; content: string; createdAt: number }> | undefined;
+  newNote: string;
+  setNewNote: (v: string) => void;
+  isAddingNote: boolean;
+  setIsAddingNote: (v: boolean) => void;
+  handleAddNote: () => Promise<void>;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">{t("detail.notes.title")}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t("detail.notes.descriptionAlt")}
+          </p>
+        </div>
+        <Button
+          className="bg-primary"
+          onClick={() => setIsAddingNote(true)}
+        >
+          <Plus className="h-4 w-4 mr-1" variant="stroke" />
+          {t("detail.notes.add")}
+        </Button>
+      </div>
+
+      {isAddingNote && (
+        <div className="space-y-2 rounded-lg border p-4">
+          <Textarea
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder={t("detail.notes.placeholderAlt")}
+            rows={4}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsAddingNote(false);
+                setNewNote("");
+              }}
+            >
+              {t("detail.notes.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAddNote}
+              disabled={!newNote.trim()}
+            >
+              {t("detail.notes.save")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {notesData && notesData.length > 0 ? (
+        <ul className="space-y-3">
+          {notesData.map((note) => (
+            <li
+              key={note._id}
+              className="rounded-lg border p-4 space-y-1"
+            >
+              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(note.createdAt).toLocaleDateString("pl-PL", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        !isAddingNote && (
+          <p className="text-sm text-muted-foreground">
+            {t("detail.notes.empty")}
+          </p>
+        )
+      )}
+    </div>
   );
 }
 

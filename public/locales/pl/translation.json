@@ -1788,7 +1788,8 @@
         "documents": "Dokumenty",
         "employees": "Pracownicy",
         "appointments": "Wizyty",
-        "variants": "Warianty"
+        "variants": "Warianty",
+        "activity": "Aktywność"
       },
       "treatmentParameters": "Parametry zabiegowe",
       "parametersDescription": "Konfigurowalne ustawienia opisujące sposób wykonania zabiegu — np. temperatura, rodzaj produktu, strefa aplikacji, intensywność.",

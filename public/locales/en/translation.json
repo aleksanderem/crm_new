@@ -1780,7 +1780,8 @@
         "documents": "Documents",
         "employees": "Employees",
         "appointments": "Appointments",
-        "variants": "Variants"
+        "variants": "Variants",
+        "activity": "Activity"
       },
       "treatmentParameters": "Treatment Parameters",
       "parametersDescription": "Configurable settings that describe how the treatment is performed — e.g. temperature, product type, application area, intensity.",

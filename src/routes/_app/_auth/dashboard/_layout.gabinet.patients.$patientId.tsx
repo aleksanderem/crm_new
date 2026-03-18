@@ -5,19 +5,19 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import {
+  EntityDetailLayout,
+  type DetailField,
+} from "@/components/crm/entity-detail-layout";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
-  ChevronUp,
   Pencil,
-  Settings2,
   Heart,
   Calendar,
   Star,
@@ -59,7 +57,6 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAllFields, setShowAllFields] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [viewingDocId, setViewingDocId] =
     useState<Id<"documentInstances"> | null>(null);
@@ -113,25 +110,12 @@ function PatientDetail() {
     convexQuery(api.gabinet.treatments.listActive, { organizationId }),
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-12 w-64" />
-        <div className="flex gap-6">
-          <Skeleton className="h-96 w-[420px]" />
-          <Skeleton className="h-96 flex-1" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!patient) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Patient not found.</p>
-      </div>
-    );
-  }
+  const fullName = patient
+    ? `${patient.firstName} ${patient.lastName}`.trim()
+    : "";
+  const avatarInitials = patient
+    ? `${patient.firstName[0]}${patient.lastName[0]}`
+    : "";
 
   const handleEditSubmit = async (formData: {
     firstName: string;
@@ -172,617 +156,524 @@ function PatientDetail() {
     }
   };
 
-  const fullName = `${patient.firstName} ${patient.lastName}`.trim();
-  const avatarFallback = `${patient.firstName[0]}${patient.lastName[0]}`;
+  // --- Build fields for EntityDetailLayout ---
+  const fields: DetailField[] = patient
+    ? [
+        { label: t("common.email"), value: patient.email, fieldKey: "email" },
+        { label: t("common.phone"), value: patient.phone, fieldKey: "phone" },
+        {
+          label: t("gabinet.patients.pesel"),
+          value: patient.pesel,
+          fieldKey: "pesel",
+        },
+        {
+          label: t("gabinet.patients.dateOfBirth"),
+          value: patient.dateOfBirth,
+          fieldKey: "dateOfBirth",
+        },
+        {
+          label: t("gabinet.patients.gender"),
+          value: patient.gender
+            ? t(`gabinet.patients.genderOptions.${patient.gender}`)
+            : undefined,
+          fieldKey: "gender",
+        },
+        {
+          label: t("gabinet.patients.bloodType"),
+          value: patient.bloodType,
+          fieldKey: "bloodType",
+        },
+        {
+          label: t("gabinet.patients.allergies"),
+          value: patient.allergies,
+          fieldKey: "allergies",
+        },
+        {
+          label: t("gabinet.patients.referralSource"),
+          value: patient.referralSource,
+          fieldKey: "referralSource",
+        },
+        {
+          label: t("gabinet.patients.emergencyContactName"),
+          value: patient.emergencyContactName,
+          fieldKey: "emergencyContactName",
+        },
+        {
+          label: t("gabinet.patients.emergencyContactPhone"),
+          value: patient.emergencyContactPhone,
+          fieldKey: "emergencyContactPhone",
+        },
+        {
+          label: t("gabinet.patients.address"),
+          value:
+            [
+              patient.address?.street,
+              patient.address?.postalCode,
+              patient.address?.city,
+            ]
+              .filter(Boolean)
+              .join(", ") || undefined,
+          fieldKey: "address",
+        },
+        {
+          label: t("common.created"),
+          value: new Date(patient.createdAt).toLocaleDateString("pl-PL", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          fieldKey: "createdAt",
+        },
+      ]
+    : [];
 
-  const allFields = [
-    { label: t("common.email"), value: patient.email, fieldKey: "email" },
-    { label: t("common.phone"), value: patient.phone, fieldKey: "phone" },
-    {
-      label: t("gabinet.patients.pesel"),
-      value: patient.pesel,
-      fieldKey: "pesel",
-    },
-    {
-      label: t("gabinet.patients.dateOfBirth"),
-      value: patient.dateOfBirth,
-      fieldKey: "dateOfBirth",
-    },
-    {
-      label: t("gabinet.patients.gender"),
-      value: patient.gender
-        ? t(`gabinet.patients.genderOptions.${patient.gender}`)
-        : undefined,
-      fieldKey: "gender",
-    },
-    {
-      label: t("gabinet.patients.bloodType"),
-      value: patient.bloodType,
-      fieldKey: "bloodType",
-    },
-    {
-      label: t("gabinet.patients.allergies"),
-      value: patient.allergies,
-      fieldKey: "allergies",
-    },
-    {
-      label: t("gabinet.patients.referralSource"),
-      value: patient.referralSource,
-      fieldKey: "referralSource",
-    },
-    {
-      label: t("gabinet.patients.emergencyContactName"),
-      value: patient.emergencyContactName,
-      fieldKey: "emergencyContactName",
-    },
-    {
-      label: t("gabinet.patients.emergencyContactPhone"),
-      value: patient.emergencyContactPhone,
-      fieldKey: "emergencyContactPhone",
-    },
-    {
-      label: t("gabinet.patients.address"),
-      value:
-        [
-          patient.address?.street,
-          patient.address?.postalCode,
-          patient.address?.city,
-        ]
-          .filter(Boolean)
-          .join(", ") || undefined,
-      fieldKey: "address",
-    },
-    {
-      label: t("common.created"),
-      value: new Date(patient.createdAt).toLocaleDateString("pl-PL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      fieldKey: "createdAt",
-    },
-  ];
+  // --- Actions menu ---
+  const actionsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          {t("detail.actions.actions")}
+          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
+          {t("detail.actions.edit")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          {t("common.delete")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
-  const defaultVisibleCount = 4;
-  const visibleFields = showAllFields
-    ? allFields
-    : allFields.slice(0, defaultVisibleCount);
-  const hiddenCount = allFields.length - defaultVisibleCount;
+  // --- Subtitle (inactive badge) ---
+  const subtitle = patient && !patient.isActive ? (
+    <Badge variant="outline" className="text-muted-foreground">
+      {t("common.inactive")}
+    </Badge>
+  ) : undefined;
 
-  const tabTriggerClass =
-    "rounded-none border-b-2 border-transparent px-4 pb-2.5 pt-1.5 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none";
-
-  return (
+  // --- Sidebar extra: medical notes + packages ---
+  const sidebarExtra = patient ? (
     <>
-      <div className="flex h-full flex-col bg-muted/30">
-        {/* Top header bar */}
-        <div className="flex items-center justify-between border-b bg-background px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                {avatarFallback}
-              </AvatarFallback>
-            </Avatar>
-            <h1 className="text-xl font-bold">{fullName}</h1>
-            {!patient.isActive && (
-              <Badge variant="outline" className="text-muted-foreground">
-                {t("common.inactive")}
-              </Badge>
-            )}
-          </div>
+      {patient.medicalNotes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {t("gabinet.patients.medicalNotes")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {patient.medicalNotes}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      <PatientPackagesCard
+        patientId={patientId}
+        organizationId={organizationId}
+      />
+    </>
+  ) : undefined;
 
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {t("detail.actions.actions")}
-                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("detail.actions.edit")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  {t("common.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+  // --- Tabs ---
+  const tabs = [
+    {
+      label: t("gabinet.patients.tabs.overview"),
+      content: (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Heart
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("common.status")}
+                    </p>
+                    <p className="font-medium">
+                      {patient?.isActive
+                        ? t("common.active")
+                        : t("common.inactive")}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Calendar
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("common.created")}
+                    </p>
+                    <p className="font-medium">
+                      {patient
+                        ? new Date(patient.createdAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Star
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.patients.referralSource")}
+                    </p>
+                    <p className="font-medium">
+                      {patient?.referralSource || "—"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        {/* Main content: sidebar + tabs */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left sidebar */}
-          <ScrollArea className="w-[420px] shrink-0 border-r bg-background">
-            <div className="p-5 space-y-4">
-              {/* Details card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      {t("detail.sidebar.details")}
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setEditDrawerOpen(true)}
-                      >
-                        <Pencil className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Settings2 className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      {hiddenCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground"
-                          onClick={() => setShowAllFields(!showAllFields)}
-                        >
-                          {showAllFields
-                            ? t("detail.sidebar.showLess")
-                            : t("detail.sidebar.showMore", {
-                                count: hiddenCount,
-                              })}
-                          {showAllFields ? (
-                            <ChevronUp
-                              className="ml-1 h-4 w-4"
-                              variant="stroke"
-                            />
-                          ) : (
-                            <ChevronDown
-                              className="ml-1 h-4 w-4"
-                              variant="stroke"
-                            />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {visibleFields.map((field) => (
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.appointments"),
+      count: patientAppointments?.length,
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">
+              {t("gabinet.patients.tabs.appointments")}
+            </h3>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                navigate({ to: "/dashboard/gabinet/calendar" })
+              }
+            >
+              <Plus className="mr-1 h-4 w-4" variant="stroke" />
+              {t("gabinet.appointments.createAppointment")}
+            </Button>
+          </div>
+          {!patientAppointments ||
+          patientAppointments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {t("gabinet.appointments.noAppointments")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {[...patientAppointments]
+                .sort((a, b) =>
+                  (b.date + b.startTime).localeCompare(
+                    a.date + a.startTime,
+                  ),
+                )
+                .map((apt) => {
+                  const treatmentName = treatmentsData?.find(
+                    (tr) => tr._id === apt.treatmentId,
+                  )?.name;
+                  const isPast =
+                    apt.date < new Date().toISOString().split("T")[0];
+                  return (
                     <div
-                      key={field.fieldKey}
-                      className="flex items-start gap-4"
+                      key={apt._id}
+                      className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
+                      onClick={() =>
+                        navigate({
+                          to: "/dashboard/gabinet/appointments/$appointmentId",
+                          params: { appointmentId: apt._id },
+                        })
+                      }
                     >
-                      <span className="w-28 shrink-0 text-right text-sm text-muted-foreground">
-                        {field.label}
-                      </span>
-                      <span className="text-sm font-medium text-primary">
-                        {field.value || "—"}
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <Calendar
+                          className="h-4 w-4 text-primary"
+                          variant="stroke"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {treatmentName ?? t("common.unknown")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {apt.date} &middot; {apt.startTime}–
+                          {apt.endTime}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          apt.status === "completed"
+                            ? "default"
+                            : apt.status === "cancelled"
+                              ? "destructive"
+                              : apt.status === "no_show"
+                                ? "destructive"
+                                : "secondary"
+                        }
+                      >
+                        {t(
+                          `gabinet.appointments.statuses.${apt.status}`,
+                        )}
+                      </Badge>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.documents"),
+      content: (
+        <DocumentInstanceTable
+          organizationId={organizationId}
+          sourceKey="patient"
+          sourceInstanceId={patientId}
+          module="gabinet"
+          onView={(instanceId) => setViewingDocId(instanceId)}
+          onNewFromTemplate={() => setTemplateDialogOpen(true)}
+          showNewButton
+        />
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.loyalty"),
+      content: (
+        <div className="space-y-6">
+          {/* Balance cards */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Trophy
+                    className="h-4 w-4 text-yellow-500"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.loyalty.balance")}
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {loyaltyBalance?.balance ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <ArrowUpRight
+                    className="h-4 w-4 text-green-500"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.loyalty.totalEarned")}
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {loyaltyBalance?.lifetimeEarned ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <ArrowDownRight
+                    className="h-4 w-4 text-red-500"
+                    variant="stroke"
+                  />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.loyalty.totalSpent")}
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {loyaltyBalance?.lifetimeSpent ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {loyaltyBalance?.tier && (
+            <div className="flex items-center gap-2">
+              <Star
+                className="h-4 w-4 text-yellow-500"
+                variant="stroke"
+              />
+              <span className="text-sm font-medium">
+                {t("gabinet.loyalty.tier")}:{" "}
+                {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
+              </span>
+            </div>
+          )}
+
+          {/* Transaction history */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3">
+              {t("gabinet.loyalty.transactionHistory")}
+            </h4>
+            {!loyaltyTransactions ||
+            loyaltyTransactions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Star className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {t("gabinet.loyalty.noTransactions")}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[...loyaltyTransactions]
+                  .sort((a, b) => b.createdAt - a.createdAt)
+                  .slice(0, 20)
+                  .map((tx) => (
+                    <div
+                      key={tx._id}
+                      className="flex items-center gap-3 rounded-lg border p-3"
+                    >
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                          tx.type === "earn"
+                            ? "bg-green-100 text-green-600"
+                            : tx.type === "spend"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {tx.type === "earn" ? (
+                          <Plus
+                            className="h-4 w-4"
+                            variant="stroke"
+                          />
+                        ) : tx.type === "spend" ? (
+                          <Minus
+                            className="h-4 w-4"
+                            variant="stroke"
+                          />
+                        ) : (
+                          <Star
+                            className="h-4 w-4"
+                            variant="stroke"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">
+                          {tx.reason}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleDateString(
+                            "pl-PL",
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-sm font-semibold ${
+                          tx.type === "earn"
+                            ? "text-green-600"
+                            : tx.type === "spend"
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {tx.type === "earn"
+                          ? "+"
+                          : tx.type === "spend"
+                            ? "−"
+                            : ""}
+                        {tx.points}
                       </span>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-
-              {/* Medical Notes card */}
-              {patient.medicalNotes && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">
-                      {t("gabinet.patients.medicalNotes")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {patient.medicalNotes}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Packages card */}
-              <PatientPackagesCard
-                patientId={patientId}
-                organizationId={organizationId}
-              />
-            </div>
-          </ScrollArea>
-
-          {/* Right content area with tabs */}
-          <div className="flex flex-1 flex-col overflow-hidden bg-background">
-            <Tabs defaultValue="overview" className="flex flex-1 flex-col">
-              <div className="shrink-0 border-b px-6 pt-2">
-                <TabsList className="h-10 bg-transparent p-0 gap-0">
-                  <TabsTrigger value="overview" className={tabTriggerClass}>
-                    {t("gabinet.patients.tabs.overview")}
-                  </TabsTrigger>
-                  <TabsTrigger value="appointments" className={tabTriggerClass}>
-                    {t("gabinet.patients.tabs.appointments")}
-                  </TabsTrigger>
-                  <TabsTrigger value="documents" className={tabTriggerClass}>
-                    {t("gabinet.patients.tabs.documents")}
-                  </TabsTrigger>
-                  <TabsTrigger value="loyalty" className={tabTriggerClass}>
-                    {t("gabinet.patients.tabs.loyalty")}
-                  </TabsTrigger>
-                  <TabsTrigger value="activity" className={tabTriggerClass}>
-                    {t("gabinet.patients.tabs.activity")}
-                  </TabsTrigger>
-                </TabsList>
               </div>
-
-              <ScrollArea className="flex-1">
-                {/* Overview tab */}
-                <TabsContent value="overview" className="m-0 p-6">
-                  <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <Heart
-                              className="h-4 w-4 text-muted-foreground"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("common.status")}
-                              </p>
-                              <p className="font-medium">
-                                {patient.isActive
-                                  ? t("common.active")
-                                  : t("common.inactive")}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <Calendar
-                              className="h-4 w-4 text-muted-foreground"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("common.created")}
-                              </p>
-                              <p className="font-medium">
-                                {new Date(
-                                  patient.createdAt,
-                                ).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <Star
-                              className="h-4 w-4 text-muted-foreground"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("gabinet.patients.referralSource")}
-                              </p>
-                              <p className="font-medium">
-                                {patient.referralSource || "—"}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <ActivityTimeline
-                      activities={activities ?? []}
-                      maxHeight="400px"
-                    />
-                  </div>
-                </TabsContent>
-
-                {/* Appointments tab */}
-                <TabsContent value="appointments" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
-                        {t("gabinet.patients.tabs.appointments")}
-                      </h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          navigate({ to: "/dashboard/gabinet/calendar" })
-                        }
-                      >
-                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
-                        {t("gabinet.appointments.createAppointment")}
-                      </Button>
-                    </div>
-                    {!patientAppointments ||
-                    patientAppointments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.appointments.noAppointments")}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {[...patientAppointments]
-                          .sort((a, b) =>
-                            (b.date + b.startTime).localeCompare(
-                              a.date + a.startTime,
-                            ),
-                          )
-                          .map((apt) => {
-                            const treatmentName = treatmentsData?.find(
-                              (tr) => tr._id === apt.treatmentId,
-                            )?.name;
-                            const isPast =
-                              apt.date < new Date().toISOString().split("T")[0];
-                            return (
-                              <div
-                                key={apt._id}
-                                className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
-                                onClick={() =>
-                                  navigate({
-                                    to: "/dashboard/gabinet/appointments/$appointmentId",
-                                    params: { appointmentId: apt._id },
-                                  })
-                                }
-                              >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                  <Calendar
-                                    className="h-4 w-4 text-primary"
-                                    variant="stroke"
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {treatmentName ?? t("common.unknown")}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {apt.date} &middot; {apt.startTime}–
-                                    {apt.endTime}
-                                  </p>
-                                </div>
-                                <Badge
-                                  variant={
-                                    apt.status === "completed"
-                                      ? "default"
-                                      : apt.status === "cancelled"
-                                        ? "destructive"
-                                        : apt.status === "no_show"
-                                          ? "destructive"
-                                          : "secondary"
-                                  }
-                                >
-                                  {t(
-                                    `gabinet.appointments.statuses.${apt.status}`,
-                                  )}
-                                </Badge>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Documents tab */}
-                <TabsContent value="documents" className="m-0 p-6">
-                  <DocumentInstanceTable
-                    organizationId={organizationId}
-                    sourceKey="patient"
-                    sourceInstanceId={patientId}
-                    module="gabinet"
-                    onView={(instanceId) => setViewingDocId(instanceId)}
-                    onNewFromTemplate={() => setTemplateDialogOpen(true)}
-                    showNewButton
-                  />
-                </TabsContent>
-
-                {/* Loyalty tab */}
-                <TabsContent value="loyalty" className="m-0 p-6">
-                  <div className="space-y-6">
-                    {/* Balance card */}
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <Trophy
-                              className="h-4 w-4 text-yellow-500"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("gabinet.loyalty.balance")}
-                              </p>
-                              <p className="text-2xl font-bold">
-                                {loyaltyBalance?.balance ?? 0}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <ArrowUpRight
-                              className="h-4 w-4 text-green-500"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("gabinet.loyalty.totalEarned")}
-                              </p>
-                              <p className="text-2xl font-bold">
-                                {loyaltyBalance?.lifetimeEarned ?? 0}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <ArrowDownRight
-                              className="h-4 w-4 text-red-500"
-                              variant="stroke"
-                            />
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {t("gabinet.loyalty.totalSpent")}
-                              </p>
-                              <p className="text-2xl font-bold">
-                                {loyaltyBalance?.lifetimeSpent ?? 0}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {loyaltyBalance?.tier && (
-                      <div className="flex items-center gap-2">
-                        <Star
-                          className="h-4 w-4 text-yellow-500"
-                          variant="stroke"
-                        />
-                        <span className="text-sm font-medium">
-                          {t("gabinet.loyalty.tier")}:{" "}
-                          {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Transaction history */}
-                    <div>
-                      <h4 className="text-sm font-semibold mb-3">
-                        {t("gabinet.loyalty.transactionHistory")}
-                      </h4>
-                      {!loyaltyTransactions ||
-                      loyaltyTransactions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                          <Star className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            {t("gabinet.loyalty.noTransactions")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {[...loyaltyTransactions]
-                            .sort((a, b) => b.createdAt - a.createdAt)
-                            .slice(0, 20)
-                            .map((tx) => (
-                              <div
-                                key={tx._id}
-                                className="flex items-center gap-3 rounded-lg border p-3"
-                              >
-                                <div
-                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                                    tx.type === "earn"
-                                      ? "bg-green-100 text-green-600"
-                                      : tx.type === "spend"
-                                        ? "bg-red-100 text-red-600"
-                                        : "bg-gray-100 text-gray-600"
-                                  }`}
-                                >
-                                  {tx.type === "earn" ? (
-                                    <Plus
-                                      className="h-4 w-4"
-                                      variant="stroke"
-                                    />
-                                  ) : tx.type === "spend" ? (
-                                    <Minus
-                                      className="h-4 w-4"
-                                      variant="stroke"
-                                    />
-                                  ) : (
-                                    <Star
-                                      className="h-4 w-4"
-                                      variant="stroke"
-                                    />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium">
-                                    {tx.reason}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(tx.createdAt).toLocaleDateString(
-                                      "pl-PL",
-                                    )}
-                                  </p>
-                                </div>
-                                <span
-                                  className={`text-sm font-semibold ${
-                                    tx.type === "earn"
-                                      ? "text-green-600"
-                                      : tx.type === "spend"
-                                        ? "text-red-600"
-                                        : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {tx.type === "earn"
-                                    ? "+"
-                                    : tx.type === "spend"
-                                      ? "−"
-                                      : ""}
-                                  {tx.points}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Activity tab */}
-                <TabsContent value="activity" className="m-0 p-6">
-                  <ActivityTimeline
-                    activities={activities ?? []}
-                    maxHeight="600px"
-                  />
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
+            )}
           </div>
         </div>
-      </div>
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.activity"),
+      content: (
+        <ActivityTimeline
+          activities={activities ?? []}
+          maxHeight="600px"
+        />
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <EntityDetailLayout
+        variant="default"
+        isLoading={isLoading}
+        notFound={!patient && !isLoading}
+        onBack={() => navigate({ to: "/dashboard/gabinet/patients" })}
+        title={fullName}
+        subtitle={subtitle}
+        avatarFallback={avatarInitials}
+        actionsMenu={actionsMenu}
+        onEdit={() => setEditDrawerOpen(true)}
+        fields={fields}
+        expandedFieldCount={4}
+        sidebarExtra={sidebarExtra}
+        tabs={tabs}
+        defaultTab={t("gabinet.patients.tabs.overview")}
+      />
 
       {/* Edit patient drawer */}
-      <SidePanel
-        open={editDrawerOpen}
-        onOpenChange={setEditDrawerOpen}
-        title={t("common.edit")}
-      >
-        <PatientForm
-          initialData={{
-            firstName: patient.firstName,
-            lastName: patient.lastName,
-            email: patient.email,
-            phone: patient.phone ?? undefined,
-            pesel: patient.pesel ?? undefined,
-            dateOfBirth: patient.dateOfBirth ?? undefined,
-            gender: patient.gender ?? undefined,
-            address: patient.address ?? undefined,
-            medicalNotes: patient.medicalNotes ?? undefined,
-            allergies: patient.allergies ?? undefined,
-            bloodType: patient.bloodType ?? undefined,
-            emergencyContactName: patient.emergencyContactName ?? undefined,
-            emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
-            referralSource: patient.referralSource ?? undefined,
-          }}
-          onSubmit={handleEditSubmit}
-          onCancel={() => setEditDrawerOpen(false)}
-          isSubmitting={isSubmitting}
-        />
-      </SidePanel>
+      {patient && (
+        <SidePanel
+          open={editDrawerOpen}
+          onOpenChange={setEditDrawerOpen}
+          title={t("common.edit")}
+        >
+          <PatientForm
+            initialData={{
+              firstName: patient.firstName,
+              lastName: patient.lastName,
+              email: patient.email,
+              phone: patient.phone ?? undefined,
+              pesel: patient.pesel ?? undefined,
+              dateOfBirth: patient.dateOfBirth ?? undefined,
+              gender: patient.gender ?? undefined,
+              address: patient.address ?? undefined,
+              medicalNotes: patient.medicalNotes ?? undefined,
+              allergies: patient.allergies ?? undefined,
+              bloodType: patient.bloodType ?? undefined,
+              emergencyContactName: patient.emergencyContactName ?? undefined,
+              emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
+              referralSource: patient.referralSource ?? undefined,
+            }}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setEditDrawerOpen(false)}
+            isSubmitting={isSubmitting}
+          />
+        </SidePanel>
+      )}
 
       {/* Create document from template dialog */}
       <DocumentFromTemplateDialog

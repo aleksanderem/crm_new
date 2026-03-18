@@ -6,6 +6,10 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import {
+  EntityDetailLayout,
+  type DetailField,
+} from "@/components/crm/entity-detail-layout";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
 import { ContactForm } from "@/components/forms/contact-form";
@@ -26,11 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -47,9 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
-  ChevronUp,
   Pencil,
-  Settings2,
   Plus,
   Upload,
   PhoneCall,
@@ -311,7 +308,6 @@ function LeadDetail() {
   const [viewingDocId, setViewingDocId] = useState<Id<"documentInstances"> | null>(null);
 
   // Sidebar UI state
-  const [showAllFields, setShowAllFields] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showSidebarContactLink, setShowSidebarContactLink] = useState(false);
@@ -445,27 +441,7 @@ function LeadDetail() {
     enabled: guestContactSearch.length > 0,
   });
 
-  // --- Loading / not found ---
-
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-12 w-64" />
-        <div className="flex gap-6">
-          <Skeleton className="h-96 w-[420px]" />
-          <Skeleton className="h-96 flex-1" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!lead) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{t('detail.notFoundDeal')}</p>
-      </div>
-    );
-  }
+  // --- Loading / not found handled by EntityDetailLayout ---
 
   // --- Handlers ---
 
@@ -774,7 +750,7 @@ function LeadDetail() {
 
   // --- Derived data ---
 
-  const avatarFallback = lead.title[0]?.toUpperCase() ?? "D";
+  const avatarFallback = lead?.title[0]?.toUpperCase() ?? "D";
 
   const contactRelationships = relationships?.filter((r) => r.targetType === "contact") ?? [];
   const companyRelationships = relationships?.filter((r) => r.targetType === "company") ?? [];
@@ -795,8 +771,8 @@ function LeadDetail() {
     (a) => a._id === selectedActivityId
   ) ?? null;
 
-  const pipelineName = lead.stage?.pipelineId
-    ? pipelines?.find((p) => p._id === lead.stage?.pipelineId)?.name
+  const pipelineName = lead?.stage?.pipelineId
+    ? pipelines?.find((p) => p._id === lead?.stage?.pipelineId)?.name
     : undefined;
 
   const totalProductValue = dealProducts?.reduce(
@@ -812,764 +788,660 @@ function LeadDetail() {
     urgent: t('detail.priorityLabels.urgent'),
   };
 
-  const allFields = [
-    { label: t('detail.fields.value'), value: lead.value ? formatCurrency(lead.value) : undefined, fieldKey: "value" },
-    {
-      label: t('detail.fields.expectedClose'),
-      value: lead.expectedCloseDate
-        ? new Date(lead.expectedCloseDate).toLocaleDateString("pl-PL")
-        : undefined,
-      fieldKey: "expectedCloseDate",
+  const fields: DetailField[] = lead
+    ? [
+        { label: t('detail.fields.value'), value: lead.value ? formatCurrency(lead.value) : undefined, fieldKey: "value" },
+        {
+          label: t('detail.fields.expectedClose'),
+          value: lead.expectedCloseDate
+            ? new Date(lead.expectedCloseDate).toLocaleDateString("pl-PL")
+            : undefined,
+          fieldKey: "expectedCloseDate",
+        },
+        {
+          label: t('detail.fields.status'),
+          value: (
+            <Badge variant="secondary" className={cn("capitalize", statusColors[lead.status])}>
+              {lead.status}
+            </Badge>
+          ),
+          fieldKey: "status",
+        },
+        {
+          label: t('detail.fields.priority'),
+          value: lead.priority ? priorityLabels[lead.priority] ?? lead.priority : undefined,
+          fieldKey: "priority",
+        },
+        { label: t('detail.fields.source'), value: lead.source, fieldKey: "source" },
+        { label: t('detail.fields.company'), value: lead.company?.name, fieldKey: "company" },
+        {
+          label: t('detail.fields.tags'),
+          value: lead.tags?.length ? (
+            <div className="flex flex-wrap gap-1">
+              {lead.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+              ))}
+            </div>
+          ) : undefined,
+          fieldKey: "tags",
+        },
+        {
+          label: t('detail.fields.created'),
+          value: new Date(lead.createdAt).toLocaleDateString("pl-PL", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          fieldKey: "createdAt",
+        },
+        ...(leadCfDefs ?? []).map((def) => ({
+          label: def.name,
+          value: leadCfValues[def.fieldKey] != null ? String(leadCfValues[def.fieldKey]) : undefined,
+          fieldKey: def.fieldKey,
+        })),
+      ]
+    : [];
+
+  // --- Sidebar association sections ---
+
+  const contactsAssociation = {
+    title: t('detail.relationships.contacts'),
+    count: contactRelationships.length,
+    onCreateNew: () => {
+      setShowSidebarContactLink(!showSidebarContactLink);
+      setSidebarContactSearch("");
     },
+    children: (
+      <>
+        <div className="flex items-center gap-1 mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs px-2"
+            onClick={() => {
+              setShowSidebarContactLink(!showSidebarContactLink);
+              setSidebarContactSearch("");
+            }}
+          >
+            <Link2 className="h-4 w-4 mr-1" variant="stroke" />
+            {t('detail.relationships.add')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs px-2"
+            onClick={() => setCreateContactDrawerOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-1" variant="stroke" />
+            {t('detail.relationships.addNew')}
+          </Button>
+        </div>
+        {showSidebarContactLink && (
+          <div className="mb-3 relative">
+            <div className="flex items-center w-full rounded-md border bg-transparent">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+              <Input
+                type="text"
+                className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
+                placeholder={t('detail.relationships.searchContacts')}
+                value={sidebarContactSearch}
+                onChange={(e) => setSidebarContactSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {sidebarContactSearch.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                {sidebarContactResults?.page?.filter(
+                  (c) => !contactRelationships.some((r) => r.targetId === c._id)
+                ).length ? (
+                  <ul className="max-h-[200px] overflow-y-auto p-1">
+                    {sidebarContactResults.page
+                      .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
+                      .map((c) => (
+                        <li key={c._id}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                            onClick={async () => {
+                              await handleLinkContact({
+                                id: c._id,
+                                label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
+                              });
+                              setSidebarContactSearch("");
+                              setShowSidebarContactLink(false);
+                            }}
+                          >
+                            <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                            <span>{`${c.firstName} ${c.lastName ?? ""}`.trim()}</span>
+                            {c.email && (
+                              <span className="text-xs text-muted-foreground">{c.email}</span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  <div className="py-3 px-3 text-sm text-muted-foreground">
+                    {t('detail.relationships.noResults')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {contactRelationships.length > 0 ? (
+          <ul className="space-y-2">
+            {contactRelationships.map((r) => (
+              <li key={r._id}>
+                <button
+                  className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  onClick={() => navigate({ to: `/dashboard/contacts/${r.targetId}` })}
+                >
+                  <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                  <span>{(r as any).targetName ?? r.targetId}</span>
+                  {(r as any).targetSublabel && (
+                    <span className="text-xs text-muted-foreground">
+                      {(r as any).targetSublabel}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          !showSidebarContactLink && (
+            <p className="text-sm text-muted-foreground">
+              {t('detail.relationships.emptyDealContacts')}
+            </p>
+          )
+        )}
+      </>
+    ),
+  };
+
+  const companiesAssociation = {
+    title: t('detail.relationships.companies'),
+    count: companyRelationships.length,
+    onCreateNew: () => {
+      setShowSidebarCompanyLink(!showSidebarCompanyLink);
+      setSidebarCompanySearch("");
+    },
+    children: (
+      <>
+        <div className="flex items-center gap-1 mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs px-2"
+            onClick={() => {
+              setShowSidebarCompanyLink(!showSidebarCompanyLink);
+              setSidebarCompanySearch("");
+            }}
+          >
+            <Link2 className="h-4 w-4 mr-1" variant="stroke" />
+            {t('detail.relationships.add')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs px-2"
+            onClick={() => setCreateCompanyDrawerOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-1" variant="stroke" />
+            {t('detail.relationships.addNew')}
+          </Button>
+        </div>
+        {showSidebarCompanyLink && (
+          <div className="mb-3 relative">
+            <div className="flex items-center w-full rounded-md border bg-transparent">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+              <Input
+                type="text"
+                className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
+                placeholder={t('detail.relationships.searchCompanies')}
+                value={sidebarCompanySearch}
+                onChange={(e) => setSidebarCompanySearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {sidebarCompanySearch.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                {sidebarCompanyResults?.page?.filter(
+                  (c) => !companyRelationships.some((r) => r.targetId === c._id)
+                ).length ? (
+                  <ul className="max-h-[200px] overflow-y-auto p-1">
+                    {sidebarCompanyResults.page
+                      .filter((c) => !companyRelationships.some((r) => r.targetId === c._id))
+                      .map((c) => (
+                        <li key={c._id}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                            onClick={async () => {
+                              await handleLinkCompany({ id: c._id, label: c.name });
+                              setSidebarCompanySearch("");
+                              setShowSidebarCompanyLink(false);
+                            }}
+                          >
+                            <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                            <span>{c.name}</span>
+                            {c.domain && (
+                              <span className="text-xs text-muted-foreground">({c.domain})</span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  <div className="py-3 px-3 text-sm text-muted-foreground">
+                    {t('detail.relationships.noResults')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {companyRelationships.length > 0 ? (
+          <ul className="space-y-2">
+            {companyRelationships.map((r) => (
+              <li key={r._id}>
+                <button
+                  className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  onClick={() => navigate({ to: `/dashboard/companies/${r.targetId}` })}
+                >
+                  <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                  <span>{(r as any).targetName ?? r.targetId}</span>
+                  {(r as any).targetSublabel && (
+                    <span className="text-xs text-muted-foreground">
+                      ({(r as any).targetSublabel})
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          !showSidebarCompanyLink && (
+            <p className="text-sm text-muted-foreground">
+              {t('detail.relationships.emptyDealCompany')}
+            </p>
+          )
+        )}
+      </>
+    ),
+  };
+
+  // --- Products sidebar card ---
+
+  const productsSidebarCard = (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">
+          {t('detail.relationships.products')}{" "}
+          {dealProducts && dealProducts.length > 0 && (
+            <span className="text-muted-foreground font-normal">
+              ({dealProducts.length})
+            </span>
+          )}
+        </h3>
+      </div>
+      {dealProducts && dealProducts.length > 0 ? (
+        <div className="space-y-2">
+          {dealProducts.map((dp) => (
+            <div key={dp._id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                <span>{dp.product?.name ?? t('detail.fields.unknown')}</span>
+              </div>
+              <span className="text-muted-foreground">
+                {dp.quantity} x {formatCurrency(dp.unitPrice)}
+              </span>
+            </div>
+          ))}
+          <div className="pt-2 border-t flex justify-between text-sm font-medium">
+            <span>{t('detail.fields.total')}</span>
+            <span>{formatCurrency(totalProductValue)}</span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {t('detail.relationships.emptyDealProducts')}
+        </p>
+      )}
+    </div>
+  );
+
+  // --- Attachments sidebar card ---
+
+  const attachmentsContent = (
+    <>
+      <p className="text-sm text-muted-foreground mb-3">
+        {t('detail.attachments.empty')}
+      </p>
+      <Button variant="outline" size="sm">
+        <Upload className="h-4 w-4 mr-1.5" variant="stroke" />
+        {t('detail.attachments.selectFile')}
+      </Button>
+    </>
+  );
+
+  // --- Actions menu ---
+
+  const actionsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          {t('detail.actions.actions')}
+          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
+          {t('detail.actions.edit')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          {t('detail.deleteDeal')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // --- Header subtitle (product count, pipeline breadcrumb, date) ---
+
+  const headerSubtitle = (
+    <div className="flex items-center gap-2 text-xs">
+      {dealProducts && dealProducts.length > 0 && (
+        <span>{t('detail.productsCount', { count: dealProducts.length })} &middot; {formatCurrency(totalProductValue)}</span>
+      )}
+      {pipelineName && lead?.stage && (
+        <span>{pipelineName} &gt; {lead.stage.name}</span>
+      )}
+      <span>
+        {lead ? new Date(lead.createdAt).toLocaleDateString("pl-PL") : ""}
+      </span>
+    </div>
+  );
+
+  // --- Pipeline progress bar (before tabs slot) ---
+
+  const pipelineProgressBar = stages && stages.length > 0 && lead ? (
+    <div className="px-2 pb-2">
+      <PipelineProgressBar
+        stages={stages}
+        currentStageId={lead.pipelineStageId}
+        onStageClick={handleStageClick}
+      />
+    </div>
+  ) : undefined;
+
+  // --- Quick actions + tab content ---
+
+  const quickActionsBar = (
+    <EntityQuickActions entityType="lead" entityId={leadId} onAction={(action) => {
+      switch (action) {
+        case "scheduleActivity": setShowActivityForm(true); break;
+      }
+    }} />
+  );
+
+  // --- Tab definitions ---
+
+  const tabs = [
     {
-      label: t('detail.fields.status'),
-      value: lead.status,
-      fieldKey: "status",
-      render: (
-        <Badge variant="secondary" className={cn("capitalize", statusColors[lead.status])}>
-          {lead.status}
-        </Badge>
+      label: t('detail.tabs.all'),
+      content: (
+        <>
+          {quickActionsBar}
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{t('detail.actions.filterBy')}</span>
+            <Button variant="outline" size="sm" className="h-7">
+              {t('detail.tabs.all')}
+              <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+            </Button>
+          </div>
+          <ActivityTimeline
+            activities={activities ?? []}
+            maxHeight="600px"
+          />
+        </>
       ),
     },
     {
-      label: t('detail.fields.priority'),
-      value: lead.priority ? priorityLabels[lead.priority] ?? lead.priority : undefined,
-      fieldKey: "priority",
-    },
-    { label: t('detail.fields.source'), value: lead.source, fieldKey: "source" },
-    { label: t('detail.fields.company'), value: lead.company?.name, fieldKey: "company" },
-    {
-      label: t('detail.fields.tags'),
-      value: lead.tags?.join(", "),
-      fieldKey: "tags",
-      render: lead.tags?.length ? (
-        <div className="flex flex-wrap gap-1">
-          {lead.tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-          ))}
+      label: t('detail.tabs.activities'),
+      content: (
+        <div className="space-y-4">
+          {!showActivityForm && (
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <h3 className="font-semibold">{t('detail.activitySection.title')}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('detail.activitySection.descriptionDeal')}
+                </p>
+              </div>
+              <Button className="bg-primary" onClick={() => setShowActivityForm(true)}>
+                <Plus className="h-4 w-4 mr-1" variant="stroke" />
+                {t('detail.activitySection.add')}
+              </Button>
+            </div>
+          )}
+
+          {showActivityForm && (
+            <div className="rounded-lg border p-5">
+              <ActivityForm
+                linkedEntityType="lead"
+                linkedEntityLabel={lead?.title ?? ""}
+                onSubmit={handleCreateActivity}
+                onCancel={() => setShowActivityForm(false)}
+                isSubmitting={isSubmitting}
+                activityTypes={activityTypeDefs}
+                customFieldDefs={activityCustomFieldDefs}
+                contactSearchResults={
+                  guestContactResults?.page?.map((c) => ({
+                    id: c._id,
+                    label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
+                    email: c.email ?? undefined,
+                  })) ?? []
+                }
+                onSearchContacts={setGuestContactSearch}
+              />
+            </div>
+          )}
+
+          {scheduledActivitiesData && scheduledActivitiesData.length > 0 ? (
+            <ScheduledActivitiesList
+              activities={scheduledActivitiesData}
+              onActivityClick={(id) => {
+                setSelectedActivityId(id);
+                setActivityDrawerOpen(true);
+              }}
+            />
+          ) : (
+            !showActivityForm && (
+              <p className="text-sm text-muted-foreground">
+                {t('detail.activitySection.emptyDeal')}
+              </p>
+            )
+          )}
         </div>
-      ) : undefined,
+      ),
     },
     {
-      label: t('detail.fields.created'),
-      value: new Date(lead.createdAt).toLocaleDateString("pl-PL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      fieldKey: "createdAt",
+      label: t('detail.tabs.emails'),
+      content: (
+        <EmailEntityTab
+          organizationId={organizationId}
+          entityType="lead"
+          entityId={leadId}
+          leadId={leadId as Id<"leads">}
+        />
+      ),
+    },
+    {
+      label: t('detail.tabs.documents'),
+      content: (
+        <>
+          <DocumentInstanceTable
+            organizationId={organizationId}
+            sourceKey="lead"
+            sourceInstanceId={leadId}
+            onView={(id) => setViewingDocId(id)}
+            onNewFromTemplate={() => setShowNewDocDialog(true)}
+            showNewButton
+          />
+
+          <DocumentFromTemplateDialog
+            open={showNewDocDialog}
+            onOpenChange={setShowNewDocDialog}
+            organizationId={organizationId}
+            module="crm"
+            sources={{ lead: leadId }}
+            onComplete={() => setShowNewDocDialog(false)}
+          />
+
+          {viewingDocId && (
+            <Dialog open onOpenChange={() => setViewingDocId(null)}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                <DocumentInstanceView
+                  instanceId={viewingDocId}
+                  onClose={() => setViewingDocId(null)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </>
+      ),
+    },
+    {
+      label: t('detail.tabs.calls'),
+      content: (
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">{t('detail.callsTab.title')}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('detail.callsTab.description')}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button className="bg-primary">
+              <Plus className="h-4 w-4 mr-1" variant="stroke" />
+              {t('detail.callsTab.logCall')}
+            </Button>
+            <Button variant="outline">
+              <PhoneCall className="h-4 w-4 mr-1" variant="stroke" />
+              {t('detail.callsTab.makeCall')}
+            </Button>
+          </div>
+        </div>
+      ),
+    },
+    {
+      label: t('detail.tabs.notes'),
+      count: notesData?.length,
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">{t('detail.notes.title')}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t('detail.notes.description')}
+              </p>
+            </div>
+            <Button className="bg-primary" onClick={() => setIsAddingNote(true)}>
+              <Plus className="h-4 w-4 mr-1" variant="stroke" />
+              {t('detail.notes.add')}
+            </Button>
+          </div>
+
+          {isAddingNote && (
+            <div className="space-y-2 rounded-lg border p-4">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder={t('detail.notes.placeholder')}
+                rows={4}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsAddingNote(false);
+                    setNewNote("");
+                  }}
+                >
+                  {t('detail.notes.cancel')}
+                </Button>
+                <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
+                  {t('detail.notes.save')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {notesData && notesData.length > 0 ? (
+            <ul className="space-y-3">
+              {notesData.map((note) => (
+                <li key={note._id} className="rounded-lg border p-4 space-y-1">
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    {note.isPinned && (
+                      <Pin className="h-4 w-4 text-primary shrink-0" variant="stroke" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(note.createdAt).toLocaleDateString("pl-PL", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            !isAddingNote && (
+              <p className="text-sm text-muted-foreground">{t('detail.notes.empty')}</p>
+            )
+          )}
+        </div>
+      ),
     },
   ];
 
-  // Add lead custom field values to sidebar
-  if (leadCfDefs) {
-    for (const def of leadCfDefs) {
-      const val = leadCfValues[def.fieldKey];
-      allFields.push({
-        label: def.name,
-        value: val != null ? String(val) : undefined,
-        fieldKey: def.fieldKey,
-      });
-    }
-  }
-
-  const defaultVisibleCount = 4;
-  const visibleFields = showAllFields ? allFields : allFields.slice(0, defaultVisibleCount);
-  const hiddenCount = allFields.length - defaultVisibleCount;
-
-  const tabTriggerClass =
-    "rounded-none border-b-2 border-transparent px-4 pb-2.5 pt-1.5 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none";
-
   return (
     <>
-      <div className="flex h-full flex-col bg-muted/30">
-        {/* === Top header bar === */}
-        <div className="flex items-center justify-between border-b bg-background px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                {avatarFallback}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-xl font-bold">{lead.title}</h1>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {dealProducts && dealProducts.length > 0 && (
-                  <span>{t('detail.productsCount', { count: dealProducts.length })} &middot; {formatCurrency(totalProductValue)}</span>
-                )}
-                {pipelineName && lead.stage && (
-                  <span>{pipelineName} &gt; {lead.stage.name}</span>
-                )}
-                <span>
-                  {new Date(lead.createdAt).toLocaleDateString("pl-PL")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleMarkWon}
-            >
-              {t('detail.won')}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setLostDialogOpen(true)}
-            >
-              {t('detail.lost')}
-            </Button>
-
-            <div className="flex items-center gap-2 border rounded-md px-3 py-1.5">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-[10px]">
-                  {lead.assignedUser?.name?.[0] ?? "?"}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-muted-foreground">
-                {lead.assignedUser?.name ?? t('detail.actions.owner')}
-              </span>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {t('detail.actions.actions')}
-                  <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-                  <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-                  {t('detail.actions.edit')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  {t('detail.deleteDeal')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* === Pipeline progress bar === */}
-        {stages && stages.length > 0 && (
-          <div className="border-b bg-background px-6 py-3">
-            <PipelineProgressBar
-              stages={stages}
-              currentStageId={lead.pipelineStageId}
-              onStageClick={handleStageClick}
-            />
-          </div>
-        )}
-
-        {/* === Main content: sidebar + tabs === */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* --- Left sidebar --- */}
-          <ScrollArea className="w-[420px] shrink-0 border-r bg-background">
-            <div className="p-5 space-y-4">
-              {/* Details card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{t('detail.sidebar.details')}</CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setEditDrawerOpen(true)}
-                      >
-                        <Pencil className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Settings2 className="h-4 w-4" variant="stroke" />
-                      </Button>
-                      {hiddenCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground"
-                          onClick={() => setShowAllFields(!showAllFields)}
-                        >
-                          {showAllFields ? t('detail.sidebar.showLess') : t('detail.sidebar.showMore', { count: hiddenCount })}
-                          {showAllFields ? (
-                            <ChevronUp className="ml-1 h-4 w-4" variant="stroke" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {visibleFields.map((field) => (
-                    <div key={field.fieldKey} className="flex items-start gap-4">
-                      <span className="w-28 shrink-0 text-right text-sm text-muted-foreground">
-                        {field.label}
-                      </span>
-                      <span className="text-sm font-medium text-primary">
-                        {(field as any).render ?? field.value ?? "—"}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Kontakty (Contacts) card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      {t('detail.relationships.contacts')}
-                      {contactRelationships.length > 0 && (
-                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                          ({contactRelationships.length})
-                        </span>
-                      )}
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2"
-                        onClick={() => {
-                          setShowSidebarContactLink(!showSidebarContactLink);
-                          setSidebarContactSearch("");
-                        }}
-                      >
-                        <Link2 className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.relationships.add')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2"
-                        onClick={() => setCreateContactDrawerOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.relationships.addNew')}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {showSidebarContactLink && (
-                    <div className="mb-3 relative">
-                      <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-                        <Input
-                          type="text"
-                          className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
-                          placeholder={t('detail.relationships.searchContacts')}
-                          value={sidebarContactSearch}
-                          onChange={(e) => setSidebarContactSearch(e.target.value)}
-                          autoFocus
-                        />
-                      </div>
-                      {sidebarContactSearch.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                          {sidebarContactResults?.page?.filter(
-                            (c) => !contactRelationships.some((r) => r.targetId === c._id)
-                          ).length ? (
-                            <ul className="max-h-[200px] overflow-y-auto p-1">
-                              {sidebarContactResults.page
-                                .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
-                                .map((c) => (
-                                  <li key={c._id}>
-                                    <button
-                                      type="button"
-                                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                                      onClick={async () => {
-                                        await handleLinkContact({
-                                          id: c._id,
-                                          label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
-                                        });
-                                        setSidebarContactSearch("");
-                                        setShowSidebarContactLink(false);
-                                      }}
-                                    >
-                                      <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                                      <span>{`${c.firstName} ${c.lastName ?? ""}`.trim()}</span>
-                                      {c.email && (
-                                        <span className="text-xs text-muted-foreground">{c.email}</span>
-                                      )}
-                                    </button>
-                                  </li>
-                                ))}
-                            </ul>
-                          ) : (
-                            <div className="py-3 px-3 text-sm text-muted-foreground">
-                              {t('detail.relationships.noResults')}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {contactRelationships.length > 0 ? (
-                    <ul className="space-y-2">
-                      {contactRelationships.map((r) => (
-                        <li key={r._id}>
-                          <button
-                            className="flex items-center gap-2 text-sm text-primary hover:underline"
-                            onClick={() => navigate({ to: `/dashboard/contacts/${r.targetId}` })}
-                          >
-                            <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                            <span>{(r as any).targetName ?? r.targetId}</span>
-                            {(r as any).targetSublabel && (
-                              <span className="text-xs text-muted-foreground">
-                                {(r as any).targetSublabel}
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    !showSidebarContactLink && (
-                      <p className="text-sm text-muted-foreground">
-                        {t('detail.relationships.emptyDealContacts')}
-                      </p>
-                    )
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Firmy (Companies) card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      {t('detail.relationships.companies')}
-                      {companyRelationships.length > 0 && (
-                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                          ({companyRelationships.length})
-                        </span>
-                      )}
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2"
-                        onClick={() => {
-                          setShowSidebarCompanyLink(!showSidebarCompanyLink);
-                          setSidebarCompanySearch("");
-                        }}
-                      >
-                        <Link2 className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.relationships.add')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2"
-                        onClick={() => setCreateCompanyDrawerOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.relationships.addNew')}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {showSidebarCompanyLink && (
-                    <div className="mb-3 relative">
-                      <div className="flex items-center w-full rounded-md border bg-transparent">
-                        <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-                        <Input
-                          type="text"
-                          className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
-                          placeholder={t('detail.relationships.searchCompanies')}
-                          value={sidebarCompanySearch}
-                          onChange={(e) => setSidebarCompanySearch(e.target.value)}
-                          autoFocus
-                        />
-                      </div>
-                      {sidebarCompanySearch.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                          {sidebarCompanyResults?.page?.filter(
-                            (c) => !companyRelationships.some((r) => r.targetId === c._id)
-                          ).length ? (
-                            <ul className="max-h-[200px] overflow-y-auto p-1">
-                              {sidebarCompanyResults.page
-                                .filter((c) => !companyRelationships.some((r) => r.targetId === c._id))
-                                .map((c) => (
-                                  <li key={c._id}>
-                                    <button
-                                      type="button"
-                                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                                      onClick={async () => {
-                                        await handleLinkCompany({ id: c._id, label: c.name });
-                                        setSidebarCompanySearch("");
-                                        setShowSidebarCompanyLink(false);
-                                      }}
-                                    >
-                                      <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                                      <span>{c.name}</span>
-                                      {c.domain && (
-                                        <span className="text-xs text-muted-foreground">({c.domain})</span>
-                                      )}
-                                    </button>
-                                  </li>
-                                ))}
-                            </ul>
-                          ) : (
-                            <div className="py-3 px-3 text-sm text-muted-foreground">
-                              {t('detail.relationships.noResults')}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {companyRelationships.length > 0 ? (
-                    <ul className="space-y-2">
-                      {companyRelationships.map((r) => (
-                        <li key={r._id}>
-                          <button
-                            className="flex items-center gap-2 text-sm text-primary hover:underline"
-                            onClick={() => navigate({ to: `/dashboard/companies/${r.targetId}` })}
-                          >
-                            <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                            <span>{(r as any).targetName ?? r.targetId}</span>
-                            {(r as any).targetSublabel && (
-                              <span className="text-xs text-muted-foreground">
-                                ({(r as any).targetSublabel})
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    !showSidebarCompanyLink && (
-                      <p className="text-sm text-muted-foreground">
-                        {t('detail.relationships.emptyDealCompany')}
-                      </p>
-                    )
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Produkty (Products) card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      {t('detail.relationships.products')}
-                      {dealProducts && dealProducts.length > 0 && (
-                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                          ({dealProducts.length})
-                        </span>
-                      )}
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {dealProducts && dealProducts.length > 0 ? (
-                    <div className="space-y-2">
-                      {dealProducts.map((dp) => (
-                        <div key={dp._id} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                            <span>{dp.product?.name ?? t('detail.fields.unknown')}</span>
-                          </div>
-                          <span className="text-muted-foreground">
-                            {dp.quantity} x {formatCurrency(dp.unitPrice)}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="pt-2 border-t flex justify-between text-sm font-medium">
-                        <span>{t('detail.fields.total')}</span>
-                        <span>{formatCurrency(totalProductValue)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t('detail.relationships.emptyDealProducts')}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Załączniki (Attachments) card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t('detail.attachments.title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t('detail.attachments.empty')}
-                  </p>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-1.5" variant="stroke" />
-                    {t('detail.attachments.selectFile')}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </ScrollArea>
-
-          {/* --- Right content area with tabs --- */}
-          <div className="flex flex-1 flex-col overflow-hidden bg-background">
-            <EntityQuickActions entityType="lead" entityId={leadId} onAction={(action) => {
-              switch (action) {
-                case "scheduleActivity": setShowActivityForm(true); break;
-              }
-            }} />
-            <Tabs defaultValue="all" className="flex flex-1 flex-col">
-              <div className="shrink-0 border-b px-6 pt-2">
-                <TabsList className="h-10 bg-transparent p-0 gap-0">
-                  <TabsTrigger value="all" className={tabTriggerClass}>
-                    {t('detail.tabs.all')}
-                  </TabsTrigger>
-                  <TabsTrigger value="activities" className={tabTriggerClass}>
-                    {t('detail.tabs.activities')}
-                  </TabsTrigger>
-                  <TabsTrigger value="emails" className={tabTriggerClass}>
-                    {t('detail.tabs.emails')}
-                  </TabsTrigger>
-                  <TabsTrigger value="documents" className={tabTriggerClass}>
-                    {t('detail.tabs.documents')}
-                  </TabsTrigger>
-                  <TabsTrigger value="calls" className={tabTriggerClass}>
-                    {t('detail.tabs.calls')}
-                  </TabsTrigger>
-                  <TabsTrigger value="notes" className={tabTriggerClass}>
-                    {t('detail.tabs.notes')}
-                    {notesData && notesData.length > 0 && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({notesData.length})
-                      </span>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <ScrollArea className="flex-1">
-                {/* === Wszystkie (All) tab === */}
-                <TabsContent value="all" className="m-0 p-6">
-                  <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>{t('detail.actions.filterBy')}</span>
-                    <Button variant="outline" size="sm" className="h-7">
-                      {t('detail.tabs.all')}
-                      <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-                    </Button>
-                  </div>
-                  <ActivityTimeline
-                    activities={activities ?? []}
-                    maxHeight="600px"
-                  />
-                </TabsContent>
-
-                {/* === Aktywności tab === */}
-                <TabsContent value="activities" className="m-0 p-6">
-                  <div className="space-y-4">
-                    {!showActivityForm && (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                          <h3 className="font-semibold">{t('detail.activitySection.title')}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {t('detail.activitySection.descriptionDeal')}
-                          </p>
-                        </div>
-                        <Button className="bg-primary" onClick={() => setShowActivityForm(true)}>
-                          <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                          {t('detail.activitySection.add')}
-                        </Button>
-                      </div>
-                    )}
-
-                    {showActivityForm && (
-                      <div className="rounded-lg border p-5">
-                        <ActivityForm
-                          linkedEntityType="lead"
-                          linkedEntityLabel={lead.title}
-                          onSubmit={handleCreateActivity}
-                          onCancel={() => setShowActivityForm(false)}
-                          isSubmitting={isSubmitting}
-                          activityTypes={activityTypeDefs}
-                          customFieldDefs={activityCustomFieldDefs}
-                          contactSearchResults={
-                            guestContactResults?.page?.map((c) => ({
-                              id: c._id,
-                              label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
-                              email: c.email ?? undefined,
-                            })) ?? []
-                          }
-                          onSearchContacts={setGuestContactSearch}
-                        />
-                      </div>
-                    )}
-
-                    {scheduledActivitiesData && scheduledActivitiesData.length > 0 ? (
-                      <ScheduledActivitiesList
-                        activities={scheduledActivitiesData}
-                        onActivityClick={(id) => {
-                          setSelectedActivityId(id);
-                          setActivityDrawerOpen(true);
-                        }}
-                      />
-                    ) : (
-                      !showActivityForm && (
-                        <p className="text-sm text-muted-foreground">
-                          {t('detail.activitySection.emptyDeal')}
-                        </p>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* === Emails tab === */}
-                <TabsContent value="emails" className="m-0 p-6">
-                  <EmailEntityTab
-                    organizationId={organizationId}
-                    entityType="lead"
-                    entityId={leadId}
-                    leadId={leadId as Id<"leads">}
-                  />
-                </TabsContent>
-
-                {/* === Dokumenty tab === */}
-                <TabsContent value="documents" className="m-0 p-6">
-                  <DocumentInstanceTable
-                    organizationId={organizationId}
-                    sourceKey="lead"
-                    sourceInstanceId={leadId}
-                    onView={(id) => setViewingDocId(id)}
-                    onNewFromTemplate={() => setShowNewDocDialog(true)}
-                    showNewButton
-                  />
-
-                  <DocumentFromTemplateDialog
-                    open={showNewDocDialog}
-                    onOpenChange={setShowNewDocDialog}
-                    organizationId={organizationId}
-                    module="crm"
-                    sources={{ lead: leadId }}
-                    onComplete={() => setShowNewDocDialog(false)}
-                  />
-
-                  {viewingDocId && (
-                    <Dialog open onOpenChange={() => setViewingDocId(null)}>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                        <DocumentInstanceView
-                          instanceId={viewingDocId}
-                          onClose={() => setViewingDocId(null)}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </TabsContent>
-
-                {/* === Połączenia tab === */}
-                <TabsContent value="calls" className="m-0 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{t('detail.callsTab.title')}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {t('detail.callsTab.description')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button className="bg-primary">
-                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.callsTab.logCall')}
-                      </Button>
-                      <Button variant="outline">
-                        <PhoneCall className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.callsTab.makeCall')}
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* === Notes tab === */}
-                <TabsContent value="notes" className="m-0 p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{t('detail.notes.title')}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {t('detail.notes.description')}
-                        </p>
-                      </div>
-                      <Button className="bg-primary" onClick={() => setIsAddingNote(true)}>
-                        <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                        {t('detail.notes.add')}
-                      </Button>
-                    </div>
-
-                    {isAddingNote && (
-                      <div className="space-y-2 rounded-lg border p-4">
-                        <Textarea
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          placeholder={t('detail.notes.placeholder')}
-                          rows={4}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setIsAddingNote(false);
-                              setNewNote("");
-                            }}
-                          >
-                            {t('detail.notes.cancel')}
-                          </Button>
-                          <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
-                            {t('detail.notes.save')}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {notesData && notesData.length > 0 ? (
-                      <ul className="space-y-3">
-                        {notesData.map((note) => (
-                          <li key={note._id} className="rounded-lg border p-4 space-y-1">
-                            <div className="flex items-start justify-between">
-                              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                              {note.isPinned && (
-                                <Pin className="h-4 w-4 text-primary shrink-0" variant="stroke" />
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(note.createdAt).toLocaleDateString("pl-PL", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      !isAddingNote && (
-                        <p className="text-sm text-muted-foreground">{t('detail.notes.empty')}</p>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </div>
-        </div>
-      </div>
+      <EntityDetailLayout
+        variant="default"
+        isLoading={isLoading}
+        notFound={!lead && !isLoading}
+        onBack={() => navigate({ to: "/dashboard/leads" })}
+        title={lead?.title ?? ""}
+        headerSubtitle={headerSubtitle}
+        avatarFallback={avatarFallback}
+        primaryAction={{ label: t('detail.won'), onClick: handleMarkWon }}
+        secondaryActions={[
+          { label: t('detail.lost'), onClick: () => setLostDialogOpen(true), variant: "destructive" },
+        ]}
+        onEdit={() => setEditDrawerOpen(true)}
+        owner={lead?.assignedUser ? { name: lead.assignedUser.name ?? t('detail.actions.owner') } : undefined}
+        actionsMenu={actionsMenu}
+        fields={fields}
+        expandedFieldCount={4}
+        associations={[contactsAssociation, companiesAssociation]}
+        attachments={attachmentsContent}
+        sidebarExtra={productsSidebarCard}
+        beforeTabs={pipelineProgressBar}
+        tabs={tabs}
+        defaultTab={t('detail.tabs.all')}
+      />
 
       {/* === Edit lead drawer === */}
       <SidePanel
@@ -1577,70 +1449,72 @@ function LeadDetail() {
         onOpenChange={setEditDrawerOpen}
         title={t('detail.editDeal')}
       >
-        <LeadForm
-          initialData={{
-            title: lead.title,
-            value: lead.value,
-            status: lead.status,
-            priority: lead.priority,
-            source: lead.source ?? undefined,
-            pipelineStageId: lead.pipelineStageId,
-            notes: lead.notes ?? undefined,
-          }}
-          pipelines={pipelines}
-          stages={allStages}
-          customFieldDefinitions={leadCfDefs}
-          customFieldValues={leadCfValues}
-          onSubmit={handleEditSubmit}
-          onCancel={() => setEditDrawerOpen(false)}
-          isSubmitting={isSubmitting}
-          extraFields={
-            <>
-              <RelationshipField
-                label={t('detail.relationships.contacts')}
-                placeholder={t('detail.relationships.searchContacts')}
-                items={
-                  contactSearchResults?.page?.map((c) => ({
-                    id: c._id,
-                    label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
-                    sublabel: c.email ?? undefined,
-                  })) ?? []
-                }
-                selectedItems={selectedContacts}
-                onSearch={setContactSearch}
-                onSelect={handleLinkContact}
-                onRemove={handleUnlinkContact}
-                allowCreate
-                onCreateNew={() => {
-                  setEditDrawerOpen(false);
-                  setCreateContactDrawerOpen(true);
-                }}
-                createLabel={t('detail.relationships.createContact')}
-              />
-              <RelationshipField
-                label={t('detail.relationships.companies')}
-                placeholder={t('detail.relationships.searchCompanies')}
-                items={
-                  companySearchResults?.page?.map((c) => ({
-                    id: c._id,
-                    label: c.name,
-                    sublabel: c.domain ?? undefined,
-                  })) ?? []
-                }
-                selectedItems={selectedCompanies}
-                onSearch={setCompanySearch}
-                onSelect={handleLinkCompany}
-                onRemove={handleUnlinkCompany}
-                allowCreate
-                onCreateNew={() => {
-                  setEditDrawerOpen(false);
-                  setCreateCompanyDrawerOpen(true);
-                }}
-                createLabel={t('detail.relationships.createCompany')}
-              />
-            </>
-          }
-        />
+        {lead && (
+          <LeadForm
+            initialData={{
+              title: lead.title,
+              value: lead.value,
+              status: lead.status,
+              priority: lead.priority,
+              source: lead.source ?? undefined,
+              pipelineStageId: lead.pipelineStageId,
+              notes: lead.notes ?? undefined,
+            }}
+            pipelines={pipelines}
+            stages={allStages}
+            customFieldDefinitions={leadCfDefs}
+            customFieldValues={leadCfValues}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setEditDrawerOpen(false)}
+            isSubmitting={isSubmitting}
+            extraFields={
+              <>
+                <RelationshipField
+                  label={t('detail.relationships.contacts')}
+                  placeholder={t('detail.relationships.searchContacts')}
+                  items={
+                    contactSearchResults?.page?.map((c) => ({
+                      id: c._id,
+                      label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
+                      sublabel: c.email ?? undefined,
+                    })) ?? []
+                  }
+                  selectedItems={selectedContacts}
+                  onSearch={setContactSearch}
+                  onSelect={handleLinkContact}
+                  onRemove={handleUnlinkContact}
+                  allowCreate
+                  onCreateNew={() => {
+                    setEditDrawerOpen(false);
+                    setCreateContactDrawerOpen(true);
+                  }}
+                  createLabel={t('detail.relationships.createContact')}
+                />
+                <RelationshipField
+                  label={t('detail.relationships.companies')}
+                  placeholder={t('detail.relationships.searchCompanies')}
+                  items={
+                    companySearchResults?.page?.map((c) => ({
+                      id: c._id,
+                      label: c.name,
+                      sublabel: c.domain ?? undefined,
+                    })) ?? []
+                  }
+                  selectedItems={selectedCompanies}
+                  onSearch={setCompanySearch}
+                  onSelect={handleLinkCompany}
+                  onRemove={handleUnlinkCompany}
+                  allowCreate
+                  onCreateNew={() => {
+                    setEditDrawerOpen(false);
+                    setCreateCompanyDrawerOpen(true);
+                  }}
+                  createLabel={t('detail.relationships.createCompany')}
+                />
+              </>
+            }
+          />
+        )}
       </SidePanel>
 
       {/* === Create contact drawer === */}

@@ -114,6 +114,7 @@ export const PdfmeDesigner = forwardRef<PdfmeDesignerHandle, PdfmeDesignerProps>
           const newSchema = {
             name: variable.path,
             type: "text" as const,
+            content: `[${variable.label}]`,
             position: { x: 10, y: nextY },
             width: 80,
             height: 10,

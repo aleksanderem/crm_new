@@ -16,7 +16,7 @@ The same effort also closes the automation RBAC gap found in the cross-module re
 
 The first goal is to make activity publication opinionated. A module should not be able to emit a vague activity record with only a free-form description and arbitrary metadata. It should have to provide a stable shared envelope.
 
-The second goal is to make activity rendering consistent across the product surfaces we migrate to the shared presenter. Today the concrete inconsistency is visible in entity detail timelines. The rollout target also includes broader feed and list-style activity surfaces that should eventually consume the same presenter.
+The second goal is to make activity rendering consistent across the entity detail surfaces we migrate to the shared presenter in this fragment. Today the concrete inconsistency is visible in entity detail timelines. Broader feed and list-style activity surfaces may eventually consume the same presenter, but they are follow-up work rather than part of this fragment's done state.
 
 The third goal is to preserve modularity. The shared layer validates the activity envelope and stores it durably, but it does not understand the meaning of package assignment, inbound email, lead ownership changes, or future module-specific actions.
 
@@ -50,6 +50,8 @@ The publishing helper should validate that the required envelope fields exist, r
 
 Fan-out should become a first-class publishing concern. A publisher should be able to declare one primary entity and zero or more related targets in a shared way. The shared layer writes the resulting rows consistently rather than each module implementing its own fan-out pattern. Every row created from the same logical event must carry the same `eventKey` so later cross-entity or aggregate surfaces can deduplicate when needed.
 
+Permission-aware visibility must be enforced in the backend read and write contract, not only in the presenter. Publish-time fan-out decides which entity rows come into existence for an event. Query-time authorization decides whether the current viewer may load those rows on a given surface. The presenter is allowed to format only the rows that the backend query has already authorized. This prevents route-level rendering differences from becoming a data-leak path.
+
 ## Persistence contract and query compatibility
 
 The first rollout should preserve the current flat activity row shape as the authoritative query surface, because current activity queries and indexes are built around top-level entity and user fields. That means `organizationId`, `entityType`, `entityId`, and `action` remain first-class stored fields and continue to drive the existing `by_entity`, `by_org`, and `by_user` access patterns.
@@ -68,9 +70,23 @@ The presenter should be layered. The base layer always knows how to render the e
 
 This design removes the current inconsistency where one detail page only passes `_id`, `action`, `description`, and `createdAt`, while another page builds a much richer timeline entry locally. After rollout, the rendering path should be the same across the entity timelines and any broader feed or list surfaces migrated in this work or in follow-up rollout phases.
 
+## Entity-centric feed contract
+
+The completion target for this rollout fragment is entity-scoped activity across CRM and Gabinet, not a generic module-level event stream. Every supported entity detail surface should show the activity that meaningfully belongs to that entity, provided the current viewer has access to both the surface and the underlying activity semantics.
+
+This makes fan-out and visibility part of the product contract, not an incidental implementation detail. A note, email, package assignment, appointment change, or similar domain event may need to appear on multiple related entity feeds, but each appearance must still respect module boundaries, assignment rules, and access restrictions. For example, CRM-originated activity should remain visible only to users allowed to see that CRM context unless the product explicitly defines a broader audience.
+
+## Relation timing semantics
+
+Related-entity visibility starts from the moment a relation becomes active. If a company is linked to a contact today, the company feed should show subsequent contact activity that is eligible to fan out through that relation, but it should not retroactively absorb the contact's older history. This keeps audit semantics predictable, reduces accidental overexposure, and matches the safer enterprise expectation for timeline behavior.
+
+The same rule applies when relations end. Historical activity that was validly visible while the relation existed remains part of the feed history, but new events stop fanning out through that relation after it is removed.
+
+The authoritative mechanism for this fragment is publish-time relation resolution, not dynamic graph recomputation on read. When an event is emitted, the publisher or shared activity helper must resolve the currently active related targets and write one row per allowed target using that moment's relation state. Read queries then load already-targeted rows and apply authorization filtering; they do not retroactively discover new targets by traversing the current entity graph. This is what enforces the approved "from the moment of relation" behavior without backfilling older history.
+
 ## Rollout strategy
 
-The rollout should be incremental and safe. The first phase introduces the shared envelope types, validators, publishing helper, persistence mapping, and shared presenter without attempting a full historical rewrite. The second phase migrates touched or newly introduced publishers to the new contract, especially the flows explicitly called out in this discussion: package assignment, note activity, and client email activity. The third phase migrates major read surfaces to the shared presenter so they stop doing route-local interpretation. The fourth phase tightens remaining legacy paths and removes redundant render logic once confidence is high.
+The rollout should be incremental and safe. The first phase introduces the shared envelope types, validators, publishing helper, persistence mapping, and shared presenter without attempting a full historical rewrite. The second phase migrates touched or newly introduced publishers to the new contract, especially the flows explicitly called out in this discussion: package assignment, note activity, and client email activity. The third phase migrates entity detail feeds across the supported CRM and Gabinet surfaces to the shared presenter so they stop doing route-local interpretation and start honoring the same fan-out and visibility rules. Broader cross-entity or module-level aggregate feeds remain follow-up work unless explicitly selected during implementation planning. The fourth phase tightens remaining legacy paths and removes redundant render logic once confidence is high.
 
 Legacy records must remain readable throughout rollout. The read path should therefore be tolerant. If a record predates the new contract or is missing richer fields, the presenter should degrade gracefully to summary-first rendering. The write path should be strict for new publishers so the system stops accruing new contract drift.
 
@@ -84,7 +100,7 @@ This gives the rollout a strict write path and a tolerant read path while making
 
 The automation `update_field` execution path currently uses its own permission resolution path instead of the same explicit RBAC enforcement pattern used elsewhere. This design treats that as part of the same cleanup wave.
 
-The desired end state is that automation field updates pass through one shared authorization path that is visibly aligned with the rest of the codebase. `verifyOrgAccess` remains the membership gate. Permission enforcement for the actual edit must use the same explicit standard that user-facing actions rely on, rather than a near-duplicate permission system embedded inside automation execution.
+The desired end state is that automation field updates pass through one shared authorization path that is visibly aligned with the rest of the codebase. `verifyOrgAccess` remains the membership gate. Permission enforcement for the actual edit must call the same canonical permission helper used by ordinary backend writes, namely the shared `checkPermission` path in combination with the existing org-membership gate, rather than a near-duplicate permission system embedded inside automation execution. Authorization failures must remain fail-closed and surface as ordinary permission-denied behavior rather than silently skipping writes.
 
 This alignment does not broaden what `update_field` is allowed to do. The current descriptor-driven target model, target-entity restrictions, field-kind checks, field allowlists, custom-field support flags, and value coercion remain in scope unless explicitly redesigned later. The change here is about permission enforcement consistency, not about turning `update_field` into a more generic or less guarded mutation path.
 
@@ -100,17 +116,17 @@ To avoid a new form of central coupling, the shared layer must not own per-modul
 
 ## Verification strategy
 
-Backend verification should prove that the publishing helper rejects incomplete envelopes, stores valid activity rows consistently, preserves compatibility fields correctly, and fans out correctly to related entities. Focused tests should cover at least package assignment, notes, and client email activity. Cross-entity or aggregate-read tests should prove that rows sharing an `eventKey` can be deduplicated when a surface combines multiple targets. RBAC tests should prove that automation field updates fail when the shared authorization path denies the action and succeed when the same path allows it.
+Backend verification should prove that the publishing helper rejects incomplete envelopes, stores valid activity rows consistently, preserves compatibility fields correctly, and fans out correctly to related entities. Focused tests should cover at least package assignment, notes, and client email activity. Relation-aware tests must prove the approved timing rule: an entity starts receiving related activity only from the moment the relation becomes active, with no retroactive history import. RBAC tests should prove that automation field updates fail when the shared authorization path denies the action and succeed when the same path allows it.
 
-Frontend verification should prove that the same presenter view model powers migrated detail timelines and any migrated broader feed or aggregate surfaces. It should also prove that legacy records still render through fallback behavior. Since the presenter is the new shared seam, it should have its own focused tests for generic rendering, action-aware rendering, dedupe-aware feed behavior where relevant, and fallback behavior.
+Frontend verification should prove that the same presenter view model powers migrated entity detail timelines across CRM and Gabinet. It should also prove that legacy records still render through fallback behavior and that richer activities such as client email expose the expected presentation fields including subject, body/snippet, and attachments when the envelope payload provides them. Since the presenter is the new shared seam, it should have its own focused tests for generic rendering, action-aware rendering, relation-aware entity feed behavior where relevant, and fallback behavior.
 
-Cross-module verification should include TypeScript, import-boundary checks, translation completeness for any newly surfaced UI copy, RBAC review, and pattern checks on touched list and detail surfaces. If schema changes are needed to store the new envelope more explicitly, the related indexes must be verified as part of the rollout.
+Cross-module verification should include TypeScript, import-boundary checks, translation completeness for any newly surfaced UI copy, RBAC review, and pattern checks on touched entity detail surfaces. If schema changes are needed to store the new envelope more explicitly, the related indexes must be verified as part of the rollout.
 
 ## Touched areas expected during implementation planning
 
-The shared backend work is expected to touch the activity helper and activity query layer, plus the module publishers that emit the newly standardized events. The shared frontend work is expected to touch `ActivityTimeline`, shared activity presenter code, and the major consumers currently doing local activity mapping. The automation fix is expected to touch the automation execution path and its permission enforcement helpers.
+The shared backend work is expected to touch the activity helper and activity query layer, plus the module publishers that emit the newly standardized events. The shared frontend work is expected to touch `ActivityTimeline`, shared activity presenter code, and the entity detail consumers currently doing local activity mapping. The automation fix is expected to touch the automation execution path and its permission enforcement helpers.
 
-The currently evidenced shared-activity consumers in scope are entity timelines such as appointment history and the CRM and Gabinet detail pages that already read entity-scoped activities. Broader cross-entity feed or list-style surfaces are rollout targets to be selected explicitly during implementation planning rather than assumed to be current shared-activity consumers.
+The currently evidenced shared-activity consumers in scope are entity timelines such as appointment history and the CRM and Gabinet detail pages that already read entity-scoped activities. For this fragment, entity detail feeds across supported CRM and Gabinet surfaces are the definition-of-done target. Broader cross-entity feed or list-style surfaces remain rollout targets to be selected explicitly in follow-up work rather than assumed to be required now.
 
 ## Risks and mitigations
 

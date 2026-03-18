@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +5,6 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -27,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { TemplateEditor } from "@/components/gabinet/template-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -45,32 +41,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SidePanel } from "@/components/crm/side-panel";
+import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
+import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
 import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
 import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
 import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
-  ArrowLeft,
   Calendar,
   Clock,
-  User,
   Mail,
   Phone,
-  FileText,
   CreditCard,
   Package,
   History,
   StickyNote,
   Activity,
   UserCircle,
-  CheckCircle,
-  XCircle,
-  PlayCircle,
-  AlertTriangle,
-  Clock4,
   DollarSign,
   RefreshCcw,
   Info,
@@ -79,12 +69,8 @@ import {
   Heart,
   Plus,
   Eye,
-  PenTool,
   Pencil,
   Trash2,
-  Download,
-  Upload,
-  FilePlus,
   Star,
   MoreHorizontal,
   MessageSquare,
@@ -105,13 +91,13 @@ export const Route = createLazyFileRoute(
 
 const statusColors: Record<
   string,
-  "default" | "secondary" | "destructive" | "outline" | "success"
+  "default" | "secondary" | "destructive" | "outline"
 > = {
   pending_confirmation: "outline",
   scheduled: "secondary",
   confirmed: "default",
   in_progress: "default",
-  completed: "success",
+  completed: "default",
   cancelled: "destructive",
   no_show: "destructive",
 };
@@ -126,7 +112,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   no_show: [],
 };
 
-function getSmsSummary(events: any[], appointmentStatus: string) {
+function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus: string) {
   const latestOutbound = events.find(
     (event) =>
       event.direction === "outbound" &&
@@ -172,246 +158,13 @@ function getSmsSummary(events: any[], appointmentStatus: string) {
   return { labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory", tone: "secondary" as const };
 }
 
-function getActivityContentSnapshot(activity: any, t: any) {
-  const metadata =
-    activity?.metadata && typeof activity.metadata === "object"
-      ? (activity.metadata as Record<string, unknown>)
-      : null;
-
-  const contentCandidates = [
-    metadata?.rawBody,
-    metadata?.body,
-    metadata?.message,
-    metadata?.content,
-    metadata?.text,
-    metadata?.bodyPreview,
-    metadata?.preview,
-  ];
-
-  const contentSnapshot = contentCandidates.find(
-    (value) => typeof value === "string" && value.trim().length > 0,
-  ) as string | undefined;
-
-  const metaLines: string[] = [];
-  if (typeof metadata?.subject === "string" && metadata.subject.trim().length > 0) {
-    metaLines.push(
-      t("gabinet.appointmentDetail.history.metadata.subject", {
-        value: metadata.subject,
-      }),
-    );
-  }
-  if (
-    typeof metadata?.processingStatus === "string" &&
-    metadata.processingStatus.trim().length > 0
-  ) {
-    metaLines.push(
-      t("gabinet.appointmentDetail.history.metadata.status", {
-        value: t(`gabinet.appointmentDetail.sms.processingStatuses.${metadata.processingStatus}`, {
-          defaultValue: metadata.processingStatus,
-        }),
-      }),
-    );
-  }
-
-  return {
-    contentSnapshot,
-    metaLines,
-    metadata,
-  };
-}
-
-function getAutomationRunHistoryEntry(run: any, t: any) {
-  let payload: Record<string, unknown> | null = null;
-
-  try {
-    payload = run.payloadSnapshot ? JSON.parse(run.payloadSnapshot) : null;
-  } catch {
-    payload = null;
-  }
-
-  const contentCandidates = [
-    payload?.rawBody,
-    payload?.body,
-    payload?.message,
-    payload?.content,
-    payload?.text,
-  ];
-
-  const contentSnapshot = contentCandidates.find(
-    (value) => typeof value === "string" && value.trim().length > 0,
-  ) as string | undefined;
-
-  const metaLines = [
-    t("gabinet.appointmentDetail.history.metadata.module", {
-      value: run.module,
-    }),
-    t("gabinet.appointmentDetail.history.metadata.status", {
-      value: t(`settings.automationRunStatuses.${run.status}`, {
-        defaultValue: run.status,
-      }),
-    }),
-    run.correlationKey
-      ? t("gabinet.appointmentDetail.history.metadata.correlation", {
-          value: run.correlationKey,
-        })
-      : null,
-  ].filter(Boolean) as string[];
-
-  return {
-    _id: `automation-${run._id}`,
-    action: "status_changed",
-    description: t("gabinet.appointmentDetail.history.descriptions.automationRun", {
-      eventType: run.eventType,
-    }),
-    createdAt: run.occurredAt ?? run.createdAt,
-    contentSnapshot,
-    metaLines,
-  };
-}
-
-function buildUnifiedHistoryEntries(
-  activities: any[],
-  smsEvents: any[],
-  workflowHistory: any[] = [],
-  automationRuns: any[] = [],
-  t: any,
-) {
-  const smsById = new Map<string, any>(
-    smsEvents.map((event) => [String(event._id), event]),
-  );
-  const linkedSmsIds = new Set<string>();
-
-  const timelineActivities = activities.map((activity) => {
-    const { contentSnapshot, metaLines, metadata } = getActivityContentSnapshot(activity, t);
-    const linkedSmsEventId =
-      typeof metadata?.appointmentSmsEventId === "string"
-        ? metadata.appointmentSmsEventId
-        : null;
-    const linkedSmsEvent = linkedSmsEventId ? smsById.get(linkedSmsEventId) : null;
-
-    if (linkedSmsEventId) {
-      linkedSmsIds.add(linkedSmsEventId);
-    }
-
-    const mergedSnapshot = linkedSmsEvent?.rawBody ?? contentSnapshot;
-    const mergedMetaLines = [...metaLines];
-
-    if (linkedSmsEvent?.parsedIntent) {
-      mergedMetaLines.push(
-        t("gabinet.appointmentDetail.history.metadata.intent", {
-          value: t(`gabinet.appointmentDetail.sms.intents.${linkedSmsEvent.parsedIntent}`, {
-            defaultValue: linkedSmsEvent.parsedIntent,
-          }),
-        }),
-      );
-    }
-    if (linkedSmsEvent?.processingError) {
-      mergedMetaLines.push(
-        t("gabinet.appointmentDetail.history.metadata.reason", {
-          value: linkedSmsEvent.processingError,
-        }),
-      );
-    }
-
-    return {
-      ...activity,
-      contentSnapshot: mergedSnapshot,
-      metaLines: mergedMetaLines,
-    };
-  });
-
-  const orphanSmsEntries = smsEvents
-    .filter((event) => !linkedSmsIds.has(String(event._id)))
-    .map((event) => {
-      const isInbound = event.direction === "inbound";
-      const metaLines = [
-        t("gabinet.appointmentDetail.history.metadata.status", {
-          value: t(`gabinet.appointmentDetail.sms.processingStatuses.${event.processingStatus}`, {
-            defaultValue: event.processingStatus,
-          }),
-        }),
-        event.parsedIntent
-          ? t("gabinet.appointmentDetail.history.metadata.intent", {
-              value: t(`gabinet.appointmentDetail.sms.intents.${event.parsedIntent}`, {
-                defaultValue: event.parsedIntent,
-              }),
-            })
-          : null,
-        event.processingError
-          ? t("gabinet.appointmentDetail.history.metadata.reason", {
-              value: event.processingError,
-            })
-          : null,
-      ].filter(Boolean) as string[];
-
-      return {
-        _id: `sms-${event._id}`,
-        action: isInbound ? "sms_received" : "sms_sent",
-        description: isInbound
-          ? t("gabinet.appointmentDetail.history.descriptions.workflowSmsReceived")
-          : t("gabinet.appointmentDetail.history.descriptions.workflowSmsSent"),
-        createdAt: event.createdAt,
-        contentSnapshot: event.rawBody,
-        metaLines,
-      };
-    });
-
-  const workflowEntries = workflowHistory.map((entry) => {
-    const isEmail = entry.channel === "email";
-    const metaLines = [
-      entry.recipient
-        ? t("gabinet.appointmentDetail.history.metadata.recipient", {
-            value: entry.recipient,
-          })
-        : null,
-      entry.renderedSubject
-        ? t("gabinet.appointmentDetail.history.metadata.subject", {
-            value: entry.renderedSubject,
-          })
-        : null,
-      entry.status
-        ? t("gabinet.appointmentDetail.history.metadata.status", {
-            value: entry.status,
-          })
-        : null,
-      entry.errorMessage
-        ? t("gabinet.appointmentDetail.history.metadata.reason", {
-            value: entry.errorMessage,
-          })
-        : null,
-    ].filter(Boolean) as string[];
-
-    return {
-      _id: `workflow-${entry._id}`,
-      action: isEmail ? "email_sent" : "sms_sent",
-      description: isEmail
-        ? t("gabinet.appointmentDetail.history.descriptions.workflowEmail")
-        : t("gabinet.appointmentDetail.history.descriptions.workflowSms"),
-      createdAt: entry.processedAt ?? entry.updatedAt ?? entry.createdAt,
-      contentSnapshot: entry.renderedBody,
-      metaLines,
-    };
-  });
-
-  const automationEntries = automationRuns.map((run) =>
-    getAutomationRunHistoryEntry(run, t),
-  );
-
-  return [
-    ...timelineActivities,
-    ...orphanSmsEntries,
-    ...workflowEntries,
-    ...automationEntries,
-  ].sort((a, b) => b.createdAt - a.createdAt);
-}
-
-function getPackageUsageTotals(pkg: any) {
+function getPackageUsageTotals(pkg: Record<string, unknown>) {
   const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed)
     ? pkg.treatmentsUsed
     : [];
 
   return treatmentsUsed.reduce(
-    (acc: { used: number; total: number }, treatment: any) => {
+    (acc: { used: number; total: number }, treatment: Record<string, unknown>) => {
       const usedCount = Number(treatment?.usedCount ?? 0);
       const totalCount = Number(treatment?.totalCount ?? 0);
       return {
@@ -438,7 +191,7 @@ function NoteItem({
   isSubmitting,
   isReply = false,
 }: {
-  note: any;
+  note: Record<string, unknown>;
   isEditing: boolean;
   editContent: string;
   onEditContentChange: (content: string) => void;
@@ -464,16 +217,16 @@ function NoteItem({
           </Avatar>
           <div>
             <p className="text-sm font-medium">
-              {note.authorName ?? t("common.unknown")}
+              {(note.authorName as string) ?? t("common.unknown")}
             </p>
             <p className="text-xs text-muted-foreground">
-              {new Date(note.createdAt).toLocaleString(i18n.language)}
+              {new Date(note.createdAt as number).toLocaleString(i18n.language)}
             </p>
           </div>
         </div>
-        {note.isPinned && (
+        {!!note.isPinned && (
           <Badge variant="outline" className="text-xs">
-            📌 {t("gabinet.notes.pinned")}
+            {t("gabinet.notes.pinned")}
           </Badge>
         )}
       </div>
@@ -496,7 +249,7 @@ function NoteItem({
         </div>
       ) : (
         <>
-          <p className="text-sm mt-2 whitespace-pre-wrap">{note.content}</p>
+          <p className="text-sm mt-2 whitespace-pre-wrap">{note.content as string}</p>
           <div className="flex items-center gap-1 mt-3">
             <Button variant="ghost" size="sm" onClick={onReply}>
               {t("gabinet.notes.reply")}
@@ -563,10 +316,10 @@ function AppointmentDetail() {
 
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const trackView = useMutation(api.recentlyViewed.track);
 
   // Payment mutations
   const createPayment = useMutation(api.payments.create);
-  const markPaymentPaid = useMutation(api.payments.markPaid);
 
   // Note mutations
   const createNote = useMutation(api.notes.create);
@@ -632,11 +385,19 @@ function AppointmentDetail() {
     if (detail?.appointment.bodyChartData) {
       try {
         setBodyChartData(JSON.parse(detail.appointment.bodyChartData));
-      } catch (e) {
-        console.error("Failed to parse body chart data", e);
+      } catch {
+        // Ignore parse errors
       }
     }
   }, [detail?.appointment.bodyChartData]);
+
+  // Track recently viewed
+  useEffect(() => {
+    if (detail && organizationId) {
+      const label = `${detail.treatment?.name ?? t("gabinet.appointments.appointment")} - ${detail.patient?.firstName ?? ""} ${detail.patient?.lastName ?? ""}`.trim();
+      trackView({ organizationId, entityType: "gabinetAppointments", entityId: appointmentId, entityLabel: label });
+    }
+  }, [detail?.appointment._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Push patient & appointment info into sidebar slot
   const { setContent: setSidebarContent } = useSidebarSlot();
@@ -662,7 +423,7 @@ function AppointmentDetail() {
     const fmtDate = (d: string) => new Date(d).toLocaleDateString(i18n.language);
     const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
     const empName = emp
-      ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.email
+      ? emp.name ?? emp.email
       : "-";
 
     setSidebarContent(
@@ -880,27 +641,28 @@ function AppointmentDetail() {
     return () => setSidebarContent(null);
   }, [detail, t, setSidebarContent]);
 
-  if (isLoading) {
+  if (!detail && !isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96" />
-      </div>
+      <EntityDetailLayout
+        variant="sidebar-slot"
+        notFound
+        onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+        title=""
+        fields={[]}
+        tabs={[]}
+      />
     );
   }
 
-  if (!detail) {
+  if (isLoading || !detail) {
     return (
-      <div className="p-6">
-        <p className="text-muted-foreground">{t("common.notFound")}</p>
-        <Button
-          variant="outline"
-          onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" variant="stroke" />
-          {t("common.back")}
-        </Button>
-      </div>
+      <EntityDetailLayout
+        variant="sidebar-slot"
+        isLoading
+        title=""
+        fields={[]}
+        tabs={[]}
+      />
     );
   }
 
@@ -918,7 +680,6 @@ function AppointmentDetail() {
     loyaltyTier,
     loyaltyTransactions,
     allPatientPayments,
-    workflowHistory,
   } = detail;
 
   const formatDate = (dateStr: string) => {
@@ -953,7 +714,7 @@ function AppointmentDetail() {
     const name = employee.name ?? employee.email ?? "";
     return name
       .split(" ")
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
@@ -978,12 +739,13 @@ function AppointmentDetail() {
       await updateStatus({
         organizationId,
         appointmentId: appointment._id,
-        status: newStatus as any,
+        status: newStatus as "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show" | "pending_confirmation",
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsUpdating(false);
     }
@@ -1007,8 +769,9 @@ function AppointmentDetail() {
       setCancelDialogOpen(false);
       setCancelReason("");
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsUpdating(false);
     }
@@ -1024,14 +787,14 @@ function AppointmentDetail() {
       });
       toast.success(t("common.saved"));
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsSavingNotes(false);
     }
   };
 
-  // Document management handlers
   // Payment handlers
   const handleCreatePayment = async () => {
     if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
@@ -1047,7 +810,7 @@ function AppointmentDetail() {
         appointmentId: appointment._id,
         amount: parseFloat(paymentAmount),
         currency: "PLN",
-        paymentMethod: paymentMethod as any,
+        paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
         notes: paymentNote || undefined,
       });
 
@@ -1056,8 +819,9 @@ function AppointmentDetail() {
       setPaymentAmount("");
       setPaymentNote("");
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsPaymentSubmitting(false);
     }
@@ -1082,8 +846,9 @@ function AppointmentDetail() {
       setNewNoteContent("");
       setReplyToNoteId(null);
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsNoteSubmitting(false);
     }
@@ -1103,8 +868,9 @@ function AppointmentDetail() {
       setEditingNoteId(null);
       setEditNoteContent("");
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsNoteSubmitting(false);
     }
@@ -1117,8 +883,9 @@ function AppointmentDetail() {
       await deleteNote({ organizationId, noteId });
       toast.success(t("common.deleted"));
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     }
   };
 
@@ -1126,14 +893,15 @@ function AppointmentDetail() {
     try {
       await togglePinNote({ organizationId, noteId });
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     }
   };
 
-  const startEditNote = (note: any) => {
-    setEditingNoteId(note._id);
-    setEditNoteContent(note.content);
+  const startEditNote = (note: Record<string, unknown>) => {
+    setEditingNoteId(note._id as string);
+    setEditNoteContent(note.content as string);
   };
 
   // Body chart handlers
@@ -1152,1251 +920,1254 @@ function AppointmentDetail() {
       });
       toast.success(t("common.saved"));
       refetch();
-    } catch (error: any) {
-      toast.error(error.message ?? t("common.error"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     } finally {
       setIsBodyChartSaving(false);
     }
   };
 
   // Group notes by parent for threading
-  const rootNotes = notes.filter((n) => !n.parentNoteId);
+  const rootNotes = notes.filter((n: Record<string, unknown>) => !n.parentNoteId);
   const getReplies = (noteId: string) =>
-    notes.filter((n) => n.parentNoteId === noteId);
+    notes.filter((n: Record<string, unknown>) => n.parentNoteId === noteId);
 
   // Calculate payment summary
   const treatmentPrice = treatment?.price ?? 0;
   const totalPaid = payments
-    .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .filter((p: Record<string, unknown>) => p.status === "completed")
+    .reduce((sum: number, p: Record<string, unknown>) => sum + (p.amount as number), 0);
   const outstanding = treatmentPrice - totalPaid;
 
   const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
   const latestOutboundSms = smsEvents.find(
-    (event) =>
+    (event: Record<string, unknown>) =>
       event.direction === "outbound" &&
       event.eventType === "appointment_confirmation_request",
   );
   const latestInboundSms = smsEvents.find(
-    (event) =>
+    (event: Record<string, unknown>) =>
       event.direction === "inbound" &&
       event.eventType === "appointment_confirmation_reply",
   );
-  const smsSummary = getSmsSummary(smsEvents, appointment.status);
-  const unifiedHistoryEntries = buildUnifiedHistoryEntries(
-    activities ?? [],
-    smsEvents,
-    workflowHistory ?? [],
-    automationRuns,
-    t,
+  const smsSummary = getSmsSummary(smsEvents as Array<Record<string, unknown>>, appointment.status);
+
+  // Build merged timeline using mergeTimelineSources
+  const mergedTimeline = mergeTimelineSources({
+    activities: (activities ?? []).map((a: Record<string, unknown>) => ({
+      _id: a._id as string,
+      action: a.action as string,
+      description: a.description as string,
+      createdAt: a.createdAt as number,
+      performedByName: a.performedByName as string | undefined,
+      metadata: a.metadata,
+    })) as TimelineSourceEntry[],
+    smsEvents: smsEvents.map((e: Record<string, unknown>) => ({
+      _id: e._id as string,
+      direction: e.direction as "outbound" | "inbound",
+      messageBody: e.rawBody as string | undefined,
+      createdAt: e.createdAt as number,
+      status: e.processingStatus as string | undefined,
+      parsedIntent: e.parsedIntent as string | undefined,
+    })) as SmsEventEntry[],
+    automationRuns: automationRuns.map((r: Record<string, unknown>) => ({
+      _id: r._id as string,
+      ruleName: r.ruleName as string | undefined,
+      status: r.status as string,
+      createdAt: r.createdAt as number,
+      actionsSummary: r.actionsSummary as string | undefined,
+    })) as AutomationRunEntry[],
+  });
+
+  // Header title and subtitle
+  const headerTitle = `${treatment?.name ?? t("gabinet.appointments.appointment")} - ${patient?.firstName ?? ""} ${patient?.lastName ?? ""}`.trim();
+  const headerSubtitle = (
+    <span>
+      {formatDate(appointment.date)} &bull; {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+    </span>
   );
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Breadcrumb */}
-      <div className="border-b px-6 py-3">
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/dashboard" className="hover:text-foreground">
-            {t("nav.home")}
-          </Link>
-          <span>/</span>
-          <Link
-            to="/dashboard/gabinet/calendar"
-            className="hover:text-foreground"
-          >
-            {t("nav.gabinet")} / {t("nav.calendar")}
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">
-            {t("gabinet.appointments.appointment")} #{appointment._id.slice(-6)}
-          </span>
-        </nav>
-      </div>
+  // Status dropdown as actions menu
+  const statusAction = availableTransitions.length > 0 ? (
+    <Select
+      value={appointment.status}
+      onValueChange={(value) => handleStatusChange(value)}
+      disabled={isUpdating}
+    >
+      <SelectTrigger className="w-auto gap-2">
+        <Badge
+          variant={statusColors[appointment.status] ?? "secondary"}
+          className="text-sm"
+        >
+          {t(`gabinet.appointments.statuses.${appointment.status}`)}
+        </Badge>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={appointment.status} disabled>
+          {t(`gabinet.appointments.statuses.${appointment.status}`)}
+        </SelectItem>
+        {availableTransitions.map((status) => (
+          <SelectItem key={status} value={status}>
+            {t(`gabinet.appointments.statuses.${status}`)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : (
+    <Badge
+      variant={statusColors[appointment.status] ?? "secondary"}
+      className="text-sm"
+    >
+      {t(`gabinet.appointments.statuses.${appointment.status}`)}
+    </Badge>
+  );
 
-      {/* Header */}
-      <div className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-          >
-            <ArrowLeft className="h-4 w-4" variant="stroke" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">
-              {treatment?.name ?? t("gabinet.appointments.appointment")} -{" "}
-              {patient?.firstName} {patient?.lastName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {formatDate(appointment.date)} •{" "}
-              {formatTime(appointment.startTime)} -{" "}
-              {formatTime(appointment.endTime)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {availableTransitions.length > 0 ? (
-            <Select
-              value={appointment.status}
-              onValueChange={(value) => handleStatusChange(value)}
-              disabled={isUpdating}
-            >
-              <SelectTrigger className="w-auto gap-2">
-                <Badge
-                  variant={statusColors[appointment.status] ?? "secondary"}
-                  className="text-sm"
-                >
+  // Breadcrumbs
+  const breadcrumbsContent = (
+    <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Link to="/dashboard" className="hover:text-foreground">
+        {t("nav.home")}
+      </Link>
+      <span>/</span>
+      <Link
+        to="/dashboard/gabinet/calendar"
+        className="hover:text-foreground"
+      >
+        {t("nav.gabinet")} / {t("nav.calendar")}
+      </Link>
+      <span>/</span>
+      <span className="text-foreground">
+        {t("gabinet.appointments.appointment")} #{appointment._id.slice(-6)}
+      </span>
+    </nav>
+  );
+
+  // Build tabs array
+  const tabs = [
+    {
+      label: t("gabinet.appointments.tabs.details"),
+      content: (
+        <div className="space-y-4">
+          {/* Treatment Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <Sparkles className="h-4 w-4" variant="stroke" />
+                {t("gabinet.treatments.treatment")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("common.name")}
+                </span>
+                <span className="font-medium">
+                  {treatment?.name ?? "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("gabinet.treatments.duration")}
+                </span>
+                <span className="font-medium">
+                  {calculateDuration()} min
+                </span>
+              </div>
+              {treatment?.price !== undefined && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    {t("common.price")}
+                  </span>
+                  <span className="font-medium">
+                    {treatment.price.toFixed(2)}{" "}
+                    {treatment.currency ?? "PLN"}
+                  </span>
+                </div>
+              )}
+              {treatment?.description && (
+                <div className="pt-2">
+                  <span className="text-sm text-muted-foreground">
+                    {t("common.description")}
+                  </span>
+                  <p className="text-sm mt-1">{treatment.description}</p>
+                </div>
+              )}
+              {treatment?.contraindications && (
+                <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
+                  <div className="flex items-center gap-2 text-destructive mb-1">
+                    <ShieldAlert className="h-4 w-4" variant="stroke" />
+                    <span className="text-sm font-medium">
+                      {t("gabinet.treatments.contraindications")}
+                    </span>
+                  </div>
+                  <p className="text-sm">{treatment.contraindications}</p>
+                </div>
+              )}
+              {!!(treatment as Record<string, unknown>)?.aftercare && (
+                <div className="pt-2 p-3 bg-primary/10 rounded-lg">
+                  <div className="flex items-center gap-2 text-primary mb-1">
+                    <Heart className="h-4 w-4" variant="stroke" />
+                    <span className="text-sm font-medium">
+                      {t("gabinet.treatments.aftercare")}
+                    </span>
+                  </div>
+                  <p className="text-sm">{(treatment as Record<string, unknown>).aftercare as string}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Employee Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <UserCircle className="h-4 w-4" variant="stroke" />
+                {t("gabinet.employees.employee")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback>{getEmployeeInitials()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{getEmployeeName()}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {employee?.email}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Scheduling Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <Calendar className="h-4 w-4" variant="stroke" />
+                {t("gabinet.appointments.scheduling")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("common.date")}
+                </span>
+                <span className="font-medium">
+                  {formatDate(appointment.date)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("common.time")}
+                </span>
+                <span className="font-medium">
+                  {formatTime(appointment.startTime)} -{" "}
+                  {formatTime(appointment.endTime)} ({calculateDuration()}{" "}
+                  min)
+                </span>
+              </div>
+              {appointment.isRecurring &&
+                appointment.recurringGroupId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <RefreshCcw className="h-3 w-3" variant="stroke" />
+                      {t("gabinet.appointments.recurring")}
+                    </span>
+                    <Badge variant="outline">
+                      {appointment.recurringRule?.frequency ?? "weekly"}
+                    </Badge>
+                  </div>
+                )}
+              <Separator />
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("common.createdAt")}
+                </span>
+                <span className="text-sm">
+                  {formatDateTime(appointment.createdAt)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SMS Confirmation Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <MessageSquare className="h-4 w-4" variant="stroke" />
+                {t("gabinet.appointmentDetail.sms.title")}
+              </CardTitle>
+              <CardDescription>
+                {t("gabinet.appointmentDetail.sms.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={smsSummary.tone}>
+                  {t(smsSummary.labelKey)}
+                </Badge>
+                <Badge variant="outline">
                   {t(`gabinet.appointments.statuses.${appointment.status}`)}
                 </Badge>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={appointment.status} disabled>
-                  {t(`gabinet.appointments.statuses.${appointment.status}`)}
-                </SelectItem>
-                {availableTransitions.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {t(`gabinet.appointments.statuses.${status}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Badge
-              variant={statusColors[appointment.status] ?? "secondary"}
-              className="text-sm"
-            >
-              {t(`gabinet.appointments.statuses.${appointment.status}`)}
-            </Badge>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg border p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Send className="h-4 w-4" variant="stroke" />
+                    {t("gabinet.appointmentDetail.sms.lastOutbound")}
+                  </div>
+                  {latestOutboundSms ? (
+                    <>
+                      <p className="text-sm">{(latestOutboundSms as Record<string, unknown>).rawBody as string}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${(latestOutboundSms as Record<string, unknown>).processingStatus}`)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.appointmentDetail.sms.noOutbound")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-lg border p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Inbox className="h-4 w-4" variant="stroke" />
+                    {t("gabinet.appointmentDetail.sms.lastInbound")}
+                  </div>
+                  {latestInboundSms ? (
+                    <>
+                      <p className="text-sm">{(latestInboundSms as Record<string, unknown>).rawBody as string}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.parsedIntent")}: {t(`gabinet.appointmentDetail.sms.intents.${(latestInboundSms as Record<string, unknown>).parsedIntent ?? "unknown"}`)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${(latestInboundSms as Record<string, unknown>).processingStatus}`)}
+                      </p>
+                      {(latestInboundSms as Record<string, unknown>).processingError && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("gabinet.appointmentDetail.sms.processingReason")}: {(latestInboundSms as Record<string, unknown>).processingError as string}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.appointmentDetail.sms.noInbound")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Prepayment Status Card */}
+          {appointment.prepaymentRequired && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2.5">
+                  <DollarSign className="h-4 w-4" variant="stroke" />
+                  {t("gabinet.appointments.prepayment")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    {t("gabinet.appointments.prepaymentAmount")}
+                  </span>
+                  <span className="font-medium">
+                    {(appointment.prepaymentAmount ?? 0).toFixed(2)} PLN
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    {t("common.status")}
+                  </span>
+                  <Badge variant="secondary">
+                    {t("gabinet.appointments.prepaymentPending")}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Internal Notes Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <StickyNote className="h-4 w-4" variant="stroke" />
+                {t("gabinet.appointments.internalNotes")}
+              </CardTitle>
+              <CardDescription>
+                {t("gabinet.appointments.internalNotesDesc")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder={t(
+                  "gabinet.appointments.internalNotesPlaceholder",
+                )}
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                rows={4}
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleSaveInternalNotes}
+                  disabled={isSavingNotes}
+                >
+                  {isSavingNotes ? t("common.saving") : t("common.save")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      label: t("gabinet.documents.documents"),
+      count: documents.length,
+      content: (
+        <DocumentInstanceTable
+          organizationId={organizationId}
+          sourceKey="patient"
+          sourceInstanceId={patient?._id}
+          module="gabinet"
+          onView={(instanceId) => setViewingDocInstanceId(instanceId)}
+          onNewFromTemplate={() => setTemplateDialogOpen(true)}
+          showNewButton
+        />
+      ),
+    },
+    {
+      label: t("gabinet.payments.payments"),
+      count: payments.length,
+      content: (
+        <div className="space-y-4">
+          {/* Payment Summary Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <DollarSign className="h-4 w-4" variant="stroke" />
+                {t("gabinet.payments.summary")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.payments.treatmentPrice")}
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {treatmentPrice.toFixed(2)} PLN
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.payments.totalPaid")}
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {totalPaid.toFixed(2)} PLN
+                  </p>
+                </div>
+                <div
+                  className={`text-center p-4 rounded-lg ${outstanding > 0 ? "bg-orange-50 dark:bg-orange-950/20" : "bg-muted/50"}`}
+                >
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.payments.outstanding")}
+                  </p>
+                  <p
+                    className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}
+                  >
+                    {outstanding.toFixed(2)} PLN
+                  </p>
+                </div>
+              </div>
+              {appointment.prepaymentRequired &&
+                appointment.prepaymentAmount && (
+                  <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <Info className="h-4 w-4" variant="stroke" />
+                      <span className="font-medium">
+                        {t("gabinet.appointments.prepaymentRequired")}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-1">
+                      {t("gabinet.appointments.prepaymentAmount")}:{" "}
+                      {appointment.prepaymentAmount.toFixed(2)} PLN
+                    </p>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+
+          {/* Payments Table */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
+                <CardDescription>
+                  {t("gabinet.payments.linkedToAppointment")}
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setPaymentDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.payments.addPayment")}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <EmptyState
+                  icon={CreditCard}
+                  title={t("gabinet.payments.noPayments")}
+                  description={t("gabinet.payments.noPaymentsDesc")}
+                  action={
+                    <Button onClick={() => setPaymentDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                      {t("gabinet.payments.addFirst")}
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 text-sm font-medium">
+                          {t("gabinet.payments.amount")}
+                        </th>
+                        <th className="text-left p-3 text-sm font-medium">
+                          {t("gabinet.payments.method")}
+                        </th>
+                        <th className="text-left p-3 text-sm font-medium">
+                          {t("common.date")}
+                        </th>
+                        <th className="text-left p-3 text-sm font-medium">
+                          {t("common.status")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment: Record<string, unknown>) => (
+                        <tr
+                          key={payment._id as string}
+                          className="border-b last:border-0 hover:bg-muted/30"
+                        >
+                          <td className="p-3">
+                            <p className="font-medium">
+                              {(payment.amount as number).toFixed(2)}{" "}
+                              {(payment.currency as string) ?? "PLN"}
+                            </p>
+                          </td>
+                          <td className="p-3">
+                            <Badge variant="outline">
+                              {t(
+                                `gabinet.payments.methods.${payment.paymentMethod}`,
+                              )}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-sm text-muted-foreground">
+                            {new Date(
+                              payment.createdAt as number,
+                            ).toLocaleDateString(i18n.language)}
+                          </td>
+                          <td className="p-3">
+                            <Badge
+                              variant={
+                                payment.status === "completed"
+                                  ? "default"
+                                  : payment.status === "refunded"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                            >
+                              {t(
+                                `gabinet.payments.status.${payment.status}`,
+                              )}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Package Usage Card (if applicable) */}
+          {appointment.packageUsageId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2.5">
+                  <Package className="h-4 w-4" variant="stroke" />
+                  {t("gabinet.packages.packageUsage")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  {t("gabinet.packages.usedInThisAppointment")}
+                </p>
+              </CardContent>
+            </Card>
           )}
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-6">
-        <div>
-          <Tabs defaultValue="details" className="h-full">
-            <TabsList>
-              <TabsTrigger value="details">
-                <Activity className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.appointments.tabs.details")}
-              </TabsTrigger>
-              <TabsTrigger value="documents">
-                <FileText className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.documents.documents")}
-              </TabsTrigger>
-              <TabsTrigger value="payments">
-                <CreditCard className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.payments.payments")}
-              </TabsTrigger>
-              <TabsTrigger value="history">
-                <History className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.patients.history")}
-              </TabsTrigger>
-              <TabsTrigger value="notes">
-                <StickyNote className="mr-2 h-4 w-4" variant="stroke" />
-                {t("common.notes")}
-              </TabsTrigger>
-              <TabsTrigger value="body-chart">
-                <Heart className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.appointments.tabs.bodyChart")}
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="mt-4">
-              {/* Details Tab */}
-              <TabsContent value="details" className="m-0 space-y-4">
-                {/* Treatment Info Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <Sparkles className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.treatments.treatment")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("common.name")}
-                      </span>
-                      <span className="font-medium">
-                        {treatment?.name ?? "-"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("gabinet.treatments.duration")}
-                      </span>
-                      <span className="font-medium">
-                        {calculateDuration()} min
-                      </span>
-                    </div>
-                    {treatment?.price !== undefined && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          {t("common.price")}
-                        </span>
-                        <span className="font-medium">
-                          {treatment.price.toFixed(2)}{" "}
-                          {treatment.currency ?? "PLN"}
-                        </span>
-                      </div>
-                    )}
-                    {treatment?.description && (
-                      <div className="pt-2">
-                        <span className="text-sm text-muted-foreground">
-                          {t("common.description")}
-                        </span>
-                        <p className="text-sm mt-1">{treatment.description}</p>
-                      </div>
-                    )}
-                    {treatment?.contraindications && (
-                      <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
-                        <div className="flex items-center gap-2 text-destructive mb-1">
-                          <ShieldAlert className="h-4 w-4" variant="stroke" />
-                          <span className="text-sm font-medium">
-                            {t("gabinet.treatments.contraindications")}
-                          </span>
-                        </div>
-                        <p className="text-sm">{treatment.contraindications}</p>
-                      </div>
-                    )}
-                    {treatment?.aftercare && (
-                      <div className="pt-2 p-3 bg-primary/10 rounded-lg">
-                        <div className="flex items-center gap-2 text-primary mb-1">
-                          <Heart className="h-4 w-4" variant="stroke" />
-                          <span className="text-sm font-medium">
-                            {t("gabinet.treatments.aftercare")}
-                          </span>
-                        </div>
-                        <p className="text-sm">{treatment.aftercare}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Employee Info Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <UserCircle className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.employees.employee")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback>{getEmployeeInitials()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{getEmployeeName()}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {employee?.email}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Scheduling Info Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <Calendar className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.appointments.scheduling")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("common.date")}
-                      </span>
-                      <span className="font-medium">
-                        {formatDate(appointment.date)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("common.time")}
-                      </span>
-                      <span className="font-medium">
-                        {formatTime(appointment.startTime)} -{" "}
-                        {formatTime(appointment.endTime)} ({calculateDuration()}{" "}
-                        min)
-                      </span>
-                    </div>
-                    {appointment.isRecurring &&
-                      appointment.recurringGroupId && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <RefreshCcw className="h-3 w-3" variant="stroke" />
-                            {t("gabinet.appointments.recurring")}
-                          </span>
-                          <Badge variant="outline">
-                            {appointment.recurringRule?.frequency ?? "weekly"}
-                          </Badge>
-                        </div>
-                      )}
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("common.createdAt")}
-                      </span>
-                      <span className="text-sm">
-                        {formatDateTime(appointment.createdAt)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* SMS Confirmation Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <MessageSquare className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.appointmentDetail.sms.title")}
-                    </CardTitle>
-                    <CardDescription>
-                      {t("gabinet.appointmentDetail.sms.description")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={smsSummary.tone}>
-                        {t(smsSummary.labelKey)}
-                      </Badge>
-                      <Badge variant="outline">
-                        {t(`gabinet.appointments.statuses.${appointment.status}`)}
-                      </Badge>
-                    </div>
-
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div className="rounded-lg border p-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Send className="h-4 w-4" variant="stroke" />
-                          {t("gabinet.appointmentDetail.sms.lastOutbound")}
-                        </div>
-                        {latestOutboundSms ? (
-                          <>
-                            <p className="text-sm">{latestOutboundSms.rawBody}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestOutboundSms.processingStatus}`)}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            {t("gabinet.appointmentDetail.sms.noOutbound")}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="rounded-lg border p-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Inbox className="h-4 w-4" variant="stroke" />
-                          {t("gabinet.appointmentDetail.sms.lastInbound")}
-                        </div>
-                        {latestInboundSms ? (
-                          <>
-                            <p className="text-sm">{latestInboundSms.rawBody}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {t("gabinet.appointmentDetail.sms.parsedIntent")}: {t(`gabinet.appointmentDetail.sms.intents.${latestInboundSms.parsedIntent ?? "unknown"}`)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${latestInboundSms.processingStatus}`)}
-                            </p>
-                            {latestInboundSms.processingError && (
-                              <p className="text-xs text-muted-foreground">
-                                {t("gabinet.appointmentDetail.sms.processingReason")}: {latestInboundSms.processingError}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            {t("gabinet.appointmentDetail.sms.noInbound")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Prepayment Status Card */}
-                {appointment.prepaymentRequired && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2.5">
-                        <DollarSign className="h-4 w-4" variant="stroke" />
-                        {t("gabinet.appointments.prepayment")}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          {t("gabinet.appointments.prepaymentAmount")}
-                        </span>
-                        <span className="font-medium">
-                          {(appointment.prepaymentAmount ?? 0).toFixed(2)} PLN
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          {t("common.status")}
-                        </span>
-                        <Badge variant="secondary">
-                          {t("gabinet.appointments.prepaymentPending")}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
+      ),
+    },
+    {
+      label: t("gabinet.patients.history"),
+      content: (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <Activity className="h-4 w-4" variant="stroke" />
+                {t("detail.tabs.timeline", "Timeline")}
+              </CardTitle>
+              <CardDescription>
+                {t(
+                  "gabinet.appointmentDetail.history.unifiedDescription",
+                  "Unified operational history for this appointment, including messages and workflow events.",
                 )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline
+                activities={mergedTimeline}
+                maxHeight="400px"
+              />
+            </CardContent>
+          </Card>
 
-                {/* Internal Notes Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <StickyNote className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.appointments.internalNotes")}
-                    </CardTitle>
-                    <CardDescription>
-                      {t("gabinet.appointments.internalNotesDesc")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Textarea
-                      placeholder={t(
-                        "gabinet.appointments.internalNotesPlaceholder",
-                      )}
-                      value={internalNotes}
-                      onChange={(e) => setInternalNotes(e.target.value)}
-                      rows={4}
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={handleSaveInternalNotes}
-                        disabled={isSavingNotes}
-                      >
-                        {isSavingNotes ? t("common.saving") : t("common.save")}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Documents Tab */}
-              <TabsContent value="documents" className="m-0 p-6">
-                <DocumentInstanceTable
-                  organizationId={organizationId}
-                  sourceKey="patient"
-                  sourceInstanceId={patient?._id}
-                  module="gabinet"
-                  onView={(instanceId) => setViewingDocInstanceId(instanceId)}
-                  onNewFromTemplate={() => setTemplateDialogOpen(true)}
-                  showNewButton
+          {/* Past Appointments Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <History className="h-4 w-4" variant="stroke" />
+                {t("gabinet.patients.appointmentHistory")}
+              </CardTitle>
+              <CardDescription>
+                {t("gabinet.patients.lastAppointments", { count: 20 })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {patientHistory.length === 0 ? (
+                <EmptyState
+                  icon={Calendar}
+                  title={t("gabinet.patients.noHistory")}
+                  description={t("gabinet.patients.noHistoryDesc")}
                 />
-              </TabsContent>
-
-              {/* Payments Tab */}
-              <TabsContent value="payments" className="m-0 space-y-4">
-                {/* Payment Summary Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <DollarSign className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.payments.summary")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.payments.treatmentPrice")}
-                        </p>
-                        <p className="text-2xl font-bold">
-                          {treatmentPrice.toFixed(2)} PLN
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.payments.totalPaid")}
-                        </p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {totalPaid.toFixed(2)} PLN
-                        </p>
-                      </div>
-                      <div
-                        className={`text-center p-4 rounded-lg ${outstanding > 0 ? "bg-orange-50 dark:bg-orange-950/20" : "bg-muted/50"}`}
-                      >
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.payments.outstanding")}
-                        </p>
-                        <p
-                          className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+                  <div className="space-y-4">
+                    {patientHistory.map((appt: Record<string, unknown>, index: number) => (
+                      <div key={appt._id as string} className="relative flex gap-4">
+                        <div className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-background border-2">
+                          {index === 0 && (
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+                        <Link
+                          to="/dashboard/gabinet/appointments/$appointmentId"
+                          params={{ appointmentId: appt._id as string }}
+                          className="flex-1 flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                          {outstanding.toFixed(2)} PLN
-                        </p>
+                          <div>
+                            <p className="font-medium">
+                              {((appt as Record<string, unknown>).treatment as Record<string, unknown>)?.name as string ?? "-"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(appt.date as string)} &bull;{" "}
+                              {formatTime(appt.startTime as string)} -{" "}
+                              {formatTime(appt.endTime as string)}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              statusColors[appt.status as string] ?? "secondary"
+                            }
+                          >
+                            {t(
+                              `gabinet.appointments.statuses.${appt.status}`,
+                            )}
+                          </Badge>
+                        </Link>
                       </div>
-                    </div>
-                    {appointment.prepaymentRequired &&
-                      appointment.prepaymentAmount && (
-                        <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                          <div className="flex items-center gap-2 text-blue-600">
-                            <Info className="h-4 w-4" variant="stroke" />
-                            <span className="font-medium">
-                              {t("gabinet.appointments.prepaymentRequired")}
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Active Packages */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <Package className="h-4 w-4" variant="stroke" />
+                {t("gabinet.packages.activePackages")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patientPackageUsage.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title={t("gabinet.packages.noActivePackages")}
+                  description={t("gabinet.packages.noActivePackagesDesc")}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {patientPackageUsage.map((pkg: Record<string, unknown>) => {
+                    const totals = getPackageUsageTotals(pkg);
+                    const progressPercent =
+                      totals.total > 0
+                        ? Math.min((totals.used / totals.total) * 100, 100)
+                        : 0;
+                    const overallRemainingRatio = totals.total > 0 ? (totals.total - totals.used) / totals.total : 1;
+                    let overallBarColor = "bg-emerald-500";
+                    if (overallRemainingRatio <= 0) overallBarColor = "bg-red-500";
+                    else if (overallRemainingRatio < 0.1) overallBarColor = "bg-red-500";
+                    else if (overallRemainingRatio < 0.3) overallBarColor = "bg-amber-500";
+
+                    return (
+                      <div key={pkg._id as string} className="p-4 border rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium">
+                            {(pkg.packageName as string) ??
+                              t("gabinet.packages.package")}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {pkg.status === "active" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setUsageDialogPkgId(pkg._id as string);
+                                  setUsageDialogItems(
+                                    ((pkg.treatmentsUsed as Array<Record<string, unknown>>) ?? [])
+                                      .filter((e: Record<string, unknown>) => ((e.usedCount as number) ?? 0) < ((e.totalCount as number) ?? 0))
+                                      .map((e: Record<string, unknown>) => ({
+                                        treatmentId: e.treatmentId as string,
+                                        treatmentName: (e.treatmentName as string) ?? t("gabinet.packages.treatment"),
+                                        remaining: ((e.totalCount as number) ?? 0) - ((e.usedCount as number) ?? 0),
+                                        qty: 0,
+                                      })),
+                                  );
+                                  setUsageDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                                {t("gabinet.packages.useMultiple")}
+                              </Button>
+                            )}
+                            <Badge
+                              variant={
+                                pkg.status === "active"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {t(`gabinet.packages.status.${pkg.status}`)}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Overall progress */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              {t("gabinet.packages.overallProgress")}
+                            </span>
+                            <span className="tabular-nums">
+                              {t("gabinet.packages.completionPercent", { percent: Math.round(progressPercent) })}
                             </span>
                           </div>
-                          <p className="text-sm mt-1">
-                            {t("gabinet.appointments.prepaymentAmount")}:{" "}
-                            {appointment.prepaymentAmount.toFixed(2)} PLN
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all rounded-full ${overallBarColor}`}
+                              style={{
+                                width: `${progressPercent}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Per-treatment progress bars */}
+                        {!!(Array.isArray(pkg.treatmentsUsed) &&
+                          (pkg.treatmentsUsed as Array<Record<string, unknown>>).length > 0) && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {t("gabinet.packages.perTreatmentProgress")}
+                              </p>
+                              {(pkg.treatmentsUsed as Array<Record<string, unknown>>).map((entry: Record<string, unknown>, index: number) => {
+                                const usedCount = (entry.usedCount as number) ?? 0;
+                                const totalCount = (entry.totalCount as number) ?? 0;
+                                const remaining = totalCount - usedCount;
+                                const pct = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
+                                const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
+                                let barColor = "bg-emerald-500";
+                                let statusLabel = t("gabinet.packages.plentyRemaining");
+                                if (remainingRatio <= 0) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.fullyUsed"); }
+                                else if (remainingRatio < 0.1) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.almostExhausted"); }
+                                else if (remainingRatio < 0.3) { barColor = "bg-amber-500"; statusLabel = t("gabinet.packages.runningLow"); }
+
+                                return (
+                                  <div key={`${pkg._id}-${(entry.treatmentId as string) ?? index}`} className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="truncate max-w-[50%]">
+                                        {(entry.treatmentName as string) ?? t("gabinet.treatments.treatment")}
+                                      </span>
+                                      <span className="text-muted-foreground tabular-nums">
+                                        {usedCount} / {totalCount}
+                                        <span className="ml-1.5 text-[10px]">({statusLabel})</span>
+                                      </span>
+                                    </div>
+                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all rounded-full ${barColor}`}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                        {!!pkg.expiresAt && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("gabinet.packages.expires")}:{" "}
+                            {new Date(pkg.expiresAt as number).toLocaleDateString(
+                              i18n.language,
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Loyalty Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <Star className="h-4 w-4" variant="stroke" />
+                {t("gabinet.loyalty.loyaltyProgram")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.loyalty.pointsBalance")}
+                  </p>
+                  <p className="text-3xl font-bold text-primary">
+                    {loyaltyBalance}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.loyalty.currentTier")}
+                  </p>
+                  <Badge variant="outline" className="text-lg mt-2">
+                    {loyaltyTier
+                      ? t(`gabinet.loyalty.tiers.${loyaltyTier}`)
+                      : t("gabinet.loyalty.tiers.bronze")}
+                  </Badge>
+                </div>
+              </div>
+              {loyaltyTransactions && loyaltyTransactions.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">
+                    {t("gabinet.loyalty.recentTransactions")}
+                  </h4>
+                  <div className="space-y-2">
+                    {loyaltyTransactions.slice(0, 5).map((tx: Record<string, unknown>) => (
+                      <div
+                        key={tx._id as string}
+                        className="flex items-center justify-between p-2 border rounded"
+                      >
+                        <div>
+                          <p className="text-sm">
+                            {t(`gabinet.loyalty.txTypes.${tx.type}`)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(tx.createdAt as number).toLocaleDateString(
+                              "pl-PL",
+                            )}
                           </p>
                         </div>
-                      )}
-                  </CardContent>
-                </Card>
-
-                {/* Payments Table */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
-                      <CardDescription>
-                        {t("gabinet.payments.linkedToAppointment")}
-                      </CardDescription>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => setPaymentDialogOpen(true)}
-                    >
-                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                      {t("gabinet.payments.addPayment")}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {payments.length === 0 ? (
-                      <EmptyState
-                        icon={CreditCard}
-                        title={t("gabinet.payments.noPayments")}
-                        description={t("gabinet.payments.noPaymentsDesc")}
-                        action={
-                          <Button onClick={() => setPaymentDialogOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                            {t("gabinet.payments.addFirst")}
-                          </Button>
-                        }
-                      />
-                    ) : (
-                      <div className="overflow-x-auto border rounded-lg">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="text-left p-3 text-sm font-medium">
-                                {t("gabinet.payments.amount")}
-                              </th>
-                              <th className="text-left p-3 text-sm font-medium">
-                                {t("gabinet.payments.method")}
-                              </th>
-                              <th className="text-left p-3 text-sm font-medium">
-                                {t("common.date")}
-                              </th>
-                              <th className="text-left p-3 text-sm font-medium">
-                                {t("common.status")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {payments.map((payment) => (
-                              <tr
-                                key={payment._id}
-                                className="border-b last:border-0 hover:bg-muted/30"
-                              >
-                                <td className="p-3">
-                                  <p className="font-medium">
-                                    {payment.amount.toFixed(2)}{" "}
-                                    {payment.currency ?? "PLN"}
-                                  </p>
-                                </td>
-                                <td className="p-3">
-                                  <Badge variant="outline">
-                                    {t(
-                                      `gabinet.payments.methods.${payment.paymentMethod}`,
-                                    )}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-muted-foreground">
-                                  {new Date(
-                                    payment.createdAt,
-                                  ).toLocaleDateString(i18n.language)}
-                                </td>
-                                <td className="p-3">
-                                  <Badge
-                                    variant={
-                                      payment.status === "completed"
-                                        ? "success"
-                                        : payment.status === "refunded"
-                                          ? "destructive"
-                                          : "secondary"
-                                    }
-                                  >
-                                    {t(
-                                      `gabinet.payments.status.${payment.status}`,
-                                    )}
-                                  </Badge>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <span
+                          className={
+                            (tx.points as number) > 0
+                              ? "text-green-600 font-medium"
+                              : "text-destructive font-medium"
+                          }
+                        >
+                          {(tx.points as number) > 0 ? "+" : ""}
+                          {tx.points as number}
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                {/* Package Usage Card (if applicable) */}
-                {appointment.packageUsageId && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2.5">
-                        <Package className="h-4 w-4" variant="stroke" />
-                        {t("gabinet.packages.packageUsage")}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">
-                        {t("gabinet.packages.usedInThisAppointment")}
+          {/* Payment History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2.5">
+                <CreditCard className="h-4 w-4" variant="stroke" />
+                {t("gabinet.payments.paymentHistory")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {allPatientPayments && allPatientPayments.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.totalSpent")}
                       </p>
-                      {/* Package details would be fetched and displayed here */}
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              {/* History Tab */}
-              <TabsContent value="history" className="m-0 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <Activity className="h-4 w-4" variant="stroke" />
-                      {t("detail.tabs.timeline", "Timeline")}
-                    </CardTitle>
-                    <CardDescription>
-                      {t(
-                        "gabinet.appointmentDetail.history.unifiedDescription",
-                        "Unified operational history for this appointment, including messages and workflow events.",
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ActivityTimeline
-                      activities={unifiedHistoryEntries ?? []}
-                      maxHeight="400px"
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Past Appointments Timeline */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <History className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.patients.appointmentHistory")}
-                    </CardTitle>
-                    <CardDescription>
-                      {t("gabinet.patients.lastAppointments", { count: 20 })}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {patientHistory.length === 0 ? (
-                      <EmptyState
-                        icon={Calendar}
-                        title={t("gabinet.patients.noHistory")}
-                        description={t("gabinet.patients.noHistoryDesc")}
-                      />
-                    ) : (
-                      <div className="relative">
-                        <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
-                        <div className="space-y-4">
-                          {patientHistory.map((appt, index) => (
-                            <div key={appt._id} className="relative flex gap-4">
-                              <div className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-background border-2">
-                                {index === 0 && (
-                                  <div className="w-2 h-2 rounded-full bg-primary" />
-                                )}
-                              </div>
-                              <Link
-                                to="/dashboard/gabinet/appointments/$appointmentId"
-                                params={{ appointmentId: appt._id }}
-                                className="flex-1 flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                              >
-                                <div>
-                                  <p className="font-medium">
-                                    {(appt as any).treatment?.name ?? "-"}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {formatDate(appt.date)} •{" "}
-                                    {formatTime(appt.startTime)} -{" "}
-                                    {formatTime(appt.endTime)}
-                                  </p>
-                                </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        {allPatientPayments
+                          .filter((p: Record<string, unknown>) => p.status === "completed")
+                          .reduce(
+                            (sum: number, p: Record<string, unknown>) => sum + (p.amount as number),
+                            0,
+                          )
+                          .toFixed(2)}{" "}
+                        PLN
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.lastPayment")}
+                      </p>
+                      <p className="text-sm font-medium">
+                        {allPatientPayments[0]
+                          ? new Date(
+                              (allPatientPayments[0] as Record<string, unknown>).createdAt as number,
+                            ).toLocaleDateString(i18n.language)
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.amount")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.method")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("common.date")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("common.status")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allPatientPayments
+                          .slice(0, 10)
+                          .map((payment: Record<string, unknown>) => (
+                            <tr
+                              key={payment._id as string}
+                              className="border-b last:border-0 hover:bg-muted/30"
+                            >
+                              <td className="p-3 font-medium">
+                                {(payment.amount as number).toFixed(2)}{" "}
+                                {(payment.currency as string) ?? "PLN"}
+                              </td>
+                              <td className="p-3">
+                                <Badge variant="outline">
+                                  {t(
+                                    `gabinet.payments.methods.${payment.paymentMethod}`,
+                                  )}
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-sm text-muted-foreground">
+                                {new Date(
+                                  payment.createdAt as number,
+                                ).toLocaleDateString(i18n.language)}
+                              </td>
+                              <td className="p-3">
                                 <Badge
                                   variant={
-                                    statusColors[appt.status] ?? "secondary"
+                                    payment.status === "completed"
+                                      ? "default"
+                                      : "secondary"
                                   }
                                 >
                                   {t(
-                                    `gabinet.appointments.statuses.${appt.status}`,
+                                    `gabinet.payments.status.${payment.status}`,
                                   )}
                                 </Badge>
-                              </Link>
-                            </div>
+                              </td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <EmptyState
+                  icon={CreditCard}
+                  title={t("gabinet.payments.noPayments")}
+                  description={t("gabinet.payments.noPaymentsDesc")}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      label: t("common.notes"),
+      count: notes.length,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2.5">
+              <StickyNote className="h-4 w-4" variant="stroke" />
+              {t("common.notes")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Add note textarea */}
+            <div className="space-y-2">
+              {replyToNoteId && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{t("gabinet.notes.replyingTo")}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReplyToNoteId(null)}
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              )}
+              <Textarea
+                placeholder={t("gabinet.notes.placeholder")}
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleCreateNote}
+                  disabled={isNoteSubmitting || !newNoteContent.trim()}
+                >
+                  {isNoteSubmitting
+                    ? t("common.saving")
+                    : t("gabinet.notes.addNote")}
+                </Button>
+              </div>
+            </div>
 
-                {/* Active Packages */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <Package className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.packages.activePackages")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {patientPackageUsage.length === 0 ? (
-                      <EmptyState
-                        icon={Package}
-                        title={t("gabinet.packages.noActivePackages")}
-                        description={t("gabinet.packages.noActivePackagesDesc")}
-                      />
-                    ) : (
-                      <div className="space-y-3">
-                        {patientPackageUsage.map((pkg: any) => {
-                          const totals = getPackageUsageTotals(pkg);
-                          const progressPercent =
-                            totals.total > 0
-                              ? Math.min((totals.used / totals.total) * 100, 100)
-                              : 0;
-                          const overallRemainingRatio = totals.total > 0 ? (totals.total - totals.used) / totals.total : 1;
-                          let overallBarColor = "bg-emerald-500";
-                          if (overallRemainingRatio <= 0) overallBarColor = "bg-red-500";
-                          else if (overallRemainingRatio < 0.1) overallBarColor = "bg-red-500";
-                          else if (overallRemainingRatio < 0.3) overallBarColor = "bg-amber-500";
+            <Separator />
 
-                          return (
-                            <div key={pkg._id} className="p-4 border rounded-lg space-y-3">
-                              <div className="flex items-center justify-between">
-                                <p className="font-medium">
-                                  {pkg.packageName ??
-                                    t("gabinet.packages.package")}
-                                </p>
-                                <div className="flex items-center gap-2">
-                                  {pkg.status === "active" && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setUsageDialogPkgId(pkg._id);
-                                        setUsageDialogItems(
-                                          (pkg.treatmentsUsed ?? [])
-                                            .filter((e: any) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
-                                            .map((e: any) => ({
-                                              treatmentId: e.treatmentId,
-                                              treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
-                                              remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
-                                              qty: 0,
-                                            })),
-                                        );
-                                        setUsageDialogOpen(true);
-                                      }}
-                                    >
-                                      <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                                      {t("gabinet.packages.useMultiple")}
-                                    </Button>
-                                  )}
-                                  <Badge
-                                    variant={
-                                      pkg.status === "active"
-                                        ? "success"
-                                        : "secondary"
-                                    }
-                                  >
-                                    {t(`gabinet.packages.status.${pkg.status}`)}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              {/* Overall progress */}
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-foreground">
-                                    {t("gabinet.packages.overallProgress")}
-                                  </span>
-                                  <span className="tabular-nums">
-                                    {t("gabinet.packages.completionPercent", { percent: Math.round(progressPercent) })}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all rounded-full ${overallBarColor}`}
-                                    style={{
-                                      width: `${progressPercent}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Per-treatment progress bars */}
-                              {Array.isArray(pkg.treatmentsUsed) &&
-                                pkg.treatmentsUsed.length > 0 && (
-                                  <div className="space-y-2">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                      {t("gabinet.packages.perTreatmentProgress")}
-                                    </p>
-                                    {pkg.treatmentsUsed.map((entry: any, index: number) => {
-                                      const usedCount = entry.usedCount ?? 0;
-                                      const totalCount = entry.totalCount ?? 0;
-                                      const remaining = totalCount - usedCount;
-                                      const pct = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
-                                      const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
-                                      let barColor = "bg-emerald-500";
-                                      let statusLabel = t("gabinet.packages.plentyRemaining");
-                                      if (remainingRatio <= 0) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.fullyUsed"); }
-                                      else if (remainingRatio < 0.1) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.almostExhausted"); }
-                                      else if (remainingRatio < 0.3) { barColor = "bg-amber-500"; statusLabel = t("gabinet.packages.runningLow"); }
-
-                                      return (
-                                        <div key={`${pkg._id}-${entry.treatmentId ?? index}`} className="space-y-1">
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="truncate max-w-[50%]">
-                                              {entry.treatmentName ?? t("gabinet.treatments.treatment")}
-                                            </span>
-                                            <span className="text-muted-foreground tabular-nums">
-                                              {usedCount} / {totalCount}
-                                              <span className="ml-1.5 text-[10px]">({statusLabel})</span>
-                                            </span>
-                                          </div>
-                                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                            <div
-                                              className={`h-full transition-all rounded-full ${barColor}`}
-                                              style={{ width: `${pct}%` }}
-                                            />
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-
-                              {pkg.expiresAt && (
-                                <p className="text-xs text-muted-foreground">
-                                  {t("gabinet.packages.expires")}:{" "}
-                                  {new Date(pkg.expiresAt).toLocaleDateString(
-                                    i18n.language,
-                                  )}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Loyalty Summary */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <Star className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.loyalty.loyaltyProgram")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.loyalty.pointsBalance")}
-                        </p>
-                        <p className="text-3xl font-bold text-primary">
-                          {loyaltyBalance}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.loyalty.currentTier")}
-                        </p>
-                        <Badge variant="outline" className="text-lg mt-2">
-                          {loyaltyTier
-                            ? t(`gabinet.loyalty.tiers.${loyaltyTier}`)
-                            : t("gabinet.loyalty.tiers.bronze")}
-                        </Badge>
-                      </div>
-                    </div>
-                    {loyaltyTransactions && loyaltyTransactions.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-2">
-                          {t("gabinet.loyalty.recentTransactions")}
-                        </h4>
-                        <div className="space-y-2">
-                          {loyaltyTransactions.slice(0, 5).map((tx: any) => (
-                            <div
-                              key={tx._id}
-                              className="flex items-center justify-between p-2 border rounded"
-                            >
-                              <div>
-                                <p className="text-sm">
-                                  {t(`gabinet.loyalty.txTypes.${tx.type}`)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(tx.createdAt).toLocaleDateString(
-                                    "pl-PL",
-                                  )}
-                                </p>
-                              </div>
-                              <span
-                                className={
-                                  tx.points > 0
-                                    ? "text-green-600 font-medium"
-                                    : "text-destructive font-medium"
-                                }
-                              >
-                                {tx.points > 0 ? "+" : ""}
-                                {tx.points}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Payment History */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <CreditCard className="h-4 w-4" variant="stroke" />
-                      {t("gabinet.payments.paymentHistory")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {allPatientPayments && allPatientPayments.length > 0 ? (
-                      <>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                            <p className="text-sm text-muted-foreground">
-                              {t("gabinet.payments.totalSpent")}
-                            </p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {allPatientPayments
-                                .filter((p: any) => p.status === "completed")
-                                .reduce(
-                                  (sum: number, p: any) => sum + p.amount,
-                                  0,
-                                )
-                                .toFixed(2)}{" "}
-                              PLN
-                            </p>
-                          </div>
-                          <div className="text-center p-4 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">
-                              {t("gabinet.payments.lastPayment")}
-                            </p>
-                            <p className="text-sm font-medium">
-                              {allPatientPayments[0]
-                                ? new Date(
-                                    allPatientPayments[0].createdAt,
-                                  ).toLocaleDateString(i18n.language)
-                                : "-"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="overflow-x-auto border rounded-lg">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b bg-muted/50">
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("gabinet.payments.amount")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("gabinet.payments.method")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("common.date")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("common.status")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {allPatientPayments
-                                .slice(0, 10)
-                                .map((payment: any) => (
-                                  <tr
-                                    key={payment._id}
-                                    className="border-b last:border-0 hover:bg-muted/30"
-                                  >
-                                    <td className="p-3 font-medium">
-                                      {payment.amount.toFixed(2)}{" "}
-                                      {payment.currency ?? "PLN"}
-                                    </td>
-                                    <td className="p-3">
-                                      <Badge variant="outline">
-                                        {t(
-                                          `gabinet.payments.methods.${payment.paymentMethod}`,
-                                        )}
-                                      </Badge>
-                                    </td>
-                                    <td className="p-3 text-sm text-muted-foreground">
-                                      {new Date(
-                                        payment.createdAt,
-                                      ).toLocaleDateString(i18n.language)}
-                                    </td>
-                                    <td className="p-3">
-                                      <Badge
-                                        variant={
-                                          payment.status === "completed"
-                                            ? "success"
-                                            : "secondary"
-                                        }
-                                      >
-                                        {t(
-                                          `gabinet.payments.status.${payment.status}`,
-                                        )}
-                                      </Badge>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    ) : (
-                      <EmptyState
-                        icon={CreditCard}
-                        title={t("gabinet.payments.noPayments")}
-                        description={t("gabinet.payments.noPaymentsDesc")}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Notes Tab */}
-              <TabsContent value="notes" className="m-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2.5">
-                      <StickyNote className="h-4 w-4" variant="stroke" />
-                      {t("common.notes")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Add note textarea */}
-                    <div className="space-y-2">
-                      {replyToNoteId && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>{t("gabinet.notes.replyingTo")}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setReplyToNoteId(null)}
-                          >
-                            {t("common.cancel")}
-                          </Button>
-                        </div>
-                      )}
-                      <Textarea
-                        placeholder={t("gabinet.notes.placeholder")}
-                        value={newNoteContent}
-                        onChange={(e) => setNewNoteContent(e.target.value)}
-                        rows={3}
-                      />
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={handleCreateNote}
-                          disabled={isNoteSubmitting || !newNoteContent.trim()}
-                        >
-                          {isNoteSubmitting
-                            ? t("common.saving")
-                            : t("gabinet.notes.addNote")}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Notes list */}
-                    {notes.length === 0 ? (
-                      <EmptyState
-                        icon={StickyNote}
-                        title={t("gabinet.notes.noNotes")}
-                        description={t("gabinet.notes.noNotesDesc")}
-                      />
-                    ) : (
-                      <div className="space-y-4">
-                        {rootNotes.map((note) => (
-                          <div key={note._id}>
-                            <NoteItem
-                              note={note}
-                              isEditing={editingNoteId === note._id}
-                              editContent={editNoteContent}
-                              onEditContentChange={setEditNoteContent}
-                              onStartEdit={() => startEditNote(note)}
-                              onCancelEdit={() => {
-                                setEditingNoteId(null);
-                                setEditNoteContent("");
-                              }}
-                              onSaveEdit={() => handleUpdateNote(note._id)}
-                              onDelete={() => handleDeleteNote(note._id)}
-                              onTogglePin={() => handleTogglePin(note._id)}
-                              onReply={() => setReplyToNoteId(note._id)}
-                              isSubmitting={isNoteSubmitting}
-                            />
-                            {/* Replies */}
-                            {getReplies(note._id).length > 0 && (
-                              <div className="ml-8 mt-2 space-y-2">
-                                {getReplies(note._id).map((reply) => (
-                                  <NoteItem
-                                    key={reply._id}
-                                    note={reply}
-                                    isEditing={editingNoteId === reply._id}
-                                    editContent={editNoteContent}
-                                    onEditContentChange={setEditNoteContent}
-                                    onStartEdit={() => startEditNote(reply)}
-                                    onCancelEdit={() => {
-                                      setEditingNoteId(null);
-                                      setEditNoteContent("");
-                                    }}
-                                    onSaveEdit={() =>
-                                      handleUpdateNote(reply._id)
-                                    }
-                                    onDelete={() => handleDeleteNote(reply._id)}
-                                    onTogglePin={() =>
-                                      handleTogglePin(reply._id)
-                                    }
-                                    onReply={() => setReplyToNoteId(note._id)}
-                                    isSubmitting={isNoteSubmitting}
-                                    isReply
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
+            {/* Notes list */}
+            {notes.length === 0 ? (
+              <EmptyState
+                icon={StickyNote}
+                title={t("gabinet.notes.noNotes")}
+                description={t("gabinet.notes.noNotesDesc")}
+              />
+            ) : (
+              <div className="space-y-4">
+                {rootNotes.map((note: Record<string, unknown>) => (
+                  <div key={note._id as string}>
+                    <NoteItem
+                      note={note}
+                      isEditing={editingNoteId === note._id}
+                      editContent={editNoteContent}
+                      onEditContentChange={setEditNoteContent}
+                      onStartEdit={() => startEditNote(note)}
+                      onCancelEdit={() => {
+                        setEditingNoteId(null);
+                        setEditNoteContent("");
+                      }}
+                      onSaveEdit={() => handleUpdateNote(note._id as Id<"notes">)}
+                      onDelete={() => handleDeleteNote(note._id as Id<"notes">)}
+                      onTogglePin={() => handleTogglePin(note._id as Id<"notes">)}
+                      onReply={() => setReplyToNoteId(note._id as string)}
+                      isSubmitting={isNoteSubmitting}
+                    />
+                    {/* Replies */}
+                    {getReplies(note._id as string).length > 0 && (
+                      <div className="ml-8 mt-2 space-y-2">
+                        {getReplies(note._id as string).map((reply: Record<string, unknown>) => (
+                          <NoteItem
+                            key={reply._id as string}
+                            note={reply}
+                            isEditing={editingNoteId === reply._id}
+                            editContent={editNoteContent}
+                            onEditContentChange={setEditNoteContent}
+                            onStartEdit={() => startEditNote(reply)}
+                            onCancelEdit={() => {
+                              setEditingNoteId(null);
+                              setEditNoteContent("");
+                            }}
+                            onSaveEdit={() =>
+                              handleUpdateNote(reply._id as Id<"notes">)
+                            }
+                            onDelete={() => handleDeleteNote(reply._id as Id<"notes">)}
+                            onTogglePin={() =>
+                              handleTogglePin(reply._id as Id<"notes">)
+                            }
+                            onReply={() => setReplyToNoteId(note._id as string)}
+                            isSubmitting={isNoteSubmitting}
+                            isReply
+                          />
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Body Chart Tab */}
-              <TabsContent value="body-chart" className="m-0">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>
-                        {t("gabinet.appointments.tabs.bodyChart")}
-                      </CardTitle>
-                      <CardDescription>
-                        {t("gabinet.bodyChart.description")}
-                      </CardDescription>
-                    </div>
-                    <Button onClick={() => setBodyChartModalOpen(true)}>
-                      {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {bodyChartData.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          {t("gabinet.bodyChart.markedCount", {
-                            count: bodyChartData.length,
-                          })}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {bodyChartData.map((region) => (
-                            <div
-                              key={region.region}
-                              className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm"
-                            >
-                              <div
-                                className="w-3 h-3 rounded-sm"
-                                style={{
-                                  backgroundColor: region.color,
-                                  opacity: region.intensity,
-                                }}
-                              />
-                              <span>
-                                {t(
-                                  `gabinet.bodyChart.regions.${region.region}`,
-                                  region.region,
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
+      label: t("gabinet.appointments.tabs.bodyChart"),
+      content: (
+        <>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
+                  {t("gabinet.appointments.tabs.bodyChart")}
+                </CardTitle>
+                <CardDescription>
+                  {t("gabinet.bodyChart.description")}
+                </CardDescription>
+              </div>
+              <Button onClick={() => setBodyChartModalOpen(true)}>
+                {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {bodyChartData.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.bodyChart.markedCount", {
+                      count: bodyChartData.length,
+                    })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {bodyChartData.map((region) => (
+                      <div
+                        key={region.region}
+                        className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-sm"
+                          style={{
+                            backgroundColor: region.color,
+                            opacity: region.intensity,
+                          }}
+                        />
+                        <span>
+                          {t(
+                            `gabinet.bodyChart.regions.${region.region}`,
+                            region.region,
+                          )}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="py-8 text-center text-muted-foreground text-sm">
-                        {t(
-                          "gabinet.bodyChart.noRegions",
-                          "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.",
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground text-sm">
+                  {t(
+                    "gabinet.bodyChart.noRegions",
+                    "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.",
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                {/* Body Chart Modal */}
-                <Dialog
-                  open={bodyChartModalOpen}
-                  onOpenChange={setBodyChartModalOpen}
+          {/* Body Chart Modal */}
+          <Dialog
+            open={bodyChartModalOpen}
+            onOpenChange={setBodyChartModalOpen}
+          >
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {t("gabinet.appointments.tabs.bodyChart")}
+                </DialogTitle>
+                <DialogDescription>
+                  {t("gabinet.bodyChart.description")}
+                </DialogDescription>
+              </DialogHeader>
+              <BodyChart
+                data={bodyChartData}
+                onChange={handleBodyChartChange}
+              />
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setBodyChartModalOpen(false)}
                 >
-                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {t("gabinet.appointments.tabs.bodyChart")}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {t("gabinet.bodyChart.description")}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <BodyChart
-                      data={bodyChartData}
-                      onChange={handleBodyChartChange}
-                    />
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setBodyChartModalOpen(false)}
-                      >
-                        {t("common.cancel")}
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          await handleBodyChartSave();
-                          setBodyChartModalOpen(false);
-                        }}
-                        disabled={isBodyChartSaving}
-                      >
-                        {isBodyChartSaving
-                          ? t("common.saving")
-                          : t("common.save")}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
-      </div>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={async () => {
+                    await handleBodyChartSave();
+                    setBodyChartModalOpen(false);
+                  }}
+                  disabled={isBodyChartSaving}
+                >
+                  {isBodyChartSaving
+                    ? t("common.saving")
+                    : t("common.save")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <EntityDetailLayout
+        variant="sidebar-slot"
+        isLoading={false}
+        notFound={false}
+        onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+        title={headerTitle}
+        headerSubtitle={headerSubtitle}
+        avatarFallback={getPatientInitials()}
+        actionsMenu={statusAction}
+        fields={[]}
+        tabs={tabs}
+        defaultTab={t("gabinet.appointments.tabs.details")}
+        breadcrumbs={breadcrumbsContent}
+      />
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
@@ -2602,8 +2373,9 @@ function AppointmentDetail() {
                   toast.success(t("gabinet.packages.usageRecorded"));
                   setUsageDialogOpen(false);
                   refetch();
-                } catch (e: any) {
-                  toast.error(e.message);
+                } catch (e: unknown) {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  toast.error(msg);
                 } finally {
                   setIsUsageSubmitting(false);
                 }
@@ -2614,6 +2386,6 @@ function AppointmentDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+import { DEFAULT_PERMISSIONS } from "../_helpers/permissions";
 import {
   createTestCtx,
   seedGabinetPrereqs,
@@ -68,6 +69,25 @@ async function setPatientEmail(
       email,
       updatedAt: Date.now(),
     });
+  });
+}
+
+async function setMemberLeadEditScope(
+  t: ReturnType<typeof import("convex-test").convexTest>,
+  identity: { subject: string; issuer: string; tokenIdentifier: string },
+  organizationId: any,
+  scope: "none" | "own" | "all",
+) {
+  await t.withIdentity(identity).mutation(api.permissions.updateOrgPermissions, {
+    organizationId,
+    role: "member",
+    permissions: {
+      ...DEFAULT_PERMISSIONS.member,
+      leads: {
+        ...DEFAULT_PERMISSIONS.member.leads,
+        edit: scope,
+      },
+    },
   });
 }
 
@@ -1108,6 +1128,210 @@ describe("automation lifecycle", () => {
     expect(steps[0]?.actionType).toBe("update_field");
     expect(steps[0]?.errorMessage).toContain("Custom lead field updates are not supported");
     expect(lead?.notes).toBeUndefined();
+  });
+
+  test("lead status changed update_field denies member when leads edit scope is none", async () => {
+    const t = createManagedTestCtx();
+    const admin = await seedTestUser(t, { role: "admin" });
+    const member = await seedSecondUser(t, admin.organizationId, { role: "member" });
+
+    await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "none");
+
+    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+      organizationId: admin.organizationId,
+      title: "RBAC deny lead",
+      status: "open",
+      assignedTo: member.userId,
+    });
+
+    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+      organizationId: admin.organizationId,
+      name: "Member tries lead update without edit permission",
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      conditions: [],
+      actions: [
+        {
+          type: "update_field",
+          targetEntityType: "lead",
+          fieldKind: "standard",
+          fieldKey: "notes",
+          valueTemplate: "Denied {{newStatus}}",
+          valueType: "string",
+        },
+      ],
+      enabled: true,
+    });
+
+    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      entityId: String(leadId),
+      payload: JSON.stringify({ leadId: String(leadId), newStatus: "won" }),
+      actorUserId: member.userId,
+      eventIdempotencyKey: `deny-${Date.now()}`,
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      entityType: "lead",
+      entityId: String(leadId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
+    const steps = run
+      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+          organizationId: admin.organizationId,
+          runId: run._id,
+        })
+      : [];
+
+    expect(run?.status).toBe("failed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("failed");
+    expect(steps[0]?.errorMessage).toContain("Permission denied");
+  });
+
+  test("lead status changed update_field enforces own scope for member actor", async () => {
+    const t = createManagedTestCtx();
+    const admin = await seedTestUser(t, { role: "admin" });
+    const member = await seedSecondUser(t, admin.organizationId, { role: "member" });
+
+    await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "own");
+
+    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+      organizationId: admin.organizationId,
+      title: "RBAC own-scope lead",
+      status: "open",
+    });
+
+    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+      organizationId: admin.organizationId,
+      name: "Member own-scope check",
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      conditions: [],
+      actions: [
+        {
+          type: "update_field",
+          targetEntityType: "lead",
+          fieldKind: "standard",
+          fieldKey: "notes",
+          valueTemplate: "Own {{newStatus}}",
+          valueType: "string",
+        },
+      ],
+      enabled: true,
+    });
+
+    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      entityId: String(leadId),
+      payload: JSON.stringify({ leadId: String(leadId), newStatus: "won" }),
+      actorUserId: member.userId,
+      eventIdempotencyKey: `own-${Date.now()}`,
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      entityType: "lead",
+      entityId: String(leadId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
+    const steps = run
+      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+          organizationId: admin.organizationId,
+          runId: run._id,
+        })
+      : [];
+
+    expect(run?.status).toBe("failed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("failed");
+    expect(steps[0]?.errorMessage).toContain("you can only edit your own records");
+  });
+
+  test("lead status changed update_field allows member when leads edit scope is all", async () => {
+    const t = createManagedTestCtx();
+    const admin = await seedTestUser(t, { role: "admin" });
+    const member = await seedSecondUser(t, admin.organizationId, { role: "member" });
+
+    await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "all");
+
+    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+      organizationId: admin.organizationId,
+      title: "RBAC allow lead",
+      status: "open",
+    });
+
+    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+      organizationId: admin.organizationId,
+      name: "Member can update lead with all scope",
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      conditions: [],
+      actions: [
+        {
+          type: "update_field",
+          targetEntityType: "lead",
+          fieldKind: "standard",
+          fieldKey: "notes",
+          valueTemplate: "Allowed {{newStatus}}",
+          valueType: "string",
+        },
+      ],
+      enabled: true,
+    });
+
+    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      eventType: "crm.lead.status_changed",
+      entityType: "lead",
+      entityId: String(leadId),
+      payload: JSON.stringify({ leadId: String(leadId), newStatus: "won" }),
+      actorUserId: member.userId,
+      eventIdempotencyKey: `allow-${Date.now()}`,
+    });
+
+    await flushScheduled(t);
+
+    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+      organizationId: admin.organizationId,
+      module: "crm",
+      entityType: "lead",
+      entityId: String(leadId),
+      limit: 10,
+    });
+    const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
+    const steps = run
+      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+          organizationId: admin.organizationId,
+          runId: run._id,
+        })
+      : [];
+    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+
+    expect(run?.status).toBe("processed");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe("processed");
+    expect(steps[0]?.renderedBody).toBe("standard:notes=Allowed won");
+    expect(lead?.notes).toBe("Allowed won");
   });
 
   test("send_sms_request action stays compatible with legacy SMS execution path", async () => {

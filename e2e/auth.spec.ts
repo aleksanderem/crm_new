@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { BASE_URL, TEST_USER, login, waitForApp } from "./helpers/auth";
+import {
+  BASE_URL,
+  TEST_USER,
+  login,
+  loginAndGoToDashboard,
+  waitForApp,
+} from "./helpers/auth";
 
 test.describe("Auth", () => {
   test.setTimeout(60_000);
@@ -72,6 +78,20 @@ test.describe("Auth", () => {
     // Should still be authenticated (not redirected to login)
     const urlAfter = page.url();
     expect(urlAfter).not.toContain("/login");
+  });
+
+  test("dashboard session survives immediate hard navigation", async ({ page }) => {
+    await loginAndGoToDashboard(page);
+    expect(page.url()).toContain("/dashboard");
+
+    await page.goto(`${BASE_URL}/dashboard/contacts`, {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+    await waitForApp(page);
+
+    expect(page.url()).not.toContain("/login");
+    await expect(page.locator("main")).toBeVisible();
   });
 
   test("protected route redirects to login when not authenticated", async ({

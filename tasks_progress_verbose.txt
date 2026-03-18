@@ -696,3 +696,377 @@ S0070. Patient-created automation slice:
 - Verification status is now fully green for this slice: locale JSON validation, app typecheck, convex typecheck, `convex/tests/automation.test.ts` (13/13), and Playwright `automation rule lifecycle triggers visible run` (1/1) all pass.
 
 ---
+
+S0070. Task 18 shared activity envelope seam plan:
+- Scope narrowed to Task 1 in the feature worktree: add `convex/tests/activityEnvelope.test.ts`, then implement `convex/_helpers/activityEnvelope.ts` and delegate `convex/_helpers/activities.ts` through it.
+- Contract under test: strict rejection for blank summary/eventKey, compatibility mapping of flat rows into `metadata.activityEnvelope`, and fan-out writes that preserve flat `description`, `createdAt`, and `performedBy` compatibility fields.
+- Next: write the focused failing test file first, run the exact Vitest command to capture the intended red state, then implement the minimal shared helper and rerun focused verification plus Convex typecheck.
+- Red-state check complete: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose` failed before executing tests because the new helper import does not exist yet, which is the expected first-step TDD failure.
+- Implemented the minimal seam: added `publishActivityEnvelope(...)`, normalized envelope persistence into `metadata.activityEnvelope`, and routed legacy `logActivity(...)` through that single write path with a stable fallback event key.
+- Green-state check complete: the exact focused Vitest command now passes all three assertions for required-field rejection, flat compatibility mapping, and fan-out persistence.
+- Final verification complete: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false` passed with no output.
+
+---
+
+S0070. Task 18 review-fix plan:
+- Strengthen `convex/tests/activityEnvelope.test.ts` first so the suite covers zero-target rejection and protects legacy `metadata.activityEnvelope` from being silently clobbered.
+- Capture the expected red state with the exact focused Vitest command before changing helper behavior.
+- Apply the minimal helper fix in `convex/_helpers/activityEnvelope.ts`, then rerun the exact focused Vitest command and Convex typecheck.
+- Red-state check complete for the review findings: the strengthened suite failed as expected because empty targets resolved successfully and caller-supplied `metadata.activityEnvelope` was overwritten by the helper.
+- Applied the minimal fix by rejecting empty targets and preserving legacy `metadata.activityEnvelope`, storing the normalized envelope under `metadata.normalizedActivityEnvelope` only when a legacy `activityEnvelope` key is already present.
+- Green-state check complete: the exact focused Vitest command now passes all four assertions, including the new zero-target rejection and legacy-envelope preservation cases.
+- Final verification complete: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false` passed with no output after the review fixes.
+
+---
+
+S0070. Task 18 spec-drift correction plan:
+- Restore phase-1 spec alignment by keeping the normalized envelope under `metadata.activityEnvelope` for all successful writes.
+- Preserve the no-silent-clobbering guarantee by rejecting caller-supplied `metadata.activityEnvelope` explicitly instead of redirecting the normalized envelope to a different metadata key.
+- Follow TDD again: update the focused test file first, capture the expected red state with the exact Vitest command, then apply the minimal helper fix and rerun the exact Vitest and Convex typecheck commands.
+- Red-state check complete for the spec-drift fix: the updated focused suite failed as expected because `publishActivityEnvelope(...)` still accepted caller-supplied `metadata.activityEnvelope`.
+- Applied the minimal correction by making `metadata.activityEnvelope` a reserved key that now throws explicitly when supplied, while all successful writes continue to store the normalized envelope at `metadata.activityEnvelope` and still reject empty targets.
+- Green-state check complete: the exact focused Vitest command now passes all four assertions, including the reserved-key rejection and the existing phase-1 envelope/storage compatibility coverage.
+- Final verification complete: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false` passed with no output after the spec-drift correction.
+- Fresh repaired-worktree verification on 2026-03-16 confirmed the current state directly in `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`: `cd /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose` passed with 5/5 tests, and `cd /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false` exited clean.
+- Re-checked the speculative metadata-shape review concern against real `logActivity` callsites. Only one forwarded metadata expression exists (`convex/gabinet/appointmentSms.ts`), and that helper already constrains `metadata` to `Record<string, unknown>`, so no Task 1 wrapper patch was warranted.
+- Next: switch to Task 2 and lock publish-time target persistence with a focused regression test before any publisher migrations.
+- Task 2 RED/GREEN cycle is now complete in the repaired worktree. Added `publishActivityEnvelope snapshots publish-time targets even if insert payload is mutated mid fan-out` first, watched it fail for the intended reason before the helper change, then reran the focused suite to green after snapshotting the resolved target set per row.
+- The Task 2 review loop surfaced one real helper-contract issue: colon-joined dedupe keys could collapse distinct `(entityType, entityId)` tuples. Added the focused regression `publishActivityEnvelope keeps distinct target tuples even when colon-joined keys collide`, confirmed RED (`expected ... length of 2 but got 1`), then fixed dedupe to compare tuple-safe keys.
+- Fresh post-fix verification on 2026-03-16 passed directly in `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`: the new tuple-collision regression passed, `cd convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose` passed with 7/7 tests, and `npx tsc -p convex/tsconfig.json --pretty false` exited clean.
+- Spec review for Task 2 is satisfied on the code contract. Quality review is also clear enough to proceed after the tuple-safe dedupe fix; the remaining note is only a non-blocking O(n^2) implementation observation.
+- Next: move to Task 3 and migrate the notes/email publisher write sites onto `publishActivityEnvelope(...)` with focused publisher tests before the next batch of publisher migrations.
+- Task 4 RED/GREEN cycle is now complete in the repaired worktree. Added focused coverage for inbound email envelopes, semantic package assignment envelopes, and shared SMS fan-out eventKey semantics first, then captured the intended red state before touching the publishers.
+- Migrated `convex/emails_internal.ts`, `convex/gabinet/packages.ts`, and `convex/gabinet/appointmentSms.ts` onto `publishActivityEnvelope(...)`, added `package_assigned` to the shared action validator, and kept flat `performedBy` compatibility fields populated for the migrated publishers.
+- The Task 4 quality review surfaced one real regression: the initial inbound email migration added an early return when organization lookup failed, which silently dropped the inbound email row. Added the focused regression `emails_internal.insertInbound still persists email when organization is missing`, confirmed RED (`expected null to be truthy`), then fixed both inbound paths so the row still inserts while envelope publication is skipped in that edge path.
+- Fresh post-fix verification on 2026-03-16 passed directly in `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`: `cd convex && npx vitest run tests/emailActivities.test.ts tests/packageActivities.test.ts tests/appointmentSms.test.ts --reporter=verbose` passed with 8/8 tests, and `npx tsc -p convex/tsconfig.json --pretty false` exited clean.
+- Task 4 spec review now passes for inbound email `email_received`, semantic `package_assigned`, and shared SMS `eventKey` fan-out semantics. Code-quality review is approved with no remaining blocking issues.
+- Next: move to Task 5 and align `automation.update_field` with canonical RBAC using focused deny/own/allow coverage before the presenter work.
+- Task 5 is now complete in the repaired worktree. `convex/automation.ts` now uses the canonical `verifyOrgAccess(...)` + `checkPermission(...)` RBAC path for `automation.update_field`, with a synthetic automation actor identity so the canonical path does not fail closed on `Not authenticated`.
+- Added focused `convex/tests/automation.test.ts` coverage for the required member-scope deny / own / allow cases on lead `update_field` execution. The new tests did not produce a strict red state because the duplicated preexisting permission path already satisfied the assertions, so that remained a process note rather than a spec gap.
+- Fresh verification on 2026-03-16 passed directly in `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` passed with 18/18 tests, and `npx tsc -p convex/tsconfig.json --pretty false` exited clean.
+- Task 5 spec review passed for canonical RBAC alignment and the required deny/own/allow coverage. Code-quality review approved the slice with no blocking issues.
+- Next: move to Task 6 and add the pure shared activity presenter seam with focused presenter tests before the route migration work.
+- Task 6 is now complete in the repaired worktree. Added the pure presenter seam in `src/components/activity-timeline/presenter/activity-presenter.ts` and `activity-renderers.ts`, plus focused `activity-presenter.test.ts` coverage for generic envelope rendering, action-aware email rendering, and envelope-to-legacy fallback precedence.
+- The RED phase was captured by the exact repo-root presenter test command failing before the seam existed; no root `vitest.config.ts` was needed because the repo-root test command already worked once the presenter test file existed.
+- App typecheck initially exposed one compatibility gap outside the new presenter files: `package_assigned` was missing from the `ActivityAction` icon/color maps in `src/components/activity-timeline/activity-item.tsx`. Fixed that minimally so the touched app slice compiles cleanly.
+- The Task 6 quality review surfaced one real presenter gap: `renderEmailActivity()` was not preserving envelope actor precedence. Fixed that by sourcing `performedByName` from `metadata.activityEnvelope.actor.label` for email actions and extending the focused presenter test to assert envelope sender wins over the legacy sender.
+- Fresh verification on 2026-03-16 passed directly in `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`: `npx vitest run src/components/activity-timeline/presenter/activity-presenter.test.ts` passed with 3/3 tests, and `npx tsc -p tsconfig.app.json --pretty false` exited clean.
+- Task 6 spec review passed with root `vitest.config.ts` correctly omitted as unnecessary. Code-quality review is approved with no remaining blocking issues.
+- Next: move to Task 7 and migrate the entity detail routes onto the presenter-driven timeline with focused browser assertions before the final verification batch.
+
+---
+
+=== SESSION S0070 CONTINUE === 2026-03-17T17:24:56Z
+Focus: Task 8 final verification for shared activity envelope + automation RBAC
+Active tasks: #27
+
+---
+
+S0070. Task 7 closeout and Task 8 investigation:
+- Task 7 route migration is green after the final appointment-route correction. Base activity rows in `src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx` now preserve raw fields via `{ ...activity, contentSnapshot, metaLines }` while appointment-only workflow/automation/SMS local history composition stays local.
+- Fresh non-E2E verification already passed in the repaired worktree: repo-root `npx tsc --noEmit`, app typecheck, Convex typecheck, repo-root presenter Vitest, and the focused Convex Task 8 suite all exited clean.
+- Current blocker is only the focused Playwright batch from Task 8. The last combined frontend+Playwright command proved Vite readiness (`READY http://127.0.0.1:5173 200`) but Playwright exited with `Error: No tests found.`
+- Investigation hypotheses:
+  - Hypothesis A (high): the inline orchestration command malformed or lost the Playwright file arguments, so Playwright never received the intended spec paths.
+  - Hypothesis B (medium): the combined command ran from the wrong working directory after server startup, so the relative `e2e/...` paths no longer resolved.
+  - Hypothesis C (low): Playwright glob/config interaction with the focused file list differs under the wrapper process even though direct invocation still works.
+- Next verification step: reproduce with `npx playwright test --list ...` directly from `/Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac`, then compare against an inline same-process server orchestration that passes argv as a structured array instead of shell-quoted strings.
+- Follow-up verification on 2026-03-17 disproved the original `No tests found` blocker as a product/config issue. Direct `npx playwright test --list ...` from the repaired worktree resolves all 6 target specs and 90 tests, and the same-process orchestration also resolves the exact file argv when passed as a structured array.
+- Same-process parallel smoke for the touched presenter assertions is healthy: `npx playwright test ... -g "presenter-style email details" --workers=6 --reporter=line` exits 0. Those 5 tests are currently skipped rather than failing, which means the touched routes are not red under stable frontend lifecycle and the earlier hang was not a deadlock in the app.
+- A targeted single-test reproduction confirmed one deterministic unrelated failure remains in the broader focused suite: `e2e/crm/contacts.spec.ts:70` (`saved views appear in dropdown`) still fails with `Expected: true / Received: false` even under isolated same-process frontend lifecycle on a separate port. This matches the earlier suspicion that the known red is outside the shared-activity/presenter slice.
+- Another targeted check on `e2e/gabinet/patients.spec.ts:440` exits 0 but skips, so the patient activity-tab presenter assertion is not currently producing a red regression either.
+- Current interpretation: I was not hung; the server lifecycle issue is fixed for verification, the changed presenter-route smoke is green-or-skipped, and the only concretely reproduced red at the moment is the pre-existing/unrelated contacts saved-views assertion.
+- Fresh closeout evidence on 2026-03-17:
+  - `npx tsc --noEmit` exited 0.
+  - `npx tsc -p tsconfig.app.json --pretty false` exited 0.
+  - `npx tsc -p convex/tsconfig.json --pretty false` exited 0.
+  - `npx vitest run src/components/activity-timeline/presenter/activity-presenter.test.ts` exited 0 with 3/3 tests passing.
+  - `cd convex && npx vitest run tests/activityEnvelope.test.ts tests/emailActivities.test.ts tests/packageActivities.test.ts tests/appointmentSms.test.ts tests/automation.test.ts --reporter=verbose` exited 0 with 34/34 tests passing.
+  - `npx playwright test --list e2e/gabinet/appointments.spec.ts e2e/gabinet/patients.spec.ts e2e/gabinet/employees.spec.ts e2e/crm/contacts.spec.ts e2e/crm/companies.spec.ts e2e/crm/leads.spec.ts` exited 0 and resolved `Total: 90 tests in 6 files`.
+  - Same-process parallel smoke for the touched presenter assertions exited 0: `npx playwright test ... -g "presenter-style email details" --workers=6 --reporter=line` with 5 skipped / 0 failed.
+  - Fresh isolated reproduction of the known unrelated red still fails cleanly: `npx playwright test e2e/crm/contacts.spec.ts -g "saved views appear in dropdown" --workers=1 --reporter=line` exited 1 at `e2e/crm/contacts.spec.ts:80` with `Expected: true / Received: false`.
+- Independent code review conclusion for Task 8 closeout: no high-confidence blocker was found in the shared-activity/presenter slice itself, but Task 8 cannot be marked fully green because the exact multi-file Playwright verification command has not produced an all-green exit; the honest closeout state is implementation green with an unresolved verification gap caused by the unrelated contacts saved-views failure.
+- Closeout decision: Task 8 is now closed as blocked-by-unrelated-known-red, with fresh evidence captured for all changed-slice checks and the remaining reproducible failure explicitly classified outside the shared-activity envelope / presenter migration scope.
+
+---
+
+=== SESSION S0070 CONTINUE === 2026-03-17T22:06:42Z
+Focus: Re-open Task 8 after the auth-session stabilization fix and rerun the exact Playwright verification batch
+Active tasks: #27
+
+---
+
+S0070. Task 8 auth/session regression follow-up:
+- The earlier closeout state is no longer trustworthy as the final answer for Task 8. Root-cause investigation on the contacts saved-views red showed the failure path was auth-sensitive rather than CRM-view-specific.
+- The concrete root cause was that `loginAndGoToDashboard(...)` in `e2e/helpers/auth.ts` could return before the Convex auth JWT finished settling across immediate hard navigations.
+- TDD evidence was captured first in `e2e/auth.spec.ts` via `dashboard session survives immediate hard navigation`, which failed red against `/login` before the helper change.
+- The minimal helper fix is now in place: `waitForSettledAuthSession(...)` waits for the post-login Convex token rotation before `loginAndGoToDashboard(...)` returns.
+- Fresh focused verification after the helper fix was green:
+  - `npx playwright test e2e/auth.spec.ts -g "dashboard session survives immediate hard navigation" --workers=1 --reporter=line` passed.
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "saved views appear in dropdown" --repeat-each 3 --workers=1 --reporter=line` passed across 3 repeats.
+- Interpretation: the previous Task 8 blocker may have been caused by auth-session stabilization rather than an unrelated persistent CRM red, so Task 8 is reopened from the prior blocked closeout back to active verification.
+- Next: rerun the exact six-file Task 8 Playwright batch and then update the JSON trackers to either mark Task 8 passing or record any remaining failure with exact evidence.
+- Started a fresh non-blocking rerun of the exact Task 8 six-file Playwright batch to gather that evidence without stalling the main session.
+- Fresh six-file batch evidence is now captured after the auth-helper fix:
+  - `npx playwright test e2e/gabinet/appointments.spec.ts e2e/gabinet/patients.spec.ts e2e/gabinet/employees.spec.ts e2e/crm/contacts.spec.ts e2e/crm/companies.spec.ts e2e/crm/leads.spec.ts --workers=6 --reporter=line` exited 1 with `61 passed / 7 failed / 22 skipped`.
+  - Failing tests were:
+    - `e2e/crm/companies.spec.ts:65:3` `create company succeeds`
+    - `e2e/crm/companies.spec.ts:159:3` `contacts section appears in company detail`
+    - `e2e/crm/contacts.spec.ts:106:3` `form validation shows errors for required fields`
+    - `e2e/crm/contacts.spec.ts:141:3` `submit creates contact and it appears in list`
+    - `e2e/crm/contacts.spec.ts:452:3` `cancel keeps contact`
+    - `e2e/gabinet/appointments.spec.ts:948:3` `edit from detail dialog works`
+    - `e2e/gabinet/patients.spec.ts:220:3` `detail page loads with all data`
+- Focused follow-up checks confirm the original deterministic auth-sensitive blocker is fixed:
+  - `npx playwright test e2e/auth.spec.ts -g "dashboard session survives immediate hard navigation" --workers=1 --reporter=line` exited 0.
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "saved views appear in dropdown" --repeat-each 3 --workers=1 --reporter=line` exited 0 with `3 passed / 0 failed / 0 skipped`.
+- Updated interpretation: Task 8 is still red at the exact-batch level, but not because of the old contacts saved-views failure. That regression is now fixed by the auth-session stabilization change in `e2e/helpers/auth.ts`.
+- Next investigation step: classify whether the remaining 7 failures are batch-order/state contamination or true independent regressions by rerunning those failing tests in isolation.
+- Parallel Gabinet classification is now in. Evidence:
+  - `e2e/gabinet/appointments.spec.ts -g "edit from detail dialog works"` exits 0 in isolation, so that failure does not currently reproduce as a standalone regression.
+  - `e2e/gabinet/patients.spec.ts -g "detail page loads with all data"` exits 1 in isolation and when grouped with the appointments test, so that failure is deterministic rather than batch contamination.
+  - Exact isolated patients failure: `expect(page.url()).toContain("/gabinet/patients/")` received `http://localhost:5173/dashboard/gabinet/patients` at `e2e/gabinet/patients.spec.ts:236`.
+- Updated interpretation from Gabinet lane: the remaining Task 8 failures are mixed. The patients detail test looks like a true route-behavior/test-expectation mismatch, while the appointments detail-dialog failure may be order-sensitive or data-dependent because it disappears in isolation.
+- Next: wait for the parallel CRM classification to finish, then decide whether to split Task 8 into deterministic regressions vs batch-only flakes before any further code changes.
+- Parallel CRM classification is now in. Evidence:
+  - Deterministic isolated failures:
+    - `e2e/crm/companies.spec.ts:65:3` `create company succeeds` fails in isolation because `expect(bodyText).toContain(companyName)` fails at `companies.spec.ts:102`.
+    - `e2e/crm/contacts.spec.ts:141:3` `submit creates contact and it appears in list` fails in isolation because `expect(bodyText).toContain(firstName)` fails at `contacts.spec.ts:185`.
+    - `e2e/crm/contacts.spec.ts:452:3` `cancel keeps contact` fails in isolation because `expect(rowsAfter).toBe(rowsBefore)` receives `Expected: 2 Received: 0` at `contacts.spec.ts:473`.
+  - Non-reproducing isolated failures:
+    - `e2e/crm/companies.spec.ts:159:3` `contacts section appears in company detail` passes when correctly targeted by title.
+    - `e2e/crm/contacts.spec.ts:106:3` `form validation shows errors for required fields` passes in isolation and on title recheck.
+  - A focused 5-test CRM subset passes 2 and fails 3, matching the same three deterministic isolated regressions above.
+  - Batch-only auth/session noise still exists in larger grouped runs (`#userEmail` wait timeout and `Dashboard navigation failed, current URL: /login`), but it is not the primary explanation for those three persistent CRM failures.
+- Updated interpretation after both parallel lanes:
+  - True deterministic regressions / behavior mismatches: CRM create company, CRM submit contact, CRM cancel keeps contact, and Gabinet patient detail navigation.
+  - Non-deterministic or order-sensitive failures needing separate classification: Gabinet appointment detail dialog edit, plus the larger-batch auth/session noise seen in some CRM grouped runs.
+- Next: move from classification to root-cause investigation for the four deterministic isolated failures, starting with the two CRM create/list expectations and the Gabinet patient detail route mismatch.
+
+---
+
+=== SESSION S0070 CONTINUE === 2026-03-17T22:31:22Z
+Focus: Root-cause investigation for the four deterministic isolated Task 8 failures
+Active tasks: #14
+
+---
+
+S0070. Task 14 investigation plan:
+- Use systematic debugging only: no new fixes yet.
+- Investigate three independent domains in parallel using the existing isolated failure evidence: CRM company create flow, CRM contact create/cancel flow, and Gabinet patient detail navigation.
+- For each domain, trace the failing assertion backward into the route/component/data flow, compare against a working pattern in the same codebase, and return a root-cause hypothesis with exact file references.
+- Keep auth/session batch noise out of scope for this pass unless a domain investigation proves it is still the direct cause of an isolated deterministic failure.
+- Next: review the three focused investigation results and then decide whether the failure is in the test expectation, UI flow, or backend persistence contract before writing any code.
+- Focused root-cause results are now in:
+  - CRM company create (`e2e/crm/companies.spec.ts:65:3`): likely expectation drift / list-visibility mismatch rather than a proven persistence failure. The test asserts raw `body` text contains the new company name after the side-panel create flow closes. In `_layout.companies.index.tsx`, `handleCreate` persists via `api.companies.create` and only closes the panel; the visible list is still mediated by saved-view/list filtering. Current best hypothesis is that the create path persists, but the test's unscoped body-text assertion is too brittle to prove list visibility.
+  - CRM contact create (`e2e/crm/contacts.spec.ts:141:3`): similar medium-confidence hypothesis. The test again asserts global `body` text contains `firstName` after submit. The index create flow closes the panel without an explicit refetch, and the assertion is not scoped to a concrete row/link. Current best hypothesis is assertion/refresh ambiguity rather than a proven mutation failure.
+  - CRM contact cancel (`e2e/crm/contacts.spec.ts:452:3`): high-confidence selector drift. The test clicks an overbroad row-action selector that matches any SVG button; current table behavior puts an edit/detail action button before the menu trigger, so the test can navigate away to detail instead of opening the row menu. That explains `rowsAfter = 0` while expecting row count to remain unchanged.
+  - Gabinet patient detail (`e2e/gabinet/patients.spec.ts:220:3`): high-confidence interaction drift. The test clicks a generic `<tr>`, but `enhanced-data-table.tsx` only binds `onRowClick` to the first clickable data cell, not to the whole row. The list route still navigates to `/dashboard/gabinet/patients/$patientId`; the test is failing because its click target no longer matches the component's actual interactive surface.
+- Evidence quality summary:
+  - High confidence test-drift / selector-drift issues: CRM cancel keeps contact, Gabinet patient detail navigation.
+  - Medium confidence expectation/visibility issues needing one more proof step before any fix: CRM company create visibility and CRM contact create visibility.
+- Next: gather one more evidence slice for the two medium-confidence create failures by checking whether created entities actually persist while remaining absent from the test's current visibility assertion surface.
+- Confirmed focused root-cause evidence from the finished sub-investigations:
+  - Gabinet patients detail navigation is a high-confidence test interaction drift. `patients.spec.ts` clicks `table tbody tr`, but `_layout.gabinet.patients.index.tsx` routes detail navigation through `onRowClick`, and `enhanced-data-table.tsx` binds that click only to the first data cell, not the full `<tr>`. A nearby working employee test already avoids hard-assuming full-row click behavior.
+  - CRM contact cancel is a high-confidence selector drift. The test's row-action selector matches any SVG button, while the table renders an edit/detail action button before the actual menu trigger. Clicking that button navigates to contact detail, which explains `rowsAfter = 0` on the list assertion.
+  - CRM contact create remains medium-confidence expectation/visibility ambiguity: the side-panel create flow appears to submit and close normally, but the test asserts against global body text rather than a scoped row/link, and no explicit list refetch is forced in the flow.
+  - CRM company create remains medium-high confidence expectation/list-visibility mismatch: the side-panel create flow persists through `api.companies.create` and closes, but the test again relies on global body text while the rendered list is filtered through saved-view/list state.
+- Current root-cause map before any fixes:
+  - Test interaction drift: `contacts cancel keeps contact`, `gabinet patients detail page loads with all data`.
+  - Likely visibility/assertion drift still needing one final persistence proof: `companies create company succeeds`, `contacts submit creates contact and it appears in list`.
+- Next: wait for the pending create-flow persistence probe, then choose the minimum TDD fix scope.
+- The create-flow persistence/visibility probe is now complete. Evidence:
+  - `companies.spec.ts --grep "create company succeeds"` still fails, but failure artifacts show broad global page text plus an open `Nowa transakcja` dialog and list chrome (`Wszystkie firmy`, `Moje firmy`, `Ostatnio utworzone`) instead of a scoped post-create list assertion surface.
+  - `contacts.spec.ts --grep "submit creates contact and it appears in list"` failed once under isolated repro but passed on a subsequent trace-enabled rerun, which reinforces flakiness/visibility brittleness rather than a hard deterministic create failure.
+  - No direct backend proof was captured for the exact failed generated company/contact names, so persistence is not conclusively proven; however, the strongest evidence points to unscoped `getBodyText(page)` assertions interacting with overlay/stateful list visibility rather than to a broken create mutation.
+- Final investigation conclusion for the four deterministic isolated failures:
+  - `e2e/crm/contacts.spec.ts:452` `cancel keeps contact` → high-confidence selector drift in the test.
+  - `e2e/gabinet/patients.spec.ts:220` `detail page loads with all data` → high-confidence row-click interaction drift in the test.
+  - `e2e/crm/companies.spec.ts:65` `create company succeeds` → medium-high confidence assertion-surface / visibility mismatch in the test, not a proven persistence bug.
+  - `e2e/crm/contacts.spec.ts:141` `submit creates contact and it appears in list` → medium-high confidence assertion-surface / visibility mismatch with additional flakiness, not a proven persistence bug.
+- Investigation phase is complete. Next step, if continuing, is a focused TDD fix pass that updates these tests or the specific UI interaction surfaces they target based on the evidence above.
+
+---
+
+=== SESSION S0070 CONTINUE === 2026-03-17T23:09:36Z
+Focus: Focused TDD fix pass for deterministic contacts/patients Task 8 reds
+Active tasks: #27, #28
+
+---
+
+S0070. Task 8 focused TDD plan:
+- Root-cause investigation is complete; do not reopen broad investigation before the first red/green cycle.
+- Start with the two highest-confidence drift failures only:
+  - `e2e/crm/contacts.spec.ts:452` `cancel keeps contact`
+  - `e2e/gabinet/patients.spec.ts:220` `detail page loads with all data`
+- RED step: rerun each failing test in isolation and confirm the known failure still reproduces for the expected reason.
+- GREEN step: make the minimum interaction-target change that aligns the tests with the current UI surface; keep the scope test-only unless fresh evidence disproves the drift hypothesis.
+- Verification step: rerun the two focused tests together, then decide whether to proceed to the medium-confidence create-flow visibility reds.
+- RED confirmed before the test edits:
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "cancel keeps contact" --workers=1 --reporter=line` exited 1 at `contacts.spec.ts:473` with `Expected: 3 / Received: 0`.
+  - `npx playwright test e2e/gabinet/patients.spec.ts -g "detail page loads with all data" --workers=1 --reporter=line` exited 1 at `patients.spec.ts:236` because the URL stayed on `/dashboard/gabinet/patients`.
+- Minimal GREEN changes applied in the tests only:
+  - `e2e/crm/contacts.spec.ts` now scopes the cancel test to the first row's explicit `Open menu` button instead of the overbroad `button:has(svg)` selector, matching the current `enhanced-data-table.tsx` action rendering where the first SVG button is the edit shortcut and the menu trigger is separate.
+  - `e2e/gabinet/patients.spec.ts` now follows the working navigation pattern already used by the nearby patient edit test: prefer a detail link `a[href*="/gabinet/patients/"]`, otherwise click the first row navigation cell (`table tbody tr td.cursor-pointer`) rather than the non-interactive full `<tr>`.
+- Fresh GREEN verification after the edits:
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "cancel keeps contact" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/gabinet/patients.spec.ts -g "detail page loads with all data" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/crm/contacts.spec.ts e2e/gabinet/patients.spec.ts -g "cancel keeps contact|detail page loads with all data" --workers=2 --reporter=line` exited 0 (`2 passed`).
+- Current interpretation: the two highest-confidence deterministic reds were genuine test-drift issues, and the focused TDD pass fixed them without touching application code. The next step is to decide whether to continue into the two medium-confidence create-flow visibility/assertion reds.
+
+S0070. Parallel follow-up on remaining deterministic create-flow reds:
+- User approved acting in parallel for speed, so the remaining CRM create-flow reds were dispatched to separate subagents with isolated context.
+- Fresh RED reproduction was reconfirmed before changes:
+  - `e2e/crm/companies.spec.ts:102` failed consistently because `expect(bodyText).toContain(companyName)` did not observe the created company after submit.
+  - `e2e/crm/contacts.spec.ts:185` failed consistently because `expect(bodyText).toContain(firstName)` did not observe the created contact after submit.
+- Root-cause findings:
+  - Company create red: test drift, not a persistence bug. The submit selector inside `create company succeeds` was too broad and could match unrelated global quick-create actions. The fix narrows submission to `dialog.locator("form button[type=\"submit\"]").first()` in `e2e/crm/companies.spec.ts`.
+  - Contact create red: test drift, not a persistence bug. The add-contact trigger was ambiguous and could open the global quick-create modal (`Nowa transakcja`) instead of the contact create surface. The fix scopes the trigger to `main`, selects the explicit contact option in the modal when present, and replaces the broad body-text scrape with `expect(page.locator("body")).toContainText(firstName, { timeout: 10000 })` in `e2e/crm/contacts.spec.ts`.
+- Fresh GREEN verification after the spec-only changes:
+  - `npx playwright test e2e/crm/companies.spec.ts -g "create company succeeds" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "submit creates contact and it appears in list" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/crm/companies.spec.ts e2e/crm/contacts.spec.ts -g "create company succeeds|submit creates contact and it appears in list" --workers=2 --reporter=line` exited 0 (`2 passed`).
+- Independent review pass after the fixes reported no blocking issues; the only optional hardening note was that the company submit locator could be narrowed even further to the exact ancestor form of the filled input if this surface ever grows multiple forms.
+- Current interpretation: all four deterministic CRM/Gabinet drift failures addressed in this follow-up were test drift issues. Task 8 remains open only for the broader exact verification batch / review evidence loop.
+
+---
+
+S0070. Final CRM exact-batch triage and spec-fix pass:
+- Root-cause investigation on the three remaining CRM reds is complete.
+  - `e2e/crm/contacts.spec.ts:106` exact-batch failure was stale expectation plus surface drift: current `ContactForm` keeps submit disabled until first name is present (`src/components/forms/contact-form.tsx:107-110,219`), so clicking a disabled submit is no longer the correct validation check.
+  - `e2e/crm/contacts.spec.ts:197` reproduced red in isolation; the test was still using the older broad add-contact flow and generic submit text, while the nearby passing create-contact test already encoded the deterministic path (`main`-scoped trigger + optional `Dodaj osobę do bazy CRM` selection).
+  - `e2e/crm/leads.spec.ts:44` reproduced red in isolation; the failure artifact showed the `Nowa transakcja` modal on the Leads page with `Transakcja` selected and the action button labeled `Utwórz transakcję`, which pointed back to submit-selector drift rather than a proven persistence defect.
+- RED evidence before edits:
+  - The validation test had already failed in the exact six-file batch because the runner kept retrying a disabled submit button at `contacts.spec.ts:132`; the isolated rerun no longer failed, which reinforced that the expectation was stale rather than proving a live product bug.
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "SidePanel closes after submit" --workers=1 --reporter=line` exited 1 at `contacts.spec.ts:231` because the dialog remained visible.
+  - `npx playwright test e2e/crm/leads.spec.ts -g "create lead succeeds" --workers=1 --reporter=line` exited 1 because `expect(bodyText).toContain(leadTitle)` failed after submit.
+- Minimal spec-only fixes applied:
+  - `e2e/crm/contacts.spec.ts` validation test now follows the same deterministic contact-create path as the passing create test, optionally selects the explicit contact option, and asserts disabled submit plus visible dialog instead of clicking a disabled button.
+  - `e2e/crm/contacts.spec.ts` close-after-submit test now uses the same deterministic contact-create path, the broader `Utwórz kontakt`/`Create contact` submit label, and `waitForApp(page)` before asserting the dialog closes.
+  - `e2e/crm/leads.spec.ts` create-lead test now submits through `dialog.locator('form button[type="submit"]').first()` instead of a broad text-matched button.
+- Fresh GREEN verification after the edits:
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "form validation shows errors for required fields" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/crm/contacts.spec.ts -g "SidePanel closes after submit" --workers=1 --reporter=line` exited 0 (`1 passed`).
+  - `npx playwright test e2e/crm/leads.spec.ts -g "create lead succeeds" --workers=1 --reporter=line` exited 0 (`1 passed`).
+- Next: the exact six-file Task 8 Playwright batch is running again in the background to verify whether the repaired CRM slice now holds at full-batch level.
+- Background task id: `b54j4cmgg`
+- Output targets: `/tmp/task8-exact-batch.log`, `/tmp/task8-exact-batch.exit`
+
+---
+
+S0070. Exact six-file rerun correction and narrowed failure scope:
+- The authoritative rerun artifacts are now recorded and override the earlier optimistic assumption from the background task wrapper.
+  - `/tmp/task8-exact-batch.exit` contains `1`.
+  - `/tmp/task8-exact-batch.log` shows `3 failed`, `23 skipped`, and `64 passed (4.5m)`.
+- The three numbered remaining failures from the exact rerun are:
+  - `e2e/crm/companies.spec.ts:65:3` — `CRM — Companies › create company succeeds`
+  - `e2e/gabinet/appointments.spec.ts:1094:3` — `Gabinet — Appointments › available slots load from backend in appointment dialog`
+  - `e2e/gabinet/appointments.spec.ts:1583:3` — `Gabinet — Appointments › recurring series instances appear in calendar`
+- Investigation: remaining exact-batch failures after CRM contact/lead fixes
+  - Hypothesis A: the remaining company create red is another isolated create-flow test-drift issue in the CRM slice. Confidence: medium.
+    - Evidence for: the previously failing CRM contacts/leads create-path tests now pass in fresh isolated reruns, leaving a single CRM company create test as the only CRM red in the exact batch.
+    - Evidence against: I have not yet reviewed the saved company failure artifact, so a product regression is still possible.
+  - Hypothesis B: the two remaining appointments reds share auth/session instability rather than both being pure appointment-flow defects. Confidence: medium.
+    - Evidence for: the recurring-series failure section in `/tmp/task8-exact-batch.log` includes a login timeout stack at `e2e/helpers/auth.ts:94` while waiting for the email input.
+    - Evidence against: numbered failure #2 is still `available slots load from backend in appointment dialog`, which may represent a real appointments data-flow issue even if #3 is contaminated by login state.
+- Current best guess: Task 8 is no longer blocked by the previously fixed contacts/leads reds, but the exact-batch proof still fails on one remaining CRM create test plus one or two appointments/auth-related issues.
+- Next verification step: correct `session_state.json` and `tasks_progress.json` with the true rerun result, then run isolated root-cause investigation on the company and appointments failures before any new code edits.
+- Parallel investigation launched:
+  - company failure research agent: exact-batch `companies.spec.ts` create-flow root-cause analysis only
+  - appointments failure research agent: exact-batch `appointments.spec.ts` available-slots + recurring-series root-cause analysis only
+- Research results:
+  - Company create exact-batch failure is most likely auth/session instability, not a company-create product regression. The saved exact-batch failure stack times out in `e2e/helpers/auth.ts:94` during `companies.spec.ts` `beforeEach`, before the company dialog flow executes.
+  - Appointments `available slots load from backend in appointment dialog` is most likely test drift. The test opens the appointment dialog through a brittle broad text selector and does not reliably satisfy the employee+treatment+date preconditions that gate the backend slots query.
+  - Appointments `recurring series instances appear in calendar` is most likely auth/session instability, independent from the available-slots test drift. The exact-batch failure section includes the same login timeout signature at `e2e/helpers/auth.ts:94`.
+  - The background wrapper task `b54j4cmgg` reported exit code 0, but its output file is empty while the authoritative saved artifacts still show `/tmp/task8-exact-batch.exit = 1`; for this batch, the `/tmp` artifacts remain the source of truth.
+- Next verification step: run fresh isolated failing-first Playwright commands for the company create test, the available-slots test, and the recurring-series test (plus focused auth coverage if needed) before making any code edits.
+- Fresh isolated reruns after the research pass:
+  - `npx playwright test e2e/crm/companies.spec.ts -g "create company succeeds" --workers=1 --retries=0 --reporter=line` exited 0 (`1 passed`, 12.3s).
+  - `npx playwright test e2e/gabinet/appointments.spec.ts -g "available slots load from backend in appointment dialog" --workers=1 --retries=0 --reporter=line` exited 0 (`1 passed`, 11.6s).
+  - `npx playwright test e2e/gabinet/appointments.spec.ts -g "recurring series instances appear in calendar" --workers=1 --retries=0 --repeat-each=5 --reporter=line` exited 0 (`5 passed`, 45.9s).
+  - `npx playwright test e2e/auth.spec.ts -g "email + password login succeeds|dashboard session survives immediate hard navigation" --workers=1 --retries=0 --repeat-each=5 --reporter=line` produced five passes for `dashboard session survives immediate hard navigation` (`5 passed`, 33.5s); the targeted auth helper probe did not reproduce the login timeout.
+- Current interpretation after the isolated probes:
+  - The three remaining exact-batch failures from the saved `/tmp/task8-exact-batch.log` were not reproducible in isolated reruns.
+  - No code edits were made after this probe pass; there is still no fresh failing-first evidence that justifies changing `e2e/helpers/auth.ts` or the appointments/company specs.
+  - The most likely state is same-process exact-batch flake or wrapper/artifact mismatch rather than a stable per-test product failure.
+- Fresh proof step now running: exact six-file Task 8 rerun started again in background task `b7k979b20` with output targets `/tmp/task8-exact-batch-rerun2.log` and `/tmp/task8-exact-batch-rerun2.exit`.
+- Exact rerun #2 evidence is now in hand and remains the source of truth over the wrapper status:
+  - `/tmp/task8-exact-batch-rerun2.exit` contains `1`.
+  - `/tmp/task8-exact-batch-rerun2.log` shows `5 failed`, `19 skipped`, and `66 passed (4.4m)`.
+  - The wrapper output file for `b7k979b20` is empty, so its reported exit code 0 is not trustworthy for verification.
+- The five numbered remaining failures from exact rerun #2 are:
+  - `e2e/crm/contacts.spec.ts:365:3` — `CRM — Contacts › SidePanel opens with contact data for editing`
+  - `e2e/gabinet/appointments.spec.ts:808:3` — `Gabinet — Appointments › appointment history tab renders presenter-style email details when available`
+  - `e2e/gabinet/appointments.spec.ts:919:3` — `Gabinet — Appointments › appointment click opens detail dialog`
+  - `e2e/gabinet/patients.spec.ts:635:3` — `Gabinet — Patients › blood type field is present in patient form`
+  - `e2e/gabinet/appointments.spec.ts:1094:3` — `Gabinet — Appointments › available slots load from backend in appointment dialog`
+- Current interpretation: the earlier three reds did not reproduce in isolation, but the fresh exact six-file proof still fails on a different five-test set. Task 8 therefore remains failing/in-progress, and the next honest step is systematic root-cause investigation of these five exact-rerun failures before any edits.
+
+---
+
+S0070. Split root-cause hypothesis and focused RED repro launch:
+- Research on the five current exact-batch reds now points to two separate domains instead of one shared product regression.
+  - Contacts edit (`e2e/crm/contacts.spec.ts:365:3`), appointment history (`e2e/gabinet/appointments.spec.ts:808:3`), appointment click (`e2e/gabinet/appointments.spec.ts:919:3`), and patient blood-type (`e2e/gabinet/patients.spec.ts:635:3`) all most likely fail during shared auth/session bootstrap before their asserted UI paths execute.
+  - Supporting evidence: the exact-batch log shows `Dashboard navigation failed, current URL: http://localhost:5173/login` at `e2e/helpers/auth.ts:155` for the contacts edit failure, and the appointment-click / patient-form failures align with the same login timeout signature from `e2e/helpers/auth.ts` rather than failing at their route assertions.
+  - Available slots (`e2e/gabinet/appointments.spec.ts:1094:3`) appears separate. The exact-batch log reaches the test body and fails at `expect(locator('[role="dialog"]')).toBeVisible()` after clicking the broad create-button selector, which points to dialog-open selector drift or missing dialog-open preconditions rather than the shared auth failure.
+- Nearby code review reinforces the split:
+  - `e2e/gabinet/patients.spec.ts:635` does not assert `hasBloodType`; the patient form still includes the blood-type field, so this red is unlikely to represent a real patient-form regression.
+  - `e2e/crm/contacts.spec.ts:502` still exercises the same edit dialog path near the failing contacts test, which lowers confidence in a real contacts edit-surface regression.
+- Per user instruction to use subagents, two focused background repro agents were launched before any edits:
+  - Auth/session RED agent: grouped reproduction for contacts edit + appointment history + appointment click + patient blood-type.
+  - Available-slots RED agent: isolated reproduction for `available slots load from backend in appointment dialog`, with a tight nearby grouping only if the isolated run stays green.
+- Next: wait for the subagent repro evidence, then perform the minimal TDD fix against the freshly reproduced domain(s) only.
+- First subagent result is now in: the isolated available-slots RED did not reproduce.
+  - `npx playwright test e2e/gabinet/appointments.spec.ts -g "available slots load from backend in appointment dialog" --reporter=line` exited 0 (`1 passed`, 10.7s).
+  - `npx playwright test e2e/gabinet/appointments.spec.ts -g "create button opens appointment dialog|available slots load from backend in appointment dialog" --reporter=line` exited 0 (`2 passed`, 21.9s).
+- Interpretation update: there is still no fresh failing-first evidence justifying a fix for `e2e/gabinet/appointments.spec.ts:1094:3`. The dialog-open drift hypothesis remains plausible from the exact batch log, but it is not yet reproduced in a scoped rerun.
+- Next focused step for the slots domain: broaden only to a slightly larger appointments mini-batch around the exact-run neighborhood while the auth/session repro agent finishes.
+
+---
+
+S0070. Auth investigation update — helper/UI alignment vs worker pressure:
+- Tracker integrity issue found before any new code changes: `tasks_progress.json` is currently malformed JSON because the `thinking_process` string ends with an extra quote at line 228. This needs immediate repair so the structured tracker remains trustworthy.
+- Fresh comparison of `e2e/helpers/auth.ts` against `src/routes/_app/login/_layout.index.tsx` shows the helper selectors are still structurally aligned with the real password login UI:
+  - chooser button still renders `Email i hasło`
+  - email input still uses `#userEmail`
+  - password input still uses `#password`
+  - submit button still renders `Zaloguj się`
+- Historical comparison also matters: commit `70ea91c` fixed an earlier login-redirect bug by broadening the login-page `useEffect` dependencies. The current login route still carries that dependency-aware redirect shape, so the old missing-dependency bug is not the leading fresh explanation.
+- New strongest auth-domain hypothesis from the current evidence: the authoritative exact Task 8 proof command is not using the Playwright config defaults. `playwright.config.ts` sets `fullyParallel: false` and `workers: 1`, but the saved failing proof command in Task 8 uses `--workers=6`.
+- Investigation: Task 8 auth exact-batch instability
+  Hypothesis A: exact-batch worker concurrency / shared app readiness race - confidence: high
+    Evidence for: isolated and paired reruns stay green; the remaining exact-batch reds cluster in `loginAndGoToDashboard()` / `login()` beforeEach paths; config defaults are serial but the failing proof run explicitly overrides to six workers.
+    Evidence against: does not by itself explain the still-unreproduced available-slots dialog failure.
+  Hypothesis B: stale login helper selectors - confidence: low
+    Evidence for: the browser sometimes remains on `/login` after submit.
+    Evidence against: the live login route still exposes the exact chooser/input/submit selectors the helper uses.
+  Hypothesis C: regression of the old login redirect effect - confidence: low
+    Evidence for: there is a historical commit for the same symptom family.
+    Evidence against: the current login route still includes the broadened dependency-aware redirect logic from that fix.
+- Next verification step: wait for the outstanding auth-focused subagent reproduction bundle and use it to confirm whether the failure under `--workers=6` is a true auth issuance/redirect problem, a server-readiness problem, or a misleading wrapper/artifact mismatch before any auth-helper edit.
+- Subagent evidence is now in:
+  - The broadened slots-domain mini-batches stayed green, including `appointment click opens detail dialog|create button opens appointment dialog|available slots load from backend in appointment dialog` and the slightly broader history/detail/create/slots group. There is still no fresh RED for `e2e/gabinet/appointments.spec.ts:1094:3` in the narrowed appointments-only neighborhood.
+  - The auth-focused repro agent still did not re-hit the exact `/login` failure directly in fresh focused runs; its auth-spec probe passed 5/5, and its patient repeat run failed for a noisy artifact/timeout path rather than the same clean auth throw. However, it confirmed the best narrow failing path remains the previously saved `/tmp/auth-instability-stress.log` reproduction: `e2e/gabinet/patients.spec.ts:14` beforeEach -> `loginAndGoToDashboard()` -> `login()` -> throw at `e2e/helpers/auth.ts:129` with `Login failed, current URL: http://localhost:5173/login`.
+  - Separate patient-artifact/code inspection also showed the patient test body itself is weak: it skips if the add button is missing and never asserts `hasBloodType`, so the exact-batch patient red cannot currently be trusted as evidence of a real blood-type form regression.
+- Refined interpretation after the new parallel evidence:
+  - Slots-domain remains unreproduced in all focused in-file appointment batches.
+  - Patient-domain has two different stories depending on artifact source: the saved auth stress log proves a beforeEach auth failure, while the static code inspection reveals a stale add-button selector and missing `hasBloodType` assertion that would matter only if the test body is reached.
+  - Auth-domain still points primarily at shared readiness / concurrency pressure because the exact authoritative batch uses `--workers=6`, isolated auth probes stay green, and the exact-batch patient/contacts errors continue to originate inside `e2e/helpers/auth.ts`.
+- Next verification step: inspect the exact-batch auth screenshots/error-context files referenced inside `/tmp/task8-exact-batch-rerun2.log` so the visible `/login` state is grounded in artifact evidence before any TDD fix selection.
+
+S0070. Exact-batch auth artifact inspection update:
+- `/tmp/task8-exact-batch-rerun2.log` references 10 exact-batch screenshot/error-context files across contacts, appointments, and patients, but none of those relative `test-results/.../{error-context.md,test-failed-1.png}` paths currently exist inside the worktree.
+- Local auth artifact inventory currently contains only fallback `test-results/auth-root-cause/.../trace.zip` bundles for the patient-domain repro plus unrelated `tmp-results/contact/...` contact-create artifacts; there is no preserved exact-batch auth screenshot/error-context bundle to inspect directly.
+- I compared all 6 available patient auth-root-cause traces. They are consistent: login page GET 200, chooser click succeeds, email/password inputs become visible, auth-token waits tied to `__convexAuthJWT_` succeed, zero trace-level errors, zero 4xx/5xx network responses, two Convex action POSTs return 200, and the final navigation is `goto("http://localhost:5173/dashboard/gabinet/patients")` followed by a GET 200 for that route.
+- This fallback artifact evidence argues against a simple stale-selector or always-broken login theory. It supports successful JWT issuance and dashboard navigation in the available patient auth traces.
+- However, these are not the exact missing batch artifacts, so they do not explain why the authoritative six-file `--workers=6` batch sometimes strands beforeEach on `/login`.
+- Investigation: Task 8 exact-batch auth artifact gap
+  Hypothesis A: exact-batch worker concurrency / shared readiness race - confidence: high
+    Evidence for: the authoritative exact batch still fails while all preserved fallback auth traces succeed end-to-end; the log references missing exact-batch artifacts instead of preserved direct evidence.
+    Evidence against: still indirect until a fresh exact-batch run preserves its own failing traces.
+  Hypothesis B: stale selector / broken auth helper - confidence: low
+    Evidence for: the exact-batch log still contains `/login` auth throws.
+    Evidence against: helper selectors still match the UI and all preserved auth-root-cause traces complete login successfully.
+- Next verification step: rerun the authoritative six-file batch with preserved per-test traces/error-context under `--workers=6`, so the auth-domain failures have direct artifacts instead of fallback traces.
+
+---

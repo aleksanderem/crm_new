@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 
 export const list = query({
   args: {
@@ -204,6 +205,37 @@ export const purchasePackage = mutation({
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await publishActivityEnvelope(ctx, {
+      organizationId: args.organizationId,
+      action: "package_assigned",
+      performedBy: user._id,
+      module: "gabinet",
+      summary: `Assigned package ${pkg.name} to patient`,
+      occurredAt: now,
+      actor: {
+        type: "user",
+        userId: user._id,
+      },
+      payload: {
+        usageId,
+        packageId: args.packageId,
+        patientId: args.patientId,
+        paidAmount: args.paidAmount,
+        paymentMethod: args.paymentMethod,
+      },
+      eventKey: `gabinet:package:${usageId}:package_assigned`,
+      targets: [
+        {
+          entityType: "gabinetPackage",
+          entityId: args.packageId,
+        },
+        {
+          entityType: "gabinetPatient",
+          entityId: args.patientId,
+        },
+      ],
     });
 
     // Award loyalty points for purchase

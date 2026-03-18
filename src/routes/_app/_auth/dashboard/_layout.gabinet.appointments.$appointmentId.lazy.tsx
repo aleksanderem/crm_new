@@ -314,11 +314,7 @@ function buildUnifiedHistoryEntries(
     }
 
     return {
-      _id: activity._id,
-      action: activity.action,
-      description: activity.description,
-      performedByName: activity.performedByName,
-      createdAt: activity.createdAt,
+      ...activity,
       contentSnapshot: mergedSnapshot,
       metaLines: mergedMetaLines,
     };
@@ -1793,17 +1789,7 @@ function AppointmentDetail() {
                   </CardHeader>
                   <CardContent>
                     <ActivityTimeline
-                      activities={
-                        unifiedHistoryEntries?.map((entry) => ({
-                          _id: entry._id,
-                          action: entry.action,
-                          description: entry.description,
-                          performedByName: entry.performedByName,
-                          createdAt: entry.createdAt,
-                          contentSnapshot: entry.contentSnapshot,
-                          metaLines: entry.metaLines,
-                        })) ?? []
-                      }
+                      activities={unifiedHistoryEntries ?? []}
                       maxHeight="400px"
                     />
                   </CardContent>

@@ -128,6 +128,7 @@ export const activityActionValidator = v.union(
   v.literal("email_received"),
   v.literal("sms_sent"),
   v.literal("sms_received"),
+  v.literal("package_assigned"),
 );
 export type ActivityAction = Infer<typeof activityActionValidator>;
 

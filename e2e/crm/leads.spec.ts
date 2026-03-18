@@ -83,12 +83,8 @@ test.describe("CRM — Leads", () => {
       await valueInput.fill("10000");
     }
 
-    // Submit
-    const submitBtn = dialog
-      .locator(
-        'button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
-      )
-      .first();
+    // Submit through the lead form itself (avoid matching modal navigation actions)
+    const submitBtn = dialog.locator('form button[type="submit"]').first();
     if (await submitBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await submitBtn.click();
       await page.waitForTimeout(3000);
@@ -323,5 +319,46 @@ test.describe("CRM — Leads", () => {
 
     // Uncheck to clean up
     await checkbox.click();
+  });
+
+  test("lead activity tab renders presenter-style email details when available", async ({ page }) => {
+    await navigateTo(page, "/dashboard/leads");
+
+    const leadLink = page.locator('a[href*="/leads/"]').first();
+    if (!(await leadLink.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await leadLink.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    if (!page.url().includes("/leads/")) {
+      test.skip();
+      return;
+    }
+
+    const activitiesTab = page
+      .locator('[role="tab"]:has-text("Aktywno"), [role="tab"]:has-text("Activities")')
+      .first();
+    if (!(await activitiesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await activitiesTab.click();
+    await page.waitForTimeout(1000);
+
+    const presenterLine = page
+      .locator('text=/Subject:|To:|From:|Sent email ".*" to|Received email ".*" from/')
+      .first();
+
+    if (!(await presenterLine.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await expect(presenterLine).toBeVisible();
   });
 });

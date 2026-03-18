@@ -69,6 +69,7 @@ test.describe("CRM — Contacts", () => {
 
   test("saved views appear in dropdown", async ({ page }) => {
     await navigateTo(page, "/dashboard/contacts");
+    await expect(page).toHaveURL(/\/dashboard\/contacts(?:$|\?)/);
 
     // Look for tabs (saved views) — "Wszystkie", "Moje", "Ostatnie"
     const bodyText = await getBodyText(page);
@@ -109,7 +110,7 @@ test.describe("CRM — Contacts", () => {
 
     const addBtn = page
       .locator(
-        'button:has-text("Dodaj kontakt"), button:has-text("Add contact")'
+        'main button:has-text("Dodaj kontakt"), main button:has-text("Add contact")'
       )
       .first();
 
@@ -120,18 +121,24 @@ test.describe("CRM — Contacts", () => {
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible({ timeout: 5000 });
 
-      // Try to submit without filling required fields
+      const contactOption = dialog
+        .locator(
+          'button:has-text("Dodaj osobę do bazy CRM"), button:has-text("Add person to CRM")'
+        )
+        .first();
+      if (await contactOption.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await contactOption.click();
+        await page.waitForTimeout(300);
+      }
+
       const submitBtn = dialog
         .locator(
-          'button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
+          'button:has-text("Utwórz kontakt"), button:has-text("Create contact"), button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
         )
         .first();
 
       if (await submitBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await submitBtn.click();
-        await page.waitForTimeout(1000);
-
-        // Dialog should still be open (form didn't submit)
+        await expect(submitBtn).toBeDisabled();
         await expect(dialog).toBeVisible();
       }
     }
@@ -144,7 +151,7 @@ test.describe("CRM — Contacts", () => {
 
     const addBtn = page
       .locator(
-        'button:has-text("Dodaj kontakt"), button:has-text("Add contact")'
+        'main button:has-text("Dodaj kontakt"), main button:has-text("Add contact")'
       )
       .first();
 
@@ -158,6 +165,16 @@ test.describe("CRM — Contacts", () => {
 
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    const contactOption = dialog
+      .locator(
+        'button:has-text("Dodaj osobę do bazy CRM"), button:has-text("Add person to CRM")'
+      )
+      .first();
+    if (await contactOption.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await contactOption.click();
+      await page.waitForTimeout(300);
+    }
 
     // Fill the firstName field (required)
     const firstNameInput = dialog.locator('input').first();
@@ -172,7 +189,7 @@ test.describe("CRM — Contacts", () => {
     // Submit
     const submitBtn = dialog
       .locator(
-        'button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
+        'button:has-text("Utwórz kontakt"), button:has-text("Create contact"), button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
       )
       .first();
     await submitBtn.click();
@@ -180,8 +197,7 @@ test.describe("CRM — Contacts", () => {
     await waitForApp(page);
 
     // Contact should appear in the list
-    const bodyText = await getBodyText(page);
-    expect(bodyText).toContain(firstName);
+    await expect(page.locator("body")).toContainText(firstName, { timeout: 10000 });
   });
 
   test("SidePanel closes after submit", async ({ page }) => {
@@ -191,7 +207,7 @@ test.describe("CRM — Contacts", () => {
 
     const addBtn = page
       .locator(
-        'button:has-text("Dodaj kontakt"), button:has-text("Add contact")'
+        'main button:has-text("Dodaj kontakt"), main button:has-text("Add contact")'
       )
       .first();
 
@@ -206,16 +222,27 @@ test.describe("CRM — Contacts", () => {
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
+    const contactOption = dialog
+      .locator(
+        'button:has-text("Dodaj osobę do bazy CRM"), button:has-text("Add person to CRM")'
+      )
+      .first();
+    if (await contactOption.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await contactOption.click();
+      await page.waitForTimeout(300);
+    }
+
     const firstNameInput = dialog.locator('input').first();
     await firstNameInput.fill(firstName);
 
     const submitBtn = dialog
       .locator(
-        'button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
+        'button:has-text("Utwórz kontakt"), button:has-text("Create contact"), button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
       )
       .first();
     await submitBtn.click();
     await page.waitForTimeout(3000);
+    await waitForApp(page);
 
     // Dialog should be closed
     await expect(dialog).not.toBeVisible({ timeout: 5000 });
@@ -454,11 +481,8 @@ test.describe("CRM — Contacts", () => {
     const rowsBefore = await page.locator("table tbody tr").count();
 
     // Open delete but cancel — row count should stay same
-    const menuTrigger = page
-      .locator(
-        'table tbody tr button[aria-haspopup="menu"], table tbody tr button:has(svg)'
-      )
-      .first();
+    const firstRow = page.locator("table tbody tr").first();
+    const menuTrigger = firstRow.getByRole("button", { name: /open menu/i });
 
     if (
       await menuTrigger.isVisible({ timeout: 5000 }).catch(() => false)
@@ -622,5 +646,46 @@ test.describe("CRM — Contacts", () => {
       const bodyText = await getBodyText(page);
       expect(bodyText.length).toBeGreaterThan(100);
     }
+  });
+
+  test("contact activity tab renders presenter-style email details when available", async ({ page }) => {
+    await navigateTo(page, "/dashboard/contacts");
+
+    const tableRow = page.locator("table tbody tr").first();
+    if (!(await tableRow.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await tableRow.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    if (!page.url().includes("/contacts/")) {
+      test.skip();
+      return;
+    }
+
+    const activitiesTab = page
+      .locator('[role="tab"]:has-text("Aktywno"), [role="tab"]:has-text("Activities")')
+      .first();
+    if (!(await activitiesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await activitiesTab.click();
+    await page.waitForTimeout(1000);
+
+    const presenterLine = page
+      .locator('text=/Subject:|To:|From:|Sent email ".*" to|Received email ".*" from/')
+      .first();
+
+    if (!(await presenterLine.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await expect(presenterLine).toBeVisible();
   });
 });

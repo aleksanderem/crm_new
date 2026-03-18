@@ -28,6 +28,34 @@ export async function waitForAuthSession(page: Page, timeout = 10000) {
     .catch(() => false);
 }
 
+async function waitForSettledAuthSession(page: Page, timeout = 1500) {
+  const initialToken = await page.evaluate(() => {
+    const entry = Object.entries(window.localStorage).find(([key]) =>
+      key.startsWith("__convexAuthJWT_")
+    );
+
+    return entry?.[1] ?? null;
+  });
+
+  if (!initialToken) {
+    return;
+  }
+
+  await page
+    .waitForFunction(
+      (previousToken) => {
+        const entry = Object.entries(window.localStorage).find(([key]) =>
+          key.startsWith("__convexAuthJWT_")
+        );
+
+        return typeof entry?.[1] === "string" && entry[1] !== previousToken;
+      },
+      initialToken,
+      { timeout }
+    )
+    .catch(() => {});
+}
+
 /**
  * Wait for the app to settle after navigation or action.
  */
@@ -108,6 +136,13 @@ export async function login(page: Page, creds = TEST_USER) {
 export async function loginAndGoToDashboard(page: Page) {
   await login(page);
 
+  if (page.url().includes("/login")) {
+    await login(page);
+  }
+
+  await waitForAuthSession(page, 12000);
+  await waitForSettledAuthSession(page);
+
   if (!page.url().includes("/dashboard")) {
     await page.goto(`${BASE_URL}/dashboard`, {
       waitUntil: "domcontentloaded",
@@ -115,12 +150,6 @@ export async function loginAndGoToDashboard(page: Page) {
     });
     await waitForApp(page);
   }
-
-  if (page.url().includes("/login")) {
-    await login(page);
-  }
-
-  await waitForAuthSession(page);
 
   if (!page.url().includes("/dashboard")) {
     throw new Error(`Dashboard navigation failed, current URL: ${page.url()}`);

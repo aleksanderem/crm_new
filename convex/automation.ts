@@ -19,7 +19,7 @@ import {
 import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
 import { renderTemplateString } from "./emailTemplates";
 import { escapeHtml } from "./_helpers/html";
-import { DEFAULT_PERMISSIONS } from "./_helpers/permissions";
+import { checkPermission } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
 import {
   buildActionCapabilities,
@@ -370,14 +370,23 @@ async function getAutomationEditPermission(
     };
   }
 
-  const membership = await ctx.db
-    .query("teamMemberships")
-    .withIndex("by_orgAndUser", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", actorUserId),
-    )
-    .unique();
+  const actorCtx = {
+    ...ctx,
+    auth: {
+      ...ctx.auth,
+      getUserIdentity: async () => ({
+        subject: `${actorUserId}|automation`,
+        issuer: "automation",
+        tokenIdentifier: `automation|${actorUserId}`,
+      }),
+    },
+  } as MutationCtx;
 
-  if (!membership) {
+  let membershipRole: string;
+  try {
+    const { membership } = await verifyOrgAccess(actorCtx, organizationId);
+    membershipRole = membership.role;
+  } catch {
     return {
       allowed: false,
       scope: "none",
@@ -385,8 +394,17 @@ async function getAutomationEditPermission(
     };
   }
 
-  const role = membership.role as keyof typeof DEFAULT_PERMISSIONS;
-  if (options?.requireAdmin && role !== "owner" && role !== "admin") {
+  const permission = await checkPermission(actorCtx, organizationId, feature, "edit");
+
+  if (!permission.allowed) {
+    return {
+      allowed: false,
+      scope: permission.scope,
+      reason: "Permission denied",
+    };
+  }
+
+  if (options?.requireAdmin && membershipRole !== "owner" && membershipRole !== "admin") {
     return {
       allowed: false,
       scope: "none",
@@ -394,26 +412,9 @@ async function getAutomationEditPermission(
     };
   }
 
-  if (role === "owner" || role === "admin") {
-    return { allowed: true, scope: "all" };
-  }
-
-  const override = await ctx.db
-    .query("orgPermissions")
-    .withIndex("by_orgAndRole", (q) =>
-      q.eq("organizationId", organizationId).eq("role", role),
-    )
-    .unique();
-
-  const permissions = override?.permissions as
-    | Partial<Record<Feature, Partial<Record<"view" | "create" | "edit" | "delete" | "approve" | "sign", Scope>>>>
-    | undefined;
-  const scope = permissions?.[feature]?.edit ?? DEFAULT_PERMISSIONS[role][feature].edit;
-
   return {
-    allowed: scope !== "none",
-    scope,
-    reason: scope === "none" ? "Permission denied" : undefined,
+    allowed: true,
+    scope: permission.scope,
   };
 }
 

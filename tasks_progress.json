@@ -1,7 +1,7 @@
 {
   "session_id": "S0070",
   "session_uuid": "d6abb315-1935-440e-a562-3c8dcb8177cf",
-  "date": "2026-03-13",
+  "date": "2026-03-18",
   "tasks": [
     {
       "id": "SMS-01",
@@ -114,6 +114,86 @@
       "depends_on": ["AUT-06", "SMS-07"]
     },
     {
+      "id": 21,
+      "name": "publish_time_target_persistence_contract",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 2 in the repaired shared-activity worktree by extending the shared envelope tests and helper so resolved targets are persisted at publish time, duplicate targets are deduplicated consistently, and the timing contract is locked before publisher migrations.",
+      "files": ["convex/_helpers/activityEnvelope.ts", "convex/tests/activityEnvelope.test.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [20]
+    },
+    {
+      "id": 22,
+      "name": "publisher_batch_notes_and_outbound_email",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 3 in the repaired shared-activity worktree by migrating note and outbound email activity publication onto publishActivityEnvelope, adding focused publisher tests for envelope presence/eventKey/payload semantics, and verifying the focused suite before the next migration batch.",
+      "files": ["convex/_test_helpers.ts", "convex/notes.ts", "convex/emails.ts", "convex/tests/activityEnvelope.test.ts", "convex/tests/emailActivities.test.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [21]
+    },
+    {
+      "id": 23,
+      "name": "publisher_batch_inbound_email_packages_and_sms",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 4 in the repaired shared-activity worktree by migrating inbound email, package assignment, and appointment SMS fan-out publishers onto publishActivityEnvelope with publish-time targets, adding focused tests, and verifying the focused suite before the next migration batch.",
+      "files": ["convex/schema.ts", "convex/emails_internal.ts", "convex/gabinet/packages.ts", "convex/gabinet/appointmentSms.ts", "convex/tests/emailActivities.test.ts", "convex/tests/packageActivities.test.ts", "convex/tests/appointmentSms.test.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [22]
+    },
+    {
+      "id": 24,
+      "name": "automation_update_field_canonical_rbac",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 5 in the repaired shared-activity worktree by aligning automation.update_field with the canonical verifyOrgAccess + checkPermission RBAC path, adding focused failing-first tests for deny/own/allow cases, and verifying the focused suite before presenter work.",
+      "files": ["convex/automation.ts", "convex/tests/automation.test.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [23]
+    },
+    {
+      "id": 25,
+      "name": "shared_activity_presenter_seam",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 6 in the repaired shared-activity worktree by adding the pure shared activity presenter seam, focused presenter tests, and app-level verification before the route migration work starts.",
+      "files": ["vitest.config.ts", "src/components/activity-timeline/presenter/activity-presenter.ts", "src/components/activity-timeline/presenter/activity-renderers.ts", "src/components/activity-timeline/presenter/activity-presenter.test.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [24]
+    },
+    {
+      "id": 26,
+      "name": "presenter_driven_entity_route_migration",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 7 in the repaired shared-activity worktree by migrating the entity detail routes onto the presenter-driven timeline, extending focused browser assertions for the touched detail surfaces, and verifying the route-focused browser suite plus app typecheck before the final verification batch.",
+      "files": ["src/components/activity-timeline/activity-timeline.tsx", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.contacts.$contactId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.companies.$companyId.tsx", "src/routes/_app/_auth/dashboard/_layout.leads.$leadId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId.tsx", "public/locales/en/translation.json", "public/locales/pl/translation.json", "e2e/gabinet/appointments.spec.ts", "e2e/gabinet/patients.spec.ts", "e2e/gabinet/employees.spec.ts", "e2e/crm/contacts.spec.ts", "e2e/crm/companies.spec.ts", "e2e/crm/leads.spec.ts", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
+      "depends_on": [25]
+    },
+    {
+      "id": 27,
+      "name": "task_8_final_verification_and_review_loop",
+      "status": "in_progress",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Execute plan Task 8 in the repaired shared-activity worktree by rerunning the exact final verification batch, stabilizing the focused Playwright route suite under a same-process frontend lifecycle, classifying any remaining failures as in-scope vs unrelated, and then completing the required review loop/evidence capture. Reopened on 2026-03-17 after the contacts saved-views red was traced to an auth-session timing race in e2e/helpers/auth.ts and the focused auth/contacts regressions passed with the helper fix.",
+      "files": ["session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt", "docs/superpowers/plans/2026-03-15-shared-activity-envelope-and-automation-rbac.md", "playwright.config.ts", "e2e/helpers/auth.ts", "e2e/auth.spec.ts", "e2e/gabinet/appointments.spec.ts", "e2e/gabinet/patients.spec.ts", "e2e/gabinet/employees.spec.ts", "e2e/crm/contacts.spec.ts", "e2e/crm/companies.spec.ts", "e2e/crm/leads.spec.ts"],
+      "depends_on": [26]
+    },
+    {
+      "id": 28,
+      "name": "deterministic_playwright_drift_fix_pass",
+      "status": "passing",
+      "created_session": "S0070",
+      "last_updated_session": "S0070",
+      "description": "Run a focused TDD fix pass for the deterministic Task 8 Playwright drift failures. Completed on 2026-03-17 with spec-only fixes for four deterministic reds: `e2e/crm/contacts.spec.ts` cancel keeps contact now targets the explicit first-row menu trigger; `e2e/gabinet/patients.spec.ts` detail page loads with all data now follows the real detail-link / row-nav-cell navigation surface; `e2e/crm/companies.spec.ts` create company succeeds now submits through the dialog form button instead of a broad global create selector; and `e2e/crm/contacts.spec.ts` submit creates contact and it appears in list now scopes the add-contact trigger to main content, selects the explicit contact option when the global quick-create modal appears, and waits on a resilient post-submit text assertion. Fresh isolated and paired Playwright verification is green for all four deterministic cases.",
+      "files": ["e2e/crm/contacts.spec.ts", "e2e/gabinet/patients.spec.ts", "src/components/crm/enhanced-data-table.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.patients.index.tsx", "tasks_progress.json", "tasks_progress_verbose.txt", "session_state.json"],
+      "depends_on": [27]
+    },
+    {
       "id": "SIDEBAR-01",
       "name": "run_focused_sidebar_checks",
       "status": "passing",
@@ -144,9 +224,9 @@
       "depends_on": ["SIDEBAR-01", "SIDEBAR-02"]
     }
   ],
-  "reason": "S0070: complete the first broader Gabinet automation slice beyond appointments by wiring `gabinet.patient.created` through the backend event registry, business editor copy/defaults, tests, and focused browser coverage.",
-  "thinking_process": "The patient-created trigger remains the smallest safe expansion beyond appointment-only automation: it reuses the existing pipeline, exercises the richer editor against a second Gabinet entity type, and proves that non-appointment runs stay visible in the overview. Verification is now green end to end: app and convex typechecks pass, locale JSON is fixed, focused backend automation coverage passes, and the focused Playwright automation lifecycle spec passes against a fresh frontend on port 4173. During verification I also fixed a real frontend auth-navigation issue where the login page could stay on `/login` after successful credential submission because redirect logic waited too strictly on `getCurrentUser` before leaving the page." ,
-  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19],
+  "reason": "S0070: Record the fresh exact six-file rerun #2 evidence truthfully and pivot the remaining work to the new five-test failure set it exposed.",
+  "thinking_process": "The fresh exact proof command has now been rerun and still fails: `/tmp/task8-exact-batch-rerun2.exit` contains `1`, while `/tmp/task8-exact-batch-rerun2.log` shows `5 failed`, `19 skipped`, and `66 passed (4.4m)`. This supersedes the earlier non-repro isolated probes as the current Task 8 truth. The current exact-batch failure set is `e2e/crm/contacts.spec.ts:365:3` SidePanel opens with contact data for editing, `e2e/gabinet/appointments.spec.ts:808:3` appointment history tab renders presenter-style email details when available, `e2e/gabinet/appointments.spec.ts:919:3` appointment click opens detail dialog, `e2e/gabinet/patients.spec.ts:635:3` blood type field is present in patient form, and `e2e/gabinet/appointments.spec.ts:1094:3` available slots load from backend in appointment dialog. Follow-up research still splits these into two domains: likely auth/session bootstrap failures versus an unreproduced available-slots dialog-open candidate. Multiple focused subagent reruns kept the slots-domain green, including broader in-file appointment neighborhoods, so there is still no fresh RED reproduction for the slots-domain fix. Comparison of `e2e/helpers/auth.ts` with the live login route shows the password-flow selectors still match the current UI, while `playwright.config.ts` remains serial (`workers: 1`, `fullyParallel: false`) and the authoritative failing proof command explicitly overrides that with `--workers=6`. The best narrow auth failing path remains the saved `/tmp/auth-instability-stress.log` reproduction at `e2e/helpers/auth.ts:129`, while separate patient test-body inspection shows the blood-type test itself has stale copy assumptions and no final `hasBloodType` assertion. The exact-batch log references 10 screenshot/error-context artifacts, but none of those files currently exist inside the worktree. All 6 locally preserved patient auth-root-cause trace zips instead show successful JWT issuance plus dashboard navigation with zero trace errors and zero 4xx/5xx network responses, so the currently available artifact evidence weakens simple auth-helper breakage and further points to an exact-batch-only concurrency/shared-readiness problem. The next honest step is a fresh exact six-file rerun that preserves per-test traces/error-context under `--workers=6`.",
+  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19, 20, 21],
   "how_to_test": [
     {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
     {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},
@@ -164,6 +244,12 @@
     {"id": 14, "name": "Focused verification covers overview, simple create/edit, advanced fallback, toggle/delete, backend contract compatibility, and visible automation runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (9/9)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1)"], "session_id": "S0061"},
     {"id": 15, "name": "Richer automation editor verification covers always-visible SMS/email capabilities, reply-SMS trigger/action, multi-action composition, email template/manual authoring, variable insertion, safe field updates, strict edit hydration, and recent runs", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false` after overview/i18n cleanup and the `smsRequestMessage` locale default fix", "Focused backend verification passes: `cd convex && npx vitest run tests/automation.test.ts --reporter=verbose` (12/12)", "Focused browser verification passes: `npx playwright test e2e/gabinet/appointments.spec.ts -g \"automation rule lifecycle triggers visible run\"` (1/1) with action-card scoping and a truly unsupported legacy fallback fixture"], "session_id": "S0061"},
     {"id": 16, "name": "Sidebar widget follow-up verification fixes SmartAgenda i18n, gabinet nudge edge cases, and convex test typing without regressions", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false` after typing `import.meta.glob` in `convex/tests/recentlyViewed.test.ts`", "Focused backend verification passes: `cd convex && npx vitest run tests/recentlyViewed.test.ts --reporter=verbose` (5/5)", "SmartAgenda now has EN/PL agenda-specific locale keys and locale-aware date/time formatting", "Gabinet package nudges now exclude already-expired active usages from the expiring-soon count and only treat active usages as package usage"], "session_id": "S0063"},
-    {"id": 17, "name": "Sidebar nudge internationalization adds full EN/PL locale coverage for the translation-key nudge contract", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false`", "All 20 sidebar nudge keys resolve in both locale files via focused JSON validation", "NudgeCard resolves translation keys with `messageValues` and touched widgets pass `messageValues` through"], "session_id": "S0064"}
+    {"id": 17, "name": "Sidebar nudge internationalization adds full EN/PL locale coverage for the translation-key nudge contract", "status": "done", "is_ok": true, "data_for_next_step": ["App typecheck passes: `npx tsc -p tsconfig.app.json --pretty false`", "Convex typecheck passes: `npx tsc -p convex/tsconfig.json --pretty false`", "All 20 sidebar nudge keys resolve in both locale files via focused JSON validation", "NudgeCard resolves translation keys with `messageValues` and touched widgets pass `messageValues` through"], "session_id": "S0064"},
+    {"id": 18, "name": "Shared activity envelope seam validates required fields, preserves flat compatibility fields, and fans out one row per target", "status": "done", "is_ok": true, "data_for_next_step": ["Focused Vitest command passed: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose`", "Convex typecheck passed: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false`", "Legacy `logActivity(...)` now derives module from entity type and uses fallback event key `<module>:<entityType>:<entityId>:<action>`"], "session_id": "S0070"},
+    {"id": 19, "name": "Task 1 review fixes reject zero-target writes and preserve legacy metadata.activityEnvelope", "status": "done", "is_ok": true, "data_for_next_step": ["Historical note: this intermediate review-fix shape was superseded because phase-1 requires normalized envelope storage under `metadata.activityEnvelope`", "Focused Vitest command passed again: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose`", "Convex typecheck passed again: `cd /Users/alfred/.openclaw/workspace/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false`"], "session_id": "S0070"},
+    {"id": 20, "name": "Task 1 spec drift fix keeps normalized envelope at metadata.activityEnvelope and rejects reserved-key collisions", "status": "done", "is_ok": true, "data_for_next_step": ["Focused coverage now proves caller-supplied `metadata.activityEnvelope` is rejected with a clear reserved-key error while successful writes still store the normalized envelope at `metadata.activityEnvelope`", "Fresh repaired-worktree verification passed: `cd /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose` (5/5)", "Fresh repaired-worktree typecheck passed: `cd /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac && npx tsc -p convex/tsconfig.json --pretty false`", "The only forwarded metadata expression into `logActivity` is typed as `Record<string, unknown>` in `convex/gabinet/appointmentSms.ts`, so the speculative non-object metadata quality concern did not hold for this repo slice"], "session_id": "S0070"},
+    {"id": 21, "name": "Task 2 publish-time target persistence locks resolved targets into the shared envelope contract", "status": "done", "is_ok": true, "data_for_next_step": ["Focused RED/GREEN cycle complete: the publish-time target snapshot test was added first, failed for the intended reason before the helper change, and now passes in the repaired worktree", "Fresh verification passed directly in /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac: `cd convex && npx vitest run tests/activityEnvelope.test.ts --reporter=verbose` (7/7) and `npx tsc -p convex/tsconfig.json --pretty false` both exited clean", "A follow-up quality review concern about colon-joined dedupe collisions was verified as real at the helper contract level, fixed with tuple-safe dedupe keys, and locked by the new `publishActivityEnvelope keeps distinct target tuples even when colon-joined keys collide` regression test"], "session_id": "S0070"},
+    {"id": 22, "name": "Task 3 migrate note and outbound email publishers onto the shared envelope helper", "status": "not_started", "is_ok": null, "data_for_next_step": ["Identify or add focused tests that cover note_added and email_sent publisher behavior with `metadata.activityEnvelope`, stable `eventKey`, and semantic payload assertions", "Run the focused publisher tests from /Users/alfred/projects/crm_new/.worktrees/shared-activity-envelope-rbac/convex and confirm RED for the expected reason before modifying note/email publishers", "Migrate only the publication calls in `convex/notes.ts` and `convex/emails.ts` to `publishActivityEnvelope(...)`, then rerun the focused tests plus `npx tsc -p convex/tsconfig.json --pretty false` before the next review loop"], "session_id": "S0070"},
+    {"id": 23, "name": "Task 8 exact verification batch stays green with stable same-process frontend lifecycle and focused entity-route Playwright coverage", "status": "in_progress", "is_ok": false, "data_for_next_step": ["The fresh exact proof artifacts from rerun #2 are now authoritative: `/tmp/task8-exact-batch-rerun2.exit` = `1` and `/tmp/task8-exact-batch-rerun2.log` = `5 failed`, `19 skipped`, `66 passed (4.4m)` for `npx playwright test e2e/gabinet/appointments.spec.ts e2e/gabinet/patients.spec.ts e2e/gabinet/employees.spec.ts e2e/crm/contacts.spec.ts e2e/crm/companies.spec.ts e2e/crm/leads.spec.ts --workers=6 --reporter=line`", "The five numbered remaining failures are `e2e/crm/contacts.spec.ts:365:3` SidePanel opens with contact data for editing, `e2e/gabinet/appointments.spec.ts:808:3` appointment history tab renders presenter-style email details when available, `e2e/gabinet/appointments.spec.ts:919:3` appointment click opens detail dialog, `e2e/gabinet/patients.spec.ts:635:3` blood type field is present in patient form, and `e2e/gabinet/appointments.spec.ts:1094:3` available slots load from backend in appointment dialog", "The wrapper output file for background task `b7k979b20` is empty, so its reported exit code 0 is not verification evidence and must not override the saved `/tmp` artifacts", "Fresh isolated reruns for the earlier three-test set remain useful background evidence, but they do not change the current Task 8 truth because the exact batch still fails on a different five-test set", "Next perform systematic root-cause investigation on the new five exact-rerun failures, grouping the three appointments failures together while investigating the contacts edit failure and the patients form failure separately before any new edits; first scoped subagent reruns for the available-slots test are green, so broader but still targeted order-sensitive repro is required before any slots-specific edit"], "session_id": "S0070"}
   ]
 }

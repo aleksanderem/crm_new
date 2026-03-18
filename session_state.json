@@ -1,18 +1,19 @@
 {
   "session_id": "S0070",
   "started_at": "2026-03-13T14:49:18Z",
-  "last_updated": "2026-03-13T19:18:38Z",
+  "last_updated": "2026-03-18T03:26:40Z",
   "status": "active",
-  "focus": "Broaden Gabinet automation scope with patient-created trigger coverage",
+  "focus": "Task 8 exact-batch auth artifact gap and preserved repro planning",
   "tasks_snapshot": {
-    "total": 3,
+    "total": 13,
     "not_started": 0,
-    "in_progress": 1,
-    "passing": 2,
-    "failing": 0,
+    "in_progress": 2,
+    "passing": 10,
+    "failing": 1,
     "blocked": 0
   },
-  "active_task_ids": [18],
-  "blockers": [],
-  "notes": "S0070 has finished the repo cleanup slices and extended the Gabinet automation rollout with the first non-appointment trigger (`gabinet.patient.created`). Focused app/convex typechecks, locale JSON validation, backend automation tests, and the focused Playwright automation lifecycle spec are now green. The stale Vite `504 Outdated Optimize Dep` issue was bypassed by running a fresh frontend on 4173, and the login redirect race was narrowed to frontend auth navigation that depended too strictly on `getCurrentUser` before leaving `/login`."
-}
+  "active_task_ids": [27, 31],
+  "blockers": [
+    "The fresh exact Task 8 six-file rerun still exits 1 with five numbered failures across contacts, appointments, and patients; these exact-batch reds must be investigated before any new edits."
+  ],
+  "notes": "S0070: Exact rerun #2 remains the source of truth: `/tmp/task8-exact-batch-rerun2.exit` = `1` and `/tmp/task8-exact-batch-rerun2.log` = `5 failed`, `19 skipped`, `66 passed (4.4m)`. Follow-up parallel work still says the slots-domain stayed green across broader appointments-only mini-batches, so `e2e/gabinet/appointments.spec.ts:1094:3` remains unreproduced in focused scope. The best narrow auth failing path is still the saved `/tmp/auth-instability-stress.log` reproduction at `e2e/helpers/auth.ts:129`, and the patient test body itself still has stale add-button copy plus no final `hasBloodType` assertion. Fresh artifact inspection adds an important constraint: the exact-batch log references 10 screenshot/error-context files, but none of those files are present locally. The only preserved auth artifacts are 6 fallback patient auth-root-cause traces, and all 6 show successful JWT issuance plus navigation to `/dashboard/gabinet/patients` with zero trace errors and zero 4xx/5xx network responses. Current best guess therefore remains exact-batch-only concurrency/shared readiness rather than stale selectors. Current active step: preserve a fresh `--workers=6` exact-batch rerun with direct per-test traces/error-context before any TDD fix choice."}

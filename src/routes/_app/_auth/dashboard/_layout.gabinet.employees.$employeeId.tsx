@@ -1246,14 +1246,7 @@ function EmployeeDetail() {
                 {/* Activity history tab */}
                 <TabsContent value="history" className="m-0 p-6">
                   <ActivityTimeline
-                    activities={
-                      activities?.map((a) => ({
-                        _id: a._id,
-                        action: a.action,
-                        description: a.description,
-                        createdAt: a.createdAt,
-                      })) ?? []
-                    }
+                    activities={activities ?? []}
                     maxHeight="600px"
                   />
                 </TabsContent>

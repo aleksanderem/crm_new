@@ -2,7 +2,7 @@ import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { logActivity } from "../_helpers/activities";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { checkPermission } from "../_helpers/permissions";
 import { v } from "convex/values";
 
@@ -101,19 +101,34 @@ async function logSmsSharedActivities(
     });
   }
 
-  await Promise.all(
-    entityTargets.map((target) =>
-      logActivity(ctx, {
-        organizationId: args.organizationId,
-        entityType: target.entityType,
-        entityId: target.entityId,
-        action: args.action,
-        description: args.description,
-        metadata: args.metadata,
-        performedBy: args.performedBy,
-      }),
-    ),
-  );
+  const occurredAt = Date.now();
+  const semanticEventId =
+    typeof args.metadata?.appointmentSmsEventId === "string"
+      ? args.metadata.appointmentSmsEventId
+      : null;
+  const eventKey = semanticEventId
+    ? `gabinet:sms:${semanticEventId}:${args.action}`
+    : `gabinet:sms:${args.organizationId}:${occurredAt}:${args.action}`;
+
+  await publishActivityEnvelope(ctx, {
+    organizationId: args.organizationId,
+    action: args.action,
+    performedBy: args.performedBy,
+    module: "gabinet",
+    summary: args.description,
+    occurredAt,
+    actor: {
+      type: "user",
+      userId: args.performedBy,
+    },
+    payload: {
+      ...(args.metadata ?? {}),
+      direction: args.action === "sms_sent" ? "outbound" : "inbound",
+    },
+    eventKey,
+    targets: entityTargets,
+    metadata: args.metadata,
+  });
 }
 
 export const listByAppointment = query({

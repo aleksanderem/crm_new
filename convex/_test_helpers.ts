@@ -2,11 +2,17 @@ import { convexTest } from "convex-test";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
 
+const modules = (
+  import.meta as ImportMeta & {
+    glob: (pattern: string) => Record<string, () => Promise<any>>;
+  }
+).glob("./**/*.*s");
+
 /**
  * Create a fresh convex-test instance with our schema.
  */
 export function createTestCtx() {
-  return convexTest(schema);
+  return convexTest(schema, modules);
 }
 
 /**

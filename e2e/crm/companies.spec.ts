@@ -88,12 +88,8 @@ test.describe("CRM — Companies", () => {
     const nameInput = dialog.locator("input").first();
     await nameInput.fill(companyName);
 
-    // Submit
-    const submitBtn = dialog
-      .locator(
-        'button:has-text("Utwórz"), button:has-text("Create"), button:has-text("Zapisz")'
-      )
-      .first();
+    // Submit through the company form itself (avoid matching global quick-create actions)
+    const submitBtn = dialog.locator("form button[type=\"submit\"]").first();
     await submitBtn.click();
     await page.waitForTimeout(3000);
     await waitForApp(page);
@@ -283,5 +279,46 @@ test.describe("CRM — Companies", () => {
         await page.keyboard.press("Escape");
       }
     }
+  });
+
+  test("company activity tab renders presenter-style email details when available", async ({ page }) => {
+    await navigateTo(page, "/dashboard/companies");
+
+    const companyLink = page.locator('a[href*="/companies/"]').first();
+    if (!(await companyLink.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await companyLink.click();
+    await page.waitForTimeout(2000);
+    await waitForApp(page);
+
+    if (!page.url().includes("/companies/")) {
+      test.skip();
+      return;
+    }
+
+    const activitiesTab = page
+      .locator('[role="tab"]:has-text("Aktywno"), [role="tab"]:has-text("Activities")')
+      .first();
+    if (!(await activitiesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await activitiesTab.click();
+    await page.waitForTimeout(1000);
+
+    const presenterLine = page
+      .locator('text=/Subject:|To:|From:|Sent email ".*" to|Received email ".*" from/')
+      .first();
+
+    if (!(await presenterLine.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await expect(presenterLine).toBeVisible();
   });
 });

@@ -39,10 +39,6 @@ import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { useTranslation } from "react-i18next";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
-import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
-import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
@@ -144,8 +140,6 @@ function CompanyDetail() {
   const [createContactDrawerOpen, setCreateContactDrawerOpen] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showNewDocDialog, setShowNewDocDialog] = useState(false);
-  const [viewingDocId, setViewingDocId] = useState<Id<"documentInstances"> | null>(null);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -944,42 +938,11 @@ function CompanyDetail() {
           {
             label: t('detail.tabs.documents'),
             content: (
-              <>
-                <DocumentInstanceTable
-                  organizationId={organizationId}
-                  sourceKey="company"
-                  sourceInstanceId={companyId}
-                  onView={(id) => setViewingDocId(id)}
-                  onNewFromTemplate={() => setShowNewDocDialog(true)}
-                  showNewButton
-                />
-
-                <DocumentFromTemplateDialog
-                  open={showNewDocDialog}
-                  onOpenChange={setShowNewDocDialog}
-                  organizationId={organizationId}
-                  module="crm"
-                  sources={{ company: companyId }}
-                  onComplete={() => setShowNewDocDialog(false)}
-                />
-
-                {viewingDocId && (
-                  <Dialog open onOpenChange={() => setViewingDocId(null)}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                      <DocumentInstanceView
-                        instanceId={viewingDocId}
-                        onClose={() => setViewingDocId(null)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                )}
-
-                <EntityDocumentsTab
-                  entityType="company"
-                  entityId={companyId}
-                  organizationId={organizationId}
-                />
-              </>
+              <EntityDocumentsTab
+                entityType="company"
+                entityId={companyId}
+                organizationId={organizationId}
+              />
             ),
           },
           {

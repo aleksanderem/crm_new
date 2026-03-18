@@ -2625,7 +2625,11 @@
       "title": "Moje dokumenty",
       "empty": "Brak dostępnych dokumentów",
       "signDocument": "Podpisz dokument",
-      "signed": "Dokument podpisany pomyślnie"
+      "signed": "Dokument podpisany pomyślnie",
+      "formDocuments": "Dokumenty formularzy",
+      "legacyDocuments": "Inne dokumenty",
+      "signPrompt": "Zapoznaj się z dokumentem i złóż podpis poniżej.",
+      "patientSigner": "Pacjent"
     },
     "profile": {
       "title": "Mój profil",

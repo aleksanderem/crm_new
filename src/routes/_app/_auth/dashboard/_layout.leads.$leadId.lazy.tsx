@@ -62,9 +62,6 @@ import { cn } from "@/lib/utils";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
-import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
-import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
-import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 
 export const Route = createLazyFileRoute(
@@ -305,9 +302,6 @@ function LeadDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
-  const [showNewDocDialog, setShowNewDocDialog] = useState(false);
-  const [viewingDocId, setViewingDocId] = useState<Id<"documentInstances"> | null>(null);
-
   // Sidebar UI state
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -1286,42 +1280,11 @@ function LeadDetail() {
     {
       label: t('detail.tabs.documents'),
       content: (
-        <>
-          <DocumentInstanceTable
-            organizationId={organizationId}
-            sourceKey="lead"
-            sourceInstanceId={leadId}
-            onView={(id) => setViewingDocId(id)}
-            onNewFromTemplate={() => setShowNewDocDialog(true)}
-            showNewButton
-          />
-
-          <DocumentFromTemplateDialog
-            open={showNewDocDialog}
-            onOpenChange={setShowNewDocDialog}
-            organizationId={organizationId}
-            module="crm"
-            sources={{ lead: leadId }}
-            onComplete={() => setShowNewDocDialog(false)}
-          />
-
-          {viewingDocId && (
-            <Dialog open onOpenChange={() => setViewingDocId(null)}>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                <DocumentInstanceView
-                  instanceId={viewingDocId}
-                  onClose={() => setViewingDocId(null)}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
-
-          <EntityDocumentsTab
-            entityType="lead"
-            entityId={leadId}
-            organizationId={organizationId}
-          />
-        </>
+        <EntityDocumentsTab
+          entityType="lead"
+          entityId={leadId}
+          organizationId={organizationId}
+        />
       ),
     },
     {

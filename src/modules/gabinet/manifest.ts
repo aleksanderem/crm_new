@@ -24,7 +24,6 @@ import {
 } from "@/lib/ez-icons";
 import { GabinetCalendarWidgets } from "@/components/sidebar-widgets/gabinet/calendar-widgets";
 import { GabinetDashboardWidgets } from "@/components/sidebar-widgets/gabinet/dashboard-widgets";
-import { GabinetDocumentsWidgets } from "@/components/sidebar-widgets/gabinet/documents-widgets";
 import { GabinetEmployeesWidgets } from "@/components/sidebar-widgets/gabinet/employees-widgets";
 import { GabinetPackagesWidgets } from "@/components/sidebar-widgets/gabinet/packages-widgets";
 import { GabinetPatientsWidgets } from "@/components/sidebar-widgets/gabinet/patients-widgets";
@@ -63,7 +62,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "gabinet.leaveTypes.title", to: "/dashboard/gabinet/settings/leave-types" },
     { labelKey: "gabinet.leaveBalances.title", to: "/dashboard/gabinet/settings/leave-balances" },
     { labelKey: "gabinet.leaves.title", to: "/dashboard/gabinet/settings/leaves" },
-    { labelKey: "gabinet.documentTemplates.title", to: "/dashboard/gabinet/settings/document-templates" },
+    { labelKey: "gabinet.documentTemplates.title", to: "/dashboard/settings/form-templates" },
     { labelKey: "gabinet.reminders.title", to: "/dashboard/gabinet/settings/reminders" },
   ],
   pageContexts: [
@@ -177,7 +176,6 @@ export const gabinetManifest: ModuleManifest = {
     {
       key: "documents",
       titleKey: "nav.gabinet.documents",
-      widgets: GabinetDocumentsWidgets,
       matches: [{ to: "/dashboard/gabinet/documents", fuzzy: true }],
       actions: [
         {

@@ -2616,7 +2616,11 @@
       "title": "My Documents",
       "empty": "No documents available",
       "signDocument": "Sign Document",
-      "signed": "Document signed successfully"
+      "signed": "Document signed successfully",
+      "formDocuments": "Form Documents",
+      "legacyDocuments": "Other Documents",
+      "signPrompt": "Please review the document and provide your signature below.",
+      "patientSigner": "Patient"
     },
     "profile": {
       "title": "My Profile",

@@ -12,9 +12,6 @@ import {
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
-import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
-import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
-import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,9 +55,6 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [viewingDocId, setViewingDocId] =
-    useState<Id<"documentInstances"> | null>(null);
 
   const { data: patient, isLoading } = useQuery(
     convexQuery(api.gabinet.patients.getById, {
@@ -446,20 +440,6 @@ function PatientDetail() {
     {
       label: t("gabinet.patients.tabs.documents"),
       content: (
-        <DocumentInstanceTable
-          organizationId={organizationId}
-          sourceKey="patient"
-          sourceInstanceId={patientId}
-          module="gabinet"
-          onView={(instanceId) => setViewingDocId(instanceId)}
-          onNewFromTemplate={() => setTemplateDialogOpen(true)}
-          showNewButton
-        />
-      ),
-    },
-    {
-      label: t("gabinet.patients.tabs.formDocuments", "Dokumenty"),
-      content: (
         <EntityDocumentsTab
           entityType="patient"
           entityId={patientId}
@@ -686,23 +666,6 @@ function PatientDetail() {
         </SidePanel>
       )}
 
-      {/* Create document from template dialog */}
-      <DocumentFromTemplateDialog
-        open={templateDialogOpen}
-        onOpenChange={setTemplateDialogOpen}
-        organizationId={organizationId}
-        module="gabinet"
-        sources={{ patient: patientId }}
-        onComplete={(instanceId) => setViewingDocId(instanceId)}
-      />
-
-      {/* Document instance viewer */}
-      {viewingDocId && (
-        <DocumentInstanceView
-          instanceId={viewingDocId}
-          onClose={() => setViewingDocId(null)}
-        />
-      )}
     </>
   );
 }

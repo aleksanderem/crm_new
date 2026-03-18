@@ -1,6 +1,7 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 
 export const listByEntity = query({
@@ -187,5 +188,87 @@ export const recordSignature = mutation({
       updatedAt: now,
     });
     return doc._id;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Patient-portal query (token-based auth, no org context)
+// ---------------------------------------------------------------------------
+
+/**
+ * List formDocuments accessible to a patient through the portal.
+ * Looks up documents linked to the patient entity, plus documents linked to
+ * any of the patient's appointments.
+ */
+export const listByPatientToken = query({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => {
+    const { patientId, organizationId } = await validatePortalSession(
+      ctx,
+      args.tokenHash,
+    );
+
+    // 1. Documents linked directly to the patient
+    const patientDocs = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityType", "patient").eq("entityId", patientId),
+      )
+      .collect();
+
+    // 2. Documents linked to the patient's appointments
+    const appointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndPatient", (q) =>
+        q.eq("organizationId", organizationId).eq("patientId", patientId),
+      )
+      .collect();
+
+    const appointmentDocArrays = await Promise.all(
+      appointments.map((appt) =>
+        ctx.db
+          .query("formDocuments")
+          .withIndex("by_entity", (q) =>
+            q.eq("entityType", "appointment").eq("entityId", appt._id),
+          )
+          .collect(),
+      ),
+    );
+
+    // Merge & deduplicate
+    const allDocs = [...patientDocs, ...appointmentDocArrays.flat()];
+    const seen = new Set<string>();
+    const unique = allDocs.filter((d) => {
+      if (d.organizationId !== organizationId) return false;
+      if (seen.has(d._id)) return false;
+      seen.add(d._id);
+      return true;
+    });
+
+    // Enrich with template info for frontend rendering
+    const enriched = await Promise.all(
+      unique.map(async (doc) => {
+        const template = await ctx.db.get(doc.templateId);
+        return {
+          _id: doc._id,
+          title: doc.title,
+          status: doc.status,
+          entityType: doc.entityType,
+          entityId: doc.entityId,
+          responseData: doc.responseData,
+          signatureData: doc.signatureData,
+          signedAt: doc.signedAt,
+          signingToken: doc.signingToken,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+          templateName: template?.name ?? "",
+          category: template?.category ?? "custom",
+          formJson: template?.formJson ?? "{}",
+          requiresSignature: template?.requiresSignature ?? false,
+        };
+      }),
+    );
+
+    return enriched.sort((a, b) => b.createdAt - a.createdAt);
   },
 });

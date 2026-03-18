@@ -1,35 +1,13 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { QueryCtx, MutationCtx } from "../_generated/server";
 import {
   getAvailableSlots,
   checkEmployeeQualification,
   checkConflict,
 } from "./_availability";
 import { createNotificationDirect } from "../notifications";
-
-async function validatePortalSession(
-  ctx: QueryCtx | MutationCtx,
-  tokenHash: string,
-): Promise<{
-  patientId: Id<"gabinetPatients">;
-  organizationId: Id<"organizations">;
-}> {
-  const session = await ctx.db
-    .query("gabinetPortalSessions")
-    .withIndex("by_token", (q) => q.eq("tokenHash", tokenHash))
-    .first();
-
-  if (!session || !session.isActive || Date.now() > session.expiresAt) {
-    throw new Error("Invalid or expired session");
-  }
-
-  return {
-    patientId: session.patientId,
-    organizationId: session.organizationId,
-  };
-}
+import { validatePortalSession } from "../_helpers/portalSession";
 
 export const getMyProfile = query({
   args: { tokenHash: v.string() },

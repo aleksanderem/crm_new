@@ -45,9 +45,6 @@ import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
 import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
-import { DocumentInstanceTable } from "@/components/documents/document-instance-table";
-import { DocumentFromTemplateDialog } from "@/components/documents/document-from-template-dialog";
-import { DocumentInstanceView } from "@/components/documents/document-instance-view";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -290,10 +287,6 @@ function AppointmentDetail() {
   const [internalNotes, setInternalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-  // Document management state (new platform document system)
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [viewingDocInstanceId, setViewingDocInstanceId] =
-    useState<Id<"documentInstances"> | null>(null);
 
   // Payment management state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -672,7 +665,6 @@ function AppointmentDetail() {
     patient,
     treatment,
     employee,
-    documents,
     payments,
     notes,
     patientPackageUsage,
@@ -1326,21 +1318,6 @@ function AppointmentDetail() {
             </CardContent>
           </Card>
         </div>
-      ),
-    },
-    {
-      label: t("gabinet.documents.documents"),
-      count: documents.length,
-      content: (
-        <DocumentInstanceTable
-          organizationId={organizationId}
-          sourceKey="patient"
-          sourceInstanceId={patient?._id}
-          module="gabinet"
-          onView={(instanceId) => setViewingDocInstanceId(instanceId)}
-          onNewFromTemplate={() => setTemplateDialogOpen(true)}
-          showNewButton
-        />
       ),
     },
     {
@@ -2293,24 +2270,6 @@ function AppointmentDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Create document from template dialog */}
-      <DocumentFromTemplateDialog
-        open={templateDialogOpen}
-        onOpenChange={setTemplateDialogOpen}
-        organizationId={organizationId}
-        module="gabinet"
-        sources={{ patient: patient?._id ?? "" }}
-        onComplete={(instanceId) => setViewingDocInstanceId(instanceId)}
-      />
-
-      {/* Document instance viewer */}
-      {viewingDocInstanceId && (
-        <DocumentInstanceView
-          instanceId={viewingDocInstanceId}
-          onClose={() => setViewingDocInstanceId(null)}
-        />
-      )}
 
       {/* Multi-treatment package usage dialog */}
       <Dialog open={usageDialogOpen} onOpenChange={setUsageDialogOpen}>

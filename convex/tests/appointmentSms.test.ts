@@ -259,6 +259,18 @@ describe("appointment SMS flow", () => {
     expect(patientActivities.some((a) => a.action === "sms_sent")).toBe(true);
     expect(contactActivities.some((a) => a.action === "sms_sent")).toBe(true);
     expect(leadActivities).toHaveLength(0);
+
+    const appointmentSent = appointmentActivities.find((a) => a.action === "sms_sent");
+    const patientSent = patientActivities.find((a) => a.action === "sms_sent");
+    const contactSent = contactActivities.find((a) => a.action === "sms_sent");
+
+    expect(appointmentSent?.metadata?.activityEnvelope?.eventKey).toBeTruthy();
+    expect(patientSent?.metadata?.activityEnvelope?.eventKey).toBe(
+      appointmentSent?.metadata?.activityEnvelope?.eventKey,
+    );
+    expect(contactSent?.metadata?.activityEnvelope?.eventKey).toBe(
+      appointmentSent?.metadata?.activityEnvelope?.eventKey,
+    );
   });
 
   test("inbound TAK confirms appointment exactly once for duplicate webhook retries", async () => {
@@ -361,6 +373,20 @@ describe("appointment SMS flow", () => {
     expect(patientActivities.filter((a) => a.action === "sms_received")).toHaveLength(1);
     expect(contactActivities.filter((a) => a.action === "sms_received")).toHaveLength(1);
     expect(appointmentActivities.some((a) => a.action === "status_changed")).toBe(true);
+
+    const appointmentReceived = appointmentActivities.find(
+      (a) => a.action === "sms_received",
+    );
+    const patientReceived = patientActivities.find((a) => a.action === "sms_received");
+    const contactReceived = contactActivities.find((a) => a.action === "sms_received");
+
+    expect(appointmentReceived?.metadata?.activityEnvelope?.eventKey).toBeTruthy();
+    expect(patientReceived?.metadata?.activityEnvelope?.eventKey).toBe(
+      appointmentReceived?.metadata?.activityEnvelope?.eventKey,
+    );
+    expect(contactReceived?.metadata?.activityEnvelope?.eventKey).toBe(
+      appointmentReceived?.metadata?.activityEnvelope?.eventKey,
+    );
   });
 
   test("inbound NIE cancels appointment and records audit plus notification side effects", async () => {

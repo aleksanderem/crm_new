@@ -220,16 +220,22 @@ test.describe("Gabinet — Patients", () => {
   test("detail page loads with all data", async ({ page }) => {
     await navigateTo(page, "/dashboard/gabinet/patients");
 
-    const tableRow = page.locator("table tbody tr").first();
+    const patientLink = page.locator('a[href*="/gabinet/patients/"]').first();
+    const rowNavCell = page.locator("table tbody tr td.cursor-pointer").first();
 
     if (
-      !(await tableRow.isVisible({ timeout: 5000 }).catch(() => false))
+      await patientLink.isVisible({ timeout: 5000 }).catch(() => false)
     ) {
+      await patientLink.click();
+    } else if (
+      await rowNavCell.isVisible({ timeout: 5000 }).catch(() => false)
+    ) {
+      await rowNavCell.click();
+    } else {
       test.skip();
       return;
     }
 
-    await tableRow.click();
     await page.waitForTimeout(2000);
     await waitForApp(page);
 
@@ -499,6 +505,26 @@ test.describe("Gabinet — Patients", () => {
       await page.waitForTimeout(1000);
       await assertNoErrorBoundary(page);
     }
+
+    // Click activity/history tab and assert presenter-style output
+    const activityTab = page
+      .locator(
+        '[role="tab"]:has-text("Aktyw"), [role="tab"]:has-text("History"), [role="tab"]:has-text("Activity")'
+      )
+      .first();
+    if (!(await activityTab.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await activityTab.click();
+    await page.waitForTimeout(1000);
+
+    await expect(
+      page
+        .locator('text=/Subject:|To:|From:|Sent email ".*" to|Received email ".*" from/')
+        .first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   // ─── 8.4 Medical Data ──────────────────────────────────────

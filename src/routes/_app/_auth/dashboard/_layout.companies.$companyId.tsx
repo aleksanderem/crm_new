@@ -1063,14 +1063,7 @@ function CompanyDetail() {
                     </Button>
                   </div>
                   <ActivityTimeline
-                    activities={
-                      activities?.map((a: (typeof activities)[number]) => ({
-                        _id: a._id,
-                        action: a.action,
-                        description: a.description,
-                        createdAt: a.createdAt,
-                      })) ?? []
-                    }
+                    activities={activities ?? []}
                     maxHeight="600px"
                   />
                 </TabsContent>

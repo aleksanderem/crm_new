@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
+import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 
 export const listByEntity = query({
   args: {
@@ -70,13 +70,28 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    await logActivity(ctx, {
+    await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
-      entityType: args.entityType,
-      entityId: args.entityId,
       action: "note_added",
-      description: `Added a note`,
       performedBy: user._id,
+      module: "crm",
+      summary: "Added a note",
+      occurredAt: now,
+      actor: {
+        type: "user",
+        userId: user._id,
+      },
+      payload: {
+        noteId,
+        noteContent: args.content,
+      },
+      eventKey: `crm:note:${args.entityType}:${args.entityId}:${noteId}:note_added`,
+      targets: [
+        {
+          entityType: args.entityType,
+          entityId: args.entityId,
+        },
+      ],
     });
 
     return noteId;
@@ -102,13 +117,28 @@ export const update = mutation({
       updatedAt: Date.now(),
     });
 
-    await logActivity(ctx, {
+    await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
-      entityType: note.entityType,
-      entityId: note.entityId,
       action: "updated",
-      description: `Updated a note`,
       performedBy: user._id,
+      module: "crm",
+      summary: "Updated a note",
+      occurredAt: Date.now(),
+      actor: {
+        type: "user",
+        userId: user._id,
+      },
+      payload: {
+        noteId: args.noteId,
+        noteContent: args.content,
+      },
+      eventKey: `crm:note:${note.entityType}:${note.entityId}:${args.noteId}:updated`,
+      targets: [
+        {
+          entityType: note.entityType,
+          entityId: note.entityId,
+        },
+      ],
     });
 
     return args.noteId;
@@ -140,13 +170,27 @@ export const remove = mutation({
 
     await ctx.db.delete(args.noteId);
 
-    await logActivity(ctx, {
+    await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
-      entityType: note.entityType,
-      entityId: note.entityId,
       action: "deleted",
-      description: `Deleted a note`,
       performedBy: user._id,
+      module: "crm",
+      summary: "Deleted a note",
+      occurredAt: Date.now(),
+      actor: {
+        type: "user",
+        userId: user._id,
+      },
+      payload: {
+        noteId: args.noteId,
+      },
+      eventKey: `crm:note:${note.entityType}:${note.entityId}:${args.noteId}:deleted`,
+      targets: [
+        {
+          entityType: note.entityType,
+          entityId: note.entityId,
+        },
+      ],
     });
 
     return args.noteId;

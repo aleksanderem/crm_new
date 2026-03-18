@@ -18,7 +18,7 @@ test.describe("Gabinet — Appointments", () => {
   test.setTimeout(120_000);
 
   const convexUrl = readFileSync(
-    "/Users/alfred/.openclaw/workspace/projects/crm_new/.env.local",
+    "/Users/alfred/projects/crm_new/.env.local",
     "utf-8",
   )
     .split("\n")
@@ -803,6 +803,54 @@ test.describe("Gabinet — Appointments", () => {
         await page.keyboard.press("Escape");
       }
     }
+  });
+
+  test("appointment history tab renders presenter-style email details when available", async ({
+    page,
+  }) => {
+    await navigateToAuthenticatedRoute(page, "/dashboard/gabinet/calendar");
+    await page.waitForTimeout(2000);
+
+    const appointmentEl = page
+      .locator('[data-appointment-id], [class*="appointment"], [class*="event"]')
+      .first();
+    if (!(await appointmentEl.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    const appointmentId =
+      (await appointmentEl.getAttribute("data-appointment-id")) ??
+      (await appointmentEl.getAttribute("data-id"));
+
+    if (!appointmentId) {
+      test.skip();
+      return;
+    }
+
+    await navigateToAuthenticatedRoute(
+      page,
+      `/dashboard/gabinet/appointments/${appointmentId}`,
+    );
+    await page.waitForTimeout(1500);
+
+    const historyTab = page
+      .locator('[role="tab"]:has-text("Historia"), [role="tab"]:has-text("History")')
+      .first();
+
+    if (!(await historyTab.isVisible({ timeout: 4000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await historyTab.click();
+    await page.waitForTimeout(1000);
+
+    await expect(
+      page
+        .locator('text=/Subject:|To:|From:|Sent email ".*" to|Received email ".*" from/')
+        .first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("cancel appointment shows reason dialog", async ({ page }) => {

@@ -32,6 +32,7 @@ const actionIcons: Record<ActivityAction, typeof Plus> = {
   email_received: MailOpen,
   sms_sent: Send,
   sms_received: Inbox,
+  package_assigned: UserCheck,
 };
 
 const actionColors: Record<ActivityAction, string> = {
@@ -49,6 +50,7 @@ const actionColors: Record<ActivityAction, string> = {
   email_received: "bg-emerald-100 text-emerald-700",
   sms_sent: "bg-violet-100 text-violet-700",
   sms_received: "bg-lime-100 text-lime-700",
+  package_assigned: "bg-indigo-100 text-indigo-700",
 };
 
 export interface Activity {
@@ -59,6 +61,7 @@ export interface Activity {
   createdAt: number;
   contentSnapshot?: string;
   metaLines?: string[];
+  metadata?: unknown;
 }
 
 interface ActivityItemProps {

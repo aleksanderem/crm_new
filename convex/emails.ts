@@ -2,7 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
+import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
 import { Id } from "./_generated/dataModel";
@@ -244,13 +244,30 @@ export const send = mutation({
       updatedAt: now,
     });
 
-    await logActivity(ctx, {
+    await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
-      entityType: "email",
-      entityId: emailId,
       action: "email_sent",
-      description: `Sent email "${args.subject}" to ${args.to.join(", ")}`,
       performedBy: user._id,
+      module: "crm",
+      summary: `Sent email "${args.subject}" to ${args.to.join(", ")}`,
+      occurredAt: now,
+      actor: {
+        type: "user",
+        userId: user._id,
+      },
+      payload: {
+        emailId,
+        direction: "outbound",
+        to: args.to,
+        subject: args.subject,
+      },
+      eventKey: `crm:email:${emailId}:email_sent`,
+      targets: [
+        {
+          entityType: "email",
+          entityId: emailId,
+        },
+      ],
     });
 
     return emailId;

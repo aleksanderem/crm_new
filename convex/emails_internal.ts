@@ -1,5 +1,6 @@
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 
 export const findEmailAccountByAddress = internalQuery({
   args: { addresses: v.array(v.string()) },
@@ -128,6 +129,8 @@ export const insertInboundGmail = internalMutation({
     const now = Date.now();
     const messageId = `<${args.gmailMessageId}@gmail>`;
 
+    const organization = await ctx.db.get(args.organizationId);
+
     // Auto-link to contact by from email
     const contact = await ctx.db
       .query("contacts")
@@ -136,7 +139,7 @@ export const insertInboundGmail = internalMutation({
       )
       .first();
 
-    await ctx.db.insert("emails", {
+    const emailId = await ctx.db.insert("emails", {
       organizationId: args.organizationId,
       threadId: args.gmailThreadId,
       messageId,
@@ -155,6 +158,35 @@ export const insertInboundGmail = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    if (organization) {
+      await publishActivityEnvelope(ctx, {
+        organizationId: args.organizationId,
+        action: "email_received",
+        performedBy: organization.ownerId,
+        module: "crm",
+        summary: `Received email "${args.subject}" from ${args.from}`,
+        occurredAt: now,
+        actor: {
+          type: "external",
+          label: args.from,
+        },
+        payload: {
+          emailId,
+          direction: "inbound",
+          from: args.from,
+          to: args.to,
+          subject: args.subject,
+        },
+        eventKey: `crm:email:${emailId}:email_received`,
+        targets: [
+          {
+            entityType: "email",
+            entityId: emailId,
+          },
+        ],
+      });
+    }
   },
 });
 
@@ -174,7 +206,9 @@ export const insertInbound = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    await ctx.db.insert("emails", {
+    const organization = await ctx.db.get(args.organizationId);
+
+    const emailId = await ctx.db.insert("emails", {
       organizationId: args.organizationId,
       threadId: args.threadId,
       messageId: args.messageId,
@@ -193,5 +227,34 @@ export const insertInbound = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    if (organization) {
+      await publishActivityEnvelope(ctx, {
+        organizationId: args.organizationId,
+        action: "email_received",
+        performedBy: organization.ownerId,
+        module: "crm",
+        summary: `Received email "${args.subject}" from ${args.from}`,
+        occurredAt: now,
+        actor: {
+          type: "external",
+          label: args.from,
+        },
+        payload: {
+          emailId,
+          direction: "inbound",
+          from: args.from,
+          to: args.to,
+          subject: args.subject,
+        },
+        eventKey: `crm:email:${emailId}:email_received`,
+        targets: [
+          {
+            entityType: "email",
+            entityId: emailId,
+          },
+        ],
+      });
+    }
   },
 });

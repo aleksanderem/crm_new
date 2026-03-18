@@ -9,10 +9,12 @@
  */
 
 import type * as _helpers_activities from "../_helpers/activities.js";
+import type * as _helpers_activityEnvelope from "../_helpers/activityEnvelope.js";
 import type * as _helpers_auth from "../_helpers/auth.js";
 import type * as _helpers_html from "../_helpers/html.js";
 import type * as _helpers_permissionTypes from "../_helpers/permissionTypes.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
+import type * as _helpers_portalSession from "../_helpers/portalSession.js";
 import type * as _helpers_products from "../_helpers/products.js";
 import type * as _helpers_seatLimits from "../_helpers/seatLimits.js";
 import type * as _test from "../_test.js";
@@ -114,6 +116,7 @@ import type * as scheduledActivities from "../scheduledActivities.js";
 import type * as scheduledActivities_internal from "../scheduledActivities_internal.js";
 import type * as schema_automation from "../schema/automation.js";
 import type * as schema_crm from "../schema/crm.js";
+import type * as schema_documents from "../schema/documents.js";
 import type * as schema_gabinet from "../schema/gabinet.js";
 import type * as schema_platform from "../schema/platform.js";
 import type * as search from "../search.js";
@@ -135,10 +138,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "_helpers/activities": typeof _helpers_activities;
+  "_helpers/activityEnvelope": typeof _helpers_activityEnvelope;
   "_helpers/auth": typeof _helpers_auth;
   "_helpers/html": typeof _helpers_html;
   "_helpers/permissionTypes": typeof _helpers_permissionTypes;
   "_helpers/permissions": typeof _helpers_permissions;
+  "_helpers/portalSession": typeof _helpers_portalSession;
   "_helpers/products": typeof _helpers_products;
   "_helpers/seatLimits": typeof _helpers_seatLimits;
   _test: typeof _test;
@@ -240,6 +245,7 @@ declare const fullApi: ApiFromModules<{
   scheduledActivities_internal: typeof scheduledActivities_internal;
   "schema/automation": typeof schema_automation;
   "schema/crm": typeof schema_crm;
+  "schema/documents": typeof schema_documents;
   "schema/gabinet": typeof schema_gabinet;
   "schema/platform": typeof schema_platform;
   search: typeof search;

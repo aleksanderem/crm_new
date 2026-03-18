@@ -1125,7 +1125,46 @@
       "duplicate": "Duplikuj",
       "duplicated": "Szablon zduplikowany",
       "duplicateError": "Nie udało się zduplikować szablonu",
-      "invalidJson": "Nieprawidłowy format JSON"
+      "invalidJson": "Nieprawidłowy format JSON",
+      "descriptionPlaceholder": "Opcjonalny opis szablonu",
+      "variableBindingPlaceholder": "Wybierz pole podmiotu",
+      "modules": {
+        "crm": "CRM",
+        "gabinet": "Gabinet",
+        "platform": "Platforma"
+      },
+      "entityTypes": {
+        "contact": "Kontakt",
+        "company": "Firma",
+        "lead": "Lead",
+        "appointment": "Wizyta",
+        "patient": "Pacjent",
+        "treatment": "Zabieg",
+        "employee": "Pracownik"
+      },
+      "categories": {
+        "consent": "Zgoda",
+        "medical_record": "Karta medyczna",
+        "prescription": "Recepta",
+        "referral": "Skierowanie",
+        "contract": "Umowa",
+        "invoice": "Faktura",
+        "protocol": "Protokół",
+        "intake": "Formularz przyjęcia",
+        "custom": "Własny"
+      },
+      "signatureMethods": {
+        "click": "Kliknięcie",
+        "sms": "Kod SMS",
+        "email_otp": "Kod email",
+        "draw": "Rysowanie podpisu"
+      },
+      "signerRoles": {
+        "client": "Klient",
+        "patient": "Pacjent",
+        "employee": "Pracownik",
+        "external": "Zewnętrzny"
+      }
     }
   },
   "leadForm": {

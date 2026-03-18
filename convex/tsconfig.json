@@ -26,5 +26,5 @@
     "noEmit": true
   },
   "include": ["./**/*", "../errors.ts"],
-  "exclude": ["./_generated"]
+  "exclude": ["./_generated", "./tests"]
 }

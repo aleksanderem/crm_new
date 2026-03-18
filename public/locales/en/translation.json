@@ -1123,7 +1123,46 @@
       "duplicate": "Duplicate",
       "duplicated": "Template duplicated",
       "duplicateError": "Failed to duplicate template",
-      "invalidJson": "Invalid JSON format"
+      "invalidJson": "Invalid JSON format",
+      "descriptionPlaceholder": "Optional template description",
+      "variableBindingPlaceholder": "Select entity field",
+      "modules": {
+        "crm": "CRM",
+        "gabinet": "Gabinet",
+        "platform": "Platform"
+      },
+      "entityTypes": {
+        "contact": "Contact",
+        "company": "Company",
+        "lead": "Lead",
+        "appointment": "Appointment",
+        "patient": "Patient",
+        "treatment": "Treatment",
+        "employee": "Employee"
+      },
+      "categories": {
+        "consent": "Consent",
+        "medical_record": "Medical Record",
+        "prescription": "Prescription",
+        "referral": "Referral",
+        "contract": "Contract",
+        "invoice": "Invoice",
+        "protocol": "Protocol",
+        "intake": "Intake Form",
+        "custom": "Custom"
+      },
+      "signatureMethods": {
+        "click": "Click",
+        "sms": "SMS Code",
+        "email_otp": "Email Code",
+        "draw": "Draw Signature"
+      },
+      "signerRoles": {
+        "client": "Client",
+        "patient": "Patient",
+        "employee": "Employee",
+        "external": "External"
+      }
     }
   },
   "leadForm": {

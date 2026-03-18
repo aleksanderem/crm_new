@@ -31,14 +31,12 @@ import { Route as AppPatientLayoutDocumentsImport } from './routes/_app/patient/
 import { Route as AppPatientLayoutBookImport } from './routes/_app/patient/_layout.book'
 import { Route as AppPatientLayoutAppointmentsImport } from './routes/_app/patient/_layout.appointments'
 import { Route as AppAuthOnboardingLayoutImport } from './routes/_app/_auth/onboarding/_layout'
-import { Route as AppAuthDashboardFormEditorImport } from './routes/_app/_auth/dashboard/form-editor'
 import { Route as AppAuthDashboardLayoutImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
-import { Route as AppAuthDashboardFormEditorNewImport } from './routes/_app/_auth/dashboard/form-editor.new'
-import { Route as AppAuthDashboardFormEditorIdImport } from './routes/_app/_auth/dashboard/form-editor.$id'
 import { Route as AppAuthDashboardLayoutSetupImport } from './routes/_app/_auth/dashboard/_layout.setup'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutFormEditorImport } from './routes/_app/_auth/dashboard/_layout.form-editor'
 import { Route as AppAuthDashboardLayoutDocumentsImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCheckoutImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
@@ -78,6 +76,8 @@ import { Route as AppAuthDashboardLayoutLeadsNewImport } from './routes/_app/_au
 import { Route as AppAuthDashboardLayoutLeadsLeadIdImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
 import { Route as AppAuthDashboardLayoutGabinetReportsImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
+import { Route as AppAuthDashboardLayoutFormEditorNewImport } from './routes/_app/_auth/dashboard/_layout.form-editor.new'
+import { Route as AppAuthDashboardLayoutFormEditorIdImport } from './routes/_app/_auth/dashboard/_layout.form-editor.$id'
 import { Route as AppAuthDashboardLayoutEmailTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.email-templates.new'
 import { Route as AppAuthDashboardLayoutEmailTemplatesTemplateIdImport } from './routes/_app/_auth/dashboard/_layout.email-templates.$templateId'
 import { Route as AppAuthDashboardLayoutContactsNewImport } from './routes/_app/_auth/dashboard/_layout.contacts.new'
@@ -226,13 +226,6 @@ const AppAuthOnboardingLayoutRoute = AppAuthOnboardingLayoutImport.update({
   getParentRoute: () => AppAuthOnboardingRoute,
 } as any)
 
-const AppAuthDashboardFormEditorRoute = AppAuthDashboardFormEditorImport.update(
-  {
-    path: '/form-editor',
-    getParentRoute: () => AppAuthDashboardRoute,
-  } as any,
-)
-
 const AppAuthDashboardLayoutRoute = AppAuthDashboardLayoutImport.update({
   id: '/_layout',
   getParentRoute: () => AppAuthDashboardRoute,
@@ -250,18 +243,6 @@ const AppAuthOnboardingLayoutUsernameRoute =
     getParentRoute: () => AppAuthOnboardingLayoutRoute,
   } as any)
 
-const AppAuthDashboardFormEditorNewRoute =
-  AppAuthDashboardFormEditorNewImport.update({
-    path: '/new',
-    getParentRoute: () => AppAuthDashboardFormEditorRoute,
-  } as any)
-
-const AppAuthDashboardFormEditorIdRoute =
-  AppAuthDashboardFormEditorIdImport.update({
-    path: '/$id',
-    getParentRoute: () => AppAuthDashboardFormEditorRoute,
-  } as any)
-
 const AppAuthDashboardLayoutSetupRoute =
   AppAuthDashboardLayoutSetupImport.update({
     path: '/setup',
@@ -271,6 +252,12 @@ const AppAuthDashboardLayoutSetupRoute =
 const AppAuthDashboardLayoutSettingsRoute =
   AppAuthDashboardLayoutSettingsImport.update({
     path: '/settings',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutFormEditorRoute =
+  AppAuthDashboardLayoutFormEditorImport.update({
+    path: '/form-editor',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
@@ -514,6 +501,18 @@ const AppAuthDashboardLayoutGabinetDocumentsRoute =
   AppAuthDashboardLayoutGabinetDocumentsImport.update({
     path: '/gabinet/documents',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutFormEditorNewRoute =
+  AppAuthDashboardLayoutFormEditorNewImport.update({
+    path: '/new',
+    getParentRoute: () => AppAuthDashboardLayoutFormEditorRoute,
+  } as any)
+
+const AppAuthDashboardLayoutFormEditorIdRoute =
+  AppAuthDashboardLayoutFormEditorIdImport.update({
+    path: '/$id',
+    getParentRoute: () => AppAuthDashboardLayoutFormEditorRoute,
   } as any)
 
 const AppAuthDashboardLayoutEmailTemplatesNewRoute =
@@ -785,13 +784,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutImport
       parentRoute: typeof AppAuthDashboardRoute
     }
-    '/_app/_auth/dashboard/form-editor': {
-      id: '/_app/_auth/dashboard/form-editor'
-      path: '/form-editor'
-      fullPath: '/dashboard/form-editor'
-      preLoaderRoute: typeof AppAuthDashboardFormEditorImport
-      parentRoute: typeof AppAuthDashboardImport
-    }
     '/_app/_auth/onboarding': {
       id: '/_app/_auth/onboarding'
       path: '/onboarding'
@@ -890,6 +882,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutDocumentsImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/form-editor': {
+      id: '/_app/_auth/dashboard/_layout/form-editor'
+      path: '/form-editor'
+      fullPath: '/dashboard/form-editor'
+      preLoaderRoute: typeof AppAuthDashboardLayoutFormEditorImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/settings': {
       id: '/_app/_auth/dashboard/_layout/settings'
       path: '/settings'
@@ -903,20 +902,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/setup'
       preLoaderRoute: typeof AppAuthDashboardLayoutSetupImport
       parentRoute: typeof AppAuthDashboardLayoutImport
-    }
-    '/_app/_auth/dashboard/form-editor/$id': {
-      id: '/_app/_auth/dashboard/form-editor/$id'
-      path: '/$id'
-      fullPath: '/dashboard/form-editor/$id'
-      preLoaderRoute: typeof AppAuthDashboardFormEditorIdImport
-      parentRoute: typeof AppAuthDashboardFormEditorImport
-    }
-    '/_app/_auth/dashboard/form-editor/new': {
-      id: '/_app/_auth/dashboard/form-editor/new'
-      path: '/new'
-      fullPath: '/dashboard/form-editor/new'
-      preLoaderRoute: typeof AppAuthDashboardFormEditorNewImport
-      parentRoute: typeof AppAuthDashboardFormEditorImport
     }
     '/_app/_auth/onboarding/_layout/username': {
       id: '/_app/_auth/onboarding/_layout/username'
@@ -973,6 +958,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/email-templates/new'
       preLoaderRoute: typeof AppAuthDashboardLayoutEmailTemplatesNewImport
       parentRoute: typeof AppAuthDashboardLayoutImport
+    }
+    '/_app/_auth/dashboard/_layout/form-editor/$id': {
+      id: '/_app/_auth/dashboard/_layout/form-editor/$id'
+      path: '/$id'
+      fullPath: '/dashboard/form-editor/$id'
+      preLoaderRoute: typeof AppAuthDashboardLayoutFormEditorIdImport
+      parentRoute: typeof AppAuthDashboardLayoutFormEditorImport
+    }
+    '/_app/_auth/dashboard/_layout/form-editor/new': {
+      id: '/_app/_auth/dashboard/_layout/form-editor/new'
+      path: '/new'
+      fullPath: '/dashboard/form-editor/new'
+      preLoaderRoute: typeof AppAuthDashboardLayoutFormEditorNewImport
+      parentRoute: typeof AppAuthDashboardLayoutFormEditorImport
     }
     '/_app/_auth/dashboard/_layout/gabinet/documents': {
       id: '/_app/_auth/dashboard/_layout/gabinet/documents'
@@ -1384,6 +1383,11 @@ export const routeTree = rootRoute.addChildren({
             AppAuthDashboardLayoutDocumentsRoute.addChildren({
               AppAuthDashboardLayoutDocumentsIndexRoute,
             }),
+          AppAuthDashboardLayoutFormEditorRoute:
+            AppAuthDashboardLayoutFormEditorRoute.addChildren({
+              AppAuthDashboardLayoutFormEditorIdRoute,
+              AppAuthDashboardLayoutFormEditorNewRoute,
+            }),
           AppAuthDashboardLayoutSettingsRoute:
             AppAuthDashboardLayoutSettingsRoute.addChildren({
               AppAuthDashboardLayoutSettingsActivityTypesRoute,
@@ -1457,11 +1461,6 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetPatientsIndexRoute,
           AppAuthDashboardLayoutGabinetTreatmentsIndexRoute,
         }),
-        AppAuthDashboardFormEditorRoute:
-          AppAuthDashboardFormEditorRoute.addChildren({
-            AppAuthDashboardFormEditorIdRoute,
-            AppAuthDashboardFormEditorNewRoute,
-          }),
       }),
       AppAuthOnboardingRoute: AppAuthOnboardingRoute.addChildren({
         AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRoute.addChildren({
@@ -1579,8 +1578,7 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard",
       "parent": "/_app/_auth",
       "children": [
-        "/_app/_auth/dashboard/_layout",
-        "/_app/_auth/dashboard/form-editor"
+        "/_app/_auth/dashboard/_layout"
       ]
     },
     "/_app/_auth/dashboard/_layout": {
@@ -1591,6 +1589,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/calendar-preview",
         "/_app/_auth/dashboard/_layout/checkout",
         "/_app/_auth/dashboard/_layout/documents",
+        "/_app/_auth/dashboard/_layout/form-editor",
         "/_app/_auth/dashboard/_layout/settings",
         "/_app/_auth/dashboard/_layout/setup",
         "/_app/_auth/dashboard/_layout/",
@@ -1628,14 +1627,6 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/packages/",
         "/_app/_auth/dashboard/_layout/gabinet/patients/",
         "/_app/_auth/dashboard/_layout/gabinet/treatments/"
-      ]
-    },
-    "/_app/_auth/dashboard/form-editor": {
-      "filePath": "_app/_auth/dashboard/form-editor.tsx",
-      "parent": "/_app/_auth/dashboard",
-      "children": [
-        "/_app/_auth/dashboard/form-editor/$id",
-        "/_app/_auth/dashboard/form-editor/new"
       ]
     },
     "/_app/_auth/onboarding": {
@@ -1703,6 +1694,14 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/documents/"
       ]
     },
+    "/_app/_auth/dashboard/_layout/form-editor": {
+      "filePath": "_app/_auth/dashboard/_layout.form-editor.tsx",
+      "parent": "/_app/_auth/dashboard/_layout",
+      "children": [
+        "/_app/_auth/dashboard/_layout/form-editor/$id",
+        "/_app/_auth/dashboard/_layout/form-editor/new"
+      ]
+    },
     "/_app/_auth/dashboard/_layout/settings": {
       "filePath": "_app/_auth/dashboard/_layout.settings.tsx",
       "parent": "/_app/_auth/dashboard/_layout",
@@ -1732,14 +1731,6 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/setup": {
       "filePath": "_app/_auth/dashboard/_layout.setup.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
-    },
-    "/_app/_auth/dashboard/form-editor/$id": {
-      "filePath": "_app/_auth/dashboard/form-editor.$id.tsx",
-      "parent": "/_app/_auth/dashboard/form-editor"
-    },
-    "/_app/_auth/dashboard/form-editor/new": {
-      "filePath": "_app/_auth/dashboard/form-editor.new.tsx",
-      "parent": "/_app/_auth/dashboard/form-editor"
     },
     "/_app/_auth/onboarding/_layout/username": {
       "filePath": "_app/_auth/onboarding/_layout.username.tsx",
@@ -1772,6 +1763,14 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/email-templates/new": {
       "filePath": "_app/_auth/dashboard/_layout.email-templates.new.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/form-editor/$id": {
+      "filePath": "_app/_auth/dashboard/_layout.form-editor.$id.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/form-editor"
+    },
+    "/_app/_auth/dashboard/_layout/form-editor/new": {
+      "filePath": "_app/_auth/dashboard/_layout.form-editor.new.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/form-editor"
     },
     "/_app/_auth/dashboard/_layout/gabinet/documents": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.tsx",

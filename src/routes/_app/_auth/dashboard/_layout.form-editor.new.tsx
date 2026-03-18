@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useRef, useCallback, lazy, Suspense } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
 import { Menu } from "lucide-react";
 import {
@@ -29,7 +28,6 @@ import {
 } from "@/components/documents/template-settings-sheet";
 import type { PdfmeDesignerHandle } from "@/components/documents/survey-creator-editor";
 import type { VariableField } from "@/lib/pdfme/variables";
-import type { Id } from "@cvx/_generated/dataModel";
 
 const PdfmeDesignerLazy = lazy(() =>
   import("@/components/documents/survey-creator-editor").then((m) => ({
@@ -37,31 +35,20 @@ const PdfmeDesignerLazy = lazy(() =>
   })),
 );
 
-export const Route = createFileRoute("/_app/_auth/dashboard/form-editor/$id")({
-  component: EditFormEditorPage,
+export const Route = createFileRoute("/_app/_auth/dashboard/_layout/form-editor/new")({
+  component: NewFormEditorPage,
 });
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-function EditFormEditorPage() {
+function NewFormEditorPage() {
   const { t } = useTranslation();
-  const { id } = Route.useParams();
   const navigate = useNavigate();
   const { organizationId } = useOrganization();
   const designerRef = useRef<PdfmeDesignerHandle>(null);
 
-  const templateId = id as Id<"formTemplates">;
-
-  const template = useConvexQuery(api.documents.templates.getById, {
-    organizationId,
-    templateId,
-  });
-
-  const updateTemplate = useMutation(api.documents.templates.update);
-
-  const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
@@ -69,52 +56,20 @@ function EditFormEditorPage() {
   const [formJson, setFormJson] = useState("{}");
   const [usedPaths, setUsedPaths] = useState<Set<string>>(new Set());
 
-  // Template metadata
+  // Template metadata (managed via settings sheet)
   const [settings, setSettings] = useState<TemplateSettings>({
     name: "",
     description: "",
     category: "custom" as FormCategory,
-    modules: [] as Module[],
+    modules: ["platform"] as Module[],
     entityTypes: [] as EntityType[],
     requiresSignature: false,
     signatureMethod: "click" as SignatureMethod,
     signerRole: "client" as SignerRole,
   });
 
-  // Initialize from loaded template
-  useEffect(() => {
-    if (template && !initialized) {
-      setSettings({
-        name: template.name,
-        description: template.description ?? "",
-        category: template.category as FormCategory,
-        modules: (template.modules ?? []) as Module[],
-        entityTypes: (template.entityTypes ?? []) as EntityType[],
-        requiresSignature: template.requiresSignature,
-        signatureMethod: (template.signatureConfig?.method ?? "click") as SignatureMethod,
-        signerRole: (template.signatureConfig?.signerRole ?? "client") as SignerRole,
-      });
-      setFormJson(template.formJson ?? "{}");
-
-      // Extract used paths from existing template
-      try {
-        const tpl = JSON.parse(template.formJson ?? "{}");
-        const paths = new Set<string>();
-        for (const page of tpl.schemas ?? []) {
-          for (const schema of page) {
-            if (typeof schema === "object" && schema !== null && "name" in schema) {
-              paths.add(schema.name as string);
-            }
-          }
-        }
-        setUsedPaths(paths);
-      } catch {
-        // ignore
-      }
-
-      setInitialized(true);
-    }
-  }, [template, initialized]);
+  // @ts-expect-error — TS2589 deep type instantiation in generated Convex API; resolves at runtime
+  const createTemplate = useMutation(api.documents.templates.create);
 
   const handleSave = async () => {
     if (!settings.name.trim()) {
@@ -123,13 +78,13 @@ function EditFormEditorPage() {
       return;
     }
 
+    // Get latest template from designer
     const latestJson = designerRef.current?.getTemplate() ?? formJson;
 
     setSaving(true);
     try {
-      await updateTemplate({
+      const templateId = await createTemplate({
         organizationId,
-        templateId,
         name: settings.name.trim(),
         description: settings.description.trim() || undefined,
         category: settings.category,
@@ -147,7 +102,11 @@ function EditFormEditorPage() {
           : {}),
       });
 
-      toast.success(t("settings.formTemplates.saved"));
+      toast.success(t("settings.formTemplates.created"));
+      navigate({
+        to: "/dashboard/form-editor/$id",
+        params: { id: templateId },
+      });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
@@ -158,6 +117,7 @@ function EditFormEditorPage() {
 
   const handleDesignerChange = useCallback((json: string) => {
     setFormJson(json);
+    // Sync used paths from the JSON
     try {
       const tpl = JSON.parse(json);
       const paths = new Set<string>();
@@ -177,6 +137,7 @@ function EditFormEditorPage() {
   const handleAddVariable = useCallback(
     (variable: VariableField) => {
       designerRef.current?.addField(variable);
+      // Optimistically add to used paths
       setUsedPaths((prev) => new Set([...prev, variable.path]));
     },
     [],
@@ -185,17 +146,6 @@ function EditFormEditorPage() {
   const handleBack = () => {
     navigate({ to: "/dashboard/settings/form-templates" });
   };
-
-  // Loading state
-  if (!template) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          {t("common.loading")}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -237,7 +187,7 @@ function EditFormEditorPage() {
         <div className="mx-2 h-5 w-px bg-border" />
 
         {/* Center: Template name input */}
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-center">
           <Input
             value={settings.name}
             onChange={(e) =>
@@ -246,17 +196,6 @@ function EditFormEditorPage() {
             placeholder={t("formEditor.namePlaceholder", "Nazwa szablonu...")}
             className="h-8 max-w-md border-transparent bg-transparent text-center text-sm font-medium hover:border-input focus:border-input"
           />
-          <Badge variant="outline" className="shrink-0 text-[10px]">
-            v{template.version}
-          </Badge>
-          <Badge
-            variant={template.isActive ? "default" : "secondary"}
-            className="shrink-0 text-[10px]"
-          >
-            {template.isActive
-              ? t("settings.formTemplates.statusActive")
-              : t("settings.formTemplates.statusInactive")}
-          </Badge>
         </div>
 
         <div className="mx-2 h-5 w-px bg-border" />
@@ -277,10 +216,12 @@ function EditFormEditorPage() {
         <Button
           size="sm"
           onClick={handleSave}
-          disabled={saving || !settings.name.trim()}
+          disabled={saving}
           className="min-w-[5rem]"
         >
-          {saving ? t("common.saving") : t("common.save")}
+          {saving
+            ? t("common.saving")
+            : t("formEditor.save", "Zapisz")}
         </Button>
       </header>
 
@@ -304,21 +245,18 @@ function EditFormEditorPage() {
 
         {/* PDFme Designer — fills all remaining space */}
         <div className="min-w-0 flex-1">
-          {initialized && (
-            <Suspense
-              fallback={
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  {t("common.loading")}
-                </div>
-              }
-            >
-              <PdfmeDesignerLazy
-                ref={designerRef}
-                initialTemplate={template.formJson}
-                onChange={handleDesignerChange}
-              />
-            </Suspense>
-          )}
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("common.loading")}
+              </div>
+            }
+          >
+            <PdfmeDesignerLazy
+              ref={designerRef}
+              onChange={handleDesignerChange}
+            />
+          </Suspense>
         </div>
       </div>
 

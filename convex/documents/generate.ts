@@ -1,5 +1,6 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { resolveScope, applyBindings, EntityType } from "./scopeResolver";
 
@@ -120,7 +121,41 @@ export const generateDocument = mutation({
       updatedAt: now,
     });
 
-    // TODO: If signature needed, send email to signer (Phase 4)
+    // If signature required, try to send signing email to the relevant entity
+    if (template.requiresSignature && signingToken) {
+      const scopeData = await resolveScope(
+        ctx,
+        args.organizationId,
+        args.entityType as EntityType,
+        args.entityId,
+      );
+      // Resolve signer email from scope — patient or contact entity
+      const patientData = scopeData.patient as
+        | Record<string, unknown>
+        | undefined;
+      const contactData = scopeData.contact as
+        | Record<string, unknown>
+        | undefined;
+      const signerEmail =
+        (patientData?.email as string | undefined) ??
+        (contactData?.email as string | undefined);
+      const signerName =
+        (patientData?.firstName as string | undefined) ??
+        (contactData?.firstName as string | undefined);
+
+      if (signerEmail) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.documents.signing.sendSigningEmailInternal,
+          {
+            documentId: docId,
+            recipientEmail: signerEmail,
+            recipientName: signerName,
+          },
+        );
+      }
+    }
+
     // TODO: Log activity on the entity (Phase 7)
 
     return { documentId: docId, status, signingToken };

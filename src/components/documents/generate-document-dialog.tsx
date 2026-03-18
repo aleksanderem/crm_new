@@ -165,7 +165,7 @@ export function GenerateDocumentDialog({
           t("documents.generated", "Dokument zostal wygenerowany"),
         );
         handleOpenChange(false);
-        onDocumentCreated?.(docId);
+        onDocumentCreated?.(docId.documentId);
       } catch (e: unknown) {
         const message =
           e instanceof Error ? e.message : "Wystapil blad";

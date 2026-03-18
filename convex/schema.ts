@@ -3,6 +3,7 @@ import { authTables } from "@convex-dev/auth/server";
 import { v, Infer } from "convex/values";
 import { createAutomationTables } from "./schema/automation";
 import { createCrmTables } from "./schema/crm";
+import { documentTables } from "./schema/documents";
 import { createGabinetTables } from "./schema/gabinet";
 import { createPlatformTables } from "./schema/platform";
 
@@ -571,6 +572,7 @@ const schema = defineSchema({
   ...crmTables,
   ...gabinetTables,
   ...automationTables,
+  ...documentTables,
 });
 
 export default schema;

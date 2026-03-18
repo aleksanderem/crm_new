@@ -570,6 +570,21 @@
       "amount": "Kwota",
       "description": "Opis",
       "descriptionPlaceholder": "Opis dokumentu..."
+    },
+    "signing": {
+      "loading": "Ładowanie dokumentu...",
+      "notFound": "Nie znaleziono dokumentu lub link wygasł.",
+      "expired": "Ten link do podpisu wygasł.",
+      "alreadySigned": "Ten dokument został już podpisany.",
+      "success": "Dokument podpisany",
+      "successMessage": "Dziękujemy! Twój podpis został zapisany.",
+      "reviewPrompt": "Zapoznaj się z dokumentem, a następnie złóż podpis.",
+      "signatureTitle": "Podpis",
+      "acknowledge": "Potwierdzam zapoznanie się z treścią dokumentu i wyrażam zgodę na jego podpisanie.",
+      "signButton": "Podpisz dokument",
+      "openPad": "Złóż podpis odręczny",
+      "signing": "Podpisywanie...",
+      "errorGeneric": "Wystąpił nieoczekiwany błąd"
     }
   },
   "products": {

@@ -570,6 +570,21 @@
       "amount": "Amount",
       "description": "Description",
       "descriptionPlaceholder": "Document description..."
+    },
+    "signing": {
+      "loading": "Loading document...",
+      "notFound": "Document not found or the link has expired.",
+      "expired": "This signing link has expired.",
+      "alreadySigned": "This document has already been signed.",
+      "success": "Document signed",
+      "successMessage": "Thank you! Your signature has been recorded.",
+      "reviewPrompt": "Please review the document, then sign below.",
+      "signatureTitle": "Signature",
+      "acknowledge": "I confirm that I have read the document and consent to signing it.",
+      "signButton": "Sign document",
+      "openPad": "Draw signature",
+      "signing": "Signing...",
+      "errorGeneric": "An unexpected error occurred"
     }
   },
   "products": {

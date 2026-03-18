@@ -1,19 +1,18 @@
 {
-  "session_id": "S0072",
-  "session_uuid": "db8b1e31-9f67-4b1e-a5ad-7a2e9c8f41d2",
-  "started_at": "2026-03-15T00:00:00Z",
-  "last_updated": "2026-03-15T15:06:20Z",
-  "status": "active",
-  "focus": "Implement shared activity envelope and automation RBAC follow-up in isolated worktree",
+  "session_id": "S0074",
+  "started_at": "2026-03-18T14:00:00Z",
+  "last_updated": "2026-03-18T14:45:00Z",
+  "status": "completed",
+  "focus": "Public document signing flow — Phase 4 of SurveyJS document system",
   "tasks_snapshot": {
-    "total": 2,
+    "total": 5,
     "not_started": 0,
-    "in_progress": 1,
-    "passing": 1,
+    "in_progress": 0,
+    "passing": 5,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": ["ACT-01"],
+  "active_task_ids": [],
   "blockers": [],
-  "notes": "S0072: Design/fact-check is complete. An isolated git worktree was created at .worktrees/shared-activity-envelope-rbac on branch feat/shared-activity-envelope-rbac; baseline app and Convex typechecks are clean, so implementation can proceed task-by-task from the approved plan."
+  "notes": "S0074: Implemented Phase 4 — public signing page at /sign/form/:token, signing email backend via Resend, auto-send on document generation, full EN/PL i18n. Zero new typecheck errors. Also fixed pre-existing docId shape bug in generate-document-dialog.tsx."
 }

@@ -17,6 +17,7 @@ import { Route as AppImport } from './routes/_app'
 import { Route as IndexImport } from './routes/index'
 import { Route as SignTokenImport } from './routes/sign.$token'
 import { Route as AppAuthImport } from './routes/_app/_auth'
+import { Route as SignFormTokenImport } from './routes/sign.form.$token'
 import { Route as AppPatientLoginImport } from './routes/_app/patient/login'
 import { Route as AppPatientLayoutImport } from './routes/_app/patient/_layout'
 import { Route as AppLoginLayoutImport } from './routes/_app/login/_layout'
@@ -59,6 +60,7 @@ import { Route as AppAuthDashboardLayoutSettingsPermissionsImport } from './rout
 import { Route as AppAuthDashboardLayoutSettingsOrganizationImport } from './routes/_app/_auth/dashboard/_layout.settings.organization'
 import { Route as AppAuthDashboardLayoutSettingsLostReasonsImport } from './routes/_app/_auth/dashboard/_layout.settings.lost-reasons'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
+import { Route as AppAuthDashboardLayoutSettingsFormTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates'
 import { Route as AppAuthDashboardLayoutSettingsEmailTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.email-templates'
 import { Route as AppAuthDashboardLayoutSettingsEmailSequencesImport } from './routes/_app/_auth/dashboard/_layout.settings.email-sequences'
 import { Route as AppAuthDashboardLayoutSettingsEmailEventsImport } from './routes/_app/_auth/dashboard/_layout.settings.email-events'
@@ -79,6 +81,7 @@ import { Route as AppAuthDashboardLayoutContactsNewImport } from './routes/_app/
 import { Route as AppAuthDashboardLayoutContactsContactIdImport } from './routes/_app/_auth/dashboard/_layout.contacts.$contactId'
 import { Route as AppAuthDashboardLayoutCompaniesNewImport } from './routes/_app/_auth/dashboard/_layout.companies.new'
 import { Route as AppAuthDashboardLayoutCompaniesCompanyIdImport } from './routes/_app/_auth/dashboard/_layout.companies.$companyId'
+import { Route as AppAuthDashboardLayoutSettingsFormTemplatesIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.index'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.index'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsIndexImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.index'
 import { Route as AppAuthDashboardLayoutGabinetTreatmentsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.index'
@@ -87,6 +90,8 @@ import { Route as AppAuthDashboardLayoutGabinetPackagesIndexImport } from './rou
 import { Route as AppAuthDashboardLayoutGabinetEmployeesIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.index'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.index'
 import { Route as AppAuthDashboardLayoutGabinetCalendarIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index'
+import { Route as AppAuthDashboardLayoutSettingsFormTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.new'
+import { Route as AppAuthDashboardLayoutSettingsFormTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.$id'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.new'
 import { Route as AppAuthDashboardLayoutSettingsDocumentTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.document-templates.$id'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsNewImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.new'
@@ -152,6 +157,11 @@ const AppAuthOnboardingRoute = AppAuthOnboardingImport.update({
 const AppAuthDashboardRoute = AppAuthDashboardImport.update({
   path: '/dashboard',
   getParentRoute: () => AppAuthRoute,
+} as any)
+
+const SignFormTokenRoute = SignFormTokenImport.update({
+  path: '/sign/form/$token',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const AppPatientLoginRoute = AppPatientLoginImport.update({
@@ -393,6 +403,12 @@ const AppAuthDashboardLayoutSettingsIntegrationsRoute =
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsFormTemplatesRoute =
+  AppAuthDashboardLayoutSettingsFormTemplatesImport.update({
+    path: '/form-templates',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsEmailTemplatesRoute =
   AppAuthDashboardLayoutSettingsEmailTemplatesImport.update({
     path: '/email-templates',
@@ -525,6 +541,12 @@ const AppAuthDashboardLayoutCompaniesCompanyIdRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsFormTemplatesIndexRoute =
+  AppAuthDashboardLayoutSettingsFormTemplatesIndexImport.update({
+    path: '/',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsFormTemplatesRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsDocumentTemplatesIndexRoute =
   AppAuthDashboardLayoutSettingsDocumentTemplatesIndexImport.update({
     path: '/document-templates/',
@@ -576,6 +598,18 @@ const AppAuthDashboardLayoutGabinetCalendarIndexRoute =
       './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index.lazy'
     ).then((d) => d.Route),
   )
+
+const AppAuthDashboardLayoutSettingsFormTemplatesNewRoute =
+  AppAuthDashboardLayoutSettingsFormTemplatesNewImport.update({
+    path: '/new',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsFormTemplatesRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsFormTemplatesIdRoute =
+  AppAuthDashboardLayoutSettingsFormTemplatesIdImport.update({
+    path: '/$id',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsFormTemplatesRoute,
+  } as any)
 
 const AppAuthDashboardLayoutSettingsDocumentTemplatesNewRoute =
   AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport.update({
@@ -756,6 +790,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/patient/login'
       preLoaderRoute: typeof AppPatientLoginImport
       parentRoute: typeof AppPatientImport
+    }
+    '/sign/form/$token': {
+      id: '/sign/form/$token'
+      path: '/sign/form/$token'
+      fullPath: '/sign/form/$token'
+      preLoaderRoute: typeof SignFormTokenImport
+      parentRoute: typeof rootRoute
     }
     '/_app/_auth/dashboard': {
       id: '/_app/_auth/dashboard'
@@ -1030,6 +1071,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsEmailTemplatesImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/form-templates': {
+      id: '/_app/_auth/dashboard/_layout/settings/form-templates'
+      path: '/form-templates'
+      fullPath: '/dashboard/settings/form-templates'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/integrations': {
       id: '/_app/_auth/dashboard/_layout/settings/integrations'
       path: '/integrations'
@@ -1282,6 +1330,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesNewImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/form-templates/$id': {
+      id: '/_app/_auth/dashboard/_layout/settings/form-templates/$id'
+      path: '/$id'
+      fullPath: '/dashboard/settings/form-templates/$id'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesIdImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/form-templates/new': {
+      id: '/_app/_auth/dashboard/_layout/settings/form-templates/new'
+      path: '/new'
+      fullPath: '/dashboard/settings/form-templates/new'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesNewImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/calendar/': {
       id: '/_app/_auth/dashboard/_layout/gabinet/calendar/'
       path: '/gabinet/calendar'
@@ -1338,6 +1400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentTemplatesIndexImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/form-templates/': {
+      id: '/_app/_auth/dashboard/_layout/settings/form-templates/'
+      path: '/'
+      fullPath: '/dashboard/settings/form-templates/'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesIndexImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId': {
       id: '/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId'
       path: '/gabinet/documents/templates/$templateId'
@@ -1382,6 +1451,12 @@ export const routeTree = rootRoute.addChildren({
               AppAuthDashboardLayoutSettingsEmailEventsRoute,
               AppAuthDashboardLayoutSettingsEmailSequencesRoute,
               AppAuthDashboardLayoutSettingsEmailTemplatesRoute,
+              AppAuthDashboardLayoutSettingsFormTemplatesRoute:
+                AppAuthDashboardLayoutSettingsFormTemplatesRoute.addChildren({
+                  AppAuthDashboardLayoutSettingsFormTemplatesIdRoute,
+                  AppAuthDashboardLayoutSettingsFormTemplatesNewRoute,
+                  AppAuthDashboardLayoutSettingsFormTemplatesIndexRoute,
+                }),
               AppAuthDashboardLayoutSettingsIntegrationsRoute,
               AppAuthDashboardLayoutSettingsLostReasonsRoute,
               AppAuthDashboardLayoutSettingsOrganizationRoute,
@@ -1467,6 +1542,7 @@ export const routeTree = rootRoute.addChildren({
     }),
   }),
   SignTokenRoute,
+  SignFormTokenRoute,
 })
 
 /* prettier-ignore-end */
@@ -1479,7 +1555,8 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/",
         "/_app",
-        "/sign/$token"
+        "/sign/$token",
+        "/sign/form/$token"
       ]
     },
     "/": {
@@ -1547,6 +1624,9 @@ export const routeTree = rootRoute.addChildren({
     "/_app/patient/login": {
       "filePath": "_app/patient/login.tsx",
       "parent": "/_app/patient"
+    },
+    "/sign/form/$token": {
+      "filePath": "sign.form.$token.tsx"
     },
     "/_app/_auth/dashboard": {
       "filePath": "_app/_auth/dashboard",
@@ -1679,6 +1759,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/email-events",
         "/_app/_auth/dashboard/_layout/settings/email-sequences",
         "/_app/_auth/dashboard/_layout/settings/email-templates",
+        "/_app/_auth/dashboard/_layout/settings/form-templates",
         "/_app/_auth/dashboard/_layout/settings/integrations",
         "/_app/_auth/dashboard/_layout/settings/lost-reasons",
         "/_app/_auth/dashboard/_layout/settings/organization",
@@ -1790,6 +1871,15 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/settings/email-templates": {
       "filePath": "_app/_auth/dashboard/_layout.settings.email-templates.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/form-templates": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.form-templates.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings",
+      "children": [
+        "/_app/_auth/dashboard/_layout/settings/form-templates/$id",
+        "/_app/_auth/dashboard/_layout/settings/form-templates/new",
+        "/_app/_auth/dashboard/_layout/settings/form-templates/"
+      ]
     },
     "/_app/_auth/dashboard/_layout/settings/integrations": {
       "filePath": "_app/_auth/dashboard/_layout.settings.integrations.tsx",
@@ -1935,6 +2025,14 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.new.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
+    "/_app/_auth/dashboard/_layout/settings/form-templates/$id": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.form-templates.$id.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/form-templates"
+    },
+    "/_app/_auth/dashboard/_layout/settings/form-templates/new": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.form-templates.new.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/form-templates"
+    },
     "/_app/_auth/dashboard/_layout/gabinet/calendar/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.calendar.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
@@ -1966,6 +2064,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/settings/document-templates/": {
       "filePath": "_app/_auth/dashboard/_layout.settings.document-templates.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/form-templates/": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.form-templates.index.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings/form-templates"
     },
     "/_app/_auth/dashboard/_layout/gabinet/documents/templates/$templateId": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.templates.$templateId.tsx",

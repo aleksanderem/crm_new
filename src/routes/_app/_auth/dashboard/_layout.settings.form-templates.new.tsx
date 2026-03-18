@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -11,13 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -25,9 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "@/lib/ez-icons";
+import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { getAvailableVariables } from "@cvx/documents/scopeResolver";
+
+const SurveyCreatorEditor = lazy(() =>
+  import("@/components/documents/survey-creator-editor").then((m) => ({
+    default: m.SurveyCreatorEditor,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/new",
@@ -102,6 +102,7 @@ function NewFormTemplatePage() {
   const { organizationId } = useOrganization();
 
   const [saving, setSaving] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(true);
 
   // Form state
   const [name, setName] = useState("");
@@ -207,9 +208,9 @@ function NewFormTemplatePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-4">
       {/* Header with breadcrumb */}
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
           <Link to="/dashboard/settings/form-templates">
             <ArrowLeft className="h-4 w-4" />
@@ -236,246 +237,201 @@ function NewFormTemplatePage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left column: metadata */}
-        <div className="space-y-6 lg:col-span-1">
-          {/* Basic info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t("settings.formTemplates.basicInfo")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="template-name">
-                  {t("settings.formTemplates.nameLabel")} *
-                </Label>
-                <Input
-                  id="template-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("settings.formTemplates.namePlaceholder")}
-                />
-              </div>
+      {/* Collapsible metadata section */}
+      <Card className="shrink-0">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-6 py-3"
+          onClick={() => setMetadataOpen((prev) => !prev)}
+        >
+          <span className="text-sm font-medium">
+            {t("settings.formTemplates.basicInfo")}
+            {name && (
+              <span className="ml-2 text-muted-foreground">— {name}</span>
+            )}
+          </span>
+          {metadataOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
 
-              <div className="space-y-2">
-                <Label htmlFor="template-description">
-                  {t("settings.formTemplates.descriptionLabel")}
-                </Label>
-                <Textarea
-                  id="template-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t(
-                    "settings.formTemplates.descriptionPlaceholder",
-                  )}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("settings.formTemplates.categoryLabel")}</Label>
-                <Select
-                  value={category}
-                  onValueChange={(v) => setCategory(v as FormCategory)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {t(`settings.formTemplates.categories.${cat}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Modules */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t("settings.formTemplates.modulesLabel")}
-              </CardTitle>
-              <CardDescription>
-                {t("settings.formTemplates.modulesDescription")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {MODULE_OPTIONS.map((mod) => (
-                <div key={mod} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`module-${mod}`}
-                    checked={modules.includes(mod)}
-                    onCheckedChange={() => toggleModule(mod)}
+        {metadataOpen && (
+          <CardContent className="border-t pt-4">
+            <div className="grid gap-6 lg:grid-cols-4">
+              {/* Basic info */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-name">
+                    {t("settings.formTemplates.nameLabel")} *
+                  </Label>
+                  <Input
+                    id="template-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("settings.formTemplates.namePlaceholder")}
                   />
-                  <Label htmlFor={`module-${mod}`} className="font-normal">
-                    {t(`settings.formTemplates.modules.${mod}`)}
-                  </Label>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
 
-          {/* Entity types */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t("settings.formTemplates.entityTypesLabel")}
-              </CardTitle>
-              <CardDescription>
-                {t("settings.formTemplates.entityTypesDescription")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {ENTITY_TYPE_OPTIONS.map((et) => (
-                <div key={et} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`entity-${et}`}
-                    checked={entityTypes.includes(et)}
-                    onCheckedChange={() => toggleEntityType(et)}
+                <div className="space-y-2">
+                  <Label htmlFor="template-description">
+                    {t("settings.formTemplates.descriptionLabel")}
+                  </Label>
+                  <Textarea
+                    id="template-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={t(
+                      "settings.formTemplates.descriptionPlaceholder",
+                    )}
+                    rows={2}
                   />
-                  <Label htmlFor={`entity-${et}`} className="font-normal">
-                    {t(`settings.formTemplates.entityTypes.${et}`)}
-                  </Label>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
 
-          {/* Signature */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t("settings.formTemplates.signatureTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="requires-signature"
-                  checked={requiresSignature}
-                  onCheckedChange={setRequiresSignature}
-                />
-                <Label htmlFor="requires-signature" className="font-normal">
-                  {t("settings.formTemplates.requiresSignature")}
+                <div className="space-y-2">
+                  <Label>{t("settings.formTemplates.categoryLabel")}</Label>
+                  <Select
+                    value={category}
+                    onValueChange={(v) => setCategory(v as FormCategory)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {t(`settings.formTemplates.categories.${cat}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Modules */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">
+                  {t("settings.formTemplates.modulesLabel")}
                 </Label>
+                {MODULE_OPTIONS.map((mod) => (
+                  <div key={mod} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`module-${mod}`}
+                      checked={modules.includes(mod)}
+                      onCheckedChange={() => toggleModule(mod)}
+                    />
+                    <Label htmlFor={`module-${mod}`} className="font-normal">
+                      {t(`settings.formTemplates.modules.${mod}`)}
+                    </Label>
+                  </div>
+                ))}
               </div>
 
-              {requiresSignature && (
-                <div className="space-y-4 border-t pt-4">
-                  <div className="space-y-2">
-                    <Label>
-                      {t("settings.formTemplates.signatureMethodLabel")}
+              {/* Entity types */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">
+                  {t("settings.formTemplates.entityTypesLabel")}
+                </Label>
+                {ENTITY_TYPE_OPTIONS.map((et) => (
+                  <div key={et} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`entity-${et}`}
+                      checked={entityTypes.includes(et)}
+                      onCheckedChange={() => toggleEntityType(et)}
+                    />
+                    <Label htmlFor={`entity-${et}`} className="font-normal">
+                      {t(`settings.formTemplates.entityTypes.${et}`)}
                     </Label>
-                    <Select
-                      value={signatureMethod}
-                      onValueChange={(v) =>
-                        setSignatureMethod(v as SignatureMethod)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SIGNATURE_METHOD_OPTIONS.map((method) => (
-                          <SelectItem key={method} value={method}>
-                            {t(
-                              `settings.formTemplates.signatureMethods.${method}`,
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
+                ))}
+              </div>
 
-                  <div className="space-y-2">
-                    <Label>
-                      {t("settings.formTemplates.signerRoleLabel")}
-                    </Label>
-                    <Select
-                      value={signerRole}
-                      onValueChange={(v) => setSignerRole(v as SignerRole)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SIGNER_ROLE_OPTIONS.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {t(
-                              `settings.formTemplates.signerRoles.${role}`,
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right column: form JSON + variables */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Form JSON editor */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t("settings.formTemplates.formJsonTitle")}
-              </CardTitle>
-              <CardDescription>
-                {t("settings.formTemplates.formJsonDescription")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="form-json">
-                    {t("settings.formTemplates.formJsonLabel")}
+              {/* Signature */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="requires-signature"
+                    checked={requiresSignature}
+                    onCheckedChange={setRequiresSignature}
+                  />
+                  <Label htmlFor="requires-signature" className="font-normal">
+                    {t("settings.formTemplates.requiresSignature")}
                   </Label>
-                  {!isFormJsonValid && (
-                    <Badge variant="destructive" className="text-xs">
-                      {t("settings.formTemplates.invalidJson")}
-                    </Badge>
-                  )}
                 </div>
-                <Textarea
-                  id="form-json"
-                  value={formJson}
-                  onChange={(e) => setFormJson(e.target.value)}
-                  placeholder='{"pages": [{"name": "page1", "elements": []}]}'
-                  rows={20}
-                  className="font-mono text-sm"
-                />
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Variable bindings */}
-          {entityTypes.length > 0 && availableVariables.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {t("settings.formTemplates.variableBindingsTitle")}
-                </CardTitle>
-                <CardDescription>
-                  {t("settings.formTemplates.variableBindingsDescription")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+                {requiresSignature && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>
+                        {t("settings.formTemplates.signatureMethodLabel")}
+                      </Label>
+                      <Select
+                        value={signatureMethod}
+                        onValueChange={(v) =>
+                          setSignatureMethod(v as SignatureMethod)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SIGNATURE_METHOD_OPTIONS.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {t(
+                                `settings.formTemplates.signatureMethods.${method}`,
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>
+                        {t("settings.formTemplates.signerRoleLabel")}
+                      </Label>
+                      <Select
+                        value={signerRole}
+                        onValueChange={(v) => setSignerRole(v as SignerRole)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SIGNER_ROLE_OPTIONS.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {t(
+                                `settings.formTemplates.signerRoles.${role}`,
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Variable bindings — shown when entity types are selected */}
+            {entityTypes.length > 0 && availableVariables.length > 0 && (
+              <div className="mt-6 border-t pt-4">
+                <div className="mb-3">
+                  <Label className="text-sm font-medium">
+                    {t("settings.formTemplates.variableBindingsTitle")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.formTemplates.variableBindingsDescription")}
+                  </p>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
                   {availableVariables.map((variable) => (
                     <div
                       key={variable.path}
                       className="flex items-center gap-3"
                     >
-                      <div className="min-w-[200px]">
+                      <div className="min-w-[180px]">
                         <div className="text-sm font-medium">
                           {variable.label}
                         </div>
@@ -507,10 +463,23 @@ function NewFormTemplatePage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Survey Creator editor — takes remaining viewport height */}
+      <div className="min-h-0 flex-1">
+        <Suspense
+          fallback={
+            <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
+              {t("common.loading")}
+            </div>
+          }
+        >
+          <SurveyCreatorEditor onChange={(json) => setFormJson(json)} />
+        </Suspense>
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Settings, PanelLeft, Menu } from "@/lib/ez-icons";
+import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
+import { Menu } from "lucide-react";
 import {
   Sheet,
   SheetContent,

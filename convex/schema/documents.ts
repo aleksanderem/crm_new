@@ -1,0 +1,118 @@
+import { defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export const formCategoryValidator = v.union(
+  v.literal("consent"),
+  v.literal("medical_record"),
+  v.literal("prescription"),
+  v.literal("referral"),
+  v.literal("contract"),
+  v.literal("invoice"),
+  v.literal("protocol"),
+  v.literal("intake"),
+  v.literal("custom"),
+);
+
+export const formDocumentStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("pending_signature"),
+  v.literal("signed"),
+  v.literal("completed"),
+  v.literal("expired"),
+  v.literal("voided"),
+);
+
+export const signatureMethodValidator = v.union(
+  v.literal("click"),
+  v.literal("sms"),
+  v.literal("email_otp"),
+  v.literal("draw"),
+);
+
+export const signerRoleValidator = v.union(
+  v.literal("client"),
+  v.literal("patient"),
+  v.literal("employee"),
+  v.literal("external"),
+);
+
+export const documentTables = {
+  formTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: formCategoryValidator,
+    // SurveyJS JSON schema — the entire form definition
+    formJson: v.string(),
+    // Theme/styling JSON
+    themeJson: v.optional(v.string()),
+    // Which modules can use this template
+    modules: v.array(v.string()),
+    // Which entity types this template applies to
+    entityTypes: v.array(v.string()),
+    // Variable bindings: map SurveyJS question names → entity field paths
+    // JSON stringified Record<string, string>
+    variableBindings: v.optional(v.string()),
+    // Signature config
+    requiresSignature: v.boolean(),
+    signatureConfig: v.optional(v.object({
+      method: signatureMethodValidator,
+      signerRole: signerRoleValidator,
+      reminderEnabled: v.optional(v.boolean()),
+      reminderIntervalHours: v.optional(v.number()),
+    })),
+    // Access control — which roles can use this template
+    accessRoles: v.optional(v.array(v.string())),
+    // Versioning
+    version: v.number(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndCategory", ["organizationId", "category"])
+    .searchIndex("search_templates", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
+
+  formDocuments: defineTable({
+    organizationId: v.id("organizations"),
+    templateId: v.id("formTemplates"),
+    title: v.string(),
+    // SurveyJS response data — all filled field values as JSON string
+    responseData: v.string(),
+    // Entity linkage — polymorphic
+    entityType: v.string(),
+    entityId: v.string(),
+    // Additional scope entities that provided auto-fill data
+    scopeEntities: v.optional(v.string()),
+    // Status
+    status: formDocumentStatusValidator,
+    // Signature data
+    signatureData: v.optional(v.string()),
+    signedAt: v.optional(v.number()),
+    signedByName: v.optional(v.string()),
+    signedByEmail: v.optional(v.string()),
+    signedByIp: v.optional(v.string()),
+    signatureVerificationMethod: v.optional(v.string()),
+    // Signing token for external signing page
+    signingToken: v.optional(v.string()),
+    signingTokenExpiresAt: v.optional(v.number()),
+    signingEmailSentAt: v.optional(v.number()),
+    signingReminderCount: v.optional(v.number()),
+    // PDF
+    pdfStorageId: v.optional(v.id("_storage")),
+    pdfGeneratedAt: v.optional(v.number()),
+    // Metadata
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_entity", ["entityType", "entityId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_template", ["templateId"])
+    .index("by_signingToken", ["signingToken"]),
+};

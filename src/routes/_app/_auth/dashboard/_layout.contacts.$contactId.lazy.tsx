@@ -14,6 +14,7 @@ import { ActivityForm } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { LeadForm } from "@/components/forms/lead-form";
+import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -1119,37 +1120,13 @@ function ContactDetail() {
 
                     {scheduledActivitiesData &&
                     scheduledActivitiesData.length > 0 ? (
-                      <ul className="space-y-3">
-                        {scheduledActivitiesData.map((activity) => (
-                          <li
-                            key={activity._id}
-                            className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => {
-                              setSelectedActivityId(activity._id);
-                              setActivityDrawerOpen(true);
-                            }}
-                          >
-                            <div
-                              className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                                activity.isCompleted
-                                  ? "bg-green-500"
-                                  : "bg-orange-400"
-                              }`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">
-                                {activity.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {activity.activityType} &middot;{" "}
-                                {new Date(
-                                  activity.dueDate
-                                ).toLocaleDateString("pl-PL")}
-                              </p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      <ScheduledActivitiesList
+                        activities={scheduledActivitiesData}
+                        onActivityClick={(id) => {
+                          setSelectedActivityId(id);
+                          setActivityDrawerOpen(true);
+                        }}
+                      />
                     ) : (
                       !showActivityForm && (
                         <p className="text-sm text-muted-foreground">

@@ -72,6 +72,7 @@ import { Route as AppAuthDashboardLayoutSettingsActivityTypesImport } from './ro
 import { Route as AppAuthDashboardLayoutLeadsNewImport } from './routes/_app/_auth/dashboard/_layout.leads.new'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
 import { Route as AppAuthDashboardLayoutGabinetReportsImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
+import { Route as AppAuthDashboardLayoutGabinetDocumentsImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
 import { Route as AppAuthDashboardLayoutEmailTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.email-templates.new'
 import { Route as AppAuthDashboardLayoutEmailTemplatesTemplateIdImport } from './routes/_app/_auth/dashboard/_layout.email-templates.$templateId'
 import { Route as AppAuthDashboardLayoutContactsNewImport } from './routes/_app/_auth/dashboard/_layout.contacts.new'
@@ -84,6 +85,7 @@ import { Route as AppAuthDashboardLayoutGabinetTreatmentsIndexImport } from './r
 import { Route as AppAuthDashboardLayoutGabinetPatientsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.index'
 import { Route as AppAuthDashboardLayoutGabinetPackagesIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.packages.index'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.index'
+import { Route as AppAuthDashboardLayoutGabinetDocumentsIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents.index'
 import { Route as AppAuthDashboardLayoutGabinetCalendarIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.calendar.index'
 import { Route as AppAuthDashboardLayoutSettingsFormTemplatesNewImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.new'
 import { Route as AppAuthDashboardLayoutSettingsFormTemplatesIdImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.$id'
@@ -472,6 +474,12 @@ const AppAuthDashboardLayoutGabinetReportsRoute =
     ),
   )
 
+const AppAuthDashboardLayoutGabinetDocumentsRoute =
+  AppAuthDashboardLayoutGabinetDocumentsImport.update({
+    path: '/gabinet/documents',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 const AppAuthDashboardLayoutEmailTemplatesNewRoute =
   AppAuthDashboardLayoutEmailTemplatesNewImport.update({
     path: '/email-templates/new',
@@ -546,6 +554,12 @@ const AppAuthDashboardLayoutGabinetEmployeesIndexRoute =
   AppAuthDashboardLayoutGabinetEmployeesIndexImport.update({
     path: '/gabinet/employees/',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetDocumentsIndexRoute =
+  AppAuthDashboardLayoutGabinetDocumentsIndexImport.update({
+    path: '/',
+    getParentRoute: () => AppAuthDashboardLayoutGabinetDocumentsRoute,
   } as any)
 
 const AppAuthDashboardLayoutGabinetCalendarIndexRoute =
@@ -896,6 +910,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutEmailTemplatesNewImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/documents': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/documents'
+      path: '/gabinet/documents'
+      fullPath: '/dashboard/gabinet/documents'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDocumentsImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/reports': {
       id: '/_app/_auth/dashboard/_layout/gabinet/reports'
       path: '/gabinet/reports'
@@ -1225,6 +1246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetCalendarIndexImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/documents/': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/documents/'
+      path: '/'
+      fullPath: '/dashboard/gabinet/documents/'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDocumentsIndexImport
+      parentRoute: typeof AppAuthDashboardLayoutGabinetDocumentsImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/employees/': {
       id: '/_app/_auth/dashboard/_layout/gabinet/employees/'
       path: '/gabinet/employees'
@@ -1322,6 +1350,10 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutContactsNewRoute,
           AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute,
           AppAuthDashboardLayoutEmailTemplatesNewRoute,
+          AppAuthDashboardLayoutGabinetDocumentsRoute:
+            AppAuthDashboardLayoutGabinetDocumentsRoute.addChildren({
+              AppAuthDashboardLayoutGabinetDocumentsIndexRoute,
+            }),
           AppAuthDashboardLayoutGabinetReportsRoute,
           AppAuthDashboardLayoutLeadsLeadIdRoute,
           AppAuthDashboardLayoutLeadsNewRoute,
@@ -1486,6 +1518,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/contacts/new",
         "/_app/_auth/dashboard/_layout/email-templates/$templateId",
         "/_app/_auth/dashboard/_layout/email-templates/new",
+        "/_app/_auth/dashboard/_layout/gabinet/documents",
         "/_app/_auth/dashboard/_layout/gabinet/reports",
         "/_app/_auth/dashboard/_layout/leads/$leadId",
         "/_app/_auth/dashboard/_layout/leads/new",
@@ -1634,6 +1667,13 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/email-templates/new": {
       "filePath": "_app/_auth/dashboard/_layout.email-templates.new.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/documents": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.tsx",
+      "parent": "/_app/_auth/dashboard/_layout",
+      "children": [
+        "/_app/_auth/dashboard/_layout/gabinet/documents/"
+      ]
     },
     "/_app/_auth/dashboard/_layout/gabinet/reports": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.reports.tsx",
@@ -1832,6 +1872,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/gabinet/calendar/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.calendar.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/documents/": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.documents.index.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/gabinet/documents"
     },
     "/_app/_auth/dashboard/_layout/gabinet/employees/": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.employees.index.tsx",

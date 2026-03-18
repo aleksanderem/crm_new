@@ -533,7 +533,12 @@
       "draft": "Draft",
       "sent": "Sent",
       "accepted": "Accepted",
-      "lost": "Lost"
+      "lost": "Lost",
+      "pendingSignature": "Pending Signature",
+      "signed": "Signed",
+      "completed": "Completed",
+      "expired": "Expired",
+      "voided": "Voided"
     },
     "category": {
       "proposal": "Proposal",
@@ -2534,6 +2539,23 @@
       "startTime": "Start Time",
       "weeklySchedule": "Weekly Schedule",
       "working": "Working"
+    },
+    "formDocuments": {
+      "title": "Documents",
+      "description": "Patient and appointment form documents",
+      "manageTemplates": "Templates",
+      "searchPlaceholder": "Search by title...",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "emptyTitle": "No documents",
+      "emptyDescription": "Form documents will appear here after being generated from a patient or appointment.",
+      "colTitle": "Title",
+      "colCategory": "Category",
+      "colEntityType": "Type",
+      "colStatus": "Status",
+      "colCreatedAt": "Created",
+      "colCreatedBy": "Created by",
+      "templateNotFound": "Document template is not available."
     }
   },
   "customFields": {

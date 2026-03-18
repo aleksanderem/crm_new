@@ -533,7 +533,12 @@
       "draft": "Szkic",
       "sent": "Wysłany",
       "accepted": "Zaakceptowany",
-      "lost": "Utracony"
+      "lost": "Utracony",
+      "pendingSignature": "Do podpisu",
+      "signed": "Podpisany",
+      "completed": "Ukończony",
+      "expired": "Wygasły",
+      "voided": "Anulowany"
     },
     "category": {
       "proposal": "Oferta",
@@ -2543,6 +2548,23 @@
       "startTime": "Godzina rozpoczęcia",
       "weeklySchedule": "Grafik tygodniowy",
       "working": "Praca"
+    },
+    "formDocuments": {
+      "title": "Dokumenty",
+      "description": "Dokumenty formularzy pacjentów i wizyt",
+      "manageTemplates": "Szablony",
+      "searchPlaceholder": "Szukaj po tytule...",
+      "allStatuses": "Wszystkie statusy",
+      "allCategories": "Wszystkie kategorie",
+      "emptyTitle": "Brak dokumentów",
+      "emptyDescription": "Dokumenty formularzy pojawią się tutaj po ich wygenerowaniu z poziomu pacjenta lub wizyty.",
+      "colTitle": "Tytuł",
+      "colCategory": "Kategoria",
+      "colEntityType": "Typ",
+      "colStatus": "Status",
+      "colCreatedAt": "Data utworzenia",
+      "colCreatedBy": "Utworzony przez",
+      "templateNotFound": "Szablon dokumentu nie jest dostępny."
     }
   },
   "customFields": {

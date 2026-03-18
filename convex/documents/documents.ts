@@ -4,6 +4,32 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 
+export const listAll = query({
+  args: {
+    organizationId: v.id("organizations"),
+    status: v.optional(formDocumentStatusValidator),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    if (args.status) {
+      return await ctx.db
+        .query("formDocuments")
+        .withIndex("by_orgAndStatus", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("status", args.status!),
+        )
+        .order("desc")
+        .collect();
+    }
+    return await ctx.db
+      .query("formDocuments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .order("desc")
+      .collect();
+  },
+});
+
 export const listByEntity = query({
   args: {
     organizationId: v.id("organizations"),

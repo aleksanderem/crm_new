@@ -142,6 +142,7 @@ function buildConsentTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
+      content: "[Nazwa organizacji]",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -159,14 +160,14 @@ function buildConsentTemplate() {
       content: "Ja, ",
       fontSize: 10,
     }),
-    text("contact.firstName", 27, 46, 40, 7, { fontSize: 10 }),
-    text("contact.lastName", 68, 46, 50, 7, { fontSize: 10 }),
+    text("contact.firstName", 27, 46, 40, 7, { content: "[Imię kontaktu]", fontSize: 10 }),
+    text("contact.lastName", 68, 46, 50, 7, { content: "[Nazwisko kontaktu]", fontSize: 10 }),
 
     text("pesel_label", 15, 55, 18, 7, {
       content: "PESEL: ",
       fontSize: 10,
     }),
-    text("patient.pesel", 33, 55, 60, 7, { fontSize: 10 }),
+    text("patient.pesel", 33, 55, 60, 7, { content: "[PESEL pacjenta]", fontSize: 10 }),
 
     // Treatment info section
     text("treatment_header", 15, 68, 180, 7, {
@@ -180,7 +181,7 @@ function buildConsentTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("treatment.name", 42, 78, 153, 6, { fontSize: 10 }),
+    text("treatment.name", 42, 78, 153, 6, { content: "[Nazwa zabiegu]", fontSize: 10 }),
 
     text("treatment_desc_label", 15, 87, 25, 6, {
       content: "Opis:",
@@ -188,6 +189,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.description", 42, 87, 153, 18, {
+      content: "[Opis zabiegu]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -198,6 +200,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.contraindications", 15, 117, 180, 18, {
+      content: "[Przeciwwskazania]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -208,6 +211,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.aftercareInstructions", 15, 147, 180, 18, {
+      content: "[Zalecenia pozabiegowe]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -236,7 +240,7 @@ function buildConsentTemplate() {
       content: "Data:",
       fontSize: 10,
     }),
-    text("system.date_pl", 31, 215, 50, 7, { fontSize: 10 }),
+    text("system.date_pl", 31, 215, 50, 7, { content: "[Data]", fontSize: 10 }),
 
     // Signature line
     text("signature_label", 15, 235, 80, 7, {
@@ -249,8 +253,8 @@ function buildConsentTemplate() {
       content: "Wykonujący:",
       fontSize: 10,
     }),
-    text("employee.firstName", 141, 235, 25, 7, { fontSize: 10 }),
-    text("employee.lastName", 167, 235, 28, 7, { fontSize: 10 }),
+    text("employee.firstName", 141, 235, 25, 7, { content: "[Imię pracownika]", fontSize: 10 }),
+    text("employee.lastName", 167, 235, 28, 7, { content: "[Nazwisko pracownika]", fontSize: 10 }),
   ];
 
   const formJson = JSON.stringify({
@@ -289,6 +293,7 @@ function buildIntakeTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
+      content: "[Nazwa organizacji]",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -314,7 +319,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 45, 56, 60, 6, { fontSize: 10 }),
+    text("patient.firstName", 45, 56, 60, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
 
     // Last name
     text("lname_label", 110, 56, 30, 6, {
@@ -322,7 +327,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 145, 56, 50, 6, { fontSize: 10 }),
+    text("patient.lastName", 145, 56, 50, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
 
     // PESEL
     text("pesel_label", 15, 66, 20, 6, {
@@ -330,7 +335,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 45, 66, 60, 6, { fontSize: 10 }),
+    text("patient.pesel", 45, 66, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
 
     // Date of birth
     text("dob_label", 110, 66, 35, 6, {
@@ -338,7 +343,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.dateOfBirth", 150, 66, 45, 6, { fontSize: 10 }),
+    text("patient.dateOfBirth", 150, 66, 45, 6, { content: "[Data urodzenia]", fontSize: 10 }),
 
     // Gender
     text("gender_label", 15, 76, 15, 6, {
@@ -346,7 +351,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.gender", 45, 76, 40, 6, { fontSize: 10 }),
+    text("patient.gender", 45, 76, 40, 6, { content: "[Płeć]", fontSize: 10 }),
 
     // Blood type
     text("blood_label", 110, 76, 30, 6, {
@@ -354,7 +359,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.bloodType", 150, 76, 45, 6, { fontSize: 10 }),
+    text("patient.bloodType", 150, 76, 45, 6, { content: "[Grupa krwi]", fontSize: 10 }),
 
     // Allergies section
     text("allergies_header", 15, 90, 180, 7, {
@@ -363,6 +368,7 @@ function buildIntakeTemplate() {
       fontWeight: "bold",
     }),
     text("patient.allergies", 15, 99, 180, 20, {
+      content: "[Alergie]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -374,6 +380,7 @@ function buildIntakeTemplate() {
       fontWeight: "bold",
     }),
     text("patient.medicalNotes", 15, 133, 180, 25, {
+      content: "[Notatki medyczne]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -389,13 +396,13 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.email", 45, 174, 60, 6, { fontSize: 10 }),
+    text("patient.email", 45, 174, 60, 6, { content: "[Email pacjenta]", fontSize: 10 }),
     text("phone_label", 110, 174, 20, 6, {
       content: "Telefon:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.phone", 140, 174, 55, 6, { fontSize: 10 }),
+    text("patient.phone", 140, 174, 55, 6, { content: "[Telefon pacjenta]", fontSize: 10 }),
 
     // Address
     text("address_header", 15, 184, 180, 6, {
@@ -403,9 +410,9 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.address.street", 45, 184, 60, 6, { fontSize: 10 }),
-    text("patient.address.postalCode", 110, 184, 25, 6, { fontSize: 10 }),
-    text("patient.address.city", 140, 184, 55, 6, { fontSize: 10 }),
+    text("patient.address.street", 45, 184, 60, 6, { content: "[Ulica pacjenta]", fontSize: 10 }),
+    text("patient.address.postalCode", 110, 184, 25, 6, { content: "[Kod pocztowy pacjenta]", fontSize: 10 }),
+    text("patient.address.city", 140, 184, 55, 6, { content: "[Miasto pacjenta]", fontSize: 10 }),
 
     // Emergency contact section
     text("emergency_header", 15, 198, 180, 7, {
@@ -418,13 +425,13 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.emergencyContactName", 55, 208, 50, 6, { fontSize: 10 }),
+    text("patient.emergencyContactName", 55, 208, 50, 6, { content: "[Kontakt awaryjny — imię]", fontSize: 10 }),
     text("emergency_phone_label", 110, 208, 20, 6, {
       content: "Telefon:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.emergencyContactPhone", 140, 208, 55, 6, { fontSize: 10 }),
+    text("patient.emergencyContactPhone", 140, 208, 55, 6, { content: "[Kontakt awaryjny — telefon]", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 222, 180, 3, {
@@ -439,7 +446,7 @@ function buildIntakeTemplate() {
       content: "Data:",
       fontSize: 10,
     }),
-    text("system.date_pl", 31, 230, 50, 7, { fontSize: 10 }),
+    text("system.date_pl", 31, 230, 50, 7, { content: "[Data]", fontSize: 10 }),
   ];
 
   const formJson = JSON.stringify({
@@ -473,6 +480,7 @@ function buildPrescriptionTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
+      content: "[Nazwa organizacji]",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -491,7 +499,7 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 156, 46, 39, 6, { fontSize: 10 }),
+    text("system.date_pl", 156, 46, 39, 6, { content: "[Data]", fontSize: 10 }),
 
     // Patient section
     text("patient_header", 15, 46, 100, 7, {
@@ -504,21 +512,21 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 38, 56, 50, 6, { fontSize: 10 }),
+    text("patient.firstName", 38, 56, 50, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
 
     text("lname_label", 95, 56, 25, 6, {
       content: "Nazwisko:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 125, 56, 70, 6, { fontSize: 10 }),
+    text("patient.lastName", 125, 56, 70, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
 
     text("pesel_label", 15, 65, 20, 6, {
       content: "PESEL:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 38, 65, 60, 6, { fontSize: 10 }),
+    text("patient.pesel", 38, 65, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
 
     // Treatment
     text("treatment_label", 15, 78, 25, 6, {
@@ -526,7 +534,7 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("treatment.name", 42, 78, 153, 6, { fontSize: 10 }),
+    text("treatment.name", 42, 78, 153, 6, { content: "[Nazwa zabiegu]", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 88, 180, 3, {
@@ -545,6 +553,7 @@ function buildPrescriptionTemplate() {
 
     // Large prescription body area
     text("prescription_body", 15, 108, 180, 110, {
+      content: "[Wpisz treść recepty...]",
       fontSize: 11,
       lineHeight: 1.6,
     }),
@@ -565,11 +574,13 @@ function buildPrescriptionTemplate() {
       alignment: "right",
     }),
     text("employee.firstName", 110, 242, 40, 6, {
+      content: "[Imię pracownika]",
       fontSize: 10,
       alignment: "right",
     }),
-    text("employee.lastName", 152, 242, 43, 6, { fontSize: 10 }),
+    text("employee.lastName", 152, 242, 43, 6, { content: "[Nazwisko pracownika]", fontSize: 10 }),
     text("employee.licenseNumber", 110, 250, 85, 6, {
+      content: "[Numer licencji]",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
@@ -607,6 +618,7 @@ function buildReferralTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
+      content: "[Nazwa organizacji]",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -618,7 +630,7 @@ function buildReferralTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 156, 40, 39, 6, { fontSize: 10 }),
+    text("system.date_pl", 156, 40, 39, 6, { content: "[Data]", fontSize: 10 }),
 
     // Separator
     text("separator_1", 15, 48, 180, 3, {
@@ -640,21 +652,21 @@ function buildReferralTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 38, 66, 50, 6, { fontSize: 10 }),
+    text("patient.firstName", 38, 66, 50, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
 
     text("lname_label", 95, 66, 25, 6, {
       content: "Nazwisko:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 125, 66, 70, 6, { fontSize: 10 }),
+    text("patient.lastName", 125, 66, 70, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
 
     text("pesel_label", 15, 75, 20, 6, {
       content: "PESEL:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 38, 75, 60, 6, { fontSize: 10 }),
+    text("patient.pesel", 38, 75, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 85, 180, 3, {
@@ -672,6 +684,7 @@ function buildReferralTemplate() {
 
     // Large referral body area
     text("referral_body", 15, 104, 180, 110, {
+      content: "[Wpisz treść skierowania...]",
       fontSize: 11,
       lineHeight: 1.6,
     }),
@@ -691,6 +704,7 @@ function buildReferralTemplate() {
       fontWeight: "bold",
     }),
     text("appointment.notes", 50, 230, 145, 12, {
+      content: "[Notatki wizyty]",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -703,16 +717,19 @@ function buildReferralTemplate() {
       alignment: "right",
     }),
     text("employee.firstName", 110, 259, 40, 6, {
+      content: "[Imię pracownika]",
       fontSize: 10,
       alignment: "right",
     }),
-    text("employee.lastName", 152, 259, 43, 6, { fontSize: 10 }),
+    text("employee.lastName", 152, 259, 43, 6, { content: "[Nazwisko pracownika]", fontSize: 10 }),
     text("employee.specialization", 110, 267, 85, 6, {
+      content: "[Specjalizacja]",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
     }),
     text("employee.licenseNumber", 110, 274, 85, 6, {
+      content: "[Numer licencji]",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
@@ -750,6 +767,7 @@ function buildContractTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
+      content: "[Nazwa organizacji]",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -760,7 +778,7 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 31, 38, 50, 6, { fontSize: 10 }),
+    text("system.date_pl", 31, 38, 50, 6, { content: "[Data]", fontSize: 10 }),
 
     // Separator
     text("separator_1", 15, 47, 180, 3, {
@@ -783,20 +801,24 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("company.name", 15, 73, 85, 6, { fontSize: 10 }),
+    text("company.name", 15, 73, 85, 6, { content: "[Nazwa firmy]", fontSize: 10 }),
     text("company.address.street", 15, 80, 50, 6, {
+      content: "[Ulica firmy]",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.address.zip", 15, 86, 15, 6, {
+      content: "[Kod pocztowy firmy]",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.address.city", 32, 86, 50, 6, {
+      content: "[Miasto firmy]",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.phone", 15, 92, 50, 6, {
+      content: "[Telefon firmy]",
       fontSize: 9,
       fontColor: "#555555",
     }),
@@ -807,13 +829,15 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("contact.firstName", 110, 73, 35, 6, { fontSize: 10 }),
-    text("contact.lastName", 147, 73, 48, 6, { fontSize: 10 }),
+    text("contact.firstName", 110, 73, 35, 6, { content: "[Imię kontaktu]", fontSize: 10 }),
+    text("contact.lastName", 147, 73, 48, 6, { content: "[Nazwisko kontaktu]", fontSize: 10 }),
     text("contact.email", 110, 80, 85, 6, {
+      content: "[Email kontaktu]",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("contact.phone", 110, 86, 85, 6, {
+      content: "[Telefon kontaktu]",
       fontSize: 9,
       fontColor: "#555555",
     }),
@@ -830,15 +854,16 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("lead.title", 38, 114, 157, 6, { fontSize: 10 }),
+    text("lead.title", 38, 114, 157, 6, { content: "[Tytuł leada]", fontSize: 10 }),
 
     text("lead_value_label", 15, 123, 20, 6, {
       content: "Kwota:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("lead.value", 38, 123, 40, 6, { fontSize: 10 }),
+    text("lead.value", 38, 123, 40, 6, { content: "[Wartość leada]", fontSize: 10 }),
     text("lead.currency", 80, 123, 20, 6, {
+      content: "[Waluta]",
       fontSize: 10,
       fontColor: "#555555",
     }),
@@ -858,6 +883,7 @@ function buildContractTemplate() {
       fontWeight: "bold",
     }),
     text("contract_body", 15, 150, 180, 85, {
+      content: "[Wpisz warunki umowy...]",
       fontSize: 10,
       lineHeight: 1.5,
     }),

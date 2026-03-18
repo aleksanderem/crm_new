@@ -9,7 +9,6 @@ import {
   Phone,
   PlusCircle,
   Send,
-  Upload,
   UserPlus,
 } from "@/lib/ez-icons";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
@@ -42,8 +41,7 @@ const routeActions: Record<string, FooterAction[]> = {
     { labelKey: "nav.actions.logCall", icon: Phone, quickCreate: "call" },
   ],
   documents: [
-    { labelKey: "nav.actions.uploadDocument", icon: Upload, quickCreate: "document" },
-    { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/documents" },
+    { labelKey: "nav.actions.createFromTemplate", icon: PlusCircle, href: "/dashboard/settings/form-templates" },
   ],
   inbox: [
     { labelKey: "nav.actions.composeEmail", icon: Send, href: "/dashboard/inbox" },

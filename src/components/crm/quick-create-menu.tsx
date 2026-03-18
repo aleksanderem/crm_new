@@ -147,7 +147,7 @@ const entityItems: {
     descriptionKey: "quickCreate.itemDesc.document",
     icon: FileText,
     avatarColor: "bg-slate-600/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-400",
-    hasForm: true,
+    hasForm: false,
     group: "crm",
   },
   {

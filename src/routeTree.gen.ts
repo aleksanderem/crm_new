@@ -36,6 +36,7 @@ import { Route as AppAuthDashboardLayoutIndexImport } from './routes/_app/_auth/
 import { Route as AppAuthOnboardingLayoutUsernameImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSetupImport } from './routes/_app/_auth/dashboard/_layout.setup'
 import { Route as AppAuthDashboardLayoutSettingsImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutDocumentsImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCheckoutImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
 import { Route as AppAuthDashboardLayoutCalendarImport } from './routes/_app/_auth/dashboard/_layout.calendar'
@@ -46,6 +47,7 @@ import { Route as AppAuthDashboardLayoutLeadsIndexImport } from './routes/_app/_
 import { Route as AppAuthDashboardLayoutInboxIndexImport } from './routes/_app/_auth/dashboard/_layout.inbox.index'
 import { Route as AppAuthDashboardLayoutGabinetIndexImport } from './routes/_app/_auth/dashboard/_layout.gabinet.index'
 import { Route as AppAuthDashboardLayoutEmailTemplatesIndexImport } from './routes/_app/_auth/dashboard/_layout.email-templates.index'
+import { Route as AppAuthDashboardLayoutDocumentsIndexImport } from './routes/_app/_auth/dashboard/_layout.documents.index'
 import { Route as AppAuthDashboardLayoutContactsIndexImport } from './routes/_app/_auth/dashboard/_layout.contacts.index'
 import { Route as AppAuthDashboardLayoutCompaniesIndexImport } from './routes/_app/_auth/dashboard/_layout.companies.index'
 import { Route as AppAuthDashboardLayoutCallsIndexImport } from './routes/_app/_auth/dashboard/_layout.calls.index'
@@ -250,6 +252,12 @@ const AppAuthDashboardLayoutSettingsRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutDocumentsRoute =
+  AppAuthDashboardLayoutDocumentsImport.update({
+    path: '/documents',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 const AppAuthDashboardLayoutCheckoutRoute =
   AppAuthDashboardLayoutCheckoutImport.update({
     path: '/checkout',
@@ -308,6 +316,12 @@ const AppAuthDashboardLayoutEmailTemplatesIndexRoute =
   AppAuthDashboardLayoutEmailTemplatesIndexImport.update({
     path: '/email-templates/',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutDocumentsIndexRoute =
+  AppAuthDashboardLayoutDocumentsIndexImport.update({
+    path: '/',
+    getParentRoute: () => AppAuthDashboardLayoutDocumentsRoute,
   } as any)
 
 const AppAuthDashboardLayoutContactsIndexRoute =
@@ -840,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutCheckoutImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/documents': {
+      id: '/_app/_auth/dashboard/_layout/documents'
+      path: '/documents'
+      fullPath: '/dashboard/documents'
+      preLoaderRoute: typeof AppAuthDashboardLayoutDocumentsImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/settings': {
       id: '/_app/_auth/dashboard/_layout/settings'
       path: '/settings'
@@ -1099,6 +1120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutContactsIndexImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/documents/': {
+      id: '/_app/_auth/dashboard/_layout/documents/'
+      path: '/'
+      fullPath: '/dashboard/documents/'
+      preLoaderRoute: typeof AppAuthDashboardLayoutDocumentsIndexImport
+      parentRoute: typeof AppAuthDashboardLayoutDocumentsImport
+    }
     '/_app/_auth/dashboard/_layout/email-templates/': {
       id: '/_app/_auth/dashboard/_layout/email-templates/'
       path: '/email-templates'
@@ -1309,6 +1337,10 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutCalendarRoute,
           AppAuthDashboardLayoutCalendarPreviewRoute,
           AppAuthDashboardLayoutCheckoutRoute,
+          AppAuthDashboardLayoutDocumentsRoute:
+            AppAuthDashboardLayoutDocumentsRoute.addChildren({
+              AppAuthDashboardLayoutDocumentsIndexRoute,
+            }),
           AppAuthDashboardLayoutSettingsRoute:
             AppAuthDashboardLayoutSettingsRoute.addChildren({
               AppAuthDashboardLayoutSettingsActivityTypesRoute,
@@ -1509,6 +1541,7 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/calendar",
         "/_app/_auth/dashboard/_layout/calendar-preview",
         "/_app/_auth/dashboard/_layout/checkout",
+        "/_app/_auth/dashboard/_layout/documents",
         "/_app/_auth/dashboard/_layout/settings",
         "/_app/_auth/dashboard/_layout/setup",
         "/_app/_auth/dashboard/_layout/",
@@ -1605,6 +1638,13 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/checkout": {
       "filePath": "_app/_auth/dashboard/_layout.checkout.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/documents": {
+      "filePath": "_app/_auth/dashboard/_layout.documents.tsx",
+      "parent": "/_app/_auth/dashboard/_layout",
+      "children": [
+        "/_app/_auth/dashboard/_layout/documents/"
+      ]
     },
     "/_app/_auth/dashboard/_layout/settings": {
       "filePath": "_app/_auth/dashboard/_layout.settings.tsx",
@@ -1788,6 +1828,10 @@ export const routeTree = rootRoute.addChildren({
     "/_app/_auth/dashboard/_layout/contacts/": {
       "filePath": "_app/_auth/dashboard/_layout.contacts.index.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/documents/": {
+      "filePath": "_app/_auth/dashboard/_layout.documents.index.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/documents"
     },
     "/_app/_auth/dashboard/_layout/email-templates/": {
       "filePath": "_app/_auth/dashboard/_layout.email-templates.index.tsx",

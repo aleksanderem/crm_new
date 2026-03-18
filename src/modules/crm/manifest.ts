@@ -3,7 +3,6 @@ import {
   Building2,
   Calendar,
   CalendarCheck,
-  CheckCircle,
   ClipboardList,
   Clock,
   Download,
@@ -199,15 +198,8 @@ export const crmManifest: ModuleManifest = {
       titleKey: "nav.documents",
       matches: [{ to: "/dashboard/documents", fuzzy: true }],
       actions: [
-        {
-          labelKey: "nav.actions.uploadDocument",
-          icon: Upload,
-          quickCreate: "document",
-          permissionFeature: "documents",
-        },
-        { labelKey: "nav.actions.createFromTemplate", icon: FileText, dispatch: "createFromTemplate" },
+        { labelKey: "nav.actions.createFromTemplate", icon: FileText, href: "/dashboard/settings/form-templates" },
         { labelKey: "nav.actions.filterByType", icon: Filter, dispatch: "openFilter" },
-        { labelKey: "nav.actions.bulkActions", icon: CheckCircle, dispatch: "bulkActions" },
       ],
     },
     {

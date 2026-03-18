@@ -35,20 +35,20 @@ async function seedHandler(
   orgId: GenericId<"organizations">,
   userId: GenericId<"users">,
 ) {
-  // Idempotency — skip if org already has formTemplates
-  const existing = await ctx.db
+  // Get existing template names to avoid duplicates
+  const existingTemplates = await ctx.db
     .query("formTemplates")
     .withIndex("by_org", (q) => q.eq("organizationId", orgId))
-    .first();
-  if (existing) {
-    return { skipped: true, count: 0, message: "Form templates already seeded" };
-  }
+    .collect();
+  const existingNames = new Set(existingTemplates.map((t) => t.name));
 
   const now = Date.now();
   const templates = buildTemplates();
 
   let count = 0;
   for (const tmpl of templates) {
+    // Skip if template with same name already exists
+    if (existingNames.has(tmpl.name)) continue;
     await ctx.db.insert("formTemplates", {
       organizationId: orgId,
       ...tmpl,

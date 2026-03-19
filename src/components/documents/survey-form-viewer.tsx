@@ -44,7 +44,32 @@ export function PdfmeFormViewer({
       const { Viewer } = await import("@pdfme/ui");
       const { text, image, barcodes } = await import("@pdfme/schemas");
 
-      if (destroyed) return;
+      if (destroyed || !containerRef.current) return;
+
+      // Wait for container to have a real width (e.g., after Sheet animation)
+      const el = containerRef.current;
+      const waitForWidth = () =>
+        new Promise<void>((resolve) => {
+          if (el.offsetWidth > 200) {
+            resolve();
+            return;
+          }
+          const obs = new ResizeObserver((entries) => {
+            if (entries[0]?.contentRect.width > 200) {
+              obs.disconnect();
+              resolve();
+            }
+          });
+          obs.observe(el);
+          // Fallback timeout
+          setTimeout(() => {
+            obs.disconnect();
+            resolve();
+          }, 2000);
+        });
+
+      await waitForWidth();
+      if (destroyed || !containerRef.current) return;
 
       const template: Template = JSON.parse(templateJson);
       const inputs = [responseData];
@@ -74,7 +99,7 @@ export function PdfmeFormViewer({
 
   return (
     <div className="space-y-4">
-      <div ref={containerRef} className="min-h-[400px] w-full" />
+      <div ref={containerRef} className="h-[600px] w-full" />
       {signatureData && (
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground mb-2">

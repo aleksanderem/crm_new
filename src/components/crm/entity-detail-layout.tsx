@@ -282,7 +282,7 @@ export function EntityDetailLayout({
   };
 
   const tabsContent = (
-    <Tabs defaultValue={defaultTabValue} className="flex flex-1 flex-col">
+    <Tabs defaultValue={defaultTabValue} className="flex flex-1 flex-col min-h-0">
       <div className="shrink-0 border-b px-4 pt-2">
         {beforeTabs}
         <TabsList className="h-9 bg-transparent p-0">
@@ -306,7 +306,7 @@ export function EntityDetailLayout({
         )}
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         {tabs.map((tab) => (
           <TabsContent
             key={tab.label}
@@ -327,7 +327,7 @@ export function EntityDetailLayout({
         <div className="shrink-0 border-b p-4">
           <EntityDetailHeader {...headerProps} />
         </div>
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {tabsContent}
         </div>
       </div>

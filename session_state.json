@@ -1,18 +1,18 @@
 {
-  "session_id": "S0082",
-  "started_at": "2026-03-19T12:00:00Z",
-  "last_updated": "2026-03-19T12:30:00Z",
+  "session_id": "S0083",
+  "started_at": "2026-03-19T14:00:00Z",
+  "last_updated": "2026-03-19T14:45:00Z",
   "status": "completed",
-  "focus": "Add 'Find Nearest Slot' button to both appointment creation components",
+  "focus": "Redesign appointment creation dialog to Cal.com-style 3-panel layout",
   "tasks_snapshot": {
-    "total": 5,
+    "total": 3,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 5,
+    "passing": 3,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0082: Added findNextAvailableSlot query to scheduling.ts backend, added 'Znajdź najbliższy termin' button to both appointment-dialog.tsx and appointment-form.tsx, added PL/EN i18n keys. Typecheck passes with zero new errors."
+  "notes": "S0083: Rewrote appointment-dialog.tsx from a simple vertical form to a horizontal 3-panel Cal.com-style layout (left: treatment/employee/patient selectors + info card, center: calendar date picker, right: scrollable time slots + confirmation summary). Added 5 new i18n keys under calendarDialog namespace for PL/EN. Zero new typecheck errors (15 before = 15 after, all pre-existing)."
 }

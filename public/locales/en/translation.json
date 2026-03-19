@@ -2254,6 +2254,13 @@
       "tabs": {
         "bodyChart": "Body Chart",
         "details": "Details"
+      },
+      "calendarDialog": {
+        "selectTreatmentAndEmployee": "Select a treatment and employee to see available slots",
+        "selectDateForSlots": "Pick a date on the calendar to see available time slots",
+        "noSlotsForDay": "No available slots on this day",
+        "confirmBooking": "Book appointment",
+        "time": "Time"
       }
     },
     "appointmentDetail": {

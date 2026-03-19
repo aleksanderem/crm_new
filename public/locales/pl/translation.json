@@ -2263,6 +2263,13 @@
       "tabs": {
         "bodyChart": "Mapa ciała",
         "details": "Szczegóły"
+      },
+      "calendarDialog": {
+        "selectTreatmentAndEmployee": "Wybierz zabieg i pracownika, aby zobaczyć dostępne terminy",
+        "selectDateForSlots": "Wybierz datę w kalendarzu, aby zobaczyć wolne godziny",
+        "noSlotsForDay": "Brak dostępnych terminów w tym dniu",
+        "confirmBooking": "Umów wizytę",
+        "time": "Godzina"
       }
     },
     "appointmentDetail": {

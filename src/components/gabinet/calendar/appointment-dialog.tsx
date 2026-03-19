@@ -1,14 +1,17 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -17,16 +20,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock } from "@/lib/ez-icons";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Clock,
+  CheckIcon,
+  ChevronsUpDown,
+  Stethoscope,
+  StickyNote,
+  User,
+  Search,
+} from "@/lib/ez-icons";
 import { CalendarSearch } from "lucide-react";
-import { Id } from "@cvx/_generated/dataModel";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface AppointmentDialogProps {
   organizationId: Id<"organizations">;
@@ -36,6 +67,34 @@ interface AppointmentDialogProps {
   defaultTime?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Format price as Polish locale string (e.g. "350,00 zl") */
+function formatPrice(price: number | undefined | null): string {
+  if (price == null) return "";
+  return new Intl.NumberFormat("pl-PL", {
+    style: "currency",
+    currency: "PLN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
+
+/** Compute end time string from start + duration in minutes */
+function computeEndTime(start: string, durationMinutes: number): string {
+  const [h, m] = start.split(":").map(Number);
+  const total = h * 60 + m + durationMinutes;
+  const eh = Math.floor(total / 60);
+  const em = total % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function AppointmentDialog({
   organizationId,
   open,
@@ -43,98 +102,236 @@ export function AppointmentDialog({
   defaultDate,
   defaultTime,
 }: AppointmentDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
   const createAppointment = useMutation(api.gabinet.appointments.create);
+  const convex = useConvex();
+
+  // -------------------------------------------------------------------------
+  // Data queries
+  // -------------------------------------------------------------------------
 
   const { data: patients } = useQuery(
     convexQuery(api.gabinet.patients.list, {
       organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
+      paginationOpts: { numItems: 200, cursor: null },
+    }),
   );
 
   const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
+    convexQuery(api.gabinet.treatments.listActive, { organizationId }),
   );
 
   const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
+    convexQuery(api.gabinet.employees.listAll, {
+      organizationId,
+      activeOnly: true,
+    }),
   );
 
   const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
+    convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
-  const [patientId, setPatientId] = useState("");
+  // -------------------------------------------------------------------------
+  // State
+  // -------------------------------------------------------------------------
+
   const [treatmentId, setTreatmentId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [date, setDate] = useState(defaultDate ?? new Date().toISOString().split("T")[0]);
-  const [startTime, setStartTime] = useState(defaultTime ?? "09:00");
-  const [endTime, setEndTime] = useState("09:30");
+  const [patientId, setPatientId] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
+  );
+  const [selectedSlot, setSelectedSlot] = useState<{
+    start: string;
+    end: string;
+  } | null>(defaultTime ? { start: defaultTime, end: "" } : null);
   const [notes, setNotes] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("weekly");
   const [recurringCount, setRecurringCount] = useState(4);
   const [submitting, setSubmitting] = useState(false);
   const [searchingSlot, setSearchingSlot] = useState(false);
-  const convex = useConvex();
 
-  // Resolve user names for employees
+  // Combobox open states
+  const [treatmentOpen, setTreatmentOpen] = useState(false);
+  const [patientOpen, setPatientOpen] = useState(false);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+
+  // -------------------------------------------------------------------------
+  // Derived data
+  // -------------------------------------------------------------------------
+
   const userMap = useMemo(() => {
-    const map = new Map<string, { name?: string | null; email?: string | null }>();
+    const map = new Map<
+      string,
+      { name?: string | null; email?: string | null }
+    >();
     members?.forEach((m) => {
       if (m.user) map.set(m.userId, m.user);
     });
     return map;
   }, [members]);
 
-  function getEmployeeDisplayName(emp: { firstName?: string; lastName?: string; userId: string; specialization?: string; role: string }) {
-    if (emp.firstName || emp.lastName) {
-      return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
-    }
-    const user = userMap.get(emp.userId);
-    return user?.name || user?.email || emp.specialization || emp.role;
-  }
+  const getEmployeeDisplayName = useCallback(
+    (emp: {
+      firstName?: string;
+      lastName?: string;
+      userId: string;
+      specialization?: string;
+      role: string;
+    }) => {
+      if (emp.firstName || emp.lastName) {
+        return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
+      }
+      const user = userMap.get(emp.userId);
+      return user?.name || user?.email || emp.specialization || emp.role;
+    },
+    [userMap],
+  );
 
-  // Query available slots when employee + date + treatment are selected
-  const selectedTreatment = treatments?.find((t) => t._id === treatmentId);
-  const { data: availableSlots } = useQuery({
+  const selectedTreatment = useMemo(
+    () => treatments?.find((tr) => tr._id === treatmentId),
+    [treatments, treatmentId],
+  );
+
+  const selectedPatient = useMemo(
+    () => (patients?.page ?? []).find((p) => p._id === patientId),
+    [patients, patientId],
+  );
+
+  const selectedEmployee = useMemo(() => {
+    if (!employeeId || !employees) return undefined;
+    return employees.find((e) => e.userId === employeeId);
+  }, [employees, employeeId]);
+
+  // Filter employees by treatment qualification
+  const qualifiedEmployees = useMemo(() => {
+    if (!employees) return [];
+    if (!treatmentId) return employees;
+    return employees.filter(
+      (emp) =>
+        emp.qualifiedTreatmentIds.length === 0 ||
+        emp.qualifiedTreatmentIds.includes(
+          treatmentId as Id<"gabinetTreatments">,
+        ),
+    );
+  }, [employees, treatmentId]);
+
+  // Filter patients by search
+  const filteredPatients = useMemo(() => {
+    const all = patients?.page ?? [];
+    if (!patientSearch.trim()) return all;
+    const q = patientSearch.toLowerCase();
+    return all.filter(
+      (p) =>
+        (p.firstName ?? "").toLowerCase().includes(q) ||
+        (p.lastName ?? "").toLowerCase().includes(q) ||
+        (p.email ?? "").toLowerCase().includes(q) ||
+        (p.phone ?? "").toLowerCase().includes(q),
+    );
+  }, [patients, patientSearch]);
+
+  // Filter treatments by search
+  const filteredTreatments = useMemo(() => {
+    const all = treatments ?? [];
+    if (!treatmentSearch.trim()) return all;
+    const q = treatmentSearch.toLowerCase();
+    return all.filter((tr) => (tr.name ?? "").toLowerCase().includes(q));
+  }, [treatments, treatmentSearch]);
+
+  const dateStr = selectedDate
+    ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
+    : "";
+
+  // Available slots query
+  const { data: availableSlots, isLoading: slotsLoading } = useQuery({
     ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
       organizationId,
       userId: employeeId as Id<"users">,
-      date,
+      date: dateStr,
       duration: selectedTreatment?.duration ?? 30,
     }),
-    enabled: !!employeeId && !!date && !!selectedTreatment,
+    enabled: !!employeeId && !!dateStr && !!selectedTreatment,
   });
 
-  // Auto-set end time based on treatment duration
-  const handleTreatmentChange = (tid: string) => {
-    setTreatmentId(tid);
-    const treatment = treatments?.find((t) => t._id === tid);
-    if (treatment && startTime) {
-      const [h, m] = startTime.split(":").map(Number);
-      const endMinutes = h * 60 + m + treatment.duration;
-      const eh = Math.floor(endMinutes / 60);
-      const em = endMinutes % 60;
-      setEndTime(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
-    }
-  };
+  // -------------------------------------------------------------------------
+  // Auto-select employee when only one qualified
+  // -------------------------------------------------------------------------
 
-  const handleFindSlot = async () => {
+  useEffect(() => {
+    if (qualifiedEmployees.length === 1 && !employeeId) {
+      setEmployeeId(qualifiedEmployees[0].userId);
+    }
+  }, [qualifiedEmployees, employeeId]);
+
+  // -------------------------------------------------------------------------
+  // Reset downstream state when upstream selection changes
+  // -------------------------------------------------------------------------
+
+  const handleTreatmentSelect = useCallback(
+    (tid: string) => {
+      setTreatmentId(tid);
+      setTreatmentOpen(false);
+      setTreatmentSearch("");
+      // Reset employee if no longer qualified
+      if (employeeId && employees) {
+        const emp = employees.find((e) => e.userId === employeeId);
+        if (
+          emp &&
+          emp.qualifiedTreatmentIds.length > 0 &&
+          !emp.qualifiedTreatmentIds.includes(tid as Id<"gabinetTreatments">)
+        ) {
+          setEmployeeId("");
+          setSelectedSlot(null);
+        }
+      }
+    },
+    [employeeId, employees],
+  );
+
+  const handleEmployeeSelect = useCallback((eid: string) => {
+    setEmployeeId(eid);
+    setSelectedSlot(null);
+  }, []);
+
+  const handleDateSelect = useCallback((date: Date | undefined) => {
+    setSelectedDate(date);
+    setSelectedSlot(null);
+  }, []);
+
+  const handleSlotSelect = useCallback(
+    (slot: { start: string; end: string }) => {
+      setSelectedSlot(slot);
+    },
+    [],
+  );
+
+  // -------------------------------------------------------------------------
+  // Find nearest slot
+  // -------------------------------------------------------------------------
+
+  const handleFindSlot = useCallback(async () => {
     if (!employeeId || !selectedTreatment) return;
     setSearchingSlot(true);
     try {
-      const result = await convex.query(api.gabinet.scheduling.findNextAvailableSlot, {
-        organizationId,
-        employeeId: employeeId as Id<"users">,
-        durationMinutes: selectedTreatment.duration,
-        fromDate: date || new Date().toISOString().split("T")[0],
-      });
+      const result = await convex.query(
+        api.gabinet.scheduling.findNextAvailableSlot,
+        {
+          organizationId,
+          employeeId: employeeId as Id<"users">,
+          durationMinutes: selectedTreatment.duration,
+          fromDate:
+            dateStr || new Date().toISOString().split("T")[0],
+        },
+      );
       if (result) {
-        setDate(result.date);
-        setStartTime(result.startTime);
-        setEndTime(result.endTime);
+        const d = new Date(result.date + "T00:00:00");
+        setSelectedDate(d);
+        setSelectedSlot({ start: result.startTime, end: result.endTime });
         toast.success(
           t("gabinet.appointments.findSlotSuccess", {
             date: result.date,
@@ -149,10 +346,30 @@ export function AppointmentDialog({
     } finally {
       setSearchingSlot(false);
     }
-  };
+  }, [employeeId, selectedTreatment, organizationId, dateStr, convex, t]);
 
-  const handleSubmit = async () => {
-    if (!patientId || !treatmentId || !employeeId || !date || !startTime || !endTime) return;
+  // -------------------------------------------------------------------------
+  // Submit
+  // -------------------------------------------------------------------------
+
+  const endTime = selectedSlot
+    ? selectedSlot.end ||
+      computeEndTime(
+        selectedSlot.start,
+        selectedTreatment?.duration ?? 30,
+      )
+    : "";
+
+  const canSubmit =
+    !!patientId &&
+    !!treatmentId &&
+    !!employeeId &&
+    !!dateStr &&
+    !!selectedSlot &&
+    !submitting;
+
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
     try {
       await createAppointment({
@@ -160,206 +377,707 @@ export function AppointmentDialog({
         patientId: patientId as Id<"gabinetPatients">,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
         employeeId: employeeId as Id<"users">,
-        date,
-        startTime,
+        date: dateStr,
+        startTime: selectedSlot.start,
         endTime,
         notes: notes || undefined,
         isRecurring,
-        recurringRule: isRecurring ? { frequency, count: recurringCount } : undefined,
+        recurringRule: isRecurring
+          ? { frequency, count: recurringCount }
+          : undefined,
       });
       toast.success(t("gabinet.appointments.created"));
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [
+    canSubmit,
+    selectedSlot,
+    createAppointment,
+    organizationId,
+    patientId,
+    treatmentId,
+    employeeId,
+    dateStr,
+    endTime,
+    notes,
+    isRecurring,
+    frequency,
+    recurringCount,
+    onOpenChange,
+    t,
+  ]);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setTreatmentId("");
+      setEmployeeId("");
+      setPatientId("");
+      setSelectedDate(
+        defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
+      );
+      setSelectedSlot(
+        defaultTime ? { start: defaultTime, end: "" } : null,
+      );
+      setNotes("");
+      setShowNotes(false);
+      setIsRecurring(false);
+      setFrequency("weekly");
+      setRecurringCount(4);
+      setPatientSearch("");
+      setTreatmentSearch("");
+    }
+  }, [open, defaultDate, defaultTime]);
+
+  // -------------------------------------------------------------------------
+  // Determine which panels are active
+  // -------------------------------------------------------------------------
+
+  const calendarEnabled = !!treatmentId && !!employeeId;
+  const slotsEnabled = calendarEnabled && !!selectedDate;
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("gabinet.appointments.createAppointment")}</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]">
+        <DialogTitle className="sr-only">
+          {t("gabinet.appointments.createAppointment")}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {t("gabinet.appointments.createAppointment")}
+        </DialogDescription>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.appointments.patient")}</Label>
-            <Select value={patientId} onValueChange={setPatientId}>
-              <SelectTrigger className="h-9" data-testid="appointment-patient-trigger"><SelectValue placeholder={t("gabinet.appointments.selectPatient")} /></SelectTrigger>
-              <SelectContent>
-                {(patients?.page ?? []).map((p) => (
-                  <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.appointments.treatment")}</Label>
-            <Select value={treatmentId} onValueChange={handleTreatmentChange}>
-              <SelectTrigger className="h-9" data-testid="appointment-treatment-trigger"><SelectValue placeholder={t("gabinet.appointments.selectTreatment")} /></SelectTrigger>
-              <SelectContent>
-                {(treatments ?? []).map((tr) => (
-                  <SelectItem key={tr._id} value={tr._id}>
-                    {tr.name} ({tr.duration} min)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.appointments.employee")}</Label>
-            <Select value={employeeId} onValueChange={setEmployeeId}>
-              <SelectTrigger className="h-9" data-testid="appointment-employee-trigger"><SelectValue placeholder={t("gabinet.appointments.selectEmployee")} /></SelectTrigger>
-              <SelectContent>
-                {(employees ?? []).map((emp) => (
-                  <SelectItem key={emp._id} value={emp.userId}>
-                    {getEmployeeDisplayName(emp)}
-                    {emp.specialization && (emp.firstName || emp.lastName) ? ` — ${emp.specialization}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.appointments.date")}</Label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                data-testid="appointment-date-input"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.appointments.startTime")}</Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                data-testid="appointment-start-time-input"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.appointments.endTime")}</Label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                data-testid="appointment-end-time-input"
-              />
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full"
-            disabled={!employeeId || !selectedTreatment || searchingSlot}
-            onClick={handleFindSlot}
-          >
-            {searchingSlot ? (
-              <span className="border-primary mr-2 size-3.5 animate-spin rounded-full border-2 border-t-transparent" />
-            ) : (
-              <CalendarSearch className="mr-2 size-4" />
-            )}
-            {t("gabinet.appointments.findNearestSlot")}
-          </Button>
-
-          {/* Available slots */}
-          {employeeId && date && selectedTreatment && availableSlots && (
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                {t("gabinet.appointments.availableSlots")}
-              </Label>
-              {availableSlots.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                  {availableSlots.slice(0, 20).map((slot) => (
-                    <Badge
-                      key={slot.start}
-                      variant={startTime === slot.start ? "default" : "outline"}
-                      className="cursor-pointer text-xs"
-                      onClick={() => {
-                        setStartTime(slot.start);
-                        setEndTime(slot.end);
-                      }}
+        {/* 3-panel layout: stacks vertically on mobile */}
+        <div className="flex flex-col md:flex-row md:h-[600px]">
+          {/* ============================================================= */}
+          {/* LEFT PANEL — Treatment, Employee, Patient info                */}
+          {/* ============================================================= */}
+          <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r flex flex-col">
+            <ScrollArea className="flex-1">
+              <div className="p-5 space-y-5">
+                {/* Treatment selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("gabinet.appointments.treatment")}
+                  </Label>
+                  <Popover
+                    open={treatmentOpen}
+                    onOpenChange={(o) => {
+                      setTreatmentOpen(o);
+                      if (!o) setTreatmentSearch("");
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={treatmentOpen}
+                        className="w-full justify-between h-9 font-normal"
+                        data-testid="appointment-treatment-trigger"
+                      >
+                        <span className="truncate">
+                          {selectedTreatment
+                            ? selectedTreatment.name
+                            : t("gabinet.appointments.selectTreatment")}
+                        </span>
+                        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] p-0"
+                      align="start"
                     >
-                      {slot.start}
-                    </Badge>
-                  ))}
-                  {availableSlots.length > 20 && (
-                    <span className="text-xs text-muted-foreground self-center">
-                      +{availableSlots.length - 20}
-                    </span>
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder={t(
+                            "gabinet.appointments.searchTreatment",
+                          )}
+                          value={treatmentSearch}
+                          onValueChange={setTreatmentSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {t("common.noResults")}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {filteredTreatments.map((tr) => (
+                              <CommandItem
+                                key={tr._id}
+                                value={tr._id}
+                                onSelect={() =>
+                                  handleTreatmentSelect(tr._id)
+                                }
+                              >
+                                <CheckIcon
+                                  className={cn(
+                                    "mr-2 size-4",
+                                    treatmentId === tr._id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-sm">
+                                    {tr.name}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {tr.duration} min
+                                    {tr.price != null &&
+                                      ` \u00b7 ${formatPrice(tr.price)}`}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Treatment info card */}
+                {selectedTreatment && (
+                  <div className="rounded-lg border bg-muted/30 p-3.5 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-md bg-primary/10 p-2 shrink-0">
+                        <Stethoscope className="size-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-tight">
+                          {selectedTreatment.name}
+                        </p>
+                        {selectedTreatment.description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
+                            {selectedTreatment.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <Clock className="size-3" />
+                        {selectedTreatment.duration} min
+                      </Badge>
+                      {selectedTreatment.price != null && (
+                        <Badge variant="secondary" className="text-xs">
+                          {formatPrice(selectedTreatment.price)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Employee selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("gabinet.appointments.employee")}
+                  </Label>
+                  <Select
+                    value={employeeId}
+                    onValueChange={handleEmployeeSelect}
+                  >
+                    <SelectTrigger
+                      className="h-9"
+                      data-testid="appointment-employee-trigger"
+                    >
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.appointments.selectEmployee",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {qualifiedEmployees.length === 0 && treatmentId && (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          {t(
+                            "gabinet.appointments.noQualifiedEmployees",
+                          )}
+                        </div>
+                      )}
+                      {qualifiedEmployees.map((emp) => (
+                        <SelectItem
+                          key={emp._id}
+                          value={emp.userId}
+                        >
+                          <div className="flex items-center gap-2">
+                            <User className="size-3.5 text-muted-foreground shrink-0" />
+                            <span>
+                              {getEmployeeDisplayName(emp)}
+                            </span>
+                            {emp.specialization &&
+                              (emp.firstName ||
+                                emp.lastName) && (
+                                <span className="text-xs text-muted-foreground">
+                                  {emp.specialization}
+                                </span>
+                              )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* Patient selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("gabinet.appointments.patient")}
+                  </Label>
+                  <Popover
+                    open={patientOpen}
+                    onOpenChange={(o) => {
+                      setPatientOpen(o);
+                      if (!o) setPatientSearch("");
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={patientOpen}
+                        className="w-full justify-between h-9 font-normal"
+                        data-testid="appointment-patient-trigger"
+                      >
+                        <span className="truncate">
+                          {selectedPatient
+                            ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+                            : t(
+                                "gabinet.appointments.selectPatient",
+                              )}
+                        </span>
+                        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] p-0"
+                      align="start"
+                    >
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder={t(
+                            "gabinet.appointments.searchPatient",
+                          )}
+                          value={patientSearch}
+                          onValueChange={setPatientSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {t("common.noResults")}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {filteredPatients.map((p) => (
+                              <CommandItem
+                                key={p._id}
+                                value={p._id}
+                                onSelect={() => {
+                                  setPatientId(p._id);
+                                  setPatientOpen(false);
+                                  setPatientSearch("");
+                                }}
+                              >
+                                <CheckIcon
+                                  className={cn(
+                                    "mr-2 size-4",
+                                    patientId === p._id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-sm">
+                                    {p.firstName}{" "}
+                                    {p.lastName}
+                                  </span>
+                                  {p.phone && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {p.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Find nearest slot */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={
+                    !employeeId ||
+                    !selectedTreatment ||
+                    searchingSlot
+                  }
+                  onClick={handleFindSlot}
+                >
+                  {searchingSlot ? (
+                    <span className="border-primary mr-2 size-3.5 animate-spin rounded-full border-2 border-t-transparent" />
+                  ) : (
+                    <CalendarSearch className="mr-2 size-4" />
+                  )}
+                  {t("gabinet.appointments.findNearestSlot")}
+                </Button>
+
+                <Separator />
+
+                {/* Notes (collapsible) */}
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowNotes(!showNotes)}
+                  >
+                    <StickyNote className="size-3" />
+                    {t("gabinet.appointments.notes")}
+                    <ChevronDown
+                      open={showNotes}
+                      className="size-3"
+                    />
+                  </button>
+                  {showNotes && (
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder={t(
+                        "gabinet.appointments.notesPlaceholder",
+                      )}
+                      className="text-sm"
+                    />
                   )}
                 </div>
+
+                {/* Recurring */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="recurring-appt"
+                      checked={isRecurring}
+                      onCheckedChange={(c) =>
+                        setIsRecurring(c as boolean)
+                      }
+                    />
+                    <Label
+                      htmlFor="recurring-appt"
+                      className="text-sm"
+                    >
+                      {t("gabinet.appointments.recurring")}
+                    </Label>
+                  </div>
+                  {isRecurring && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        value={frequency}
+                        onValueChange={setFrequency}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">
+                            {t(
+                              "gabinet.appointments.frequencies.daily",
+                            )}
+                          </SelectItem>
+                          <SelectItem value="weekly">
+                            {t(
+                              "gabinet.appointments.frequencies.weekly",
+                            )}
+                          </SelectItem>
+                          <SelectItem value="biweekly">
+                            {t(
+                              "gabinet.appointments.frequencies.biweekly",
+                            )}
+                          </SelectItem>
+                          <SelectItem value="monthly">
+                            {t(
+                              "gabinet.appointments.frequencies.monthly",
+                            )}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={String(recurringCount)}
+                        onValueChange={(v) =>
+                          setRecurringCount(parseInt(v) || 1)
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24].map(
+                            (n) => (
+                              <SelectItem
+                                key={n}
+                                value={String(n)}
+                              >
+                                {n}x
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* ============================================================= */}
+          {/* CENTER PANEL — Calendar                                       */}
+          {/* ============================================================= */}
+          <div className="flex-1 border-b md:border-b-0 md:border-r flex flex-col items-center justify-start">
+            <div className="p-4 w-full flex flex-col items-center">
+              {!calendarEnabled ? (
+                <div className="flex flex-col items-center justify-center h-[340px] text-center px-6">
+                  <Search className="size-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {t(
+                      "gabinet.appointments.calendarDialog.selectTreatmentAndEmployee",
+                    )}
+                  </p>
+                </div>
               ) : (
-                <p className="text-xs text-destructive">
-                  {t("gabinet.appointments.noAvailableSlots")}
-                </p>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  locale={dateFnsLocale}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return date < today;
+                  }}
+                  className="rounded-md"
+                  classNames={{
+                    month: "space-y-4 w-full",
+                    table: "w-full border-collapse",
+                    head_row: "flex",
+                    head_cell:
+                      "text-muted-foreground rounded-md w-10 font-normal text-[0.8rem]",
+                    row: "flex w-full mt-2",
+                    day: "h-10 w-10 text-center text-sm p-0 relative",
+                  }}
+                  showOutsideDays
+                />
               )}
             </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.appointments.notes")}</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="recurring"
-              checked={isRecurring}
-              onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
-            />
-            <Label htmlFor="recurring">{t("gabinet.appointments.recurring")}</Label>
-          </div>
-
-          {isRecurring && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>{t("gabinet.appointments.frequency")}</Label>
-                <Select value={frequency} onValueChange={setFrequency}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">{t("gabinet.appointments.frequencies.daily")}</SelectItem>
-                    <SelectItem value="weekly">{t("gabinet.appointments.frequencies.weekly")}</SelectItem>
-                    <SelectItem value="biweekly">{t("gabinet.appointments.frequencies.biweekly")}</SelectItem>
-                    <SelectItem value="monthly">{t("gabinet.appointments.frequencies.monthly")}</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* ============================================================= */}
+          {/* RIGHT PANEL — Time slots + Confirmation                       */}
+          {/* ============================================================= */}
+          <div className="w-full md:w-[280px] flex flex-col">
+            {!slotsEnabled ? (
+              <div className="flex flex-col items-center justify-center flex-1 text-center px-6 py-8">
+                <Clock className="size-10 text-muted-foreground/40 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {t(
+                    "gabinet.appointments.calendarDialog.selectDateForSlots",
+                  )}
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("gabinet.appointments.count")}</Label>
-                <Input
-                  type="number"
-                  value={recurringCount}
-                  onChange={(e) => setRecurringCount(parseInt(e.target.value) || 1)}
-                  min={1}
-                  max={52}
-                />
-              </div>
-            </div>
-          )}
+            ) : (
+              <>
+                {/* Date header */}
+                <div className="px-5 pt-4 pb-3">
+                  <p className="font-semibold text-sm capitalize">
+                    {selectedDate &&
+                      format(selectedDate, "EEEE, d MMMM", {
+                        locale: dateFnsLocale,
+                      })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t("gabinet.appointments.availableSlots")}
+                  </p>
+                </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !patientId || !treatmentId}
-              data-testid="appointment-submit-button"
-            >
-              {submitting ? t("common.saving") : t("gabinet.appointments.createAppointment")}
-            </Button>
+                <Separator />
+
+                {/* Slots list */}
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="p-3 space-y-1.5">
+                    {slotsLoading ? (
+                      // Skeleton loading
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <Skeleton
+                          key={i}
+                          className="h-9 w-full rounded-md"
+                        />
+                      ))
+                    ) : availableSlots && availableSlots.length > 0 ? (
+                      availableSlots.map((slot) => (
+                        <button
+                          key={slot.start}
+                          type="button"
+                          onClick={() => handleSlotSelect(slot)}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
+                            "hover:bg-accent hover:text-accent-foreground",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            selectedSlot?.start === slot.start
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                              : "bg-muted/40",
+                          )}
+                        >
+                          <span className="font-medium tabular-nums">
+                            {slot.start}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs",
+                              selectedSlot?.start === slot.start
+                                ? "text-primary-foreground/70"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {slot.end}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          {t(
+                            "gabinet.appointments.calendarDialog.noSlotsForDay",
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                {/* Confirmation area */}
+                {selectedSlot && (
+                  <>
+                    <Separator />
+                    <div className="p-4 space-y-3 bg-muted/20">
+                      {/* Summary */}
+                      <div className="space-y-1.5 text-xs">
+                        {selectedTreatment && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {t("gabinet.appointments.treatment")}
+                            </span>
+                            <span className="font-medium truncate ml-2 text-right">
+                              {selectedTreatment.name}
+                            </span>
+                          </div>
+                        )}
+                        {selectedPatient && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {t("gabinet.appointments.patient")}
+                            </span>
+                            <span className="font-medium truncate ml-2 text-right">
+                              {selectedPatient.firstName}{" "}
+                              {selectedPatient.lastName}
+                            </span>
+                          </div>
+                        )}
+                        {selectedEmployee && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {t("gabinet.appointments.employee")}
+                            </span>
+                            <span className="font-medium truncate ml-2 text-right">
+                              {getEmployeeDisplayName(
+                                selectedEmployee,
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            {t("gabinet.appointments.date")}
+                          </span>
+                          <span className="font-medium">
+                            {dateStr}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            {t(
+                              "gabinet.appointments.calendarDialog.time",
+                            )}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {selectedSlot.start} &ndash; {endTime}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        className="w-full"
+                        onClick={handleSubmit}
+                        disabled={!canSubmit}
+                        data-testid="appointment-submit-button"
+                      >
+                        {submitting
+                          ? t("common.saving")
+                          : t(
+                              "gabinet.appointments.calendarDialog.confirmBooking",
+                            )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tiny helper: animated chevron for collapsible sections
+// ---------------------------------------------------------------------------
+
+function ChevronDown({
+  open,
+  className,
+}: {
+  open: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn(
+        "transition-transform duration-200",
+        open && "rotate-180",
+        className,
+      )}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }

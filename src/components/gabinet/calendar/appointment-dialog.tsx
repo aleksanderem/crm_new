@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
@@ -461,7 +461,7 @@ export function AppointmentDialog({
           {/* LEFT PANEL — Treatment, Employee, Patient info                */}
           {/* ============================================================= */}
           <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r flex flex-col">
-            <ScrollArea className="flex-1">
+            <ScrollShadow className="flex-1 overflow-y-auto">
               <div className="p-5 space-y-5">
                 {/* Treatment selector */}
                 <div className="space-y-1.5">
@@ -840,7 +840,7 @@ export function AppointmentDialog({
                   )}
                 </div>
               </div>
-            </ScrollArea>
+            </ScrollShadow>
           </div>
 
           {/* ============================================================= */}
@@ -915,7 +915,7 @@ export function AppointmentDialog({
                 <Separator />
 
                 {/* Slots list */}
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
                   <div className="p-3 space-y-1.5">
                     {slotsLoading ? (
                       // Skeleton loading
@@ -965,7 +965,7 @@ export function AppointmentDialog({
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </ScrollShadow>
 
                 {/* Confirmation area */}
                 {selectedSlot && (

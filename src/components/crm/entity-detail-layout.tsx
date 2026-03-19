@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Shared tab trigger class for consistent styling across entity detail views
@@ -306,7 +306,7 @@ export function EntityDetailLayout({
         )}
       </div>
 
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
         {tabs.map((tab) => (
           <TabsContent
             key={tab.label}
@@ -316,7 +316,7 @@ export function EntityDetailLayout({
             {tab.content}
           </TabsContent>
         ))}
-      </ScrollArea>
+      </ScrollShadow>
     </Tabs>
   );
 
@@ -338,7 +338,7 @@ export function EntityDetailLayout({
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Left sidebar */}
-      <ScrollArea className="w-full shrink-0 border-b md:w-[420px] md:border-b-0 md:border-r">
+      <ScrollShadow className="w-full shrink-0 border-b md:w-[420px] md:border-b-0 md:border-r overflow-y-auto">
         <div className="p-4 space-y-4">
           {/* Entity header */}
           <EntityDetailHeader {...headerProps} />
@@ -422,7 +422,7 @@ export function EntityDetailLayout({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </ScrollShadow>
 
       {/* Right content area */}
       <div className="flex flex-1 flex-col overflow-hidden">

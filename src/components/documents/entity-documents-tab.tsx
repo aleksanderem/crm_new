@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Plus, FileText, Eye, Loader2 } from "@/lib/ez-icons";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
@@ -238,7 +239,7 @@ export function EntityDocumentsTab({
         open={!!viewingDocId}
         onOpenChange={(open) => !open && setViewingDocId(null)}
       >
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-2xl flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>
               {viewingDoc?.title ??
@@ -246,45 +247,47 @@ export function EntityDocumentsTab({
             </SheetTitle>
           </SheetHeader>
 
-          {viewingDocLoading && (
-            <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("common.loading", "Ladowanie...")}
-            </div>
-          )}
+          <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
+            {viewingDocLoading && (
+              <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("common.loading", "Ladowanie...")}
+              </div>
+            )}
 
-          {viewingDoc && (
-            <div className="space-y-4 mt-4">
-              <div className="flex items-center gap-2">
-                <DocumentStatusBadge status={viewingDoc.status} />
-                {viewingDoc.signedAt && (
-                  <span className="text-xs text-muted-foreground">
-                    {t("documents.signedAt", "Podpisano")}:{" "}
-                    {new Date(viewingDoc.signedAt).toLocaleDateString(
-                      i18n.language === "en" ? "en-US" : "pl-PL",
-                    )}
-                  </span>
+            {viewingDoc && (
+              <div className="space-y-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <DocumentStatusBadge status={viewingDoc.status} />
+                  {viewingDoc.signedAt && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("documents.signedAt", "Podpisano")}:{" "}
+                      {new Date(viewingDoc.signedAt).toLocaleDateString(
+                        i18n.language === "en" ? "en-US" : "pl-PL",
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                {viewingTemplate && (
+                  <>
+                    <SurveyFormViewer
+                      formJson={viewingTemplate.formJson}
+                      responseData={mergedResponseData}
+                      signatureData={viewingDoc.signatureData}
+                      signedAt={viewingDoc.signedAt}
+                    />
+
+                    <SurveyPdfExportButton
+                      formJson={viewingTemplate.formJson}
+                      responseData={mergedResponseData}
+                      title={viewingDoc.title}
+                    />
+                  </>
                 )}
               </div>
-
-              {viewingTemplate && (
-                <>
-                  <SurveyFormViewer
-                    formJson={viewingTemplate.formJson}
-                    responseData={mergedResponseData}
-                    signatureData={viewingDoc.signatureData}
-                    signedAt={viewingDoc.signedAt}
-                  />
-
-                  <SurveyPdfExportButton
-                    formJson={viewingTemplate.formJson}
-                    responseData={mergedResponseData}
-                    title={viewingDoc.title}
-                  />
-                </>
-              )}
-            </div>
-          )}
+            )}
+          </ScrollShadow>
         </SheetContent>
       </Sheet>
     </>

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import {
   User,
@@ -402,7 +403,7 @@ export function PdfmeFormRenderer({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-5 p-4 pb-24">
+      <ScrollShadow className="flex-1 overflow-y-auto space-y-5 p-4 pb-24">
         {/* ================================================================
             SECTION A: Auto-filled summary card
             ================================================================ */}
@@ -650,7 +651,7 @@ export function PdfmeFormRenderer({
             )}
           </div>
         )}
-      </div>
+      </ScrollShadow>
 
       {/* ==================================================================
           SECTION E: Sticky submit footer

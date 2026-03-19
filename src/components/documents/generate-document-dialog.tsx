@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -284,7 +284,7 @@ export function GenerateDocumentDialog({
               </div>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0 px-6 pb-6">
+            <ScrollShadow className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
               {templatesLoading && (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -378,7 +378,7 @@ export function GenerateDocumentDialog({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </ScrollShadow>
           </>
         )}
 
@@ -429,7 +429,7 @@ export function GenerateDocumentDialog({
               </div>
             )}
 
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
               <div className="p-6">
                 {previewLoading && (
                   <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
@@ -457,7 +457,7 @@ export function GenerateDocumentDialog({
                   </>
                 )}
               </div>
-            </ScrollArea>
+            </ScrollShadow>
           </>
         )}
       </DialogContent>

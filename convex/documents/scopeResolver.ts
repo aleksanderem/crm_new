@@ -74,6 +74,21 @@ async function fetchAppointment(
     ),
   };
 
+  // Organization
+  const org = await ctx.db.get(orgId);
+  if (org) {
+    scope.organization = flattenEntity(org as unknown as Record<string, unknown>);
+  }
+
+  // System fields (date, etc.)
+  const now = new Date();
+  scope.system = {
+    date: now.toISOString().split("T")[0],
+    date_pl: now.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }),
+    time: now.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }),
+    year: String(now.getFullYear()),
+  };
+
   // Patient
   const patient = await ctx.db.get(appointment.patientId);
   if (patient) {
@@ -89,6 +104,17 @@ async function fetchAppointment(
           contact as unknown as Record<string, unknown>,
         );
       }
+    }
+
+    // Fallback: if no linked contact, populate contact.* from patient data
+    // so templates using contact.firstName etc. still get values
+    if (!scope.contact) {
+      scope.contact = {
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        email: patient.email,
+        phone: patient.phone,
+      };
     }
   }
 
@@ -111,6 +137,28 @@ async function fetchAppointment(
     scope.employee = flattenEntity(
       employeeRecord as unknown as Record<string, unknown>,
     );
+  }
+
+  // Also fetch the user record for employee name/email
+  const employeeUser = await ctx.db.get(appointment.employeeId);
+  if (employeeUser) {
+    const userData = flattenEntity(employeeUser as unknown as Record<string, unknown>);
+    // Merge user name/email into employee scope (employee record may not have these)
+    if (scope.employee) {
+      if (!scope.employee.firstName && userData.name) {
+        const parts = String(userData.name).split(" ");
+        scope.employee.firstName = parts[0] ?? "";
+        scope.employee.lastName = parts.slice(1).join(" ") ?? "";
+      }
+      if (!scope.employee.email) scope.employee.email = userData.email;
+    } else {
+      const parts = String(userData.name ?? "").split(" ");
+      scope.employee = {
+        firstName: parts[0] ?? "",
+        lastName: parts.slice(1).join(" ") ?? "",
+        email: userData.email,
+      };
+    }
   }
 
   return scope;
@@ -406,6 +454,18 @@ const TREATMENT_VARS: VariableDescriptor[] = [
   },
 ];
 
+const ORGANIZATION_VARS: VariableDescriptor[] = [
+  { path: "organization.name", label: "Organization Name", group: "Organization" },
+  { path: "organization.slug", label: "Slug", group: "Organization" },
+];
+
+const SYSTEM_VARS: VariableDescriptor[] = [
+  { path: "system.date", label: "Today (ISO)", group: "System" },
+  { path: "system.date_pl", label: "Today (Polish)", group: "System" },
+  { path: "system.time", label: "Current Time", group: "System" },
+  { path: "system.year", label: "Year", group: "System" },
+];
+
 const APPOINTMENT_VARS: VariableDescriptor[] = [
   { path: "appointment.date", label: "Date", group: "Appointment" },
   {
@@ -447,6 +507,8 @@ export function getAvailableVariables(
         ...TREATMENT_VARS,
         ...EMPLOYEE_VARS,
         ...CONTACT_VARS,
+        ...ORGANIZATION_VARS,
+        ...SYSTEM_VARS,
       ];
     case "patient":
       return [...PATIENT_VARS, ...CONTACT_VARS];

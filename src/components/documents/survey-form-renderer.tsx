@@ -409,7 +409,7 @@ export function PdfmeFormRenderer({
         {autoFilledFields.length > 0 && (
           <div className="rounded-lg border bg-muted/40 dark:bg-muted/20">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-              <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" variant="stroke" />
               <span className="text-xs font-medium text-muted-foreground">
                 {isPl
                   ? "Dane wypelnione automatycznie"
@@ -424,21 +424,23 @@ export function PdfmeFormRenderer({
             </div>
 
             <div className="px-4 pb-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {displayedSummary.map((item) => {
                   const Icon = getCategoryIcon(item.category);
                   return (
                     <div
                       key={`${item.category}-${item.label}`}
-                      className="flex items-center gap-2 min-w-0 py-0.5"
+                      className="min-w-0"
                     >
-                      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground/70 shrink-0">
-                        {item.label}:
-                      </span>
-                      <span className="text-xs font-medium text-foreground truncate">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <Icon className="h-3 w-3 shrink-0 text-muted-foreground/50" variant="stroke" />
+                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                          {item.label}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate pl-[18px]">
                         {item.value}
-                      </span>
+                      </p>
                     </div>
                   );
                 })}
@@ -452,12 +454,12 @@ export function PdfmeFormRenderer({
                 >
                   {showAllSummary ? (
                     <>
-                      <ChevronDown className="h-3 w-3" />
+                      <ChevronDown className="h-3 w-3" variant="stroke" />
                       {isPl ? "Pokaz mniej" : "Show less"}
                     </>
                   ) : (
                     <>
-                      <ChevronRight className="h-3 w-3" />
+                      <ChevronRight className="h-3 w-3" variant="stroke" />
                       {isPl
                         ? `Pokaz wszystkie (${summaryItems.length})`
                         : `Show all (${summaryItems.length})`}
@@ -476,7 +478,7 @@ export function PdfmeFormRenderer({
           <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
             <div className="flex items-start gap-3">
               <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 p-1.5 mt-0.5">
-                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" variant="stroke" />
               </div>
               <div>
                 <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
@@ -500,7 +502,7 @@ export function PdfmeFormRenderer({
         {missingFields.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-amber-500" variant="stroke" />
               <h3 className="text-sm font-semibold text-foreground">
                 {isPl
                   ? `Uzupelnij brakujace dane (${missingFields.length} ${missingFields.length === 1 ? "pole" : "pol"})`
@@ -525,7 +527,7 @@ export function PdfmeFormRenderer({
                   <div key={group.category} className="space-y-3">
                     {missingByCategory.length > 1 && (
                       <div className="flex items-center gap-1.5">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground/70" />
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground/70" variant="stroke" />
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           {catLabel}
                         </span>
@@ -575,7 +577,7 @@ export function PdfmeFormRenderer({
               onClick={() => setShowAutoEditable((v) => !v)}
               className="flex items-center gap-2 w-full text-left group mb-3"
             >
-              <Pencil className="h-3.5 w-3.5 text-muted-foreground/60" />
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground/60" variant="stroke" />
               <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                 {isPl
                   ? "Dane automatyczne (edytuj jesli potrzeba)"
@@ -708,7 +710,7 @@ function FieldInput({
   return (
     <div
       className={cn(
-        "space-y-1.5",
+        "space-y-2",
         field.inputType === "textarea" && "sm:col-span-2",
       )}
     >

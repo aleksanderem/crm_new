@@ -6,6 +6,39 @@ import { verifyOrgAccess } from "../_helpers/auth";
 // Seed PDFme-based form templates (formTemplates table)
 // ---------------------------------------------------------------------------
 
+/** One-time migration: add "treatment" to entityTypes on all templates that have "appointment" or "patient" */
+export const migrateEntityTypes = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    let patched = 0;
+    for (const t of all) {
+      const types = new Set(t.entityTypes);
+      let changed = false;
+      if (types.has("appointment") && !types.has("treatment")) {
+        types.add("treatment");
+        changed = true;
+      }
+      if (types.has("patient") && !types.has("treatment")) {
+        types.add("treatment");
+        changed = true;
+      }
+      if (types.has("lead") && !types.has("company")) {
+        types.add("company");
+        changed = true;
+      }
+      if (changed) {
+        await ctx.db.patch(t._id, { entityTypes: [...types], updatedAt: Date.now() });
+        patched++;
+      }
+    }
+    return { patched, total: all.length };
+  },
+});
+
 /** Authenticated version — callable from frontend */
 export const seedFormTemplates = mutation({
   args: { organizationId: v.id("organizations") },
@@ -271,7 +304,7 @@ function buildConsentTemplate() {
     category: "consent" as const,
     formJson,
     modules: ["gabinet"],
-    entityTypes: ["appointment"],
+    entityTypes: ["appointment", "treatment"],
     requiresSignature: true,
     signatureConfig: {
       method: "draw" as const,
@@ -462,7 +495,7 @@ function buildIntakeTemplate() {
     category: "intake" as const,
     formJson,
     modules: ["gabinet"],
-    entityTypes: ["patient"],
+    entityTypes: ["patient", "treatment"],
     requiresSignature: false,
   };
 }
@@ -600,7 +633,7 @@ function buildPrescriptionTemplate() {
     category: "prescription" as const,
     formJson,
     modules: ["gabinet"],
-    entityTypes: ["appointment"],
+    entityTypes: ["appointment", "treatment"],
     requiresSignature: false,
   };
 }
@@ -749,7 +782,7 @@ function buildReferralTemplate() {
     category: "referral" as const,
     formJson,
     modules: ["gabinet"],
-    entityTypes: ["appointment"],
+    entityTypes: ["appointment", "treatment"],
     requiresSignature: false,
   };
 }
@@ -931,7 +964,7 @@ function buildContractTemplate() {
     category: "contract" as const,
     formJson,
     modules: ["crm"],
-    entityTypes: ["lead", "contact"],
+    entityTypes: ["lead", "contact", "company"],
     requiresSignature: true,
     signatureConfig: {
       method: "click" as const,

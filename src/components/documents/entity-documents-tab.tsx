@@ -110,6 +110,24 @@ export function EntityDocumentsTab({
       }
     }
 
+    // Fallback mappings: if contact.* missing, use patient.* and vice versa
+    if (scopeFlat["patient.firstName"] && !scopeFlat["contact.firstName"]) {
+      scopeFlat["contact.firstName"] = scopeFlat["patient.firstName"];
+      scopeFlat["contact.lastName"] = scopeFlat["patient.lastName"] ?? "";
+      scopeFlat["contact.email"] = scopeFlat["patient.email"] ?? "";
+      scopeFlat["contact.phone"] = scopeFlat["patient.phone"] ?? "";
+    }
+
+    // System date fallback if backend hasn't provided it
+    if (!scopeFlat["system.date_pl"]) {
+      const now = new Date();
+      scopeFlat["system.date"] = now.toISOString().split("T")[0];
+      scopeFlat["system.date_pl"] = now.toLocaleDateString("pl-PL", {
+        day: "numeric", month: "long", year: "numeric",
+      });
+      scopeFlat["system.year"] = String(now.getFullYear());
+    }
+
     // Scope data as base, saved responseData overrides
     return { ...scopeFlat, ...saved };
   }, [viewingDoc?.responseData, scopeData]);

@@ -41,7 +41,7 @@ export function PdfmeFormViewer({
     let destroyed = false;
 
     const initViewer = async () => {
-      const { Viewer } = await import("@pdfme/ui");
+      const { Form } = await import("@pdfme/ui");
       const { text, image, barcodes } = await import("@pdfme/schemas");
 
       if (destroyed || !containerRef.current) return;
@@ -79,14 +79,18 @@ export function PdfmeFormViewer({
         QRCode: barcodes.qrcode,
       };
 
-      const viewer = new Viewer({
+      // Use Form with readOnly instead of deprecated Viewer
+      const form = new Form({
         domContainer: containerRef.current!,
         template,
         inputs,
         plugins,
+        options: {
+          lang: "pl" as any,
+        },
       });
 
-      viewerRef.current = viewer;
+      viewerRef.current = form;
     };
 
     initViewer();

@@ -319,7 +319,7 @@ function TeamSettings() {
                 {t("team.inviteMember")}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
                 <DialogDescription>

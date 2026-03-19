@@ -162,7 +162,7 @@ function LeavesPage() {
                 {t("gabinet.leaves.requestLeave")}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
               </DialogHeader>

@@ -215,7 +215,7 @@ function PatientAppointments() {
 
       {/* Reschedule Dialog */}
       <Dialog open={!!rescheduleAppt} onOpenChange={(o) => !o && closeReschedule()}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {t("patientPortal.appointments.rescheduleTitle")}

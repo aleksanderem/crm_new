@@ -1,18 +1,18 @@
 {
-  "session_id": "S0083",
-  "started_at": "2026-03-19T14:00:00Z",
-  "last_updated": "2026-03-19T14:45:00Z",
+  "session_id": "S0084",
+  "started_at": "2026-03-19T16:00:00Z",
+  "last_updated": "2026-03-19T16:45:00Z",
   "status": "completed",
-  "focus": "Redesign appointment creation dialog to Cal.com-style 3-panel layout",
+  "focus": "Audit and improve all Dialog/Sheet/Modal components for responsiveness",
   "tasks_snapshot": {
-    "total": 3,
+    "total": 6,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 3,
+    "passing": 6,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0083: Rewrote appointment-dialog.tsx from a simple vertical form to a horizontal 3-panel Cal.com-style layout (left: treatment/employee/patient selectors + info card, center: calendar date picker, right: scrollable time slots + confirmation summary). Added 5 new i18n keys under calendarDialog namespace for PL/EN. Zero new typecheck errors (15 before = 15 after, all pre-existing)."
+  "notes": "S0084: Audited all 35+ Dialog/Sheet usages across the app. Fixed 20 files: added sm: responsive prefix to max-w classes, added max-h/overflow-y-auto to content-heavy dialogs, set explicit sm:max-w-md on bare DialogContent usages. Zero new typecheck errors. shadcn-studio blocks were skipped (template code, not app code)."
 }

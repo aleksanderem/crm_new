@@ -435,7 +435,7 @@ function CreateEmployeeSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{t("gabinet.employees.add")}</SheetTitle>
         </SheetHeader>

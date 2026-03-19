@@ -329,7 +329,7 @@ function CreateSequenceDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("emailSequences.createSequence")}</DialogTitle>
         </DialogHeader>
@@ -536,7 +536,7 @@ function SequenceEditorDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("emailSequences.editSequence")}</DialogTitle>
         </DialogHeader>

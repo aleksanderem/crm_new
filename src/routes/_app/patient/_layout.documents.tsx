@@ -115,7 +115,7 @@ function PatientDocuments() {
 
       {/* View document dialog */}
       <Dialog open={!!viewDocId} onOpenChange={(o) => !o && setViewDocId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           {viewDoc && (
             <>
               <DialogHeader>
@@ -151,7 +151,7 @@ function PatientDocuments() {
         open={!!signDocId}
         onOpenChange={(o) => !o && setSignDocId(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {t("patientPortal.documents.signDocument")}

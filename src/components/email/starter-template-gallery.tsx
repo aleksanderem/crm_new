@@ -234,7 +234,7 @@ export function StarterTemplateGallery({
         open={previewTemplate !== null}
         onOpenChange={(open) => !open && setPreviewTemplate(null)}
       >
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] sm:max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewTemplate?.name}</DialogTitle>
           </DialogHeader>

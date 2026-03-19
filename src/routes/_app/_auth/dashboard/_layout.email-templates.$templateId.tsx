@@ -409,7 +409,7 @@ function EditEmailTemplatePage() {
 
       {/* Preview dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] sm:max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("emailTemplates.preview")}</DialogTitle>
           </DialogHeader>

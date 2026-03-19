@@ -2145,7 +2145,7 @@ function AppointmentDetail() {
             open={bodyChartModalOpen}
             onOpenChange={setBodyChartModalOpen}
           >
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {t("gabinet.appointments.tabs.bodyChart")}
@@ -2203,7 +2203,7 @@ function AppointmentDetail() {
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
             <DialogDescription>
@@ -2256,7 +2256,7 @@ function AppointmentDetail() {
 
       {/* Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
             <DialogDescription>

@@ -33,7 +33,7 @@ export function KanbanCardDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{lead.title}</SheetTitle>
           <SheetDescription>

@@ -210,7 +210,7 @@ function LeaveTypeDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {initial ? t("gabinet.leaveTypes.edit") : t("gabinet.leaveTypes.add")}

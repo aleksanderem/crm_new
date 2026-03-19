@@ -200,8 +200,8 @@ export function GenerateDocumentDialog({
         className={cn(
           "flex flex-col gap-0 p-0",
           step === "fill_form"
-            ? "max-w-4xl max-h-[90vh]"
-            : "max-w-2xl max-h-[80vh]",
+            ? "sm:max-w-4xl max-h-[90vh]"
+            : "sm:max-w-2xl max-h-[80vh]",
         )}
       >
         {/* --- Step 1: Template picker --- */}

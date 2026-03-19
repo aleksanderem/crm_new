@@ -303,7 +303,7 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
       </DialogTrigger>
       <DialogContent
         className={cn(
-          "[&>[data-slot=dialog-close]>svg]:size-5",
+          "[&>[data-slot=dialog-close]>svg]:size-5 max-h-[90vh] overflow-y-auto",
           selectedType ? "md:max-w-3xl" : "md:max-w-sm"
         )}
       >

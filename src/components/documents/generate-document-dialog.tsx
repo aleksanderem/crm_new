@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
@@ -15,7 +15,20 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, FileText, Loader2, Search } from "@/lib/ez-icons";
+import {
+  ArrowLeft,
+  FileText,
+  Loader2,
+  Search,
+  ShieldCheck,
+  ClipboardList,
+  Stethoscope,
+  Handshake,
+  FileSignature,
+  FilePlus,
+  Settings,
+  Info,
+} from "@/lib/ez-icons";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -52,6 +65,38 @@ const CATEGORY_LABELS: Record<string, string> = {
   intake: "Ankieta",
   custom: "Inne",
 };
+
+const CATEGORY_ICONS: Record<string, typeof FileText> = {
+  consent: ShieldCheck,
+  medical_record: Stethoscope,
+  prescription: FilePlus,
+  referral: FileSignature,
+  contract: Handshake,
+  invoice: FileText,
+  protocol: FileText,
+  intake: ClipboardList,
+  custom: FileText,
+};
+
+/** Parse the template's formJson to count user-fillable fields. */
+function countFormFields(formJson: string | null | undefined): number {
+  if (!formJson) return 0;
+  try {
+    const parsed = JSON.parse(formJson);
+    if (Array.isArray(parsed)) return parsed.length;
+    if (parsed.fields && Array.isArray(parsed.fields)) return parsed.fields.length;
+    if (parsed.pages && Array.isArray(parsed.pages)) {
+      return parsed.pages.reduce(
+        (sum: number, page: { elements?: unknown[] }) =>
+          sum + (page.elements?.length ?? 0),
+        0,
+      );
+    }
+    return Object.keys(parsed).length;
+  } catch {
+    return 0;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -208,9 +253,14 @@ export function GenerateDocumentDialog({
         {step === "pick_template" && (
           <>
             <DialogHeader className="px-6 pt-6 pb-4">
-              <DialogTitle>
-                {t("documents.selectTemplate", "Wybierz szablon dokumentu")}
-              </DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle>
+                  {t("documents.selectTemplate", "Wybierz szablon dokumentu")}
+                </DialogTitle>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 1, total: 2 })}
+                </span>
+              </div>
               <DialogDescription>
                 {t(
                   "documents.selectTemplateDesc",
@@ -244,11 +294,30 @@ export function GenerateDocumentDialog({
               )}
 
               {!templatesLoading && filteredTemplates.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground gap-2">
-                  <FileText className="h-8 w-8" />
-                  <span>
-                    {t("documents.noTemplates", "Brak szablonow")}
-                  </span>
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {search.trim()
+                        ? t("documents.noTemplatesSearch", "Nie znaleziono szablonow")
+                        : t("documents.noTemplates", "Brak szablonow")}
+                    </p>
+                    <p className="text-xs max-w-[240px]">
+                      {search.trim()
+                        ? t("documents.noTemplatesSearchDesc", "Sprobuj zmienic fraze wyszukiwania.")
+                        : t("documents.noTemplatesDesc", "Dodaj szablony dokumentow w ustawieniach, aby moc generowac dokumenty.")}
+                    </p>
+                  </div>
+                  {!search.trim() && (
+                    <Button variant="outline" size="sm" className="mt-1" asChild>
+                      <a href="/dashboard/settings">
+                        <Settings className="h-3.5 w-3.5 mr-1.5" />
+                        {t("documents.goToSettings", "Przejdz do ustawien")}
+                      </a>
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -259,36 +328,52 @@ export function GenerateDocumentDialog({
                       {CATEGORY_LABELS[category] ?? category}
                     </h3>
                     <div className="space-y-2">
-                      {groupedTemplates[category].map((tpl) => (
-                        <button
-                          key={tpl._id}
-                          type="button"
-                          onClick={() => handleTemplateSelect(tpl._id)}
-                          className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium truncate">
-                                  {tpl.name}
-                                </span>
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs shrink-0"
-                                >
-                                  {CATEGORY_LABELS[tpl.category] ??
-                                    tpl.category}
-                                </Badge>
+                      {groupedTemplates[category].map((tpl) => {
+                        const CategoryIcon = CATEGORY_ICONS[tpl.category] ?? FileText;
+                        const fieldCount = countFormFields(tpl.formJson);
+                        return (
+                          <button
+                            key={tpl._id}
+                            type="button"
+                            onClick={() => handleTemplateSelect(tpl._id)}
+                            className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted group-hover:bg-background transition-colors">
+                                <CategoryIcon className="h-4 w-4 text-muted-foreground" />
                               </div>
-                              {tpl.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {tpl.description}
-                                </p>
-                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="text-sm font-medium truncate">
+                                    {tpl.name}
+                                  </span>
+                                  {(tpl as Record<string, unknown>).requiresSignature && (
+                                    <Badge variant="outline" className="text-[10px] shrink-0 gap-1 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">
+                                      <FileSignature className="h-3 w-3" />
+                                      {t("documents.requiresSignature", "Wymaga podpisu")}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {tpl.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">
+                                    {tpl.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                                    {CATEGORY_LABELS[tpl.category] ?? tpl.category}
+                                  </Badge>
+                                  {fieldCount > 0 && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {t("documents.fieldCount", "{{count}} pol do wypelnienia", { count: fieldCount })}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -314,11 +399,16 @@ export function GenerateDocumentDialog({
                     {t("common.back", "Powrot")}
                   </span>
                 </Button>
-                <div>
-                  <DialogTitle>
-                    {selectedTemplate?.name ??
-                      t("documents.newDocument", "Nowy dokument")}
-                  </DialogTitle>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <DialogTitle>
+                      {selectedTemplate?.name ??
+                        t("documents.newDocument", "Nowy dokument")}
+                    </DialogTitle>
+                    <span className="text-xs text-muted-foreground font-medium shrink-0 ml-2">
+                      {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 2, total: 2 })}
+                    </span>
+                  </div>
                   <DialogDescription>
                     {t(
                       "documents.fillFormDesc",
@@ -328,6 +418,16 @@ export function GenerateDocumentDialog({
                 </div>
               </div>
             </DialogHeader>
+
+            {/* Template info bar */}
+            {selectedTemplate?.description && (
+              <div className="mx-6 mt-4 flex items-start gap-2 rounded-md bg-muted/50 border px-3 py-2">
+                <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {selectedTemplate.description}
+                </p>
+              </div>
+            )}
 
             <ScrollArea className="flex-1 min-h-0">
               <div className="p-6">

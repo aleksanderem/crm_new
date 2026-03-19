@@ -168,14 +168,14 @@ function buildConsentTemplate() {
   const fields: TextField[] = [
     // Title
     text("title_label", 15, 15, 180, 10, {
-      content: "ZGODA NA WYKONANIE ZABIEGU",
+      content: "FORMULARZ ZGODY NA ZABIEG",
       fontSize: 18,
       fontWeight: "bold",
       alignment: "center",
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
-      content: "[Nazwa organizacji]",
+      content: "Klinika Medyczna Nova",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -193,14 +193,14 @@ function buildConsentTemplate() {
       content: "Ja, ",
       fontSize: 10,
     }),
-    text("contact.firstName", 27, 46, 40, 7, { content: "[Imię kontaktu]", fontSize: 10 }),
-    text("contact.lastName", 68, 46, 50, 7, { content: "[Nazwisko kontaktu]", fontSize: 10 }),
+    text("contact.firstName", 27, 46, 40, 7, { content: "Jan", fontSize: 10 }),
+    text("contact.lastName", 68, 46, 50, 7, { content: "Kowalski", fontSize: 10 }),
 
     text("pesel_label", 15, 55, 18, 7, {
       content: "PESEL: ",
       fontSize: 10,
     }),
-    text("patient.pesel", 33, 55, 60, 7, { content: "[PESEL pacjenta]", fontSize: 10 }),
+    text("patient.pesel", 33, 55, 60, 7, { content: "85010112345", fontSize: 10 }),
 
     // Treatment info section
     text("treatment_header", 15, 68, 180, 7, {
@@ -214,7 +214,7 @@ function buildConsentTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("treatment.name", 42, 78, 153, 6, { content: "[Nazwa zabiegu]", fontSize: 10 }),
+    text("treatment.name", 42, 78, 153, 6, { content: "Mezoterapia igłowa", fontSize: 10 }),
 
     text("treatment_desc_label", 15, 87, 25, 6, {
       content: "Opis:",
@@ -222,7 +222,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.description", 42, 87, 153, 18, {
-      content: "[Opis zabiegu]",
+      content: "Zabieg polegający na wprowadzeniu substancji aktywnych pod skórę za pomocą mikroiniekcji",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -233,7 +233,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.contraindications", 15, 117, 180, 18, {
-      content: "[Przeciwwskazania]",
+      content: "Ciąża, karmienie piersią, aktywne stany zapalne skóry, zaburzenia krzepnięcia",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -244,7 +244,7 @@ function buildConsentTemplate() {
       fontWeight: "bold",
     }),
     text("treatment.aftercareInstructions", 15, 147, 180, 18, {
-      content: "[Zalecenia pozabiegowe]",
+      content: "Unikać ekspozycji na słońce przez 48h, nie stosować makijażu przez 24h",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -260,10 +260,10 @@ function buildConsentTemplate() {
     // Consent text
     text("consent_text", 15, 178, 180, 30, {
       content:
-        "Oświadczam, że zostałem/am poinformowany/a o rodzaju zabiegu, jego przebiegu, " +
-        "możliwych powikłaniach oraz zaleceniach pozabiegowych. Wyrażam świadomą zgodę " +
-        "na wykonanie powyższego zabiegu. Oświadczam, że miałem/am możliwość zadawania " +
-        "pytań i uzyskałem/am na nie wyczerpujące odpowiedzi.",
+        "Ja, niżej podpisany/a, oświadczam, że zostałem/am poinformowany/a o rodzaju planowanego zabiegu, " +
+        "jego przebiegu, możliwych powikłaniach oraz zalecanym postępowaniu po zabiegu. Wyrażam świadomą " +
+        "zgodę na wykonanie powyższego zabiegu. Oświadczam, że miałem/am możliwość zadawania pytań " +
+        "i uzyskałem/am na nie wyczerpujące odpowiedzi.",
       fontSize: 9,
       lineHeight: 1.5,
     }),
@@ -273,21 +273,28 @@ function buildConsentTemplate() {
       content: "Data:",
       fontSize: 10,
     }),
-    text("system.date_pl", 31, 215, 50, 7, { content: "[Data]", fontSize: 10 }),
+    text("system.date_pl", 31, 215, 50, 7, { content: "19 marca 2026", fontSize: 10 }),
+
+    // Signature section header
+    text("signature_header", 15, 226, 180, 7, {
+      content: "OŚWIADCZENIE I PODPIS",
+      fontSize: 12,
+      fontWeight: "bold",
+    }),
 
     // Signature line
-    text("signature_label", 15, 235, 80, 7, {
+    text("signature_label", 15, 238, 80, 7, {
       content: "Podpis pacjenta: ___________________________",
       fontSize: 10,
     }),
 
     // Employee
-    text("employee_label", 110, 235, 30, 7, {
+    text("employee_label", 110, 238, 30, 7, {
       content: "Wykonujący:",
       fontSize: 10,
     }),
-    text("employee.firstName", 141, 235, 25, 7, { content: "[Imię pracownika]", fontSize: 10 }),
-    text("employee.lastName", 167, 235, 28, 7, { content: "[Nazwisko pracownika]", fontSize: 10 }),
+    text("employee.firstName", 141, 238, 25, 7, { content: "Anna", fontSize: 10 }),
+    text("employee.lastName", 167, 238, 28, 7, { content: "Nowak", fontSize: 10 }),
   ];
 
   const formJson = JSON.stringify({
@@ -326,7 +333,7 @@ function buildIntakeTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
-      content: "[Nazwa organizacji]",
+      content: "Klinika Medyczna Nova",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -341,7 +348,7 @@ function buildIntakeTemplate() {
 
     // Patient data section header
     text("patient_header", 15, 46, 180, 7, {
-      content: "DANE PACJENTA",
+      content: "DANE OSOBOWE",
       fontSize: 12,
       fontWeight: "bold",
     }),
@@ -352,7 +359,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 45, 56, 60, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
+    text("patient.firstName", 45, 56, 60, 6, { content: "Jan", fontSize: 10 }),
 
     // Last name
     text("lname_label", 110, 56, 30, 6, {
@@ -360,7 +367,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 145, 56, 50, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
+    text("patient.lastName", 145, 56, 50, 6, { content: "Kowalski", fontSize: 10 }),
 
     // PESEL
     text("pesel_label", 15, 66, 20, 6, {
@@ -368,7 +375,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 45, 66, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
+    text("patient.pesel", 45, 66, 60, 6, { content: "85010112345", fontSize: 10 }),
 
     // Date of birth
     text("dob_label", 110, 66, 35, 6, {
@@ -376,7 +383,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.dateOfBirth", 150, 66, 45, 6, { content: "[Data urodzenia]", fontSize: 10 }),
+    text("patient.dateOfBirth", 150, 66, 45, 6, { content: "1985-01-01", fontSize: 10 }),
 
     // Gender
     text("gender_label", 15, 76, 15, 6, {
@@ -384,7 +391,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.gender", 45, 76, 40, 6, { content: "[Płeć]", fontSize: 10 }),
+    text("patient.gender", 45, 76, 40, 6, { content: "Mężczyzna", fontSize: 10 }),
 
     // Blood type
     text("blood_label", 110, 76, 30, 6, {
@@ -392,7 +399,7 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.bloodType", 150, 76, 45, 6, { content: "[Grupa krwi]", fontSize: 10 }),
+    text("patient.bloodType", 150, 76, 45, 6, { content: "A Rh+", fontSize: 10 }),
 
     // Allergies section
     text("allergies_header", 15, 90, 180, 7, {
@@ -401,19 +408,19 @@ function buildIntakeTemplate() {
       fontWeight: "bold",
     }),
     text("patient.allergies", 15, 99, 180, 20, {
-      content: "[Alergie]",
+      content: "Penicylina, pyłki traw",
       fontSize: 9,
       lineHeight: 1.4,
     }),
 
     // Medical notes
     text("notes_header", 15, 124, 180, 7, {
-      content: "NOTATKI MEDYCZNE",
+      content: "HISTORIA MEDYCZNA",
       fontSize: 12,
       fontWeight: "bold",
     }),
     text("patient.medicalNotes", 15, 133, 180, 25, {
-      content: "[Notatki medyczne]",
+      content: "Nadciśnienie tętnicze leczone farmakologicznie od 2019 r. Przebyte zabiegi: appendektomia (2010).",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -429,13 +436,13 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.email", 45, 174, 60, 6, { content: "[Email pacjenta]", fontSize: 10 }),
+    text("patient.email", 45, 174, 60, 6, { content: "jan.kowalski@email.pl", fontSize: 10 }),
     text("phone_label", 110, 174, 20, 6, {
       content: "Telefon:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.phone", 140, 174, 55, 6, { content: "[Telefon pacjenta]", fontSize: 10 }),
+    text("patient.phone", 140, 174, 55, 6, { content: "+48 600 123 456", fontSize: 10 }),
 
     // Address
     text("address_header", 15, 184, 180, 6, {
@@ -443,9 +450,9 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.address.street", 45, 184, 60, 6, { content: "[Ulica pacjenta]", fontSize: 10 }),
-    text("patient.address.postalCode", 110, 184, 25, 6, { content: "[Kod pocztowy pacjenta]", fontSize: 10 }),
-    text("patient.address.city", 140, 184, 55, 6, { content: "[Miasto pacjenta]", fontSize: 10 }),
+    text("patient.address.street", 45, 184, 60, 6, { content: "ul. Marszałkowska 10/5", fontSize: 10 }),
+    text("patient.address.postalCode", 110, 184, 25, 6, { content: "00-624", fontSize: 10 }),
+    text("patient.address.city", 140, 184, 55, 6, { content: "Warszawa", fontSize: 10 }),
 
     // Emergency contact section
     text("emergency_header", 15, 198, 180, 7, {
@@ -458,13 +465,13 @@ function buildIntakeTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.emergencyContactName", 55, 208, 50, 6, { content: "[Kontakt awaryjny — imię]", fontSize: 10 }),
+    text("patient.emergencyContactName", 55, 208, 50, 6, { content: "Maria Kowalska", fontSize: 10 }),
     text("emergency_phone_label", 110, 208, 20, 6, {
       content: "Telefon:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.emergencyContactPhone", 140, 208, 55, 6, { content: "[Kontakt awaryjny — telefon]", fontSize: 10 }),
+    text("patient.emergencyContactPhone", 140, 208, 55, 6, { content: "+48 601 234 567", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 222, 180, 3, {
@@ -474,12 +481,26 @@ function buildIntakeTemplate() {
       fontColor: "#cccccc",
     }),
 
+    // GDPR consent
+    text("gdpr_header", 15, 228, 180, 7, {
+      content: "ZGODA NA PRZETWARZANIE DANYCH",
+      fontSize: 12,
+      fontWeight: "bold",
+    }),
+    text("gdpr_text", 15, 237, 180, 18, {
+      content:
+        "Wyrażam zgodę na przetwarzanie moich danych osobowych w celu realizacji świadczeń zdrowotnych " +
+        "zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 (RODO).",
+      fontSize: 8,
+      lineHeight: 1.4,
+    }),
+
     // Date
-    text("date_label", 15, 230, 15, 7, {
+    text("date_label", 15, 258, 15, 7, {
       content: "Data:",
       fontSize: 10,
     }),
-    text("system.date_pl", 31, 230, 50, 7, { content: "[Data]", fontSize: 10 }),
+    text("system.date_pl", 31, 258, 50, 7, { content: "19 marca 2026", fontSize: 10 }),
   ];
 
   const formJson = JSON.stringify({
@@ -513,7 +534,7 @@ function buildPrescriptionTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
-      content: "[Nazwa organizacji]",
+      content: "Klinika Medyczna Nova",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -532,7 +553,7 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 156, 46, 39, 6, { content: "[Data]", fontSize: 10 }),
+    text("system.date_pl", 156, 46, 39, 6, { content: "19 marca 2026", fontSize: 10 }),
 
     // Patient section
     text("patient_header", 15, 46, 100, 7, {
@@ -545,21 +566,21 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 38, 56, 50, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
+    text("patient.firstName", 38, 56, 50, 6, { content: "Jan", fontSize: 10 }),
 
     text("lname_label", 95, 56, 25, 6, {
       content: "Nazwisko:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 125, 56, 70, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
+    text("patient.lastName", 125, 56, 70, 6, { content: "Kowalski", fontSize: 10 }),
 
     text("pesel_label", 15, 65, 20, 6, {
       content: "PESEL:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 38, 65, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
+    text("patient.pesel", 38, 65, 60, 6, { content: "85010112345", fontSize: 10 }),
 
     // Treatment
     text("treatment_label", 15, 78, 25, 6, {
@@ -567,7 +588,7 @@ function buildPrescriptionTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("treatment.name", 42, 78, 153, 6, { content: "[Nazwa zabiegu]", fontSize: 10 }),
+    text("treatment.name", 42, 78, 153, 6, { content: "Mezoterapia igłowa", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 88, 180, 3, {
@@ -586,7 +607,7 @@ function buildPrescriptionTemplate() {
 
     // Large prescription body area
     text("prescription_body", 15, 108, 180, 110, {
-      content: "[Wpisz treść recepty...]",
+      content: "Amoxicillinum 500mg, 1 tabletka 3x dziennie przez 7 dni\nIbuprofem 400mg, 1 tabletka w razie bólu, max 3x dziennie",
       fontSize: 11,
       lineHeight: 1.6,
     }),
@@ -607,13 +628,13 @@ function buildPrescriptionTemplate() {
       alignment: "right",
     }),
     text("employee.firstName", 110, 242, 40, 6, {
-      content: "[Imię pracownika]",
+      content: "Anna",
       fontSize: 10,
       alignment: "right",
     }),
-    text("employee.lastName", 152, 242, 43, 6, { content: "[Nazwisko pracownika]", fontSize: 10 }),
+    text("employee.lastName", 152, 242, 43, 6, { content: "Nowak", fontSize: 10 }),
     text("employee.licenseNumber", 110, 250, 85, 6, {
-      content: "[Numer licencji]",
+      content: "PWZ-1234567",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
@@ -651,7 +672,7 @@ function buildReferralTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
-      content: "[Nazwa organizacji]",
+      content: "Klinika Medyczna Nova",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -663,7 +684,7 @@ function buildReferralTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 156, 40, 39, 6, { content: "[Data]", fontSize: 10 }),
+    text("system.date_pl", 156, 40, 39, 6, { content: "19 marca 2026", fontSize: 10 }),
 
     // Separator
     text("separator_1", 15, 48, 180, 3, {
@@ -685,21 +706,21 @@ function buildReferralTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.firstName", 38, 66, 50, 6, { content: "[Imię pacjenta]", fontSize: 10 }),
+    text("patient.firstName", 38, 66, 50, 6, { content: "Jan", fontSize: 10 }),
 
     text("lname_label", 95, 66, 25, 6, {
       content: "Nazwisko:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.lastName", 125, 66, 70, 6, { content: "[Nazwisko pacjenta]", fontSize: 10 }),
+    text("patient.lastName", 125, 66, 70, 6, { content: "Kowalski", fontSize: 10 }),
 
     text("pesel_label", 15, 75, 20, 6, {
       content: "PESEL:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("patient.pesel", 38, 75, 60, 6, { content: "[PESEL pacjenta]", fontSize: 10 }),
+    text("patient.pesel", 38, 75, 60, 6, { content: "85010112345", fontSize: 10 }),
 
     // Separator
     text("separator_2", 15, 85, 180, 3, {
@@ -711,13 +732,14 @@ function buildReferralTemplate() {
 
     // Referral body intro
     text("referral_intro", 15, 93, 180, 7, {
-      content: "Kieruję wyżej wymienionego pacjenta na konsultację / badanie / zabieg:",
+      content: "Kieruję pacjenta/kę na:",
       fontSize: 10,
+      fontWeight: "bold",
     }),
 
     // Large referral body area
     text("referral_body", 15, 104, 180, 110, {
-      content: "[Wpisz treść skierowania...]",
+      content: "Konsultacja kardiologiczna\n\nCel skierowania:\nDiagnostyka w kierunku nadciśnienia tętniczego opornego na leczenie. Pacjent wymaga oceny kardiologicznej i ewentualnej modyfikacji farmakoterapii.",
       fontSize: 11,
       lineHeight: 1.6,
     }),
@@ -737,7 +759,7 @@ function buildReferralTemplate() {
       fontWeight: "bold",
     }),
     text("appointment.notes", 50, 230, 145, 12, {
-      content: "[Notatki wizyty]",
+      content: "Nadciśnienie tętnicze pierwotne (I10)",
       fontSize: 9,
       lineHeight: 1.4,
     }),
@@ -750,19 +772,19 @@ function buildReferralTemplate() {
       alignment: "right",
     }),
     text("employee.firstName", 110, 259, 40, 6, {
-      content: "[Imię pracownika]",
+      content: "Anna",
       fontSize: 10,
       alignment: "right",
     }),
-    text("employee.lastName", 152, 259, 43, 6, { content: "[Nazwisko pracownika]", fontSize: 10 }),
+    text("employee.lastName", 152, 259, 43, 6, { content: "Nowak", fontSize: 10 }),
     text("employee.specialization", 110, 267, 85, 6, {
-      content: "[Specjalizacja]",
+      content: "Medycyna rodzinna",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
     }),
     text("employee.licenseNumber", 110, 274, 85, 6, {
-      content: "[Numer licencji]",
+      content: "PWZ-1234567",
       fontSize: 9,
       alignment: "right",
       fontColor: "#555555",
@@ -800,7 +822,7 @@ function buildContractTemplate() {
     }),
     // Organization name
     text("organization.name", 15, 28, 180, 7, {
-      content: "[Nazwa organizacji]",
+      content: "Klinika Medyczna Nova",
       fontSize: 11,
       alignment: "center",
       fontColor: "#555555",
@@ -811,7 +833,7 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("system.date_pl", 31, 38, 50, 6, { content: "[Data]", fontSize: 10 }),
+    text("system.date_pl", 31, 38, 50, 6, { content: "19 marca 2026", fontSize: 10 }),
 
     // Separator
     text("separator_1", 15, 47, 180, 3, {
@@ -828,49 +850,49 @@ function buildContractTemplate() {
       fontWeight: "bold",
     }),
 
-    // Company / seller info
+    // Company / seller info — Zleceniobiorca
     text("seller_label", 15, 65, 50, 6, {
-      content: "Wykonawca / Sprzedawca:",
+      content: "Zleceniobiorca:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("company.name", 15, 73, 85, 6, { content: "[Nazwa firmy]", fontSize: 10 }),
+    text("company.name", 15, 73, 85, 6, { content: "Tech Solutions Sp. z o.o.", fontSize: 10 }),
     text("company.address.street", 15, 80, 50, 6, {
-      content: "[Ulica firmy]",
+      content: "ul. Nowy Świat 15/3",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.address.zip", 15, 86, 15, 6, {
-      content: "[Kod pocztowy firmy]",
+      content: "00-029",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.address.city", 32, 86, 50, 6, {
-      content: "[Miasto firmy]",
+      content: "Warszawa",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("company.phone", 15, 92, 50, 6, {
-      content: "[Telefon firmy]",
+      content: "+48 22 123 45 67",
       fontSize: 9,
       fontColor: "#555555",
     }),
 
-    // Contact / buyer info
+    // Contact / buyer info — Zleceniodawca
     text("buyer_label", 110, 65, 50, 6, {
-      content: "Zamawiający / Kupujący:",
+      content: "Zleceniodawca:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("contact.firstName", 110, 73, 35, 6, { content: "[Imię kontaktu]", fontSize: 10 }),
-    text("contact.lastName", 147, 73, 48, 6, { content: "[Nazwisko kontaktu]", fontSize: 10 }),
+    text("contact.firstName", 110, 73, 35, 6, { content: "Jan", fontSize: 10 }),
+    text("contact.lastName", 147, 73, 48, 6, { content: "Kowalski", fontSize: 10 }),
     text("contact.email", 110, 80, 85, 6, {
-      content: "[Email kontaktu]",
+      content: "jan.kowalski@email.pl",
       fontSize: 9,
       fontColor: "#555555",
     }),
     text("contact.phone", 110, 86, 85, 6, {
-      content: "[Telefon kontaktu]",
+      content: "+48 600 123 456",
       fontSize: 9,
       fontColor: "#555555",
     }),
@@ -887,16 +909,16 @@ function buildContractTemplate() {
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("lead.title", 38, 114, 157, 6, { content: "[Tytuł leada]", fontSize: 10 }),
+    text("lead.title", 38, 114, 157, 6, { content: "Wdrożenie systemu CRM", fontSize: 10 }),
 
     text("lead_value_label", 15, 123, 20, 6, {
       content: "Kwota:",
       fontSize: 10,
       fontWeight: "bold",
     }),
-    text("lead.value", 38, 123, 40, 6, { content: "[Wartość leada]", fontSize: 10 }),
+    text("lead.value", 38, 123, 40, 6, { content: "25 000,00", fontSize: 10 }),
     text("lead.currency", 80, 123, 20, 6, {
-      content: "[Waluta]",
+      content: "PLN",
       fontSize: 10,
       fontColor: "#555555",
     }),
@@ -916,7 +938,12 @@ function buildContractTemplate() {
       fontWeight: "bold",
     }),
     text("contract_body", 15, 150, 180, 85, {
-      content: "[Wpisz warunki umowy...]",
+      content:
+        "§1. Zleceniobiorca zobowiązuje się do wykonania przedmiotu umowy określonego powyżej " +
+        "w terminie uzgodnionym przez obie strony.\n\n" +
+        "§2. Zleceniodawca zobowiązuje się do zapłaty wynagrodzenia w kwocie określonej powyżej, " +
+        "w terminie 14 dni od daty wystawienia faktury.\n\n" +
+        "§3. W sprawach nieuregulowanych niniejszą umową zastosowanie mają przepisy Kodeksu cywilnego.",
       fontSize: 10,
       lineHeight: 1.5,
     }),
@@ -931,7 +958,7 @@ function buildContractTemplate() {
 
     // Signature section
     text("sig_seller_label", 15, 250, 80, 6, {
-      content: "Podpis Wykonawcy:",
+      content: "Podpis Zleceniobiorcy:",
       fontSize: 10,
       fontWeight: "bold",
     }),
@@ -941,7 +968,7 @@ function buildContractTemplate() {
     }),
 
     text("sig_buyer_label", 115, 250, 80, 6, {
-      content: "Podpis Zamawiającego:",
+      content: "Podpis Zleceniodawcy:",
       fontSize: 10,
       fontWeight: "bold",
     }),

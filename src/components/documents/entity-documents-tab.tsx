@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -80,6 +80,39 @@ export function EntityDocumentsTab({
     }),
     enabled: !!viewingDoc?.templateId,
   });
+
+  // Fetch scope data to merge with responseData for viewer pre-fill
+  const { data: scopeData } = useQuery({
+    ...convexQuery(api.documents.generate.resolveEntityScope, {
+      organizationId,
+      entityType,
+      entityId,
+    }),
+    enabled: !!viewingDocId,
+  });
+
+  // Merge scope data (pre-fill) with saved responseData
+  const mergedResponseData = useMemo(() => {
+    const saved = viewingDoc?.responseData
+      ? (JSON.parse(viewingDoc.responseData) as Record<string, unknown>)
+      : {};
+
+    // Flatten scope data to dot-notation (patient.firstName, treatment.name, etc.)
+    const scopeFlat: Record<string, string> = {};
+    if (scopeData) {
+      for (const [entityType, fields] of Object.entries(scopeData)) {
+        if (typeof fields !== "object" || fields === null) continue;
+        for (const [key, value] of Object.entries(fields as Record<string, unknown>)) {
+          if (value !== null && value !== undefined) {
+            scopeFlat[`${entityType}.${key}`] = String(value);
+          }
+        }
+      }
+    }
+
+    // Scope data as base, saved responseData overrides
+    return { ...scopeFlat, ...saved };
+  }, [viewingDoc?.responseData, scopeData]);
 
   // --- Loading ---
 
@@ -220,24 +253,14 @@ export function EntityDocumentsTab({
                 <>
                   <SurveyFormViewer
                     formJson={viewingTemplate.formJson}
-                    responseData={
-                      JSON.parse(viewingDoc.responseData) as Record<
-                        string,
-                        unknown
-                      >
-                    }
+                    responseData={mergedResponseData}
                     signatureData={viewingDoc.signatureData}
                     signedAt={viewingDoc.signedAt}
                   />
 
                   <SurveyPdfExportButton
                     formJson={viewingTemplate.formJson}
-                    responseData={
-                      JSON.parse(viewingDoc.responseData) as Record<
-                        string,
-                        unknown
-                      >
-                    }
+                    responseData={mergedResponseData}
                     title={viewingDoc.title}
                   />
                 </>

@@ -314,6 +314,9 @@ function AppointmentDetail() {
   const [gateTiming, setGateTiming] = useState<"before_start" | "after_completion">("before_start");
   const [gateTargetStatus, setGateTargetStatus] = useState<string>("");
 
+  // Document counts for gate checks and status badges (must be before early returns)
+  const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
+
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
   const trackView = useMutation(api.recentlyViewed.track);
@@ -726,9 +729,6 @@ function AppointmentDetail() {
     const endMinutes = endH * 60 + endM;
     return endMinutes - startMinutes;
   };
-
-  // Document counts for gate checks and status badges
-  const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
   const performStatusChange = async (newStatus: string) => {
     setIsUpdating(true);

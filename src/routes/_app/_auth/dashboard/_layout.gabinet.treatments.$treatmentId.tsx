@@ -11,6 +11,9 @@ import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { TreatmentRequiredDocuments } from "@/components/documents/treatment-required-documents";
+import type { RequiredFormTemplate } from "@/components/documents/treatment-required-documents";
+import { Separator } from "@/components/ui/separator";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -783,11 +786,21 @@ function TreatmentDetail() {
       {
         label: t("gabinet.treatmentDetail.tabs.documents"),
         content: (
-          <EntityDocumentsTab
-            entityType="treatment"
-            entityId={treatmentId}
-            organizationId={organizationId}
-          />
+          <div className="space-y-6">
+            <TreatmentRequiredDocuments
+              treatmentId={treatmentId as Id<"gabinetTreatments">}
+              organizationId={organizationId}
+              requiredFormTemplates={
+                (treatment?.requiredFormTemplates as RequiredFormTemplate[] | undefined) ?? []
+              }
+            />
+            <Separator />
+            <EntityDocumentsTab
+              entityType="treatment"
+              entityId={treatmentId}
+              organizationId={organizationId}
+            />
+          </div>
         ),
       },
       {

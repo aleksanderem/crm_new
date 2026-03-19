@@ -127,6 +127,10 @@ export const update = mutation({
     requiresApproval: v.optional(v.boolean()),
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    requiredFormTemplates: v.optional(v.array(v.object({
+      templateId: v.id("formTemplates"),
+      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    }))),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -396,6 +400,79 @@ export const getTreatmentDocumentTemplates = query({
     return templates.filter(
       (t): t is NonNullable<typeof t> => t !== null
     );
+  },
+});
+
+export const getRequiredFormTemplates = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    const entries = treatment.requiredFormTemplates ?? [];
+    const enriched = await Promise.all(
+      entries.map(async (entry) => {
+        const template = await ctx.db.get(entry.templateId);
+        return template
+          ? {
+              templateId: entry.templateId,
+              timing: entry.timing,
+              templateName: template.name,
+              templateCategory: template.category,
+              requiresSignature: template.requiresSignature,
+              isActive: template.isActive,
+            }
+          : null;
+      }),
+    );
+
+    return enriched.filter((e): e is NonNullable<typeof e> => e !== null);
+  },
+});
+
+export const setRequiredFormTemplates = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    requiredFormTemplates: v.array(v.object({
+      templateId: v.id("formTemplates"),
+      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment || treatment.organizationId !== args.organizationId) {
+      throw new Error("Treatment not found");
+    }
+
+    await ctx.db.patch(args.treatmentId, {
+      requiredFormTemplates: args.requiredFormTemplates,
+      updatedAt: Date.now(),
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      action: "updated",
+      description: `Updated required form templates for treatment "${treatment.name}"`,
+      performedBy: user._id,
+    });
+
+    return args.treatmentId;
   },
 });
 

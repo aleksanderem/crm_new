@@ -108,10 +108,15 @@ export function createGabinetTables({
         }),
       ),
     ),
-    // Treatment detail: required document templates for this treatment
+    // Treatment detail: required document templates for this treatment (legacy)
     requiredDocumentTemplateIds: v.optional(
       v.array(v.id("gabinetDocumentTemplates")),
     ),
+    // Treatment detail: required form templates with timing (new PDFme system)
+    requiredFormTemplates: v.optional(v.array(v.object({
+      templateId: v.id("formTemplates"),
+      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    }))),
     shortDescription: v.optional(v.string()),
     image: v.optional(v.id("_storage")),
     createdBy: v.id("users"),

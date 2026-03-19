@@ -45,7 +45,8 @@ import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
 import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
-import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { AppointmentDocumentChecklist, useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
+import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
@@ -307,6 +308,11 @@ function AppointmentDetail() {
     Array<{ treatmentId: string; treatmentName: string; remaining: number; qty: number }>
   >([]);
   const [isUsageSubmitting, setIsUsageSubmitting] = useState(false);
+
+  // Document gate state
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
+  const [gateTiming, setGateTiming] = useState<"before_start" | "after_completion">("before_start");
+  const [gateTargetStatus, setGateTargetStatus] = useState<string>("");
 
   const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
   const updateAppointment = useMutation(api.gabinet.appointments.update);
@@ -721,12 +727,10 @@ function AppointmentDetail() {
     return endMinutes - startMinutes;
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (newStatus === "cancelled") {
-      setCancelDialogOpen(true);
-      return;
-    }
+  // Document counts for gate checks and status badges
+  const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
+  const performStatusChange = async (newStatus: string) => {
     setIsUpdating(true);
     try {
       await updateStatus({
@@ -742,6 +746,29 @@ function AppointmentDetail() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === "cancelled") {
+      setCancelDialogOpen(true);
+      return;
+    }
+
+    // Document gate: check before transitioning to in_progress or completed
+    if (newStatus === "in_progress" && docCounts.missingBefore > 0) {
+      setGateTiming("before_start");
+      setGateTargetStatus(newStatus);
+      setGateDialogOpen(true);
+      return;
+    }
+    if (newStatus === "completed" && docCounts.missingAfter > 0) {
+      setGateTiming("after_completion");
+      setGateTargetStatus(newStatus);
+      setGateDialogOpen(true);
+      return;
+    }
+
+    await performStatusChange(newStatus);
   };
 
   const handleCancelConfirm = async () => {
@@ -981,6 +1008,13 @@ function AppointmentDetail() {
     </span>
   );
 
+  // Helper: document badge count for status transitions
+  const getDocBadgeCount = (status: string): number => {
+    if (status === "in_progress") return docCounts.missingBefore;
+    if (status === "completed") return docCounts.missingAfter;
+    return 0;
+  };
+
   // Status dropdown as actions menu
   const statusAction = availableTransitions.length > 0 ? (
     <Select
@@ -1000,11 +1034,21 @@ function AppointmentDetail() {
         <SelectItem value={appointment.status} disabled>
           {t(`gabinet.appointments.statuses.${appointment.status}`)}
         </SelectItem>
-        {availableTransitions.map((status) => (
-          <SelectItem key={status} value={status}>
-            {t(`gabinet.appointments.statuses.${status}`)}
-          </SelectItem>
-        ))}
+        {availableTransitions.map((status) => {
+          const docBadge = getDocBadgeCount(status);
+          return (
+            <SelectItem key={status} value={status}>
+              <span className="flex items-center gap-2">
+                {t(`gabinet.appointments.statuses.${status}`)}
+                {docBadge > 0 && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
+                    {docBadge}
+                  </span>
+                )}
+              </span>
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   ) : (
@@ -2029,10 +2073,10 @@ function AppointmentDetail() {
     {
       label: t("gabinet.appointments.tabs.documents", "Dokumenty"),
       content: (
-        <EntityDocumentsTab
-          entityType="appointment"
-          entityId={appointmentId}
+        <AppointmentDocumentChecklist
+          appointmentId={appointmentId}
           organizationId={organizationId}
+          treatmentId={appointment.treatmentId}
         />
       ),
     },
@@ -2193,6 +2237,22 @@ function AppointmentDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Document Gate Dialog */}
+      <DocumentGateDialog
+        open={gateDialogOpen}
+        onOpenChange={setGateDialogOpen}
+        appointmentId={appointmentId}
+        organizationId={organizationId}
+        timing={gateTiming}
+        targetStatus={gateTargetStatus}
+        onProceed={() => performStatusChange(gateTargetStatus)}
+        onFillDocument={(docId) => {
+          // Navigate to the documents tab — the user can click the document there
+          // For now, we just close the dialog so they can use the documents tab
+          setGateDialogOpen(false);
+        }}
+      />
 
       {/* Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>

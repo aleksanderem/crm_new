@@ -830,3 +830,64 @@ S0072. Design kickoff:
 - User reviewed the spec and asked to proceed to implementation planning.
 - Entered the writing-plans workflow.
 - Gathering existing plan format, testing commands, and codebase constraints before writing the implementation plan file.
+
+=== SESSION S0081 START === 2026-03-19T11:00:00Z
+Focus: Treatment-document-appointment workflow frontend (Phase 1.2 + Phase 4)
+Implementing from plan: docs/superpowers/plans/2026-03-19-treatment-document-workflow.md
+
+---
+
+S0081. Task #1 - AppointmentDocumentChecklist:
+- Created src/components/documents/appointment-document-checklist.tsx
+- Groups documents by timing (before_start / after_completion / untimed)
+- Shows progress bar per section with completed/total count
+- Status icons: green CircleCheck, yellow Clock, red AlertCircle
+- Each row shows DocumentStatusBadge + action button (Wypelnij/Podglad)
+- Sheet viewer for inline document viewing
+- GenerateDocumentDialog for ad-hoc doc creation
+- Exported useAppointmentDocumentCounts hook for gate checks
+
+---
+
+S0081. Task #2 - DocumentGateDialog:
+- Created src/components/documents/document-gate-dialog.tsx
+- Amber AlertTriangle icon with "Niekompletne dokumenty" title
+- Lists missing documents with "Wypelnij" button each
+- Footer: "Kontynuuj mimo to" + "Wypelnij dokumenty"
+
+---
+
+S0081. Task #3 - TreatmentRequiredDocuments:
+- Created src/components/documents/treatment-required-documents.tsx
+- Card with list of assigned required form templates
+- Timing badge toggle (green Przed wizyta / blue Po wizycie)
+- Picker dialog with search and timing selector
+- Saves via api.gabinet.treatments.update
+
+---
+
+S0081. Task #4 - Treatment detail route update:
+- Added TreatmentRequiredDocuments above Separator above EntityDocumentsTab
+
+---
+
+S0081. Task #5 - Appointment detail route update:
+- Replaced EntityDocumentsTab with AppointmentDocumentChecklist
+- Added DocumentGateDialog with gate logic in handleStatusChange
+- Status dropdown shows red badge with missing doc count
+
+---
+
+S0081. Task #6 - Typecheck: npx tsc --noEmit passes with zero errors
+
+---
+
+=== SESSION S0081 HANDOFF === 2026-03-19T11:45:00Z
+Status: completed
+Files created:
+  - src/components/documents/appointment-document-checklist.tsx
+  - src/components/documents/document-gate-dialog.tsx
+  - src/components/documents/treatment-required-documents.tsx
+Files modified:
+  - src/routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId.tsx
+  - src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx

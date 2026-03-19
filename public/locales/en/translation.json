@@ -2213,6 +2213,10 @@
       "noAppointments": "No appointments",
       "availableSlots": "Available slots",
       "noAvailableSlots": "No available slots for this employee on this date.",
+      "findNearestSlot": "Find nearest slot",
+      "findSlotSuccess": "Found slot: {{date}} at {{time}}",
+      "findSlotEmpty": "No available slot found within the next 30 days",
+      "findSlotError": "Error while searching for a slot",
       "statuses": {
         "pending_confirmation": "Pending Confirmation",
         "scheduled": "Scheduled",

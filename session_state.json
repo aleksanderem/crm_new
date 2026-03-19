@@ -1,18 +1,18 @@
 {
-  "session_id": "S0081",
-  "started_at": "2026-03-19T11:00:00Z",
-  "last_updated": "2026-03-19T11:45:00Z",
+  "session_id": "S0082",
+  "started_at": "2026-03-19T12:00:00Z",
+  "last_updated": "2026-03-19T12:30:00Z",
   "status": "completed",
-  "focus": "Treatment-document-appointment workflow frontend (Phase 1.2 + Phase 4)",
+  "focus": "Add 'Find Nearest Slot' button to both appointment creation components",
   "tasks_snapshot": {
-    "total": 6,
+    "total": 5,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 6,
+    "passing": 5,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0081: Implemented all frontend components for treatment-document-appointment workflow. Created 3 new components (appointment-document-checklist, document-gate-dialog, treatment-required-documents). Modified treatment detail route and appointment detail route. Typecheck passes with zero errors. Backend APIs implemented in S0080."
+  "notes": "S0082: Added findNextAvailableSlot query to scheduling.ts backend, added 'Znajdź najbliższy termin' button to both appointment-dialog.tsx and appointment-form.tsx, added PL/EN i18n keys. Typecheck passes with zero new errors."
 }

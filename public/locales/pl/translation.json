@@ -2222,6 +2222,10 @@
       "noAppointments": "Brak wizyt",
       "availableSlots": "Dostępne terminy",
       "noAvailableSlots": "Brak dostępnych terminów dla tego pracownika w tym dniu.",
+      "findNearestSlot": "Znajdź najbliższy termin",
+      "findSlotSuccess": "Znaleziono termin: {{date}} o {{time}}",
+      "findSlotEmpty": "Nie znaleziono wolnego terminu w ciągu 30 dni",
+      "findSlotError": "Błąd podczas szukania terminu",
       "statuses": {
         "pending_confirmation": "Oczekuje na potwierdzenie",
         "scheduled": "Zaplanowana",

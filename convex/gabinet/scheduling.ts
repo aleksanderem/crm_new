@@ -4,6 +4,7 @@ import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
+import { getAvailableSlots } from "./_availability";
 
 // --- Working Hours (clinic-level defaults) ---
 
@@ -508,5 +509,53 @@ export const removeEmployeeSchedule = mutation({
     }
 
     await ctx.db.delete(args.scheduleId);
+  },
+});
+
+// --- Find Next Available Slot ---
+
+export const findNextAvailableSlot = query({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.id("users"),
+    durationMinutes: v.number(),
+    fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
+    maxDaysToSearch: v.optional(v.number()), // defaults to 30
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const maxDays = args.maxDaysToSearch ?? 30;
+
+    // Start from fromDate or today
+    const startDate = args.fromDate
+      ? new Date(args.fromDate + "T00:00:00")
+      : new Date();
+    // Normalize to YYYY-MM-DD
+    const toDateStr = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
+      const checkDate = new Date(startDate);
+      checkDate.setDate(startDate.getDate() + dayOffset);
+      const dateStr = toDateStr(checkDate);
+
+      const slots = await getAvailableSlots(ctx, {
+        organizationId: args.organizationId,
+        userId: args.employeeId,
+        date: dateStr,
+        duration: args.durationMinutes,
+      });
+
+      if (slots.length > 0) {
+        return {
+          date: dateStr,
+          startTime: slots[0].start,
+          endTime: slots[0].end,
+        };
+      }
+    }
+
+    return null;
   },
 });

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
 import type { Id } from "~/convex/_generated/dataModel";
@@ -25,11 +25,13 @@ import {
 } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, CheckIcon, ChevronsUpDown } from "@/lib/ez-icons";
+import { CalendarSearch } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 function getEmployeeName(emp: {
   firstName?: string;
@@ -146,6 +148,8 @@ export function AppointmentForm({
   const [notes, setNotes] = useState("");
   const [sendReminder, setSendReminder] = useState(reminderEnabled);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+  const [searchingSlot, setSearchingSlot] = useState(false);
+  const convex = useConvex();
 
   // Popover open states
   const [patientOpen, setPatientOpen] = useState(false);
@@ -194,6 +198,38 @@ export function AppointmentForm({
   });
 
   const locale = i18n.resolvedLanguage === "pl" ? pl : undefined;
+
+  const handleFindSlot = async () => {
+    if (!employeeId || !selectedTreatment || !organizationId) return;
+    setSearchingSlot(true);
+    try {
+      const fromDate = date
+        ? format(date, "yyyy-MM-dd")
+        : new Date().toISOString().split("T")[0];
+      const result = await convex.query(api.gabinet.scheduling.findNextAvailableSlot, {
+        organizationId,
+        employeeId: employeeId as Id<"users">,
+        durationMinutes: selectedTreatment.duration,
+        fromDate,
+      });
+      if (result) {
+        setDate(new Date(result.date + "T00:00:00"));
+        setSelectedSlot({ start: result.startTime, end: result.endTime });
+        toast.success(
+          t("gabinet.appointments.findSlotSuccess", {
+            date: result.date,
+            time: result.startTime,
+          }),
+        );
+      } else {
+        toast.error(t("gabinet.appointments.findSlotEmpty"));
+      }
+    } catch {
+      toast.error(t("gabinet.appointments.findSlotError"));
+    } finally {
+      setSearchingSlot(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -498,6 +534,25 @@ export function AppointmentForm({
           )}
         </div>
       </fieldset>
+
+      {/* Find nearest available slot */}
+      {employeeId && selectedTreatment && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={searchingSlot}
+          onClick={handleFindSlot}
+        >
+          {searchingSlot ? (
+            <span className="border-primary mr-2 size-3.5 animate-spin rounded-full border-2 border-t-transparent" />
+          ) : (
+            <CalendarSearch className="mr-2 size-4" />
+          )}
+          {t("gabinet.appointments.findNearestSlot")}
+        </Button>
+      )}
 
       {/* Date — calendar picker, shown only when employee selected */}
       {employeeId && (

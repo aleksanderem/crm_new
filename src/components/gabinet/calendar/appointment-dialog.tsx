@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Clock } from "@/lib/ez-icons";
+import { CalendarSearch } from "lucide-react";
 import { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
 
@@ -75,6 +76,8 @@ export function AppointmentDialog({
   const [frequency, setFrequency] = useState("weekly");
   const [recurringCount, setRecurringCount] = useState(4);
   const [submitting, setSubmitting] = useState(false);
+  const [searchingSlot, setSearchingSlot] = useState(false);
+  const convex = useConvex();
 
   // Resolve user names for employees
   const userMap = useMemo(() => {
@@ -115,6 +118,36 @@ export function AppointmentDialog({
       const eh = Math.floor(endMinutes / 60);
       const em = endMinutes % 60;
       setEndTime(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+    }
+  };
+
+  const handleFindSlot = async () => {
+    if (!employeeId || !selectedTreatment) return;
+    setSearchingSlot(true);
+    try {
+      const result = await convex.query(api.gabinet.scheduling.findNextAvailableSlot, {
+        organizationId,
+        employeeId: employeeId as Id<"users">,
+        durationMinutes: selectedTreatment.duration,
+        fromDate: date || new Date().toISOString().split("T")[0],
+      });
+      if (result) {
+        setDate(result.date);
+        setStartTime(result.startTime);
+        setEndTime(result.endTime);
+        toast.success(
+          t("gabinet.appointments.findSlotSuccess", {
+            date: result.date,
+            time: result.startTime,
+          }),
+        );
+      } else {
+        toast.error(t("gabinet.appointments.findSlotEmpty"));
+      }
+    } catch {
+      toast.error(t("gabinet.appointments.findSlotError"));
+    } finally {
+      setSearchingSlot(false);
     }
   };
 
@@ -221,6 +254,22 @@ export function AppointmentDialog({
               />
             </div>
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={!employeeId || !selectedTreatment || searchingSlot}
+            onClick={handleFindSlot}
+          >
+            {searchingSlot ? (
+              <span className="border-primary mr-2 size-3.5 animate-spin rounded-full border-2 border-t-transparent" />
+            ) : (
+              <CalendarSearch className="mr-2 size-4" />
+            )}
+            {t("gabinet.appointments.findNearestSlot")}
+          </Button>
 
           {/* Available slots */}
           {employeeId && date && selectedTreatment && availableSlots && (

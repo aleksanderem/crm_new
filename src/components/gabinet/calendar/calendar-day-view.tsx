@@ -92,7 +92,7 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
 
 export function CalendarDayView({ date, appointments, onSlotClick, onAppointmentClick, workingHours }: CalendarDayViewProps) {
   const now = new Date();
-  const isToday = date === now.toISOString().split("T")[0];
+  const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
 

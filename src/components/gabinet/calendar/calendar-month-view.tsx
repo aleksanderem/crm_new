@@ -47,7 +47,8 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate }: CalendarMonthViewProps) {
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const countByDate = useMemo(() => {
     const m = new Map<string, number>();

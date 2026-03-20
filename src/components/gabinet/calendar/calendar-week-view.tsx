@@ -32,7 +32,7 @@ function getWeekDates(start: string): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const day = new Date(d);
     day.setDate(d.getDate() + i);
-    return day.toISOString().split("T")[0];
+    return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
   });
 }
 
@@ -112,7 +112,8 @@ function layoutDayAppointments(appts: Appointment[]): LayoutedAppointment[] {
 
 export function CalendarWeekView({ weekStart, appointments, onSlotClick, onAppointmentClick, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const layoutsByDate = useMemo(() => {
     const map = new Map<string, LayoutedAppointment[]>();

@@ -9,12 +9,21 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@/components/ui/button";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tree,
+  TreeItem,
+  TreeItemLabel,
+} from "@/components/reui/tree";
+import {
+  hotkeysCoreFeature,
+  syncDataLoaderFeature,
+} from "@headless-tree/core";
+import { useTree } from "@headless-tree/react";
 import {
   ArrowLeft,
   FileText,
@@ -30,8 +39,6 @@ import {
   Info,
   Folder,
   FolderOpen,
-  ChevronRight,
-  ChevronDown,
 } from "@/lib/ez-icons";
 import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
@@ -75,7 +82,8 @@ function countFormFields(formJson: string | null | undefined): number {
   try {
     const parsed = JSON.parse(formJson);
     if (Array.isArray(parsed)) return parsed.length;
-    if (parsed.fields && Array.isArray(parsed.fields)) return parsed.fields.length;
+    if (parsed.fields && Array.isArray(parsed.fields))
+      return parsed.fields.length;
     if (parsed.pages && Array.isArray(parsed.pages)) {
       return parsed.pages.reduce(
         (sum: number, page: { elements?: unknown[] }) =>
@@ -90,102 +98,159 @@ function countFormFields(formJson: string | null | undefined): number {
 }
 
 // ---------------------------------------------------------------------------
-// Folder tree helpers
+// Headless-tree data model builder
 // ---------------------------------------------------------------------------
 
-type FolderNode<T> = {
+interface TreeNodeData {
   name: string;
-  fullPath: string;
-  templates: T[];
-  children: FolderNode<T>[];
-};
+  children?: string[];
+  isFolder: boolean;
+  templateId?: Id<"formTemplates">;
+  category?: string;
+  description?: string;
+  formJson?: string;
+  requiresSignature?: boolean;
+}
 
-/** Build a tree structure from templates' folderPath values. */
-function buildFolderTree<T extends { folderPath?: string }>(
-  templates: T[],
-): { root: T[]; folders: FolderNode<T>[] } {
-  const root: T[] = [];
-  const folderMap = new Map<
-    string,
-    { templates: T[]; children: Map<string, true> }
-  >();
+/**
+ * Convert a flat template array (with folderPath strings) into the record
+ * format that @headless-tree expects. Returns { items, rootChildren, expandedIds }.
+ */
+function buildTreeData(
+  templates: Array<{
+    _id: Id<"formTemplates">;
+    name: string;
+    folderPath?: string;
+    category: string;
+    description?: string;
+    formJson: string;
+    requiresSignature: boolean;
+  }>,
+): {
+  items: Record<string, TreeNodeData>;
+  rootChildren: string[];
+  expandedIds: string[];
+} {
+  const items: Record<string, TreeNodeData> = {};
+  const folderChildren = new Map<string, Set<string>>(); // path → child IDs
+  const rootChildren = new Set<string>();
 
   for (const tpl of templates) {
+    const tplId = `tpl:${tpl._id}`;
+    items[tplId] = {
+      name: tpl.name,
+      isFolder: false,
+      templateId: tpl._id,
+      category: tpl.category,
+      description: tpl.description,
+      formJson: tpl.formJson,
+      requiresSignature: tpl.requiresSignature,
+    };
+
     if (!tpl.folderPath) {
-      root.push(tpl);
+      rootChildren.add(tplId);
       continue;
     }
 
     const segments = tpl.folderPath.split("/");
+
+    // Ensure all ancestor folders exist
     for (let i = 1; i <= segments.length; i++) {
       const path = segments.slice(0, i).join("/");
-      if (!folderMap.has(path)) {
-        folderMap.set(path, { templates: [], children: new Map() });
+      const folderId = `folder:${path}`;
+
+      if (!items[folderId]) {
+        items[folderId] = {
+          name: segments[i - 1],
+          children: [],
+          isFolder: true,
+        };
+        if (!folderChildren.has(path)) {
+          folderChildren.set(path, new Set());
+        }
+      }
+
+      // Wire parent → child
+      if (i === 1) {
+        rootChildren.add(folderId);
+      } else {
+        const parentPath = segments.slice(0, i - 1).join("/");
+        if (!folderChildren.has(parentPath)) {
+          folderChildren.set(parentPath, new Set());
+        }
+        folderChildren.get(parentPath)!.add(folderId);
       }
     }
-    folderMap.get(tpl.folderPath)!.templates.push(tpl);
 
-    for (let i = 2; i <= segments.length; i++) {
-      const parentPath = segments.slice(0, i - 1).join("/");
-      const childPath = segments.slice(0, i).join("/");
-      folderMap.get(parentPath)!.children.set(childPath, true);
+    // Add template to its leaf folder
+    const leafPath = tpl.folderPath;
+    if (!folderChildren.has(leafPath)) {
+      folderChildren.set(leafPath, new Set());
+    }
+    folderChildren.get(leafPath)!.add(tplId);
+  }
+
+  // Wire children arrays on folder items
+  for (const [path, childIds] of folderChildren) {
+    const folderId = `folder:${path}`;
+    if (items[folderId]) {
+      items[folderId].children = Array.from(childIds).sort((a, b) => {
+        // Folders first, then templates
+        const aIsFolder = a.startsWith("folder:");
+        const bIsFolder = b.startsWith("folder:");
+        if (aIsFolder && !bIsFolder) return -1;
+        if (!aIsFolder && bIsFolder) return 1;
+        return (items[a]?.name ?? "").localeCompare(items[b]?.name ?? "");
+      });
     }
   }
 
-  function buildNode(path: string): FolderNode<T> {
-    const entry = folderMap.get(path)!;
-    const childPaths = Array.from(entry.children.keys()).sort();
-    return {
-      name: path.split("/").pop()!,
-      fullPath: path,
-      templates: entry.templates,
-      children: childPaths.map(buildNode),
-    };
-  }
+  // Build root item
+  const sortedRootChildren = Array.from(rootChildren).sort((a, b) => {
+    const aIsFolder = a.startsWith("folder:");
+    const bIsFolder = b.startsWith("folder:");
+    if (aIsFolder && !bIsFolder) return -1;
+    if (!aIsFolder && bIsFolder) return 1;
+    return (items[a]?.name ?? "").localeCompare(items[b]?.name ?? "");
+  });
 
-  const topPaths = Array.from(folderMap.keys())
-    .filter((p) => !p.includes("/"))
-    .sort();
+  items["__root__"] = {
+    name: "Root",
+    children: sortedRootChildren,
+    isFolder: true,
+  };
 
-  return { root, folders: topPaths.map(buildNode) };
-}
-
-function countTemplatesInNode<T>(node: FolderNode<T>): number {
-  return (
-    node.templates.length +
-    node.children.reduce(
-      (sum, child) => sum + countTemplatesInNode(child),
-      0,
-    )
+  // Collect all folder IDs to expand them by default
+  const expandedIds = Object.keys(items).filter((id) =>
+    id.startsWith("folder:"),
   );
-}
 
-function collectAllPaths<T>(nodes: FolderNode<T>[]): string[] {
-  return nodes.flatMap((node) => [
-    node.fullPath,
-    ...collectAllPaths(node.children),
-  ]);
+  return { items, rootChildren: sortedRootChildren, expandedIds };
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components for tree rendering
+// Template card (rendered as leaf node content)
 // ---------------------------------------------------------------------------
 
-function TemplateItem({
-  tpl,
-  onSelect,
+function TemplateCard({
+  data,
+  onClick,
   t,
 }: {
-  tpl: { _id: Id<"formTemplates">; name: string; category: string; description?: string; formJson: string; requiresSignature: boolean };
-  onSelect: (id: Id<"formTemplates">) => void;
+  data: TreeNodeData;
+  onClick: () => void;
   t: (key: string, defaultValue?: string, options?: Record<string, unknown>) => string;
 }) {
-  const CategoryIcon = CATEGORY_ICONS[tpl.category] ?? FileText;
-  const fieldCount = countFormFields(tpl.formJson);
+  const CategoryIcon = CATEGORY_ICONS[data.category ?? ""] ?? FileText;
+  const fieldCount = countFormFields(data.formJson);
+
   return (
     <button
       type="button"
-      onClick={() => onSelect(tpl._id)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group"
     >
       <div className="flex items-start gap-3">
@@ -194,8 +259,8 @@ function TemplateItem({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-sm font-medium truncate">{tpl.name}</span>
-            {tpl.requiresSignature && (
+            <span className="text-sm font-medium truncate">{data.name}</span>
+            {data.requiresSignature && (
               <Badge
                 variant="outline"
                 className="text-[10px] shrink-0 gap-1 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
@@ -205,9 +270,9 @@ function TemplateItem({
               </Badge>
             )}
           </div>
-          {tpl.description && (
+          {data.description && (
             <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">
-              {tpl.description}
+              {data.description}
             </p>
           )}
           {fieldCount > 0 && (
@@ -223,83 +288,11 @@ function TemplateItem({
   );
 }
 
-function FolderTreeBranch({
-  node,
-  expanded,
-  onToggle,
-  onSelect,
-  t,
-  depth = 0,
-}: {
-  node: FolderNode<any>;
-  expanded: Set<string>;
-  onToggle: (path: string) => void;
-  onSelect: (id: Id<"formTemplates">) => void;
-  t: (key: string, defaultValue?: string, options?: Record<string, unknown>) => string;
-  depth?: number;
-}) {
-  const isExpanded = expanded.has(node.fullPath);
-  const hasContent = node.templates.length > 0 || node.children.length > 0;
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => onToggle(node.fullPath)}
-        className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-      >
-        {isExpanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        )}
-        {isExpanded ? (
-          <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
-        ) : (
-          <Folder className="h-4 w-4 text-amber-500 shrink-0" />
-        )}
-        <span className="font-medium truncate">{node.name}</span>
-        <span className="text-xs text-muted-foreground ml-auto shrink-0">
-          {countTemplatesInNode(node)}
-        </span>
-      </button>
-
-      {isExpanded && hasContent && (
-        <div>
-          {node.children.map((child) => (
-            <FolderTreeBranch
-              key={child.fullPath}
-              node={child}
-              expanded={expanded}
-              onToggle={onToggle}
-              onSelect={onSelect}
-              t={t}
-              depth={depth + 1}
-            />
-          ))}
-          <div
-            className="space-y-2 mt-1"
-            style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
-          >
-            {node.templates.map((tpl: any) => (
-              <TemplateItem
-                key={tpl._id}
-                tpl={tpl}
-                onSelect={onSelect}
-                t={t}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+
+const TREE_INDENT = 20;
 
 export function GenerateDocumentDialog({
   open,
@@ -354,33 +347,32 @@ export function GenerateDocumentDialog({
       : templates
     : [];
 
-  // Build folder tree from folderPath values
-  const folderTree = useMemo(
-    () => buildFolderTree(filteredTemplates),
+  // Build headless-tree data model
+  const treeData = useMemo(
+    () => buildTreeData(filteredTemplates),
     [filteredTemplates],
   );
 
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(),
+  // When searching, expand all folders; otherwise use headless-tree defaults
+  const initialExpanded = useMemo(
+    () => (search.trim() ? treeData.expandedIds : treeData.expandedIds),
+    [search, treeData.expandedIds],
   );
 
-  const toggleFolder = useCallback((path: string) => {
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }, []);
-
-  // Auto-expand all folders when searching
-  const effectiveExpanded = useMemo(
-    () =>
-      search.trim()
-        ? new Set(collectAllPaths(folderTree.folders))
-        : expandedFolders,
-    [search, folderTree.folders, expandedFolders],
-  );
+  const tree = useTree<TreeNodeData>({
+    initialState: {
+      expandedItems: initialExpanded,
+    },
+    indent: TREE_INDENT,
+    rootItemId: "__root__",
+    getItemName: (item) => item.getItemData().name,
+    isItemFolder: (item) => item.getItemData()?.isFolder ?? false,
+    dataLoader: {
+      getItem: (itemId) => treeData.items[itemId],
+      getChildren: (itemId) => treeData.items[itemId]?.children ?? [],
+    },
+    features: [syncDataLoaderFeature, hotkeysCoreFeature],
+  });
 
   const handleTemplateSelect = useCallback(
     (templateId: Id<"formTemplates">) => {
@@ -540,40 +532,53 @@ export function GenerateDocumentDialog({
                       </div>
                     )}
 
-                    <div className="space-y-1">
-                      {/* Folder tree */}
-                      {folderTree.folders.map((folder) => (
-                        <FolderTreeBranch
-                          key={folder.fullPath}
-                          node={folder}
-                          expanded={effectiveExpanded}
-                          onToggle={toggleFolder}
-                          onSelect={handleTemplateSelect}
-                          t={t}
-                        />
-                      ))}
+                    {!templatesLoading && filteredTemplates.length > 0 && (
+                      <Tree
+                        indent={TREE_INDENT}
+                        tree={tree}
+                        toggleIconType="chevron"
+                      >
+                        {tree.getItems().map((item) => {
+                          const data = item.getItemData();
+                          if (!data) return null;
 
-                      {/* Root-level templates (no folder) */}
-                      {folderTree.root.length > 0 && (
-                        <div className="space-y-2 mt-3">
-                          {folderTree.folders.length > 0 && (
-                            <div className="mb-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {t("settings.formTemplates.noFolder", "Bez katalogu")}
-                              </Badge>
-                            </div>
-                          )}
-                          {folderTree.root.map((tpl) => (
-                            <TemplateItem
-                              key={tpl._id}
-                              tpl={tpl}
-                              onSelect={handleTemplateSelect}
-                              t={t}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          // Leaf = template → render rich card
+                          if (!item.isFolder()) {
+                            return (
+                              <TreeItem key={item.getId()} item={item} className="!ps-0">
+                                <div style={{ paddingLeft: `${item.getItemMeta().level * TREE_INDENT}px` }}>
+                                  <TemplateCard
+                                    data={data}
+                                    onClick={() => {
+                                      if (data.templateId) {
+                                        handleTemplateSelect(data.templateId);
+                                      }
+                                    }}
+                                    t={t}
+                                  />
+                                </div>
+                              </TreeItem>
+                            );
+                          }
+
+                          // Folder node
+                          return (
+                            <TreeItem key={item.getId()} item={item}>
+                              <TreeItemLabel className="before:bg-background relative before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10">
+                                <span className="flex items-center gap-2">
+                                  {item.isExpanded() ? (
+                                    <FolderOpen className="text-amber-500 pointer-events-none size-4" />
+                                  ) : (
+                                    <Folder className="text-amber-500 pointer-events-none size-4" />
+                                  )}
+                                  <span className="font-medium">{item.getItemName()}</span>
+                                </span>
+                              </TreeItemLabel>
+                            </TreeItem>
+                          );
+                        })}
+                      </Tree>
+                    )}
                   </ScrollShadow>
                 </ModalBody>
               </>

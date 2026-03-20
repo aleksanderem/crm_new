@@ -135,6 +135,8 @@ export const listRooms = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const location = await ctx.db.get(args.locationId);
+    if (!location || location.organizationId !== args.organizationId) return [];
     return await ctx.db
       .query("gabinetRooms")
       .withIndex("by_location", (q) => q.eq("locationId", args.locationId))

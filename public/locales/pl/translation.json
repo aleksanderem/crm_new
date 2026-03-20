@@ -2849,7 +2849,13 @@
       "noLocations": "Brak lokalizacji",
       "noRooms": "Brak gabinetów",
       "deleteConfirm": "Czy na pewno chcesz usunąć tę lokalizację?",
-      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami"
+      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami",
+      "street": "Ulica",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "country": "Kraj",
+      "room": "Gabinet",
+      "selectRoom": "Wybierz gabinet..."
     },
     "equipment": {
       "title": "Sprzęt",

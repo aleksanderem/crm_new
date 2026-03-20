@@ -2840,7 +2840,13 @@
       "noLocations": "No locations",
       "noRooms": "No rooms",
       "deleteConfirm": "Are you sure you want to delete this location?",
-      "activeAppointments": "Cannot delete location with active appointments"
+      "activeAppointments": "Cannot delete location with active appointments",
+      "street": "Street",
+      "city": "City",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "room": "Room",
+      "selectRoom": "Select room..."
     },
     "equipment": {
       "title": "Equipment",

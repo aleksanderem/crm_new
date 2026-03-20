@@ -202,7 +202,7 @@ function EquipmentCard({
         serialNumber: editSerial.trim() || undefined,
         status: editStatus,
       });
-      toast.success(t("common.save") + "d");
+      toast.success(t("common.saved"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -223,7 +223,7 @@ function EquipmentCard({
           : undefined,
         notes: transferNotes.trim() || undefined,
       });
-      toast.success(t("gabinet.equipment.transfer") + "red");
+      toast.success(t("common.saved"));
       setTransferOpen(false);
       setTransferLocationId("");
       setTransferRoomId("");
@@ -427,13 +427,13 @@ function EquipmentCard({
 
             {roomsForTransferLocation.length > 0 && (
               <div className="space-y-1.5">
-                <Label>Room (optional)</Label>
+                <Label>{t("gabinet.locations.room")}</Label>
                 <Select
                   value={transferRoomId}
                   onValueChange={setTransferRoomId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select room..." />
+                    <SelectValue placeholder={t("gabinet.locations.selectRoom")} />
                   </SelectTrigger>
                   <SelectContent>
                     {roomsForTransferLocation.map((room) => (

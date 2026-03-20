@@ -1,5 +1,6 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
@@ -115,6 +116,8 @@ export const transferEquipment = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const equipment = await ctx.db.get(args.equipmentId);
     if (!equipment || equipment.organizationId !== args.organizationId) {
@@ -156,6 +159,8 @@ export const listTransfers = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    const equipment = await ctx.db.get(args.equipmentId);
+    if (!equipment || equipment.organizationId !== args.organizationId) return [];
     return await ctx.db
       .query("gabinetEquipmentTransfers")
       .withIndex("by_equipment", (q) => q.eq("equipmentId", args.equipmentId))
@@ -173,7 +178,7 @@ export const migrateEquipmentStrings = mutation({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const nameToId = new Map<string, any>();
+    const nameToId = new Map<string, Id<"gabinetEquipment">>();
     const now = Date.now();
 
     // Idempotency: pre-load existing equipment by name to avoid duplicates on re-run
@@ -188,7 +193,7 @@ export const migrateEquipmentStrings = mutation({
     for (const t of treatments) {
       if (!t.requiredEquipment?.length) continue;
       if (t.requiredEquipmentIds?.length) continue; // Already migrated
-      const equipmentIds: any[] = [];
+      const equipmentIds: Id<"gabinetEquipment">[] = [];
 
       for (const name of t.requiredEquipment) {
         if (!nameToId.has(name)) {

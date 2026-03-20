@@ -151,7 +151,7 @@ function LocationCard({
           country: editCountry?.trim() || undefined,
         },
       });
-      toast.success(t("common.save") + "d");
+      toast.success(t("common.saved"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -162,7 +162,7 @@ function LocationCard({
   const handleDelete = async () => {
     try {
       await deleteLocation({ organizationId, locationId });
-      toast.success(t("common.delete") + "d");
+      toast.success(t("common.deleted"));
       onDeleted();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
@@ -179,7 +179,7 @@ function LocationCard({
         name: newRoomName.trim(),
         floor: newRoomFloor.trim() || undefined,
       });
-      toast.success(t("common.add") + "ed");
+      toast.success(t("common.saved"));
       setNewRoomName("");
       setNewRoomFloor("");
       setAddRoomOpen(false);
@@ -312,22 +312,22 @@ function LocationCard({
               <Label>{t("gabinet.locations.address")}</Label>
               <div className="grid grid-cols-2 gap-3">
                 <Input
-                  placeholder="Street"
+                  placeholder={t("gabinet.locations.street")}
                   value={editStreet ?? ""}
                   onChange={(e) => setEditStreet(e.target.value)}
                 />
                 <Input
-                  placeholder="City"
+                  placeholder={t("gabinet.locations.city")}
                   value={editCity ?? ""}
                   onChange={(e) => setEditCity(e.target.value)}
                 />
                 <Input
-                  placeholder="Postal code"
+                  placeholder={t("gabinet.locations.postalCode")}
                   value={editPostal ?? ""}
                   onChange={(e) => setEditPostal(e.target.value)}
                 />
                 <Input
-                  placeholder="Country"
+                  placeholder={t("gabinet.locations.country")}
                   value={editCountry ?? ""}
                   onChange={(e) => setEditCountry(e.target.value)}
                 />
@@ -579,7 +579,7 @@ function LocationsSettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>City</Label>
+              <Label>{t("gabinet.locations.city")}</Label>
               <Input
                 value={newCity}
                 onChange={(e) => setNewCity(e.target.value)}

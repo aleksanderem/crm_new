@@ -99,9 +99,11 @@ import { Route as AppAuthDashboardLayoutSettingsAutomationsRuleIdImport } from '
 import { Route as AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
 import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.reminders'
+import { Route as AppAuthDashboardLayoutGabinetSettingsLocationsImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.locations'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
+import { Route as AppAuthDashboardLayoutGabinetSettingsEquipmentImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.equipment'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
@@ -649,6 +651,12 @@ const AppAuthDashboardLayoutGabinetSettingsRemindersRoute =
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
+const AppAuthDashboardLayoutGabinetSettingsLocationsRoute =
+  AppAuthDashboardLayoutGabinetSettingsLocationsImport.update({
+    path: '/gabinet/settings/locations',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
 const AppAuthDashboardLayoutGabinetSettingsLeavesRoute =
   AppAuthDashboardLayoutGabinetSettingsLeavesImport.update({
     path: '/gabinet/settings/leaves',
@@ -664,6 +672,12 @@ const AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute =
 const AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute =
   AppAuthDashboardLayoutGabinetSettingsLeaveBalancesImport.update({
     path: '/gabinet/settings/leave-balances',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+
+const AppAuthDashboardLayoutGabinetSettingsEquipmentRoute =
+  AppAuthDashboardLayoutGabinetSettingsEquipmentImport.update({
+    path: '/gabinet/settings/equipment',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 
@@ -1239,6 +1253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetPatientsPatientIdImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/equipment': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/equipment'
+      path: '/gabinet/settings/equipment'
+      fullPath: '/dashboard/gabinet/settings/equipment'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsEquipmentImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
     '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances': {
       id: '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances'
       path: '/gabinet/settings/leave-balances'
@@ -1258,6 +1279,13 @@ declare module '@tanstack/react-router' {
       path: '/gabinet/settings/leaves'
       fullPath: '/dashboard/gabinet/settings/leaves'
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeavesImport
+      parentRoute: typeof AppAuthDashboardLayoutImport
+    }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/locations': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/locations'
+      path: '/gabinet/settings/locations'
+      fullPath: '/dashboard/gabinet/settings/locations'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsLocationsImport
       parentRoute: typeof AppAuthDashboardLayoutImport
     }
     '/_app/_auth/dashboard/_layout/gabinet/settings/reminders': {
@@ -1449,9 +1477,11 @@ export const routeTree = rootRoute.addChildren({
           AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute,
           AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute,
           AppAuthDashboardLayoutGabinetPatientsPatientIdRoute,
+          AppAuthDashboardLayoutGabinetSettingsEquipmentRoute,
           AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute,
           AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute,
           AppAuthDashboardLayoutGabinetSettingsLeavesRoute,
+          AppAuthDashboardLayoutGabinetSettingsLocationsRoute,
           AppAuthDashboardLayoutGabinetSettingsRemindersRoute,
           AppAuthDashboardLayoutGabinetSettingsSchedulingRoute,
           AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute,
@@ -1616,9 +1646,11 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
         "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId",
         "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
+        "/_app/_auth/dashboard/_layout/gabinet/settings/equipment",
         "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances",
         "/_app/_auth/dashboard/_layout/gabinet/settings/leave-types",
         "/_app/_auth/dashboard/_layout/gabinet/settings/leaves",
+        "/_app/_auth/dashboard/_layout/gabinet/settings/locations",
         "/_app/_auth/dashboard/_layout/gabinet/settings/reminders",
         "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling",
         "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId",
@@ -1937,6 +1969,10 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.gabinet.patients.$patientId.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
+    "/_app/_auth/dashboard/_layout/gabinet/settings/equipment": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.equipment.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
     "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.leave-balances.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
@@ -1947,6 +1983,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_app/_auth/dashboard/_layout/gabinet/settings/leaves": {
       "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.leaves.tsx",
+      "parent": "/_app/_auth/dashboard/_layout"
+    },
+    "/_app/_auth/dashboard/_layout/gabinet/settings/locations": {
+      "filePath": "_app/_auth/dashboard/_layout.gabinet.settings.locations.tsx",
       "parent": "/_app/_auth/dashboard/_layout"
     },
     "/_app/_auth/dashboard/_layout/gabinet/settings/reminders": {

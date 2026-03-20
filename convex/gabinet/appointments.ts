@@ -13,7 +13,6 @@ import {
   getAvailableSlots,
   checkEmployeeQualification,
   resolveAppointmentLocation,
-  checkEquipmentAvailability,
 } from "./_availability";
 import { Id, Doc } from "../_generated/dataModel";
 import { logAudit } from "../auditLog";
@@ -716,16 +715,6 @@ export const create = mutation({
         userId: args.employeeId,
         date: args.date,
       });
-    }
-
-    // Check equipment availability (advisory — logged but doesn't block)
-    if (resolvedLocationId && treatment?.requiredEquipmentIds?.length) {
-      await checkEquipmentAvailability(ctx, {
-        organizationId: args.organizationId,
-        requiredEquipmentIds: treatment.requiredEquipmentIds,
-        locationId: resolvedLocationId,
-      });
-      // Equipment check is advisory — don't throw. Frontend shows warnings.
     }
 
     const baseData = {

@@ -96,6 +96,7 @@ interface FormTemplateRecord {
   description?: string;
   category: string;
   folderPath?: string;
+  templateType?: "pdfme" | "document";
   modules: string[];
   entityTypes: string[];
   version: number;
@@ -779,12 +780,29 @@ function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/dashboard/form-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/form-editor/new">
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("settings.formTemplates.newPdfmeTemplate", "Szablon PDF (PDFme)")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/document-editor/new">
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("settings.formTemplates.newDocumentTemplate", "Szablon dokumentu (WYSIWYG)")}
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SectionHeader.Actions>
         </SectionHeader.Group>
         <Alert
@@ -831,12 +849,14 @@ function FormTemplatesListPage() {
             <TemplateTree
               templates={allTemplates}
               search={search}
-              onEditTemplate={(id) =>
-                navigate({
-                  to: "/dashboard/form-editor/$id",
-                  params: { id },
-                })
-              }
+              onEditTemplate={(id) => {
+                const tpl = allTemplates.find((t) => t._id === id);
+                const route =
+                  tpl?.templateType === "document"
+                    ? "/dashboard/document-editor/$id"
+                    : "/dashboard/form-editor/$id";
+                navigate({ to: route, params: { id } });
+              }}
               onDeleteTemplate={setDeletingTemplate}
               onDuplicateTemplate={handleDuplicate}
               onToggleActive={handleToggleActive}

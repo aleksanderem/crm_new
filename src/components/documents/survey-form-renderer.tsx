@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ScrollShadow } from "@/components/ui/scroll-shadow";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import {
   User,

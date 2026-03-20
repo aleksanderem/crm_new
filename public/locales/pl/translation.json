@@ -2728,6 +2728,48 @@
       "colCreatedAt": "Data utworzenia",
       "colCreatedBy": "Utworzony przez",
       "templateNotFound": "Szablon dokumentu nie jest dostępny."
+    },
+    "locations": {
+      "title": "Lokalizacje",
+      "addLocation": "Dodaj lokalizację",
+      "name": "Nazwa",
+      "address": "Adres",
+      "phone": "Telefon",
+      "email": "Email",
+      "rooms": "Gabinety",
+      "addRoom": "Dodaj gabinet",
+      "roomName": "Nazwa gabinetu",
+      "floor": "Piętro",
+      "noLocations": "Brak lokalizacji",
+      "noRooms": "Brak gabinetów",
+      "deleteConfirm": "Czy na pewno chcesz usunąć tę lokalizację?",
+      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami",
+      "street": "Ulica",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "country": "Kraj",
+      "room": "Gabinet",
+      "selectRoom": "Wybierz gabinet..."
+    },
+    "equipment": {
+      "title": "Sprzęt",
+      "addEquipment": "Dodaj sprzęt",
+      "name": "Nazwa",
+      "serialNumber": "Numer seryjny",
+      "description": "Opis",
+      "status": "Status",
+      "currentLocation": "Aktualna lokalizacja",
+      "transfer": "Przenieś",
+      "transferHistory": "Historia przeniesień",
+      "transferTo": "Przenieś do",
+      "notes": "Notatki",
+      "noEquipment": "Brak sprzętu",
+      "statuses": {
+        "available": "Dostępny",
+        "in_use": "W użyciu",
+        "maintenance": "Serwis",
+        "retired": "Wycofany"
+      }
     }
   },
   "customFields": {
@@ -2834,48 +2876,6 @@
       "spent": "Wydane",
       "history": "Historia transakcji",
       "noTransactions": "Brak transakcji"
-    },
-    "locations": {
-      "title": "Lokalizacje",
-      "addLocation": "Dodaj lokalizację",
-      "name": "Nazwa",
-      "address": "Adres",
-      "phone": "Telefon",
-      "email": "Email",
-      "rooms": "Gabinety",
-      "addRoom": "Dodaj gabinet",
-      "roomName": "Nazwa gabinetu",
-      "floor": "Piętro",
-      "noLocations": "Brak lokalizacji",
-      "noRooms": "Brak gabinetów",
-      "deleteConfirm": "Czy na pewno chcesz usunąć tę lokalizację?",
-      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami",
-      "street": "Ulica",
-      "city": "Miasto",
-      "postalCode": "Kod pocztowy",
-      "country": "Kraj",
-      "room": "Gabinet",
-      "selectRoom": "Wybierz gabinet..."
-    },
-    "equipment": {
-      "title": "Sprzęt",
-      "addEquipment": "Dodaj sprzęt",
-      "name": "Nazwa",
-      "serialNumber": "Numer seryjny",
-      "description": "Opis",
-      "status": "Status",
-      "currentLocation": "Aktualna lokalizacja",
-      "transfer": "Przenieś",
-      "transferHistory": "Historia przeniesień",
-      "transferTo": "Przenieś do",
-      "notes": "Notatki",
-      "noEquipment": "Brak sprzętu",
-      "statuses": {
-        "available": "Dostępny",
-        "in_use": "W użyciu",
-        "maintenance": "Serwis",
-        "retired": "Wycofany"
-      }
     },
     "booking": {
       "title": "Umów wizytę",

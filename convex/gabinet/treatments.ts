@@ -304,6 +304,18 @@ export const getTreatmentDetailedStats = query({
       )
       .collect();
 
+    // Fetch all completed payments for this org, then filter by appointment IDs
+    const appointmentIds = new Set(allAppointments.map((a) => a._id));
+    const completedPayments = await ctx.db
+      .query("payments")
+      .withIndex("by_orgAndStatus", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "completed")
+      )
+      .collect();
+    const treatmentPayments = completedPayments.filter(
+      (p) => p.appointmentId && appointmentIds.has(p.appointmentId)
+    );
+
     const now = new Date();
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const today = now.toISOString().slice(0, 10);
@@ -314,7 +326,7 @@ export const getTreatmentDetailedStats = query({
     const completed = allAppointments.filter((a) => a.status === "completed").length;
     const cancelled = allAppointments.filter((a) => a.status === "cancelled").length;
     const noShow = allAppointments.filter((a) => a.status === "no_show").length;
-    const revenue = completed * price;
+    const revenue = treatmentPayments.reduce((sum, p) => sum + p.amount, 0);
 
     // --- Rates ---
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -328,26 +340,42 @@ export const getTreatmentDetailedStats = query({
     }
 
     // --- Monthly trend (last 12 months) ---
+    // Build a map of appointmentId -> payment amounts for revenue by month
+    const paymentByAppointment = new Map<string, number>();
+    for (const p of treatmentPayments) {
+      if (p.appointmentId) {
+        paymentByAppointment.set(
+          p.appointmentId,
+          (paymentByAppointment.get(p.appointmentId) ?? 0) + p.amount,
+        );
+      }
+    }
+
     const monthlyTrend: { month: string; appointments: number; revenue: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const monthApts = allAppointments.filter((a) => a.date.startsWith(key));
-      const monthCompleted = monthApts.filter((a) => a.status === "completed").length;
+      const monthRevenue = monthApts.reduce(
+        (sum, a) => sum + (paymentByAppointment.get(a._id) ?? 0),
+        0,
+      );
       monthlyTrend.push({
         month: key,
         appointments: monthApts.length,
-        revenue: monthCompleted * price,
+        revenue: monthRevenue,
       });
     }
 
     // --- Employee ranking (top performers) ---
-    const employeeMap: Record<string, { count: number; completedCount: number }> = {};
+    // Build employee -> revenue map from appointments they handled
+    const employeeMap: Record<string, { count: number; completedCount: number; revenue: number }> = {};
     for (const apt of allAppointments) {
       const eid = apt.employeeId;
-      if (!employeeMap[eid]) employeeMap[eid] = { count: 0, completedCount: 0 };
+      if (!employeeMap[eid]) employeeMap[eid] = { count: 0, completedCount: 0, revenue: 0 };
       employeeMap[eid].count++;
       if (apt.status === "completed") employeeMap[eid].completedCount++;
+      employeeMap[eid].revenue += paymentByAppointment.get(apt._id) ?? 0;
     }
 
     const employeeRanking = await Promise.all(
@@ -362,7 +390,7 @@ export const getTreatmentDetailedStats = query({
             image: user?.image,
             totalAppointments: data.count,
             completedAppointments: data.completedCount,
-            revenue: data.completedCount * price,
+            revenue: data.revenue,
           };
         })
     );

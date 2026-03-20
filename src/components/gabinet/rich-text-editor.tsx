@@ -29,11 +29,11 @@ import { ToolbarGroup } from "@/components/ui/toolbar";
 // Helpers: convert between Plate Value and plain-text string
 // ---------------------------------------------------------------------------
 
-const EMPTY_VALUE: Value = [{ type: "p", children: [{ text: "" }] }];
+const makeEmptyValue = (): Value => [{ type: "p", children: [{ text: "" }] }];
 
 /** Parse stored string into Plate Value. Handles JSON or plain text. */
 function parseValue(raw: string | undefined): Value {
-  if (!raw) return EMPTY_VALUE;
+  if (!raw) return makeEmptyValue();
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) return parsed;

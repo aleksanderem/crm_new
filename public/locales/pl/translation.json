@@ -1175,6 +1175,12 @@
         "patient": "Pacjent",
         "employee": "Pracownik",
         "external": "Zewnętrzny"
+      },
+      "newPdfmeTemplate": "Szablon PDF (PDFme)",
+      "newDocumentTemplate": "Szablon dokumentu (WYSIWYG)",
+      "templateTypes": {
+        "pdfme": "Formularz PDF",
+        "document": "Dokument"
       }
     }
   },
@@ -3197,5 +3203,9 @@
       "addToTemplate": "Dodaj do szablonu",
       "hint": "Kliknij + aby dodać zmienną do szablonu PDF. Nazwy pól odpowiadają ścieżkom zmiennych."
     }
+  },
+  "documentEditor": {
+    "fillFields": "Uzupełnij pola formularza przed wygenerowaniem dokumentu.",
+    "generate": "Generuj dokument"
   }
 }

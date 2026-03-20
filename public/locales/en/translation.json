@@ -1173,6 +1173,12 @@
         "patient": "Patient",
         "employee": "Employee",
         "external": "External"
+      },
+      "newPdfmeTemplate": "PDF Template (PDFme)",
+      "newDocumentTemplate": "Document Template (WYSIWYG)",
+      "templateTypes": {
+        "pdfme": "PDF Form",
+        "document": "Document"
       }
     }
   },
@@ -3186,5 +3192,9 @@
       "addToTemplate": "Add to template",
       "hint": "Click + to add a variable to the PDF template. Field names correspond to variable paths."
     }
+  },
+  "documentEditor": {
+    "fillFields": "Fill in the form fields before generating the document.",
+    "generate": "Generate document"
   }
 }

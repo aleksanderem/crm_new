@@ -429,6 +429,11 @@ function TemplateTree({
                 <Badge variant="outline" className="text-[10px] shrink-0">
                   {t(`settings.formTemplates.categories.${tpl.category}`)}
                 </Badge>
+                {tpl.templateType === "document" && (
+                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                    WYSIWYG
+                  </Badge>
+                )}
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>

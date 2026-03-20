@@ -20,6 +20,42 @@ interface TimeSlot {
 }
 
 /**
+ * Resolve the effective employee schedule for a given date, correctly filtering
+ * by effectiveFrom/effectiveTo instead of blindly returning the first record.
+ */
+async function resolveScheduleForDate(
+  ctx: QueryCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">,
+  dayOfWeek: number,
+  date: string, // YYYY-MM-DD
+) {
+  const candidates = await ctx.db
+    .query("gabinetEmployeeSchedules")
+    .withIndex("by_orgUserAndDay", (q) =>
+      q.eq("organizationId", organizationId)
+        .eq("userId", userId)
+        .eq("dayOfWeek", dayOfWeek)
+    )
+    .collect();
+
+  const matching = candidates.filter((c) => {
+    if (c.effectiveFrom && date < c.effectiveFrom) return false;
+    if (c.effectiveTo && date > c.effectiveTo) return false;
+    return true;
+  });
+
+  // Sort by effectiveFrom descending (most recent/specific first), nulls last
+  matching.sort((a, b) => {
+    if (a.effectiveFrom && b.effectiveFrom) return b.effectiveFrom.localeCompare(a.effectiveFrom);
+    if (a.effectiveFrom) return -1;
+    if (b.effectiveFrom) return 1;
+    return 0;
+  });
+  return matching[0] ?? null;
+}
+
+/**
  * Check if an employee is qualified to perform a specific treatment.
  * Returns true if qualified or if no employee record exists (fallback for non-gabinet users).
  */
@@ -58,6 +94,25 @@ export async function checkEmployeeQualification(
 }
 
 /**
+ * Resolve the location an employee is scheduled to work at on a given date.
+ * Returns null if no location is configured.
+ */
+export async function resolveAppointmentLocation(
+  ctx: QueryCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    userId: Id<"users">;
+    date: string;
+  }
+): Promise<Id<"gabinetLocations"> | null> {
+  const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
+  const schedule = await resolveScheduleForDate(
+    ctx, args.organizationId, args.userId, dayOfWeek, args.date
+  );
+  return schedule?.locationId ?? null;
+}
+
+/**
  * Get available time slots for a given employee on a given date.
  * Considers: employee schedule (or clinic defaults), breaks, approved leaves, existing appointments.
  */
@@ -68,19 +123,15 @@ export async function getAvailableSlots(
     userId: Id<"users">;
     date: string; // YYYY-MM-DD
     duration: number; // minutes
+    locationId?: Id<"gabinetLocations">;
   }
 ): Promise<TimeSlot[]> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
 
   // 1. Get employee-specific schedule for this day, or fall back to clinic defaults
-  const empSchedule = await ctx.db
-    .query("gabinetEmployeeSchedules")
-    .withIndex("by_orgUserAndDay", (q) =>
-      q.eq("organizationId", args.organizationId)
-        .eq("userId", args.userId)
-        .eq("dayOfWeek", dayOfWeek)
-    )
-    .first();
+  const empSchedule = await resolveScheduleForDate(
+    ctx, args.organizationId, args.userId, dayOfWeek, args.date
+  );
 
   let startTime: string;
   let endTime: string;
@@ -94,12 +145,24 @@ export async function getAvailableSlots(
     breakStart = empSchedule.breakStart;
     breakEnd = empSchedule.breakEnd;
   } else {
-    const clinicHours = await ctx.db
-      .query("gabinetWorkingHours")
-      .withIndex("by_orgAndDay", (q) =>
-        q.eq("organizationId", args.organizationId).eq("dayOfWeek", dayOfWeek)
-      )
-      .first();
+    let clinicHours = null;
+    if (args.locationId) {
+      clinicHours = await ctx.db
+        .query("gabinetWorkingHours")
+        .withIndex("by_orgAndLocation", (q) =>
+          q.eq("organizationId", args.organizationId).eq("locationId", args.locationId)
+        )
+        .filter((q) => q.eq(q.field("dayOfWeek"), dayOfWeek))
+        .first();
+    }
+    if (!clinicHours) {
+      clinicHours = await ctx.db
+        .query("gabinetWorkingHours")
+        .withIndex("by_orgAndDay", (q) =>
+          q.eq("organizationId", args.organizationId).eq("dayOfWeek", dayOfWeek)
+        )
+        .first();
+    }
 
     if (!clinicHours || !clinicHours.isOpen) return [];
     startTime = clinicHours.startTime;
@@ -224,6 +287,7 @@ export async function checkConflict(
     startTime: string;
     endTime: string;
     excludeAppointmentId?: Id<"gabinetAppointments">;
+    roomId?: Id<"gabinetRooms">;
   }
 ): Promise<{ hasConflict: boolean; reason?: string }> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
@@ -231,14 +295,9 @@ export async function checkConflict(
   const reqEnd = timeToMinutes(args.endTime);
 
   // Check working hours
-  const empSchedule = await ctx.db
-    .query("gabinetEmployeeSchedules")
-    .withIndex("by_orgUserAndDay", (q) =>
-      q.eq("organizationId", args.organizationId)
-        .eq("userId", args.userId)
-        .eq("dayOfWeek", dayOfWeek)
-    )
-    .first();
+  const empSchedule = await resolveScheduleForDate(
+    ctx, args.organizationId, args.userId, dayOfWeek, args.date
+  );
 
   if (empSchedule) {
     if (!empSchedule.isWorking) {
@@ -339,5 +398,59 @@ export async function checkConflict(
     }
   }
 
+  // Room conflict check
+  if (args.roomId) {
+    const roomAppointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndRoomAndDate", (q) =>
+        q.eq("organizationId", args.organizationId)
+          .eq("roomId", args.roomId)
+          .eq("date", args.date)
+      )
+      .collect();
+
+    for (const appt of roomAppointments) {
+      if (args.excludeAppointmentId && appt._id === args.excludeAppointmentId) continue;
+      if (appt.status === "cancelled" || appt.status === "no_show") continue;
+      if (appt.startTime < args.endTime && appt.endTime > args.startTime) {
+        return { hasConflict: true, reason: "Room is occupied at this time" };
+      }
+    }
+  }
+
   return { hasConflict: false };
+}
+
+/**
+ * Check whether all required equipment pieces are available at a given location.
+ */
+export async function checkEquipmentAvailability(
+  ctx: QueryCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    requiredEquipmentIds: Id<"gabinetEquipment">[];
+    locationId: Id<"gabinetLocations">;
+  }
+): Promise<{ available: boolean; missing: { name: string; currentLocation?: string }[] }> {
+  const missing: { name: string; currentLocation?: string }[] = [];
+
+  for (const eqId of args.requiredEquipmentIds) {
+    const equipment = await ctx.db.get(eqId);
+    if (!equipment || equipment.organizationId !== args.organizationId) {
+      missing.push({ name: "Unknown equipment" });
+      continue;
+    }
+    if (equipment.status !== "available") {
+      missing.push({ name: equipment.name, currentLocation: `Status: ${equipment.status}` });
+      continue;
+    }
+    if (equipment.currentLocationId !== args.locationId) {
+      const loc = equipment.currentLocationId
+        ? await ctx.db.get(equipment.currentLocationId)
+        : null;
+      missing.push({ name: equipment.name, currentLocation: loc?.name ?? "Unassigned" });
+    }
+  }
+
+  return { available: missing.length === 0, missing };
 }

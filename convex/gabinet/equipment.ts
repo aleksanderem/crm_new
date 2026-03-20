@@ -163,3 +163,51 @@ export const listTransfers = query({
       .collect();
   },
 });
+
+export const migrateEquipmentStrings = mutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const treatments = await ctx.db
+      .query("gabinetTreatments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const nameToId = new Map<string, any>();
+    const now = Date.now();
+
+    // Idempotency: pre-load existing equipment by name to avoid duplicates on re-run
+    const existingEquipment = await ctx.db
+      .query("gabinetEquipment")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    for (const eq of existingEquipment) {
+      nameToId.set(eq.name, eq._id);
+    }
+
+    for (const t of treatments) {
+      if (!t.requiredEquipment?.length) continue;
+      if (t.requiredEquipmentIds?.length) continue; // Already migrated
+      const equipmentIds: any[] = [];
+
+      for (const name of t.requiredEquipment) {
+        if (!nameToId.has(name)) {
+          const id = await ctx.db.insert("gabinetEquipment", {
+            organizationId: args.organizationId,
+            name,
+            status: "available" as const,
+            createdBy: user._id,
+            createdAt: now,
+            updatedAt: now,
+          });
+          nameToId.set(name, id);
+        }
+        equipmentIds.push(nameToId.get(name)!);
+      }
+
+      await ctx.db.patch(t._id, { requiredEquipmentIds: equipmentIds });
+    }
+
+    return { migratedEquipment: nameToId.size, updatedTreatments: treatments.filter(t => t.requiredEquipment?.length && !t.requiredEquipmentIds?.length).length };
+  },
+});

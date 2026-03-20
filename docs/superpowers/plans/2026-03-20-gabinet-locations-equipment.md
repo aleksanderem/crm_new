@@ -27,9 +27,9 @@
 |------|---------|
 | `convex/schema/gabinet.ts` | 4 new table definitions + field additions to 4 existing tables |
 | `convex/gabinet/_availability.ts` | Room conflict check, equipment availability check, location resolution, effectiveFrom/To filtering fix |
-| `convex/gabinet/appointments.ts` | locationId/roomId in create + update mutations |
+| `convex/gabinet/appointments.ts` | locationId/roomId in create + update mutations, update getAvailableSlotsQuery to accept locationId |
 | `convex/gabinet/treatments.ts` | requiredEquipmentIds field in create/update |
-| `convex/gabinet/scheduling.ts` | locationId in saveSchedulePeriod, pass locationId to getAvailableSlots |
+| `convex/gabinet/scheduling.ts` | locationId in saveSchedulePeriod/setEmployeeSchedule/bulkSetEmployeeSchedule/setWorkingHours/bulkSetWorkingHours, pass locationId to getAvailableSlots |
 | `convex/gabinet/patientPortal.ts` | Pass locationId to getAvailableSlots callers |
 | `src/components/gabinet/appointment-form.tsx` | Location/room selectors, equipment validation |
 | `src/components/gabinet/calendar/appointment-detail-dialog.tsx` | Location + room display |
@@ -66,7 +66,7 @@ gabinetLocations: defineTable({
   email: v.optional(v.string()),
   color: v.optional(v.string()),
   isActive: v.boolean(),
-  createdBy: v.optional(v.id("users")),
+  createdBy: v.id("users"),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
 })
@@ -109,7 +109,7 @@ gabinetEquipment: defineTable({
     v.literal("maintenance"),
     v.literal("retired"),
   ),
-  createdBy: v.optional(v.id("users")),
+  createdBy: v.id("users"),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
 })
@@ -198,7 +198,7 @@ git commit -m "feat(gabinet): add schema for locations, rooms, equipment, transf
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../permissions";
+import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 
@@ -253,6 +253,8 @@ export const createLocation = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     return await ctx.db.insert("gabinetLocations", {
       ...args,
@@ -283,6 +285,8 @@ export const updateLocation = mutation({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const location = await ctx.db.get(args.locationId);
     if (!location || location.organizationId !== args.organizationId) {
       throw new Error("Location not found");
@@ -294,7 +298,47 @@ export const updateLocation = mutation({
 });
 ```
 
-- [ ] **Step 3: Add room CRUD**
+- [ ] **Step 3: Add deleteLocation mutation**
+
+```typescript
+export const deleteLocation = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    locationId: v.id("gabinetLocations"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+    const location = await ctx.db.get(args.locationId);
+    if (!location || location.organizationId !== args.organizationId) {
+      throw new Error("Location not found");
+    }
+    // Block if active appointments reference this location
+    const activeAppts = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("locationId"), args.locationId),
+          q.neq(q.field("status"), "cancelled"),
+          q.neq(q.field("status"), "completed"),
+          q.neq(q.field("status"), "no_show"),
+        )
+      )
+      .first();
+    if (activeAppts) {
+      throw new Error("Cannot delete location with active appointments");
+    }
+    // Soft-delete: mark inactive
+    await ctx.db.patch(args.locationId, { isActive: false, updatedAt: Date.now() });
+    return args.locationId;
+  },
+});
+```
+
+- [ ] **Step 4: Add room CRUD**
 
 ```typescript
 export const listRooms = query({
@@ -322,6 +366,8 @@ export const createRoom = mutation({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const location = await ctx.db.get(args.locationId);
     if (!location || location.organizationId !== args.organizationId) {
       throw new Error("Location not found");
@@ -346,6 +392,8 @@ export const updateRoom = mutation({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const room = await ctx.db.get(args.roomId);
     if (!room || room.organizationId !== args.organizationId) {
       throw new Error("Room not found");
@@ -355,14 +403,50 @@ export const updateRoom = mutation({
     return roomId;
   },
 });
+
+export const deleteRoom = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    roomId: v.id("gabinetRooms"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
+    const room = await ctx.db.get(args.roomId);
+    if (!room || room.organizationId !== args.organizationId) {
+      throw new Error("Room not found");
+    }
+    // Block if active appointments reference this room
+    const activeAppt = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndRoomAndDate", (q) =>
+        q.eq("organizationId", args.organizationId).eq("roomId", args.roomId)
+      )
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("status"), "cancelled"),
+          q.neq(q.field("status"), "completed"),
+          q.neq(q.field("status"), "no_show"),
+        )
+      )
+      .first();
+    if (activeAppt) {
+      throw new Error("Cannot delete room with active appointments");
+    }
+    await ctx.db.patch(args.roomId, { isActive: false });
+    return args.roomId;
+  },
+});
 ```
 
-- [ ] **Step 4: Verify**
+- [ ] **Step 5: Verify**
 
 Run: `npx convex dev --once`
 Expected: No type errors. Functions registered.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add convex/gabinet/locations.ts
@@ -392,14 +476,19 @@ export const listEquipment = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    let q = ctx.db
-      .query("gabinetEquipment")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId));
-    const all = await q.collect();
     if (args.locationId) {
-      return all.filter((e) => e.currentLocationId === args.locationId);
+      return await ctx.db
+        .query("gabinetEquipment")
+        .withIndex("by_location", (q) =>
+          q.eq("organizationId", args.organizationId)
+            .eq("currentLocationId", args.locationId)
+        )
+        .collect();
     }
-    return all;
+    return await ctx.db
+      .query("gabinetEquipment")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
   },
 });
 
@@ -595,8 +684,14 @@ async function resolveScheduleForDate(
     return true;
   });
 
-  // Return most specific (has effectiveFrom) or the default (no effectiveFrom)
-  return matching.find((c) => c.effectiveFrom) ?? matching[0] ?? null;
+  // Sort by effectiveFrom descending (most recent/specific first), nulls last
+  matching.sort((a, b) => {
+    if (a.effectiveFrom && b.effectiveFrom) return b.effectiveFrom.localeCompare(a.effectiveFrom);
+    if (a.effectiveFrom) return -1;
+    if (b.effectiveFrom) return 1;
+    return 0;
+  });
+  return matching[0] ?? null;
 }
 ```
 
@@ -715,9 +810,9 @@ locationId: v.optional(v.id("gabinetLocations")),
 roomId: v.optional(v.id("gabinetRooms")),
 ```
 
-- [ ] **Step 2: Add location resolution + equipment + room checks in create handler**
+- [ ] **Step 2: Add roomId to existing checkConflict call + location resolution + equipment check**
 
-After the existing `checkConflict` call, add:
+Pass `args.roomId` to the existing `checkConflict` call (which now handles room conflicts since Task 4 Step 4). After that call, add:
 
 ```typescript
 // Resolve location from employee schedule (or use explicit)
@@ -731,29 +826,19 @@ if (!resolvedLocationId) {
 }
 
 // Check equipment availability if treatment has required equipment and location is known
+// This is a SOFT CHECK — returns data for the frontend to display as a warning
 if (resolvedLocationId && treatment?.requiredEquipmentIds?.length) {
   const eqCheck = await checkEquipmentAvailability(ctx, {
     organizationId: args.organizationId,
     requiredEquipmentIds: treatment.requiredEquipmentIds,
     locationId: resolvedLocationId,
   });
-  if (!eqCheck.available) {
-    const names = eqCheck.missing.map((m) => m.name).join(", ");
-    throw new Error(`Required equipment not at this location: ${names}`);
-  }
-}
-
-// Check room conflict if roomId provided
-if (args.roomId) {
-  const roomConflict = await checkConflict(ctx, {
-    organizationId: args.organizationId,
-    userId: args.employeeId,
-    date: args.date,
-    startTime: args.startTime,
-    endTime: args.endTime,
-    roomId: args.roomId,
-  });
-  // checkConflict already handles room conflicts in Step 4 of Task 4
+  // Note: equipment check is advisory — don't throw. The frontend shows warnings.
+  // If hard blocking is desired, uncomment the throw below:
+  // if (!eqCheck.available) {
+  //   const names = eqCheck.missing.map((m) => m.name).join(", ");
+  //   throw new Error(`Required equipment not at this location: ${names}`);
+  // }
 }
 ```
 
@@ -790,13 +875,26 @@ git commit -m "feat(gabinet): add location/room/equipment to appointment create 
 - Modify: `convex/gabinet/treatments.ts`
 - Modify: `convex/gabinet/patientPortal.ts`
 
-- [ ] **Step 1: Add locationId to saveSchedulePeriod**
+- [ ] **Step 1: Add locationId to all schedule-setting mutations**
 
-In `scheduling.ts`, add `locationId: v.optional(v.id("gabinetLocations"))` to each item in the `hours` array arg. Include it in the insert/patch data.
+In `scheduling.ts`, add `locationId: v.optional(v.id("gabinetLocations"))` to:
+- `saveSchedulePeriod` — in each item of the `hours` array arg, include in insert/patch data
+- `setEmployeeSchedule` — add to args, include in insert/patch data
+- `bulkSetEmployeeSchedule` — add to each item in the array arg, include in insert/patch data
+
+- [ ] **Step 1b: Add locationId to working hours mutations**
+
+In `scheduling.ts`, add `locationId: v.optional(v.id("gabinetLocations"))` to:
+- `setWorkingHours` — add to args, include in insert/patch data
+- `bulkSetWorkingHours` — add to each item in the array arg, include in insert/patch data
+
+Without this, per-location working hours records can never be created, and `getAvailableSlots` would find no location-specific rows.
 
 - [ ] **Step 2: Pass locationId to getAvailableSlots callers**
 
 In `scheduling.ts` and `patientPortal.ts`, where `getAvailableSlots` is called, resolve and pass the `locationId` parameter. If not available, pass undefined (backward compat).
+
+Also update `getAvailableSlotsQuery` in `appointments.ts` (line ~578) to accept optional `locationId` arg and pass it through to `getAvailableSlots`. This is a public query that the frontend uses directly.
 
 - [ ] **Step 3: Add requiredEquipmentIds to treatment create/update**
 
@@ -821,13 +919,63 @@ git commit -m "feat(gabinet): add locationId to schedules, equipmentIds to treat
 - Modify: `public/locales/pl/translation.json`
 - Modify: `public/locales/en/translation.json`
 
-- [ ] **Step 1: Add PL keys under gabinet.locations and gabinet.equipment**
+- [ ] **Step 1: Add PL keys under gabinet.locations, gabinet.equipment, and gabinet.appointment**
 
-Add all keys from the spec i18n tables. Also add `gabinet.appointment.location`, `gabinet.appointment.room`, `gabinet.appointment.autoLocation`, `gabinet.appointment.roomConflict`, `gabinet.appointment.equipmentWarning`.
+Add all keys from the spec i18n tables. The JSON structure uses nested objects (not flat dot-notation). Example nesting:
+
+```json
+{
+  "gabinet": {
+    "locations": {
+      "title": "Lokalizacje",
+      "addLocation": "Dodaj lokalizację",
+      "name": "Nazwa",
+      "address": "Adres",
+      "phone": "Telefon",
+      "email": "Email",
+      "rooms": "Gabinety",
+      "addRoom": "Dodaj gabinet",
+      "roomName": "Nazwa gabinetu",
+      "floor": "Piętro",
+      "noLocations": "Brak lokalizacji",
+      "noRooms": "Brak gabinetów",
+      "deleteConfirm": "Czy na pewno chcesz usunąć tę lokalizację?",
+      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami"
+    },
+    "equipment": {
+      "title": "Sprzęt",
+      "addEquipment": "Dodaj sprzęt",
+      "name": "Nazwa",
+      "serialNumber": "Numer seryjny",
+      "description": "Opis",
+      "status": "Status",
+      "currentLocation": "Aktualna lokalizacja",
+      "transfer": "Przenieś",
+      "transferHistory": "Historia przeniesień",
+      "transferTo": "Przenieś do",
+      "notes": "Notatki",
+      "noEquipment": "Brak sprzętu",
+      "statuses": {
+        "available": "Dostępny",
+        "in_use": "W użyciu",
+        "maintenance": "Serwis",
+        "retired": "Wycofany"
+      }
+    },
+    "appointment": {
+      "location": "Lokalizacja",
+      "room": "Gabinet",
+      "autoLocation": "Auto (z grafiku)",
+      "roomConflict": "Gabinet zajęty w tym terminie",
+      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji"
+    }
+  }
+}
+```
 
 - [ ] **Step 2: Add EN keys**
 
-Mirror all PL keys with EN translations.
+Mirror all PL keys with EN translations. Same nesting structure.
 
 - [ ] **Step 3: Commit**
 
@@ -968,7 +1116,7 @@ After employee + date selection:
 1. Auto-resolve location from employee schedule (display as badge)
 2. Allow override via location dropdown
 3. Show room selector filtered by the resolved location
-4. If treatment has requiredEquipmentIds, show equipment validation status (green check or red warning per item)
+4. If treatment has requiredEquipmentIds, call `checkEquipmentAvailability` from a separate query (not the create mutation) and show results as soft warnings (yellow badge per missing item with current location info). This is advisory — users can still proceed with booking.
 
 - [ ] **Step 2: Update appointment detail dialog**
 
@@ -990,7 +1138,7 @@ git commit -m "feat(gabinet): add location, room, and equipment validation to ap
 ## Task 13: Frontend — Calendar Location Filter
 
 **Files:**
-- Modify: calendar toolbar component (within the gabinet calendar views)
+- Modify: `src/routes/_app/_auth/dashboard/_layout.gabinet.calendar.index.lazy.tsx`
 
 - [ ] **Step 1: Add location filter dropdown to calendar toolbar**
 
@@ -1028,8 +1176,18 @@ export const migrateEquipmentStrings = mutation({
     const nameToId = new Map<string, Id<"gabinetEquipment">>();
     const now = Date.now();
 
+    // Idempotency: pre-load existing equipment by name to avoid duplicates on re-run
+    const existingEquipment = await ctx.db
+      .query("gabinetEquipment")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    for (const eq of existingEquipment) {
+      nameToId.set(eq.name, eq._id);
+    }
+
     for (const t of treatments) {
       if (!t.requiredEquipment?.length) continue;
+      if (t.requiredEquipmentIds?.length) continue; // Already migrated
       const equipmentIds: Id<"gabinetEquipment">[] = [];
 
       for (const name of t.requiredEquipment) {

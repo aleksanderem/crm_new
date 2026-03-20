@@ -55,8 +55,10 @@ import {
   Stethoscope,
   StickyNote,
   User,
+  MapPin,
+  Building2,
 } from "@/lib/ez-icons";
-import { CalendarSearch } from "lucide-react";
+import { AlertTriangle, CalendarSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -138,6 +140,10 @@ export function AppointmentDialog({
     convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
+  const { data: locations } = useQuery(
+    convexQuery(api.gabinet.locations.listLocations, { organizationId }),
+  );
+
   // -------------------------------------------------------------------------
   // State
   // -------------------------------------------------------------------------
@@ -158,6 +164,8 @@ export function AppointmentDialog({
   const [recurringCount, setRecurringCount] = useState(4);
   const [submitting, setSubmitting] = useState(false);
   const [searchingSlot, setSearchingSlot] = useState(false);
+  const [locationId, setLocationId] = useState("");
+  const [roomId, setRoomId] = useState("");
 
   // Combobox open states
   const [treatmentOpen, setTreatmentOpen] = useState(false);
@@ -262,6 +270,34 @@ export function AppointmentDialog({
     enabled: !!employeeId && !!dateStr && !!selectedTreatment,
   });
 
+  // Rooms query — enabled only when a location is selected
+  const { data: locationWithRooms } = useQuery({
+    ...convexQuery(api.gabinet.locations.getLocation, {
+      organizationId,
+      locationId: locationId as Id<"gabinetLocations">,
+    }),
+    enabled: !!locationId,
+  });
+  const activeRooms = locationWithRooms?.rooms?.filter((r: { isActive: boolean }) => r.isActive) ?? [];
+
+  // Equipment at selected location — for advisory warnings
+  const { data: equipmentAtLocation } = useQuery({
+    ...convexQuery(api.gabinet.equipment.listEquipment, {
+      organizationId,
+      locationId: locationId as Id<"gabinetLocations">,
+    }),
+    enabled: !!locationId,
+  });
+
+  const activeLocations = locations?.filter((l: { isActive: boolean }) => l.isActive) ?? [];
+
+  // Equipment warning — advisory only
+  const missingEquipmentIds = useMemo(() => {
+    if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
+    const atLocationIds = new Set(equipmentAtLocation?.map((e: { _id: string }) => e._id) ?? []);
+    return selectedTreatment.requiredEquipmentIds.filter((id: string) => !atLocationIds.has(id));
+  }, [locationId, selectedTreatment, equipmentAtLocation]);
+
   // -------------------------------------------------------------------------
   // Auto-select employee when only one qualified
   // -------------------------------------------------------------------------
@@ -305,6 +341,11 @@ export function AppointmentDialog({
   const handleDateSelect = useCallback((date: Date | undefined) => {
     setSelectedDate(date);
     setSelectedSlot(null);
+  }, []);
+
+  const handleLocationSelect = useCallback((id: string) => {
+    setLocationId(id);
+    setRoomId("");
   }, []);
 
   const handleSlotSelect = useCallback(
@@ -389,6 +430,8 @@ export function AppointmentDialog({
         recurringRule: isRecurring
           ? { frequency, count: recurringCount }
           : undefined,
+        locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
+        roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
       });
       toast.success(t("gabinet.appointments.created"));
       onOpenChange(false);
@@ -434,6 +477,8 @@ export function AppointmentDialog({
       setRecurringCount(4);
       setPatientSearch("");
       setTreatmentSearch("");
+      setLocationId("");
+      setRoomId("");
     }
   }, [open, defaultDate, defaultTime]);
 
@@ -712,6 +757,62 @@ export function AppointmentDialog({
                     </PopoverContent>
                   </Popover>
                 </div>
+
+                {/* Location and Room */}
+                {activeLocations.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                          <MapPin className="size-3" />
+                          {t("gabinet.appointments.location")}
+                        </Label>
+                        <Select value={locationId} onValueChange={handleLocationSelect}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={t("gabinet.appointments.location")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeLocations.map((loc: { _id: string; name: string }) => (
+                              <SelectItem key={loc._id} value={loc._id}>
+                                {loc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {locationId && activeRooms.length > 0 && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                            <Building2 className="size-3" />
+                            {t("gabinet.appointments.room")}
+                          </Label>
+                          <Select value={roomId} onValueChange={setRoomId}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder={t("gabinet.appointments.room")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeRooms.map((room: { _id: string; name: string }) => (
+                                <SelectItem key={room._id} value={room._id}>
+                                  {room.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Equipment warnings — advisory only */}
+                    {missingEquipmentIds.length > 0 && (
+                      <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                        <AlertTriangle className="size-3.5 shrink-0" />
+                        {t("gabinet.appointments.equipmentWarning")}
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {/* Find nearest slot */}
                 <Button

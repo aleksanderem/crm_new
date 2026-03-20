@@ -1,10 +1,26 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "@/lib/ez-icons";
+import { cn } from "@/lib/utils";
+import type { Id } from "@cvx/_generated/dataModel";
 
 export interface TreatmentFormData {
   name: string;
@@ -15,6 +31,7 @@ export interface TreatmentFormData {
   currency?: string;
   taxRate?: number;
   requiredEquipment?: string[];
+  requiredEquipmentIds?: Id<"gabinetEquipment">[];
   contraindications?: string;
   preparationInstructions?: string;
   aftercareInstructions?: string;
@@ -25,6 +42,7 @@ export interface TreatmentFormData {
 }
 
 interface TreatmentFormProps {
+  organizationId: Id<"organizations">;
   initialData?: Partial<TreatmentFormData>;
   onSubmit: (data: TreatmentFormData) => void;
   onCancel: () => void;
@@ -43,6 +61,7 @@ const COLOR_OPTIONS = [
 ];
 
 export function TreatmentForm({
+  organizationId,
   initialData,
   onSubmit,
   onCancel,
@@ -56,9 +75,10 @@ export function TreatmentForm({
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
   const [taxRate, setTaxRate] = useState(String(initialData?.taxRate ?? "23"));
-  const [requiredEquipment, setRequiredEquipment] = useState(
-    initialData?.requiredEquipment?.join(", ") ?? ""
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Id<"gabinetEquipment">[]>(
+    initialData?.requiredEquipmentIds ?? []
   );
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
   const [contraindications, setContraindications] = useState(initialData?.contraindications ?? "");
   const [preparationInstructions, setPreparationInstructions] = useState(
     initialData?.preparationInstructions ?? ""
@@ -71,12 +91,26 @@ export function TreatmentForm({
   const [sortOrder, setSortOrder] = useState(String(initialData?.sortOrder ?? "0"));
   const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
 
+  const { data: equipmentList } = useQuery(
+    convexQuery(api.gabinet.equipment.listEquipment, { organizationId })
+  );
+
+  const legacyEquipment = initialData?.requiredEquipment ?? [];
+  const hasLegacyEquipment =
+    legacyEquipment.length > 0 && selectedEquipmentIds.length === 0;
+
+  const toggleEquipment = (id: Id<"gabinetEquipment">) => {
+    setSelectedEquipmentIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const getEquipmentName = (id: Id<"gabinetEquipment">) => {
+    return equipmentList?.find((e) => e._id === id)?.name ?? id;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const equipmentArr = requiredEquipment
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
 
     onSubmit({
       name,
@@ -86,7 +120,7 @@ export function TreatmentForm({
       price: parseFloat(price) || 0,
       currency: currency || undefined,
       taxRate: parseFloat(taxRate) || undefined,
-      requiredEquipment: equipmentArr.length > 0 ? equipmentArr : undefined,
+      requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       contraindications: contraindications || undefined,
       preparationInstructions: preparationInstructions || undefined,
       aftercareInstructions: aftercareInstructions || undefined,
@@ -220,11 +254,75 @@ export function TreatmentForm({
       <div className="space-y-4 border-t pt-4">
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.requiredEquipment")}</Label>
-          <Input
-            value={requiredEquipment}
-            onChange={(e) => setRequiredEquipment(e.target.value)}
-            placeholder="Comma-separated list"
-          />
+          <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={equipmentOpen}
+                className="w-full justify-between font-normal"
+              >
+                {selectedEquipmentIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedEquipmentIds.length <= 2 ? (
+                      selectedEquipmentIds.map((id) => (
+                        <Badge key={id} variant="secondary" className="rounded-sm font-normal">
+                          {getEquipmentName(id)}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="secondary" className="rounded-sm font-normal">
+                        {selectedEquipmentIds.length} {t("gabinet.treatments.equipmentSelected", "selected")}
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {t("gabinet.treatments.selectEquipment", "Select equipment...")}
+                  </span>
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command>
+                <CommandInput placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")} />
+                <CommandList>
+                  <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
+                  <CommandGroup>
+                    {(equipmentList ?? []).map((eq) => {
+                      const isSelected = selectedEquipmentIds.includes(eq._id as Id<"gabinetEquipment">);
+                      return (
+                        <CommandItem
+                          key={eq._id}
+                          value={eq.name}
+                          onSelect={() => toggleEquipment(eq._id as Id<"gabinetEquipment">)}
+                        >
+                          <div
+                            className={cn(
+                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                              isSelected
+                                ? "bg-primary text-primary-foreground"
+                                : "opacity-50 [&_svg]:invisible"
+                            )}
+                          >
+                            <Check className="h-4 w-4" />
+                          </div>
+                          <span>{eq.name}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {hasLegacyEquipment && (
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.treatments.legacyEquipment", "Legacy (text):")} {legacyEquipment.join(", ")}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.contraindications")}</Label>

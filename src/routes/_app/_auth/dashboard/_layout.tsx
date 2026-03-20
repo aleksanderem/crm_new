@@ -321,6 +321,7 @@ function DashboardLayout() {
         case "treatment":
           return (
             <TreatmentForm
+              organizationId={orgId}
               onSubmit={async (data) => {
                 setIsCreating(true);
                 try {

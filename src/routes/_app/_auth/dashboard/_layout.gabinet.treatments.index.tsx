@@ -554,6 +554,7 @@ function TreatmentsIndex() {
       >
         <TreatmentForm
           key={editingTreatment?._id ?? "new"}
+          organizationId={organizationId}
           initialData={
             editingTreatment
               ? {
@@ -566,6 +567,8 @@ function TreatmentsIndex() {
                   taxRate: editingTreatment.taxRate ?? undefined,
                   requiredEquipment:
                     editingTreatment.requiredEquipment ?? undefined,
+                  requiredEquipmentIds:
+                    editingTreatment.requiredEquipmentIds ?? undefined,
                   contraindications:
                     editingTreatment.contraindications ?? undefined,
                   preparationInstructions:

@@ -205,6 +205,14 @@ function TreatmentDetail() {
 
   const allEmps = allGabinetEmployees ?? [];
 
+  // Equipment list for resolving IDs to names
+  const { data: equipmentList } = useQuery(
+    convexQuery(api.gabinet.equipment.listEquipment, { organizationId }),
+  );
+
+  const getEquipmentName = (id: Id<"gabinetEquipment">) =>
+    equipmentList?.find((e) => e._id === id)?.name ?? id;
+
   // Track recently viewed
   useEffect(() => {
     if (treatment && organizationId) {
@@ -259,7 +267,7 @@ function TreatmentDetail() {
                 </Item>
               </>
             )}
-            {treatment.requiredEquipment && treatment.requiredEquipment.length > 0 && (
+            {(treatment.requiredEquipmentIds?.length || treatment.requiredEquipment?.length) ? (
               <>
                 <ItemSeparator />
                 <Item variant="default" size="sm" className="py-2">
@@ -268,12 +276,14 @@ function TreatmentDetail() {
                   </ItemContent>
                   <ItemActions>
                     <span className="text-xs font-medium truncate max-w-[120px]">
-                      {treatment.requiredEquipment.join(", ")}
+                      {treatment.requiredEquipmentIds?.length
+                        ? treatment.requiredEquipmentIds.map((id) => getEquipmentName(id as Id<"gabinetEquipment">)).join(", ")
+                        : (treatment.requiredEquipment ?? []).join(", ")}
                     </span>
                   </ItemActions>
                 </Item>
               </>
-            )}
+            ) : null}
             {treatment.requiresApproval && (
               <>
                 <ItemSeparator />
@@ -1265,6 +1275,7 @@ function TreatmentDetail() {
         >
           <TreatmentForm
             key={treatment._id}
+            organizationId={organizationId}
             initialData={{
               name: treatment.name,
               description: treatment.description ?? undefined,
@@ -1274,6 +1285,7 @@ function TreatmentDetail() {
               currency: treatment.currency ?? undefined,
               taxRate: treatment.taxRate ?? undefined,
               requiredEquipment: treatment.requiredEquipment ?? undefined,
+              requiredEquipmentIds: treatment.requiredEquipmentIds ?? undefined,
               contraindications: treatment.contraindications ?? undefined,
               preparationInstructions: treatment.preparationInstructions ?? undefined,
               aftercareInstructions: treatment.aftercareInstructions ?? undefined,

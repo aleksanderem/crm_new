@@ -43,8 +43,12 @@ export const documentTables = {
     description: v.optional(v.string()),
     category: formCategoryValidator,
     folderPath: v.optional(v.string()),
-    // SurveyJS JSON schema — the entire form definition
+    // Template type: "pdfme" for PDF form templates, "document" for TipTap WYSIWYG templates
+    templateType: v.optional(v.union(v.literal("pdfme"), v.literal("document"))),
+    // PDFme JSON schema — the entire form definition (used by pdfme-type templates)
     formJson: v.string(),
+    // TipTap JSON content for document-type templates (editor.getJSON() output)
+    contentJson: v.optional(v.string()),
     // Theme/styling JSON
     themeJson: v.optional(v.string()),
     // Which modules can use this template

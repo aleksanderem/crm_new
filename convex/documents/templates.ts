@@ -63,6 +63,20 @@ export const listByEntityType = query({
   },
 });
 
+export const listDocumentTemplates = query({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const all = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    return all.filter((t) => t.templateType === "document" && t.isActive);
+  },
+});
+
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -70,7 +84,9 @@ export const create = mutation({
     description: v.optional(v.string()),
     category: formCategoryValidator,
     folderPath: v.optional(v.string()),
+    templateType: v.optional(v.union(v.literal("pdfme"), v.literal("document"))),
     formJson: v.string(),
+    contentJson: v.optional(v.string()),
     themeJson: v.optional(v.string()),
     modules: v.array(v.string()),
     entityTypes: v.array(v.string()),
@@ -118,7 +134,9 @@ export const update = mutation({
     description: v.optional(v.string()),
     category: v.optional(formCategoryValidator),
     folderPath: v.optional(v.string()),
+    templateType: v.optional(v.union(v.literal("pdfme"), v.literal("document"))),
     formJson: v.optional(v.string()),
+    contentJson: v.optional(v.string()),
     themeJson: v.optional(v.string()),
     modules: v.optional(v.array(v.string())),
     entityTypes: v.optional(v.array(v.string())),
@@ -152,11 +170,11 @@ export const update = mutation({
       throw new Error("Template not found");
 
     const { organizationId: _orgId, templateId, ...updates } = args;
-    // If formJson changed, bump version
-    const newVersion =
-      updates.formJson && updates.formJson !== tmpl.formJson
-        ? tmpl.version + 1
-        : tmpl.version;
+    // If formJson or contentJson changed, bump version
+    const contentChanged =
+      (updates.formJson && updates.formJson !== tmpl.formJson) ||
+      (updates.contentJson && updates.contentJson !== tmpl.contentJson);
+    const newVersion = contentChanged ? tmpl.version + 1 : tmpl.version;
 
     await ctx.db.patch(templateId, {
       ...updates,

@@ -12,6 +12,8 @@ import {
   checkConflict,
   getAvailableSlots,
   checkEmployeeQualification,
+  resolveAppointmentLocation,
+  checkEquipmentAvailability,
 } from "./_availability";
 import { Id, Doc } from "../_generated/dataModel";
 import { logAudit } from "../auditLog";
@@ -641,6 +643,8 @@ export const create = mutation({
     prepaymentAmount: v.optional(v.number()),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
     sendReminder: v.optional(v.boolean()),
+    locationId: v.optional(v.id("gabinetLocations")),
+    roomId: v.optional(v.id("gabinetRooms")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -679,6 +683,7 @@ export const create = mutation({
       date: args.date,
       startTime: args.startTime,
       endTime: args.endTime,
+      roomId: args.roomId,
     });
     if (conflict.hasConflict) {
       throw new Error(conflict.reason ?? "Time slot conflict");
@@ -703,6 +708,26 @@ export const create = mutation({
       });
     }
 
+    // Resolve location from employee schedule (or use explicit)
+    let resolvedLocationId = args.locationId ?? null;
+    if (!resolvedLocationId) {
+      resolvedLocationId = await resolveAppointmentLocation(ctx, {
+        organizationId: args.organizationId,
+        userId: args.employeeId,
+        date: args.date,
+      });
+    }
+
+    // Check equipment availability (advisory — logged but doesn't block)
+    if (resolvedLocationId && treatment?.requiredEquipmentIds?.length) {
+      await checkEquipmentAvailability(ctx, {
+        organizationId: args.organizationId,
+        requiredEquipmentIds: treatment.requiredEquipmentIds,
+        locationId: resolvedLocationId,
+      });
+      // Equipment check is advisory — don't throw. Frontend shows warnings.
+    }
+
     const baseData = {
       organizationId: args.organizationId,
       patientId: args.patientId,
@@ -722,6 +747,8 @@ export const create = mutation({
       prepaymentStatus: args.prepaymentRequired ? "pending" : undefined,
       packageUsageId: resolvedPackageUsageId,
       sendReminder: shouldSendReminder,
+      locationId: resolvedLocationId ?? undefined,
+      roomId: args.roomId,
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
@@ -912,6 +939,8 @@ export const update = mutation({
     treatmentParameterValues: v.optional(v.string()),
     interviewNotes: v.optional(v.string()),
     clinicalRemarks: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
+    roomId: v.optional(v.id("gabinetRooms")),
     photos: v.optional(
       v.array(
         v.object({
@@ -956,6 +985,7 @@ export const update = mutation({
         startTime: newStart,
         endTime: newEnd,
         excludeAppointmentId: args.appointmentId,
+        roomId: args.roomId ?? appt.roomId,
       });
       if (conflict.hasConflict) {
         throw new Error(conflict.reason ?? "Time slot conflict");

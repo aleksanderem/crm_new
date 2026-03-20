@@ -180,7 +180,7 @@ export function TreatmentOverviewStats({
     const cfg: ChartConfig = { count: { label: t("gabinet.treatmentDetail.overview.count", "Ilość") } };
     for (const s of STATUS_ORDER) {
       cfg[s] = {
-        label: t(`gabinet.appointments.status.${s}`, s),
+        label: t(`gabinet.appointments.statuses.${s}`, s),
         color: STATUS_COLORS[s] ?? "var(--muted)",
       };
     }
@@ -607,7 +607,7 @@ export function TreatmentOverviewStats({
                         {apt.employeeName}
                       </span>
                       <Badge variant={statusBadgeVariant(apt.status)}>
-                        {t(`gabinet.appointments.status.${apt.status}`)}
+                        {t(`gabinet.appointments.statuses.${apt.status}`)}
                       </Badge>
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export interface TreatmentFormData {
@@ -21,6 +21,7 @@ export interface TreatmentFormData {
   requiresApproval?: boolean;
   color?: string;
   sortOrder?: number;
+  treatmentCount?: number;
 }
 
 interface TreatmentFormProps {
@@ -68,6 +69,7 @@ export function TreatmentForm({
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const [color, setColor] = useState(initialData?.color ?? "");
   const [sortOrder, setSortOrder] = useState(String(initialData?.sortOrder ?? "0"));
+  const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +93,7 @@ export function TreatmentForm({
       requiresApproval: requiresApproval || undefined,
       color: color || undefined,
       sortOrder: parseInt(sortOrder) || undefined,
+      treatmentCount: parseInt(treatmentCount) > 1 ? parseInt(treatmentCount) : undefined,
     });
   };
 
@@ -170,12 +173,25 @@ export function TreatmentForm({
             onChange={(e) => setSortOrder(e.target.value)}
           />
         </div>
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}</Label>
+          <Input
+            type="number"
+            min="1"
+            value={treatmentCount}
+            onChange={(e) => setTreatmentCount(e.target.value)}
+            placeholder="1"
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("gabinet.treatments.treatmentCountHint", "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.")}
+          </p>
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("common.description")}</Label>
-          <Textarea
+          <RichTextEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
+            onChange={setDescription}
+            minHeight="80px"
           />
         </div>
       </div>
@@ -212,26 +228,26 @@ export function TreatmentForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.contraindications")}</Label>
-          <Textarea
+          <RichTextEditor
             value={contraindications}
-            onChange={(e) => setContraindications(e.target.value)}
-            rows={2}
+            onChange={setContraindications}
+            minHeight="80px"
           />
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.preparationInstructions")}</Label>
-          <Textarea
+          <RichTextEditor
             value={preparationInstructions}
-            onChange={(e) => setPreparationInstructions(e.target.value)}
-            rows={2}
+            onChange={setPreparationInstructions}
+            minHeight="80px"
           />
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.aftercareInstructions")}</Label>
-          <Textarea
+          <RichTextEditor
             value={aftercareInstructions}
-            onChange={(e) => setAftercareInstructions(e.target.value)}
-            rows={2}
+            onChange={setAftercareInstructions}
+            minHeight="80px"
           />
         </div>
       </div>

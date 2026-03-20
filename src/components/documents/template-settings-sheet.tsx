@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -176,12 +176,11 @@ export function TemplateSettingsSheet({
               <Label htmlFor="tpl-description">
                 {t("settings.formTemplates.descriptionLabel")}
               </Label>
-              <Textarea
-                id="tpl-description"
+              <RichTextEditor
                 value={settings.description}
-                onChange={(e) => update("description", e.target.value)}
+                onChange={(val) => update("description", val ?? "")}
                 placeholder={t("settings.formTemplates.descriptionPlaceholder")}
-                rows={3}
+                minHeight="80px"
               />
             </div>
 

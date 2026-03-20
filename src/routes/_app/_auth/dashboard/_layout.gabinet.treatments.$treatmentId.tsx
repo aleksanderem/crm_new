@@ -8,8 +8,7 @@ import { useOrganization } from "@/components/org-context";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
-import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
-import type { DetailField } from "@/components/crm/entity-detail-layout";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { TreatmentRequiredDocuments } from "@/components/documents/treatment-required-documents";
 import type { RequiredFormTemplate } from "@/components/documents/treatment-required-documents";
@@ -20,9 +19,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Item,
+  ItemContent,
+  ItemActions,
+  ItemDescription,
+  ItemSeparator,
+} from "@/components/ui/item";
 import {
   Dialog,
   DialogContent,
@@ -44,13 +50,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Tabs as UntitledTabs, TabList, TabPanel } from "@/components/application/tabs/tabs";
+import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import {
   ChevronDown,
   Pencil,
   Calendar,
   Clock,
   DollarSign,
-  FileText,
   Plus,
   Trash2,
   X,
@@ -94,9 +102,16 @@ function TreatmentDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Parameters tab state
-  const [paramName, setParamName] = useState("");
-  const [paramValue, setParamValue] = useState("");
-  const [paramUnit, setParamUnit] = useState("");
+  type ParamType = "text" | "number" | "checkbox" | "radio" | "select";
+  const [editingParam, setEditingParam] = useState<{
+    name: string;
+    type: ParamType;
+    description: string;
+    unit: string;
+    options: string[];
+    isRequired: boolean;
+  } | null>(null);
+  const [newOption, setNewOption] = useState("");
 
   // Employees tab state
   const [empSearchQuery, setEmpSearchQuery] = useState("");
@@ -196,6 +211,135 @@ function TreatmentDetail() {
     }
   }, [treatment?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Push treatment info into sidebar slot
+  const { setContent: setSidebarContent } = useSidebarSlot();
+  useEffect(() => {
+    if (!treatment) return;
+    setSidebarContent(
+      <div className="space-y-3">
+        <div className="rounded-md border">
+          <div className="flex items-center gap-2 px-3 py-2.5 text-xs font-semibold">
+            <Settings2 size={14} variant="stroke" className="text-muted-foreground" />
+            {t("gabinet.treatments.treatment")}
+          </div>
+          <div className="space-y-0">
+            <Item variant="default" size="sm" className="py-2">
+              <ItemContent>
+                <ItemDescription className="text-xs">{t("gabinet.treatments.price")}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs font-medium">
+                  {formatCurrency(treatment.price, treatment.currency ?? undefined)}
+                </span>
+              </ItemActions>
+            </Item>
+            <ItemSeparator />
+            <Item variant="default" size="sm" className="py-2">
+              <ItemContent>
+                <ItemDescription className="text-xs flex items-center gap-1">
+                  <Clock size={10} variant="stroke" />
+                  {t("gabinet.treatments.duration")}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs font-medium">{treatment.duration} min</span>
+              </ItemActions>
+            </Item>
+            {treatment.taxRate != null && (
+              <>
+                <ItemSeparator />
+                <Item variant="default" size="sm" className="py-2">
+                  <ItemContent>
+                    <ItemDescription className="text-xs">{t("gabinet.treatments.taxRate")}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <span className="text-xs font-medium">{treatment.taxRate}%</span>
+                  </ItemActions>
+                </Item>
+              </>
+            )}
+            {treatment.requiredEquipment && treatment.requiredEquipment.length > 0 && (
+              <>
+                <ItemSeparator />
+                <Item variant="default" size="sm" className="py-2">
+                  <ItemContent>
+                    <ItemDescription className="text-xs">{t("gabinet.treatments.requiredEquipment")}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <span className="text-xs font-medium truncate max-w-[120px]">
+                      {treatment.requiredEquipment.join(", ")}
+                    </span>
+                  </ItemActions>
+                </Item>
+              </>
+            )}
+            {treatment.requiresApproval && (
+              <>
+                <ItemSeparator />
+                <Item variant="default" size="sm" className="py-2">
+                  <ItemContent>
+                    <ItemDescription className="text-xs">{t("gabinet.treatments.requiresApproval")}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Badge variant="outline" className="text-[10px]">{t("common.yes")}</Badge>
+                  </ItemActions>
+                </Item>
+              </>
+            )}
+            {treatment.treatmentCount && treatment.treatmentCount > 1 && (
+              <>
+                <ItemSeparator />
+                <Item variant="default" size="sm" className="py-2">
+                  <ItemContent>
+                    <ItemDescription className="text-xs">
+                      {t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>
+                  </ItemActions>
+                </Item>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Statistics section */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+            {t("gabinet.treatmentDetail.statistics")}
+          </p>
+          <div className="rounded-md border p-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar size={12} variant="stroke" />
+                {t("gabinet.treatmentDetail.totalAppointments")}
+              </span>
+              <span className="text-xs font-semibold tabular-nums">{stats?.totalAppointments ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock size={12} variant="stroke" />
+                {t("gabinet.treatmentDetail.thisMonth")}
+              </span>
+              <span className="text-xs font-semibold tabular-nums">{stats?.thisMonthAppointments ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <DollarSign size={12} variant="stroke" />
+                {t("gabinet.treatmentDetail.revenue")}
+              </span>
+              <span className="text-xs font-semibold tabular-nums">
+                {formatCurrency(stats?.revenue ?? 0, treatment.currency ?? undefined)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>,
+    );
+    return () => setSidebarContent(null);
+  }, [treatment, stats, t, setSidebarContent]);
+
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
     return new Set((treatmentEmployees ?? []).map((e) => e._id));
@@ -290,20 +434,28 @@ function TreatmentDetail() {
   };
 
   const handleAddParameter = async () => {
-    if (!paramName.trim() || !paramValue.trim()) return;
+    if (!editingParam || !editingParam.name.trim()) return;
+    const needsOptions = ["checkbox", "radio", "select"].includes(editingParam.type);
+    if (needsOptions && editingParam.options.length === 0) {
+      toast.error(t("gabinet.treatmentDetail.optionsRequired"));
+      return;
+    }
     const currentParams = treatment!.parameters ?? [];
-    const newParams = [
-      ...currentParams,
-      { name: paramName.trim(), value: paramValue.trim(), unit: paramUnit.trim() || undefined },
-    ];
+    const newParam = {
+      name: editingParam.name.trim(),
+      type: editingParam.type,
+      description: editingParam.description.trim() || undefined,
+      unit: ["text", "number"].includes(editingParam.type) ? (editingParam.unit.trim() || undefined) : undefined,
+      options: needsOptions ? editingParam.options : undefined,
+      isRequired: editingParam.isRequired || undefined,
+    };
     await saveTreatmentParameters({
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
-      parameters: newParams,
+      parameters: [...currentParams, newParam],
     });
-    setParamName("");
-    setParamValue("");
-    setParamUnit("");
+    setEditingParam(null);
+    setNewOption("");
     toast.success(t("common.saved"));
   };
 
@@ -418,170 +570,7 @@ function TreatmentDetail() {
     }
   };
 
-  // --- Build header subtitle with badges ---
-  const headerSubtitle = treatment ? (
-    <div className="flex items-center gap-2 mt-1">
-      {treatment.color && (
-        <span
-          className="h-4 w-4 rounded-full shrink-0 inline-block"
-          style={{ backgroundColor: treatment.color }}
-        />
-      )}
-      <Badge variant={treatment.isActive ? "default" : "secondary"}>
-        {treatment.isActive ? t("common.active") : t("common.inactive")}
-      </Badge>
-      {treatment.category && (
-        <Badge variant="outline">{treatment.category}</Badge>
-      )}
-    </div>
-  ) : undefined;
-
-  // --- Actions menu ---
-  const actionsMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          {t("detail.actions.actions")}
-          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setEditPanelOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-          {t("common.edit")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={handleDeactivate}
-          className="text-destructive focus:text-destructive"
-        >
-          {treatment?.isActive
-            ? t("gabinet.treatmentDetail.deactivate")
-            : t("common.delete")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  // --- Build sidebar fields ---
-  const fields: DetailField[] = useMemo(() => {
-    if (!treatment) return [];
-    const f: DetailField[] = [
-      {
-        fieldKey: "price",
-        label: t("gabinet.treatments.price"),
-        value: (
-          <span className="font-medium text-primary">
-            {formatCurrency(treatment.price, treatment.currency ?? undefined)}
-          </span>
-        ),
-      },
-      {
-        fieldKey: "duration",
-        label: t("gabinet.treatments.duration"),
-        value: <span className="font-medium text-primary">{treatment.duration} min</span>,
-      },
-    ];
-
-    if (treatment.taxRate != null) {
-      f.push({
-        fieldKey: "taxRate",
-        label: t("gabinet.treatments.taxRate"),
-        value: <span className="font-medium text-primary">{treatment.taxRate}%</span>,
-      });
-    }
-
-    if (treatment.requiresApproval) {
-      f.push({
-        fieldKey: "requiresApproval",
-        label: t("gabinet.treatments.requiresApproval"),
-        value: <Badge variant="outline">{t("common.yes")}</Badge>,
-      });
-    }
-
-    if (treatment.requiredEquipment && treatment.requiredEquipment.length > 0) {
-      f.push({
-        fieldKey: "requiredEquipment",
-        label: t("gabinet.treatments.requiredEquipment"),
-        value: treatment.requiredEquipment.join(", "),
-      });
-    }
-
-    if (treatment.shortDescription) {
-      f.push({
-        fieldKey: "shortDescription",
-        label: t("gabinet.treatmentDetail.shortDescription"),
-        value: <span className="text-muted-foreground">{treatment.shortDescription}</span>,
-      });
-    }
-
-    if (treatment.description) {
-      f.push({
-        fieldKey: "description",
-        label: t("gabinet.treatmentDetail.description"),
-        value: <span className="whitespace-pre-wrap text-muted-foreground">{treatment.description}</span>,
-      });
-    }
-
-    if (treatment.contraindications) {
-      f.push({
-        fieldKey: "contraindications",
-        label: t("gabinet.treatments.contraindications"),
-        value: <span className="whitespace-pre-wrap">{treatment.contraindications}</span>,
-      });
-    }
-
-    if (treatment.preparationInstructions) {
-      f.push({
-        fieldKey: "preparationInstructions",
-        label: t("gabinet.treatments.preparationInstructions"),
-        value: <span className="whitespace-pre-wrap">{treatment.preparationInstructions}</span>,
-      });
-    }
-
-    if (treatment.aftercareInstructions) {
-      f.push({
-        fieldKey: "aftercareInstructions",
-        label: t("gabinet.treatments.aftercareInstructions"),
-        value: <span className="whitespace-pre-wrap">{treatment.aftercareInstructions}</span>,
-      });
-    }
-
-    return f;
-  }, [treatment, t]);
-
-  // --- Build sidebar extra: statistics ---
-  const sidebarExtra = treatment ? (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold">{t("gabinet.treatmentDetail.statistics")}</h3>
-      <div className="flex items-center gap-3">
-        <Calendar className="h-4 w-4 text-muted-foreground" variant="stroke" />
-        <span className="text-sm text-muted-foreground">
-          {t("gabinet.treatmentDetail.totalAppointments")}
-        </span>
-        <span className="ml-auto text-sm font-semibold">
-          {stats?.totalAppointments ?? 0}
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Clock className="h-4 w-4 text-muted-foreground" variant="stroke" />
-        <span className="text-sm text-muted-foreground">
-          {t("gabinet.treatmentDetail.thisMonth")}
-        </span>
-        <span className="ml-auto text-sm font-semibold">
-          {stats?.thisMonthAppointments ?? 0}
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <DollarSign className="h-4 w-4 text-muted-foreground" variant="stroke" />
-        <span className="text-sm text-muted-foreground">
-          {t("gabinet.treatmentDetail.revenue")}
-        </span>
-        <span className="ml-auto text-sm font-semibold">
-          {formatCurrency(stats?.revenue ?? 0, treatment.currency ?? undefined)}
-        </span>
-      </div>
-    </div>
-  ) : undefined;
+  // (sidebar fields and stats are rendered inline in the sidebar below)
 
   // --- Build tabs ---
   const tabs = useMemo(() => {
@@ -707,24 +696,43 @@ function TreatmentDetail() {
                 </p>
 
                 {/* Existing parameters list */}
-                {(treatment.parameters ?? []).length > 0 && (
+                {(treatment.parameters ?? []).length > 0 ? (
                   <div className="space-y-2">
                     {(treatment.parameters ?? []).map((param, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between rounded-md border p-3"
                       >
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm font-medium">{param.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {param.value}
-                            {param.unit ? ` ${param.unit}` : ""}
-                          </span>
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {t(`gabinet.treatmentDetail.parameterTypes.${param.type}`, param.type)}
+                            </Badge>
+                            <span className="text-sm font-medium">{param.name}</span>
+                            {param.unit && (
+                              <span className="text-xs text-muted-foreground">({param.unit})</span>
+                            )}
+                            {param.isRequired && (
+                              <span className="text-xs text-destructive">*</span>
+                            )}
+                          </div>
+                          {param.description && (
+                            <span className="text-xs text-muted-foreground">{param.description}</span>
+                          )}
+                          {param.options && param.options.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {param.options.map((opt, oi) => (
+                                <Badge key={oi} variant="outline" className="text-xs font-normal">
+                                  {opt}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-destructive"
+                          className="h-7 w-7 text-destructive shrink-0"
                           onClick={() => handleRemoveParameter(idx)}
                         >
                           <Trash2 className="h-3.5 w-3.5" variant="stroke" />
@@ -732,52 +740,172 @@ function TreatmentDetail() {
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    {t("gabinet.treatmentDetail.noParameters")}
+                  </p>
                 )}
 
                 {/* Add parameter form */}
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground">
-                      {t("gabinet.treatmentDetail.parameterName")}
-                    </label>
-                    <Input
-                      value={paramName}
-                      onChange={(e) => setParamName(e.target.value)}
-                      placeholder={t("gabinet.treatmentDetail.parameterNamePlaceholder")}
-                      className="mt-1"
-                    />
+                {editingParam ? (
+                  <div className="rounded-md border p-4 space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("gabinet.treatmentDetail.parameterName")} *</Label>
+                        <Input
+                          value={editingParam.name}
+                          onChange={(e) => setEditingParam({ ...editingParam, name: e.target.value })}
+                          placeholder={t("gabinet.treatmentDetail.parameterNamePlaceholder")}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("gabinet.treatmentDetail.parameterType")}</Label>
+                        <Select
+                          value={editingParam.type}
+                          onValueChange={(val) => setEditingParam({ ...editingParam, type: val as ParamType, options: [] })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(["text", "number", "checkbox", "radio", "select"] as const).map((pt) => (
+                              <SelectItem key={pt} value={pt}>
+                                {t(`gabinet.treatmentDetail.parameterTypes.${pt}`, pt)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {["text", "number"].includes(editingParam.type) && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("gabinet.treatmentDetail.parameterUnit")}</Label>
+                        <Input
+                          value={editingParam.unit}
+                          onChange={(e) => setEditingParam({ ...editingParam, unit: e.target.value })}
+                          placeholder="°C, ml, mm..."
+                          className="w-40"
+                        />
+                      </div>
+                    )}
+
+                    {["checkbox", "radio", "select"].includes(editingParam.type) && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("gabinet.treatmentDetail.parameterOptions")} *</Label>
+                        <div className="space-y-2">
+                          {editingParam.options.map((opt, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="flex-1 text-sm">{opt}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() =>
+                                  setEditingParam({
+                                    ...editingParam,
+                                    options: editingParam.options.filter((_, idx2) => idx2 !== i),
+                                  })
+                                }
+                              >
+                                <X className="h-4 w-4" variant="stroke" />
+                              </Button>
+                            </div>
+                          ))}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={newOption}
+                              onChange={(e) => setNewOption(e.target.value)}
+                              placeholder={t("gabinet.treatmentDetail.addOption")}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newOption.trim()) {
+                                  e.preventDefault();
+                                  setEditingParam({
+                                    ...editingParam,
+                                    options: [...editingParam.options, newOption.trim()],
+                                  });
+                                  setNewOption("");
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => {
+                                if (newOption.trim()) {
+                                  setEditingParam({
+                                    ...editingParam,
+                                    options: [...editingParam.options, newOption.trim()],
+                                  });
+                                  setNewOption("");
+                                }
+                              }}
+                            >
+                              <Plus className="h-4 w-4" variant="stroke" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t("gabinet.treatmentDetail.parameterDescription")}</Label>
+                      <Input
+                        value={editingParam.description}
+                        onChange={(e) => setEditingParam({ ...editingParam, description: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editingParam.isRequired}
+                          onChange={(e) => setEditingParam({ ...editingParam, isRequired: e.target.checked })}
+                          className="rounded border-input"
+                        />
+                        {t("common.required", "Wymagane")}
+                      </label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setEditingParam(null); setNewOption(""); }}
+                        >
+                          {t("common.cancel")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleAddParameter}
+                          disabled={!editingParam.name.trim()}
+                        >
+                          {t("common.add")}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground">
-                      {t("gabinet.treatmentDetail.parameterValue")}
-                    </label>
-                    <Input
-                      value={paramValue}
-                      onChange={(e) => setParamValue(e.target.value)}
-                      placeholder={t("gabinet.treatmentDetail.parameterValuePlaceholder")}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="w-24">
-                    <label className="text-xs text-muted-foreground">
-                      {t("gabinet.treatmentDetail.parameterUnit")}
-                    </label>
-                    <Input
-                      value={paramUnit}
-                      onChange={(e) => setParamUnit(e.target.value)}
-                      placeholder="°C, ml..."
-                      className="mt-1"
-                    />
-                  </div>
+                ) : (
                   <Button
+                    variant="outline"
                     size="sm"
-                    onClick={handleAddParameter}
-                    disabled={!paramName.trim() || !paramValue.trim()}
+                    onClick={() =>
+                      setEditingParam({
+                        name: "",
+                        type: "text",
+                        description: "",
+                        unit: "",
+                        options: [],
+                        isRequired: false,
+                      })
+                    }
                   >
                     <Plus className="h-4 w-4 mr-1" variant="stroke" />
-                    {t("common.add")}
+                    {t("gabinet.treatmentDetail.addParameter")}
                   </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1121,29 +1249,98 @@ function TreatmentDetail() {
   }, [
     treatment, stats, recentAppointments, treatmentAppointments,
     treatmentEmployees, variants, activities, unassignedEmployees,
-    paramName, paramValue, paramUnit, empSearchQuery, aptStatusFilter,
+    editingParam, newOption, empSearchQuery, aptStatusFilter,
     aptDateFrom, aptDateTo, navigate, t, treatmentId, organizationId,
   ]);
 
   // --- Render ---
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-md px-4">
+          <div className="h-5 w-40 rounded bg-muted" />
+          <div className="h-4 w-28 rounded bg-muted" />
+          <div className="h-9 w-full rounded bg-muted" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!treatment && !isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center space-y-3">
+          <h2 className="text-lg font-semibold">{t("common.notFound")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("common.notFoundDescription")}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/dashboard/gabinet/treatments" })}>
+            &larr; {t("common.goBack")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <EntityDetailLayout
-        variant="default"
-        isLoading={isLoading}
-        notFound={!treatment && !isLoading}
-        onBack={() => navigate({ to: "/dashboard/gabinet/treatments" })}
-        title={treatment?.name ?? ""}
-        headerSubtitle={headerSubtitle}
-        avatarFallback={treatment?.name?.[0]?.toUpperCase()}
-        actionsMenu={actionsMenu}
-        onEdit={() => setEditPanelOpen(true)}
-        fields={fields}
-        expandedFieldCount={4}
-        sidebarExtra={sidebarExtra}
-        tabs={tabs}
-        defaultTab={t("gabinet.treatmentDetail.tabs.overview")}
-      />
+      <UntitledTabs defaultSelectedKey={t("gabinet.treatmentDetail.tabs.overview")} className="flex h-full flex-col">
+        <div className="shrink-0 space-y-4 px-4 pt-5 pb-1">
+          <SectionHeader.Root className="gap-2 border-b-0 pb-0">
+            <SectionHeader.Group>
+              <div className="flex-1 space-y-0.5">
+                <SectionHeader.Heading className="text-foreground">
+                  {treatment?.name}
+                </SectionHeader.Heading>
+                <SectionHeader.Subheading className="text-muted-foreground">
+                  {treatment?.category ?? t("gabinet.treatments.treatment")}
+                </SectionHeader.Subheading>
+              </div>
+              <SectionHeader.Actions>
+                <Button variant="outline" size="sm" onClick={() => setEditPanelOpen(true)}>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                  {t("common.edit")}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {t("detail.actions.actions")}
+                      <ChevronDown className="ml-1 h-3.5 w-3.5" variant="stroke" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={handleDeactivate}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      {treatment?.isActive
+                        ? t("gabinet.treatmentDetail.deactivate")
+                        : t("common.delete")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SectionHeader.Actions>
+            </SectionHeader.Group>
+          </SectionHeader.Root>
+
+          {/* Tabs bar */}
+          <TabList
+            type="button-border"
+            size="sm"
+            items={tabs.map((tab) => ({ id: tab.label, label: tab.label, children: tab.label }))}
+          />
+        </div>
+
+        {/* Tab content */}
+        <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
+          {tabs.map((tab) => (
+            <TabPanel key={tab.label} id={tab.label} className="p-4">
+              {tab.content}
+            </TabPanel>
+          ))}
+        </ScrollShadow>
+      </UntitledTabs>
 
       {/* Edit side panel */}
       {treatment && (
@@ -1169,6 +1366,7 @@ function TreatmentDetail() {
               requiresApproval: treatment.requiresApproval ?? undefined,
               color: treatment.color ?? undefined,
               sortOrder: treatment.sortOrder ?? undefined,
+              treatmentCount: treatment.treatmentCount ?? undefined,
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}
@@ -1365,12 +1563,12 @@ function TreatmentDetail() {
                 </div>
               </div>
               {variantForm.overrideDescription ? (
-                <Textarea
+                <RichTextEditor
                   value={variantForm.description}
-                  onChange={(e) =>
-                    setVariantForm((prev) => ({ ...prev, description: e.target.value }))
+                  onChange={(val) =>
+                    setVariantForm((prev) => ({ ...prev, description: val ?? "" }))
                   }
-                  rows={3}
+                  minHeight="80px"
                 />
               ) : (
                 <p className="text-sm text-muted-foreground/60 italic line-clamp-2">

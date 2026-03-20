@@ -12,7 +12,7 @@ import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -400,11 +400,11 @@ function ProductsPage() {
 
           <div className="space-y-1.5">
             <Label>{t('common.description')}</Label>
-            <Textarea
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(val) => setDescription(val ?? "")}
               placeholder={t('products.productDescription')}
-              rows={3}
+              minHeight="80px"
             />
           </div>
         </div>

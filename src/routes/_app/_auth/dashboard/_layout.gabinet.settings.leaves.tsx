@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
 import { useState } from "react";
@@ -212,7 +212,7 @@ function LeavesPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("gabinet.leaves.reason")}</Label>
-                  <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
+                  <RichTextEditor value={reason} onChange={(val) => setReason(val ?? "")} minHeight="80px" />
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>

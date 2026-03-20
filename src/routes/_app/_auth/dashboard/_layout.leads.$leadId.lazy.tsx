@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   Dialog,
   DialogContent,
@@ -1330,11 +1330,10 @@ function LeadDetail() {
 
           {isAddingNote && (
             <div className="space-y-2 rounded-lg border p-4">
-              <Textarea
+              <RichTextEditor
                 value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
+                onChange={(val) => setNewNote(val ?? "")}
                 placeholder={t('detail.notes.placeholder')}
-                rows={4}
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -1359,7 +1358,7 @@ function LeadDetail() {
               {notesData.map((note) => (
                 <li key={note._id} className="rounded-lg border p-4 space-y-1">
                   <div className="flex items-start justify-between">
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{plateJsonToText(note.content as string)}</p>
                     {note.isPinned && (
                       <Pin className="h-4 w-4 text-primary shrink-0" variant="stroke" />
                     )}

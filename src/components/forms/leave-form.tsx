@@ -8,7 +8,7 @@ import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -222,11 +222,11 @@ export function LeaveForm({
 
       <div className="space-y-1.5">
         <Label>{t("schedule.reason")}</Label>
-        <Textarea
+        <RichTextEditor
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
+          onChange={setReason}
           placeholder={t("schedule.reasonPlaceholder")}
+          minHeight="80px"
         />
       </div>
 

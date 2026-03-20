@@ -30,12 +30,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Textarea } from "@/components/ui/textarea";
+import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
+import { DocumentationTab } from "@/components/gabinet/documentation-tab";
+import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
+import { Avatar as UntitledAvatar } from "@/components/base/avatar/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,7 +53,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Tabs as UntitledTabs, TabList, Tab as UntitledTab, TabPanel } from "@/components/application/tabs/tabs";
+import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
 import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
@@ -201,6 +203,7 @@ function NoteItem({
   onTogglePin,
   onReply,
   isSubmitting,
+  hasReplies = false,
   isReply = false,
 }: {
   note: Record<string, unknown>;
@@ -214,78 +217,110 @@ function NoteItem({
   onTogglePin: () => void;
   onReply: () => void;
   isSubmitting: boolean;
+  hasReplies?: boolean;
   isReply?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const authorName = (note.authorName as string) ?? t("common.unknown");
+  const initials = authorName.slice(0, 2).toUpperCase();
+  const dateStr = new Date(note.createdAt as number).toLocaleString(i18n.language);
 
   return (
-    <div
-      className={`p-3 border rounded-lg ${note.isPinned ? "bg-primary/5 border-primary/20" : ""} ${isReply ? "bg-muted/30" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>?</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="text-sm font-medium">
-              {(note.authorName as string) ?? t("common.unknown")}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {new Date(note.createdAt as number).toLocaleString(i18n.language)}
-            </p>
+    <article className="relative flex gap-3">
+      {!!note.isPinned && (
+        <Badge variant="outline" className="absolute top-0 right-0 text-xs">
+          {t("gabinet.notes.pinned")}
+        </Badge>
+      )}
+      <div className="flex shrink-0 flex-col">
+        <UntitledAvatar
+          size={isReply ? "sm" : "md"}
+          initials={initials}
+          alt={authorName}
+        />
+        {hasReplies && (
+          <div className="relative my-1 flex h-full w-full justify-center self-center overflow-hidden">
+            <svg className="absolute" width="2.4">
+              <line
+                x1="1.2" y1="1.2" x2="1.2" y2="100%"
+                className="stroke-muted-foreground/30"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeDasharray="0,6"
+                strokeLinecap="round"
+              />
+            </svg>
           </div>
-        </div>
-        {!!note.isPinned && (
-          <Badge variant="outline" className="text-xs">
-            {t("gabinet.notes.pinned")}
-          </Badge>
         )}
       </div>
+      <div className="flex flex-1 flex-col gap-2">
+        <header>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
+              {authorName}
+            </span>
+            <time className="text-xs text-muted-foreground">{dateStr}</time>
+          </div>
+        </header>
 
-      {isEditing ? (
-        <div className="mt-3 space-y-2">
-          <Textarea
-            value={editContent}
-            onChange={(e) => onEditContentChange(e.target.value)}
-            rows={3}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onCancelEdit}>
-              {t("common.cancel")}
-            </Button>
-            <Button size="sm" onClick={onSaveEdit} disabled={isSubmitting}>
-              {t("common.save")}
-            </Button>
+        {isEditing ? (
+          <div className="space-y-2">
+            <RichTextEditor
+              value={editContent}
+              onChange={(val) => onEditContentChange(val ?? "")}
+              minHeight="80px"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={onCancelEdit}>
+                {t("common.cancel")}
+              </Button>
+              <Button size="sm" onClick={onSaveEdit} disabled={isSubmitting}>
+                {t("common.save")}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm mt-2 whitespace-pre-wrap">{note.content as string}</p>
-          <div className="flex items-center gap-1 mt-3">
-            <Button variant="ghost" size="sm" onClick={onReply}>
-              {t("gabinet.notes.reply")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onStartEdit}>
-              <Pencil className="h-3 w-3" variant="stroke" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onTogglePin}>
-              {note.isPinned
-                ? t("gabinet.notes.unpin")
-                : t("gabinet.notes.pin")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-3 w-3" variant="stroke" />
-            </Button>
+        ) : (
+          <div className="flex items-start gap-1">
+            <section className="flex-1 rounded-lg rounded-tl-none border p-3">
+              <p className="text-sm whitespace-pre-wrap">
+                {plateJsonToText(note.content as string)}
+              </p>
+            </section>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onReply}>
+                  <MessageSquare className="h-4 w-4 mr-2" variant="stroke" />
+                  {t("gabinet.notes.reply")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onStartEdit}>
+                  <Pencil className="h-4 w-4 mr-2" variant="stroke" />
+                  {t("common.edit")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onTogglePin}>
+                  <Star className="h-4 w-4 mr-2" variant="stroke" />
+                  {note.isPinned
+                    ? t("gabinet.notes.unpin")
+                    : t("gabinet.notes.pin")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" variant="stroke" />
+                  {t("common.delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -321,6 +356,9 @@ function AppointmentDetail() {
     Array<{ treatmentId: string; treatmentName: string; remaining: number; qty: number }>
   >([]);
   const [isUsageSubmitting, setIsUsageSubmitting] = useState(false);
+
+  // Change employee modal state
+  const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
 
   // Document gate state
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
@@ -361,13 +399,6 @@ function AppointmentDetail() {
     convexQuery(api.gabinet.appointments.getFullDetail, {
       organizationId,
       appointmentId: appointmentId as Id<"gabinetAppointments">,
-    }),
-  );
-
-  const { data: employeesList } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId,
-      activeOnly: true,
     }),
   );
 
@@ -431,13 +462,18 @@ function AppointmentDetail() {
       patient: pat,
       treatment: treat,
       employee: emp,
-      documents: docs,
-      payments: pays,
-      notes: nts,
-      patientHistory: hist,
+      patientPackageUsage: pkgUsage,
       loyaltyBalance: loyBal,
       loyaltyTier: loyTier,
     } = detail;
+
+    // Filter packages to only those containing this appointment's treatment
+    const relevantPkgs = (pkgUsage ?? []).filter((pkg: Record<string, unknown>) => {
+      const treatments = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
+      return treatments.some(
+        (tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId,
+      );
+    });
     const getInitials = () => {
       if (pat?.firstName && pat?.lastName)
         return `${pat.firstName[0]}${pat.lastName[0]}`;
@@ -621,94 +657,84 @@ function AppointmentDetail() {
                     </a>
                   </DropdownMenuItem>
                 )}
-                {(employeesList ?? []).length > 1 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <RefreshCcw size={14} variant="stroke" className="mr-2" />
-                        {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-48">
-                        {(employeesList ?? [])
-                          .filter((e) => e.userId !== appt.employeeId)
-                          .map((e) => {
-                            const name = e.firstName || e.lastName
-                              ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
-                              : e.userId;
-                            return (
-                              <DropdownMenuItem
-                                key={e._id}
-                                onClick={() => {
-                                  updateAppointment({
-                                    organizationId,
-                                    appointmentId: appt._id as Id<"gabinetAppointments">,
-                                    employeeId: e.userId as Id<"users">,
-                                  }).then(() => {
-                                    toast.success(t("gabinet.appointments.employeeChanged", "Zmieniono pracownika"));
-                                  }).catch((err: any) => {
-                                    toast.error(err.message ?? t("common.error"));
-                                  });
-                                }}
-                              >
-                                {name}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  </>
-                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setChangeEmployeeOpen(true)}>
+                  <RefreshCcw size={14} variant="stroke" className="mr-2" />
+                  {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </Item>
         )}
 
-        <div className="grid grid-cols-2 gap-2 text-center">
-          <div className="rounded-md border p-2.5">
-            <p className="text-lg font-bold">{docs.length}</p>
-            <p className="text-[10px] text-muted-foreground">{t("gabinet.documents.documents")}</p>
+        {relevantPkgs.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+              {t("gabinet.packages.activePackages", "Aktywne pakiety")}
+            </p>
+            {relevantPkgs.map((pkg: Record<string, unknown>) => {
+              const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
+              const relevantTreatment = treatmentsUsed.find(
+                (tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId,
+              ) as Record<string, unknown> | undefined;
+              const used = Number(relevantTreatment?.usedCount ?? 0);
+              const total = Number(relevantTreatment?.totalCount ?? 0);
+              const remaining = Math.max(total - used, 0);
+              const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
+              let barColor = "bg-emerald-500";
+              if (remaining <= 0) barColor = "bg-red-500";
+              else if (remaining / total < 0.3) barColor = "bg-amber-500";
+
+              return (
+                <div key={pkg._id as string} className="rounded-md border p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium truncate">{pkg.packageName as string}</p>
+                    <Badge variant="outline" className={`text-[10px] shrink-0 ${pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}`}>
+                      {t(`gabinet.packages.status.${pkg.status}`)}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground truncate">{treat?.name}</span>
+                    <span className="tabular-nums text-muted-foreground shrink-0">{used} / {total}</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="rounded-md border p-2.5">
-            <p className="text-lg font-bold">{pays.length}</p>
-            <p className="text-[10px] text-muted-foreground">{t("gabinet.payments.payments")}</p>
-          </div>
-          <div className="rounded-md border p-2.5">
-            <p className="text-lg font-bold">{nts.length}</p>
-            <p className="text-[10px] text-muted-foreground">{t("common.notes")}</p>
-          </div>
-          <div className="rounded-md border p-2.5">
-            <p className="text-lg font-bold">{hist.length}</p>
-            <p className="text-[10px] text-muted-foreground">{t("gabinet.patients.history")}</p>
-          </div>
-        </div>
+        )}
       </div>,
     );
     return () => setSidebarContent(null);
-  }, [detail, t, setSidebarContent, employeesList, updateAppointment, organizationId]);
+  }, [detail, t, setSidebarContent, setChangeEmployeeOpen, organizationId]);
 
   if (!detail && !isLoading) {
     return (
-      <EntityDetailLayout
-        variant="sidebar-slot"
-        notFound
-        onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-        title=""
-        fields={[]}
-        tabs={[]}
-      />
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center space-y-3">
+          <h2 className="text-lg font-semibold">{t("common.notFound")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("common.notFoundDescription")}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
+            &larr; {t("common.goBack")}
+          </Button>
+        </div>
+      </div>
     );
   }
 
   if (isLoading || !detail) {
     return (
-      <EntityDetailLayout
-        variant="sidebar-slot"
-        isLoading
-        title=""
-        fields={[]}
-        tabs={[]}
-      />
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-md px-4">
+          <div className="h-5 w-40 rounded bg-muted" />
+          <div className="h-4 w-28 rounded bg-muted" />
+          <div className="h-9 w-full rounded bg-muted" />
+        </div>
+      </div>
     );
   }
 
@@ -1058,6 +1084,17 @@ function AppointmentDetail() {
     return 0;
   };
 
+  // Status dot color map
+  const statusDotColors: Record<string, string> = {
+    pending_confirmation: "bg-yellow-500",
+    scheduled: "bg-blue-500",
+    confirmed: "bg-green-500",
+    in_progress: "bg-primary",
+    completed: "bg-green-600",
+    cancelled: "bg-destructive",
+    no_show: "bg-destructive",
+  };
+
   // Status dropdown as actions menu
   const statusAction = availableTransitions.length > 0 ? (
     <Select
@@ -1065,23 +1102,25 @@ function AppointmentDetail() {
       onValueChange={(value) => handleStatusChange(value)}
       disabled={isUpdating}
     >
-      <SelectTrigger className="w-auto gap-2">
-        <Badge
-          variant={statusColors[appointment.status] ?? "secondary"}
-          className="text-sm"
-        >
+      <SelectTrigger className="h-9 w-auto gap-2 text-sm font-medium">
+        <span className="flex items-center gap-2">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
           {t(`gabinet.appointments.statuses.${appointment.status}`)}
-        </Badge>
+        </span>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={appointment.status} disabled>
-          {t(`gabinet.appointments.statuses.${appointment.status}`)}
+          <span className="flex items-center gap-2">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
+            {t(`gabinet.appointments.statuses.${appointment.status}`)}
+          </span>
         </SelectItem>
         {availableTransitions.map((status) => {
           const docBadge = getDocBadgeCount(status);
           return (
             <SelectItem key={status} value={status}>
               <span className="flex items-center gap-2">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[status] ?? "bg-muted-foreground"}`} />
                 {t(`gabinet.appointments.statuses.${status}`)}
                 {docBadge > 0 && (
                   <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
@@ -1095,12 +1134,10 @@ function AppointmentDetail() {
       </SelectContent>
     </Select>
   ) : (
-    <Badge
-      variant={statusColors[appointment.status] ?? "secondary"}
-      className="text-sm"
-    >
+    <span className="flex items-center gap-2 text-sm font-medium">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
       {t(`gabinet.appointments.statuses.${appointment.status}`)}
-    </Badge>
+    </span>
   );
 
   // Breadcrumbs
@@ -1131,13 +1168,13 @@ function AppointmentDetail() {
         <div className="space-y-4">
           {/* Treatment Info Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <Sparkles className="h-4 w-4" variant="stroke" />
                 {t("gabinet.treatments.treatment")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 px-6 py-4">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">
                   {t("common.name")}
@@ -1170,7 +1207,7 @@ function AppointmentDetail() {
                   <span className="text-sm text-muted-foreground">
                     {t("common.description")}
                   </span>
-                  <p className="text-sm mt-1">{treatment.description}</p>
+                  <p className="text-sm mt-1">{plateJsonToText(treatment.description)}</p>
                 </div>
               )}
               {treatment?.contraindications && (
@@ -1181,7 +1218,7 @@ function AppointmentDetail() {
                       {t("gabinet.treatments.contraindications")}
                     </span>
                   </div>
-                  <p className="text-sm">{treatment.contraindications}</p>
+                  <p className="text-sm">{plateJsonToText(treatment.contraindications)}</p>
                 </div>
               )}
               {!!(treatment as Record<string, unknown>)?.aftercare && (
@@ -1192,7 +1229,7 @@ function AppointmentDetail() {
                       {t("gabinet.treatments.aftercare")}
                     </span>
                   </div>
-                  <p className="text-sm">{(treatment as Record<string, unknown>).aftercare as string}</p>
+                  <p className="text-sm">{plateJsonToText((treatment as Record<string, unknown>).aftercare as string)}</p>
                 </div>
               )}
             </CardContent>
@@ -1200,13 +1237,13 @@ function AppointmentDetail() {
 
           {/* Employee Info Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <UserCircle className="h-4 w-4" variant="stroke" />
                 {t("gabinet.employees.employee")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12">
                   <AvatarFallback>{getEmployeeInitials()}</AvatarFallback>
@@ -1223,13 +1260,13 @@ function AppointmentDetail() {
 
           {/* Scheduling Info Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <Calendar className="h-4 w-4" variant="stroke" />
                 {t("gabinet.appointments.scheduling")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 px-6 py-4">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">
                   {t("common.date")}
@@ -1274,16 +1311,16 @@ function AppointmentDetail() {
 
           {/* SMS Confirmation Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" variant="stroke" />
                 {t("gabinet.appointmentDetail.sms.title")}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {t("gabinet.appointmentDetail.sms.description")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-6 py-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={smsSummary.tone}>
                   {t(smsSummary.labelKey)}
@@ -1346,13 +1383,13 @@ function AppointmentDetail() {
           {/* Prepayment Status Card */}
           {appointment.prepaymentRequired && (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2.5">
+              <CardHeader className="px-6 py-3 border-b">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <DollarSign className="h-4 w-4" variant="stroke" />
                   {t("gabinet.appointments.prepayment")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 px-6 py-4">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">
                     {t("gabinet.appointments.prepaymentAmount")}
@@ -1375,23 +1412,22 @@ function AppointmentDetail() {
 
           {/* Internal Notes Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <StickyNote className="h-4 w-4" variant="stroke" />
                 {t("gabinet.appointments.internalNotes")}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {t("gabinet.appointments.internalNotesDesc")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
+            <CardContent className="space-y-3 px-6 py-4">
+              <RichTextEditor
                 placeholder={t(
                   "gabinet.appointments.internalNotesPlaceholder",
                 )}
                 value={internalNotes}
-                onChange={(e) => setInternalNotes(e.target.value)}
-                rows={4}
+                onChange={(val) => setInternalNotes(val ?? "")}
               />
               <div className="flex justify-end">
                 <Button
@@ -1414,13 +1450,13 @@ function AppointmentDetail() {
         <div className="space-y-4">
           {/* Payment Summary Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <DollarSign className="h-4 w-4" variant="stroke" />
                 {t("gabinet.payments.summary")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
@@ -1471,10 +1507,10 @@ function AppointmentDetail() {
 
           {/* Payments Table */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
               <div>
                 <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {t("gabinet.payments.linkedToAppointment")}
                 </CardDescription>
               </div>
@@ -1486,7 +1522,7 @@ function AppointmentDetail() {
                 {t("gabinet.payments.addPayment")}
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               {payments.length === 0 ? (
                 <EmptyState
                   icon={CreditCard}
@@ -1569,13 +1605,13 @@ function AppointmentDetail() {
           {/* Package Usage Card (if applicable) */}
           {appointment.packageUsageId && (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2.5">
+              <CardHeader className="px-6 py-3 border-b">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <Package className="h-4 w-4" variant="stroke" />
                   {t("gabinet.packages.packageUsage")}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-6 py-4">
                 <p className="text-muted-foreground">
                   {t("gabinet.packages.usedInThisAppointment")}
                 </p>
@@ -1590,19 +1626,19 @@ function AppointmentDetail() {
       content: (
         <div className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <Activity className="h-4 w-4" variant="stroke" />
                 {t("detail.tabs.timeline", "Timeline")}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {t(
                   "gabinet.appointmentDetail.history.unifiedDescription",
                   "Unified operational history for this appointment, including messages and workflow events.",
                 )}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               <ActivityTimeline
                 activities={mergedTimeline}
                 maxHeight="400px"
@@ -1612,16 +1648,16 @@ function AppointmentDetail() {
 
           {/* Past Appointments Timeline */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <History className="h-4 w-4" variant="stroke" />
                 {t("gabinet.patients.appointmentHistory")}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {t("gabinet.patients.lastAppointments", { count: 20 })}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               {patientHistory.length === 0 ? (
                 <EmptyState
                   icon={Calendar}
@@ -1674,13 +1710,13 @@ function AppointmentDetail() {
 
           {/* Active Packages */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <Package className="h-4 w-4" variant="stroke" />
                 {t("gabinet.packages.activePackages")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               {patientPackageUsage.length === 0 ? (
                 <EmptyState
                   icon={Package}
@@ -1733,11 +1769,8 @@ function AppointmentDetail() {
                               </Button>
                             )}
                             <Badge
-                              variant={
-                                pkg.status === "active"
-                                  ? "default"
-                                  : "secondary"
-                              }
+                              variant="outline"
+                              className={pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}
                             >
                               {t(`gabinet.packages.status.${pkg.status}`)}
                             </Badge>
@@ -1824,13 +1857,13 @@ function AppointmentDetail() {
 
           {/* Loyalty Summary */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <Star className="h-4 w-4" variant="stroke" />
                 {t("gabinet.loyalty.loyaltyProgram")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
@@ -1892,13 +1925,13 @@ function AppointmentDetail() {
 
           {/* Payment History */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2.5">
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <CreditCard className="h-4 w-4" variant="stroke" />
                 {t("gabinet.payments.paymentHistory")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               {allPatientPayments && allPatientPayments.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 gap-4 mb-4">
@@ -2008,13 +2041,13 @@ function AppointmentDetail() {
       count: notes.length,
       content: (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2.5">
+          <CardHeader className="px-6 py-3 border-b">
+            <CardTitle className="text-sm flex items-center gap-2">
               <StickyNote className="h-4 w-4" variant="stroke" />
               {t("common.notes")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-6 py-4">
             {/* Add note textarea */}
             <div className="space-y-2">
               {replyToNoteId && (
@@ -2029,11 +2062,11 @@ function AppointmentDetail() {
                   </Button>
                 </div>
               )}
-              <Textarea
+              <RichTextEditor
                 placeholder={t("gabinet.notes.placeholder")}
                 value={newNoteContent}
-                onChange={(e) => setNewNoteContent(e.target.value)}
-                rows={3}
+                onChange={(val) => setNewNoteContent(val ?? "")}
+                minHeight="80px"
               />
               <div className="flex justify-end">
                 <Button
@@ -2057,60 +2090,75 @@ function AppointmentDetail() {
                 description={t("gabinet.notes.noNotesDesc")}
               />
             ) : (
-              <div className="space-y-4">
-                {rootNotes.map((note: Record<string, unknown>) => (
-                  <div key={note._id as string}>
-                    <NoteItem
-                      note={note}
-                      isEditing={editingNoteId === note._id}
-                      editContent={editNoteContent}
-                      onEditContentChange={setEditNoteContent}
-                      onStartEdit={() => startEditNote(note)}
-                      onCancelEdit={() => {
-                        setEditingNoteId(null);
-                        setEditNoteContent("");
-                      }}
-                      onSaveEdit={() => handleUpdateNote(note._id as Id<"notes">)}
-                      onDelete={() => handleDeleteNote(note._id as Id<"notes">)}
-                      onTogglePin={() => handleTogglePin(note._id as Id<"notes">)}
-                      onReply={() => setReplyToNoteId(note._id as string)}
-                      isSubmitting={isNoteSubmitting}
-                    />
-                    {/* Replies */}
-                    {getReplies(note._id as string).length > 0 && (
-                      <div className="ml-8 mt-2 space-y-2">
-                        {getReplies(note._id as string).map((reply: Record<string, unknown>) => (
-                          <NoteItem
-                            key={reply._id as string}
-                            note={reply}
-                            isEditing={editingNoteId === reply._id}
-                            editContent={editNoteContent}
-                            onEditContentChange={setEditNoteContent}
-                            onStartEdit={() => startEditNote(reply)}
-                            onCancelEdit={() => {
-                              setEditingNoteId(null);
-                              setEditNoteContent("");
-                            }}
-                            onSaveEdit={() =>
-                              handleUpdateNote(reply._id as Id<"notes">)
-                            }
-                            onDelete={() => handleDeleteNote(reply._id as Id<"notes">)}
-                            onTogglePin={() =>
-                              handleTogglePin(reply._id as Id<"notes">)
-                            }
-                            onReply={() => setReplyToNoteId(note._id as string)}
-                            isSubmitting={isNoteSubmitting}
-                            isReply
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <ul className="flex flex-col gap-8">
+                {rootNotes.map((note: Record<string, unknown>) => {
+                  const replies = getReplies(note._id as string);
+                  return (
+                    <li key={note._id as string}>
+                      <NoteItem
+                        note={note}
+                        isEditing={editingNoteId === note._id}
+                        editContent={editNoteContent}
+                        onEditContentChange={setEditNoteContent}
+                        onStartEdit={() => startEditNote(note)}
+                        onCancelEdit={() => {
+                          setEditingNoteId(null);
+                          setEditNoteContent("");
+                        }}
+                        onSaveEdit={() => handleUpdateNote(note._id as Id<"notes">)}
+                        onDelete={() => handleDeleteNote(note._id as Id<"notes">)}
+                        onTogglePin={() => handleTogglePin(note._id as Id<"notes">)}
+                        onReply={() => setReplyToNoteId(note._id as string)}
+                        isSubmitting={isNoteSubmitting}
+                        hasReplies={replies.length > 0}
+                      />
+                      {replies.length > 0 && (
+                        <ul className="ml-12 mt-4 flex flex-col gap-6">
+                          {replies.map((reply: Record<string, unknown>) => (
+                            <li key={reply._id as string}>
+                              <NoteItem
+                                note={reply}
+                                isEditing={editingNoteId === reply._id}
+                                editContent={editNoteContent}
+                                onEditContentChange={setEditNoteContent}
+                                onStartEdit={() => startEditNote(reply)}
+                                onCancelEdit={() => {
+                                  setEditingNoteId(null);
+                                  setEditNoteContent("");
+                                }}
+                                onSaveEdit={() =>
+                                  handleUpdateNote(reply._id as Id<"notes">)
+                                }
+                                onDelete={() => handleDeleteNote(reply._id as Id<"notes">)}
+                                onTogglePin={() =>
+                                  handleTogglePin(reply._id as Id<"notes">)
+                                }
+                                onReply={() => setReplyToNoteId(note._id as string)}
+                                isSubmitting={isNoteSubmitting}
+                                isReply
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>
+      ),
+    },
+    {
+      label: t("gabinet.appointments.tabs.documentation", "Dokumentacja"),
+      content: (
+        <DocumentationTab
+          organizationId={organizationId}
+          appointmentId={appointment._id}
+          appointment={appointment}
+          treatmentParameters={treatment?.parameters}
+        />
       ),
     },
     {
@@ -2128,12 +2176,12 @@ function AppointmentDetail() {
       content: (
         <>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
               <div>
                 <CardTitle>
                   {t("gabinet.appointments.tabs.bodyChart")}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {t("gabinet.bodyChart.description")}
                 </CardDescription>
               </div>
@@ -2141,7 +2189,7 @@ function AppointmentDetail() {
                 {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 py-4">
               {bodyChartData.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
@@ -2229,20 +2277,59 @@ function AppointmentDetail() {
 
   return (
     <>
-      <EntityDetailLayout
-        variant="sidebar-slot"
-        isLoading={false}
-        notFound={false}
-        onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-        title={headerTitle}
-        headerSubtitle={headerSubtitle}
-        avatarFallback={getPatientInitials()}
-        actionsMenu={statusAction}
-        fields={[]}
-        tabs={tabs}
-        defaultTab={t("gabinet.appointments.tabs.details")}
-        breadcrumbs={breadcrumbsContent}
-      />
+      <UntitledTabs defaultSelectedKey={t("gabinet.appointments.tabs.details")} className="flex h-full flex-col">
+        {/* Section Header */}
+        <div className="shrink-0 space-y-4 px-4 pt-5 pb-1">
+          {breadcrumbsContent}
+          <SectionHeader.Root className="gap-2 border-b-0 pb-0">
+            <SectionHeader.Group>
+              <div className="flex-1 space-y-0.5">
+                <SectionHeader.Heading className="text-foreground">
+                  {headerTitle}
+                </SectionHeader.Heading>
+                <SectionHeader.Subheading className="text-muted-foreground">
+                  {headerSubtitle}
+                </SectionHeader.Subheading>
+              </div>
+              <SectionHeader.Actions>
+                {statusAction}
+              </SectionHeader.Actions>
+            </SectionHeader.Group>
+          </SectionHeader.Root>
+
+          {/* Tabs bar */}
+          <TabList
+            type="button-border"
+            size="sm"
+            items={tabs.map((tab, i) => ({ id: tab.label, label: tab.label, children: tab.label }))}
+          />
+        </div>
+
+        {/* Tab content */}
+        <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
+          {tabs.map((tab) => (
+            <TabPanel key={tab.label} id={tab.label} className="p-4">
+              {tab.content}
+            </TabPanel>
+          ))}
+        </ScrollShadow>
+      </UntitledTabs>
+
+      {/* Change Employee Modal */}
+      {detail && (
+        <ChangeEmployeeModal
+          open={changeEmployeeOpen}
+          onOpenChange={setChangeEmployeeOpen}
+          organizationId={organizationId}
+          appointmentId={appointmentId as Id<"gabinetAppointments">}
+          treatmentId={detail.appointment.treatmentId}
+          currentEmployeeId={detail.appointment.employeeId}
+          appointmentDate={detail.appointment.date}
+          startTime={detail.appointment.startTime}
+          endTime={detail.appointment.endTime}
+          durationMinutes={detail.treatment?.duration ?? 30}
+        />
+      )}
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
@@ -2254,11 +2341,11 @@ function AppointmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Textarea
+            <RichTextEditor
               placeholder={t("gabinet.appointments.cancelReasonPlaceholder")}
               value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              rows={3}
+              onChange={(val) => setCancelReason(val ?? "")}
+              minHeight="80px"
             />
           </div>
           <DialogFooter>
@@ -2347,11 +2434,11 @@ function AppointmentDetail() {
             </div>
             <div>
               <Label>{t("common.notes")}</Label>
-              <Textarea
+              <RichTextEditor
                 value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
+                onChange={(val) => setPaymentNote(val ?? "")}
                 placeholder={t("gabinet.payments.notePlaceholder")}
-                rows={2}
+                minHeight="80px"
               />
             </div>
           </div>

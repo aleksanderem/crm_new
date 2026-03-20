@@ -12,7 +12,7 @@ import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -295,11 +295,10 @@ function CallsPage() {
 
           <div className="space-y-1.5">
             <Label>{t('calls.note')}</Label>
-            <Textarea
+            <RichTextEditor
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(val) => setNote(val ?? "")}
               placeholder={t('calls.addCallNotes')}
-              rows={4}
             />
           </div>
         </div>

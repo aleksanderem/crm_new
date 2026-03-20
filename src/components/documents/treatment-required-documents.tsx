@@ -30,6 +30,24 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Extract plain text from a Plate/Slate JSON string, or return as-is if plain text */
+function extractPlainText(desc: string): string {
+  if (!desc.startsWith("[")) return desc;
+  try {
+    const nodes = JSON.parse(desc) as Array<{ children?: Array<{ text?: string }> }>;
+    return nodes
+      .flatMap((n) => (n.children ?? []).map((c) => c.text ?? ""))
+      .join(" ")
+      .trim();
+  } catch {
+    return desc;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -255,7 +273,7 @@ export function TreatmentRequiredDocuments({
 
       {/* Add required document dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {t(
@@ -318,12 +336,12 @@ export function TreatmentRequiredDocuments({
                     >
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-sm font-medium">
                           {tpl.name}
                         </p>
                         {tpl.description && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {tpl.description}
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {extractPlainText(tpl.description)}
                           </p>
                         )}
                       </div>

@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -746,14 +746,13 @@ export function AppointmentDialog({
                       </span>
                     </AccordionTrigger>
                     <AccordionContent className="pb-0 pt-1.5">
-                      <Textarea
+                      <RichTextEditor
                         value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
+                        onChange={setNotes}
+                        minHeight="80px"
                         placeholder={t(
                           "gabinet.appointments.notesPlaceholder",
                         )}
-                        className="text-sm"
                       />
                     </AccordionContent>
                   </AccordionItem>

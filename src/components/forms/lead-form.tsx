@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -230,10 +230,10 @@ export function LeadForm({
         )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('leadForm.notes')}</Label>
-          <Textarea
+          <RichTextEditor
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
+            onChange={setNotes}
+            minHeight="80px"
           />
         </div>
       </div>

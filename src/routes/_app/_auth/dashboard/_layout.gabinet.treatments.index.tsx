@@ -576,6 +576,7 @@ function TreatmentsIndex() {
                     editingTreatment.requiresApproval ?? undefined,
                   color: editingTreatment.color ?? undefined,
                   sortOrder: editingTreatment.sortOrder ?? undefined,
+                  treatmentCount: editingTreatment.treatmentCount ?? undefined,
                 }
               : undefined
           }

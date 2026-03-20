@@ -81,6 +81,7 @@ export const create = mutation({
     requiresApproval: v.optional(v.boolean()),
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    treatmentCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -127,6 +128,7 @@ export const update = mutation({
     requiresApproval: v.optional(v.boolean()),
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    treatmentCount: v.optional(v.number()),
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.id("formTemplates"),
       timing: v.union(v.literal("before_start"), v.literal("after_completion")),
@@ -517,8 +519,17 @@ export const saveTreatmentParameters = mutation({
     parameters: v.array(
       v.object({
         name: v.string(),
-        value: v.string(),
+        type: v.union(
+          v.literal("text"),
+          v.literal("number"),
+          v.literal("checkbox"),
+          v.literal("radio"),
+          v.literal("select"),
+        ),
+        description: v.optional(v.string()),
         unit: v.optional(v.string()),
+        options: v.optional(v.array(v.string())),
+        isRequired: v.optional(v.boolean()),
       })
     ),
   },
@@ -547,6 +558,36 @@ export const saveTreatmentParameters = mutation({
     });
 
     return args.treatmentId;
+  },
+});
+
+// --- Migration: convert old parameters to typed format ---
+
+export const migrateParametersToTyped = mutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const treatments = await ctx.db
+      .query("gabinetTreatments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    let count = 0;
+    for (const t of treatments) {
+      if (!t.parameters?.length) continue;
+      const first = t.parameters[0] as any;
+      if (first.type) continue; // already migrated
+
+      const migrated = t.parameters.map((p: any) => ({
+        name: p.name,
+        type: "text" as const,
+        description: p.value || undefined,
+        unit: p.unit || undefined,
+      }));
+      await ctx.db.patch(t._id, { parameters: migrated, updatedAt: Date.now() });
+      count++;
+    }
+    return { migratedCount: count };
   },
 });
 

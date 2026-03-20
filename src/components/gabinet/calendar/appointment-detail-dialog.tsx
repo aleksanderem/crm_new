@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
 import {
@@ -347,10 +347,10 @@ export function AppointmentDetailDialog({
             </p>
             <div className="space-y-1.5">
               <Label>{t("gabinet.appointmentDetail.cancelReason")}</Label>
-              <Textarea
+              <RichTextEditor
                 value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                rows={2}
+                onChange={setCancelReason}
+                minHeight="80px"
                 placeholder={t(
                   "gabinet.appointmentDetail.cancelReasonPlaceholder"
                 )}
@@ -423,10 +423,10 @@ export function AppointmentDetailDialog({
 
             <div className="space-y-1.5">
               <Label>{t("gabinet.appointments.notes")}</Label>
-              <Textarea
+              <RichTextEditor
                 value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                rows={2}
+                onChange={setEditNotes}
+                minHeight="80px"
               />
             </div>
 

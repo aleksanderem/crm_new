@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -483,11 +483,11 @@ export function ActivityForm({
           {showDescription && (
             <div className="space-y-1.5">
               <Label>{t('activityForm.description')}</Label>
-              <Textarea
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(val) => setDescription(val ?? "")}
                 placeholder={t('activityForm.descriptionPlaceholder')}
-                rows={3}
+                minHeight="80px"
               />
             </div>
           )}
@@ -496,11 +496,10 @@ export function ActivityForm({
         {/* Note */}
         <div className="space-y-1.5">
           <Label>{t('activityForm.note')}</Label>
-          <Textarea
+          <RichTextEditor
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(val) => setNote(val ?? "")}
             placeholder={t('activityForm.notePlaceholder')}
-            rows={4}
           />
           <p className="text-xs text-muted-foreground">
             {t('activityForm.noteHint')}

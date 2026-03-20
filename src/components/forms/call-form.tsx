@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -77,11 +77,10 @@ export function CallForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("calls.form.note")}</Label>
-          <Textarea
+          <RichTextEditor
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={setNote}
             placeholder={t("calls.form.notePlaceholder")}
-            rows={4}
           />
         </div>
       </div>

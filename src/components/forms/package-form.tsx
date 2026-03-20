@@ -8,7 +8,7 @@ import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -130,11 +130,11 @@ export function PackageForm({
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("gabinet.packages.description")}</Label>
-          <Textarea
+          <RichTextEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
+            onChange={setDescription}
             placeholder={t("gabinet.packages.descriptionPlaceholder")}
+            minHeight="80px"
           />
         </div>
         <div className="space-y-1.5">

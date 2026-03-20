@@ -124,7 +124,7 @@ export function EntityDetailHeader({
               <AvatarImage src={owner.avatarUrl} alt={owner.name} />
             )}
             <AvatarFallback className="text-[10px]">
-              {owner.name[0]}
+              {owner.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <span>Owner: {owner.name}</span>

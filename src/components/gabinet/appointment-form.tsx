@@ -8,7 +8,7 @@ import type { Id } from "~/convex/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Popover,
   PopoverContent,
@@ -631,11 +631,10 @@ export function AppointmentForm({
       {/* Notes */}
       <div className="space-y-1.5">
         <Label htmlFor="appt-notes">{t("gabinet.appointments.notes")}</Label>
-        <Textarea
-          id="appt-notes"
+        <RichTextEditor
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
+          onChange={setNotes}
+          minHeight="80px"
           placeholder={t("gabinet.appointments.notesPlaceholder")}
         />
       </div>

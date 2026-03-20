@@ -7,6 +7,120 @@
 @import "tw-animate-css";
 @import "./styles/untitled-ui-compat.css";
 
+/* Axiforma font family */
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Thin-BNK78sRv.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-ThinItalic-Pl-IEmPV.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Light-CIMsZTFz.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-LightItalic-DASduxEl.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Regular-BsXE84y4.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Italic-B0feOS2R.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Medium-aRSH6bB0.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-MediumItalic-iHe7XVBO.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-SemiBold-C1b1woX7.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-SemiBoldItalic-CjuqYN5K.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Bold-CpUeX1-V.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-BoldItalic-BFeMOeVi.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-ExtraBold-Lr-xivk3.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-ExtraBoldItalic-DK3Zqk8y.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-Black-Cd7Cvh7s.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Axiforma";
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/axiforma/Axiforma-BlackItalic-Dt2T7hOv.woff2") format("woff2");
+}
+
 @plugin "@tailwindcss/typography";
 @plugin "../hero.ts";
 @source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
@@ -50,7 +164,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --font-sans: Poppins, sans-serif;
+  --font-sans: "Axiforma", sans-serif;
   --font-serif: Space Grotesk, serif;
   --font-mono: Geist Mono, Geist Mono Fallback, monospace;
 
@@ -64,6 +178,7 @@
   --color-info: var(--info);
   --color-success-foreground: var(--success-foreground);
   --color-success: var(--success);
+  --color-highlight: var(--highlight);
 
   @keyframes accordion-down {
     from { height: 0; }
@@ -76,6 +191,12 @@
 }
 
 @plugin "tailwindcss-react-aria-components";
+
+/*
+---break---
+*/
+
+@plugin "tailwind-scrollbar-hide";
 
 @variant dark (&:is(.dark *));
 
@@ -132,7 +253,7 @@
     --shadow-md: 0px 2px 4px 0px oklch(0.60 0.18 286.08 / 0.08), 0px 2px 4px -1px oklch(0.60 0.18 286.08 / 0.08);
     --shadow-lg: 0px 2px 4px 0px oklch(0.60 0.18 286.08 / 0.08), 0px 4px 6px -1px oklch(0.60 0.18 286.08 / 0.08);
     --shadow-xl: 0px 2px 4px 0px oklch(0.60 0.18 286.08 / 0.08), 0px 8px 10px -1px oklch(0.60 0.18 286.08 / 0.08);
-    --font-sans: Poppins, sans-serif;
+    --font-sans: "Axiforma", sans-serif;
     --font-serif: Space Grotesk, serif;
     --font-mono: Geist Mono, Geist Mono Fallback, monospace;
     --sidebar-background: 0 0% 98%;
@@ -207,7 +328,7 @@
 body {
   font-size: 14px;
   font-weight: 400;
-  font-family: system-ui, sans-serif;
+  font-family: "Axiforma", sans-serif;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -298,6 +419,7 @@ img {
   --warning-foreground: var(--color-yellow-900);
   --invert: var(--color-zinc-900);
   --invert-foreground: var(--color-zinc-50);
+  --highlight: oklch(0.852 0.199 91.936);
 }
 /*
 ---break---
@@ -312,4 +434,5 @@ img {
   --warning-foreground: var(--color-yellow-600);
   --invert: var(--color-zinc-700);
   --invert-foreground: var(--color-zinc-50);
+  --highlight: oklch(0.852 0.199 91.936);
 }

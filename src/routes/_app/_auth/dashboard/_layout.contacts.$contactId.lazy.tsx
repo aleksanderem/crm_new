@@ -17,7 +17,7 @@ import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -965,11 +965,10 @@ function ContactDetail() {
 
           {isAddingNote && (
             <div className="space-y-2 rounded-lg border p-4">
-              <Textarea
+              <RichTextEditor
                 value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
+                onChange={(val) => setNewNote(val ?? "")}
                 placeholder={t('detail.notes.placeholderAlt')}
-                rows={4}
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -1002,7 +1001,7 @@ function ContactDetail() {
                 >
                   <div className="flex items-start justify-between">
                     <p className="text-sm whitespace-pre-wrap">
-                      {note.content}
+                      {plateJsonToText(note.content as string)}
                     </p>
                     {note.isPinned && (
                       <Pin className="h-4 w-4 text-primary shrink-0" variant="stroke" />
@@ -1051,7 +1050,7 @@ function ContactDetail() {
         }}
         onEdit={() => setEditDrawerOpen(true)}
         owner={{
-          name: contact?.createdBy ? "U" : "?",
+          name: fullName || "?",
         }}
         actionsMenu={actionsMenu}
         fields={allFields}

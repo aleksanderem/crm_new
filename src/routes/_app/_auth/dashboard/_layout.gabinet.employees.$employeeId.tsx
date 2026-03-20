@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -302,8 +302,8 @@ function EmployeeDetail() {
         : user?.name || user?.email || t("common.unknown"))
     : "";
   const avatarFallback = employee
-    ? (employee.firstName?.[0] ?? user?.name?.[0] ?? "?") +
-      (employee.lastName?.[0] ?? "")
+    ? (employee.firstName?.[0] ?? user?.name?.[0] ?? fullName[0] ?? "?") +
+      (employee.lastName?.[0] ?? user?.name?.split(" ")[1]?.[0] ?? fullName[1] ?? "")
     : "?";
 
   // --- Handlers ---
@@ -1195,11 +1195,10 @@ function NotesTabContent({
 
       {isAddingNote && (
         <div className="space-y-2 rounded-lg border p-4">
-          <Textarea
+          <RichTextEditor
             value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
+            onChange={(val) => setNewNote(val ?? "")}
             placeholder={t("detail.notes.placeholderAlt")}
-            rows={4}
           />
           <div className="flex justify-end gap-2">
             <Button
@@ -1230,7 +1229,7 @@ function NotesTabContent({
               key={note._id}
               className="rounded-lg border p-4 space-y-1"
             >
-              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+              <p className="text-sm whitespace-pre-wrap">{plateJsonToText(note.content as string)}</p>
               <p className="text-xs text-muted-foreground">
                 {new Date(note.createdAt).toLocaleDateString("pl-PL", {
                   year: "numeric",
@@ -1413,10 +1412,9 @@ function EditEmployeeDrawer({
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.notes")}</Label>
-          <Textarea
+          <RichTextEditor
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={4}
+            onChange={(val) => setNotes(val ?? "")}
           />
         </div>
       </div>
@@ -2480,10 +2478,10 @@ function DetailedDataTab({
               </div>
               <div className="space-y-1.5">
                 <Label>{t("gabinet.employees.detailedData.notesComments")}</Label>
-                <Textarea
+                <RichTextEditor
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
+                  onChange={(val) => setFormData({ ...formData, notes: val ?? "" })}
+                  minHeight="80px"
                 />
               </div>
             </div>

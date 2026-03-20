@@ -6,7 +6,7 @@ import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -252,14 +252,13 @@ function NewFormTemplatePage() {
                   <Label htmlFor="template-description">
                     {t("settings.formTemplates.descriptionLabel")}
                   </Label>
-                  <Textarea
-                    id="template-description"
+                  <RichTextEditor
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(val) => setDescription(val ?? "")}
                     placeholder={t(
                       "settings.formTemplates.descriptionPlaceholder",
                     )}
-                    rows={2}
+                    minHeight="80px"
                   />
                 </div>
 

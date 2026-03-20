@@ -26,7 +26,17 @@ export const listByEntity = query({
       return b.createdAt - a.createdAt;
     });
 
-    return notes;
+    // Enrich with author names
+    const authorIds = [...new Set(notes.map((n) => n.createdBy))];
+    const authors = await Promise.all(authorIds.map((id) => ctx.db.get(id)));
+    const authorMap = new Map(
+      authors.filter(Boolean).map((u) => [u!._id, u!.name ?? u!.email ?? null]),
+    );
+
+    return notes.map((n) => ({
+      ...n,
+      authorName: authorMap.get(n.createdBy) ?? null,
+    }));
   },
 });
 

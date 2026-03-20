@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -413,7 +413,7 @@ function PackagesIndex() {
           </div>
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.descriptionField")}</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+            <RichTextEditor value={description} onChange={(val) => setDescription(val ?? "")} minHeight="80px" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

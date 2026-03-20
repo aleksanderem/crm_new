@@ -280,6 +280,187 @@ export const getTreatmentStats = query({
   },
 });
 
+export const getTreatmentDetailedStats = query({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment) throw new Error("Treatment not found");
+
+    const price = treatment.price ?? 0;
+
+    const allAppointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndTreatment", (q) =>
+        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
+      )
+      .collect();
+
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const today = now.toISOString().slice(0, 10);
+
+    // --- Basic counts ---
+    const total = allAppointments.length;
+    const thisMonth = allAppointments.filter((a) => a.date >= monthStart).length;
+    const completed = allAppointments.filter((a) => a.status === "completed").length;
+    const cancelled = allAppointments.filter((a) => a.status === "cancelled").length;
+    const noShow = allAppointments.filter((a) => a.status === "no_show").length;
+    const revenue = completed * price;
+
+    // --- Rates ---
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0;
+    const noShowRate = total > 0 ? Math.round((noShow / total) * 100) : 0;
+
+    // --- Status distribution for donut chart ---
+    const statusCounts: Record<string, number> = {};
+    for (const apt of allAppointments) {
+      statusCounts[apt.status] = (statusCounts[apt.status] ?? 0) + 1;
+    }
+
+    // --- Monthly trend (last 12 months) ---
+    const monthlyTrend: { month: string; appointments: number; revenue: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const monthApts = allAppointments.filter((a) => a.date.startsWith(key));
+      const monthCompleted = monthApts.filter((a) => a.status === "completed").length;
+      monthlyTrend.push({
+        month: key,
+        appointments: monthApts.length,
+        revenue: monthCompleted * price,
+      });
+    }
+
+    // --- Employee ranking (top performers) ---
+    const employeeMap: Record<string, { count: number; completedCount: number }> = {};
+    for (const apt of allAppointments) {
+      const eid = apt.employeeId;
+      if (!employeeMap[eid]) employeeMap[eid] = { count: 0, completedCount: 0 };
+      employeeMap[eid].count++;
+      if (apt.status === "completed") employeeMap[eid].completedCount++;
+    }
+
+    const employeeRanking = await Promise.all(
+      Object.entries(employeeMap)
+        .sort((a, b) => b[1].completedCount - a[1].completedCount)
+        .slice(0, 5)
+        .map(async ([userId, data]) => {
+          const user = await ctx.db.get(userId as any);
+          return {
+            userId,
+            name: user?.name ?? user?.email ?? "—",
+            image: user?.image,
+            totalAppointments: data.count,
+            completedAppointments: data.completedCount,
+            revenue: data.completedCount * price,
+          };
+        })
+    );
+
+    // --- Last and next appointment ---
+    const pastApts = allAppointments
+      .filter((a) => a.date <= today && (a.status === "completed" || a.status === "in_progress"))
+      .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
+
+    const futureApts = allAppointments
+      .filter((a) => a.date >= today && a.status !== "cancelled" && a.status !== "no_show" && a.status !== "completed")
+      .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+
+    let lastAppointment = null;
+    if (pastApts[0]) {
+      const patient = await ctx.db.get(pastApts[0].patientId);
+      lastAppointment = {
+        date: pastApts[0].date,
+        startTime: pastApts[0].startTime,
+        patientName: patient ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim() : "—",
+      };
+    }
+
+    let nextAppointment = null;
+    if (futureApts[0]) {
+      const patient = await ctx.db.get(futureApts[0].patientId);
+      nextAppointment = {
+        date: futureApts[0].date,
+        startTime: futureApts[0].startTime,
+        patientName: patient ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim() : "—",
+      };
+    }
+
+    // --- Package stats ---
+    const allPackages = await ctx.db
+      .query("gabinetTreatmentPackages")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const packagesWithThisTreatment = allPackages.filter((pkg) =>
+      pkg.treatments.some((t) => t.treatmentId === args.treatmentId)
+    );
+    const activePackages = packagesWithThisTreatment.filter((pkg) => pkg.isActive);
+
+    // Count package usage
+    let totalPackageSlots = 0;
+    let usedPackageSlots = 0;
+
+    if (packagesWithThisTreatment.length > 0) {
+      const packageIds = new Set(packagesWithThisTreatment.map((p) => p._id));
+      const allUsage = await ctx.db
+        .query("gabinetPackageUsage")
+        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+        .collect();
+
+      const relevantUsage = allUsage.filter(
+        (u) => packageIds.has(u.packageId) && u.status === "active"
+      );
+
+      for (const usage of relevantUsage) {
+        for (const tu of usage.treatmentsUsed) {
+          if (tu.treatmentId === args.treatmentId) {
+            totalPackageSlots += tu.totalCount;
+            usedPackageSlots += tu.usedCount;
+          }
+        }
+      }
+    }
+
+    // --- Unique patients count ---
+    const uniquePatients = new Set(allAppointments.map((a) => a.patientId)).size;
+
+    return {
+      total,
+      thisMonth,
+      completed,
+      cancelled,
+      noShow,
+      revenue,
+      completionRate,
+      cancellationRate,
+      noShowRate,
+      statusCounts,
+      monthlyTrend,
+      employeeRanking,
+      lastAppointment,
+      nextAppointment,
+      packageStats: {
+        totalPackages: packagesWithThisTreatment.length,
+        activePackages: activePackages.length,
+        totalSlots: totalPackageSlots,
+        usedSlots: usedPackageSlots,
+        remainingSlots: totalPackageSlots - usedPackageSlots,
+      },
+      uniquePatients,
+      price,
+    };
+  },
+});
+
 export const listTreatmentAppointments = query({
   args: {
     organizationId: v.id("organizations"),

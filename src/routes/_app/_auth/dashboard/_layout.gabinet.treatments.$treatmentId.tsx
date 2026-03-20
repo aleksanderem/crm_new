@@ -14,6 +14,7 @@ import { TreatmentRequiredDocuments } from "@/components/documents/treatment-req
 import type { RequiredFormTemplate } from "@/components/documents/treatment-required-documents";
 import { Separator } from "@/components/ui/separator";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { TreatmentOverviewStats } from "@/components/gabinet/treatment-overview-stats";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -155,8 +156,8 @@ function TreatmentDetail() {
     }),
   );
 
-  const { data: stats } = useQuery(
-    convexQuery(api.gabinet.treatments.getTreatmentStats, {
+  const { data: detailedStats } = useQuery(
+    convexQuery(api.gabinet.treatments.getTreatmentDetailedStats, {
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
     }),
@@ -315,14 +316,14 @@ function TreatmentDetail() {
                 <Calendar size={12} variant="stroke" />
                 {t("gabinet.treatmentDetail.totalAppointments")}
               </span>
-              <span className="text-xs font-semibold tabular-nums">{stats?.totalAppointments ?? 0}</span>
+              <span className="text-xs font-semibold tabular-nums">{detailedStats?.total ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock size={12} variant="stroke" />
                 {t("gabinet.treatmentDetail.thisMonth")}
               </span>
-              <span className="text-xs font-semibold tabular-nums">{stats?.thisMonthAppointments ?? 0}</span>
+              <span className="text-xs font-semibold tabular-nums">{detailedStats?.thisMonth ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -330,7 +331,7 @@ function TreatmentDetail() {
                 {t("gabinet.treatmentDetail.revenue")}
               </span>
               <span className="text-xs font-semibold tabular-nums">
-                {formatCurrency(stats?.revenue ?? 0, treatment.currency ?? undefined)}
+                {formatCurrency(detailedStats?.revenue ?? 0, treatment.currency ?? undefined)}
               </span>
             </div>
           </div>
@@ -338,7 +339,7 @@ function TreatmentDetail() {
       </div>,
     );
     return () => setSidebarContent(null);
-  }, [treatment, stats, t, setSidebarContent]);
+  }, [treatment, detailedStats, t, setSidebarContent]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
@@ -578,103 +579,16 @@ function TreatmentDetail() {
     return [
       {
         label: t("gabinet.treatmentDetail.tabs.overview"),
-        content: (
-          <div className="space-y-6">
-            {/* KPI row */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" variant="stroke" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.totalAppointments ?? 0}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.treatmentDetail.totalAppointments")}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-muted-foreground" variant="stroke" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.thisMonthAppointments ?? 0}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.treatmentDetail.thisMonth")}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-muted-foreground" variant="stroke" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {formatCurrency(stats?.revenue ?? 0, treatment.currency ?? undefined)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.treatmentDetail.revenue")}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent appointments */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("gabinet.treatmentDetail.recentAppointments")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentAppointments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {t("gabinet.treatmentDetail.noAppointments")}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {recentAppointments.map((apt) => (
-                      <div
-                        key={apt._id}
-                        className="flex items-center justify-between rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() =>
-                          navigate({
-                            to: "/dashboard/gabinet/appointments/$appointmentId",
-                            params: { appointmentId: apt._id },
-                          })
-                        }
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm">
-                            <span className="font-medium">{apt.date}</span>
-                            <span className="text-muted-foreground ml-2">
-                              {apt.startTime}–{apt.endTime}
-                            </span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {apt.patientName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {apt.employeeName}
-                          </span>
-                          <Badge variant={statusBadgeVariant(apt.status)}>
-                            {t(`gabinet.appointments.status.${apt.status}`)}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        content: detailedStats ? (
+          <TreatmentOverviewStats
+            stats={detailedStats}
+            recentAppointments={recentAppointments}
+            currency={treatment.currency ?? undefined}
+            treatmentName={treatment.name}
+          />
+        ) : (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            {t("common.loading", "Ładowanie...")}
           </div>
         ),
       },
@@ -1247,7 +1161,7 @@ function TreatmentDetail() {
       },
     ];
   }, [
-    treatment, stats, recentAppointments, treatmentAppointments,
+    treatment, detailedStats, recentAppointments, treatmentAppointments,
     treatmentEmployees, variants, activities, unassignedEmployees,
     editingParam, newOption, empSearchQuery, aptStatusFilter,
     aptDateFrom, aptDateTo, navigate, t, treatmentId, organizationId,

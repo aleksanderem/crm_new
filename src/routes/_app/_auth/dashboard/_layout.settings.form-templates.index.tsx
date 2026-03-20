@@ -89,6 +89,7 @@ interface FormTemplateRecord {
   name: string;
   description?: string;
   category: string;
+  folderPath?: string;
   modules: string[];
   entityTypes: string[];
   version: number;
@@ -105,6 +106,7 @@ function FormTemplatesListPage() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [folderFilter, setFolderFilter] = useState<string>("all");
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
 
@@ -118,9 +120,21 @@ function FormTemplatesListPage() {
   // @ts-expect-error — TS2589
   const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
 
+  const uniqueFolders = Array.from(
+    new Set(
+      (templates ?? [])
+        .map((tpl) => (tpl as FormTemplateRecord).folderPath)
+        .filter(Boolean) as string[],
+    ),
+  ).sort();
+
   const filtered = (templates ?? []).filter((tpl) => {
     const t = tpl as FormTemplateRecord;
     if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
+    if (folderFilter !== "all") {
+      if (folderFilter === "__none__" && t.folderPath) return false;
+      if (folderFilter !== "__none__" && t.folderPath !== folderFilter) return false;
+    }
     if (search && !t.name.toLowerCase().includes(search.toLowerCase()))
       return false;
     return true;
@@ -153,6 +167,7 @@ function FormTemplatesListPage() {
         name: `${template.name} (${t("common.copy")})`,
         description: template.description,
         category: template.category as FormCategory,
+        folderPath: template.folderPath || undefined,
         formJson: "{}",
         modules: template.modules,
         entityTypes: template.entityTypes,
@@ -239,6 +254,26 @@ function FormTemplatesListPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={folderFilter} onValueChange={setFolderFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue
+              placeholder={t("settings.formTemplates.allFolders")}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+              {t("settings.formTemplates.allFolders")}
+            </SelectItem>
+            <SelectItem value="__none__">
+              {t("settings.formTemplates.noFolder")}
+            </SelectItem>
+            {uniqueFolders.map((folder) => (
+              <SelectItem key={folder} value={folder}>
+                {folder}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table or empty state */}
@@ -263,6 +298,7 @@ function FormTemplatesListPage() {
               <TableRow>
                 <TableHead>{t("settings.formTemplates.colName")}</TableHead>
                 <TableHead>{t("settings.formTemplates.colCategory")}</TableHead>
+                <TableHead>{t("settings.formTemplates.colFolder")}</TableHead>
                 <TableHead>{t("settings.formTemplates.colModules")}</TableHead>
                 <TableHead>
                   {t("settings.formTemplates.colEntityTypes")}
@@ -299,6 +335,15 @@ function FormTemplatesListPage() {
                           `settings.formTemplates.categories.${template.category}`,
                         )}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {template.folderPath ? (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          {template.folderPath}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">

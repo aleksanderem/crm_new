@@ -52,6 +52,7 @@ export interface TemplateSettings {
   name: string;
   description: string;
   category: FormCategory;
+  folderPath: string;
   modules: Module[];
   entityTypes: EntityType[];
   requiresSignature: boolean;
@@ -202,6 +203,22 @@ export function TemplateSettingsSheet({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Folder Path */}
+            <div className="space-y-2">
+              <Label htmlFor="tpl-folder-path">
+                {t("settings.formTemplates.folderPathLabel")}
+              </Label>
+              <Input
+                id="tpl-folder-path"
+                value={settings.folderPath}
+                onChange={(e) => update("folderPath", e.target.value)}
+                placeholder={t("settings.formTemplates.folderPathPlaceholder")}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("settings.formTemplates.folderPathHint")}
+              </p>
             </div>
 
             <Separator />

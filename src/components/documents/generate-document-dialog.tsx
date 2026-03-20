@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
@@ -28,6 +28,10 @@ import {
   FilePlus,
   Settings,
   Info,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
 } from "@/lib/ez-icons";
 import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
@@ -50,20 +54,8 @@ interface GenerateDocumentDialogProps {
 }
 
 // ---------------------------------------------------------------------------
-// Category labels (Polish)
+// Category icons
 // ---------------------------------------------------------------------------
-
-const CATEGORY_LABELS: Record<string, string> = {
-  consent: "Zgoda",
-  medical_record: "Karta medyczna",
-  prescription: "Recepta",
-  referral: "Skierowanie",
-  contract: "Umowa",
-  invoice: "Faktura",
-  protocol: "Protokol",
-  intake: "Ankieta",
-  custom: "Inne",
-};
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
   consent: ShieldCheck,
@@ -95,6 +87,214 @@ function countFormFields(formJson: string | null | undefined): number {
   } catch {
     return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Folder tree helpers
+// ---------------------------------------------------------------------------
+
+type FolderNode<T> = {
+  name: string;
+  fullPath: string;
+  templates: T[];
+  children: FolderNode<T>[];
+};
+
+/** Build a tree structure from templates' folderPath values. */
+function buildFolderTree<T extends { folderPath?: string }>(
+  templates: T[],
+): { root: T[]; folders: FolderNode<T>[] } {
+  const root: T[] = [];
+  const folderMap = new Map<
+    string,
+    { templates: T[]; children: Map<string, true> }
+  >();
+
+  for (const tpl of templates) {
+    if (!tpl.folderPath) {
+      root.push(tpl);
+      continue;
+    }
+
+    const segments = tpl.folderPath.split("/");
+    for (let i = 1; i <= segments.length; i++) {
+      const path = segments.slice(0, i).join("/");
+      if (!folderMap.has(path)) {
+        folderMap.set(path, { templates: [], children: new Map() });
+      }
+    }
+    folderMap.get(tpl.folderPath)!.templates.push(tpl);
+
+    for (let i = 2; i <= segments.length; i++) {
+      const parentPath = segments.slice(0, i - 1).join("/");
+      const childPath = segments.slice(0, i).join("/");
+      folderMap.get(parentPath)!.children.set(childPath, true);
+    }
+  }
+
+  function buildNode(path: string): FolderNode<T> {
+    const entry = folderMap.get(path)!;
+    const childPaths = Array.from(entry.children.keys()).sort();
+    return {
+      name: path.split("/").pop()!,
+      fullPath: path,
+      templates: entry.templates,
+      children: childPaths.map(buildNode),
+    };
+  }
+
+  const topPaths = Array.from(folderMap.keys())
+    .filter((p) => !p.includes("/"))
+    .sort();
+
+  return { root, folders: topPaths.map(buildNode) };
+}
+
+function countTemplatesInNode<T>(node: FolderNode<T>): number {
+  return (
+    node.templates.length +
+    node.children.reduce(
+      (sum, child) => sum + countTemplatesInNode(child),
+      0,
+    )
+  );
+}
+
+function collectAllPaths<T>(nodes: FolderNode<T>[]): string[] {
+  return nodes.flatMap((node) => [
+    node.fullPath,
+    ...collectAllPaths(node.children),
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components for tree rendering
+// ---------------------------------------------------------------------------
+
+function TemplateItem({
+  tpl,
+  onSelect,
+  t,
+}: {
+  tpl: { _id: Id<"formTemplates">; name: string; category: string; description?: string; formJson: string; requiresSignature: boolean };
+  onSelect: (id: Id<"formTemplates">) => void;
+  t: (key: string, defaultValue?: string, options?: Record<string, unknown>) => string;
+}) {
+  const CategoryIcon = CATEGORY_ICONS[tpl.category] ?? FileText;
+  const fieldCount = countFormFields(tpl.formJson);
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(tpl._id)}
+      className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted group-hover:bg-background transition-colors">
+          <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-sm font-medium truncate">{tpl.name}</span>
+            {tpl.requiresSignature && (
+              <Badge
+                variant="outline"
+                className="text-[10px] shrink-0 gap-1 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+              >
+                <FileSignature className="h-3 w-3" />
+                {t("documents.requiresSignature", "Wymaga podpisu")}
+              </Badge>
+            )}
+          </div>
+          {tpl.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">
+              {tpl.description}
+            </p>
+          )}
+          {fieldCount > 0 && (
+            <span className="text-[10px] text-muted-foreground">
+              {t("documents.fieldCount", "{{count}} pol do wypelnienia", {
+                count: fieldCount,
+              })}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function FolderTreeBranch({
+  node,
+  expanded,
+  onToggle,
+  onSelect,
+  t,
+  depth = 0,
+}: {
+  node: FolderNode<any>;
+  expanded: Set<string>;
+  onToggle: (path: string) => void;
+  onSelect: (id: Id<"formTemplates">) => void;
+  t: (key: string, defaultValue?: string, options?: Record<string, unknown>) => string;
+  depth?: number;
+}) {
+  const isExpanded = expanded.has(node.fullPath);
+  const hasContent = node.templates.length > 0 || node.children.length > 0;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => onToggle(node.fullPath)}
+        className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        )}
+        {isExpanded ? (
+          <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
+        ) : (
+          <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+        )}
+        <span className="font-medium truncate">{node.name}</span>
+        <span className="text-xs text-muted-foreground ml-auto shrink-0">
+          {countTemplatesInNode(node)}
+        </span>
+      </button>
+
+      {isExpanded && hasContent && (
+        <div>
+          {node.children.map((child) => (
+            <FolderTreeBranch
+              key={child.fullPath}
+              node={child}
+              expanded={expanded}
+              onToggle={onToggle}
+              onSelect={onSelect}
+              t={t}
+              depth={depth + 1}
+            />
+          ))}
+          <div
+            className="space-y-2 mt-1"
+            style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
+          >
+            {node.templates.map((tpl: any) => (
+              <TemplateItem
+                key={tpl._id}
+                tpl={tpl}
+                onSelect={onSelect}
+                t={t}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -154,18 +354,32 @@ export function GenerateDocumentDialog({
       : templates
     : [];
 
-  // Group templates by category
-  const groupedTemplates = filteredTemplates.reduce<
-    Record<string, typeof filteredTemplates>
-  >((acc, tpl) => {
-    const cat = tpl.category;
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(tpl);
-    return acc;
-  }, {});
+  // Build folder tree from folderPath values
+  const folderTree = useMemo(
+    () => buildFolderTree(filteredTemplates),
+    [filteredTemplates],
+  );
 
-  const sortedCategories = Object.keys(groupedTemplates).sort((a, b) =>
-    (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b),
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const toggleFolder = useCallback((path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  // Auto-expand all folders when searching
+  const effectiveExpanded = useMemo(
+    () =>
+      search.trim()
+        ? new Set(collectAllPaths(folderTree.folders))
+        : expandedFolders,
+    [search, folderTree.folders, expandedFolders],
   );
 
   const handleTemplateSelect = useCallback(
@@ -326,59 +540,39 @@ export function GenerateDocumentDialog({
                       </div>
                     )}
 
-                    <div className="space-y-6">
-                      {sortedCategories.map((category) => (
-                        <div key={category}>
-                          <div className="mb-2">
-                            <Badge variant="secondary" className="text-xs">
-                              Kategoria: {CATEGORY_LABELS[category] ?? category}
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            {groupedTemplates[category].map((tpl) => {
-                              const CategoryIcon = CATEGORY_ICONS[tpl.category] ?? FileText;
-                              const fieldCount = countFormFields(tpl.formJson);
-                              return (
-                                <button
-                                  key={tpl._id}
-                                  type="button"
-                                  onClick={() => handleTemplateSelect(tpl._id)}
-                                  className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group"
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted group-hover:bg-background transition-colors">
-                                      <CategoryIcon className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-sm font-medium truncate">
-                                          {tpl.name}
-                                        </span>
-                                        {(tpl as Record<string, unknown>).requiresSignature && (
-                                          <Badge variant="outline" className="text-[10px] shrink-0 gap-1 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">
-                                            <FileSignature className="h-3 w-3" />
-                                            {t("documents.requiresSignature", "Wymaga podpisu")}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      {tpl.description && (
-                                        <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">
-                                          {tpl.description}
-                                        </p>
-                                      )}
-                                      {fieldCount > 0 && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          {t("documents.fieldCount", "{{count}} pol do wypelnienia", { count: fieldCount })}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                    <div className="space-y-1">
+                      {/* Folder tree */}
+                      {folderTree.folders.map((folder) => (
+                        <FolderTreeBranch
+                          key={folder.fullPath}
+                          node={folder}
+                          expanded={effectiveExpanded}
+                          onToggle={toggleFolder}
+                          onSelect={handleTemplateSelect}
+                          t={t}
+                        />
                       ))}
+
+                      {/* Root-level templates (no folder) */}
+                      {folderTree.root.length > 0 && (
+                        <div className="space-y-2 mt-3">
+                          {folderTree.folders.length > 0 && (
+                            <div className="mb-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {t("settings.formTemplates.noFolder", "Bez katalogu")}
+                              </Badge>
+                            </div>
+                          )}
+                          {folderTree.root.map((tpl) => (
+                            <TemplateItem
+                              key={tpl._id}
+                              tpl={tpl}
+                              onSelect={handleTemplateSelect}
+                              t={t}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </ScrollShadow>
                 </ModalBody>

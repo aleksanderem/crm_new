@@ -42,6 +42,7 @@ export const documentTables = {
     name: v.string(),
     description: v.optional(v.string()),
     category: formCategoryValidator,
+    folderPath: v.optional(v.string()),
     // SurveyJS JSON schema — the entire form definition
     formJson: v.string(),
     // Theme/styling JSON

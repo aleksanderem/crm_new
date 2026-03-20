@@ -466,6 +466,7 @@ git commit -m "feat(gabinet): add locations and rooms CRUD backend"
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 
@@ -535,6 +536,8 @@ export const createEquipment = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     return await ctx.db.insert("gabinetEquipment", {
       ...args,
@@ -558,6 +561,8 @@ export const updateEquipment = mutation({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    if (!perm.allowed) throw new Error("Permission denied");
     const equipment = await ctx.db.get(args.equipmentId);
     if (!equipment || equipment.organizationId !== args.organizationId) {
       throw new Error("Equipment not found");

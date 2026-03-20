@@ -6,7 +6,6 @@ import {
   DollarSign,
   Users,
   Package,
-  CheckCircle2,
   XCircle,
   UserX,
   Clock,
@@ -359,26 +358,55 @@ export function TreatmentOverviewStats({
                 </div>
               )}
             </CardContent>
-            <CardFooter className="justify-between text-sm">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-primary" />
-                <span>{t("gabinet.treatmentDetail.overview.completionRate", "Realizacja")}</span>
-              </div>
-              <span className="text-xl font-medium">{stats.completionRate}%</span>
-            </CardFooter>
+            <CardFooter />
           </Card>
         </div>
 
         {/* Row 2: Completion bar + monthly trend */}
         <Card className="shadow-none">
-          <CardContent className="grid gap-4 px-4 lg:grid-cols-5">
-            {/* Left: Completion rate + rates */}
-            <div className="flex flex-col justify-center gap-5">
-              <span className="text-lg font-semibold">
-                {t("gabinet.treatmentDetail.overview.completionRate", "Realizacja")}
-              </span>
-              <span className="text-5xl lg:text-6xl">{stats.completionRate}%</span>
-              <div className="space-y-1.5">
+          <CardContent className="grid gap-6 px-4 lg:grid-cols-3">
+            {/* Left: Completion rate gauge */}
+            <div className="flex flex-col items-center justify-center gap-3">
+              <ChartContainer
+                config={{
+                  completed: { label: t("gabinet.treatmentDetail.overview.completionRate", "Realizacja"), color: "var(--primary)" },
+                  remaining: { label: "", color: "var(--muted)" },
+                }}
+                className="aspect-square w-full max-w-[200px]"
+              >
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "completed", value: stats.completionRate || 0.01, fill: "var(--primary)" },
+                      { name: "remaining", value: 100 - (stats.completionRate || 0.01), fill: "var(--muted)" },
+                    ]}
+                    dataKey="value"
+                    innerRadius="70%"
+                    outerRadius="90%"
+                    startAngle={90}
+                    endAngle={-270}
+                    strokeWidth={0}
+                  >
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          return (
+                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 6} className="fill-foreground text-3xl font-bold">
+                                {stats.completionRate}%
+                              </tspan>
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 16} className="fill-muted-foreground text-[11px]">
+                                {t("gabinet.treatmentDetail.overview.completionRate", "Realizacja")}
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <div className="flex w-full max-w-[200px] flex-col gap-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <XCircle className="size-3.5" />
@@ -397,7 +425,7 @@ export function TreatmentOverviewStats({
             </div>
 
             {/* Right: Monthly bar chart */}
-            <div className="flex flex-col gap-4 md:col-span-4">
+            <div className="flex flex-col gap-4 lg:col-span-2">
               <span className="font-medium text-lg">
                 {t("gabinet.treatmentDetail.overview.monthlyTrend", "Trend miesięczny")}
               </span>

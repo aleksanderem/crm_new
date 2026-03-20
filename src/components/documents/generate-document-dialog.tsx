@@ -251,7 +251,7 @@ export function GenerateDocumentDialog({
       >
         {/* --- Step 1: Template picker --- */}
         {step === "pick_template" && (
-          <>
+          <div className="flex flex-col flex-1 min-h-0">
             <DialogHeader className="px-6 pt-6 pb-4">
               <div className="flex items-center justify-between">
                 <DialogTitle>
@@ -379,12 +379,12 @@ export function GenerateDocumentDialog({
                 ))}
               </div>
             </ScrollShadow>
-          </>
+          </div>
         )}
 
         {/* --- Step 2: Form fill --- */}
         {step === "fill_form" && (
-          <>
+          <div className="flex flex-col flex-1 min-h-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b space-y-1.5">
               <div className="flex items-center gap-2">
                 <Button
@@ -458,7 +458,7 @@ export function GenerateDocumentDialog({
                 )}
               </div>
             </ScrollShadow>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

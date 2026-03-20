@@ -29,6 +29,11 @@ import {
   FileText,
   Package,
   SearchIcon,
+  Mail,
+  Calendar,
+  UserPlus,
+  CalendarCheck,
+  BarChart3,
 } from "@/lib/ez-icons";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, useCallback, useMemo, useRef } from "react";
@@ -37,6 +42,7 @@ import {
   GlobalSearch,
   type SearchResultGroup,
   type SearchResult,
+  type QuickActionGroup,
 } from "@/components/crm/global-search";
 import {
   QuickCreateMenu,
@@ -136,6 +142,70 @@ function DashboardLayout() {
       navigate({ to: result.href });
     },
     [navigate]
+  );
+
+  const quickActions = useMemo<QuickActionGroup[]>(() => [
+    {
+      heading: t("globalSearch.navigate", "Nawiguj"),
+      actions: [
+        { id: "nav:insights", label: t("nav.insights"), icon: <BarChart3 className="h-4 w-4" /> },
+        { id: "nav:deals", label: t("nav.deals"), icon: <TrendingUp className="h-4 w-4" />, shortcut: "⌘D" },
+        { id: "nav:contacts", label: t("nav.contacts"), icon: <Users className="h-4 w-4" /> },
+        { id: "nav:companies", label: t("nav.companies"), icon: <Building2 className="h-4 w-4" /> },
+        { id: "nav:calendar", label: t("nav.calendar"), icon: <Calendar className="h-4 w-4" /> },
+        { id: "nav:inbox", label: t("nav.inbox"), icon: <Mail className="h-4 w-4" /> },
+      ],
+    },
+    {
+      heading: t("globalSearch.create", "Utwórz"),
+      actions: [
+        { id: "create:contact", label: t("nav.actions.addContact"), icon: <UserPlus className="h-4 w-4" />, shortcut: "⌘N" },
+        { id: "create:company", label: t("nav.actions.addCompany"), icon: <Building2 className="h-4 w-4" /> },
+        { id: "create:lead", label: t("nav.actions.addDeal"), icon: <TrendingUp className="h-4 w-4" /> },
+        { id: "create:activity", label: t("nav.actions.addActivity"), icon: <CalendarCheck className="h-4 w-4" /> },
+      ],
+    },
+    {
+      heading: t("globalSearch.system", "System"),
+      actions: [
+        { id: "sys:settings", label: t("nav.settings"), icon: <Settings className="h-4 w-4" />, shortcut: "⌘," },
+        { id: "sys:signout", label: t("auth.signOut", "Wyloguj się"), icon: <LogOut className="h-4 w-4" />, shortcut: "⌘Q" },
+      ],
+    },
+  ], [t]);
+
+  const handleQuickAction = useCallback(
+    (actionId: string) => {
+      const navRoutes: Record<string, string> = {
+        "nav:insights": "/dashboard",
+        "nav:deals": "/dashboard/leads",
+        "nav:contacts": "/dashboard/contacts",
+        "nav:companies": "/dashboard/companies",
+        "nav:calendar": "/dashboard/calendar",
+        "nav:inbox": "/dashboard/inbox",
+        "sys:settings": "/dashboard/settings",
+      };
+      const route = navRoutes[actionId];
+      if (route) {
+        navigate({ to: route });
+        return;
+      }
+      const createTypes: Record<string, QuickCreateEntityType> = {
+        "create:contact": "contact",
+        "create:company": "company",
+        "create:lead": "lead",
+        "create:activity": "activity",
+      };
+      const createType = createTypes[actionId];
+      if (createType && quickCreateRef.current) {
+        quickCreateRef.current.open(createType as FormEntityType);
+        return;
+      }
+      if (actionId === "sys:signout") {
+        signOut();
+      }
+    },
+    [navigate, signOut]
   );
 
   const handleNavigateEntity = useCallback(
@@ -531,7 +601,7 @@ function DashboardLayout() {
               </header>
 
               {/* Main content */}
-              <main className="min-w-0 size-full flex-1 overflow-hidden px-4 py-6 sm:px-6">
+              <main className="min-w-0 size-full flex-1 overflow-hidden px-4 pt-2 pb-6 sm:px-6">
                 <Outlet />
               </main>
 
@@ -546,6 +616,8 @@ function DashboardLayout() {
       <GlobalSearch
         onSearch={handleSearch}
         onSelect={handleSearchSelect}
+        quickActions={quickActions}
+        onQuickAction={handleQuickAction}
         isOpen={searchOpen}
         onOpenChange={setSearchOpen}
       />

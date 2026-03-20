@@ -100,9 +100,7 @@ export const gabinetManifest: ModuleManifest = {
           quickCreate: "appointment",
           permissionFeature: "gabinet_appointments",
         },
-        { labelKey: "nav.actions.goToToday", icon: Calendar, dispatch: "goToToday" },
-        { labelKey: "nav.actions.filterByEmployee", icon: UserCog, dispatch: "filterByEmployee" },
-        { labelKey: "nav.actions.filterByTreatment", icon: Stethoscope, dispatch: "filterByTreatment" },
+        { labelKey: "nav.actions.filters", icon: Filter, dispatch: "openFilter" },
       ],
     },
     {

@@ -7,6 +7,7 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { Alert } from "@heroui/alert";
 import {
   Dialog,
   DialogContent,
@@ -40,16 +41,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Clock,
-  CheckIcon,
   ChevronsUpDown,
   Stethoscope,
   StickyNote,
   User,
-  Search,
 } from "@/lib/ez-icons";
 import { CalendarSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -148,7 +153,6 @@ export function AppointmentDialog({
     end: string;
   } | null>(defaultTime ? { start: defaultTime, end: "" } : null);
   const [notes, setNotes] = useState("");
-  const [showNotes, setShowNotes] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("weekly");
   const [recurringCount, setRecurringCount] = useState(4);
@@ -425,7 +429,6 @@ export function AppointmentDialog({
         defaultTime ? { start: defaultTime, end: "" } : null,
       );
       setNotes("");
-      setShowNotes(false);
       setIsRecurring(false);
       setFrequency("weekly");
       setRecurringCount(4);
@@ -462,7 +465,7 @@ export function AppointmentDialog({
           {/* ============================================================= */}
           <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r flex flex-col">
             <ScrollShadow className="flex-1 overflow-y-auto">
-              <div className="p-5 space-y-5">
+              <div className="p-5 pb-8 space-y-5">
                 {/* Treatment selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -480,7 +483,7 @@ export function AppointmentDialog({
                         variant="outline"
                         role="combobox"
                         aria-expanded={treatmentOpen}
-                        className="w-full justify-between h-9 font-normal"
+                        className="w-full justify-between h-11 font-normal"
                         data-testid="appointment-treatment-trigger"
                       >
                         <span className="truncate">
@@ -492,8 +495,9 @@ export function AppointmentDialog({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-[--radix-popover-trigger-width] p-0"
+                      className="p-0"
                       align="start"
+                      style={{ width: "var(--radix-popover-trigger-width)" }}
                     >
                       <Command shouldFilter={false}>
                         <CommandInput
@@ -515,15 +519,12 @@ export function AppointmentDialog({
                                 onSelect={() =>
                                   handleTreatmentSelect(tr._id)
                                 }
+                                className={cn(
+                                  "px-3",
+                                  treatmentId === tr._id &&
+                                    "bg-accent font-medium text-accent-foreground",
+                                )}
                               >
-                                <CheckIcon
-                                  className={cn(
-                                    "mr-2 size-4",
-                                    treatmentId === tr._id
-                                      ? "opacity-100"
-                                      : "opacity-0",
-                                  )}
-                                />
                                 <div className="flex flex-col">
                                   <span className="text-sm">
                                     {tr.name}
@@ -587,7 +588,6 @@ export function AppointmentDialog({
                     onValueChange={handleEmployeeSelect}
                   >
                     <SelectTrigger
-                      className="h-9"
                       data-testid="appointment-employee-trigger"
                     >
                       <SelectValue
@@ -647,7 +647,7 @@ export function AppointmentDialog({
                         variant="outline"
                         role="combobox"
                         aria-expanded={patientOpen}
-                        className="w-full justify-between h-9 font-normal"
+                        className="w-full justify-between h-11 font-normal"
                         data-testid="appointment-patient-trigger"
                       >
                         <span className="truncate">
@@ -661,8 +661,9 @@ export function AppointmentDialog({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-[--radix-popover-trigger-width] p-0"
+                      className="p-0"
                       align="start"
+                      style={{ width: "var(--radix-popover-trigger-width)" }}
                     >
                       <Command shouldFilter={false}>
                         <CommandInput
@@ -686,15 +687,12 @@ export function AppointmentDialog({
                                   setPatientOpen(false);
                                   setPatientSearch("");
                                 }}
+                                className={cn(
+                                  "px-3",
+                                  patientId === p._id &&
+                                    "bg-accent font-medium text-accent-foreground",
+                                )}
                               >
-                                <CheckIcon
-                                  className={cn(
-                                    "mr-2 size-4",
-                                    patientId === p._id
-                                      ? "opacity-100"
-                                      : "opacity-0",
-                                  )}
-                                />
                                 <div className="flex flex-col">
                                   <span className="text-sm">
                                     {p.firstName}{" "}
@@ -739,31 +737,27 @@ export function AppointmentDialog({
                 <Separator />
 
                 {/* Notes (collapsible) */}
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setShowNotes(!showNotes)}
-                  >
-                    <StickyNote className="size-3" />
-                    {t("gabinet.appointments.notes")}
-                    <ChevronDown
-                      open={showNotes}
-                      className="size-3"
-                    />
-                  </button>
-                  {showNotes && (
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      placeholder={t(
-                        "gabinet.appointments.notesPlaceholder",
-                      )}
-                      className="text-sm"
-                    />
-                  )}
-                </div>
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="notes" className="border-none">
+                    <AccordionTrigger className="py-0 text-xs text-muted-foreground hover:text-foreground hover:no-underline gap-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <StickyNote className="size-3" />
+                        {t("gabinet.appointments.notes")}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1.5">
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        placeholder={t(
+                          "gabinet.appointments.notesPlaceholder",
+                        )}
+                        className="text-sm"
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
 
                 {/* Recurring */}
                 <div className="space-y-2">
@@ -777,18 +771,18 @@ export function AppointmentDialog({
                     />
                     <Label
                       htmlFor="recurring-appt"
-                      className="text-sm"
+                      className="text-sm mb-0"
                     >
                       {t("gabinet.appointments.recurring")}
                     </Label>
                   </div>
                   {isRecurring && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid gap-2">
                       <Select
                         value={frequency}
                         onValueChange={setFrequency}
                       >
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -820,7 +814,7 @@ export function AppointmentDialog({
                           setRecurringCount(parseInt(v) || 1)
                         }
                       >
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -846,41 +840,33 @@ export function AppointmentDialog({
           {/* ============================================================= */}
           {/* CENTER PANEL — Calendar                                       */}
           {/* ============================================================= */}
-          <div className="flex-1 border-b md:border-b-0 md:border-r flex flex-col items-center justify-start">
-            <div className="p-4 w-full flex flex-col items-center">
-              {!calendarEnabled ? (
-                <div className="flex flex-col items-center justify-center h-[340px] text-center px-6">
-                  <Search className="size-10 text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {t(
-                      "gabinet.appointments.calendarDialog.selectTreatmentAndEmployee",
-                    )}
-                  </p>
-                </div>
-              ) : (
+          <div className="flex-1 border-b md:border-b-0 md:border-r flex flex-col">
+            <div className="p-4 w-full flex flex-col">
+              <div className={cn("w-full", !calendarEnabled && "opacity-50 pointer-events-none")}>
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   locale={dateFnsLocale}
                   disabled={(date) => {
+                    if (!calendarEnabled) return true;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     return date < today;
                   }}
-                  className="rounded-md"
+                  className="w-full rounded-md"
                   classNames={{
-                    month: "space-y-4 w-full",
-                    table: "w-full border-collapse",
-                    head_row: "flex",
-                    head_cell:
-                      "text-muted-foreground rounded-md w-10 font-normal text-[0.8rem]",
-                    row: "flex w-full mt-2",
-                    day: "h-10 w-10 text-center text-sm p-0 relative",
+                    root: "w-full",
+                    month_grid: "w-full border-collapse",
+                    weekdays: "flex",
+                    weekday:
+                      "text-muted-foreground flex-1 select-none rounded-md text-[0.8rem] font-normal",
+                    week: "flex w-full mt-2",
+                    day: "flex-1 text-center text-sm p-0 relative",
                   }}
                   showOutsideDays
                 />
-              )}
+              </div>
             </div>
           </div>
 
@@ -889,13 +875,13 @@ export function AppointmentDialog({
           {/* ============================================================= */}
           <div className="w-full md:w-[280px] flex flex-col">
             {!slotsEnabled ? (
-              <div className="flex flex-col items-center justify-center flex-1 text-center px-6 py-8">
-                <Clock className="size-10 text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  {t(
+              <div className="flex flex-col items-center justify-center flex-1 px-5 py-8">
+                <Alert
+                  color="primary"
+                  title={t(
                     "gabinet.appointments.calendarDialog.selectDateForSlots",
                   )}
-                </p>
+                />
               </div>
             ) : (
               <>
@@ -1051,33 +1037,3 @@ export function AppointmentDialog({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tiny helper: animated chevron for collapsible sections
-// ---------------------------------------------------------------------------
-
-function ChevronDown({
-  open,
-  className,
-}: {
-  open: boolean;
-  className?: string;
-}) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={cn(
-        "transition-transform duration-200",
-        open && "rotate-180",
-        className,
-      )}
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}

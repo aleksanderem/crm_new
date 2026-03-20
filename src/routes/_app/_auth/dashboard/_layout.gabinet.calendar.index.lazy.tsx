@@ -13,9 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus, Download, Search, X } from "@/lib/ez-icons";
+import { ChevronLeft, ChevronRight, Plus, Search, X } from "@/lib/ez-icons";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { PrintSchedule } from "@/components/gabinet/calendar/print-schedule";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,6 +80,9 @@ function GabinetCalendarPage() {
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
+
+  // Filter dialog
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -319,6 +328,9 @@ function GabinetCalendarPage() {
     window.print();
   }, []);
 
+  // Listen for print dispatch from footer
+  useSidebarDispatch("printSchedule", handlePrint);
+
   // Navigation
   const navigateDate = useCallback(
     (dir: number) => {
@@ -337,17 +349,7 @@ function GabinetCalendarPage() {
 
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
-  useSidebarDispatch("filterByEmployee", () => {
-    // Focus on the employee filter select
-    const trigger = document.querySelector<HTMLElement>('[role="combobox"]');
-    trigger?.click();
-  });
-  useSidebarDispatch("filterByTreatment", () => {
-    // Could open treatment filter if implemented - for now just scroll to calendar
-    document
-      .querySelector<HTMLElement>(".flex-1.overflow-hidden")
-      ?.scrollIntoView({ behavior: "smooth" });
-  });
+  useSidebarDispatch("openFilter", () => setFilterOpen(true));
 
   // Click-to-create handler
   const handleSlotClick = useCallback(
@@ -519,30 +521,32 @@ function GabinetCalendarPage() {
     >
       <div className="flex h-[calc(100vh-4rem)] flex-col">
         {/* Toolbar */}
-        <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-2">
+        <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-3">
           {/* Row 1: nav arrows + date title + view switcher + actions */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() => navigateDate(-1)}
                 aria-label={t("gabinet.calendar.previousPeriod")}
               >
-                <ChevronLeft className="h-4 w-4" variant="stroke" />
+                <ChevronLeft className="h-3.5 w-3.5" variant="stroke" />
               </Button>
-              <Button variant="outline" size="sm" onClick={goToday}>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={goToday}>
                 {t("gabinet.calendar.today", "Dzis")}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() => navigateDate(1)}
                 aria-label={t("gabinet.calendar.nextPeriod")}
               >
-                <ChevronRight className="h-4 w-4" variant="stroke" />
+                <ChevronRight className="h-3.5 w-3.5" variant="stroke" />
               </Button>
-              <h2 className="ml-2 text-sm font-semibold">{title}</h2>
+              <h2 className="ml-2 text-xs font-semibold">{title}</h2>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -553,7 +557,7 @@ function GabinetCalendarPage() {
                     key={mode}
                     variant={viewMode === mode ? "default" : "ghost"}
                     size="sm"
-                    className="h-8 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
+                    className="h-7 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3"
                     onClick={() => setViewMode(mode)}
                   >
                     {t(
@@ -564,15 +568,10 @@ function GabinetCalendarPage() {
                 ))}
               </div>
 
-              {/* Print button — hidden on mobile */}
-              <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:flex">
-                <Download className="mr-1 h-4 w-4" variant="stroke" />
-                {t("gabinet.calendar.print", "Drukuj")}
-              </Button>
-
               {/* Create button */}
               <Button
                 size="sm"
+                className="h-7 text-xs"
                 data-testid="calendar-create-appointment-button"
                 onClick={() => {
                   setCreateDefaultDate(formatDateStr(currentDate));
@@ -580,106 +579,122 @@ function GabinetCalendarPage() {
                   setCreateDialogOpen(true);
                 }}
               >
-                <Plus className="mr-1 h-4 w-4" variant="stroke" />
+                <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
                 {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
               </Button>
             </div>
           </div>
 
-          {/* Row 2: filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Client search */}
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" variant="stroke" />
-              <Input
-                placeholder={t("gabinet.calendar.searchClient", "Szukaj klienta...")}
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                className="h-8 w-full pl-8 text-xs sm:w-[180px]"
-              />
-              {clientSearch && (
-                <button
-                  onClick={() => setClientSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" variant="stroke" />
-                </button>
-              )}
-            </div>
+          {/* Filter dialog */}
+          <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogTitle>{t("gabinet.calendar.filters", "Filtry")}</DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("gabinet.calendar.filters", "Filtry")}
+              </DialogDescription>
+              <div className="space-y-4 pt-2">
+                {/* Client search */}
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.calendar.client", "Klient")}</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" variant="stroke" />
+                    <Input
+                      placeholder={t("gabinet.calendar.searchClient", "Szukaj klienta...")}
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                    {clientSearch && (
+                      <button
+                        onClick={() => setClientSearch("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" variant="stroke" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-            {/* Employee filter */}
-            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
-                <SelectValue
-                  placeholder={t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
-                </SelectItem>
-                {(employees ?? []).map((emp) => (
-                  <SelectItem key={emp._id} value={emp.userId}>
-                    {getEmployeeName(emp)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                {/* Employee filter */}
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.calendar.employee", "Pracownik")}</Label>
+                  <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
+                      </SelectItem>
+                      {(employees ?? []).map((emp) => (
+                        <SelectItem key={emp._id} value={emp.userId}>
+                          {getEmployeeName(emp)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Treatment filter */}
-            <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
-              <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
-                <SelectValue
-                  placeholder={t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
-                </SelectItem>
-                {(treatmentsPage?.page ?? []).map((tr) => (
-                  <SelectItem key={tr._id} value={tr._id}>
-                    {tr.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                {/* Treatment filter */}
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.calendar.treatment", "Zabieg")}</Label>
+                  <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
+                      </SelectItem>
+                      {(treatmentsPage?.page ?? []).map((tr) => (
+                        <SelectItem key={tr._id} value={tr._id}>
+                          {tr.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Status filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-full text-xs sm:w-[160px]">
-                <SelectValue
-                  placeholder={t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
-                </SelectItem>
-                {statusOptions.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {t(`gabinet.appointments.statuses.${s}`, s)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                {/* Status filter */}
+                <div className="space-y-1.5">
+                  <Label>{t("gabinet.calendar.status", "Status")}</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("gabinet.calendar.allStatuses", "Wszystkie statusy")}
+                      </SelectItem>
+                      {statusOptions.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {t(`gabinet.appointments.statuses.${s}`, s)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Active filter indicator + clear */}
-            {activeFilterCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1 text-xs"
-                onClick={clearAllFilters}
-              >
-                <X className="h-3.5 w-3.5" variant="stroke" />
-                {t("gabinet.calendar.clearFilters", "Wyczyść filtry")}
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                  {activeFilterCount}
-                </Badge>
-              </Button>
-            )}
-          </div>
+                {/* Clear all */}
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={clearAllFilters}
+                  >
+                    <X className="mr-1.5 size-4" variant="stroke" />
+                    {t("gabinet.calendar.clearFilters", "Wyczyść filtry")}
+                  </Button>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Calendar content */}

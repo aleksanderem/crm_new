@@ -28,13 +28,24 @@ export function EzIcon({
     }
   }, [name, variant, size]);
 
+  // React maps className to "classname" attribute on custom elements
+  // instead of "class". Use ref to apply it correctly.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const classes = cn(className);
+    if (classes) {
+      el.setAttribute("class", classes);
+    } else {
+      el.removeAttribute("class");
+    }
+  }, [className]);
+
   return (
     <easier-icon
       ref={ref}
-      // Set initial attributes for SSR/first paint - useEffect ensures they stick
       name={name}
       variant={variant}
-      className={cn(className)}
     />
   );
 }

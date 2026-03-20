@@ -134,7 +134,7 @@ export function AppSidebar() {
       <div
         className={cn(
           "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
-          wideContent ? "max-2xl:hidden lg:block" : "max-lg:hidden",
+          wideContent ? "max-2xl:hidden lg:flex" : "max-lg:hidden",
         )}
       >
         <div className="px-4 pt-3 pb-2">
@@ -187,51 +187,55 @@ export function AppSidebar() {
                 <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                {pageContext && (
-                  <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
-                )}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {/* Fixed top section */}
+                <div className="shrink-0">
+                  {pageContext && (
+                    <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
+                  )}
 
-                {activeWorkspace === "gabinet" && organizationId && (
-                  <div className="flex flex-col gap-2 px-3 pb-2">
-                    <GabinetGlobalNudges organizationId={organizationId} />
-                  </div>
-                )}
-
-                {pageContext && (
-                  <div className="flex flex-col px-4">
-                    <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
-                    <div className="mb-3 grid grid-cols-2 gap-4">
-                      {pageContext.actions
-                        .filter((action) => {
-                          if (!action.permissionFeature) return true;
-                          return canCreate(action.permissionFeature);
-                        })
-                        .map((action) => (
-                          <button
-                            key={action.labelKey}
-                            type="button"
-                            className="hover:bg-primary/5 flex flex-col items-center gap-2 rounded-md border px-2 py-4 text-sm transition-colors"
-                            onClick={() => {
-                              if (action.quickCreate) {
-                                openQuickCreate(action.quickCreate);
-                              } else if (action.dispatch) {
-                                dispatch(action.dispatch);
-                              } else if (action.href) {
-                                navigateTo(action.href);
-                              }
-                            }}
-                          >
-                            <action.icon className="size-4" variant="stroke" />
-                            <span className="text-center leading-tight">{t(action.labelKey)}</span>
-                          </button>
-                        ))}
+                  {activeWorkspace === "gabinet" && organizationId && (
+                    <div className="flex flex-col gap-2 px-3 pb-2">
+                      <GabinetGlobalNudges organizationId={organizationId} />
                     </div>
-                  </div>
-                )}
+                  )}
 
+                  {pageContext && (
+                    <div className="flex flex-col px-4">
+                      <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
+                      <div className="mb-3 grid grid-cols-2 gap-4">
+                        {pageContext.actions
+                          .filter((action) => {
+                            if (!action.permissionFeature) return true;
+                            return canCreate(action.permissionFeature);
+                          })
+                          .map((action) => (
+                            <button
+                              key={action.labelKey}
+                              type="button"
+                              className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
+                              onClick={() => {
+                                if (action.quickCreate) {
+                                  openQuickCreate(action.quickCreate);
+                                } else if (action.dispatch) {
+                                  dispatch(action.dispatch);
+                                } else if (action.href) {
+                                  navigateTo(action.href);
+                                }
+                              }}
+                            >
+                              <action.icon className="size-4" variant="stroke" />
+                              <span className="text-center leading-tight">{t(action.labelKey)}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Widgets fill remaining space */}
                 {pageContext?.widgets && organizationId && (
-                  <div className="flex flex-col gap-2 px-3 pb-2">
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2">
                     <pageContext.widgets organizationId={organizationId} />
                   </div>
                 )}

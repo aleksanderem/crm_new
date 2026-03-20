@@ -1,4 +1,4 @@
-import { CheckIcon } from "lucide-react";
+import { CircleCheckIcon } from "@/lib/ez-icons";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import type { ModuleId, ModuleWorkspaceOption } from "@/modules/types";
@@ -52,7 +52,7 @@ export function WorkspaceSwitcher({ activeWorkspace, workspaces }: WorkspaceSwit
                 <span className="text-muted-foreground text-xs">{t(workspace.descKey)}</span>
               </div>
             </div>
-            {activeWorkspace === workspace.id && <CheckIcon className="ml-auto size-4" />}
+            {activeWorkspace === workspace.id && <CircleCheckIcon className="ml-auto size-4" variant="stroke" />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

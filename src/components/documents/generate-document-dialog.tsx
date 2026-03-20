@@ -29,7 +29,7 @@ import {
   Settings,
   Info,
 } from "@/lib/ez-icons";
-import { Input } from "@/components/ui/input";
+import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SurveyFormRenderer } from "./survey-form-renderer";
@@ -247,7 +247,7 @@ export function GenerateDocumentDialog({
       backdrop="blur"
       classNames={{
         base: "max-h-[90vh]",
-        body: "p-0",
+        body: "px-6 pt-2 pb-4",
       }}
     >
       <ModalContent>
@@ -274,22 +274,22 @@ export function GenerateDocumentDialog({
                 </ModalHeader>
 
                 <ModalBody>
-                  <div className="px-1 pb-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={t(
-                          "documents.searchTemplate",
-                          "Szukaj szablonu...",
-                        )}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
+                  <div className="pb-3">
+                    <Input
+                      variant="bordered"
+                      placeholder={t(
+                        "documents.searchTemplate",
+                        "Szukaj szablonu...",
+                      )}
+                      value={search}
+                      onValueChange={setSearch}
+                      startContent={<Search className="h-4 w-4 text-muted-foreground" />}
+                      isClearable
+                      onClear={() => setSearch("")}
+                    />
                   </div>
 
-                  <ScrollShadow className="flex-1 min-h-0 overflow-y-auto px-1 pb-4">
+                  <ScrollShadow className="flex-1 min-h-0 overflow-y-auto pb-4">
                     {templatesLoading && (
                       <div className="space-y-3">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -329,9 +329,11 @@ export function GenerateDocumentDialog({
                     <div className="space-y-6">
                       {sortedCategories.map((category) => (
                         <div key={category}>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                            {CATEGORY_LABELS[category] ?? category}
-                          </h3>
+                          <div className="mb-2">
+                            <Badge variant="secondary" className="text-xs">
+                              Kategoria: {CATEGORY_LABELS[category] ?? category}
+                            </Badge>
+                          </div>
                           <div className="space-y-2">
                             {groupedTemplates[category].map((tpl) => {
                               const CategoryIcon = CATEGORY_ICONS[tpl.category] ?? FileText;
@@ -364,16 +366,11 @@ export function GenerateDocumentDialog({
                                           {tpl.description}
                                         </p>
                                       )}
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="secondary" className="text-[10px] shrink-0">
-                                          {CATEGORY_LABELS[tpl.category] ?? tpl.category}
-                                        </Badge>
-                                        {fieldCount > 0 && (
-                                          <span className="text-[10px] text-muted-foreground">
-                                            {t("documents.fieldCount", "{{count}} pol do wypelnienia", { count: fieldCount })}
-                                          </span>
-                                        )}
-                                      </div>
+                                      {fieldCount > 0 && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {t("documents.fieldCount", "{{count}} pol do wypelnienia", { count: fieldCount })}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </button>

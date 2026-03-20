@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/ui/language-switcher";
 import {
   CalendarCheck,
   Download,
+  Filter,
   Kanban,
   Phone,
   PlusCircle,
@@ -18,6 +19,7 @@ interface FooterAction {
   icon: React.ElementType;
   quickCreate?: string;
   href?: string;
+  action?: string;
 }
 
 const routeActions: Record<string, FooterAction[]> = {
@@ -55,7 +57,9 @@ const routeActions: Record<string, FooterAction[]> = {
 const gabinetRouteActions: Record<string, FooterAction[]> = {
   calendar: [
     { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+    { labelKey: "nav.actions.filters", icon: Filter, action: "openFilter" },
     { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+    { labelKey: "nav.actions.printSchedule", icon: Download, action: "printSchedule" },
   ],
   patients: [
     { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
@@ -81,7 +85,7 @@ const gabinetRouteKeys = ["calendar", "patients", "treatments", "packages", "emp
 export function AppFooter() {
   const { t } = useTranslation();
   const matchRoute = useMatchRoute();
-  const { openQuickCreate, navigateTo } = useSidebarActions();
+  const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
 
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
 
@@ -118,6 +122,8 @@ export function AppFooter() {
               onClick={() => {
                 if (action.quickCreate) {
                   openQuickCreate(action.quickCreate);
+                } else if (action.action) {
+                  dispatch(action.action);
                 } else if (action.href) {
                   navigateTo(action.href);
                 }

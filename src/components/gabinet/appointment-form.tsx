@@ -24,7 +24,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, CheckIcon, ChevronsUpDown } from "@/lib/ez-icons";
+import { CalendarIcon, ChevronsUpDown } from "@/lib/ez-icons";
 import { CalendarSearch } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -327,7 +327,7 @@ export function AppointmentForm({
               variant="outline"
               role="combobox"
               aria-expanded={patientOpen}
-              className="w-full justify-between font-normal"
+              className="w-full justify-between h-11 font-normal"
               disabled={isCreatingPatient}
             >
               {isCreatingPatient ? (
@@ -344,7 +344,8 @@ export function AppointmentForm({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[--radix-popover-trigger-width] p-0"
+            className="p-0"
+            style={{ width: "var(--radix-popover-trigger-width)" }}
             align="start"
           >
             <Command shouldFilter={false}>
@@ -372,13 +373,11 @@ export function AppointmentForm({
                         key={p._id}
                         value={p._id}
                         onSelect={() => handlePatientSelect(p._id)}
+                        className={cn(
+                          "px-3",
+                          patientId === p._id && "bg-accent font-medium text-accent-foreground"
+                        )}
                       >
-                        <CheckIcon
-                          className={cn(
-                            "mr-2 size-4",
-                            patientId === p._id ? "opacity-100" : "opacity-0",
-                          )}
-                        />
                         <span>
                           {p.firstName} {p.lastName}
                         </span>
@@ -410,8 +409,8 @@ export function AppointmentForm({
                             key={c._id}
                             value={c._id}
                             onSelect={() => handleContactSelect(c)}
+                            className="px-3"
                           >
-                            <CheckIcon className="mr-2 size-4 opacity-0" />
                             <span>
                               {c.firstName} {c.lastName}
                             </span>
@@ -450,7 +449,7 @@ export function AppointmentForm({
               variant="outline"
               role="combobox"
               aria-expanded={treatmentOpen}
-              className="w-full justify-between font-normal"
+              className="w-full justify-between h-11 font-normal"
             >
               {selectedTreatment ? (
                 <span className="flex items-center gap-2 truncate">
@@ -466,7 +465,8 @@ export function AppointmentForm({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[--radix-popover-trigger-width] p-0"
+            className="p-0"
+            style={{ width: "var(--radix-popover-trigger-width)" }}
             align="start"
           >
             <Command>
@@ -481,13 +481,11 @@ export function AppointmentForm({
                       key={tr._id}
                       value={tr.name}
                       onSelect={() => handleTreatmentSelect(tr._id)}
+                      className={cn(
+                        "px-3",
+                        treatmentId === tr._id && "bg-accent font-medium text-accent-foreground"
+                      )}
                     >
-                      <CheckIcon
-                        className={cn(
-                          "mr-2 size-4",
-                          treatmentId === tr._id ? "opacity-100" : "opacity-0",
-                        )}
-                      />
                       <span className="flex-1">{tr.name}</span>
                       <span className="text-muted-foreground text-xs">
                         {tr.duration} min · {tr.price} zł

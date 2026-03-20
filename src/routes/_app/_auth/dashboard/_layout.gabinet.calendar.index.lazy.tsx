@@ -80,6 +80,7 @@ function GabinetCalendarPage() {
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
 
   // Filter dialog
@@ -163,6 +164,15 @@ function GabinetCalendarPage() {
       organizationId,
       activeOnly: true,
     }),
+  );
+
+  // Fetch locations for filter
+  const { data: locationsRaw } = useQuery(
+    convexQuery(api.gabinet.locations.listLocations, { organizationId }),
+  );
+  const locations = useMemo(
+    () => (locationsRaw ?? []).filter((l) => l.isActive),
+    [locationsRaw],
   );
 
   // Fetch members for name resolution
@@ -286,6 +296,7 @@ function GabinetCalendarPage() {
       .filter((a) => {
         if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) return false;
         if (statusFilter !== "all" && a.status !== statusFilter) return false;
+        if (locationFilter !== "all" && a.locationId !== locationFilter) return false;
         if (searchLower) {
           const name = patientMap.get(a.patientId) ?? "";
           if (!name.toLowerCase().includes(searchLower)) return false;
@@ -305,7 +316,7 @@ function GabinetCalendarPage() {
           color: a.color ?? treatment?.color,
         };
       });
-  }, [rawAppointments, patientMap, treatmentMap, treatmentFilter, statusFilter, clientSearch]);
+  }, [rawAppointments, patientMap, treatmentMap, treatmentFilter, statusFilter, locationFilter, clientSearch]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -480,14 +491,16 @@ function GabinetCalendarPage() {
     let count = 0;
     if (treatmentFilter !== "all") count++;
     if (statusFilter !== "all") count++;
+    if (locationFilter !== "all") count++;
     if (clientSearch.trim()) count++;
     return count;
-  }, [treatmentFilter, statusFilter, clientSearch]);
+  }, [treatmentFilter, statusFilter, locationFilter, clientSearch]);
 
   const clearAllFilters = useCallback(() => {
     setEmployeeFilter("all");
     setTreatmentFilter("all");
     setStatusFilter("all");
+    setLocationFilter("all");
     setClientSearch("");
   }, []);
 
@@ -658,6 +671,38 @@ function GabinetCalendarPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Location filter */}
+                {locations.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label>{t("gabinet.locations.title", "Lokalizacja")}</Label>
+                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={t("gabinet.calendar.allLocations", "Wszystkie lokalizacje")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {t("gabinet.calendar.allLocations", "Wszystkie lokalizacje")}
+                        </SelectItem>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc._id} value={loc._id}>
+                            <span className="flex items-center gap-2">
+                              {loc.color && (
+                                <span
+                                  className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: loc.color }}
+                                />
+                              )}
+                              {loc.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Status filter */}
                 <div className="space-y-1.5">

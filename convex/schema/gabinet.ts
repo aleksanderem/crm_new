@@ -91,6 +91,7 @@ export function createGabinetTables({
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
     requiredEquipment: v.optional(v.array(v.string())),
+    requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
     contraindications: v.optional(v.string()),
     preparationInstructions: v.optional(v.string()),
     aftercareInstructions: v.optional(v.string()),
@@ -167,12 +168,14 @@ export function createGabinetTables({
     isOpen: v.boolean(),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndDay", ["organizationId", "dayOfWeek"]),
+    .index("by_orgAndDay", ["organizationId", "dayOfWeek"])
+    .index("by_orgAndLocation", ["organizationId", "locationId"]),
 
   gabinetEmployeeSchedules: defineTable({
     organizationId: v.id("organizations"),
@@ -185,6 +188,7 @@ export function createGabinetTables({
     breakEnd: v.optional(v.string()),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -380,6 +384,8 @@ export function createGabinetTables({
     cancellationReason: v.optional(v.string()),
     bookedFromPortal: v.optional(v.boolean()),
     bookedByPatientId: v.optional(v.id("gabinetPatients")),
+    locationId: v.optional(v.id("gabinetLocations")),
+    roomId: v.optional(v.id("gabinetRooms")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -391,7 +397,8 @@ export function createGabinetTables({
     .index("by_orgAndEmployeeAndDate", ["organizationId", "employeeId", "date"])
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndTreatment", ["organizationId", "treatmentId"])
-    .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"]),
+    .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"])
+    .index("by_orgAndRoomAndDate", ["organizationId", "roomId", "date"]),
 
   // --- Gabinet: Packages & Loyalty (Phase 4) ---
 
@@ -839,5 +846,81 @@ export function createGabinetTables({
     .index("by_org", ["organizationId", "createdAt"])
     .index("by_appointment", ["appointmentId", "createdAt"])
     .index("by_idempotencyKey", ["idempotencyKey"]),
+
+  // --- Gabinet: Locations, Rooms & Equipment ---
+
+  gabinetLocations: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      postalCode: v.optional(v.string()),
+      country: v.optional(v.string()),
+    })),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    color: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["organizationId"])
+    .searchIndex("search_name", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
+
+  gabinetRooms: defineTable({
+    organizationId: v.id("organizations"),
+    locationId: v.id("gabinetLocations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    floor: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_location", ["locationId"]),
+
+  gabinetEquipment: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    serialNumber: v.optional(v.string()),
+    currentLocationId: v.optional(v.id("gabinetLocations")),
+    currentRoomId: v.optional(v.id("gabinetRooms")),
+    status: v.union(
+      v.literal("available"),
+      v.literal("in_use"),
+      v.literal("maintenance"),
+      v.literal("retired"),
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_location", ["organizationId", "currentLocationId"])
+    .index("by_room", ["organizationId", "currentRoomId"])
+    .searchIndex("search_name", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
+
+  gabinetEquipmentTransfers: defineTable({
+    organizationId: v.id("organizations"),
+    equipmentId: v.id("gabinetEquipment"),
+    fromLocationId: v.optional(v.id("gabinetLocations")),
+    toLocationId: v.id("gabinetLocations"),
+    toRoomId: v.optional(v.id("gabinetRooms")),
+    transferredBy: v.id("users"),
+    transferredAt: v.number(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_equipment", ["equipmentId"])
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndTime", ["organizationId", "transferredAt"]),
   };
 }

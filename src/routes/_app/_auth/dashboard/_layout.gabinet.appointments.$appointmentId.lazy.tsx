@@ -374,6 +374,8 @@ function AppointmentDetail() {
 
   // Payment mutations
   const createPayment = useMutation(api.payments.create);
+  const markPaymentPaid = useMutation(api.payments.markPaid);
+  const refundPayment = useMutation(api.payments.refund);
 
   // Note mutations
   const createNote = useMutation(api.notes.create);
@@ -913,6 +915,34 @@ function AppointmentDetail() {
       toast.error(msg);
     } finally {
       setIsPaymentSubmitting(false);
+    }
+  };
+
+  const handleMarkPaid = async (paymentId: string) => {
+    try {
+      await markPaymentPaid({
+        organizationId,
+        paymentId: paymentId as Id<"payments">,
+      });
+      toast.success(t("gabinet.payments.markedPaid"));
+      refetch();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    }
+  };
+
+  const handleRefundPayment = async (paymentId: string) => {
+    try {
+      await refundPayment({
+        organizationId,
+        paymentId: paymentId as Id<"payments">,
+      });
+      toast.success(t("gabinet.payments.refunded"));
+      refetch();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
     }
   };
 
@@ -1552,6 +1582,9 @@ function AppointmentDetail() {
                         <th className="text-left p-3 text-sm font-medium">
                           {t("common.status")}
                         </th>
+                        <th className="text-right p-3 text-sm font-medium">
+                          {t("common.actions")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1592,6 +1625,27 @@ function AppointmentDetail() {
                                 `gabinet.payments.status.${payment.status}`,
                               )}
                             </Badge>
+                          </td>
+                          <td className="p-3 text-right">
+                            {payment.status === "pending" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkPaid(payment._id as string)}
+                              >
+                                {t("gabinet.payments.markPaid")}
+                              </Button>
+                            )}
+                            {payment.status === "completed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive"
+                                onClick={() => handleRefundPayment(payment._id as string)}
+                              >
+                                {t("gabinet.payments.refund")}
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       ))}

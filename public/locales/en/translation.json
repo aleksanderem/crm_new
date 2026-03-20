@@ -2681,8 +2681,18 @@
       "noPaymentsDesc": "No payments linked to this appointment",
       "notePlaceholder": "Optional note...",
       "outstanding": "Outstanding",
+      "markPaid": "Mark paid",
+      "markedPaid": "Payment confirmed",
+      "refund": "Refund",
+      "refunded": "Payment refunded",
       "paymentHistory": "Payment history",
       "payments": "Payments",
+      "status": {
+        "pending": "Pending",
+        "completed": "Paid",
+        "refunded": "Refunded",
+        "cancelled": "Cancelled"
+      },
       "summary": "Summary",
       "totalPaid": "Total paid",
       "totalSpent": "Total spent",

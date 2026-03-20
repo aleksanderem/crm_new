@@ -2690,8 +2690,18 @@
       "noPaymentsDesc": "Brak płatności powiązanych z tą wizytą",
       "notePlaceholder": "Opcjonalna notatka...",
       "outstanding": "Do zapłaty",
+      "markPaid": "Potwierdź",
+      "markedPaid": "Płatność potwierdzona",
+      "refund": "Zwrot",
+      "refunded": "Płatność zwrócona",
       "paymentHistory": "Historia płatności",
       "payments": "Płatności",
+      "status": {
+        "pending": "Oczekująca",
+        "completed": "Opłacona",
+        "refunded": "Zwrócona",
+        "cancelled": "Anulowana"
+      },
       "summary": "Podsumowanie",
       "totalPaid": "Zapłacono łącznie",
       "totalSpent": "Wydano łącznie",

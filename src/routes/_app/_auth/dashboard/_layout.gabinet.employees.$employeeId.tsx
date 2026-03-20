@@ -1434,6 +1434,7 @@ interface DaySchedule {
   isWorking: boolean;
   breakStart: string;
   breakEnd: string;
+  locationId: string;
 }
 
 interface SchedulePeriod {
@@ -1446,6 +1447,7 @@ interface SchedulePeriod {
     isWorking: boolean;
     breakStart?: string;
     breakEnd?: string;
+    locationId?: string;
   }>;
 }
 
@@ -1474,6 +1476,9 @@ function FlexibleScheduleEditor({
   onSaveLegacy: any;
 }) {
   const { t, i18n } = useTranslation();
+  const { data: locations } = useQuery(
+    convexQuery(api.gabinet.locations.listLocations, { organizationId })
+  );
   const [saving, setSaving] = useState(false);
   const [editingPeriodKey, setEditingPeriodKey] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
@@ -1492,6 +1497,7 @@ function FlexibleScheduleEditor({
           isWorking: clinicDay.isOpen,
           breakStart: clinicDay.breakStart ?? "",
           breakEnd: clinicDay.breakEnd ?? "",
+          locationId: "",
         };
       }
       return {
@@ -1501,6 +1507,7 @@ function FlexibleScheduleEditor({
         isWorking: i >= 1 && i <= 5,
         breakStart: "",
         breakEnd: "",
+        locationId: "",
       };
     });
   }
@@ -1520,6 +1527,7 @@ function FlexibleScheduleEditor({
         isWorking: entry?.isWorking ?? (i >= 1 && i <= 5),
         breakStart: entry?.breakStart ?? "",
         breakEnd: entry?.breakEnd ?? "",
+        locationId: entry?.locationId ?? "",
       };
     });
     setPeriodHours(hours);
@@ -1562,6 +1570,7 @@ function FlexibleScheduleEditor({
             isWorking: h.isWorking,
             breakStart: h.breakStart || undefined,
             breakEnd: h.breakEnd || undefined,
+            locationId: h.locationId || undefined,
           })),
         });
       } else {
@@ -1576,6 +1585,7 @@ function FlexibleScheduleEditor({
             isWorking: h.isWorking,
             breakStart: h.breakStart || undefined,
             breakEnd: h.breakEnd || undefined,
+            locationId: h.locationId || undefined,
           })),
         });
       }
@@ -1747,19 +1757,20 @@ function FlexibleScheduleEditor({
 
             {/* Weekly schedule grid */}
             <div className="rounded-lg border">
-              <div className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.scheduling.day")}</span>
                 <span>{t("gabinet.scheduling.open")}</span>
                 <span>{t("gabinet.scheduling.start")}</span>
                 <span>{t("gabinet.scheduling.end")}</span>
                 <span>{t("gabinet.scheduling.breakStart")}</span>
                 <span>{t("gabinet.scheduling.breakEnd")}</span>
+                <span>{t("gabinet.appointments.location")}</span>
               </div>
 
               {periodHours.map((h) => (
                 <div
                   key={h.dayOfWeek}
-                  className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
+                  className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
                 >
                   <span className="text-sm font-medium">{dayNames[h.dayOfWeek]}</span>
                   <Checkbox
@@ -1794,6 +1805,23 @@ function FlexibleScheduleEditor({
                     onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
                     disabled={!h.isWorking}
                   />
+                  <Select
+                    value={h.locationId || "none"}
+                    onValueChange={(val) => updateDay(h.dayOfWeek, "locationId", val === "none" ? "" : val)}
+                    disabled={!h.isWorking}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("common.none")}</SelectItem>
+                      {locations?.filter((l) => l.isActive).map((l) => (
+                        <SelectItem key={l._id} value={l._id}>
+                          {l.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))}
             </div>

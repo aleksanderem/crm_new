@@ -87,12 +87,13 @@ gabinetEquipment: defineTable({
     v.literal("maintenance"),
     v.literal("retired"),
   ),
-  isActive: v.boolean(),
+  // No separate isActive field — use status !== "retired" for active checks
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
 })
   .index("by_org", ["organizationId"])
   .index("by_location", ["organizationId", "currentLocationId"])
+  .index("by_room", ["organizationId", "currentRoomId"])
   .searchIndex("search_name", {
     searchField: "name",
     filterFields: ["organizationId"],
@@ -116,6 +117,7 @@ gabinetEquipmentTransfers: defineTable({
 })
   .index("by_equipment", ["equipmentId"])
   .index("by_org", ["organizationId"])
+  .index("by_orgAndTime", ["organizationId", "transferredAt"])
 ```
 
 ### Modified Tables
@@ -177,7 +179,7 @@ Standard CRUD with org access verification:
 
 - `listLocations(orgId)` — all locations for org, sorted by name
 - `getLocation(orgId, locationId)` — single location with room count
-- `saveLocation(orgId, data)` — create or update (upsert pattern matching existing `saveTreatment` etc.)
+- `createLocation(orgId, data)` / `updateLocation(orgId, locationId, data)` — separate mutations matching existing treatment pattern (distinct create/update permission checks)
 - `deleteLocation(orgId, locationId)` — soft delete (set isActive=false); block if active appointments reference it
 
 ### Room CRUD — within `convex/gabinet/locations.ts`
@@ -203,7 +205,8 @@ Current logic checks employee time conflicts. Add:
 
 1. If `roomId` is provided, query `by_orgAndRoomAndDate` index
 2. Check for overlapping appointments in the same room
-3. Return conflict if found (separate from employee conflict — both must pass)
+3. Filter out `excludeAppointmentId` (same as existing employee conflict check — required for the update path where an appointment is rescheduled to the same room at a different time)
+4. Return conflict if found (separate from employee conflict — both must pass)
 
 #### `checkEquipmentAvailability()` — new function
 
@@ -214,15 +217,16 @@ Given a treatment's `requiredEquipmentIds` and a target `locationId`:
 3. Verify `status === "available"`
 4. Return `{ available: boolean, missing: EquipmentInfo[] }` with details of what's missing/elsewhere
 
-This is a read-time check, not a reservation. Equipment doesn't get "locked" to an appointment — it's location-based. If the laser is at Mokotów, any appointment at Mokotów can use it.
+This is a read-time check, not a reservation. Equipment doesn't get "locked" to an appointment — it's location-based. If the laser is at Mokotów, any appointment at Mokotów can use it. See "Known Limitations" section for implications of this approach.
 
 #### `resolveAppointmentLocation()` — new helper
 
 Given employeeId and date:
 
-1. Fetch employee's schedule for that day of week via `by_orgUserAndDay`
-2. If schedule has `locationId`, return it
-3. If no schedule or no locationId, return null (location-unaware, backward compat)
+1. Fetch employee's schedules for that day of week via `by_orgUserAndDay` (may return multiple rows due to `effectiveFrom`/`effectiveTo` temporal scheduling)
+2. Filter candidate rows by `effectiveFrom <= date <= effectiveTo` (null = unbounded). This fixes the existing `.first()` bug in `_availability.ts` that doesn't account for temporal schedule periods — must be fixed as part of this work in both `getAvailableSlots()` and `checkConflict()`.
+3. If the matched schedule has `locationId`, return it
+4. If no schedule or no locationId, return null (location-unaware, backward compat)
 
 ### Appointment Creation Changes — `convex/gabinet/appointments.ts`
 
@@ -235,13 +239,28 @@ Update the `create` mutation (line ~619):
 
 The locationId can be auto-resolved from employee schedule or explicitly passed. If both exist, explicit takes precedence. If treatment requires equipment not at the location, return a validation error with details of missing equipment.
 
+### Appointment Update Changes — `convex/gabinet/appointments.ts`
+
+Update the `update` mutation (line ~895):
+
+1. Accept optional `locationId` and `roomId` fields
+2. If employee or date changed, re-resolve location via `resolveAppointmentLocation()`
+3. If roomId provided or changed, run room conflict check with `excludeAppointmentId` set to the appointment being updated
+4. If locationId changed, re-validate equipment availability at the new location
+5. Update the appointment record with new locationId/roomId
+
 ### Working Hours per Location
 
 `getAvailableSlots()` in `_availability.ts` currently resolves clinic hours from `gabinetWorkingHours`. Update to:
 
-1. If locationId is known, first try `by_orgAndLocation` index with that locationId
-2. Fall back to org-wide working hours (locationId === undefined)
-3. Employee schedule overrides still take precedence over location hours
+Resolution precedence for a given (org, location, dayOfWeek):
+
+1. Employee schedule override (highest priority — existing behavior, unchanged)
+2. Location-specific working hours — query `by_orgAndLocation` with that locationId
+3. Org-wide default working hours — query `by_orgAndLocation` with locationId === undefined
+4. If none found, the location/clinic is closed on that day
+
+The `getAvailableSlots()` function signature gains an optional `locationId` parameter. All callers must be updated.
 
 ## Frontend
 
@@ -295,7 +314,7 @@ Update `appointment-form.tsx` and appointment dialog:
 
 - Location filter in calendar toolbar (dropdown or tabs)
 - Color-code appointments by location (using location.color field)
-- Room view: a sub-view within day view showing rooms as columns (like resource view)
+- Room view: deferred to future enhancement (resource-based calendar view with rooms as columns requires significant UI work; out of scope for initial release)
 
 ### Appointment Detail
 
@@ -403,8 +422,10 @@ Add under `gabinet.locations` and `gabinet.equipment` namespaces in both PL and 
 8. `src/components/gabinet/treatment-form.tsx` — equipment multi-select
 9. `src/routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId.tsx` — schedule location assignment
 10. `src/components/layout/app-sidebar.tsx` — add settings nav items for locations/equipment
-11. `public/locales/pl/translation.json` — PL keys
-12. `public/locales/en/translation.json` — EN keys
+11. `convex/gabinet/scheduling.ts` — pass locationId to `getAvailableSlots()` callers
+12. `convex/gabinet/patientPortal.ts` — pass locationId to `getAvailableSlots()` callers
+13. `public/locales/pl/translation.json` — PL keys
+14. `public/locales/en/translation.json` — EN keys
 
 ## Implementation Sequence
 
@@ -432,6 +453,14 @@ All new fields are optional. The system works in three modes:
 3. Fully configured — all employees have location schedules, rooms assigned, equipment tracked
 
 No breaking changes to existing data. Old appointments render correctly without location/room. Old treatments with string-based requiredEquipment continue working until migration runs.
+
+## Known Limitations
+
+1. Equipment availability is location-scoped, not time-scoped. If a clinic has one laser at Mokotów, the system will not prevent two concurrent appointments from both requiring it. This is acceptable for MVP — most clinics have enough equipment per location. Future enhancement could add per-equipment time-slot conflict checking similar to room conflict checking.
+
+2. Calendar room view (rooms as columns in day view) is deferred to a future release. Initial implementation provides location filtering only.
+
+3. Recurring appointment creation currently only checks conflicts for the first occurrence (pre-existing issue). Adding room conflict checking amplifies this — subsequent recurring appointments could be double-booked in rooms. Flagged for future fix but out of scope for this feature.
 
 ## Verification Checklist
 

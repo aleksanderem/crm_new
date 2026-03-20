@@ -284,6 +284,7 @@ export const getPublicAvailableSlots = query({
       userId: args.employeeId,
       date: args.date,
       duration: args.duration,
+      locationId: undefined,
     });
   },
 });
@@ -342,6 +343,7 @@ export const bookFromPortal = mutation({
           userId: emp.userId,
           date: args.preferredDate,
           duration: treatment.duration,
+          locationId: undefined,
         });
         if (slots.some((s) => s.start === args.preferredTime)) {
           foundEmployee = emp.userId;

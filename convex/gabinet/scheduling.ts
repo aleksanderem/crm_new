@@ -28,6 +28,7 @@ export const setWorkingHours = mutation({
     isOpen: v.boolean(),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
@@ -48,6 +49,7 @@ export const setWorkingHours = mutation({
         isOpen: args.isOpen,
         breakStart: args.breakStart,
         breakEnd: args.breakEnd,
+        locationId: args.locationId,
         updatedAt: now,
       });
       return existing._id;
@@ -61,6 +63,7 @@ export const setWorkingHours = mutation({
       isOpen: args.isOpen,
       breakStart: args.breakStart,
       breakEnd: args.breakEnd,
+      locationId: args.locationId,
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
@@ -78,6 +81,7 @@ export const bulkSetWorkingHours = mutation({
       isOpen: v.boolean(),
       breakStart: v.optional(v.string()),
       breakEnd: v.optional(v.string()),
+      locationId: v.optional(v.id("gabinetLocations")),
     })),
   },
   handler: async (ctx, args) => {
@@ -138,6 +142,7 @@ export const setEmployeeSchedule = mutation({
     breakEnd: v.optional(v.string()),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
@@ -161,6 +166,7 @@ export const setEmployeeSchedule = mutation({
       breakEnd: args.breakEnd,
       effectiveFrom: args.effectiveFrom,
       effectiveTo: args.effectiveTo,
+      locationId: args.locationId,
     };
 
     if (existing) {
@@ -191,6 +197,7 @@ export const bulkSetEmployeeSchedule = mutation({
       isWorking: v.boolean(),
       breakStart: v.optional(v.string()),
       breakEnd: v.optional(v.string()),
+      locationId: v.optional(v.id("gabinetLocations")),
     })),
   },
   handler: async (ctx, args) => {
@@ -242,6 +249,7 @@ export const saveSchedulePeriod = mutation({
       isWorking: v.boolean(),
       breakStart: v.optional(v.string()),
       breakEnd: v.optional(v.string()),
+      locationId: v.optional(v.id("gabinetLocations")),
     })),
   },
   handler: async (ctx, args) => {
@@ -545,6 +553,7 @@ export const findNextAvailableSlot = query({
         userId: args.employeeId,
         date: dateStr,
         duration: args.durationMinutes,
+        locationId: undefined,
       });
 
       if (slots.length > 0) {

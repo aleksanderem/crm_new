@@ -581,6 +581,7 @@ export const getAvailableSlotsQuery = query({
     userId: v.id("users"),
     date: v.string(),
     duration: v.number(),
+    locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

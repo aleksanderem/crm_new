@@ -38,6 +38,8 @@ import {
   MessageSquare,
   Send,
   Inbox,
+  MapPin,
+  Building2,
 } from "@/lib/ez-icons";
 
 const STATUS_KEYS: Record<string, string> = {
@@ -192,6 +194,14 @@ export function AppointmentDetailDialog({
     enabled: !!appointment,
   });
 
+  const { data: locationData } = useQuery({
+    ...convexQuery(api.gabinet.locations.getLocation, {
+      organizationId,
+      locationId: (appointment?.locationId ?? "") as Id<"gabinetLocations">,
+    }),
+    enabled: !!appointment?.locationId,
+  });
+
   const [editing, setEditing] = useState(false);
   const [editDate, setEditDate] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
@@ -209,6 +219,7 @@ export function AppointmentDetailDialog({
   const treatmentName = treatments?.find(
     (t) => t._id === appointment.treatmentId
   );
+  const roomName = locationData?.rooms?.find((r) => r._id === appointment.roomId)?.name;
   const nextStatuses = VALID_TRANSITIONS[appointment.status] ?? [];
   const latestOutboundSms = smsEvents.find(
     (event) =>
@@ -500,6 +511,26 @@ export function AppointmentDetailDialog({
                   </div>
                 </div>
               </div>
+
+              {locationData && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("gabinet.appointments.location")}
+                    </div>
+                    <div className="text-sm font-medium">
+                      {locationData.name}
+                      {roomName && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Building2 className="h-3 w-3" />
+                          {roomName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-md border bg-muted/30 p-3 space-y-3">
                 <div className="flex items-start justify-between gap-3">

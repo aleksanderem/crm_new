@@ -23,9 +23,16 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown } from "@/lib/ez-icons";
-import { CalendarSearch } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, MapPin, Building2 } from "@/lib/ez-icons";
+import { AlertTriangle, CalendarSearch } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -63,6 +70,8 @@ interface AppointmentFormData {
   endTime: string;
   notes?: string;
   sendReminder?: boolean;
+  locationId?: Id<"gabinetLocations">;
+  roomId?: Id<"gabinetRooms">;
 }
 
 interface AppointmentFormProps {
@@ -135,6 +144,13 @@ export function AppointmentForm({
 
   const createPatientFromContact = useMutation(api.gabinet.patients.create);
 
+  // Locations query
+  const { data: locations } = useQuery(
+    convexQuery(api.gabinet.locations.listLocations, {
+      organizationId: organizationId!,
+    }),
+  );
+
   // Form state
   const [patientId, setPatientId] = useState("");
   const [patientLabel, setPatientLabel] = useState("");
@@ -149,7 +165,30 @@ export function AppointmentForm({
   const [sendReminder, setSendReminder] = useState(reminderEnabled);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
   const [searchingSlot, setSearchingSlot] = useState(false);
+  const [locationId, setLocationId] = useState("");
+  const [roomId, setRoomId] = useState("");
   const convex = useConvex();
+
+  // Rooms query — enabled only when a location is selected
+  const { data: locationWithRooms } = useQuery({
+    ...convexQuery(api.gabinet.locations.getLocation, {
+      organizationId: organizationId!,
+      locationId: locationId as Id<"gabinetLocations">,
+    }),
+    enabled: !!locationId,
+  });
+  const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
+
+  // Equipment at selected location — for advisory warnings
+  const { data: equipmentAtLocation } = useQuery({
+    ...convexQuery(api.gabinet.equipment.listEquipment, {
+      organizationId: organizationId!,
+      locationId: locationId as Id<"gabinetLocations">,
+    }),
+    enabled: !!locationId,
+  });
+
+  const activeLocations = locations?.filter((l) => l.isActive) ?? [];
 
   // Popover open states
   const [patientOpen, setPatientOpen] = useState(false);
@@ -159,6 +198,13 @@ export function AppointmentForm({
   const selectedTreatment = treatments?.find((tr) => tr._id === treatmentId);
   const selectedPatient = patients.find((p) => p._id === patientId);
   const dateStr = date ? format(date, "yyyy-MM-dd") : "";
+
+  // Equipment warning — advisory only, which required equipment is missing at the selected location
+  const missingEquipmentIds = useMemo(() => {
+    if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
+    const atLocationIds = new Set(equipmentAtLocation?.map((e) => e._id) ?? []);
+    return selectedTreatment.requiredEquipmentIds.filter((id) => !atLocationIds.has(id));
+  }, [locationId, selectedTreatment, equipmentAtLocation]);
 
   // Filter employees by treatment qualification
   const qualifiedEmployees = useMemo(() => {
@@ -244,6 +290,8 @@ export function AppointmentForm({
       endTime: selectedSlot.end,
       notes: notes || undefined,
       sendReminder: sendReminder || undefined,
+      locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
+      roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
     });
   };
 
@@ -299,6 +347,11 @@ export function AppointmentForm({
   const handleDateSelect = (d: Date | undefined) => {
     setDate(d);
     setSelectedSlot(null);
+  };
+
+  const handleLocationSelect = (id: string) => {
+    setLocationId(id);
+    setRoomId("");
   };
 
   // Display name for the selected patient (handles newly-created patients not yet in query cache)
@@ -626,6 +679,61 @@ export function AppointmentForm({
             </p>
           )}
         </fieldset>
+      )}
+
+      {/* Location and Room */}
+      {activeLocations.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="appt-location" className="flex items-center gap-1.5">
+              <MapPin className="size-3.5 text-muted-foreground" />
+              {t("gabinet.appointments.location")}
+            </Label>
+            <Select value={locationId} onValueChange={handleLocationSelect}>
+              <SelectTrigger id="appt-location" className="h-9">
+                <SelectValue placeholder={t("gabinet.appointments.location")} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeLocations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="appt-room" className="flex items-center gap-1.5">
+              <Building2 className="size-3.5 text-muted-foreground" />
+              {t("gabinet.appointments.room")}
+            </Label>
+            <Select
+              value={roomId}
+              onValueChange={setRoomId}
+              disabled={!locationId || activeRooms.length === 0}
+            >
+              <SelectTrigger id="appt-room" className="h-9">
+                <SelectValue placeholder={t("gabinet.appointments.room")} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeRooms.map((room) => (
+                  <SelectItem key={room._id} value={room._id}>
+                    {room.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* Equipment warnings — advisory only */}
+      {missingEquipmentIds.length > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" />
+          {t("gabinet.appointments.equipmentWarning")}
+        </div>
       )}
 
       {/* Notes */}

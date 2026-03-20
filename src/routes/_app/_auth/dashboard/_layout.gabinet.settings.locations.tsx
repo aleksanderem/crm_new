@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Id } from "@cvx/_generated/dataModel";
-import { Plus, Trash, ChevronDown, ChevronRight, MapPin, Phone } from "@/lib/ez-icons";
+import { Plus, Trash2, ChevronDown, ChevronRight, MapPin, Phone } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -340,7 +340,7 @@ function LocationCard({
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash className="mr-2 h-4 w-4" variant="stroke" />
+                <Trash2 className="mr-2 h-4 w-4" variant="stroke" />
                 {t("common.delete")}
               </Button>
               <Button size="sm" onClick={handleSave} disabled={saving || !editName?.trim()}>
@@ -397,7 +397,7 @@ function LocationCard({
                         className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                         onClick={() => handleDeleteRoom(room._id)}
                       >
-                        <Trash className="h-3.5 w-3.5" variant="stroke" />
+                        <Trash2 className="h-3.5 w-3.5" variant="stroke" />
                       </Button>
                     </div>
                   ))}

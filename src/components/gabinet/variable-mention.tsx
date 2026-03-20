@@ -1,9 +1,17 @@
-// @ts-nocheck
 import Mention from "@tiptap/extension-mention";
-import suggestion, { SuggestionOptions } from "@tiptap/suggestion";
-import tippy, { Instance as TippyInstance } from "tippy.js";
+import type { SuggestionOptions, SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
+import tippy, { type Instance as TippyInstance } from "tippy.js";
+import {
+  VARIABLE_REGISTRY,
+  CATEGORY_LABELS,
+  getVariablesForEntityTypes,
+} from "@/lib/pdfme/variables";
 
-export type TemplateVariableCategory = "patient" | "appointment" | "organization" | "system";
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type TemplateVariableCategory = string;
 
 export interface TemplateVariable {
   key: string;
@@ -12,15 +20,45 @@ export interface TemplateVariable {
   aliases?: string[];
 }
 
-export const TEMPLATE_VARIABLES: TemplateVariable[] = [
-  { key: "patient.firstName", label: "Imię klienta", category: "patient", aliases: ["name", "first"] },
-  { key: "patient.lastName", label: "Nazwisko klienta", category: "patient", aliases: ["surname", "last"] },
-  { key: "patient.email", label: "E-mail klienta", category: "patient", aliases: ["mail"] },
-  { key: "patient.phone", label: "Telefon klienta", category: "patient", aliases: ["phone", "tel"] },
-  { key: "patient.pesel", label: "PESEL klienta", category: "patient", aliases: ["id"] },
-  { key: "patient.dateOfBirth", label: "Data urodzenia", category: "patient", aliases: ["birth", "dob"] },
-  { key: "date", label: "Dzisiejsza data", category: "system", aliases: ["today", "now"] },
-];
+// ---------------------------------------------------------------------------
+// Registry bridge — converts VARIABLE_REGISTRY to TemplateVariable[]
+// ---------------------------------------------------------------------------
+
+function registryToTemplateVariables(entityTypes: string[]): TemplateVariable[] {
+  const fields = getVariablesForEntityTypes(entityTypes);
+  return fields.map((f) => ({
+    key: f.path,
+    label: f.label,
+    category: f.category,
+    aliases: [],
+  }));
+}
+
+/** Default full set — backward compat for existing TemplateEditor */
+export const TEMPLATE_VARIABLES: TemplateVariable[] = registryToTemplateVariables(
+  Object.keys(VARIABLE_REGISTRY),
+);
+
+// ---------------------------------------------------------------------------
+// Ref-based dynamic variable list
+//
+// The suggestion `items` callback captures this ref at extension-creation time.
+// Changing `variableListRef.current` updates what the popup shows without
+// recreating the TipTap editor instance.
+// ---------------------------------------------------------------------------
+
+export const variableListRef: { current: TemplateVariable[] } = {
+  current: TEMPLATE_VARIABLES,
+};
+
+/** Call from React useEffect when entityTypes change */
+export function updateVariableList(entityTypes: string[]) {
+  variableListRef.current = registryToTemplateVariables(entityTypes);
+}
+
+// ---------------------------------------------------------------------------
+// Fuzzy search
+// ---------------------------------------------------------------------------
 
 function fuzzyScore(value: string, query: string) {
   if (!query) return 1;
@@ -36,41 +74,58 @@ function fuzzyScore(value: string, query: string) {
   return 0;
 }
 
-function findVariables(query: string) {
-  return TEMPLATE_VARIABLES
+function findVariables(query: string, variables: TemplateVariable[] = variableListRef.current) {
+  return variables
     .map((variable) => {
       const searchable = [variable.key, variable.label, ...(variable.aliases ?? [])].join(" ");
       return { variable, score: fuzzyScore(searchable, query) };
     })
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || a.variable.category.localeCompare(b.variable.category) || a.variable.key.localeCompare(b.variable.key))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.variable.category.localeCompare(b.variable.category) ||
+        a.variable.key.localeCompare(b.variable.key),
+    )
     .map((row) => row.variable)
     .slice(0, 10);
 }
 
-function groupedLabel(category: TemplateVariableCategory) {
-  switch (category) {
-    case "patient":
-      return "Klient";
-    case "appointment":
-      return "Wizyta";
-    case "organization":
-      return "Organizacja";
-    case "system":
-    default:
-      return "System";
-  }
+// ---------------------------------------------------------------------------
+// Category labels (expanded from CATEGORY_LABELS)
+// ---------------------------------------------------------------------------
+
+function groupedLabel(category: string): string {
+  const entry = CATEGORY_LABELS[category];
+  return entry?.pl ?? category;
 }
 
-function createSuggestionList(getSearchQuery: (query: string) => string): Partial<SuggestionOptions<any, TemplateVariable>>["render"] {
+export const TEMPLATE_VARIABLE_CATEGORIES = Object.entries(CATEGORY_LABELS).map(
+  ([id, labels]) => ({ id, label: labels.pl }),
+);
+
+// ---------------------------------------------------------------------------
+// Suggestion popup renderer (tippy.js)
+// ---------------------------------------------------------------------------
+
+type MentionSelected = { id: string; label: string };
+
+function createSuggestionList(
+  getSearchQuery: (query: string) => string,
+): NonNullable<SuggestionOptions<TemplateVariable, MentionSelected>["render"]> {
   return () => {
     let popup: TippyInstance[] = [];
     let container: HTMLDivElement | null = null;
     let selectedIndex = 0;
+    // Closure-captured state for onKeyDown (which only receives view+event+range)
+    let currentItems: TemplateVariable[] = [];
+    let currentCommand: ((props: MentionSelected) => void) | null = null;
 
-    const render = (props: any) => {
+    const renderPopup = (items: TemplateVariable[], command: (props: MentionSelected) => void) => {
       if (!container) return;
-      const items = props.items as TemplateVariable[];
+      currentItems = items;
+      currentCommand = command;
+
       const grouped = new Map<string, TemplateVariable[]>();
       for (const item of items) {
         const key = groupedLabel(item.category);
@@ -80,21 +135,24 @@ function createSuggestionList(getSearchQuery: (query: string) => string): Partia
       }
 
       container.innerHTML = "";
-      container.className = "z-50 max-h-72 min-w-[320px] overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md";
+      container.className =
+        "z-50 max-h-72 min-w-[320px] overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md";
 
       let rowIndex = 0;
       grouped.forEach((values, group) => {
         const heading = document.createElement("div");
-        heading.className = "px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground";
+        heading.className =
+          "px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground";
         heading.textContent = group;
         container!.appendChild(heading);
 
         values.forEach((item) => {
           const row = document.createElement("button");
           row.type = "button";
-          row.className = "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-accent";
+          row.className =
+            "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-accent";
           if (rowIndex === selectedIndex) row.classList.add("bg-accent");
-          row.onclick = () => props.command({ id: item.key, label: item.label });
+          row.onclick = () => command({ id: item.key, label: item.label });
           row.innerHTML = `<span>${item.label}</span><code class="text-xs text-muted-foreground">{{${item.key}}}</code>`;
           container!.appendChild(row);
           rowIndex += 1;
@@ -103,13 +161,13 @@ function createSuggestionList(getSearchQuery: (query: string) => string): Partia
     };
 
     return {
-      onStart: (props: any) => {
+      onStart: (props: SuggestionProps<TemplateVariable, MentionSelected>) => {
         container = document.createElement("div");
         selectedIndex = 0;
-        render(props);
+        renderPopup(props.items, props.command);
 
         popup = tippy("body", {
-          getReferenceClientRect: props.clientRect,
+          getReferenceClientRect: props.clientRect as () => DOMRect,
           appendTo: () => document.body,
           content: container,
           showOnCreate: true,
@@ -118,32 +176,37 @@ function createSuggestionList(getSearchQuery: (query: string) => string): Partia
           placement: "bottom-start",
         });
       },
-      onUpdate(props: any) {
+      onUpdate(props: SuggestionProps<TemplateVariable, MentionSelected>) {
         selectedIndex = 0;
-        render({ ...props, query: getSearchQuery(props.query) });
-        popup[0]?.setProps({ getReferenceClientRect: props.clientRect });
+        renderPopup(props.items, props.command);
+        popup[0]?.setProps({
+          getReferenceClientRect: props.clientRect as () => DOMRect,
+        });
       },
-      onKeyDown(props: any) {
+      onKeyDown(props: SuggestionKeyDownProps) {
         if (props.event.key === "Escape") {
           popup[0]?.hide();
           return true;
         }
 
-        const count = (props.items as TemplateVariable[]).length;
+        const count = currentItems.length;
         if (!count) return false;
 
         if (props.event.key === "ArrowUp") {
           selectedIndex = (selectedIndex + count - 1) % count;
-          render(props);
+          if (currentCommand) renderPopup(currentItems, currentCommand);
           return true;
         }
         if (props.event.key === "ArrowDown") {
           selectedIndex = (selectedIndex + 1) % count;
-          render(props);
+          if (currentCommand) renderPopup(currentItems, currentCommand);
           return true;
         }
         if (props.event.key === "Enter") {
-          props.command({ id: props.items[selectedIndex].key, label: props.items[selectedIndex].label });
+          const selected = currentItems[selectedIndex];
+          if (selected && currentCommand) {
+            currentCommand({ id: selected.key, label: selected.label });
+          }
           return true;
         }
 
@@ -153,35 +216,44 @@ function createSuggestionList(getSearchQuery: (query: string) => string): Partia
         popup[0]?.destroy();
         popup = [];
         container = null;
+        currentItems = [];
+        currentCommand = null;
       },
     };
   };
 }
 
+// ---------------------------------------------------------------------------
+// TipTap Mention extension config — shared rendering
+// ---------------------------------------------------------------------------
+
 const commonConfig = {
-  renderHTML: ({ node }: any) => [
+  renderHTML: ({ node }: { node: { attrs: { id: string } } }) => [
     "span",
     {
-      class: "inline-flex items-center rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-accent-foreground",
+      class:
+        "inline-flex items-center rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-accent-foreground",
       "data-variable": node.attrs.id,
       contenteditable: "false",
     },
     `{{${node.attrs.id}}}`,
   ],
-  renderText: ({ node }: any) => `{{${node.attrs.id}}}`,
+  renderText: ({ node }: { node: { attrs: { id: string } } }) => `{{${node.attrs.id}}}`,
   deleteTriggerWithBackspace: true,
 };
+
+// ---------------------------------------------------------------------------
+// Extension instances
+// ---------------------------------------------------------------------------
 
 export const VariableMentionAt = Mention.extend({
   name: "variableMentionAt",
 }).configure({
   ...commonConfig,
-  HTMLAttributes: {
-    class: "template-variable-chip",
-  },
+  HTMLAttributes: { class: "template-variable-chip" },
   suggestion: {
     char: "@",
-    items: ({ query }: { query: string }) => findVariables(query),
+    items: ({ query }: { query: string }) => findVariables(query, variableListRef.current),
     render: createSuggestionList((q) => q),
   },
 });
@@ -190,13 +262,11 @@ export const VariableMentionCurly = Mention.extend({
   name: "variableMentionCurly",
 }).configure({
   ...commonConfig,
-  HTMLAttributes: {
-    class: "template-variable-chip",
-  },
+  HTMLAttributes: { class: "template-variable-chip" },
   suggestion: {
     char: "{{",
-    items: ({ query }: { query: string }) => findVariables(query),
-    command: ({ editor, range, props }: any) => {
+    items: ({ query }: { query: string }) => findVariables(query, variableListRef.current),
+    command: ({ editor, range, props }: { editor: any; range: any; props: MentionSelected }) => {
       editor
         .chain()
         .focus()
@@ -212,10 +282,3 @@ export const VariableMentionCurly = Mention.extend({
     render: createSuggestionList((q) => q),
   },
 });
-
-export const TEMPLATE_VARIABLE_CATEGORIES = [
-  { id: "patient", label: "Klient" },
-  { id: "appointment", label: "Wizyta" },
-  { id: "organization", label: "Organizacja" },
-  { id: "system", label: "System" },
-] as const;

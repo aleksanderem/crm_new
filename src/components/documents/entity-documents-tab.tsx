@@ -13,7 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Plus, FileText, Eye, Loader2 } from "@/lib/ez-icons";
-import { ScrollShadow } from "@heroui/scroll-shadow";
+import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";

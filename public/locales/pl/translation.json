@@ -2311,7 +2311,12 @@
         "noSlotsForDay": "Brak dostępnych terminów w tym dniu",
         "confirmBooking": "Umów wizytę",
         "time": "Godzina"
-      }
+      },
+      "location": "Lokalizacja",
+      "room": "Gabinet",
+      "autoLocation": "Auto (z grafiku)",
+      "roomConflict": "Gabinet zajęty w tym terminie",
+      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji"
     },
     "appointmentDetail": {
       "title": "Szczegóły wizyty",
@@ -2829,6 +2834,42 @@
       "spent": "Wydane",
       "history": "Historia transakcji",
       "noTransactions": "Brak transakcji"
+    },
+    "locations": {
+      "title": "Lokalizacje",
+      "addLocation": "Dodaj lokalizację",
+      "name": "Nazwa",
+      "address": "Adres",
+      "phone": "Telefon",
+      "email": "Email",
+      "rooms": "Gabinety",
+      "addRoom": "Dodaj gabinet",
+      "roomName": "Nazwa gabinetu",
+      "floor": "Piętro",
+      "noLocations": "Brak lokalizacji",
+      "noRooms": "Brak gabinetów",
+      "deleteConfirm": "Czy na pewno chcesz usunąć tę lokalizację?",
+      "activeAppointments": "Nie można usunąć lokalizacji z aktywnymi wizytami"
+    },
+    "equipment": {
+      "title": "Sprzęt",
+      "addEquipment": "Dodaj sprzęt",
+      "name": "Nazwa",
+      "serialNumber": "Numer seryjny",
+      "description": "Opis",
+      "status": "Status",
+      "currentLocation": "Aktualna lokalizacja",
+      "transfer": "Przenieś",
+      "transferHistory": "Historia przeniesień",
+      "transferTo": "Przenieś do",
+      "notes": "Notatki",
+      "noEquipment": "Brak sprzętu",
+      "statuses": {
+        "available": "Dostępny",
+        "in_use": "W użyciu",
+        "maintenance": "Serwis",
+        "retired": "Wycofany"
+      }
     },
     "booking": {
       "title": "Umów wizytę",

@@ -7,6 +7,7 @@ import path from "path";
 export default defineConfig({
   plugins: [tailwindcss(), TanStackRouterVite(), viteReact()],
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
       "~": __dirname,
       "@": path.resolve(__dirname, "./src"),

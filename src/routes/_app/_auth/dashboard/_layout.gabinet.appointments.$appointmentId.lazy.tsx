@@ -1539,13 +1539,17 @@ function AppointmentDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
               <div>
-                <CardTitle>{t("gabinet.payments.payments")}</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" variant="stroke" />
+                  {t("gabinet.payments.payments")}
+                </CardTitle>
                 <CardDescription className="text-xs">
                   {t("gabinet.payments.linkedToAppointment")}
                 </CardDescription>
               </div>
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => setPaymentDialogOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
@@ -2232,7 +2236,8 @@ function AppointmentDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
               <div>
-                <CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Heart className="h-4 w-4" variant="stroke" />
                   {t("gabinet.appointments.tabs.bodyChart")}
                 </CardTitle>
                 <CardDescription className="text-xs">

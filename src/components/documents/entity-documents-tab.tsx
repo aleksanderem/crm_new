@@ -20,6 +20,7 @@ import { DocumentStatusBadge } from "./document-status-badge";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
 import { SurveyFormViewer } from "./survey-form-viewer";
 import { SurveyPdfExportButton } from "./survey-pdf-export-button";
+import { DocumentViewer } from "./document-viewer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -269,22 +270,46 @@ export function EntityDocumentsTab({
                   )}
                 </div>
 
-                {viewingTemplate && (
-                  <>
-                    <SurveyFormViewer
-                      formJson={viewingTemplate.formJson}
-                      responseData={mergedResponseData}
-                      signatureData={viewingDoc.signatureData}
-                      signedAt={viewingDoc.signedAt}
-                    />
+                {viewingTemplate &&
+                  (viewingTemplate.templateType === "document" ? (
+                    (() => {
+                      // Document-type: responseData contains { html, formFieldValues }
+                      try {
+                        const parsed = JSON.parse(
+                          viewingDoc.responseData,
+                        ) as { html?: string };
+                        if (parsed.html) {
+                          return (
+                            <DocumentViewer
+                              title={viewingDoc.title}
+                              html={parsed.html}
+                              signatureData={viewingDoc.signatureData}
+                              signedByName={viewingDoc.signedByName}
+                              signedAt={viewingDoc.signedAt}
+                            />
+                          );
+                        }
+                      } catch {
+                        // fallback to survey viewer below
+                      }
+                      return null;
+                    })()
+                  ) : (
+                    <>
+                      <SurveyFormViewer
+                        formJson={viewingTemplate.formJson}
+                        responseData={mergedResponseData}
+                        signatureData={viewingDoc.signatureData}
+                        signedAt={viewingDoc.signedAt}
+                      />
 
-                    <SurveyPdfExportButton
-                      formJson={viewingTemplate.formJson}
-                      responseData={mergedResponseData}
-                      title={viewingDoc.title}
-                    />
-                  </>
-                )}
+                      <SurveyPdfExportButton
+                        formJson={viewingTemplate.formJson}
+                        responseData={mergedResponseData}
+                        title={viewingDoc.title}
+                      />
+                    </>
+                  ))}
               </div>
             )}
           </ScrollShadow>

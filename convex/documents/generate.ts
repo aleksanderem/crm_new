@@ -68,7 +68,12 @@ export const previewDocumentData = query({
       }
     }
 
-    return { prefilledData, scopeData };
+    return {
+      prefilledData,
+      scopeData,
+      templateType: (template.templateType ?? "pdfme") as "pdfme" | "document",
+      contentJson: template.contentJson,
+    };
   },
 });
 

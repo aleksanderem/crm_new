@@ -44,6 +44,11 @@ import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SurveyFormRenderer } from "./survey-form-renderer";
+import { DocumentFormFiller } from "./document-form-filler";
+import {
+  extractFormFields,
+  renderDocument,
+} from "./document-renderer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,6 +123,66 @@ function countFormFields(formJson: string | null | undefined): number {
   } catch {
     return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Document template form step — handles TipTap document-type templates
+// ---------------------------------------------------------------------------
+
+function DocumentTemplateFormStep({
+  contentJson,
+  prefilledData,
+  onComplete,
+  onCancel,
+}: {
+  contentJson: string;
+  prefilledData: Record<string, string>;
+  onComplete: (data: Record<string, unknown>) => void;
+  onCancel: () => void;
+}) {
+  const json = JSON.parse(contentJson);
+  const formFields = extractFormFields(json);
+
+  if (formFields.length === 0) {
+    // No form fields — auto-resolve variables and generate directly
+    const resolvedHtml = renderDocument(contentJson, prefilledData);
+    return (
+      <div className="space-y-4">
+        <div
+          className="prose prose-sm max-w-none rounded-lg border bg-white p-6 dark:bg-card [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+          dangerouslySetInnerHTML={{ __html: resolvedHtml }}
+        />
+        <div className="flex gap-2">
+          <Button
+            className="flex-1"
+            onClick={() =>
+              onComplete({ html: resolvedHtml, formFieldValues: {} })
+            }
+          >
+            Generuj dokument
+          </Button>
+          <Button variant="outline" onClick={onCancel}>
+            Anuluj
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <DocumentFormFiller
+      formFields={formFields}
+      onComplete={(fieldValues) => {
+        const resolvedHtml = renderDocument(
+          contentJson,
+          prefilledData,
+          fieldValues,
+        );
+        onComplete({ html: resolvedHtml, formFieldValues: fieldValues });
+      }}
+      onCancel={onCancel}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -697,15 +762,25 @@ export function GenerateDocumentDialog({
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                       )}
-                      <SurveyFormRenderer
-                        formJson={selectedTemplate.formJson}
-                        prefilledData={
-                          previewData?.prefilledData as
-                            | Record<string, unknown>
-                            | undefined
-                        }
-                        onComplete={handleComplete}
-                      />
+                      {previewData?.templateType === "document" &&
+                      previewData.contentJson ? (
+                        <DocumentTemplateFormStep
+                          contentJson={previewData.contentJson}
+                          prefilledData={previewData.prefilledData}
+                          onComplete={handleComplete}
+                          onCancel={handleBack}
+                        />
+                      ) : (
+                        <SurveyFormRenderer
+                          formJson={selectedTemplate.formJson}
+                          prefilledData={
+                            previewData?.prefilledData as
+                              | Record<string, unknown>
+                              | undefined
+                          }
+                          onComplete={handleComplete}
+                        />
+                      )}
                     </div>
                   )}
                 </ModalBody>

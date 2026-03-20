@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollShadow } from "@heroui/scroll-shadow";
+import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Shared tab trigger class for consistent styling across entity detail views

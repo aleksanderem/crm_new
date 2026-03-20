@@ -64,6 +64,8 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "gabinet.leaves.title", to: "/dashboard/gabinet/settings/leaves" },
     { labelKey: "gabinet.documentTemplates.title", to: "/dashboard/settings/form-templates" },
     { labelKey: "gabinet.reminders.title", to: "/dashboard/gabinet/settings/reminders" },
+    { labelKey: "gabinet.locations.title", to: "/dashboard/gabinet/settings/locations" },
+    { labelKey: "gabinet.equipment.title", to: "/dashboard/gabinet/settings/equipment" },
   ],
   pageContexts: [
     {

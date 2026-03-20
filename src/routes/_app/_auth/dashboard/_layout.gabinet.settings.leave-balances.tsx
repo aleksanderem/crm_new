@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
@@ -66,22 +67,26 @@ function LeaveBalancesPage() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("gabinet.leaveBalances.title")}
-        description={t("gabinet.leaveBalances.description")}
-        actions={
-          <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("gabinet.leaveBalances.title")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("gabinet.leaveBalances.description")} />
+      </SectionHeader.Root>
 
       {!employees?.length && (
         <div className="py-12 text-center text-sm text-muted-foreground">

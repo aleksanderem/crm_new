@@ -4,6 +4,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { GoogleIntegrationCard } from "@/components/settings/google-integration-card";
 import { SmsConfigCard } from "@/components/settings/sms-config-card";
 import { useEffect } from "react";
@@ -43,13 +45,15 @@ function IntegrationsSettings() {
   }, [success, error, t]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">{t("settings.integrations")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t("integrations.description")}
-        </p>
-      </div>
+    <div className="flex h-full w-full flex-col gap-6">
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("settings.integrations")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("integrations.description")} />
+      </SectionHeader.Root>
 
       {user && (
         <GoogleIntegrationCard

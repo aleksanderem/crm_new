@@ -6,7 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,16 +94,20 @@ function LostReasonsSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t('lostReasons.title')}
-        description={t('lostReasons.description')}
-        actions={
-          <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t('lostReasons.addReason')}
-          </Button>
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t('lostReasons.title')}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Button onClick={() => setShowCreateForm(true)}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t('lostReasons.addReason')}
+            </Button>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t('lostReasons.description')} />
+      </SectionHeader.Root>
 
       {/* Org-level toggles */}
       <Card>

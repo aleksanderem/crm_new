@@ -4,7 +4,8 @@ import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -545,14 +546,21 @@ function EquipmentSettingsPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between">
-          <PageHeader title={t("gabinet.equipment.title")} />
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("gabinet.equipment.addEquipment")}
-          </Button>
-        </div>
+      <div className="flex h-full w-full flex-col gap-6">
+        <SectionHeader.Root className="pt-4">
+          <SectionHeader.Group>
+            <SectionHeader.Heading className="flex-1">
+              {t("gabinet.equipment.title")}
+            </SectionHeader.Heading>
+            <SectionHeader.Actions>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.equipment.addEquipment")}
+              </Button>
+            </SectionHeader.Actions>
+          </SectionHeader.Group>
+          <Alert color="primary" title={t("gabinet.equipment.description", "Zarządzaj sprzętem i zasobami gabinetu.")} />
+        </SectionHeader.Root>
 
         <div className="space-y-3">
           {(equipment ?? []).length === 0 ? (

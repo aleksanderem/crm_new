@@ -6,7 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,10 +164,14 @@ function OrganizationSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("orgSettings.title")}
-        description={t("orgSettings.description")}
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("orgSettings.title")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("orgSettings.description")} />
+      </SectionHeader.Root>
 
       {/* Organization form */}
       <Card>

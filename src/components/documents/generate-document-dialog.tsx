@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
@@ -75,6 +75,29 @@ const CATEGORY_ICONS: Record<string, typeof FileText> = {
   intake: ClipboardList,
   custom: FileText,
 };
+
+/** Extract plain text from a Plate/Slate JSON description string. */
+function extractPlainText(raw: string): string {
+  try {
+    const nodes = JSON.parse(raw);
+    if (!Array.isArray(nodes)) return raw;
+    const texts: string[] = [];
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== "object") return;
+      const n = node as Record<string, unknown>;
+      if (typeof n.text === "string") {
+        texts.push(n.text);
+      }
+      if (Array.isArray(n.children)) {
+        for (const child of n.children) walk(child);
+      }
+    };
+    for (const node of nodes) walk(node);
+    return texts.join(" ").trim() || raw;
+  } catch {
+    return raw;
+  }
+}
 
 /** Parse the template's formJson to count user-fillable fields. */
 function countFormFields(formJson: string | null | undefined): number {
@@ -272,7 +295,7 @@ function TemplateCard({
           </div>
           {data.description && (
             <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">
-              {data.description}
+              {extractPlainText(data.description)}
             </p>
           )}
           {fieldCount > 0 && (
@@ -289,10 +312,106 @@ function TemplateCard({
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Folder tree sub-component (mounts only when data is ready)
 // ---------------------------------------------------------------------------
 
 const TREE_INDENT = 20;
+
+function TemplateFolderTree({
+  templates,
+  search,
+  onSelect,
+  t,
+}: {
+  templates: Array<{
+    _id: Id<"formTemplates">;
+    name: string;
+    folderPath?: string;
+    category: string;
+    description?: string;
+    formJson: string;
+    requiresSignature: boolean;
+  }>;
+  search: string;
+  onSelect: (id: Id<"formTemplates">) => void;
+  t: (key: string, defaultValue?: string, options?: Record<string, unknown>) => string;
+}) {
+  const treeData = useMemo(() => buildTreeData(templates), [templates]);
+
+  const tree = useTree<TreeNodeData>({
+    initialState: {
+      expandedItems: treeData.expandedIds,
+    },
+    indent: TREE_INDENT,
+    rootItemId: "__root__",
+    getItemName: (item) => item.getItemData().name,
+    isItemFolder: (item) => item.getItemData()?.isFolder ?? false,
+    dataLoader: {
+      getItem: (itemId) => treeData.items[itemId],
+      getChildren: (itemId) => treeData.items[itemId]?.children ?? [],
+    },
+    features: [syncDataLoaderFeature, hotkeysCoreFeature],
+  });
+
+  // Rebuild tree when underlying data changes (search filtering, etc.)
+  const treeDataKey = useMemo(
+    () => Object.keys(treeData.items).sort().join(","),
+    [treeData.items],
+  );
+  useEffect(() => {
+    tree.rebuildTree();
+  }, [treeDataKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Tree indent={TREE_INDENT} tree={tree} toggleIconType="chevron">
+      {tree.getItems().map((item) => {
+        const data = item.getItemData();
+        if (!data) return null;
+
+        if (!item.isFolder()) {
+          return (
+            <TreeItem key={item.getId()} item={item} className="!ps-0">
+              <div
+                style={{
+                  paddingLeft: `${item.getItemMeta().level * TREE_INDENT}px`,
+                }}
+              >
+                <TemplateCard
+                  data={data}
+                  onClick={() => {
+                    if (data.templateId) {
+                      onSelect(data.templateId);
+                    }
+                  }}
+                  t={t}
+                />
+              </div>
+            </TreeItem>
+          );
+        }
+
+        return (
+          <TreeItem key={item.getId()} item={item}>
+            <TreeItemLabel className="before:bg-background relative before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10">
+              <span className="flex items-center gap-2">
+                {item.isExpanded() ? (
+                  <FolderOpen className="text-amber-500 pointer-events-none size-4" />
+                ) : (
+                  <Folder className="text-amber-500 pointer-events-none size-4" />
+                )}
+                <span className="font-medium">{item.getItemName()}</span>
+              </span>
+            </TreeItemLabel>
+          </TreeItem>
+        );
+      })}
+    </Tree>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function GenerateDocumentDialog({
   open,
@@ -346,33 +465,6 @@ export function GenerateDocumentDialog({
         )
       : templates
     : [];
-
-  // Build headless-tree data model
-  const treeData = useMemo(
-    () => buildTreeData(filteredTemplates),
-    [filteredTemplates],
-  );
-
-  // When searching, expand all folders; otherwise use headless-tree defaults
-  const initialExpanded = useMemo(
-    () => (search.trim() ? treeData.expandedIds : treeData.expandedIds),
-    [search, treeData.expandedIds],
-  );
-
-  const tree = useTree<TreeNodeData>({
-    initialState: {
-      expandedItems: initialExpanded,
-    },
-    indent: TREE_INDENT,
-    rootItemId: "__root__",
-    getItemName: (item) => item.getItemData().name,
-    isItemFolder: (item) => item.getItemData()?.isFolder ?? false,
-    dataLoader: {
-      getItem: (itemId) => treeData.items[itemId],
-      getChildren: (itemId) => treeData.items[itemId]?.children ?? [],
-    },
-    features: [syncDataLoaderFeature, hotkeysCoreFeature],
-  });
 
   const handleTemplateSelect = useCallback(
     (templateId: Id<"formTemplates">) => {
@@ -533,51 +625,12 @@ export function GenerateDocumentDialog({
                     )}
 
                     {!templatesLoading && filteredTemplates.length > 0 && (
-                      <Tree
-                        indent={TREE_INDENT}
-                        tree={tree}
-                        toggleIconType="chevron"
-                      >
-                        {tree.getItems().map((item) => {
-                          const data = item.getItemData();
-                          if (!data) return null;
-
-                          // Leaf = template → render rich card
-                          if (!item.isFolder()) {
-                            return (
-                              <TreeItem key={item.getId()} item={item} className="!ps-0">
-                                <div style={{ paddingLeft: `${item.getItemMeta().level * TREE_INDENT}px` }}>
-                                  <TemplateCard
-                                    data={data}
-                                    onClick={() => {
-                                      if (data.templateId) {
-                                        handleTemplateSelect(data.templateId);
-                                      }
-                                    }}
-                                    t={t}
-                                  />
-                                </div>
-                              </TreeItem>
-                            );
-                          }
-
-                          // Folder node
-                          return (
-                            <TreeItem key={item.getId()} item={item}>
-                              <TreeItemLabel className="before:bg-background relative before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10">
-                                <span className="flex items-center gap-2">
-                                  {item.isExpanded() ? (
-                                    <FolderOpen className="text-amber-500 pointer-events-none size-4" />
-                                  ) : (
-                                    <Folder className="text-amber-500 pointer-events-none size-4" />
-                                  )}
-                                  <span className="font-medium">{item.getItemName()}</span>
-                                </span>
-                              </TreeItemLabel>
-                            </TreeItem>
-                          );
-                        })}
-                      </Tree>
+                      <TemplateFolderTree
+                        templates={filteredTemplates}
+                        search={search}
+                        onSelect={handleTemplateSelect}
+                        t={t}
+                      />
                     )}
                   </ScrollShadow>
                 </ModalBody>
@@ -625,7 +678,7 @@ export function GenerateDocumentDialog({
                     <div className="flex items-start gap-2 rounded-md bg-muted/50 border px-3 py-2 mb-4">
                       <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        {selectedTemplate.description}
+                        {extractPlainText(selectedTemplate.description)}
                       </p>
                     </div>
                   )}

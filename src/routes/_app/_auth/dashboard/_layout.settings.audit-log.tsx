@@ -6,7 +6,8 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useRole } from "@/hooks/use-permission";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -127,10 +128,14 @@ function AuditLogSettings() {
   if (role !== "admin" && role !== "owner") {
     return (
       <div className="flex h-full w-full flex-col gap-6">
-        <PageHeader
-          title={t("auditLog.title", "Audit Log")}
-          description={t("auditLog.description", "Track all important actions in your organization")}
-        />
+        <SectionHeader.Root className="pt-4">
+          <SectionHeader.Group>
+            <SectionHeader.Heading className="flex-1">
+              {t("auditLog.title", "Audit Log")}
+            </SectionHeader.Heading>
+          </SectionHeader.Group>
+          <Alert color="primary" title={t("auditLog.description", "Track all important actions in your organization")} />
+        </SectionHeader.Root>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-sm text-muted-foreground">
@@ -144,10 +149,14 @@ function AuditLogSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("auditLog.title", "Audit Log")}
-        description={t("auditLog.description", "Track all important actions in your organization")}
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("auditLog.title", "Audit Log")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("auditLog.description", "Track all important actions in your organization")} />
+      </SectionHeader.Root>
 
       {/* Filters */}
       <Card>

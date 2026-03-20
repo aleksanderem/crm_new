@@ -6,7 +6,8 @@ import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import {
   Card,
   CardContent,
@@ -118,19 +119,23 @@ function AutomationSettingsOverview() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("settings.automations")}
-        description={t("settings.automationsDescription")}
-        actions={
-          <Button asChild size="sm" data-testid="automation-create-rule-button">
-            <Link to="/dashboard/settings/automations/new">
-              <Plus className="mr-1 h-4 w-4" />
-              {t("settings.automationCreateRule")}
-            </Link>
-          </Button>
-        }
-      />
+    <div className="flex h-full w-full flex-col gap-6">
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("settings.automations")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Button asChild size="sm" data-testid="automation-create-rule-button">
+              <Link to="/dashboard/settings/automations/new">
+                <Plus className="mr-1 h-4 w-4" />
+                {t("settings.automationCreateRule")}
+              </Link>
+            </Button>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("settings.automationsDescription")} />
+      </SectionHeader.Root>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>

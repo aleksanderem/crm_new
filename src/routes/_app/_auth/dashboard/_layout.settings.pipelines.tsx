@@ -4,7 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +42,14 @@ function PipelinesSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("settings.pipelines.title")}
-        description={t("settings.pipelines.description")}
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("settings.pipelines.title")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("settings.pipelines.description")} />
+      </SectionHeader.Root>
 
       <Card>
         <CardHeader>

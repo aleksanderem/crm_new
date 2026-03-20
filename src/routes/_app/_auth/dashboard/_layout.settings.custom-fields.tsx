@@ -4,7 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { CustomFieldDefinitionForm } from "@/components/custom-fields/custom-field-definition-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,16 +60,20 @@ function CustomFieldsSettings() {
   const gabinetTypes = ENTITY_TYPE_CONFIG.filter((c) => c.group === "gabinet");
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("customFields.title")}
-        description={t("customFields.description")}
-        actions={
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("customFields.addField")}
-          </Button>
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("customFields.title")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("customFields.addField")}
+            </Button>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("customFields.description")} />
+      </SectionHeader.Root>
 
       <Tabs
         value={activeTab}

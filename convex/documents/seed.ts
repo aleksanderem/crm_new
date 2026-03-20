@@ -39,6 +39,45 @@ export const migrateEntityTypes = internalMutation({
   },
 });
 
+/** One-time migration: assign folderPath to existing templates based on category + module */
+const CATEGORY_FOLDER_MAP: Record<string, Record<string, string>> = {
+  gabinet: {
+    consent: "Gabinet/Zgody",
+    intake: "Gabinet/Przyjęcia",
+    prescription: "Gabinet/Recepty",
+    referral: "Gabinet/Skierowania",
+    medical_record: "Gabinet/Dokumentacja",
+    protocol: "Gabinet/Protokoły",
+  },
+  crm: {
+    contract: "CRM/Umowy",
+    invoice: "CRM/Faktury",
+  },
+};
+
+export const migrateFolderPaths = mutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const all = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    let patched = 0;
+    for (const t of all) {
+      if (t.folderPath) continue; // already has a folder
+      const mod = (t.modules?.[0] ?? "platform") as string;
+      const folderMap = CATEGORY_FOLDER_MAP[mod];
+      const folder = folderMap?.[t.category];
+      if (folder) {
+        await ctx.db.patch(t._id, { folderPath: folder, updatedAt: Date.now() });
+        patched++;
+      }
+    }
+    return { patched, total: all.length };
+  },
+});
+
 /** Authenticated version — callable from frontend */
 export const seedFormTemplates = mutation({
   args: { organizationId: v.id("organizations") },
@@ -309,6 +348,7 @@ function buildConsentTemplate() {
     name: "Zgoda na zabieg",
     description: "Formularz świadomej zgody pacjenta na wykonanie zabiegu medycznego/kosmetycznego",
     category: "consent" as const,
+    folderPath: "Gabinet/Zgody",
     formJson,
     modules: ["gabinet"],
     entityTypes: ["appointment", "treatment"],
@@ -514,6 +554,7 @@ function buildIntakeTemplate() {
     name: "Karta przyjęcia pacjenta",
     description: "Formularz zbierający podstawowe dane medyczne i kontaktowe nowego pacjenta",
     category: "intake" as const,
+    folderPath: "Gabinet/Przyjęcia",
     formJson,
     modules: ["gabinet"],
     entityTypes: ["patient", "treatment"],
@@ -652,6 +693,7 @@ function buildPrescriptionTemplate() {
     name: "Recepta",
     description: "Szablon recepty z danymi pacjenta, zabiegu i lekarza prowadzącego",
     category: "prescription" as const,
+    folderPath: "Gabinet/Recepty",
     formJson,
     modules: ["gabinet"],
     entityTypes: ["appointment", "treatment"],
@@ -802,6 +844,7 @@ function buildReferralTemplate() {
     name: "Skierowanie",
     description: "Szablon skierowania pacjenta na konsultację, badanie lub zabieg specjalistyczny",
     category: "referral" as const,
+    folderPath: "Gabinet/Skierowania",
     formJson,
     modules: ["gabinet"],
     entityTypes: ["appointment", "treatment"],
@@ -989,6 +1032,7 @@ function buildContractTemplate() {
     name: "Umowa handlowa",
     description: "Szablon umowy sprzedażowej z danymi kontaktu, firmy i leada",
     category: "contract" as const,
+    folderPath: "CRM/Umowy",
     formJson,
     modules: ["crm"],
     entityTypes: ["lead", "contact", "company"],

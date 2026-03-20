@@ -6,7 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -148,17 +149,21 @@ function EmailSequencesSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("emailSequences.title")}
-        description={t("emailSequences.description")}
-        actions={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="mr-1 h-4 w-4" />
-            {t("emailSequences.createSequence")}
-          </Button>
-        }
-      />
+    <div className="flex h-full w-full flex-col gap-6">
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("emailSequences.title")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="mr-1 h-4 w-4" />
+              {t("emailSequences.createSequence")}
+            </Button>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("emailSequences.description")} />
+      </SectionHeader.Root>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

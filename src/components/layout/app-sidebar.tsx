@@ -144,7 +144,7 @@ export function AppSidebar() {
           />
         </div>
 
-        {isSettingsRoute && (
+        {isSettingsRoute ? (
           <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
             <div className="px-1 pb-2 text-lg font-semibold">{t("nav.settings")}</div>
             {settingsNav.map((item) => {
@@ -176,9 +176,7 @@ export function AppSidebar() {
               );
             })}
           </div>
-        )}
-
-        {sidebarSlotContent ? (
+        ) : sidebarSlotContent ? (
           <div className="flex-1 overflow-y-auto px-3 pb-4">{sidebarSlotContent}</div>
         ) : (
           <>

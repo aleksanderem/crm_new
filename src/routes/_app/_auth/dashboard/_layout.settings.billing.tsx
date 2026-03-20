@@ -7,6 +7,9 @@ import { convexQuery, useConvexAction } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getLocaleCurrency } from "@/utils/misc";
 import { CURRENCIES, PLANS } from "@cvx/schema";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/billing",
@@ -25,6 +28,7 @@ export const Route = createFileRoute(
 });
 
 export default function BillingSettings() {
+  const { t } = useTranslation();
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   const { data: plans } = useQuery(convexQuery(api.app.getActivePlans, {}));
 
@@ -83,24 +87,14 @@ export default function BillingSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <div className="flex w-full flex-col gap-2 p-6 py-2">
-        <h2 className="text-xl font-medium text-primary">
-          This is a demo app.
-        </h2>
-        <p className="text-sm font-normal text-primary/60">
-          Convex SaaS is a demo app that uses Stripe test environment. You can
-          find a list of test card numbers on the{" "}
-          <a
-            href="https://stripe.com/docs/testing#cards"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-primary/80 underline"
-          >
-            Stripe docs
-          </a>
-          .
-        </p>
-      </div>
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("billing.title", "Billing")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("billing.description", "Manage billing and your subscription plan.")} />
+      </SectionHeader.Root>
 
       {/* Plans */}
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">

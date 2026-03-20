@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/ui/button";
 import {
@@ -138,15 +139,19 @@ function PermissionsSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("permissions.title", "Permissions")}
-        description={t("permissions.description", "Configure what each role can do")}
-        actions={
-          <Button onClick={handleSave} disabled={!dirty || saving} size="sm">
-            {saving ? t("permissions.saving", "Saving...") : t("permissions.save", "Save changes")}
-          </Button>
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("permissions.title", "Permissions")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <Button onClick={handleSave} disabled={!dirty || saving} size="sm">
+              {saving ? t("permissions.saving", "Saving...") : t("permissions.save", "Save changes")}
+            </Button>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("permissions.description", "Configure what each role can do")} />
+      </SectionHeader.Root>
 
       {/* Permission Matrix */}
       <Card>

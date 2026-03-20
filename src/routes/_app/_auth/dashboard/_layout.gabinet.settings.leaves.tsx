@@ -4,7 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -152,78 +153,85 @@ function LeavesPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between">
-          <PageHeader title={t("gabinet.leaves.title")} description={t("gabinet.leaves.description")} />
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.leaves.requestLeave")}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>{t("gabinet.employees.selectUser")}</Label>
-                  <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder={t("gabinet.appointments.selectEmployee")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(employees ?? []).map((emp) => {
-                        const member = teamMembers?.find((m: any) => m.userId === emp.userId);
-                        return (
-                          <SelectItem key={emp._id} value={emp.userId}>
-                            {member?.user?.name ?? emp.userId} — {t(`gabinet.employees.roles.${emp.role}`)}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("gabinet.leaves.type")}</Label>
-                  <Select value={leaveType} onValueChange={setLeaveType}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEAVE_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {t(`gabinet.leaves.types.${type}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>{t("gabinet.leaves.startDate")}</Label>
-                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>{t("gabinet.leaves.endDate")}</Label>
-                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("gabinet.leaves.reason")}</Label>
-                  <RichTextEditor value={reason} onChange={(val) => setReason(val ?? "")} minHeight="80px" />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
-                  <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>
-                    {submitting ? t("common.saving") : t("gabinet.leaves.submit")}
+      <div className="flex h-full w-full flex-col gap-6">
+        <SectionHeader.Root className="pt-4">
+          <SectionHeader.Group>
+            <SectionHeader.Heading className="flex-1">
+              {t("gabinet.leaves.title")}
+            </SectionHeader.Heading>
+            <SectionHeader.Actions>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                    {t("gabinet.leaves.requestLeave")}
                   </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>{t("gabinet.employees.selectUser")}</Label>
+                      <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("gabinet.appointments.selectEmployee")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(employees ?? []).map((emp) => {
+                            const member = teamMembers?.find((m: any) => m.userId === emp.userId);
+                            return (
+                              <SelectItem key={emp._id} value={emp.userId}>
+                                {member?.user?.name ?? emp.userId} — {t(`gabinet.employees.roles.${emp.role}`)}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("gabinet.leaves.type")}</Label>
+                      <Select value={leaveType} onValueChange={setLeaveType}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEAVE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {t(`gabinet.leaves.types.${type}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>{t("gabinet.leaves.startDate")}</Label>
+                        <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("gabinet.leaves.endDate")}</Label>
+                        <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("gabinet.leaves.reason")}</Label>
+                      <RichTextEditor value={reason} onChange={(val) => setReason(val ?? "")} minHeight="80px" />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
+                      <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>
+                        {submitting ? t("common.saving") : t("gabinet.leaves.submit")}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </SectionHeader.Actions>
+          </SectionHeader.Group>
+          <Alert color="primary" title={t("gabinet.leaves.description")} />
+        </SectionHeader.Root>
 
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>

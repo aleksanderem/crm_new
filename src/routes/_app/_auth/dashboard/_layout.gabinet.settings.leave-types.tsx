@@ -4,7 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,21 +54,25 @@ function LeaveTypesSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("gabinet.leaveTypes.title")}
-        description={t("gabinet.leaveTypes.description")}
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleInitBalances}>
-              {t("gabinet.leaveTypes.initBalances", { year: currentYear })}
-            </Button>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.leaveTypes.add")}
-            </Button>
-          </div>
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("gabinet.leaveTypes.title")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleInitBalances}>
+                {t("gabinet.leaveTypes.initBalances", { year: currentYear })}
+              </Button>
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.leaveTypes.add")}
+              </Button>
+            </div>
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("gabinet.leaveTypes.description")} />
+      </SectionHeader.Root>
 
       {!leaveTypes?.length && (
         <div className="py-12 text-center text-sm text-muted-foreground">

@@ -6,7 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,18 +84,22 @@ function EmailSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <PageHeader
-        title={t("settings.email")}
-        description={t("inbox.description")}
-        actions={
-          !showForm ? (
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("common.add")}
-            </Button>
-          ) : undefined
-        }
-      />
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("settings.email")}
+          </SectionHeader.Heading>
+          {!showForm && (
+            <SectionHeader.Actions>
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("common.add")}
+              </Button>
+            </SectionHeader.Actions>
+          )}
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("inbox.description")} />
+      </SectionHeader.Root>
 
       {/* Create/Edit form */}
       {showForm && (

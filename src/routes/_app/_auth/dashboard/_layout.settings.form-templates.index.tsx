@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -6,31 +6,17 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -44,6 +30,28 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Tree,
+  TreeItem,
+  TreeItemLabel,
+  TreeDragLine,
+} from "@/components/reui/tree";
+import {
+  syncDataLoaderFeature,
+  hotkeysCoreFeature,
+  dragAndDropFeature,
+  selectionFeature,
+} from "@headless-tree/core";
+import { useTree } from "@headless-tree/react";
+import {
   Plus,
   FileText,
   MoreHorizontal,
@@ -51,7 +59,13 @@ import {
   Trash2,
   CopyIcon,
   Search,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  GripVertical,
+  ChevronDown,
 } from "@/lib/ez-icons";
+import { Alert } from "@heroui/alert";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -60,6 +74,10 @@ export const Route = createFileRoute(
 )({
   component: FormTemplatesListPage,
 });
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type FormCategory =
   | "consent"
@@ -71,18 +89,6 @@ type FormCategory =
   | "protocol"
   | "intake"
   | "custom";
-
-const CATEGORY_OPTIONS: FormCategory[] = [
-  "consent",
-  "medical_record",
-  "prescription",
-  "referral",
-  "contract",
-  "invoice",
-  "protocol",
-  "intake",
-  "custom",
-];
 
 interface FormTemplateRecord {
   _id: Id<"formTemplates">;
@@ -99,16 +105,407 @@ interface FormTemplateRecord {
   updatedAt: number;
 }
 
+// ---------------------------------------------------------------------------
+// Tree data model
+// ---------------------------------------------------------------------------
+
+interface TreeNodeData {
+  name: string;
+  children?: string[];
+  isFolder: boolean;
+  /** Full folder path for folders, e.g. "Gabinet/Zgody". undefined for root. */
+  folderFullPath?: string;
+  /** Template-specific data */
+  templateId?: Id<"formTemplates">;
+  template?: FormTemplateRecord;
+}
+
+const TREE_INDENT = 20;
+
+function buildFolderTreeData(
+  templates: FormTemplateRecord[],
+  search: string,
+): {
+  items: Record<string, TreeNodeData>;
+  expandedIds: string[];
+} {
+  const searchLower = search.toLowerCase().trim();
+  const filtered = searchLower
+    ? templates.filter(
+        (t) =>
+          t.name.toLowerCase().includes(searchLower) ||
+          (t.description ?? "").toLowerCase().includes(searchLower),
+      )
+    : templates;
+
+  const items: Record<string, TreeNodeData> = {};
+  const folderChildren = new Map<string, Set<string>>();
+  const rootChildren = new Set<string>();
+
+  for (const tpl of filtered) {
+    const tplId = `tpl:${tpl._id}`;
+    items[tplId] = {
+      name: tpl.name,
+      isFolder: false,
+      templateId: tpl._id,
+      template: tpl,
+    };
+
+    if (!tpl.folderPath) {
+      rootChildren.add(tplId);
+      continue;
+    }
+
+    const segments = tpl.folderPath.split("/");
+
+    for (let i = 1; i <= segments.length; i++) {
+      const path = segments.slice(0, i).join("/");
+      const folderId = `folder:${path}`;
+
+      if (!items[folderId]) {
+        items[folderId] = {
+          name: segments[i - 1],
+          children: [],
+          isFolder: true,
+          folderFullPath: path,
+        };
+        if (!folderChildren.has(path)) {
+          folderChildren.set(path, new Set());
+        }
+      }
+
+      if (i === 1) {
+        rootChildren.add(folderId);
+      } else {
+        const parentPath = segments.slice(0, i - 1).join("/");
+        if (!folderChildren.has(parentPath)) {
+          folderChildren.set(parentPath, new Set());
+        }
+        folderChildren.get(parentPath)!.add(folderId);
+      }
+    }
+
+    const leafPath = tpl.folderPath;
+    if (!folderChildren.has(leafPath)) {
+      folderChildren.set(leafPath, new Set());
+    }
+    folderChildren.get(leafPath)!.add(tplId);
+  }
+
+  // Wire children on folder items
+  for (const [path, childIds] of folderChildren) {
+    const folderId = `folder:${path}`;
+    if (items[folderId]) {
+      items[folderId].children = Array.from(childIds).sort((a, b) => {
+        const aFolder = a.startsWith("folder:");
+        const bFolder = b.startsWith("folder:");
+        if (aFolder && !bFolder) return -1;
+        if (!aFolder && bFolder) return 1;
+        return (items[a]?.name ?? "").localeCompare(items[b]?.name ?? "");
+      });
+    }
+  }
+
+  const sortedRoot = Array.from(rootChildren).sort((a, b) => {
+    const aFolder = a.startsWith("folder:");
+    const bFolder = b.startsWith("folder:");
+    if (aFolder && !bFolder) return -1;
+    if (!aFolder && bFolder) return 1;
+    return (items[a]?.name ?? "").localeCompare(items[b]?.name ?? "");
+  });
+
+  items["__root__"] = {
+    name: "Root",
+    children: sortedRoot,
+    isFolder: true,
+    folderFullPath: undefined,
+  };
+
+  const expandedIds = Object.keys(items).filter((id) =>
+    id.startsWith("folder:"),
+  );
+
+  return { items, expandedIds };
+}
+
+/** Count templates (recursively) inside a folder path. */
+function countTemplatesInFolder(
+  templates: FormTemplateRecord[],
+  folderPath: string | undefined,
+): number {
+  if (folderPath === undefined) {
+    return templates.filter((t) => !t.folderPath).length;
+  }
+  return templates.filter(
+    (t) => t.folderPath === folderPath || t.folderPath?.startsWith(folderPath + "/"),
+  ).length;
+}
+
+// ---------------------------------------------------------------------------
+// Tree sub-component
+// ---------------------------------------------------------------------------
+
+function TemplateTree({
+  templates,
+  search,
+  onEditTemplate,
+  onDeleteTemplate,
+  onDuplicateTemplate,
+  onToggleActive,
+  onMoveTemplate,
+  onRenameFolder,
+  onDeleteFolder,
+  t,
+}: {
+  templates: FormTemplateRecord[];
+  search: string;
+  onEditTemplate: (id: Id<"formTemplates">) => void;
+  onDeleteTemplate: (tpl: FormTemplateRecord) => void;
+  onDuplicateTemplate: (tpl: FormTemplateRecord) => void;
+  onToggleActive: (tpl: FormTemplateRecord, active: boolean) => void;
+  onMoveTemplate: (
+    templateId: Id<"formTemplates">,
+    newFolderPath: string | undefined,
+  ) => void;
+  onRenameFolder: (oldPath: string, newName: string) => void;
+  onDeleteFolder: (folderPath: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+}) {
+  const treeData = useMemo(
+    () => buildFolderTreeData(templates, search),
+    [templates, search],
+  );
+
+  const tree = useTree<TreeNodeData>({
+    initialState: {
+      expandedItems: treeData.expandedIds,
+    },
+    indent: TREE_INDENT,
+    rootItemId: "__root__",
+    getItemName: (item) => item.getItemData().name,
+    isItemFolder: (item) => item.getItemData()?.isFolder ?? false,
+    canReorder: false,
+    canDrag: (items) => items.every((i) => !i.getItemData().isFolder),
+    canDrop: (_items, target) => target.item.getItemData()?.isFolder ?? false,
+    onDrop: (items, target) => {
+      const targetData = target.item.getItemData();
+      const newFolderPath = targetData.folderFullPath;
+      for (const item of items) {
+        const data = item.getItemData();
+        if (data.templateId) {
+          onMoveTemplate(data.templateId, newFolderPath);
+        }
+      }
+    },
+    dataLoader: {
+      getItem: (itemId) => treeData.items[itemId],
+      getChildren: (itemId) => treeData.items[itemId]?.children ?? [],
+    },
+    features: [
+      syncDataLoaderFeature,
+      selectionFeature,
+      hotkeysCoreFeature,
+      dragAndDropFeature,
+    ],
+  });
+
+  // Rebuild when underlying data changes
+  const treeDataKey = useMemo(
+    () => Object.keys(treeData.items).sort().join(","),
+    [treeData.items],
+  );
+  useEffect(() => {
+    tree.rebuildTree();
+  }, [treeDataKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="relative">
+      <Tree indent={TREE_INDENT} tree={tree} toggleIconType="chevron">
+        {tree.getItems().map((item) => {
+          const data = item.getItemData();
+          if (!data) return null;
+
+          // --- Folder node ---
+          if (item.isFolder()) {
+            const count = countTemplatesInFolder(
+              templates,
+              data.folderFullPath,
+            );
+            return (
+              <TreeItem key={item.getId()} item={item}>
+                <div className="flex items-center w-full group/folder">
+                  <TreeItemLabel className="flex-1 before:bg-background relative before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10 font-medium">
+                    <span className="flex items-center gap-2">
+                      {item.isExpanded() ? (
+                        <FolderOpen className="text-amber-500 pointer-events-none size-4" />
+                      ) : (
+                        <Folder className="text-amber-500 pointer-events-none size-4" />
+                      )}
+                      <span>{item.getItemName()}</span>
+                      <span className="text-xs text-muted-foreground font-normal">
+                        ({count})
+                      </span>
+                    </span>
+                  </TreeItemLabel>
+                  {data.folderFullPath && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover/folder:opacity-100 transition-opacity shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const currentName =
+                              data.folderFullPath!.split("/").pop() ?? "";
+                            const newName = window.prompt(
+                              t(
+                                "settings.formTemplates.renameFolderPrompt",
+                                "Nowa nazwa folderu:",
+                              ),
+                              currentName,
+                            );
+                            if (newName && newName !== currentName) {
+                              onRenameFolder(data.folderFullPath!, newName);
+                            }
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          {t("settings.formTemplates.renameFolder", "Zmień nazwę")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteFolder(data.folderFullPath!);
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t("settings.formTemplates.deleteFolder", "Usuń folder")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </TreeItem>
+            );
+          }
+
+          // --- Template node ---
+          const tpl = data.template;
+          if (!tpl) return null;
+
+          return (
+            <TreeItem key={item.getId()} item={item} className="!ps-0">
+              <div
+                style={{
+                  paddingLeft: `${item.getItemMeta().level * TREE_INDENT}px`,
+                }}
+                className="flex items-center gap-2 w-full rounded-md border bg-card px-3 py-2 group/tpl hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing"
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 text-left"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditTemplate(tpl._id);
+                  }}
+                >
+                  <span className="text-sm font-medium truncate block">
+                    {tpl.name}
+                  </span>
+                </button>
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  {t(`settings.formTemplates.categories.${tpl.category}`)}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  v{tpl.version}
+                </span>
+                <Switch
+                  checked={tpl.isActive}
+                  onCheckedChange={(checked) => onToggleActive(tpl, checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0"
+                  aria-label={t("settings.formTemplates.toggleActive")}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 opacity-0 group-hover/tpl:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditTemplate(tpl._id);
+                      }}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      {t("common.edit")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicateTemplate(tpl);
+                      }}
+                    >
+                      <CopyIcon className="mr-2 h-4 w-4" />
+                      {t("settings.formTemplates.duplicate")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteTemplate(tpl);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {t("common.delete")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </TreeItem>
+          );
+        })}
+        <TreeDragLine />
+      </Tree>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 function FormTemplatesListPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [folderFilter, setFolderFilter] = useState<string>("all");
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
+  const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParent, setNewFolderParent] = useState("");
 
   const { data: templates, isPending } = useQuery(
     convexQuery(api.documents.templates.list, { organizationId }),
@@ -117,69 +514,57 @@ function FormTemplatesListPage() {
   const updateTemplate = useMutation(api.documents.templates.update);
   const createTemplate = useMutation(api.documents.templates.create);
   const removeTemplate = useMutation(api.documents.templates.remove);
-  // @ts-expect-error — TS2589
   const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
+  const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
-  const uniqueFolders = Array.from(
-    new Set(
-      (templates ?? [])
-        .map((tpl) => (tpl as FormTemplateRecord).folderPath)
-        .filter(Boolean) as string[],
-    ),
-  ).sort();
+  const allTemplates = useMemo(
+    () => (templates ?? []) as FormTemplateRecord[],
+    [templates],
+  );
 
-  const filtered = (templates ?? []).filter((tpl) => {
-    const t = tpl as FormTemplateRecord;
-    if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
-    if (folderFilter !== "all") {
-      if (folderFilter === "__none__" && t.folderPath) return false;
-      if (folderFilter !== "__none__" && t.folderPath !== folderFilter) return false;
-    }
-    if (search && !t.name.toLowerCase().includes(search.toLowerCase()))
-      return false;
-    return true;
-  });
+  const handleToggleActive = useCallback(
+    async (template: FormTemplateRecord, active: boolean) => {
+      try {
+        await updateTemplate({
+          organizationId,
+          templateId: template._id,
+          isActive: active,
+        });
+        toast.success(
+          active
+            ? t("settings.formTemplates.activated")
+            : t("settings.formTemplates.deactivated"),
+        );
+      } catch {
+        toast.error(t("settings.formTemplates.toggleError"));
+      }
+    },
+    [organizationId, updateTemplate, t],
+  );
 
-  const handleToggleActive = async (
-    template: FormTemplateRecord,
-    active: boolean,
-  ) => {
-    try {
-      await updateTemplate({
-        organizationId,
-        templateId: template._id,
-        isActive: active,
-      });
-      toast.success(
-        active
-          ? t("settings.formTemplates.activated")
-          : t("settings.formTemplates.deactivated"),
-      );
-    } catch {
-      toast.error(t("settings.formTemplates.toggleError"));
-    }
-  };
+  const handleDuplicate = useCallback(
+    async (template: FormTemplateRecord) => {
+      try {
+        await createTemplate({
+          organizationId,
+          name: `${template.name} (${t("common.copy")})`,
+          description: template.description,
+          category: template.category as FormCategory,
+          folderPath: template.folderPath || undefined,
+          formJson: "{}",
+          modules: template.modules,
+          entityTypes: template.entityTypes,
+          requiresSignature: template.requiresSignature,
+        });
+        toast.success(t("settings.formTemplates.duplicated"));
+      } catch {
+        toast.error(t("settings.formTemplates.duplicateError"));
+      }
+    },
+    [organizationId, createTemplate, t],
+  );
 
-  const handleDuplicate = async (template: FormTemplateRecord) => {
-    try {
-      await createTemplate({
-        organizationId,
-        name: `${template.name} (${t("common.copy")})`,
-        description: template.description,
-        category: template.category as FormCategory,
-        folderPath: template.folderPath || undefined,
-        formJson: "{}",
-        modules: template.modules,
-        entityTypes: template.entityTypes,
-        requiresSignature: template.requiresSignature,
-      });
-      toast.success(t("settings.formTemplates.duplicated"));
-    } catch {
-      toast.error(t("settings.formTemplates.duplicateError"));
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingTemplate) return;
     try {
       await removeTemplate({
@@ -192,43 +577,225 @@ function FormTemplatesListPage() {
     } finally {
       setDeletingTemplate(null);
     }
-  };
+  }, [deletingTemplate, organizationId, removeTemplate, t]);
+
+  const handleMoveTemplate = useCallback(
+    async (
+      templateId: Id<"formTemplates">,
+      newFolderPath: string | undefined,
+    ) => {
+      try {
+        await updateTemplate({
+          organizationId,
+          templateId,
+          folderPath: newFolderPath ?? "",
+        });
+        toast.success(
+          t("settings.formTemplates.moved", "Przeniesiono szablon"),
+        );
+      } catch {
+        toast.error(
+          t("settings.formTemplates.moveError", "Nie udało się przenieść"),
+        );
+      }
+    },
+    [organizationId, updateTemplate, t],
+  );
+
+  const handleRenameFolder = useCallback(
+    async (oldPath: string, newName: string) => {
+      const segments = oldPath.split("/");
+      segments[segments.length - 1] = newName;
+      const newPath = segments.join("/");
+
+      const affectedTemplates = allTemplates.filter(
+        (t) =>
+          t.folderPath === oldPath || t.folderPath?.startsWith(oldPath + "/"),
+      );
+
+      try {
+        await Promise.all(
+          affectedTemplates.map((tpl) =>
+            updateTemplate({
+              organizationId,
+              templateId: tpl._id,
+              folderPath: tpl.folderPath!.replace(oldPath, newPath),
+            }),
+          ),
+        );
+        toast.success(
+          t("settings.formTemplates.folderRenamed", "Zmieniono nazwę folderu"),
+        );
+      } catch {
+        toast.error(
+          t(
+            "settings.formTemplates.folderRenameError",
+            "Nie udało się zmienić nazwy",
+          ),
+        );
+      }
+    },
+    [allTemplates, organizationId, updateTemplate, t],
+  );
+
+  const handleDeleteFolder = useCallback(
+    async (folderPath: string) => {
+      const affectedTemplates = allTemplates.filter(
+        (t) =>
+          t.folderPath === folderPath ||
+          t.folderPath?.startsWith(folderPath + "/"),
+      );
+
+      if (affectedTemplates.length === 0) return;
+
+      // Move templates to parent folder or root
+      const parentPath =
+        folderPath.includes("/")
+          ? folderPath.split("/").slice(0, -1).join("/")
+          : undefined;
+
+      try {
+        await Promise.all(
+          affectedTemplates.map((tpl) =>
+            updateTemplate({
+              organizationId,
+              templateId: tpl._id,
+              folderPath: parentPath ?? "",
+            }),
+          ),
+        );
+        toast.success(
+          t("settings.formTemplates.folderDeleted", "Usunięto folder"),
+        );
+      } catch {
+        toast.error(
+          t(
+            "settings.formTemplates.folderDeleteError",
+            "Nie udało się usunąć folderu",
+          ),
+        );
+      }
+    },
+    [allTemplates, organizationId, updateTemplate, t],
+  );
+
+  const handleCreateFolder = useCallback(async () => {
+    if (!newFolderName.trim()) return;
+    const folderPath = newFolderParent
+      ? `${newFolderParent}/${newFolderName.trim()}`
+      : newFolderName.trim();
+
+    // Create a placeholder template to make the folder appear
+    // Actually — just create with the folderPath so the folder shows up
+    try {
+      await createTemplate({
+        organizationId,
+        name: t("settings.formTemplates.newTemplateName", "Nowy szablon"),
+        category: "custom" as FormCategory,
+        folderPath,
+        formJson: "{}",
+        modules: ["gabinet"],
+        entityTypes: ["patient"],
+        requiresSignature: false,
+      });
+      toast.success(
+        t("settings.formTemplates.folderCreated", "Utworzono folder z nowym szablonem"),
+      );
+    } catch {
+      toast.error(
+        t("settings.formTemplates.folderCreateError", "Nie udało się utworzyć"),
+      );
+    } finally {
+      setNewFolderDialogOpen(false);
+      setNewFolderName("");
+      setNewFolderParent("");
+    }
+  }, [newFolderName, newFolderParent, organizationId, createTemplate, t]);
+
+  const uniqueFolders = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allTemplates
+            .map((t) => t.folderPath)
+            .filter(Boolean) as string[],
+        ),
+      ).sort(),
+    [allTemplates],
+  );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("settings.formTemplates.title")}
-        description={t("settings.formTemplates.description")}
-        actions={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                try {
-                  // @ts-expect-error — TS2589
-                  const result = await seedTemplates({ organizationId });
-                  toast.success(`Załadowano ${result.count} szablonów`);
-                } catch (e: any) {
-                  toast.error(e.message);
-                }
-              }}
-            >
-              {t("settings.formTemplates.seedExamples", "Załaduj przykłady")}
-            </Button>
-            <Button asChild size="sm">
+    <div className="flex h-full w-full flex-col gap-6">
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("settings.formTemplates.title")}
+          </SectionHeader.Heading>
+          <SectionHeader.Actions>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {t("settings.formTemplates.moreActions", "Więcej")}
+                  <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setNewFolderDialogOpen(true)}
+                >
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  {t("settings.formTemplates.newFolder", "Nowy folder")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      const result = await seedTemplates({ organizationId });
+                      toast.success(`Załadowano ${result.count} szablonów`);
+                    } catch (e: unknown) {
+                      toast.error(
+                        e instanceof Error ? e.message : "Błąd",
+                      );
+                    }
+                  }}
+                >
+                  {t("settings.formTemplates.seedExamples", "Załaduj przykłady")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      const result = await migrateFolders({ organizationId });
+                      toast.success(
+                        `Przypisano foldery do ${result.patched} szablonów`,
+                      );
+                    } catch (e: unknown) {
+                      toast.error(
+                        e instanceof Error ? e.message : "Błąd",
+                      );
+                    }
+                  }}
+                >
+                  Migruj foldery
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button asChild size="sm" variant="outline">
               <Link to="/dashboard/form-editor/new">
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("settings.formTemplates.newTemplate")}
               </Link>
             </Button>
-          </div>
-        }
-      />
+          </SectionHeader.Actions>
+        </SectionHeader.Group>
+        <Alert
+          color="primary"
+          title={t("settings.formTemplates.description")}
+        />
+      </SectionHeader.Root>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      {/* Search */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t("settings.formTemplates.searchPlaceholder")}
@@ -237,47 +804,14 @@ function FormTemplatesListPage() {
             className="pl-9"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue
-              placeholder={t("settings.formTemplates.allCategories")}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("settings.formTemplates.allCategories")}
-            </SelectItem>
-            {CATEGORY_OPTIONS.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {t(`settings.formTemplates.categories.${cat}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={folderFilter} onValueChange={setFolderFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue
-              placeholder={t("settings.formTemplates.allFolders")}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("settings.formTemplates.allFolders")}
-            </SelectItem>
-            <SelectItem value="__none__">
-              {t("settings.formTemplates.noFolder")}
-            </SelectItem>
-            {uniqueFolders.map((folder) => (
-              <SelectItem key={folder} value={folder}>
-                {folder}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <span className="text-sm text-muted-foreground">
+          {allTemplates.length}{" "}
+          {t("settings.formTemplates.templateCount", "szablonów")}
+        </span>
       </div>
 
-      {/* Table or empty state */}
-      {!isPending && filtered.length === 0 ? (
+      {/* Tree or empty state */}
+      {!isPending && allTemplates.length === 0 ? (
         <EmptyState
           icon={FileText}
           title={t("settings.formTemplates.emptyTitle")}
@@ -292,143 +826,27 @@ function FormTemplatesListPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("settings.formTemplates.colName")}</TableHead>
-                <TableHead>{t("settings.formTemplates.colCategory")}</TableHead>
-                <TableHead>{t("settings.formTemplates.colFolder")}</TableHead>
-                <TableHead>{t("settings.formTemplates.colModules")}</TableHead>
-                <TableHead>
-                  {t("settings.formTemplates.colEntityTypes")}
-                </TableHead>
-                <TableHead className="text-center">
-                  {t("settings.formTemplates.colVersion")}
-                </TableHead>
-                <TableHead className="text-center">
-                  {t("settings.formTemplates.colStatus")}
-                </TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((tpl) => {
-                const template = tpl as FormTemplateRecord;
-                return (
-                  <TableRow
-                    key={template._id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/dashboard/form-editor/$id",
-                        params: { id: template._id },
-                      })
-                    }
-                  >
-                    <TableCell className="font-medium">
-                      {template.name}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {t(
-                          `settings.formTemplates.categories.${template.category}`,
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {template.folderPath ? (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          {template.folderPath}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {template.modules.map((mod) => (
-                          <Badge key={mod} variant="secondary" className="text-xs">
-                            {t(`settings.formTemplates.modules.${mod}`)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {template.entityTypes.map((et) => (
-                          <Badge key={et} variant="secondary" className="text-xs">
-                            {t(`settings.formTemplates.entityTypes.${et}`)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center text-sm text-muted-foreground">
-                      v{template.version}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={template.isActive}
-                        onCheckedChange={(checked) => {
-                          handleToggleActive(template, checked);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={t("settings.formTemplates.toggleActive")}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate({
-                                to: "/dashboard/form-editor/$id",
-                                params: { id: template._id },
-                              });
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            {t("common.edit")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDuplicate(template);
-                            }}
-                          >
-                            <CopyIcon className="mr-2 h-4 w-4" />
-                            {t("settings.formTemplates.duplicate")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingTemplate(template);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {t("common.delete")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        !isPending && (
+          <div className="rounded-lg border bg-card p-4">
+            <TemplateTree
+              templates={allTemplates}
+              search={search}
+              onEditTemplate={(id) =>
+                navigate({
+                  to: "/dashboard/form-editor/$id",
+                  params: { id },
+                })
+              }
+              onDeleteTemplate={setDeletingTemplate}
+              onDuplicateTemplate={handleDuplicate}
+              onToggleActive={handleToggleActive}
+              onMoveTemplate={handleMoveTemplate}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
+              t={t}
+            />
+          </div>
+        )
       )}
 
       {/* Delete confirmation */}
@@ -458,6 +876,74 @@ function FormTemplatesListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New folder dialog */}
+      <Dialog
+        open={newFolderDialogOpen}
+        onOpenChange={setNewFolderDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("settings.formTemplates.newFolder", "Nowy folder")}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                "settings.formTemplates.newFolderDesc",
+                "Podaj nazwę nowego folderu. Zostanie utworzony z przykładowym szablonem.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>
+                {t("settings.formTemplates.parentFolder", "Folder nadrzędny")}
+              </Label>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={newFolderParent}
+                onChange={(e) => setNewFolderParent(e.target.value)}
+              >
+                <option value="">
+                  {t("settings.formTemplates.rootLevel", "— Poziom główny —")}
+                </option>
+                {uniqueFolders.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>
+                {t("settings.formTemplates.folderName", "Nazwa folderu")}
+              </Label>
+              <Input
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder={t(
+                  "settings.formTemplates.folderNamePlaceholder",
+                  "np. Zgody, Recepty...",
+                )}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder();
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNewFolderDialogOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
+              {t("settings.formTemplates.createFolder", "Utwórz")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,7 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { PageHeader } from "@/components/layout/page-header";
+import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { Alert } from "@heroui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -132,8 +133,15 @@ function SchedulingSettings() {
   const dayNames = i18n.language === "pl" ? DAY_NAMES_PL : DAY_NAMES;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <PageHeader title={t("gabinet.scheduling.title")} description={t("gabinet.scheduling.description")} />
+    <div className="flex h-full w-full flex-col gap-6">
+      <SectionHeader.Root className="pt-4">
+        <SectionHeader.Group>
+          <SectionHeader.Heading className="flex-1">
+            {t("gabinet.scheduling.title")}
+          </SectionHeader.Heading>
+        </SectionHeader.Group>
+        <Alert color="primary" title={t("gabinet.scheduling.description")} />
+      </SectionHeader.Root>
 
       <div className="rounded-lg border">
         <div className="grid grid-cols-[180px_80px_1fr_1fr_1fr_1fr] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">

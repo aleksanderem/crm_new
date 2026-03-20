@@ -13,14 +13,26 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from "@/components/ui/item";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +84,7 @@ import {
   Trash2,
   Star,
   MoreHorizontal,
+  MoreVerticalCircle02,
   MessageSquare,
   Send,
   Inbox,
@@ -351,6 +364,13 @@ function AppointmentDetail() {
     }),
   );
 
+  const { data: employeesList } = useQuery(
+    convexQuery(api.gabinet.employees.listAll, {
+      organizationId,
+      activeOnly: true,
+    }),
+  );
+
   const { data: smsEvents = [] } = useQuery(
     convexQuery(api.gabinet.appointmentSms.listByAppointment, {
       organizationId,
@@ -431,75 +451,34 @@ function AppointmentDetail() {
 
     setSidebarContent(
       <div className="space-y-3">
-        <Card className="border-purple-200/50 dark:border-purple-800/30">
-          <CardContent className="pt-4 space-y-3">
-            <div className="flex items-center gap-2.5">
-              <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
-                <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <p className="text-sm font-semibold">
-                {pat?.firstName} {pat?.lastName}
-              </p>
-            </div>
-            <Separator />
-            {pat?.phone && (
-              <p className="text-xs flex items-center gap-1.5">
-                <Phone
-                  size={12}
-                  className="text-muted-foreground"
-                  variant="stroke"
-                />
-                {pat.phone}
-              </p>
-            )}
-            {pat?.email && (
-              <>
-                <Separator />
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Mail size={12} variant="stroke" />
-                  {pat.email}
-                </p>
-              </>
-            )}
+        <Item variant="outline" size="sm" className="relative">
+          <ItemMedia>
+            <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
+              <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{pat?.firstName} {pat?.lastName}</ItemTitle>
+            <ItemDescription className="text-xs">
+              {[pat?.phone, pat?.email].filter(Boolean).join(" · ")}
+            </ItemDescription>
             {loyBal > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="outline" className="text-xs">
-                      <Star size={10} variant="stroke" className="mr-1" />
-                      {loyBal} {t("gabinet.loyalty.points")}
-                    </Badge>
-                    {loyTier && (
-                      <span className="text-xs text-muted-foreground">
-                        {loyTier}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {t(
-                      "gabinet.loyalty.programDescription",
-                      "Program lojalnościowy — punkty za wizyty",
-                    )}
-                  </p>
-                </div>
-              </>
+              <Badge variant="outline" className="mt-0.5 w-fit text-[10px]">
+                <Star size={10} variant="stroke" className="mr-1" />
+                {loyBal} {t("gabinet.loyalty.points")}
+              </Badge>
             )}
-            <Separator />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-between text-xs h-7 px-2"
-                >
-                  {t("gabinet.patients.actions", "Akcje klienta")}
-                  <MoreHorizontal size={14} variant="stroke" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
+          </ItemContent>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
+                <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                <span className="sr-only">{t("gabinet.patients.actions", "Akcje klienta")}</span>
+              </Button>
+            </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
                     to="/dashboard/gabinet/patients/$patientId"
@@ -538,111 +517,175 @@ function AppointmentDetail() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </CardContent>
-        </Card>
+        </Item>
 
-        <Card className="border-cyan-200/50 dark:border-cyan-800/30">
-          <CardHeader className="pb-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-t-lg">
-            <CardTitle className="text-sm flex items-center gap-2 text-cyan-700 dark:text-cyan-300">
-              <Calendar size={16} variant="stroke" className="text-cyan-500" />
-              {t("gabinet.appointments.details")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">
-                {t("gabinet.treatments.treatment")}
-              </span>
-              <span className="font-medium text-xs">{treat?.name ?? "-"}</span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground flex items-center gap-1">
-                <Clock size={10} variant="stroke" />
-                {t("common.date")}
-              </span>
-              <span className="font-medium text-xs">{fmtDate(appt.date)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("common.time")}</span>
-              <span className="font-medium text-xs">
-                {fmtTime(appt.startTime)} - {fmtTime(appt.endTime)}
-              </span>
-            </div>
-            <Separator />
-            <div>
-              <span className="text-muted-foreground flex items-center gap-1">
-                <UserCircle size={10} variant="stroke" />
-                {t("gabinet.employees.employee")}
-              </span>
-              <p className="font-medium text-xs mt-0.5">{empName}</p>
-            </div>
+        <div className="rounded-md border">
+          <div className="flex items-center gap-2 px-3 py-2.5 text-xs font-semibold">
+            <Calendar size={14} variant="stroke" className="text-muted-foreground" />
+            {t("gabinet.appointments.details")}
+          </div>
+          <div className="space-y-0">
+            <Item variant="default" size="sm" className="py-2">
+              <ItemContent>
+                <ItemDescription className="text-xs">{t("gabinet.treatments.treatment")}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs font-medium">{treat?.name ?? "-"}</span>
+              </ItemActions>
+            </Item>
+            <ItemSeparator />
+            <Item variant="default" size="sm" className="py-2">
+              <ItemContent>
+                <ItemDescription className="text-xs flex items-center gap-1">
+                  <Clock size={10} variant="stroke" />
+                  {t("common.date")}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs font-medium">{fmtDate(appt.date)}</span>
+              </ItemActions>
+            </Item>
+            <Item variant="default" size="sm" className="py-2">
+              <ItemContent>
+                <ItemDescription className="text-xs">{t("common.time")}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs font-medium">{fmtTime(appt.startTime)} - {fmtTime(appt.endTime)}</span>
+              </ItemActions>
+            </Item>
             {treat?.price !== undefined && (
               <>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    {t("common.price")}
-                  </span>
-                  <span className="font-medium text-xs">
-                    {treat.price.toFixed(2)} {treat.currency ?? "PLN"}
-                  </span>
-                </div>
+                <ItemSeparator />
+                <Item variant="default" size="sm" className="py-2">
+                  <ItemContent>
+                    <ItemDescription className="text-xs">{t("common.price")}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <span className="text-xs font-medium">{treat.price.toFixed(2)} {treat.currency ?? "PLN"}</span>
+                  </ItemActions>
+                </Item>
               </>
             )}
             {(appt.status === "completed" || appt.status === "cancelled") &&
               appt.updatedAt && (
                 <>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
-                      {appt.status === "completed"
-                        ? t("gabinet.appointments.completedAt", "Zakończono")
-                        : t("gabinet.appointments.cancelledAt", "Anulowano")}
-                    </span>
-                    <span className="font-medium text-xs">
-                      {new Date(appt.updatedAt).toLocaleString(i18n.language)}
-                    </span>
-                  </div>
+                  <ItemSeparator />
+                  <Item variant="default" size="sm" className="py-2">
+                    <ItemContent>
+                      <ItemDescription className="text-xs">
+                        {appt.status === "completed"
+                          ? t("gabinet.appointments.completedAt", "Zakończono")
+                          : t("gabinet.appointments.cancelledAt", "Anulowano")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <span className="text-xs font-medium">
+                        {new Date(appt.updatedAt).toLocaleString(i18n.language)}
+                      </span>
+                    </ItemActions>
+                  </Item>
                 </>
               )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-2 rounded-md bg-muted/50">
-                <p className="text-lg font-bold">{docs.length}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {t("gabinet.documents.documents")}
-                </p>
-              </div>
-              <div className="p-2 rounded-md bg-muted/50">
-                <p className="text-lg font-bold">{pays.length}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {t("gabinet.payments.payments")}
-                </p>
-              </div>
-              <div className="p-2 rounded-md bg-muted/50">
-                <p className="text-lg font-bold">{nts.length}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {t("common.notes")}
-                </p>
-              </div>
-              <div className="p-2 rounded-md bg-muted/50">
-                <p className="text-lg font-bold">{hist.length}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {t("gabinet.patients.history")}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {emp && (
+          <Item variant="outline" size="sm" className="relative">
+            <ItemMedia>
+              <Avatar className="h-9 w-9 bg-cyan-100 dark:bg-cyan-900/50">
+                {emp.image && <AvatarImage src={emp.image} alt={empName} />}
+                <AvatarFallback className="text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300">
+                  {empName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>{empName}</ItemTitle>
+              <ItemDescription className="text-xs">
+                {emp.email ?? t("gabinet.employees.employee")}
+              </ItemDescription>
+            </ItemContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
+                  <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                  <span className="sr-only">{t("gabinet.employees.actions", "Akcje")}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {emp.email && (
+                  <DropdownMenuItem asChild>
+                    <a href={`mailto:${emp.email}`}>
+                      <Mail size={14} variant="stroke" className="mr-2" />
+                      {t("common.sendEmail", "Wyślij e-mail")}
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                {(employeesList ?? []).length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <RefreshCcw size={14} variant="stroke" className="mr-2" />
+                        {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-48">
+                        {(employeesList ?? [])
+                          .filter((e) => e.userId !== appt.employeeId)
+                          .map((e) => {
+                            const name = e.firstName || e.lastName
+                              ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
+                              : e.userId;
+                            return (
+                              <DropdownMenuItem
+                                key={e._id}
+                                onClick={() => {
+                                  updateAppointment({
+                                    organizationId,
+                                    appointmentId: appt._id as Id<"gabinetAppointments">,
+                                    employeeId: e.userId as Id<"users">,
+                                  }).then(() => {
+                                    toast.success(t("gabinet.appointments.employeeChanged", "Zmieniono pracownika"));
+                                  }).catch((err: any) => {
+                                    toast.error(err.message ?? t("common.error"));
+                                  });
+                                }}
+                              >
+                                {name}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Item>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className="rounded-md border p-2.5">
+            <p className="text-lg font-bold">{docs.length}</p>
+            <p className="text-[10px] text-muted-foreground">{t("gabinet.documents.documents")}</p>
+          </div>
+          <div className="rounded-md border p-2.5">
+            <p className="text-lg font-bold">{pays.length}</p>
+            <p className="text-[10px] text-muted-foreground">{t("gabinet.payments.payments")}</p>
+          </div>
+          <div className="rounded-md border p-2.5">
+            <p className="text-lg font-bold">{nts.length}</p>
+            <p className="text-[10px] text-muted-foreground">{t("common.notes")}</p>
+          </div>
+          <div className="rounded-md border p-2.5">
+            <p className="text-lg font-bold">{hist.length}</p>
+            <p className="text-[10px] text-muted-foreground">{t("gabinet.patients.history")}</p>
+          </div>
+        </div>
       </div>,
     );
     return () => setSidebarContent(null);
-  }, [detail, t, setSidebarContent]);
+  }, [detail, t, setSidebarContent, employeesList, updateAppointment, organizationId]);
 
   if (!detail && !isLoading) {
     return (

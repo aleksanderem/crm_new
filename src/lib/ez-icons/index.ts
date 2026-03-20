@@ -200,6 +200,7 @@ export const MonitorSmartphone = createIcon("MonitorSmartphone");
 export const MonitorSmartphoneIcon = createIcon("MonitorSmartphoneIcon");
 export const MoreVertical = createIcon("MoreVertical");
 export const MoreVerticalIcon = createIcon("MoreVerticalIcon");
+export const MoreVerticalCircle02 = createIcon("MoreVerticalCircle02");
 export const PackageIcon = createIcon("PackageIcon");
 export const PackageOpenIcon = createIcon("PackageOpenIcon");
 export const PencilRulerIcon = createIcon("PencilRulerIcon");

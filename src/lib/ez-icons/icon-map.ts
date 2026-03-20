@@ -177,6 +177,7 @@ export const ICON_MAP: Record<string, string> = {
   MonitorSmartphoneIcon: "smartphone-wifi",
   MoreVertical: "more-vertical",
   MoreVerticalIcon: "more-vertical",
+  MoreVerticalCircle02: "more-vertical-circle-02",
   PackageIcon: "package",
   PackageOpenIcon: "package-open",
   PencilRulerIcon: "pencil-edit-01",

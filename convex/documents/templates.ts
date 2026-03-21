@@ -126,6 +126,40 @@ export const create = mutation({
   },
 });
 
+export const duplicate = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    templateId: v.id("formTemplates"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const source = await ctx.db.get(args.templateId);
+    if (!source || source.organizationId !== args.organizationId) {
+      throw new Error("Template not found");
+    }
+    const now = Date.now();
+    const {
+      _id,
+      _creationTime,
+      createdBy: _cb,
+      createdAt: _ca,
+      updatedAt: _ua,
+      version: _v,
+      isActive: _ia,
+      ...rest
+    } = source;
+    return await ctx.db.insert("formTemplates", {
+      ...rest,
+      name: `${source.name} (Kopia)`,
+      version: 1,
+      isActive: true,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const update = mutation({
   args: {
     organizationId: v.id("organizations"),

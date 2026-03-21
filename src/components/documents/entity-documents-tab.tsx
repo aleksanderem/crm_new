@@ -21,6 +21,7 @@ import { GenerateDocumentDialog } from "./generate-document-dialog";
 import { SurveyFormViewer } from "./survey-form-viewer";
 import { SurveyPdfExportButton } from "./survey-pdf-export-button";
 import { DocumentViewer } from "./document-viewer";
+import { renderDocument } from "./document-renderer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -271,45 +272,76 @@ export function EntityDocumentsTab({
                 </div>
 
                 {viewingTemplate &&
-                  (viewingTemplate.templateType === "document" ? (
-                    (() => {
-                      // Document-type: responseData contains { html, formFieldValues }
-                      try {
-                        const parsed = JSON.parse(
-                          viewingDoc.responseData,
-                        ) as { html?: string };
-                        if (parsed.html) {
-                          return (
-                            <DocumentViewer
-                              title={viewingDoc.title}
-                              html={parsed.html}
-                              signatureData={viewingDoc.signatureData}
-                              signedByName={viewingDoc.signedByName}
-                              signedAt={viewingDoc.signedAt}
-                            />
-                          );
-                        }
-                      } catch {
-                        // fallback to survey viewer below
+                  (() => {
+                    // Try document-type viewer: check responseData for { html } field
+                    try {
+                      const parsed = JSON.parse(
+                        viewingDoc.responseData,
+                      ) as { html?: string };
+                      if (parsed.html) {
+                        return (
+                          <DocumentViewer
+                            title={viewingDoc.title}
+                            html={parsed.html}
+                            signatureData={viewingDoc.signatureData}
+                            signedByName={viewingDoc.signedByName}
+                            signedAt={viewingDoc.signedAt}
+                          />
+                        );
                       }
-                      return null;
-                    })()
-                  ) : (
-                    <>
-                      <SurveyFormViewer
-                        formJson={viewingTemplate.formJson}
-                        responseData={mergedResponseData}
-                        signatureData={viewingDoc.signatureData}
-                        signedAt={viewingDoc.signedAt}
-                      />
+                    } catch {
+                      // Not JSON with html — fall through
+                    }
 
-                      <SurveyPdfExportButton
-                        formJson={viewingTemplate.formJson}
-                        responseData={mergedResponseData}
-                        title={viewingDoc.title}
-                      />
-                    </>
-                  ))}
+                    // Fallback for document-type templates generated via wrong path:
+                    // re-render from contentJson + scope data on the fly
+                    if (
+                      viewingTemplate.templateType === "document" &&
+                      viewingTemplate.contentJson
+                    ) {
+                      try {
+                        const scopeFlat: Record<string, string> = {};
+                        for (const [k, v] of Object.entries(
+                          mergedResponseData,
+                        )) {
+                          if (v != null) scopeFlat[k] = String(v);
+                        }
+                        const html = renderDocument(
+                          viewingTemplate.contentJson,
+                          scopeFlat,
+                        );
+                        return (
+                          <DocumentViewer
+                            title={viewingDoc.title}
+                            html={html}
+                            signatureData={viewingDoc.signatureData}
+                            signedByName={viewingDoc.signedByName}
+                            signedAt={viewingDoc.signedAt}
+                          />
+                        );
+                      } catch {
+                        // contentJson invalid — fall through to survey viewer
+                      }
+                    }
+
+                    // Fallback: PDFme / SurveyJS viewer
+                    return (
+                      <>
+                        <SurveyFormViewer
+                          formJson={viewingTemplate.formJson}
+                          responseData={mergedResponseData}
+                          signatureData={viewingDoc.signatureData}
+                          signedAt={viewingDoc.signedAt}
+                        />
+
+                        <SurveyPdfExportButton
+                          formJson={viewingTemplate.formJson}
+                          responseData={mergedResponseData}
+                          title={viewingDoc.title}
+                        />
+                      </>
+                    );
+                  })()}
               </div>
             )}
           </ScrollShadow>

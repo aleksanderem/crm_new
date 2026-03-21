@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
+import { ArrowLeft, Settings, PanelLeft, CopyIcon } from "@/lib/ez-icons";
 import {
   Sheet,
   SheetContent,
@@ -59,6 +59,7 @@ function EditDocumentEditorPage() {
   });
 
   const updateTemplate = useMutation(api.documents.templates.update);
+  const duplicateTemplate = useMutation(api.documents.templates.duplicate);
 
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -143,6 +144,34 @@ function EditDocumentEditorPage() {
     }
   };
 
+  const handleDuplicate = useCallback(async () => {
+    // Save current content first, then duplicate server-side
+    const latestJson = editorRef.current
+      ? JSON.stringify(editorRef.current.getJSON())
+      : contentJson;
+
+    try {
+      // Save current state before duplicating
+      await updateTemplate({
+        organizationId,
+        templateId,
+        contentJson: latestJson,
+      });
+      const newId = await duplicateTemplate({
+        organizationId,
+        templateId,
+      });
+      toast.success(t("settings.formTemplates.duplicated", "Zduplikowano szablon"));
+      navigate({
+        to: "/dashboard/document-editor/$id",
+        params: { id: newId },
+      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    }
+  }, [contentJson, organizationId, templateId, updateTemplate, duplicateTemplate, navigate, t]);
+
   const handleAddVariable = useCallback((variable: VariableField) => {
     editorRef.current?.insertVariable(variable.path);
   }, []);
@@ -223,6 +252,18 @@ function EditDocumentEditorPage() {
 
         <div className="mx-2 h-5 w-px bg-border" />
 
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={handleDuplicate}
+          title={t("settings.formTemplates.duplicate", "Duplikuj")}
+        >
+          <CopyIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {t("settings.formTemplates.duplicate", "Duplikuj")}
+          </span>
+        </Button>
         <Button
           variant="ghost"
           size="sm"

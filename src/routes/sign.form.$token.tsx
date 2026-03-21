@@ -1,19 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/documents/signature-pad";
 import { SurveyFormViewer } from "@/components/documents/survey-form-viewer";
+import { DocumentFormFiller } from "@/components/documents/document-form-filler";
+import {
+  extractFormFields,
+  renderDocument,
+} from "@/components/documents/document-renderer";
 import {
   FileSignature,
   Check,
   ShieldCheck,
   AlertTriangle,
   Loader2,
+  ClipboardList,
 } from "@/lib/ez-icons";
 
 // ---------------------------------------------------------------------------
@@ -31,10 +37,8 @@ export const Route = createFileRoute("/sign/form/$token")({
 function FormSigningPage() {
   const { t } = useTranslation();
   const { token } = Route.useParams();
-  const getBySigningToken = api.documents.documents.getBySigningToken;
-  const data = useQuery(getBySigningToken, { token });
+  const data = useQuery(api.documents.documents.getBySigningToken, { token });
 
-  // Loading state — Convex returns undefined while loading
   if (data === undefined) {
     return (
       <PageShell>
@@ -43,17 +47,19 @@ function FormSigningPage() {
     );
   }
 
-  // The query throws on not-found / expired / already signed,
-  // so if we reach here we have a valid document + template
   if (!data?.document || !data?.template) {
     return (
       <PageShell>
-        <ErrorState message={t("documents.signing.notFound", "Nie znaleziono dokumentu lub link wygasł.")} />
+        <ErrorState
+          message={t(
+            "documents.signing.notFound",
+            "Nie znaleziono dokumentu lub link wygasł.",
+          )}
+        />
       </PageShell>
     );
   }
 
-  // Document already signed
   if (data.document.status === "signed") {
     return (
       <PageShell>
@@ -62,9 +68,24 @@ function FormSigningPage() {
     );
   }
 
+  const isDocumentType =
+    data.template.templateType === "document" && !!data.template.contentJson;
+
+  if (isDocumentType) {
+    return (
+      <PageShell>
+        <DocumentSigningFlow
+          token={token}
+          document={data.document}
+          template={data.template}
+        />
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
-      <SigningFlow
+      <PdfmeSigningFlow
         token={token}
         document={data.document}
         template={data.template}
@@ -74,7 +95,7 @@ function FormSigningPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Layout shell — clean, centered, mobile-friendly
+// Layout shell
 // ---------------------------------------------------------------------------
 
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -122,7 +143,10 @@ function SuccessState() {
           {t("documents.signing.success", "Dokument podpisany")}
         </h2>
         <p className="text-center text-muted-foreground">
-          {t("documents.signing.successMessage", "Dziękujemy! Twój podpis został zapisany.")}
+          {t(
+            "documents.signing.successMessage",
+            "Dziękujemy! Twój podpis został zapisany.",
+          )}
         </p>
       </CardContent>
     </Card>
@@ -130,50 +154,28 @@ function SuccessState() {
 }
 
 // ---------------------------------------------------------------------------
-// Signing flow
+// Shared signing section (used by both flows)
 // ---------------------------------------------------------------------------
 
-interface SigningFlowProps {
+function SignatureSection({
+  token,
+  signingMethod,
+  onDone,
+  resolvedHtml,
+}: {
   token: string;
-  document: {
-    _id: string;
-    title: string;
-    responseData: string;
-    status: string;
-    organizationId: string;
-  };
-  template: {
-    _id: string;
-    name: string;
-    formJson: string;
-    signatureConfig?: {
-      method: "click" | "sms" | "email_otp" | "draw";
-      signerRole: string;
-    };
-  };
-}
-
-function SigningFlow({ token, document, template }: SigningFlowProps) {
+  signingMethod: "click" | "sms" | "email_otp" | "draw";
+  onDone: () => void;
+  resolvedHtml?: string;
+}) {
   const { t } = useTranslation();
   const recordSignature = useMutation(
     api.documents.documents.recordSignature,
   );
-
-  const [step, setStep] = useState<"review" | "sign" | "done">("review");
   const [acknowledged, setAcknowledged] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const signingMethod = template.signatureConfig?.method ?? "click";
-
-  // Parse the response data for the SurveyJS viewer
-  let responseData: Record<string, unknown> = {};
-  try {
-    responseData = JSON.parse(document.responseData);
-  } catch {
-    // Invalid JSON — show empty form
-  }
 
   const handleSign = useCallback(
     async (signatureData: string) => {
@@ -184,8 +186,9 @@ function SigningFlow({ token, document, template }: SigningFlowProps) {
           token,
           signatureData,
           signedByName: "",
+          resolvedHtml,
         });
-        setStep("done");
+        onDone();
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd";
@@ -194,7 +197,7 @@ function SigningFlow({ token, document, template }: SigningFlowProps) {
         setLoading(false);
       }
     },
-    [recordSignature, token],
+    [recordSignature, token, resolvedHtml, onDone],
   );
 
   const handleClickSign = useCallback(async () => {
@@ -208,9 +211,293 @@ function SigningFlow({ token, document, template }: SigningFlowProps) {
     [handleSign],
   );
 
-  if (step === "done") {
-    return <SuccessState />;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5" />
+          {t("documents.signing.signatureTitle", "Podpis")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            checked={acknowledged}
+            onCheckedChange={(v) => setAcknowledged(!!v)}
+            className="mt-0.5"
+          />
+          <span className="text-sm">
+            {t(
+              "documents.signing.acknowledge",
+              "Potwierdzam zapoznanie się z treścią dokumentu i wyrażam zgodę na jego podpisanie.",
+            )}
+          </span>
+        </label>
+
+        {signingMethod === "draw" ? (
+          <div className="space-y-3">
+            {!showSignaturePad ? (
+              <Button
+                onClick={() => setShowSignaturePad(true)}
+                disabled={!acknowledged}
+              >
+                {t("documents.signing.openPad", "Złóż podpis odręczny")}
+              </Button>
+            ) : (
+              <SignaturePad
+                onSign={handleDrawSign}
+                onCancel={() => setShowSignaturePad(false)}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleClickSign}
+              disabled={!acknowledged || loading}
+            >
+              {loading
+                ? t("documents.signing.signing", "Podpisywanie...")
+                : t("documents.signing.signButton", "Podpisz dokument")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowSignaturePad(true)}
+              disabled={!acknowledged}
+            >
+              {t("documents.signing.openPad", "Złóż podpis odręczny")}
+            </Button>
+          </div>
+        )}
+
+        {signingMethod !== "draw" && showSignaturePad && (
+          <SignaturePad
+            onSign={handleDrawSign}
+            onCancel={() => setShowSignaturePad(false)}
+          />
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PDFme signing flow (existing behavior)
+// ---------------------------------------------------------------------------
+
+interface FlowProps {
+  token: string;
+  document: {
+    _id: string;
+    title: string;
+    responseData: string;
+    status: string;
+    organizationId: string;
+  };
+  template: {
+    _id: string;
+    name: string;
+    formJson: string;
+    templateType?: string;
+    contentJson?: string;
+    signatureConfig?: {
+      method: "click" | "sms" | "email_otp" | "draw";
+      signerRole: string;
+    };
+  };
+}
+
+function PdfmeSigningFlow({ token, document, template }: FlowProps) {
+  const { t } = useTranslation();
+  const [done, setDone] = useState(false);
+
+  let responseData: Record<string, unknown> = {};
+  try {
+    responseData = JSON.parse(document.responseData);
+  } catch {
+    // empty
   }
+
+  if (done) return <SuccessState />;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="space-y-1">
+            <CardTitle className="text-xl flex items-center gap-2">
+              <FileSignature className="h-5 w-5" />
+              {document.title}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "documents.signing.reviewPrompt",
+                "Zapoznaj się z dokumentem, a następnie złóż podpis.",
+              )}
+            </p>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <SurveyFormViewer
+            formJson={template.formJson}
+            responseData={responseData}
+          />
+        </CardContent>
+      </Card>
+
+      <SignatureSection
+        token={token}
+        signingMethod={template.signatureConfig?.method ?? "click"}
+        onDone={() => setDone(true)}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Document-type (TipTap) signing flow — two-step: fill form → sign
+// ---------------------------------------------------------------------------
+
+function DocumentSigningFlow({ token, document, template }: FlowProps) {
+  const { t } = useTranslation();
+  const submitFormFields = useMutation(
+    api.documents.documents.submitDocumentFormFields,
+  );
+
+  // Parse responseData — extract scope data, stored form field values, and HTML
+  const { prefilledData, existingHtml } = useMemo(() => {
+    try {
+      const parsed = JSON.parse(document.responseData);
+
+      // If form was already filled, re-render from template + stored values
+      // (uses latest renderDocument logic for proper checkbox/select rendering).
+      // scopeData may be missing for documents submitted before this fix —
+      // in that case variables show as [path] placeholders.
+      if (parsed.formFieldValues && template.contentJson) {
+        const scopeData: Record<string, string> = {};
+        if (parsed.scopeData && typeof parsed.scopeData === "object") {
+          for (const [k, v] of Object.entries(
+            parsed.scopeData as Record<string, unknown>,
+          )) {
+            if (v != null) scopeData[k] = String(v);
+          }
+        }
+        const fieldVals: Record<string, string> = {};
+        for (const [k, v] of Object.entries(
+          parsed.formFieldValues as Record<string, unknown>,
+        )) {
+          if (v != null) fieldVals[k] = String(v);
+        }
+        try {
+          const html = renderDocument(
+            template.contentJson,
+            scopeData,
+            fieldVals,
+          );
+          return { prefilledData: scopeData, existingHtml: html };
+        } catch {
+          // Fallback to stored HTML if re-render fails
+          return {
+            prefilledData: {} as Record<string, string>,
+            existingHtml: parsed.html as string | undefined,
+          };
+        }
+      }
+
+      if (parsed.html) {
+        return {
+          prefilledData: {} as Record<string, string>,
+          existingHtml: parsed.html as string | undefined,
+        };
+      }
+
+      // No html yet — this is the scope data map for pre-filling variables
+      const flat: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v != null) flat[k] = String(v);
+      }
+      return { prefilledData: flat, existingHtml: undefined };
+    } catch {
+      return {
+        prefilledData: {} as Record<string, string>,
+        existingHtml: undefined,
+      };
+    }
+  }, [document.responseData, template.contentJson]);
+
+  // Extract form fields from template contentJson
+  const formFields = useMemo(() => {
+    if (!template.contentJson) return [];
+    try {
+      return extractFormFields(JSON.parse(template.contentJson));
+    } catch {
+      return [];
+    }
+  }, [template.contentJson]);
+
+  const needsFormFill = formFields.length > 0 && !existingHtml;
+
+  const [step, setStep] = useState<"fill" | "sign" | "done">(
+    needsFormFill ? "fill" : "sign",
+  );
+  const [renderedHtml, setRenderedHtml] = useState<string | undefined>(
+    existingHtml,
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Render HTML for no-form-fields case or when form is already filled
+  const preRenderedHtml = useMemo(() => {
+    if (renderedHtml) return renderedHtml;
+    if (formFields.length === 0 && template.contentJson) {
+      try {
+        return renderDocument(template.contentJson, prefilledData);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }, [renderedHtml, formFields.length, template.contentJson, prefilledData]);
+
+  const handleFormComplete = useCallback(
+    async (fieldValues: Record<string, string>) => {
+      if (!template.contentJson) return;
+      setSubmitting(true);
+      setError(null);
+      try {
+        const html = renderDocument(
+          template.contentJson,
+          prefilledData,
+          fieldValues,
+        );
+        await submitFormFields({
+          token,
+          renderedHtml: html,
+          formFieldValues: JSON.stringify(fieldValues),
+          scopeData: JSON.stringify(prefilledData),
+        });
+        setRenderedHtml(html);
+        setStep("sign");
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd";
+        setError(message);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [template.contentJson, prefilledData, submitFormFields, token],
+  );
+
+  if (step === "done") return <SuccessState />;
+
+  const signingMethod = template.signatureConfig?.method ?? "click";
+  const displayHtml = renderedHtml ?? preRenderedHtml;
 
   return (
     <div className="space-y-6">
@@ -223,104 +510,86 @@ function SigningFlow({ token, document, template }: SigningFlowProps) {
               {document.title}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {t("documents.signing.reviewPrompt", "Zapoznaj się z dokumentem, a następnie złóż podpis.")}
+              {step === "fill"
+                ? t(
+                    "documents.signing.fillPrompt",
+                    "Uzupełnij wymagane pola, a następnie przejdź do podpisu.",
+                  )
+                : t(
+                    "documents.signing.reviewPrompt",
+                    "Zapoznaj się z dokumentem, a następnie złóż podpis.",
+                  )}
             </p>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Document content — SurveyJS form in read-only mode */}
-      <Card>
-        <CardContent className="pt-6">
-          <SurveyFormViewer
-            formJson={template.formJson}
-            responseData={responseData}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Signing section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            {t("documents.signing.signatureTitle", "Podpis")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {step === "review" && (
-            <div className="space-y-4">
-              {/* Acknowledgment checkbox */}
-              <label className="flex items-start gap-3 cursor-pointer">
-                <Checkbox
-                  checked={acknowledged}
-                  onCheckedChange={(v) => setAcknowledged(!!v)}
-                  className="mt-0.5"
-                />
-                <span className="text-sm">
-                  {t(
-                    "documents.signing.acknowledge",
-                    "Potwierdzam zapoznanie się z treścią dokumentu i wyrażam zgodę na jego podpisanie.",
-                  )}
+      {/* Step 1: Form fill (only for draft documents with form fields) */}
+      {step === "fill" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              {t("documents.signing.formTitle", "Formularz")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {submitting && (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm text-muted-foreground">
+                  {t("common.saving", "Zapisywanie...")}
                 </span>
-              </label>
+              </div>
+            )}
+            {!submitting && (
+              <DocumentFormFiller
+                formFields={formFields}
+                onComplete={handleFormComplete}
+                onCancel={() => {
+                  // No cancel action on public page — just a no-op
+                }}
+              />
+            )}
+            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
+      )}
 
-              {/* Signing actions based on method */}
-              {signingMethod === "draw" ? (
-                // Draw method — show signature pad directly
-                <div className="space-y-3">
-                  {!showSignaturePad ? (
-                    <Button
-                      onClick={() => setShowSignaturePad(true)}
-                      disabled={!acknowledged}
-                    >
-                      {t("documents.signing.openPad", "Złóż podpis odręczny")}
-                    </Button>
-                  ) : (
-                    <SignaturePad
-                      onSign={handleDrawSign}
-                      onCancel={() => setShowSignaturePad(false)}
-                    />
-                  )}
-                </div>
-              ) : (
-                // Click method (default) — simple button
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleClickSign}
-                    disabled={!acknowledged || loading}
-                  >
-                    {loading
-                      ? t("documents.signing.signing", "Podpisywanie...")
-                      : t("documents.signing.signButton", "Podpisz dokument")}
-                  </Button>
-                  {signingMethod === "click" && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSignaturePad(true)}
-                      disabled={!acknowledged}
-                    >
-                      {t("documents.signing.openPad", "Złóż podpis odręczny")}
-                    </Button>
-                  )}
-                </div>
+      {/* Step 2: Document preview + signature */}
+      {step === "sign" && displayHtml && (
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <div
+                className="prose prose-sm max-w-none rounded-lg border bg-white p-6 dark:bg-card [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+                dangerouslySetInnerHTML={{ __html: displayHtml }}
+              />
+            </CardContent>
+          </Card>
+
+          <SignatureSection
+            token={token}
+            signingMethod={signingMethod}
+            onDone={() => setStep("done")}
+            resolvedHtml={displayHtml}
+          />
+        </>
+      )}
+
+      {/* Fallback: no HTML available */}
+      {step === "sign" && !displayHtml && (
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">
+              {t(
+                "documents.signing.renderError",
+                "Nie udało się wyrenderować dokumentu. Skontaktuj się z gabinetem.",
               )}
-
-              {/* Draw pad shown inline for click method when toggled */}
-              {signingMethod === "click" && showSignaturePad && (
-                <SignaturePad
-                  onSign={handleDrawSign}
-                  onCancel={() => setShowSignaturePad(false)}
-                />
-              )}
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
-        </CardContent>
-      </Card>
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

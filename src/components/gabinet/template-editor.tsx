@@ -3,13 +3,18 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
-import { TableHeader } from "@tiptap/extension-table-header";
-import { TableCell } from "@tiptap/extension-table-cell";
+import {
+  TableWithBorders as Table,
+  TableHeaderBg as TableHeader,
+  TableCellBg as TableCell,
+} from "@/components/documents/table-cell-bg";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Image from "@tiptap/extension-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TableBubbleMenu } from "@/components/documents/table-bubble-menu";
+import { PageBreakNode } from "@/components/documents/page-break-node";
 import {
   TEMPLATE_VARIABLE_CATEGORIES,
   TEMPLATE_VARIABLES,
@@ -41,6 +46,8 @@ export const TemplateEditor = forwardRef(function TemplateEditor(
       TableRow,
       TableHeader,
       TableCell,
+      Image.configure({ inline: false, allowBase64: true }),
+      PageBreakNode,
       VariableMentionAt,
       VariableMentionCurly,
     ],
@@ -131,6 +138,32 @@ export const TemplateEditor = forwardRef(function TemplateEditor(
 
         <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>Table</Button>
         <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => editor.chain().focus().setHorizontalRule().run()}>HR</Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2"
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                if (typeof reader.result === "string") {
+                  editor.chain().focus().setImage({ src: reader.result }).run();
+                }
+              };
+              reader.readAsDataURL(file);
+            };
+            input.click();
+          }}
+          title="Wstaw grafikę"
+        >
+          Grafika
+        </Button>
+        <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => editor.chain().focus().setPageBreak().run()} title="Podział strony">Strona</Button>
 
         <div className="ml-auto flex flex-wrap items-center gap-1">
           {TEMPLATE_VARIABLE_CATEGORIES.map((category) => {
@@ -156,10 +189,15 @@ export const TemplateEditor = forwardRef(function TemplateEditor(
         </div>
       </div>
 
+      <TableBubbleMenu editor={editor} />
+
       <EditorContent
         editor={editor}
         className={cn(
-          "bg-background [&_.ProseMirror]:min-h-[220px] [&_.ProseMirror]:outline-none [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2",
+          "bg-background [&_.ProseMirror]:min-h-[220px] [&_.ProseMirror]:outline-none [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--table-border-color,var(--color-border))] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--table-border-color,var(--color-border))] [&_th]:bg-muted [&_th]:p-2 [&_img]:max-w-full [&_img]:rounded [&_img]:my-2",
+          "[&_table[data-border-style=none]_td]:border-transparent [&_table[data-border-style=none]_th]:border-transparent",
+          "[&_table[data-border-style=horizontal]_td]:border-x-transparent [&_table[data-border-style=horizontal]_th]:border-x-transparent",
+          "[&_table[data-border-style=outer]_td]:border-transparent [&_table[data-border-style=outer]_th]:border-transparent [&_table[data-border-style=outer]]:border [&_table[data-border-style=outer]]:border-[var(--table-border-color,var(--color-border))]",
           minHeightClassName
         )}
       />

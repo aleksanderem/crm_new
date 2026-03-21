@@ -3,6 +3,21 @@ import { internal } from "../../_generated/api";
 import { Id } from "../../_generated/dataModel";
 import { resolveScope } from "../../documents/scopeResolver";
 
+// ---------------------------------------------------------------------------
+// Server-safe TipTap JSON helpers (no DOM needed)
+// ---------------------------------------------------------------------------
+
+/** Walk TipTap JSON tree and check if any formField nodes exist. */
+function hasFormFields(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const n = node as { type?: string; content?: unknown[] };
+  if (n.type === "formField") return true;
+  if (Array.isArray(n.content)) {
+    return n.content.some((child) => hasFormFields(child));
+  }
+  return false;
+}
+
 /**
  * Auto-generate formDocuments for an appointment based on its treatment's
  * requiredFormTemplates configuration.
@@ -11,6 +26,10 @@ import { resolveScope } from "../../documents/scopeResolver";
  * 1. Resolves scope data (patient, employee, treatment, appointment, org)
  * 2. Creates a formDocument with pre-filled data
  * 3. If the template requires a signature, schedules a signing email
+ *
+ * Document-type (TipTap) templates follow a two-step flow when they contain
+ * form fields: draft (fill) → pending_signature (sign). Templates without
+ * form fields go directly to pending_signature.
  */
 export async function autoGenerateAppointmentDocuments(
   ctx: MutationCtx,
@@ -56,12 +75,26 @@ export async function autoGenerateAppointmentDocuments(
     const template = await ctx.db.get(entry.templateId);
     if (!template || !template.isActive) continue;
 
-    // Determine initial status based on signature requirement
-    const status = template.requiresSignature
-      ? ("pending_signature" as const)
-      : ("draft" as const);
+    // --- Determine initial status ---
+    // For document-type (TipTap) templates with form fields, start as "draft"
+    // so the patient fills the form first, then signs.
+    const isDocumentType =
+      template.templateType === "document" && !!template.contentJson;
+    const documentHasFormFields =
+      isDocumentType && hasFormFields(JSON.parse(template.contentJson!));
 
-    // Generate signing token if signature is needed
+    let status: "draft" | "pending_signature";
+    if (isDocumentType && documentHasFormFields) {
+      // Two-step: patient fills form fields → then signs
+      status = "draft";
+    } else if (template.requiresSignature) {
+      status = "pending_signature";
+    } else {
+      status = "draft";
+    }
+
+    // Generate signing token for any document that requires signature
+    // (including draft document-type templates — patient accesses via token to fill + sign)
     let signingToken: string | undefined;
     let signingTokenExpiresAt: number | undefined;
     if (template.requiresSignature) {
@@ -92,7 +125,7 @@ export async function autoGenerateAppointmentDocuments(
 
     createdDocIds.push(docId);
 
-    // If signature required, send signing email to patient
+    // Send signing email to patient if document requires signature
     if (template.requiresSignature && signingToken) {
       const patient = await ctx.db.get(args.patientId);
       if (patient?.email) {

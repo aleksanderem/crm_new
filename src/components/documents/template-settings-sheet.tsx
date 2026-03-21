@@ -9,7 +9,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -229,18 +228,18 @@ export function TemplateSettingsSheet({
                 {t("settings.formTemplates.modulesLabel")}
               </Label>
               {MODULE_OPTIONS.map((mod) => (
-                <div key={mod} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`sheet-module-${mod}`}
-                    checked={settings.modules.includes(mod)}
-                    onCheckedChange={() => toggleModule(mod)}
-                  />
+                <div key={mod} className="flex items-center justify-between">
                   <Label
                     htmlFor={`sheet-module-${mod}`}
                     className="font-normal"
                   >
                     {t(`settings.formTemplates.modules.${mod}`)}
                   </Label>
+                  <Switch
+                    id={`sheet-module-${mod}`}
+                    checked={settings.modules.includes(mod)}
+                    onCheckedChange={() => toggleModule(mod)}
+                  />
                 </div>
               ))}
             </div>
@@ -253,18 +252,18 @@ export function TemplateSettingsSheet({
                 {t("settings.formTemplates.entityTypesLabel")}
               </Label>
               {ENTITY_TYPE_OPTIONS.map((et) => (
-                <div key={et} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`sheet-entity-${et}`}
-                    checked={settings.entityTypes.includes(et)}
-                    onCheckedChange={() => toggleEntityType(et)}
-                  />
+                <div key={et} className="flex items-center justify-between">
                   <Label
                     htmlFor={`sheet-entity-${et}`}
                     className="font-normal"
                   >
                     {t(`settings.formTemplates.entityTypes.${et}`)}
                   </Label>
+                  <Switch
+                    id={`sheet-entity-${et}`}
+                    checked={settings.entityTypes.includes(et)}
+                    onCheckedChange={() => toggleEntityType(et)}
+                  />
                 </div>
               ))}
             </div>

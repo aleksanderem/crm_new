@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -21,12 +22,15 @@ import {
   Eye,
   Plus,
   Loader2,
+  Send,
 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
 import { SurveyFormViewer } from "./survey-form-viewer";
 import { SurveyPdfExportButton } from "./survey-pdf-export-button";
+import { DocumentViewer } from "./document-viewer";
+import { renderDocument } from "./document-renderer";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
 
 // ---------------------------------------------------------------------------
@@ -56,6 +60,8 @@ interface FormDocument {
   timing?: "before_start" | "after_completion";
   signedAt?: number;
   responseData?: string;
+  signingToken?: string;
+  signingEmailSentAt?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +76,7 @@ function getStatusIcon(status: FormDocumentStatus) {
   if (isDocumentCompleted(status)) {
     return <CircleCheck className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />;
   }
-  if (status === "pending_signature") {
+  if (status === "pending_signature" || status === "draft") {
     return <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0" />;
   }
   return <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />;
@@ -203,6 +209,7 @@ export function AppointmentDocumentChecklist({
           <DocumentSection
             title={t("documents.beforeAppointment", "Przed wizyta")}
             documents={beforeDocs}
+            organizationId={organizationId}
             onDocumentClick={handleDocClick}
             t={t}
           />
@@ -213,6 +220,7 @@ export function AppointmentDocumentChecklist({
           <DocumentSection
             title={t("documents.afterAppointment", "Po wizycie")}
             documents={afterDocs}
+            organizationId={organizationId}
             onDocumentClick={handleDocClick}
             t={t}
           />
@@ -223,6 +231,7 @@ export function AppointmentDocumentChecklist({
           <DocumentSection
             title={t("documents.otherDocuments", "Inne dokumenty")}
             documents={untimed}
+            organizationId={organizationId}
             onDocumentClick={handleDocClick}
             t={t}
           />
@@ -284,29 +293,68 @@ export function AppointmentDocumentChecklist({
                 )}
               </div>
 
-              {viewingTemplate && viewingDoc.responseData && (
-                <>
-                  <SurveyFormViewer
-                    formJson={viewingTemplate.formJson}
-                    responseData={
-                      JSON.parse(viewingDoc.responseData) as Record<
-                        string,
-                        unknown
-                      >
+              {viewingTemplate && viewingDoc.responseData &&
+                (() => {
+                  // Try document-type viewer: check responseData for { html } field
+                  try {
+                    const parsed = JSON.parse(viewingDoc.responseData) as { html?: string };
+                    if (parsed.html) {
+                      return (
+                        <DocumentViewer
+                          title={viewingDoc.title}
+                          html={parsed.html}
+                          signatureData={viewingDoc.signatureData}
+                          signedByName={viewingDoc.signedByName}
+                          signedAt={viewingDoc.signedAt}
+                        />
+                      );
                     }
-                  />
-                  <SurveyPdfExportButton
-                    formJson={viewingTemplate.formJson}
-                    responseData={
-                      JSON.parse(viewingDoc.responseData) as Record<
-                        string,
-                        unknown
-                      >
+                  } catch {
+                    // fall through
+                  }
+
+                  // Fallback: re-render from contentJson for document-type templates
+                  if (
+                    viewingTemplate.templateType === "document" &&
+                    viewingTemplate.contentJson
+                  ) {
+                    try {
+                      const scope: Record<string, string> = {};
+                      const rd = JSON.parse(viewingDoc.responseData);
+                      for (const [k, v] of Object.entries(rd)) {
+                        if (v != null) scope[k] = String(v);
+                      }
+                      const html = renderDocument(viewingTemplate.contentJson, scope);
+                      return (
+                        <DocumentViewer
+                          title={viewingDoc.title}
+                          html={html}
+                          signatureData={viewingDoc.signatureData}
+                          signedByName={viewingDoc.signedByName}
+                          signedAt={viewingDoc.signedAt}
+                        />
+                      );
+                    } catch {
+                      // fall through to survey viewer
                     }
-                    title={viewingDoc.title}
-                  />
-                </>
-              )}
+                  }
+
+                  // PDFme / SurveyJS viewer
+                  const rd = JSON.parse(viewingDoc.responseData) as Record<string, unknown>;
+                  return (
+                    <>
+                      <SurveyFormViewer
+                        formJson={viewingTemplate.formJson}
+                        responseData={rd}
+                      />
+                      <SurveyPdfExportButton
+                        formJson={viewingTemplate.formJson}
+                        responseData={rd}
+                        title={viewingDoc.title}
+                      />
+                    </>
+                  );
+                })()}
             </div>
           )}
         </SheetContent>
@@ -322,14 +370,38 @@ export function AppointmentDocumentChecklist({
 function DocumentSection({
   title,
   documents,
+  organizationId,
   onDocumentClick,
   t,
 }: {
   title: string;
   documents: FormDocument[];
+  organizationId: Id<"organizations">;
   onDocumentClick: (docId: string) => void;
   t: (key: string, fallback?: string) => string;
 }) {
+  const resendSigningEmail = useMutation(api.documents.documents.resendSigningEmail);
+  const [resendingDocId, setResendingDocId] = useState<string | null>(null);
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+
+  const handleResend = useCallback(
+    async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
+      e.stopPropagation();
+      setResendingDocId(docId);
+      setResendSuccess(null);
+      try {
+        await resendSigningEmail({ organizationId, documentId: docId });
+        setResendSuccess(docId);
+        setTimeout(() => setResendSuccess(null), 3000);
+      } catch {
+        // silent — toast could be added later
+      } finally {
+        setResendingDocId(null);
+      }
+    },
+    [resendSigningEmail, organizationId],
+  );
+
   const completedCount = documents.filter((d) =>
     isDocumentCompleted(d.status),
   ).length;
@@ -350,53 +422,83 @@ function DocumentSection({
       <Progress value={progressPercent} className="h-2" />
 
       <div className="rounded-lg border divide-y">
-        {documents.map((doc) => (
-          <button
-            key={doc._id}
-            type="button"
-            onClick={() => onDocumentClick(doc._id)}
-            className={cn(
-              "w-full flex items-center justify-between gap-3 px-4 py-3",
-              "text-left transition-colors hover:bg-accent cursor-pointer",
-            )}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              {getStatusIcon(doc.status)}
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{doc.title}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <DocumentStatusBadge status={doc.status} />
-              {isDocumentCompleted(doc.status) ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDocumentClick(doc._id);
-                  }}
-                >
-                  <Eye className="h-3.5 w-3.5 mr-1" />
-                  {t("documents.preview", "Podglad")}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDocumentClick(doc._id);
-                  }}
-                >
-                  {t("documents.fill", "Wypelnij")}
-                </Button>
+        {documents.map((doc) => {
+          const canResend =
+            !isDocumentCompleted(doc.status) &&
+            doc.status !== "expired" &&
+            doc.status !== "voided" &&
+            !!doc.signingToken;
+
+          return (
+            <button
+              key={doc._id}
+              type="button"
+              onClick={() => onDocumentClick(doc._id)}
+              className={cn(
+                "w-full flex items-center justify-between gap-3 px-4 py-3",
+                "text-left transition-colors hover:bg-accent cursor-pointer",
               )}
-            </div>
-          </button>
-        ))}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {getStatusIcon(doc.status)}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{doc.title}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <DocumentStatusBadge status={doc.status} />
+                {isDocumentCompleted(doc.status) ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDocumentClick(doc._id);
+                    }}
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    {t("documents.preview", "Podglad")}
+                  </Button>
+                ) : (
+                  <>
+                    {canResend && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2"
+                        disabled={resendingDocId === doc._id}
+                        onClick={(e) => handleResend(e, doc._id)}
+                      >
+                        {resendingDocId === doc._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : resendSuccess === doc._id ? (
+                          <CircleCheck className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {resendSuccess === doc._id
+                          ? t("documents.emailSent", "Wysłano")
+                          : t("documents.resendEmail", "Wyślij ponownie")}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-7 px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDocumentClick(doc._id);
+                      }}
+                    >
+                      {t("documents.fill", "Wypelnij")}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

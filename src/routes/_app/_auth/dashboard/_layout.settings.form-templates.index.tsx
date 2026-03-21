@@ -519,6 +519,7 @@ function FormTemplatesListPage() {
 
   const updateTemplate = useMutation(api.documents.templates.update);
   const createTemplate = useMutation(api.documents.templates.create);
+  const duplicateTemplate = useMutation(api.documents.templates.duplicate);
   const removeTemplate = useMutation(api.documents.templates.remove);
   const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
@@ -551,23 +552,16 @@ function FormTemplatesListPage() {
   const handleDuplicate = useCallback(
     async (template: FormTemplateRecord) => {
       try {
-        await createTemplate({
+        await duplicateTemplate({
           organizationId,
-          name: `${template.name} (${t("common.copy")})`,
-          description: template.description,
-          category: template.category as FormCategory,
-          folderPath: template.folderPath || undefined,
-          formJson: "{}",
-          modules: template.modules,
-          entityTypes: template.entityTypes,
-          requiresSignature: template.requiresSignature,
+          templateId: template._id,
         });
         toast.success(t("settings.formTemplates.duplicated"));
       } catch {
         toast.error(t("settings.formTemplates.duplicateError"));
       }
     },
-    [organizationId, createTemplate, t],
+    [organizationId, duplicateTemplate, t],
   );
 
   const handleDeleteConfirm = useCallback(async () => {

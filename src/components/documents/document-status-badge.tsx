@@ -34,9 +34,9 @@ const STATUS_CONFIG: Record<
 > = {
   draft: {
     labelKey: "documents.status.draft",
-    fallback: "Szkic",
-    variant: "secondary",
-    extraClass: "",
+    fallback: "Do wypełnienia",
+    variant: "outline",
+    extraClass: "border-orange-400 text-orange-700 bg-orange-50 dark:border-orange-600 dark:text-orange-400 dark:bg-orange-950",
   },
   pending_signature: {
     labelKey: "documents.status.pendingSignature",

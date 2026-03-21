@@ -2,12 +2,17 @@ import { generateHTML } from "@tiptap/html";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
-import { TableHeader } from "@tiptap/extension-table-header";
-import { TableCell } from "@tiptap/extension-table-cell";
+import {
+  TableWithBorders as Table,
+  TableHeaderBg as TableHeader,
+  TableCellBg as TableCell,
+} from "@/components/documents/table-cell-bg";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Image from "@tiptap/extension-image";
+import { PageBreakNode } from "@/components/documents/page-break-node";
 import { FormFieldNode } from "@/components/documents/form-field-node";
+import { HtmlBlockNode } from "@/components/documents/html-block-node";
 import {
   VariableMentionAt,
   VariableMentionCurly,
@@ -46,7 +51,10 @@ const renderExtensions = [
   TableRow,
   TableHeader,
   TableCell,
+  Image.configure({ inline: false, allowBase64: true }),
+  PageBreakNode,
   FormFieldNode,
+  HtmlBlockNode,
   VariableMentionAt,
   VariableMentionCurly,
 ];
@@ -122,12 +130,44 @@ export function renderDocument(
     }
   });
 
+  // Resolve HTML blocks — inject raw HTML content
+  doc.querySelectorAll("[data-html-block]").forEach((el) => {
+    const content = el.getAttribute("data-content");
+    if (content) {
+      el.innerHTML = content;
+      el.removeAttribute("data-content");
+    }
+  });
+
   // Resolve form fields
   if (formFieldValues) {
     doc.querySelectorAll("[data-form-field]").forEach((el) => {
       const fieldId = el.getAttribute("data-form-field");
       if (fieldId && formFieldValues[fieldId] !== undefined) {
-        el.replaceWith(document.createTextNode(formFieldValues[fieldId]));
+        const fieldType = el.getAttribute("data-field-type") || "text";
+        const value = formFieldValues[fieldId];
+
+        if (fieldType === "checkbox") {
+          const checked = value === "true";
+          const label = el.getAttribute("label") || "";
+          const wrapper = doc.createElement("span");
+          wrapper.style.cssText =
+            "display:inline-flex;align-items:center;gap:6px;";
+          const box = doc.createElement("span");
+          box.style.cssText = checked
+            ? "display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1.5px solid #7C6AE8;border-radius:3px;background:#7C6AE8;color:#fff;font-size:11px;line-height:1;flex-shrink:0;"
+            : "display:inline-block;width:16px;height:16px;border:1.5px solid #d1d5db;border-radius:3px;flex-shrink:0;";
+          if (checked) box.textContent = "✓";
+          wrapper.appendChild(box);
+          if (label) {
+            const labelEl = doc.createElement("span");
+            labelEl.textContent = label;
+            wrapper.appendChild(labelEl);
+          }
+          el.replaceWith(wrapper);
+        } else {
+          el.replaceWith(doc.createTextNode(value));
+        }
       }
     });
   }

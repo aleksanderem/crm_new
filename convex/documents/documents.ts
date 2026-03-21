@@ -1,5 +1,6 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
@@ -72,8 +73,10 @@ export const getBySigningToken = query({
     if (!doc) throw new Error("Document not found");
     if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
       throw new Error("Signing link expired");
-    if (doc.status !== "pending_signature")
-      throw new Error("Document is not awaiting signature");
+    // Allow both "draft" (document-type with form fields to fill)
+    // and "pending_signature" (ready for signing)
+    if (doc.status !== "pending_signature" && doc.status !== "draft")
+      throw new Error("Document is not awaiting action");
 
     // Also fetch template for rendering
     const template = await ctx.db.get(doc.templateId);
@@ -184,6 +187,64 @@ export const updateResponseData = mutation({
   },
 });
 
+// Submit form field values for document-type templates (public, token-based).
+// Transitions status from "draft" → "pending_signature" after storing the
+// rendered HTML and form field values.
+export const submitDocumentFormFields = mutation({
+  args: {
+    token: v.string(),
+    renderedHtml: v.string(),
+    formFieldValues: v.string(), // JSON map of field values
+    scopeData: v.optional(v.string()), // JSON map of scope/variable data for re-rendering
+  },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_signingToken", (q) => q.eq("signingToken", args.token))
+      .first();
+    if (!doc) throw new Error("Document not found");
+    if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
+      throw new Error("Signing link expired");
+    if (doc.status !== "draft" && doc.status !== "pending_signature")
+      throw new Error("Document is not in a fillable status");
+
+    // Preserve scope data: prefer frontend-supplied, fall back to extracting
+    // from the current responseData (which IS the scope data before first submit)
+    let scopeData: Record<string, unknown> | undefined;
+    if (args.scopeData) {
+      scopeData = JSON.parse(args.scopeData);
+    } else {
+      try {
+        const existing = JSON.parse(doc.responseData);
+        // If no html yet, current responseData is the raw scope data map
+        if (!existing.html) {
+          scopeData = existing;
+        } else if (existing.scopeData) {
+          // Already submitted before — reuse stored scope data
+          scopeData = existing.scopeData as Record<string, unknown>;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    const responseObj: Record<string, unknown> = {
+      html: args.renderedHtml,
+      formFieldValues: JSON.parse(args.formFieldValues),
+    };
+    if (scopeData) {
+      responseObj.scopeData = scopeData;
+    }
+
+    await ctx.db.patch(doc._id, {
+      responseData: JSON.stringify(responseObj),
+      status: "pending_signature",
+      updatedAt: Date.now(),
+    });
+    return doc._id;
+  },
+});
+
 export const recordSignature = mutation({
   args: {
     token: v.string(),
@@ -191,6 +252,8 @@ export const recordSignature = mutation({
     signedByName: v.string(),
     signedByEmail: v.optional(v.string()),
     signedByIp: v.optional(v.string()),
+    // For document-type templates: store rendered HTML at signing time
+    resolvedHtml: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const doc = await ctx.db
@@ -204,7 +267,7 @@ export const recordSignature = mutation({
       throw new Error("Document is not awaiting signature");
 
     const now = Date.now();
-    await ctx.db.patch(doc._id, {
+    const patch: Record<string, unknown> = {
       status: "signed",
       signatureData: args.signatureData,
       signedAt: now,
@@ -212,8 +275,95 @@ export const recordSignature = mutation({
       signedByEmail: args.signedByEmail,
       signedByIp: args.signedByIp,
       updatedAt: now,
-    });
+    };
+
+    // For document-type templates without form fields: store the resolved HTML
+    // rendered client-side so it's available for later viewing
+    if (args.resolvedHtml) {
+      try {
+        const existing = JSON.parse(doc.responseData);
+        if (!existing.html) {
+          patch.responseData = JSON.stringify({
+            ...existing,
+            html: args.resolvedHtml,
+            formFieldValues: existing.formFieldValues ?? {},
+          });
+        }
+      } catch {
+        patch.responseData = JSON.stringify({
+          html: args.resolvedHtml,
+          formFieldValues: {},
+        });
+      }
+    }
+
+    await ctx.db.patch(doc._id, patch);
     return doc._id;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Resend signing email (authenticated — staff action from appointment view)
+// ---------------------------------------------------------------------------
+
+export const resendSigningEmail = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.id("formDocuments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.organizationId !== args.organizationId)
+      throw new Error("Document not found");
+    if (doc.status !== "draft" && doc.status !== "pending_signature")
+      throw new Error("Document is not awaiting signature");
+    if (!doc.signingToken)
+      throw new Error("Document has no signing token");
+
+    // Look up patient email from the linked entity
+    let recipientEmail: string | undefined;
+    let recipientName: string | undefined;
+
+    if (doc.entityType === "appointment" && doc.entityId) {
+      const appointment = await ctx.db.get(
+        doc.entityId as any,
+      );
+      if (appointment && typeof appointment === "object") {
+        const appt = appointment as { patientId?: any };
+        if (appt.patientId) {
+          const patient = await ctx.db.get(appt.patientId);
+          if (patient && typeof patient === "object") {
+            const p = patient as { email?: string; firstName?: string; lastName?: string };
+            recipientEmail = p.email;
+            recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+          }
+        }
+      }
+    } else if (doc.entityType === "patient" && doc.entityId) {
+      const patient = await ctx.db.get(doc.entityId as any);
+      if (patient && typeof patient === "object") {
+        const p = patient as { email?: string; firstName?: string; lastName?: string };
+        recipientEmail = p.email;
+        recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+      }
+    }
+
+    if (!recipientEmail) {
+      throw new Error("Nie znaleziono adresu e-mail pacjenta");
+    }
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.documents.signing.sendSigningEmailInternal,
+      {
+        documentId: args.documentId,
+        recipientEmail,
+        recipientName,
+      },
+    );
+
+    return { sent: true };
   },
 });
 

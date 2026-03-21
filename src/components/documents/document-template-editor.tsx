@@ -9,13 +9,18 @@ import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
-import { TableHeader } from "@tiptap/extension-table-header";
-import { TableCell } from "@tiptap/extension-table-cell";
+import {
+  TableWithBorders as Table,
+  TableHeaderBg as TableHeader,
+  TableCellBg as TableCell,
+} from "@/components/documents/table-cell-bg";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Image from "@tiptap/extension-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TableBubbleMenu } from "@/components/documents/table-bubble-menu";
+import { PageBreakNode } from "@/components/documents/page-break-node";
 import {
   VariableMentionAt,
   VariableMentionCurly,
@@ -28,6 +33,7 @@ import {
   insertFormField,
   type FormFieldAttrs,
 } from "@/components/documents/form-field-node";
+import { HtmlBlockNode } from "@/components/documents/html-block-node";
 import {
   Bold,
   Italic,
@@ -43,6 +49,9 @@ import {
   TableIcon,
   Minus,
   FormInput,
+  ImageIcon,
+  ScissorsLineDashed,
+  Code,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -92,7 +101,10 @@ export const DocumentTemplateEditor = forwardRef<
       TableRow,
       TableHeader,
       TableCell,
+      Image.configure({ inline: false, allowBase64: true }),
+      PageBreakNode,
       FormFieldNode,
+      HtmlBlockNode,
       VariableMentionAt,
       VariableMentionCurly,
     ],
@@ -311,13 +323,66 @@ export const DocumentTemplateEditor = forwardRef<
           type="button"
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                if (typeof reader.result === "string") {
+                  editor
+                    .chain()
+                    .focus()
+                    .setImage({ src: reader.result })
+                    .run();
+                }
+              };
+              reader.readAsDataURL(file);
+            };
+            input.click();
+          }}
+          title="Wstaw grafikę"
+        >
+          <ImageIcon className="mr-1 h-4 w-4" />
+          Grafika
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().setPageBreak().run()}
+          title="Wymuszony podział strony"
+        >
+          <ScissorsLineDashed className="mr-1 h-4 w-4" />
+          Strona
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => doInsertFormField()}
           title="Insert form field"
         >
           <FormInput className="mr-1 h-4 w-4" />
           Form field
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().insertHtmlBlock().run()}
+          title="Wstaw blok HTML/CSS"
+        >
+          <Code className="mr-1 h-4 w-4" />
+          HTML
+        </Button>
       </div>
+
+      {/* Table bubble menu */}
+      <TableBubbleMenu editor={editor} />
 
       {/* Editor content */}
       <EditorContent
@@ -325,7 +390,11 @@ export const DocumentTemplateEditor = forwardRef<
         className={cn(
           "min-h-0 flex-1 overflow-auto bg-background",
           "[&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:outline-none",
-          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2",
+          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--table-border-color,var(--color-border))] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--table-border-color,var(--color-border))] [&_th]:bg-muted [&_th]:p-2",
+          "[&_table[data-border-style=none]_td]:border-transparent [&_table[data-border-style=none]_th]:border-transparent",
+          "[&_table[data-border-style=horizontal]_td]:border-x-transparent [&_table[data-border-style=horizontal]_th]:border-x-transparent",
+          "[&_table[data-border-style=outer]_td]:border-transparent [&_table[data-border-style=outer]_th]:border-transparent [&_table[data-border-style=outer]]:border [&_table[data-border-style=outer]]:border-[var(--table-border-color,var(--color-border))]",
+          "[&_img]:max-w-full [&_img]:rounded [&_img]:my-2",
         )}
       />
     </div>

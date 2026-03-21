@@ -1,18 +1,18 @@
 {
-  "session_id": "S0084",
-  "started_at": "2026-03-19T16:00:00Z",
-  "last_updated": "2026-03-19T16:45:00Z",
-  "status": "completed",
-  "focus": "Audit and improve all Dialog/Sheet/Modal components for responsiveness",
+  "session_id": "S0089",
+  "started_at": "2026-03-20T18:00:00Z",
+  "last_updated": "2026-03-20T18:15:00Z",
+  "status": "active",
+  "focus": "Verify checkbox rendering fix on signing page + typed treatment parameters plan",
   "tasks_snapshot": {
-    "total": 6,
+    "total": 4,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 6,
+    "passing": 4,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0084: Audited all 35+ Dialog/Sheet usages across the app. Fixed 20 files: added sm: responsive prefix to max-w classes, added max-h/overflow-y-auto to content-heavy dialogs, set explicit sm:max-w-md on bare DialogContent usages. Zero new typecheck errors. shadcn-studio blocks were skipped (template code, not app code)."
+  "notes": "S0089: Continuation of S0088. All signing page fixes verified: TypeScript compiles clean, renderDocument checkbox logic confirmed via preview_eval in prior session, re-rendering from template+formFieldValues+scopeData logic in place, submitDocumentFormFields accepts pending_signature status. Code changes span 3 files: document-renderer.tsx (checkbox visual rendering), sign.form.$token.tsx (re-render from template, needsFormFill logic, scopeData pass-through), documents.ts (scopeData preservation, status check relaxation). Full E2E with fresh document needs manual verification by user - old test token is signed."
 }

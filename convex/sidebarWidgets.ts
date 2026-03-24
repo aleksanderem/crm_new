@@ -231,13 +231,15 @@ export const getProductsKpis = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const dealProducts = await ctx.db
-      .query("dealProducts")
-      .collect();
-
     const productUsage = new Map<string, number>();
-    for (const dp of dealProducts) {
-      productUsage.set(String(dp.productId), (productUsage.get(String(dp.productId)) ?? 0) + 1);
+    for (const p of products) {
+      const dpCount = (await ctx.db
+        .query("dealProducts")
+        .withIndex("by_product", (q) => q.eq("productId", p._id))
+        .collect()).length;
+      if (dpCount > 0) {
+        productUsage.set(String(p._id), dpCount);
+      }
     }
 
     let topSeller = "";

@@ -102,7 +102,7 @@ export function InboxList({
   };
 
   return (
-    <div className="flex h-full flex-col border-r">
+    <div className="flex h-full flex-col">
       {/* Search */}
       <div className="shrink-0 border-b p-3">
         <div className="flex items-center rounded-md border bg-transparent">
@@ -132,10 +132,14 @@ export function InboxList({
             {threads.map((email) => {
               const threadId = email.threadId ?? email._id;
               const isSelected = selectedThreadId === threadId;
-              const displayName =
+              const rawName =
                 email.direction === "outbound"
                   ? (email.to?.[0] ?? "")
                   : (email.from ?? "");
+              // Show only the local part for raw email addresses
+              const displayName = rawName.includes("@") && !rawName.includes("<")
+                ? rawName.split("@")[0]
+                : rawName;
               const snippet =
                 email.snippet ??
                 (email.bodyText
@@ -147,8 +151,8 @@ export function InboxList({
                   key={email._id}
                   type="button"
                   className={cn(
-                    "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
-                    isSelected && "bg-muted"
+                    "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 border-l-2 border-transparent",
+                    isSelected && "bg-accent border-l-primary"
                   )}
                   onClick={() => onSelectThread(threadId, email._id)}
                 >
@@ -162,7 +166,7 @@ export function InboxList({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
                       <span
                         className={cn(
                           "truncate text-sm",

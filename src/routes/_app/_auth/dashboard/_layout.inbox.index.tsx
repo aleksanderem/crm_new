@@ -123,14 +123,15 @@ function InboxPage() {
 
         {/* Action buttons */}
         <div className="flex gap-2 px-1">
-          <Button size="sm" className="flex-1" onClick={() => setComposeOpen(true)}>
-            <Pencil className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => setComposeOpen(true)}>
+            <Pencil className="mr-1 h-3 w-3" variant="stroke" />
             {t("inbox.compose")}
           </Button>
           {googleConnection && (
             <Button
               variant="outline"
               size="sm"
+              className="h-8 w-8 p-0"
               onClick={handleSyncGmail}
               disabled={isSyncing}
             >

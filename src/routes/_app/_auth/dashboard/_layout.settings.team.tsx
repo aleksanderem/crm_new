@@ -8,7 +8,7 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -86,6 +87,7 @@ function TeamSettings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("member");
   const [isSending, setIsSending] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{ id: Id<"teamMemberships">; name: string } | null>(null);
 
   const handleChangeRole = async (
     membershipId: Id<"teamMemberships">,
@@ -98,10 +100,14 @@ function TeamSettings() {
     });
   };
 
-  const handleRemoveMember = async (membershipId: Id<"teamMemberships">) => {
-    if (window.confirm(t("team.confirmRemove"))) {
-      await removeMember({ organizationId, membershipId });
-    }
+  const handleRemoveMember = (membershipId: Id<"teamMemberships">, memberName: string) => {
+    setRemoveTarget({ id: membershipId, name: memberName });
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!removeTarget) return;
+    await removeMember({ organizationId, membershipId: removeTarget.id });
+    setRemoveTarget(null);
   };
 
   const handleCancelInvitation = async (invitationId: Id<"invitations">) => {
@@ -160,7 +166,7 @@ function TeamSettings() {
             {t("team.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("team.description")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("team.description")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Seat usage */}
@@ -292,7 +298,8 @@ function TeamSettings() {
                           className="text-destructive focus:text-destructive"
                           onClick={() =>
                             handleRemoveMember(
-                              member._id as Id<"teamMemberships">
+                              member._id as Id<"teamMemberships">,
+                              name
                             )
                           }
                         >
@@ -451,6 +458,26 @@ function TeamSettings() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: removeTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveMember}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

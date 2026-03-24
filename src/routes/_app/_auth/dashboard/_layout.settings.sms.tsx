@@ -7,7 +7,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,7 @@ function SmsSettings() {
             {t("sms.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("sms.description")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("sms.description")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Current status */}

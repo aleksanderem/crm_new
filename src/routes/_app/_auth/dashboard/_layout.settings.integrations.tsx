@@ -5,7 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { GoogleIntegrationCard } from "@/components/settings/google-integration-card";
 import { SmsConfigCard } from "@/components/settings/sms-config-card";
 import { useEffect } from "react";
@@ -52,7 +52,7 @@ function IntegrationsSettings() {
             {t("settings.integrations")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("integrations.description")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("integrations.description")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {user && (

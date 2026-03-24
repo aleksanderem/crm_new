@@ -7,7 +7,6 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { Alert } from "@heroui/alert";
 import {
   Dialog,
   DialogContent,

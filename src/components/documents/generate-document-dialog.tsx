@@ -4,12 +4,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-} from "@heroui/modal";
+import { Modal, Input as HeroInput, InputGroup } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +35,6 @@ import {
   Folder,
   FolderOpen,
 } from "@/lib/ez-icons";
-import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SurveyFormRenderer } from "./survey-form-renderer";
@@ -602,24 +596,14 @@ export function GenerateDocumentDialog({
   // --- Render ---
 
   return (
-    <Modal
-      isOpen={open}
-      onOpenChange={handleOpenChange}
-      size={step === "fill_form" ? "4xl" : "2xl"}
-      scrollBehavior="inside"
-      backdrop="blur"
-      classNames={{
-        base: "max-h-[90vh]",
-        body: "px-6 pt-2 pb-4",
-      }}
-    >
-      <ModalContent>
-        {() => (
-          <>
+    <Modal isOpen={open} onOpenChange={handleOpenChange}>
+      <Modal.Backdrop className="backdrop-blur-sm">
+        <Modal.Container size={step === "fill_form" ? "4xl" : "2xl"} className="max-h-[90vh]">
+          <Modal.Dialog>
             {/* --- Step 1: Template picker --- */}
             {step === "pick_template" && (
               <>
-                <ModalHeader className="flex items-center justify-between gap-2">
+                <Modal.Header className="flex items-center justify-between gap-2">
                   <div>
                     <h2 className="text-lg font-semibold">
                       {t("documents.selectTemplate", "Wybierz szablon dokumentu")}
@@ -634,22 +618,34 @@ export function GenerateDocumentDialog({
                   <span className="text-xs text-default-400 font-medium shrink-0">
                     {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 1, total: 2 })}
                   </span>
-                </ModalHeader>
+                </Modal.Header>
 
-                <ModalBody>
+                <Modal.Body className="px-6 pt-2 pb-4">
                   <div className="pb-3">
-                    <Input
-                      variant="bordered"
-                      placeholder={t(
-                        "documents.searchTemplate",
-                        "Szukaj szablonu...",
+                    <InputGroup>
+                      <InputGroup.Prefix>
+                        <Search className="h-4 w-4 text-muted-foreground" />
+                      </InputGroup.Prefix>
+                      <HeroInput
+                        placeholder={t(
+                          "documents.searchTemplate",
+                          "Szukaj szablonu...",
+                        )}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                      {search && (
+                        <InputGroup.Suffix>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => setSearch("")}
+                          >
+                            ×
+                          </button>
+                        </InputGroup.Suffix>
                       )}
-                      value={search}
-                      onValueChange={setSearch}
-                      startContent={<Search className="h-4 w-4 text-muted-foreground" />}
-                      isClearable
-                      onClear={() => setSearch("")}
-                    />
+                    </InputGroup>
                   </div>
 
                   <ScrollShadow className="flex-1 min-h-0 overflow-y-auto pb-4">
@@ -698,14 +694,14 @@ export function GenerateDocumentDialog({
                       />
                     )}
                   </ScrollShadow>
-                </ModalBody>
+                </Modal.Body>
               </>
             )}
 
             {/* --- Step 2: Form fill --- */}
             {step === "fill_form" && (
               <>
-                <ModalHeader className="flex items-center gap-2">
+                <Modal.Header className="flex items-center gap-2">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -735,9 +731,9 @@ export function GenerateDocumentDialog({
                       )}
                     </p>
                   </div>
-                </ModalHeader>
+                </Modal.Header>
 
-                <ModalBody>
+                <Modal.Body className="px-6 pt-2 pb-4">
                   {/* Template info bar */}
                   {selectedTemplate?.description && (
                     <div className="flex items-start gap-2 rounded-md bg-muted/50 border px-3 py-2 mb-4">
@@ -783,12 +779,12 @@ export function GenerateDocumentDialog({
                       )}
                     </div>
                   )}
-                </ModalBody>
+                </Modal.Body>
               </>
             )}
-          </>
-        )}
-      </ModalContent>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   );
 }

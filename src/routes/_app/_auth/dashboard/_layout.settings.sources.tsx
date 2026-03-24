@@ -7,11 +7,12 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -29,6 +30,7 @@ function SourcesSettings() {
   const [editName, setEditName] = useState("");
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const createSource = useMutation(api.sources.create);
   const updateSource = useMutation(api.sources.update);
@@ -77,13 +79,17 @@ function SourcesSettings() {
     });
   };
 
-  const handleDelete = async (sourceId: string) => {
-    if (window.confirm(t('sources.confirmDelete'))) {
-      await removeSource({
-        organizationId,
-        sourceId: sourceId as Id<"sources">,
-      });
-    }
+  const handleDelete = (source: { _id: string; name: string }) => {
+    setDeleteTarget({ id: source._id, name: source.name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await removeSource({
+      organizationId,
+      sourceId: deleteTarget.id as Id<"sources">,
+    });
+    setDeleteTarget(null);
   };
 
   return (
@@ -100,7 +106,7 @@ function SourcesSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t('sources.description')} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t('sources.description')}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Create form */}
@@ -210,7 +216,7 @@ function SourcesSettings() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleDelete(source._id)}
+                    onClick={() => handleDelete(source)}
                   >
                     <Trash2 className="h-4 w-4" variant="stroke" />
                   </Button>
@@ -220,6 +226,26 @@ function SourcesSettings() {
           );
         })}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

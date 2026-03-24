@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/ui/button";
 import {
@@ -150,7 +150,7 @@ function PermissionsSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("permissions.description", "Configure what each role can do")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("permissions.description", "Configure what each role can do")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Permission Matrix */}

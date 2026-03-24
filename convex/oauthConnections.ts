@@ -59,6 +59,11 @@ export const revokeAndDeactivate = action({
     connectionId: v.id("oauthConnections"),
   },
   handler: async (ctx, args) => {
+    // Verify the calling user is an admin of this org (auth context propagates to internal queries)
+    await ctx.runQuery(internal.oauthConnections.verifyAdminAccess, {
+      organizationId: args.organizationId,
+    });
+
     const connection = await ctx.runQuery(internal.oauthConnections.getForRevocation, {
       connectionId: args.connectionId,
       organizationId: args.organizationId,
@@ -150,6 +155,13 @@ export const createOrUpdate = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+  },
+});
+
+export const verifyAdminAccess = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
   },
 });
 

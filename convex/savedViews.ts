@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
+import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 
 export const listByEntityType = query({
   args: {
@@ -103,11 +103,17 @@ export const update = mutation({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
 
     const view = await ctx.db.get(args.viewId);
     if (!view || view.organizationId !== args.organizationId) {
       throw new Error("Saved view not found");
+    }
+
+    const isOwner = view.createdBy === user._id;
+    const isAdmin = membership.role === "owner" || membership.role === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new Error("Not authorized to update this view");
     }
 
     const { organizationId, viewId, ...updates } = args;
@@ -123,11 +129,17 @@ export const remove = mutation({
     viewId: v.id("savedViews"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
 
     const view = await ctx.db.get(args.viewId);
     if (!view || view.organizationId !== args.organizationId) {
       throw new Error("Saved view not found");
+    }
+
+    const isOwner = view.createdBy === user._id;
+    const isAdmin = membership.role === "owner" || membership.role === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new Error("Not authorized to delete this view");
     }
 
     await ctx.db.delete(args.viewId);
@@ -141,7 +153,7 @@ export const reorder = mutation({
     viewIds: v.array(v.id("savedViews")),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await requireOrgAdmin(ctx, args.organizationId);
 
     for (let i = 0; i < args.viewIds.length; i++) {
       const view = await ctx.db.get(args.viewIds[i]);

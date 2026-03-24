@@ -52,6 +52,7 @@ export async function getValidAccessToken(
     connectionId: connection._id,
     accessToken: data.access_token as string,
     expiresAt: newExpiresAt,
+    ...(data.refresh_token ? { refreshToken: data.refresh_token as string } : {}),
   });
 
   return { accessToken: data.access_token as string, connectionId: connection._id };

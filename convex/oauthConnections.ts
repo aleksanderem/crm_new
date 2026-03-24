@@ -1,15 +1,34 @@
 import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+
+/** Strip sensitive tokens from an OAuth connection before returning to the client. */
+function stripTokens(c: Doc<"oauthConnections">) {
+  return {
+    _id: c._id,
+    _creationTime: c._creationTime,
+    organizationId: c.organizationId,
+    provider: c.provider,
+    providerAccountId: c.providerAccountId,
+    isActive: c.isActive,
+    lastSyncedAt: c.lastSyncedAt,
+    scope: c.scope,
+    connectedBy: c.connectedBy,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const connections = await ctx.db
       .query("oauthConnections")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
+    return connections.map(stripTokens);
   },
 });
 
@@ -20,7 +39,7 @@ export const getByProvider = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    const connection = await ctx.db
       .query("oauthConnections")
       .withIndex("by_orgAndProvider", (q) =>
         q
@@ -29,6 +48,10 @@ export const getByProvider = query({
           .eq("isActive", true)
       )
       .first();
+
+    if (!connection) return null;
+
+    return stripTokens(connection);
   },
 });
 
@@ -120,12 +143,14 @@ export const updateTokens = internalMutation({
     connectionId: v.id("oauthConnections"),
     accessToken: v.string(),
     expiresAt: v.number(),
+    refreshToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.connectionId, {
       accessToken: args.accessToken,
       expiresAt: args.expiresAt,
       updatedAt: Date.now(),
+      ...(args.refreshToken ? { refreshToken: args.refreshToken } : {}),
     });
   },
 });

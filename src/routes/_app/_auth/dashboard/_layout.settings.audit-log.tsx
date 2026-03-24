@@ -7,7 +7,7 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useRole } from "@/hooks/use-permission";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -134,9 +134,7 @@ function AuditLogSettings() {
               {t("auditLog.title", "Audit Log")}
             </SectionHeader.Heading>
           </SectionHeader.Group>
-          <Alert>
-                  <AlertDescription>{t("auditLog.description", "Track all important actions in your organization")}</AlertDescription>
-                </Alert>
+          <UntitledAlert>{t("auditLog.description", "Track all important actions in your organization")}</UntitledAlert>
         </SectionHeader.Root>
         <Card>
           <CardContent className="py-12 text-center">
@@ -157,9 +155,7 @@ function AuditLogSettings() {
             {t("auditLog.title", "Audit Log")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert>
-                  <AlertDescription>{t("auditLog.description", "Track all important actions in your organization")}</AlertDescription>
-                </Alert>
+        <UntitledAlert>{t("auditLog.description", "Track all important actions in your organization")}</UntitledAlert>
       </SectionHeader.Root>
 
       {/* Filters */}

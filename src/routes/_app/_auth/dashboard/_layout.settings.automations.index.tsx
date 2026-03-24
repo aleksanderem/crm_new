@@ -7,7 +7,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import {
   Card,
   CardContent,
@@ -134,9 +134,7 @@ function AutomationSettingsOverview() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert>
-                  <AlertDescription>{t("settings.automationsDescription")}</AlertDescription>
-                </Alert>
+        <UntitledAlert>{t("settings.automationsDescription")}</UntitledAlert>
       </SectionHeader.Root>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,9 +73,7 @@ function LeaveTypesSettings() {
             </div>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert>
-                  <AlertDescription>{t("gabinet.leaveTypes.description")}</AlertDescription>
-                </Alert>
+        <UntitledAlert>{t("gabinet.leaveTypes.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {!leaveTypes?.length && (

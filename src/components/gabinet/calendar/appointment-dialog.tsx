@@ -5,6 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import {
@@ -975,12 +976,7 @@ export function AppointmentDialog({
           <div className="w-full md:w-[280px] flex flex-col">
             {!slotsEnabled ? (
               <div className="flex flex-col items-center justify-center flex-1 px-5 py-8">
-                <Alert
-                  color="primary"
-                  title={t(
-                    "gabinet.appointments.calendarDialog.selectDateForSlots",
-                  )}
-                />
+                <UntitledAlert>{t("gabinet.appointments.calendarDialog.selectDateForSlots")}</UntitledAlert>
               </div>
             ) : (
               <>
@@ -1019,7 +1015,7 @@ export function AppointmentDialog({
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
                             "hover:bg-accent hover:text-accent-foreground",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
                             selectedSlot?.start === slot.start
                               ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                               : "bg-muted/40",

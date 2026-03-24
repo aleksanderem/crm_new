@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -14,6 +14,7 @@ import { ComposeDialog } from "@/components/email/compose-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, Mail, RefreshCw } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute(
@@ -92,33 +93,40 @@ function InboxPage() {
     if (!open) setReplyTo(null);
   }, []);
 
-  return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col">
-      {/* Top bar */}
-
-       <h1 className="text-xl font-semibold">{t("inbox.title")}</h1>
-      <div className="flex shrink-0 items-center justify-between border-b bg-background py-3">
-       
-        <div className="flex items-center gap-3">
+  // --- Push inbox list into the sidebar slot ---
+  const { setContent: setSidebarContent } = useSidebarSlot();
+  useEffect(() => {
+    setSidebarContent(
+      <div className="flex flex-col gap-3 -mx-3">
+        {/* Filter tabs */}
+        <div className="px-1">
           <Tabs
             value={filter}
             onValueChange={(v) => setFilter(v as FilterTab)}
           >
-            <TabsList className="h-8">
-              <TabsTrigger value="all" className="h-7 text-xs">
+            <TabsList className="h-8 w-full">
+              <TabsTrigger value="all" className="h-7 text-xs flex-1">
                 {t("inbox.filters.all")}
               </TabsTrigger>
-              <TabsTrigger value="unread" className="h-7 text-xs">
+              <TabsTrigger value="unread" className="h-7 text-xs flex-1">
                 {t("inbox.filters.unread")}
               </TabsTrigger>
-              <TabsTrigger value="sent" className="h-7 text-xs">
+              <TabsTrigger value="sent" className="h-7 text-xs flex-1">
                 {t("inbox.filters.sent")}
               </TabsTrigger>
-              <TabsTrigger value="starred" className="h-7 text-xs">
+              <TabsTrigger value="starred" className="h-7 text-xs flex-1">
                 {t("inbox.filters.starred")}
               </TabsTrigger>
             </TabsList>
           </Tabs>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2 px-1">
+          <Button size="sm" className="flex-1" onClick={() => setComposeOpen(true)}>
+            <Pencil className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+            {t("inbox.compose")}
+          </Button>
           {googleConnection && (
             <Button
               variant="outline"
@@ -126,21 +134,13 @@ function InboxPage() {
               onClick={handleSyncGmail}
               disabled={isSyncing}
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} variant="stroke" />
-              {isSyncing ? t("integrations.syncing") : t("integrations.syncNow")}
+              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} variant="stroke" />
             </Button>
           )}
-          <Button size="sm" onClick={() => setComposeOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-            {t("inbox.compose")}
-          </Button>
         </div>
-      </div>
 
-      {/* Two-pane layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left pane - inbox list */}
-        <div className="w-[380px] shrink-0">
+        {/* Email list */}
+        <div className="flex-1 min-h-0 -mb-4">
           <InboxList
             organizationId={organizationId}
             selectedThreadId={selectedThreadId}
@@ -148,23 +148,39 @@ function InboxPage() {
             filter={filter}
           />
         </div>
-
-        {/* Right pane - thread view or empty state */}
-        <div className="flex-1 overflow-hidden">
-          {selectedThreadId ? (
-            <ThreadView
-              organizationId={organizationId}
-              threadId={selectedThreadId}
-              onReply={handleReply}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-              <Mail className="mb-3 h-12 w-12 opacity-20" />
-              <p className="text-sm">{t("inbox.empty")}</p>
-            </div>
-          )}
-        </div>
       </div>
+    );
+
+    return () => setSidebarContent(null);
+  }, [
+    organizationId,
+    selectedThreadId,
+    filter,
+    googleConnection,
+    isSyncing,
+    t,
+    setSidebarContent,
+    handleSelectThread,
+    handleSyncGmail,
+  ]);
+
+  // --- Main content: thread view only ---
+  return (
+    <div className="flex h-full flex-col">
+      {selectedThreadId ? (
+        <div className="min-h-0 flex-1">
+          <ThreadView
+            organizationId={organizationId}
+            threadId={selectedThreadId}
+            onReply={handleReply}
+          />
+        </div>
+      ) : (
+        <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+          <Mail className="mb-3 h-12 w-12 opacity-20" />
+          <p className="text-sm">{t("inbox.empty")}</p>
+        </div>
+      )}
 
       {/* Compose dialog */}
       <ComposeDialog

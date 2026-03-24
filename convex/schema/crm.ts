@@ -329,7 +329,8 @@ export function createCrmTables({
     createdAt: v.number(),
   })
     .index("by_deal", ["dealId"])
-    .index("by_product", ["productId"]),
+    .index("by_product", ["productId"])
+    .index("by_org", ["organizationId"]),
 
   // --- Calls ---
 

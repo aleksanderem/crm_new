@@ -1,6 +1,7 @@
 // convex/sidebarWidgets.ts
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { verifyOrgAccess } from "./_helpers/auth";
 
 // --- Insights (Dashboard) ---
@@ -451,19 +452,18 @@ export const getTopProducts = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const dealProducts = await ctx.db
-      .query("dealProducts")
-      .collect();
-
-    const countMap = new Map<string, number>();
-    for (const dp of dealProducts) {
-      const key = String(dp.productId);
-      countMap.set(key, (countMap.get(key) ?? 0) + 1);
+    const results: { label: string; value: number }[] = [];
+    for (const p of products) {
+      const dpCount = (await ctx.db
+        .query("dealProducts")
+        .withIndex("by_product", (q) => q.eq("productId", p._id))
+        .collect()).length;
+      if (dpCount > 0) {
+        results.push({ label: p.name, value: dpCount });
+      }
     }
 
-    return products
-      .map((p) => ({ label: p.name, value: countMap.get(String(p._id)) ?? 0 }))
-      .filter((p) => p.value > 0)
+    return results
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
   },
@@ -576,8 +576,8 @@ export const getTopTemplates = query({
     // Look up template names
     const results: { label: string; value: number }[] = [];
     for (const [templateId, count] of templateCounts) {
-      const template = await ctx.db.get(templateId as any);
-      if (template && "name" in template) {
+      const template = await ctx.db.get(templateId as Id<"emailTemplates">);
+      if (template && "name" in template && (template as any).organizationId === args.organizationId) {
         results.push({ label: template.name as string, value: count });
       }
     }

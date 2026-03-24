@@ -11,7 +11,7 @@ import { isReactComponent } from "@/lib/utils/is-react-component";
 export const styles = sortCx({
     common: {
         root: [
-            "group/button-group inline-flex h-max cursor-pointer items-center bg-card font-semibold whitespace-nowrap text-foreground shadow-skeumorphic ring-1 ring-border outline-brand transition duration-100 ease-linear ring-inset",
+            "group/button-group inline-flex h-max cursor-pointer items-center bg-card font-semibold whitespace-nowrap text-foreground shadow-skeuomorphic ring-1 ring-border outline-brand transition duration-100 ease-linear ring-inset",
             // Hover and focus styles
             "hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2",
             // Disabled styles

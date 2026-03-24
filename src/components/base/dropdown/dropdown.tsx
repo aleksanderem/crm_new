@@ -58,14 +58,14 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                     {Icon && (
                         <Icon
                             aria-hidden="true"
-                            className={cx("mr-2 size-4 shrink-0 stroke-[2.25px]", state.isDisabled ? "text-fg-disabled" : "text-fg-quaternary")}
+                            className={cx("mr-2 size-4 shrink-0 stroke-[2.25px]", state.isDisabled ? "" : "text-fg-quaternary")}
                         />
                     )}
 
                     <span
                         className={cx(
                             "grow truncate text-sm font-semibold",
-                            state.isDisabled ? "text-disabled" : "text-secondary",
+                            state.isDisabled ? "" : "text-secondary",
                             state.isFocused && "text-secondary_hover",
                         )}
                     >
@@ -76,7 +76,7 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                         <span
                             className={cx(
                                 "ml-3 shrink-0 rounded px-1 py-px text-xs font-medium ring-1 ring-secondary ring-inset",
-                                state.isDisabled ? "text-disabled" : "text-quaternary",
+                                state.isDisabled ? "" : "text-quaternary",
                             )}
                         >
                             {addon}

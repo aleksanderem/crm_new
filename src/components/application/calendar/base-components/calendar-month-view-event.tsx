@@ -2,10 +2,10 @@ import { cx } from "@/lib/utils/cx";
 
 export const eventViewColors = {
     gray: {
-        root: "bg-utility-gray-50 ring-utility-gray-200 hover:bg-utility-gray-100",
-        label: "text-utility-gray-700",
-        time: "text-utility-gray-600",
-        dot: "bg-utility-gray-500",
+        root: "bg-utility-neutral-50 ring-utility-neutral-200 hover:bg-utility-neutral-100",
+        label: "text-utility-neutral-700",
+        time: "text-utility-neutral-600",
+        dot: "bg-utility-neutral-500",
     },
     brand: {
         root: "bg-utility-brand-50 ring-utility-brand-200 hover:bg-utility-brand-100",

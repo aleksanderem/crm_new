@@ -8,7 +8,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { getLocaleCurrency } from "@/utils/misc";
 import { CURRENCIES, PLANS } from "@cvx/schema";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute(
@@ -93,7 +93,7 @@ export default function BillingSettings() {
             {t("billing.title", "Billing")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("billing.description", "Manage billing and your subscription plan.")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("billing.description", "Manage billing and your subscription plan.")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Plans */}

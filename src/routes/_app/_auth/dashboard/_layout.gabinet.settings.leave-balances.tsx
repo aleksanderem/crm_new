@@ -4,7 +4,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
@@ -85,7 +85,7 @@ function LeaveBalancesPage() {
             </Select>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("gabinet.leaveBalances.description")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("gabinet.leaveBalances.description")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {!employees?.length && (

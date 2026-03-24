@@ -7,12 +7,13 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { Alert } from "@heroui/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -31,6 +32,7 @@ function EmailSettings() {
   const [fromEmail, setFromEmail] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const upsertAccount = useMutation(api.emailAccounts.upsert);
   const removeAccount = useMutation(api.emailAccounts.remove);
@@ -66,13 +68,17 @@ function EmailSettings() {
     setShowForm(true);
   };
 
-  const handleDelete = async (accountId: string) => {
-    if (window.confirm(t("common.confirm"))) {
-      await removeAccount({
-        organizationId,
-        accountId: accountId as Id<"emailAccounts">,
-      });
-    }
+  const handleDelete = (account: { _id: string; fromEmail: string }) => {
+    setDeleteTarget({ id: account._id, name: account.fromEmail });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await removeAccount({
+      organizationId,
+      accountId: deleteTarget.id as Id<"emailAccounts">,
+    });
+    setDeleteTarget(null);
   };
 
   const resetForm = () => {
@@ -98,7 +104,7 @@ function EmailSettings() {
             </SectionHeader.Actions>
           )}
         </SectionHeader.Group>
-        <Alert color="primary" title={t("inbox.description")} />
+        <Alert status="accent"><Alert.Content><Alert.Title>{t("inbox.description")}</Alert.Title></Alert.Content></Alert>
       </SectionHeader.Root>
 
       {/* Create/Edit form */}
@@ -181,7 +187,7 @@ function EmailSettings() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handleDelete(account._id)}
+                  onClick={() => handleDelete(account)}
                 >
                   <Trash2 className="h-4 w-4" variant="stroke" />
                 </Button>
@@ -190,6 +196,26 @@ function EmailSettings() {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

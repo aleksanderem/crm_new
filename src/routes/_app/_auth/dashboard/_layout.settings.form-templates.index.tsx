@@ -65,7 +65,6 @@ import {
   GripVertical,
   ChevronDown,
 } from "@/lib/ez-icons";
-import { Alert } from "@heroui/alert";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 

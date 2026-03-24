@@ -8,7 +8,7 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -166,7 +166,9 @@ function TeamSettings() {
             {t("team.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert status="accent"><Alert.Content><Alert.Title>{t("team.description")}</Alert.Title></Alert.Content></Alert>
+        <Alert>
+                  <AlertDescription>{t("team.description")}</AlertDescription>
+                </Alert>
       </SectionHeader.Root>
 
       {/* Seat usage */}

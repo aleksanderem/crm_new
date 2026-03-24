@@ -7,7 +7,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -134,7 +134,9 @@ function AutomationSettingsOverview() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert status="accent"><Alert.Content><Alert.Title>{t("settings.automationsDescription")}</Alert.Title></Alert.Content></Alert>
+        <Alert>
+                  <AlertDescription>{t("settings.automationsDescription")}</AlertDescription>
+                </Alert>
       </SectionHeader.Root>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

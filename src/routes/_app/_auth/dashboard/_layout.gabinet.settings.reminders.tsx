@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,7 +69,9 @@ function ReminderSettings() {
             {t("gabinet.reminders.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert status="accent"><Alert.Content><Alert.Title>{t("gabinet.reminders.description")}</Alert.Title></Alert.Content></Alert>
+        <Alert>
+                  <AlertDescription>{t("gabinet.reminders.description")}</AlertDescription>
+                </Alert>
       </SectionHeader.Root>
 
       <div className="max-w-lg space-y-6">

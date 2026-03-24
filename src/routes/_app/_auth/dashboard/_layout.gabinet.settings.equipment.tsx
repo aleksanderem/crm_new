@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -559,7 +559,9 @@ function EquipmentSettingsPage() {
               </Button>
             </SectionHeader.Actions>
           </SectionHeader.Group>
-          <Alert status="accent"><Alert.Content><Alert.Title>{t("gabinet.equipment.description", "Zarządzaj sprzętem i zasobami gabinetu.")}</Alert.Title></Alert.Content></Alert>
+          <Alert>
+                  <AlertDescription>{t("gabinet.equipment.description", "Zarządzaj sprzętem i zasobami gabinetu.")}</AlertDescription>
+                </Alert>
         </SectionHeader.Root>
 
         <div className="space-y-3">

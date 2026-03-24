@@ -7,7 +7,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ActivityTypeForm } from "@/components/settings/activity-type-form";
 import { CustomFieldDefinitionForm } from "@/components/custom-fields/custom-field-definition-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,7 +133,9 @@ function ActivityTypesSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert status="accent"><Alert.Content><Alert.Title>{t('activityTypeSettings.description')}</Alert.Title></Alert.Content></Alert>
+        <Alert>
+                  <AlertDescription>{t('activityTypeSettings.description')}</AlertDescription>
+                </Alert>
       </SectionHeader.Root>
 
       {/* Create form */}

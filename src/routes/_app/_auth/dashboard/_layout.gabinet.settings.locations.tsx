@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -531,7 +531,9 @@ function LocationsSettingsPage() {
               </Button>
             </SectionHeader.Actions>
           </SectionHeader.Group>
-          <Alert status="accent"><Alert.Content><Alert.Title>{t("gabinet.locations.description", "Zarządzaj lokalizacjami gabinetu.")}</Alert.Title></Alert.Content></Alert>
+          <Alert>
+                  <AlertDescription>{t("gabinet.locations.description", "Zarządzaj lokalizacjami gabinetu.")}</AlertDescription>
+                </Alert>
         </SectionHeader.Root>
 
         <div className="space-y-3">

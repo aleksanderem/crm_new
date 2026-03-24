@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -230,7 +230,9 @@ function LeavesPage() {
               </Dialog>
             </SectionHeader.Actions>
           </SectionHeader.Group>
-          <Alert status="accent"><Alert.Content><Alert.Title>{t("gabinet.leaves.description")}</Alert.Title></Alert.Content></Alert>
+          <Alert>
+                  <AlertDescription>{t("gabinet.leaves.description")}</AlertDescription>
+                </Alert>
         </SectionHeader.Root>
 
         <div className="flex items-center gap-2">

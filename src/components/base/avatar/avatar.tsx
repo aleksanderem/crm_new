@@ -114,7 +114,7 @@ export const Avatar = ({
         <div
             data-avatar
             className={cx(
-                "relative inline-flex shrink-0 items-center justify-center rounded-full bg-avatar-bg outline-transparent",
+                "relative inline-flex shrink-0 items-center justify-center rounded-full bg-tertiary outline-transparent",
                 // Focus styles
                 focusable && "group-outline-focus-ring group-focus-visible:outline-2 group-focus-visible:outline-offset-2",
                 contrastBorder && "outline outline-avatar-contrast-border",

@@ -12,9 +12,9 @@ export const styles = sortCx({
             // When button is used within `InputGroup`
             "in-data-input-wrapper:shadow-xs in-data-input-wrapper:focus:!z-50 in-data-input-wrapper:in-data-leading:-mr-px in-data-input-wrapper:in-data-leading:rounded-r-none in-data-input-wrapper:in-data-leading:before:rounded-r-none in-data-input-wrapper:in-data-trailing:-ml-px in-data-input-wrapper:in-data-trailing:rounded-l-none in-data-input-wrapper:in-data-trailing:before:rounded-l-none",
             // Disabled styles
-            "disabled:cursor-not-allowed disabled:text-fg-disabled",
+            "disabled:cursor-not-allowed disabled:",
             // Icon styles
-            "disabled:*:data-icon:text-fg-disabled_subtle",
+            "disabled:*:data-icon:",
             // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
             "*:data-icon:pointer-events-none *:data-icon:size-5 *:data-icon:shrink-0 *:data-icon:transition-inherit-all",
         ].join(" "),
@@ -48,20 +48,20 @@ export const styles = sortCx({
     colors: {
         primary: {
             root: [
-                "bg-brand-solid text-white shadow-xs-skeumorphic ring-1 ring-transparent ring-inset hover:bg-brand-solid_hover data-loading:bg-brand-solid_hover",
+                "bg-brand-solid text-white shadow-xs-skeuomorphic ring-1 ring-transparent ring-inset hover:bg-brand-solid_hover data-loading:bg-brand-solid_hover",
                 // Inner border gradient
                 "before:absolute before:inset-px before:border before:border-white/12 before:mask-b-from-0%",
                 // Disabled styles
-                "disabled:bg-disabled disabled:shadow-xs disabled:ring-disabled_subtle",
+                "disabled:opacity-50 disabled:shadow-xs disabled:",
                 // Icon styles
-                "*:data-icon:text-button-primary-icon hover:*:data-icon:text-button-primary-icon_hover",
+                "*:data-icon:text-white/60 hover:*:data-icon:text-white/70",
             ].join(" "),
         },
         secondary: {
             root: [
-                "bg-card text-foreground shadow-xs-skeumorphic ring-1 ring-border ring-inset hover:bg-accent hover:text-foreground data-loading:bg-accent",
+                "bg-card text-foreground shadow-xs-skeuomorphic ring-1 ring-border ring-inset hover:bg-accent hover:text-foreground data-loading:bg-accent",
                 // Disabled styles
-                "disabled:shadow-xs disabled:ring-disabled_subtle",
+                "disabled:shadow-xs disabled:",
                 // Icon styles
                 "*:data-icon:text-muted-foreground hover:*:data-icon:text-foreground",
             ].join(" "),
@@ -93,20 +93,20 @@ export const styles = sortCx({
         },
         "primary-destructive": {
             root: [
-                "bg-error-solid text-white shadow-xs-skeumorphic ring-1 ring-transparent outline-error ring-inset hover:bg-error-solid_hover data-loading:bg-error-solid_hover",
+                "bg-error-solid text-white shadow-xs-skeuomorphic ring-1 ring-transparent outline-error ring-inset hover:bg-error-solid_hover data-loading:bg-error-solid_hover",
                 // Inner border gradient
                 "before:absolute before:inset-px before:border before:border-white/12 before:mask-b-from-0%",
                 // Disabled styles
-                "disabled:bg-disabled disabled:shadow-xs disabled:ring-disabled_subtle",
+                "disabled:opacity-50 disabled:shadow-xs disabled:",
                 // Icon styles
-                "*:data-icon:text-button-destructive-primary-icon hover:*:data-icon:text-button-destructive-primary-icon_hover",
+                "*:data-icon:text-white/60 hover:*:data-icon:text-white/70",
             ].join(" "),
         },
         "secondary-destructive": {
             root: [
-                "bg-primary text-error-primary shadow-xs-skeumorphic ring-1 ring-error_subtle outline-error ring-inset hover:bg-error-primary hover:text-error-primary_hover data-loading:bg-error-primary",
+                "bg-primary text-error-primary shadow-xs-skeuomorphic ring-1 ring-error_subtle outline-error ring-inset hover:bg-error-primary hover:text-error-primary_hover data-loading:bg-error-primary",
                 // Disabled styles
-                "disabled:bg-primary disabled:shadow-xs disabled:ring-disabled_subtle",
+                "disabled:bg-primary disabled:shadow-xs disabled:",
                 // Icon styles
                 "*:data-icon:text-fg-error-secondary hover:*:data-icon:text-fg-error-primary",
             ].join(" "),

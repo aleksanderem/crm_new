@@ -86,8 +86,8 @@ export const InputBase = ({
                     isFocusWithin && !isDisabled && "ring-2 ring-brand",
 
                     // Disabled state styles
-                    isDisabled && "cursor-not-allowed bg-disabled_subtle ring-disabled",
-                    "group-disabled:cursor-not-allowed group-disabled:bg-disabled_subtle group-disabled:ring-disabled",
+                    isDisabled && "cursor-not-allowed opacity-50 ",
+                    "group-disabled:cursor-not-allowed group-disabled:opacity-50 group-disabled:",
 
                     // Invalid state styles
                     isInvalid && "ring-error_subtle",
@@ -107,7 +107,7 @@ export const InputBase = ({
                 <Icon
                     className={cx(
                         "pointer-events-none absolute size-5 text-fg-quaternary",
-                        isDisabled && "text-fg-disabled",
+                        isDisabled && "",
                         sizes[inputSize].iconLeading,
                         context?.iconClassName,
                         iconClassName,
@@ -122,7 +122,7 @@ export const InputBase = ({
                 placeholder={placeholder}
                 className={cx(
                     "m-0 w-full bg-transparent text-md text-primary ring-0 outline-hidden placeholder:text-placeholder autofill:rounded-lg autofill:text-primary",
-                    isDisabled && "cursor-not-allowed text-disabled",
+                    isDisabled && "cursor-not-allowed ",
                     sizes[inputSize].root,
                     context?.inputClassName,
                     inputClassName,
@@ -168,7 +168,7 @@ export const InputBase = ({
                     <span
                         className={cx(
                             "pointer-events-none rounded px-1 py-px text-xs font-medium text-quaternary ring-1 ring-secondary select-none ring-inset",
-                            isDisabled && "bg-transparent text-disabled",
+                            isDisabled && "bg-transparent ",
                         )}
                         aria-hidden="true"
                     >

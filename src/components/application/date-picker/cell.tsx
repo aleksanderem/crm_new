@@ -42,11 +42,11 @@ export const CalendarCell = ({ date, isHighlighted, ...props }: CalendarCellProp
                 const isRoundedRight = isSelectionEnd || dayOfWeek === 6;
 
                 return cx(
-                    "relative size-10 focus:outline-none",
+                    "relative size-10 focus:outline-hidden",
                     isRoundedLeft && "rounded-l-full",
                     isRoundedRight && "rounded-r-full",
-                    isInRange && isDisabled && "bg-active",
-                    isSelected && isRangeCalendar && "bg-active",
+                    isInRange && isDisabled && "bg-primary_hover",
+                    isSelected && isRangeCalendar && "bg-primary_hover",
                     isDisabled ? "pointer-events-none" : "cursor-pointer",
                     isFocusVisible ? "z-10" : "z-0",
                     isRangeCalendar && isOutsideMonth && "hidden",
@@ -56,14 +56,14 @@ export const CalendarCell = ({ date, isHighlighted, ...props }: CalendarCellProp
                         isSelected &&
                         isBeforeEnd &&
                         isRangeCalendar &&
-                        "after:absolute after:inset-0 after:translate-x-full after:bg-gradient-to-l after:from-transparent after:to-bg-active in-[[role=gridcell]:last-child]:after:hidden",
+                        "after:absolute after:inset-0 after:translate-x-full after:bg-gradient-to-l after:from-transparent after:to-bg-primary_hover in-[[role=gridcell]:last-child]:after:hidden",
 
                     // Show gradient on first day of month if it's within the selected range.
                     isFirstDayOfMonth &&
                         isSelected &&
                         isAfterStart &&
                         isRangeCalendar &&
-                        "after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:to-bg-active in-[[role=gridcell]:first-child]:after:hidden",
+                        "after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:to-bg-primary_hover in-[[role=gridcell]:first-child]:after:hidden",
                 );
             }}
         >
@@ -75,7 +75,7 @@ export const CalendarCell = ({ date, isHighlighted, ...props }: CalendarCellProp
                         className={cx(
                             "relative flex size-full items-center justify-center rounded-full text-sm",
                             // Disabled state.
-                            isDisabled ? "text-disabled" : "text-secondary hover:text-secondary_hover",
+                            isDisabled ? "" : "text-secondary hover:text-secondary_hover",
                             // Focus ring, visible while the cell has keyboard focus.
                             isFocusVisible ? "outline-2 outline-offset-2 outline-focus-ring" : "",
                             // Hover state for cells in the middle of the range.
@@ -83,7 +83,7 @@ export const CalendarCell = ({ date, isHighlighted, ...props }: CalendarCellProp
                             markedAsSelected && "bg-brand-solid font-medium text-white hover:bg-brand-solid_hover hover:text-white",
                             // Hover state for non-selected cells.
                             !isSelected && !isDisabled ? "hover:bg-primary_hover hover:font-medium!" : "",
-                            !isSelected && isTodayDate ? "bg-active font-medium hover:bg-secondary_hover" : "",
+                            !isSelected && isTodayDate ? "bg-primary_hover font-medium hover:bg-secondary_hover" : "",
                         )}
                     >
                         {formattedDate}

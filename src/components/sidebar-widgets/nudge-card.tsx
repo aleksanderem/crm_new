@@ -1,6 +1,6 @@
 import { CircleAlertIcon, TriangleAlertIcon, CircleCheckIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 
 type NudgeSeverity = "red" | "yellow" | "green";
 

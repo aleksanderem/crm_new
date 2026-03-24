@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,9 +49,7 @@ function PipelinesSettings() {
             {t("settings.pipelines.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert>
-                  <AlertDescription>{t("settings.pipelines.description")}</AlertDescription>
-                </Alert>
+        <UntitledAlert>{t("settings.pipelines.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       <Card>

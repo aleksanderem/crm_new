@@ -1,4 +1,5 @@
-import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
+import { query, mutation, internalQuery, internalMutation, action } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 
@@ -48,6 +49,43 @@ export const deactivate = mutation({
     await ctx.db.patch(args.connectionId, {
       isActive: false,
       updatedAt: Date.now(),
+    });
+  },
+});
+
+export const revokeAndDeactivate = action({
+  args: {
+    organizationId: v.id("organizations"),
+    connectionId: v.id("oauthConnections"),
+  },
+  handler: async (ctx, args) => {
+    const connection = await ctx.runQuery(internal.oauthConnections.getForRevocation, {
+      connectionId: args.connectionId,
+      organizationId: args.organizationId,
+    });
+
+    if (!connection) {
+      throw new Error("Connection not found");
+    }
+
+    try {
+      const response = await fetch("https://oauth2.googleapis.com/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          token: connection.refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn("Google token revocation failed:", await response.text());
+      }
+    } catch (error) {
+      console.warn("Google token revocation error:", error);
+    }
+
+    await ctx.runMutation(internal.oauthConnections.internalDeactivate, {
+      connectionId: args.connectionId,
     });
   },
 });
@@ -111,6 +149,32 @@ export const createOrUpdate = internalMutation({
       connectedBy: args.connectedBy,
       createdAt: now,
       updatedAt: now,
+    });
+  },
+});
+
+export const getForRevocation = internalQuery({
+  args: {
+    connectionId: v.id("oauthConnections"),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const connection = await ctx.db.get(args.connectionId);
+    if (!connection || connection.organizationId !== args.organizationId) {
+      return null;
+    }
+    return connection;
+  },
+});
+
+export const internalDeactivate = internalMutation({
+  args: {
+    connectionId: v.id("oauthConnections"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.connectionId, {
+      isActive: false,
+      updatedAt: Date.now(),
     });
   },
 });

@@ -64,6 +64,8 @@ export interface CrmDataTableProps<TData> {
   defaultColumnVisibility?: VisibilityState;
   toolbarActions?: React.ReactNode;
   toolbarDropdownActions?: ToolbarDropdownAction[];
+  /** When true, the built-in DataTableToolbar is not rendered. Use this when providing an external toolbar (e.g. DataListFilterBar). */
+  hideToolbar?: boolean;
 }
 
 export function CrmDataTable<TData>({
@@ -88,6 +90,7 @@ export function CrmDataTable<TData>({
   defaultColumnVisibility,
   toolbarActions,
   toolbarDropdownActions,
+  hideToolbar = false,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
@@ -252,18 +255,20 @@ export function CrmDataTable<TData>({
   }
 
   return (
-    <Card className="py-0 overflow-hidden">
-      <div className="px-4 pt-4 sm:px-6">
-        <DataTableToolbar
-          table={table}
-          searchKey={searchKey}
-          searchPlaceholder={searchPlaceholder}
-          filterableColumns={filterableColumns}
-          showViewOptions
-          actions={toolbarActions}
-          dropdownActions={toolbarDropdownActions}
-        />
-      </div>
+    <Card className="py-0 overflow-x-auto">
+      {!hideToolbar && (
+        <div className="px-4 pt-4 sm:px-6">
+          <DataTableToolbar
+            table={table}
+            searchKey={searchKey}
+            searchPlaceholder={searchPlaceholder}
+            filterableColumns={filterableColumns}
+            showViewOptions
+            actions={toolbarActions}
+            dropdownActions={toolbarDropdownActions}
+          />
+        </div>
+      )}
 
       {enableBulkSelect && bulkActions && bulkActions.length > 0 && (
         <div className="px-4 sm:px-6">
@@ -281,7 +286,7 @@ export function CrmDataTable<TData>({
 
       {/* Table with horizontal scroll constrained to parent width */}
       <div className="relative mt-4 border-t overflow-x-auto overflow-y-visible">
-        <table className="caption-bottom text-sm" style={{ minWidth: "100%" }}>
+        <table className="table-fixed caption-bottom text-sm" style={{ minWidth: `${Math.max(table.getTotalSize(), 600)}px` }}>
           <colgroup>
             {table.getVisibleLeafColumns().map((col) => (
               <col key={col.id} style={{ width: col.getSize() }} />
@@ -335,8 +340,8 @@ export function CrmDataTable<TData>({
                         <td
                           key={cell.id}
                           className={cn(
-                            "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                            isFrozen && "sticky z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
+                            "max-w-0 overflow-hidden p-4 align-middle [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:max-w-none",
+                            isFrozen && "sticky z-10 bg-background group-hover:bg-muted data-[state=selected]:bg-muted",
                             isFirstDataCol && onRowClick && "cursor-pointer"
                           )}
                           style={isFrozen ? { left } : undefined}

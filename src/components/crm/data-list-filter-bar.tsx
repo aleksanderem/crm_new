@@ -1,21 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import type { Table } from "@tanstack/react-table";
-import { FilterLines, SearchMd, Settings02, DotsVertical, Plus } from "@untitledui/icons";
+import { SearchMd, Plus, DotsVertical } from "@untitledui/icons";
 import { Tabs, TabList, Tab } from "@untitled/app/tabs/tabs";
 import { FilterBar } from "@untitled/app/filter-bar/filter-bar";
 import { Button } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
 import { SlideoutMenu } from "@untitled/app/slideout-menus/slideout-menu";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +17,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input as ShadcnInput } from "@/components/ui/input";
 import { Button as ShadcnButton } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { FieldDef, FilterCondition, FilterConfig } from "./types";
 
 interface SavedViewDef {
@@ -55,13 +45,6 @@ export interface DataListFilterBarProps {
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
 
-  // Column picker - pass TanStack table instance
-  table?: Table<any>;
-
-  // Active filter count for badge
-  activeFilterCount?: number;
-  onFiltersClick?: () => void;
-
   // Extra dropdown actions
   dropdownActions?: Array<{
     label: string;
@@ -83,9 +66,6 @@ export function DataListFilterBar({
   searchValue,
   onSearchChange,
   searchPlaceholder,
-  table,
-  activeFilterCount = 0,
-  onFiltersClick,
   dropdownActions = [],
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
@@ -140,49 +120,12 @@ export function DataListFilterBar({
     setNewViewName("");
   };
 
-  // Build tab items from views for the Untitled UI Tabs component
   const tabItems = views.map((view) => ({
     id: view.id,
     label: view.name,
     children: view.name,
   }));
 
-  // --- Column picker (shadcn — no UTUI equivalent with checkboxes) ---
-  const renderColumnPicker = () => {
-    if (!table) return null;
-    const hideable = table
-      .getAllColumns()
-      .filter(
-        (col) => typeof col.accessorFn !== "undefined" && col.getCanHide(),
-      );
-    if (hideable.length === 0) return null;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" color="secondary" iconLeading={Settings02}>
-            {t("table.columns")}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[180px]">
-          <DropdownMenuLabel>{t("table.toggleColumns")}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {hideable.map((col) => (
-            <DropdownMenuCheckboxItem
-              key={col.id}
-              className="capitalize"
-              checked={col.getIsVisible()}
-              onCheckedChange={(value) => col.toggleVisibility(!!value)}
-            >
-              {col.id}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
-  // --- More actions dropdown (UTUI) ---
   const renderMoreActions = () => {
     if (dropdownActions.length === 0) return null;
     return (
@@ -208,7 +151,6 @@ export function DataListFilterBar({
       {/* UTUI FilterBar layout */}
       <FilterBar.Root>
         <FilterBar.Content>
-          {/* Left side: Saved view tabs (UTUI Tabs) */}
           {views.length > 0 && (
             <Tabs
               selectedKey={activeViewId ?? undefined}
@@ -238,7 +180,6 @@ export function DataListFilterBar({
           )}
         </FilterBar.Content>
 
-        {/* Right side: desktop controls (UTUI FilterBar.Actions) */}
         <FilterBar.Actions className="hidden md:flex">
           <Input
             size="sm"
@@ -248,39 +189,17 @@ export function DataListFilterBar({
             onChange={handleSearchInput}
             className="w-[220px]"
           />
-          {onFiltersClick && (
-            <Button
-              size="sm"
-              color="secondary"
-              iconLeading={FilterLines}
-              onClick={onFiltersClick}
-            >
-              {t("views.filters")}
-              {activeFilterCount > 0 && (
-                <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </Button>
-          )}
-          {renderColumnPicker()}
           {renderMoreActions()}
         </FilterBar.Actions>
 
-        {/* Right side: mobile trigger */}
-        <div className="flex items-center md:hidden">
+        {/* Mobile: open slideout */}
+        <div className="flex items-center gap-2 md:hidden">
           <Button
             size="sm"
             color="secondary"
-            iconLeading={FilterLines}
+            iconLeading={SearchMd}
             onClick={() => setMobileOpen(true)}
-          >
-            {activeFilterCount > 0 && (
-              <span className="inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
+          />
         </div>
       </FilterBar.Root>
 
@@ -288,7 +207,7 @@ export function DataListFilterBar({
       <SlideoutMenu isOpen={mobileOpen} onOpenChange={setMobileOpen} isDismissable>
         <SlideoutMenu.Header onClose={() => setMobileOpen(false)}>
           <h2 className="text-lg font-semibold text-fg-primary">
-            {t("views.filters")}
+            {t("common.search")}
           </h2>
         </SlideoutMenu.Header>
         <SlideoutMenu.Content className="gap-4">
@@ -299,57 +218,6 @@ export function DataListFilterBar({
             value={localSearch}
             onChange={handleSearchInput}
           />
-          {onFiltersClick && (
-            <Button
-              size="sm"
-              color="secondary"
-              iconLeading={FilterLines}
-              className="w-full justify-start"
-              onClick={() => {
-                onFiltersClick();
-                setMobileOpen(false);
-              }}
-            >
-              {t("views.filters")}
-              {activeFilterCount > 0 && (
-                <span className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </Button>
-          )}
-          {table && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                {t("table.columns")}
-              </Label>
-              <div className="space-y-1">
-                {table
-                  .getAllColumns()
-                  .filter(
-                    (col) =>
-                      typeof col.accessorFn !== "undefined" &&
-                      col.getCanHide(),
-                  )
-                  .map((col) => (
-                    <label
-                      key={col.id}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm capitalize hover:bg-bg-secondary"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={col.getIsVisible()}
-                        onChange={(e) =>
-                          col.toggleVisibility(e.target.checked)
-                        }
-                        className="size-4 rounded border-border-primary"
-                      />
-                      {col.id}
-                    </label>
-                  ))}
-              </div>
-            </div>
-          )}
           {dropdownActions.length > 0 && (
             <div className="space-y-1 border-t border-border-secondary pt-3">
               {dropdownActions.map((action) => (
@@ -374,7 +242,7 @@ export function DataListFilterBar({
         </SlideoutMenu.Content>
       </SlideoutMenu>
 
-      {/* Create view dialog (shadcn — no UTUI equivalent) */}
+      {/* Create view dialog (shadcn — no UTUI modal/dialog equivalent) */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>

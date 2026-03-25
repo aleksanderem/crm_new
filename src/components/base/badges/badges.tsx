@@ -1,6 +1,6 @@
 import type { MouseEventHandler, ReactNode } from "react";
 import { X as CloseX } from "@untitledui/icons";
-import { Dot } from "@untitled/foundations/dot-icon";
+import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/lib/utils/cx";
 import type { BadgeColors, BadgeTypeToColorMap, BadgeTypes, FlagTypes, IconComponentType, Sizes } from "./badge-types";
 import { badgeTypes } from "./badge-types";
@@ -31,12 +31,12 @@ export const filledColors: Record<BadgeColors, { root: string; addon: string; ad
         addon: "text-utility-green-500",
         addonButton: "hover:bg-utility-green-100 text-utility-green-400 hover:text-utility-green-500",
     },
-    "gray-blue": {
+    slate: {
         root: "bg-utility-slate-50 text-utility-slate-700 ring-utility-slate-200",
         addon: "text-utility-slate-500",
         addonButton: "hover:bg-utility-slate-100 text-utility-slate-400 hover:text-utility-slate-500",
     },
-    "blue-light": {
+    sky: {
         root: "bg-utility-sky-50 text-utility-sky-700 ring-utility-sky-200",
         addon: "text-utility-sky-500",
         addonButton: "hover:bg-utility-sky-100 text-utility-sky-400 hover:text-utility-sky-500",
@@ -87,7 +87,7 @@ const withPillTypes = {
         styles: {
             gray: {
                 root: "bg-bg-primary text-fg-secondary ring-border-primary",
-                addon: "text-gray-500",
+                addon: "text-neutral-500",
                 addonButton: "hover:bg-utility-neutral-100 text-utility-neutral-400 hover:text-utility-neutral-500",
             },
         },

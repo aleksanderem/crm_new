@@ -58,6 +58,7 @@ function ContactsIndex() {
   const [isCreating, setIsCreating] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<import("@/components/crm/types").FilterCondition[]>([]);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
@@ -146,13 +147,55 @@ function ContactsIndex() {
   }, [contacts, activeViewId, applyFilters]);
 
   const searchedContacts = useMemo(() => {
-    if (!searchValue.trim()) return filteredContacts;
-    const q = searchValue.toLowerCase();
-    return filteredContacts.filter((c) => {
-      const full = `${c.firstName} ${c.lastName ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase();
-      return full.includes(q);
-    });
-  }, [filteredContacts, searchValue]);
+    let result = filteredContacts;
+
+    // Apply active filters from FilterDropdown
+    if (activeFilters.length > 0) {
+      result = result.filter((c) => {
+        return activeFilters.every((f) => {
+          const raw = (c as Record<string, any>)[f.field];
+          const val = typeof raw === "string" ? raw.toLowerCase() : raw;
+          const target = typeof f.value === "string" ? f.value.toLowerCase() : f.value;
+
+          switch (f.operator) {
+            case "contains":
+              return typeof val === "string" && val.includes(target);
+            case "notContains":
+              return typeof val === "string" && !val.includes(target);
+            case "equals":
+              return val === target || String(val) === String(target);
+            case "notEquals":
+              return val !== target && String(val) !== String(target);
+            case "isEmpty":
+              return !raw || raw === "";
+            case "isNotEmpty":
+              return !!raw && raw !== "";
+            case "greaterThan":
+              return Number(val) > Number(target);
+            case "lessThan":
+              return Number(val) < Number(target);
+            case "before":
+              return raw < new Date(f.value).getTime();
+            case "after":
+              return raw > new Date(f.value).getTime();
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
+    // Apply text search
+    if (searchValue.trim()) {
+      const q = searchValue.toLowerCase();
+      result = result.filter((c) => {
+        const full = `${c.firstName} ${c.lastName ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase();
+        return full.includes(q);
+      });
+    }
+
+    return result;
+  }, [filteredContacts, searchValue, activeFilters]);
 
   const tableData = mergeCustomFieldValues(searchedContacts);
 
@@ -368,6 +411,7 @@ function ContactsIndex() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('contacts.searchPlaceholder')}
+        onFiltersChange={setActiveFilters}
         dropdownActions={[
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },

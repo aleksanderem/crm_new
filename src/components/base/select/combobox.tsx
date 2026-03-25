@@ -3,10 +3,10 @@ import { isValidElement, useCallback, useContext, useRef, useState } from "react
 import { SearchLg } from "@untitledui/icons";
 import type { ComboBoxProps as AriaComboBoxProps, GroupProps as AriaGroupProps, ListBoxProps as AriaListBoxProps } from "react-aria-components";
 import { ComboBox as AriaComboBox, Group as AriaGroup, Input as AriaInput, ListBox as AriaListBox, ComboBoxStateContext } from "react-aria-components";
-import { HintText } from "@untitled/base/input/hint-text";
-import { Label } from "@untitled/base/input/label";
-import { Popover } from "@untitled/base/select/popover";
-import { type CommonProps, SelectContext, type SelectItemType, sizes } from "@untitled/base/select/select-shared";
+import { HintText } from "@/components/base/input/hint-text";
+import { Label } from "@/components/base/input/label";
+import { Popover } from "@/components/base/select/popover";
+import { type CommonProps, SelectContext, type SelectItemType, sizes } from "@/components/base/select/select-shared";
 import { useResizeObserver } from "@/hooks/use-resize-observer";
 import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";

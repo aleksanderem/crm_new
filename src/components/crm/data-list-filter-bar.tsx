@@ -3,14 +3,11 @@ import { useTranslation } from "react-i18next";
 import type { Table } from "@tanstack/react-table";
 import { FilterLines, SearchMd, Settings02, DotsVertical, Plus } from "@untitledui/icons";
 import { Tabs, TabList, Tab } from "@untitled/app/tabs/tabs";
+import { FilterBar } from "@untitled/app/filter-bar/filter-bar";
 import { Button } from "@untitled/base/buttons/button";
+import { Input } from "@untitled/base/input/input";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { SlideoutMenu } from "@untitled/app/slideout-menus/slideout-menu";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,8 +23,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input as ShadcnInput } from "@/components/ui/input";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FieldDef, FilterCondition, FilterConfig } from "./types";
@@ -150,36 +147,7 @@ export function DataListFilterBar({
     children: view.name,
   }));
 
-  // --- Shared right-side controls ---
-  const renderSearch = (className?: string) => (
-    <div className={cn("relative", className)}>
-      <SearchMd className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-quaternary" />
-      <input
-        type="text"
-        value={localSearch}
-        onChange={(e) => handleSearchInput(e.target.value)}
-        placeholder={searchPlaceholder ?? t("common.search")}
-        className="h-9 w-full rounded-lg bg-bg-primary pl-9 pr-3 text-sm text-fg-primary shadow-xs ring-1 ring-border-primary ring-inset placeholder:text-placeholder outline-hidden focus:ring-2 focus:ring-brand sm:w-[220px]"
-      />
-    </div>
-  );
-
-  const renderFiltersButton = () => (
-    <Button
-      size="sm"
-      color="secondary"
-      iconLeading={FilterLines}
-      onClick={onFiltersClick}
-    >
-      {t("views.filters")}
-      {activeFilterCount > 0 && (
-        <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
-          {activeFilterCount}
-        </span>
-      )}
-    </Button>
-  );
-
+  // --- Column picker (shadcn — no UTUI equivalent with checkboxes) ---
   const renderColumnPicker = () => {
     if (!table) return null;
     const hideable = table
@@ -214,6 +182,7 @@ export function DataListFilterBar({
     );
   };
 
+  // --- More actions dropdown (UTUI) ---
   const renderMoreActions = () => {
     if (dropdownActions.length === 0) return null;
     return (
@@ -236,15 +205,14 @@ export function DataListFilterBar({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3">
-        {/* Left side: Saved view tabs */}
-        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
-          {views.length > 0 ? (
+      {/* UTUI FilterBar layout */}
+      <FilterBar.Root>
+        <FilterBar.Content>
+          {/* Left side: Saved view tabs (UTUI Tabs) */}
+          {views.length > 0 && (
             <Tabs
               selectedKey={activeViewId ?? undefined}
-              onSelectionChange={(key) =>
-                onViewChange?.(String(key))
-              }
+              onSelectionChange={(key) => onViewChange?.(String(key))}
             >
               <TabList
                 type="button-minimal"
@@ -254,12 +222,12 @@ export function DataListFilterBar({
                 {(item) => <Tab id={item.id}>{item.children}</Tab>}
               </TabList>
             </Tabs>
-          ) : null}
+          )}
           {onCreateView && canAddMore && (
             <button
               type="button"
               onClick={openCreateDialog}
-              className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground"
             >
               <Plus className="size-4" />
               {t("views.addView", {
@@ -268,15 +236,36 @@ export function DataListFilterBar({
               })}
             </button>
           )}
-        </div>
+        </FilterBar.Content>
 
-        {/* Right side: desktop controls */}
-        <div className="hidden items-center gap-2 md:flex">
-          {renderSearch()}
-          {onFiltersClick && renderFiltersButton()}
+        {/* Right side: desktop controls (UTUI FilterBar.Actions) */}
+        <FilterBar.Actions className="hidden md:flex">
+          <Input
+            size="sm"
+            icon={SearchMd}
+            placeholder={searchPlaceholder ?? t("common.search")}
+            value={localSearch}
+            onChange={handleSearchInput}
+            className="w-[220px]"
+          />
+          {onFiltersClick && (
+            <Button
+              size="sm"
+              color="secondary"
+              iconLeading={FilterLines}
+              onClick={onFiltersClick}
+            >
+              {t("views.filters")}
+              {activeFilterCount > 0 && (
+                <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          )}
           {renderColumnPicker()}
           {renderMoreActions()}
-        </div>
+        </FilterBar.Actions>
 
         {/* Right side: mobile trigger */}
         <div className="flex items-center md:hidden">
@@ -293,93 +282,99 @@ export function DataListFilterBar({
             )}
           </Button>
         </div>
-      </div>
+      </FilterBar.Root>
 
-      {/* Mobile sheet */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-sm">
-          <SheetHeader>
-            <SheetTitle>{t("views.filters")}</SheetTitle>
-          </SheetHeader>
-          <div className="mt-6 flex flex-col gap-4">
-            {renderSearch("w-full [&_input]:w-full")}
-            {onFiltersClick && (
-              <div>
-                <ShadcnButton
-                  variant="outline"
+      {/* Mobile slideout (UTUI SlideoutMenu) */}
+      <SlideoutMenu isOpen={mobileOpen} onOpenChange={setMobileOpen} isDismissable>
+        <SlideoutMenu.Header onClose={() => setMobileOpen(false)}>
+          <h2 className="text-lg font-semibold text-fg-primary">
+            {t("views.filters")}
+          </h2>
+        </SlideoutMenu.Header>
+        <SlideoutMenu.Content className="gap-4">
+          <Input
+            size="sm"
+            icon={SearchMd}
+            placeholder={searchPlaceholder ?? t("common.search")}
+            value={localSearch}
+            onChange={handleSearchInput}
+          />
+          {onFiltersClick && (
+            <Button
+              size="sm"
+              color="secondary"
+              iconLeading={FilterLines}
+              className="w-full justify-start"
+              onClick={() => {
+                onFiltersClick();
+                setMobileOpen(false);
+              }}
+            >
+              {t("views.filters")}
+              {activeFilterCount > 0 && (
+                <span className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-brand-solid text-xs font-medium text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          )}
+          {table && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                {t("table.columns")}
+              </Label>
+              <div className="space-y-1">
+                {table
+                  .getAllColumns()
+                  .filter(
+                    (col) =>
+                      typeof col.accessorFn !== "undefined" &&
+                      col.getCanHide(),
+                  )
+                  .map((col) => (
+                    <label
+                      key={col.id}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm capitalize hover:bg-bg-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={col.getIsVisible()}
+                        onChange={(e) =>
+                          col.toggleVisibility(e.target.checked)
+                        }
+                        className="size-4 rounded border-border-primary"
+                      />
+                      {col.id}
+                    </label>
+                  ))}
+              </div>
+            </div>
+          )}
+          {dropdownActions.length > 0 && (
+            <div className="space-y-1 border-t border-border-secondary pt-3">
+              {dropdownActions.map((action) => (
+                <Button
+                  key={action.label}
+                  size="sm"
+                  color="tertiary"
                   className="w-full justify-start"
                   onClick={() => {
-                    onFiltersClick();
+                    action.onClick();
                     setMobileOpen(false);
                   }}
                 >
-                  <FilterLines className="mr-2 size-4" />
-                  {t("views.filters")}
-                  {activeFilterCount > 0 && (
-                    <span className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                      {activeFilterCount}
-                    </span>
+                  {action.icon && (
+                    <span className="mr-2">{action.icon}</span>
                   )}
-                </ShadcnButton>
-              </div>
-            )}
-            {table && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  {t("table.columns")}
-                </Label>
-                <div className="space-y-1">
-                  {table
-                    .getAllColumns()
-                    .filter(
-                      (col) =>
-                        typeof col.accessorFn !== "undefined" &&
-                        col.getCanHide(),
-                    )
-                    .map((col) => (
-                      <label
-                        key={col.id}
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm capitalize hover:bg-accent"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={col.getIsVisible()}
-                          onChange={(e) =>
-                            col.toggleVisibility(e.target.checked)
-                          }
-                          className="size-4 rounded border-border"
-                        />
-                        {col.id}
-                      </label>
-                    ))}
-                </div>
-              </div>
-            )}
-            {dropdownActions.length > 0 && (
-              <div className="space-y-1 border-t pt-3">
-                {dropdownActions.map((action) => (
-                  <ShadcnButton
-                    key={action.label}
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      action.onClick();
-                      setMobileOpen(false);
-                    }}
-                  >
-                    {action.icon && (
-                      <span className="mr-2">{action.icon}</span>
-                    )}
-                    {action.label}
-                  </ShadcnButton>
-                ))}
-              </div>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          )}
+        </SlideoutMenu.Content>
+      </SlideoutMenu>
 
-      {/* Create view dialog */}
+      {/* Create view dialog (shadcn — no UTUI equivalent) */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -388,7 +383,7 @@ export function DataListFilterBar({
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>{t("views.viewName")}</Label>
-              <Input
+              <ShadcnInput
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateView()}

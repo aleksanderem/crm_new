@@ -1,6 +1,6 @@
 import React, { type ReactNode, createContext, useState } from "react";
 import { Breadcrumbs as AriaBreadcrumbs } from "react-aria-components";
-import { BreadcrumbItem } from "@/components/application/breadcrumbs/breadcrumb-item";
+import { BreadcrumbItem } from "@untitled/app/breadcrumbs/breadcrumb-item";
 import { cx } from "@/lib/utils/cx";
 
 export type BreadcrumbType = "text" | "text-line" | "button";

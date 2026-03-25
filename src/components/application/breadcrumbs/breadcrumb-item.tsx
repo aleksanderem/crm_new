@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { type FC, type ReactNode, isValidElement, useContext } from "react";
 import { ChevronRight, SlashDivider } from "@untitledui/icons";
 import { Breadcrumb as AriaBreadcrumb, type BreadcrumbProps as AriaBreadcrumbProps, Link as AriaLink } from "react-aria-components";
-import { type BreadcrumbType, BreadcrumbsContext } from "@/components/application/breadcrumbs/breadcrumbs";
+import { type BreadcrumbType, BreadcrumbsContext } from "@untitled/app/breadcrumbs/breadcrumbs";
 import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";
 

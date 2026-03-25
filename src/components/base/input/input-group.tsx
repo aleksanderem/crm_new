@@ -1,8 +1,8 @@
 import { type HTMLAttributes, type ReactNode } from "react";
-import { HintText } from "@/components/base/input/hint-text";
-import type { InputBaseProps } from "@/components/base/input/input";
-import { TextField } from "@/components/base/input/input";
-import { Label } from "@/components/base/input/label";
+import { HintText } from "@untitled/base/input/hint-text";
+import type { InputBaseProps } from "@untitled/base/input/input";
+import { TextField } from "@untitled/base/input/input";
+import { Label } from "@untitled/base/input/label";
 import { cx, sortCx } from "@/lib/utils/cx";
 
 interface InputPrefixProps extends HTMLAttributes<HTMLDivElement> {

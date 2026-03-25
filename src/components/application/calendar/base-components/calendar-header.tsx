@@ -1,9 +1,9 @@
 import { CalendarDate, endOfWeek, getLocalTimeZone, startOfWeek } from "@internationalized/date";
 import { useLocale } from "@react-aria/i18n";
 import { ArrowLeft, ArrowRight, Plus, SearchLg } from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
-import { Button } from "@/components/base/buttons/button";
+import { Badge } from "@untitled/base/badges/badges";
+import { ButtonGroup, ButtonGroupItem } from "@untitled/base/button-group/button-group";
+import { Button } from "@untitled/base/buttons/button";
 import { CalendarDateIcon } from "./calendar-date-icon";
 import { CalendarViewDropdown, type ViewOption } from "./calendar-view-dropdown";
 

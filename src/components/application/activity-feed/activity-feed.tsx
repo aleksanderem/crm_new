@@ -1,9 +1,9 @@
 import { FileIcon } from "@untitledui/file-icons";
-import { Avatar } from "@/components/base/avatar/avatar";
-import type { BadgeColors } from "@/components/base/badges/badge-types";
-import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
-import { Dot } from "@/components/foundations/dot-icon";
+import { Avatar } from "@untitled/base/avatar/avatar";
+import type { BadgeColors } from "@untitled/base/badges/badge-types";
+import { Badge } from "@untitled/base/badges/badges";
+import { Button } from "@untitled/base/buttons/button";
+import { Dot } from "@untitled/foundations/dot-icon";
 import { cx } from "@/lib/utils/cx";
 
 export type FeedItemType = {

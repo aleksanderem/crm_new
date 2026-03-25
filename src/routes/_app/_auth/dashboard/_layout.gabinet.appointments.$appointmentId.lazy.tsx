@@ -35,7 +35,7 @@ import {
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
-import { Avatar as UntitledAvatar } from "@/components/base/avatar/avatar";
+import { Avatar as UntitledAvatar } from "@untitled/base/avatar/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,8 +53,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Tabs as UntitledTabs, TabList, Tab as UntitledTab, TabPanel } from "@/components/application/tabs/tabs";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { Tabs as UntitledTabs, TabList, Tab as UntitledTab, TabPanel } from "@untitled/app/tabs/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";

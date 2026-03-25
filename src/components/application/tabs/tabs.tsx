@@ -2,8 +2,8 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TabListProps as AriaTabListProps, TabProps as AriaTabProps, TabRenderProps as AriaTabRenderProps } from "react-aria-components";
 import { Tab as AriaTab, TabList as AriaTabList, TabPanel as AriaTabPanel, Tabs as AriaTabs, TabsContext, useSlottedContext } from "react-aria-components";
-import type { BadgeColors } from "@/components/base/badges/badge-types";
-import { Badge } from "@/components/base/badges/badges";
+import type { BadgeColors } from "@untitled/base/badges/badge-types";
+import { Badge } from "@untitled/base/badges/badges";
 import { cx } from "@/lib/utils/cx";
 import {
     DropdownMenu,

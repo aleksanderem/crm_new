@@ -3,7 +3,7 @@ import { isValidElement } from "react";
 import type { Placement } from "react-aria";
 import type { ButtonProps as AriaButtonProps, LinkProps as AriaLinkProps } from "react-aria-components";
 import { Button as AriaButton, Link as AriaLink } from "react-aria-components";
-import { Tooltip } from "@/components/base/tooltip/tooltip";
+import { Tooltip } from "@untitled/base/tooltip/tooltip";
 import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";
 

@@ -8,8 +8,8 @@ import {
     CalendarHeaderCell as AriaCalendarHeaderCell,
     Heading as AriaHeading,
 } from "react-aria-components";
-import { CalendarCell } from "@/components/application/date-picker/cell";
-import { Button } from "@/components/base/buttons/button";
+import { CalendarCell } from "@untitled/app/date-picker/cell";
+import { Button } from "@untitled/base/buttons/button";
 import { cx } from "@/lib/utils/cx";
 
 interface CalendarMiniMonthProps {

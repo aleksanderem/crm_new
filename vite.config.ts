@@ -12,6 +12,9 @@ export default defineConfig({
       "~": __dirname,
       "@": path.resolve(__dirname, "./src"),
       "@cvx": path.resolve(__dirname, "./convex"),
+      "@untitled/base": path.resolve(__dirname, "./src/components/base"),
+      "@untitled/app": path.resolve(__dirname, "./src/components/application"),
+      "@untitled/foundations": path.resolve(__dirname, "./src/components/foundations"),
     },
   },
   optimizeDeps: {

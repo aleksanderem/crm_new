@@ -1,6 +1,6 @@
 import { ChevronDown } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { Button } from "@untitled/base/buttons/button";
+import { Dropdown } from "@untitled/base/dropdown/dropdown";
 
 interface ItemProps {
     label: string;

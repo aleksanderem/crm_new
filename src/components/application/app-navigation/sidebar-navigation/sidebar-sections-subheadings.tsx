@@ -1,4 +1,4 @@
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
+import { UntitledLogo } from "@untitled/foundations/logo/untitledui-logo";
 import { MobileNavigationHeader } from "../base-components/mobile-header";
 import { NavAccountCard } from "../base-components/nav-account-card";
 import { NavItemBase } from "../base-components/nav-item";

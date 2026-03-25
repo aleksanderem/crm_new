@@ -1,6 +1,6 @@
 // This is a dummy config while for generating events
 // for the calendar demo. Feel free to remove it.
-import { type CalendarEvent } from "@/components/application/calendar/calendar";
+import { type CalendarEvent } from "@untitled/app/calendar/calendar";
 
 /**
  * Create a date object for an event

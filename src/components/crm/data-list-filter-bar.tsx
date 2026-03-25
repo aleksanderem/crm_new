@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { Table } from "@tanstack/react-table";
 import { FilterLines, SearchMd, Settings02, DotsVertical, Plus } from "@untitledui/icons";
-import { Tabs, TabList, Tab } from "@/components/application/tabs/tabs";
-import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { Tabs, TabList, Tab } from "@untitled/app/tabs/tabs";
+import { Button } from "@untitled/base/buttons/button";
+import { Dropdown } from "@untitled/base/dropdown/dropdown";
 import {
   Sheet,
   SheetContent,
@@ -159,7 +159,7 @@ export function DataListFilterBar({
         value={localSearch}
         onChange={(e) => handleSearchInput(e.target.value)}
         placeholder={searchPlaceholder ?? t("common.search")}
-        className="h-9 w-full rounded-lg bg-primary pl-9 pr-3 text-sm text-primary shadow-xs ring-1 ring-primary ring-inset placeholder:text-placeholder outline-hidden focus:ring-2 focus:ring-brand sm:w-[220px]"
+        className="h-9 w-full rounded-lg bg-bg-primary pl-9 pr-3 text-sm text-fg-primary shadow-xs ring-1 ring-border-primary ring-inset placeholder:text-placeholder outline-hidden focus:ring-2 focus:ring-brand sm:w-[220px]"
       />
     </div>
   );

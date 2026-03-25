@@ -4,7 +4,10 @@
     "paths": {
       "@/*": ["./src/*"],
       "@cvx/*": ["./convex/*"],
-      "~/*": ["./*"]
+      "~/*": ["./*"],
+      "@untitled/base/*": ["./src/components/base/*"],
+      "@untitled/app/*": ["./src/components/application/*"],
+      "@untitled/foundations/*": ["./src/components/foundations/*"]
     }
   },
   "files": [],

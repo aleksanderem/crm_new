@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { Plus } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
+import { Button } from "@untitled/base/buttons/button";
 import { cx } from "@/lib/utils/cx";
 
 interface CalendarMonthViewCellProps extends HTMLAttributes<HTMLDivElement> {

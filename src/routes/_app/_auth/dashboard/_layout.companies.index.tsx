@@ -6,7 +6,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CompanyForm } from "@/components/forms/company-form";
@@ -18,7 +18,6 @@ import { companySizeOptions } from "@/lib/options";
 import { Plus, Building2, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
@@ -65,6 +64,7 @@ function CompaniesIndex() {
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  const [searchValue, setSearchValue] = useState("");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
 
@@ -110,7 +110,6 @@ function CompaniesIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
     columnVisibility,
     sorting,
@@ -148,8 +147,13 @@ function CompaniesIndex() {
       default:
         data = companies;
     }
-    return applyFilters(data);
-  }, [companies, activeViewId, applyFilters]);
+    data = applyFilters(data);
+    const q = searchValue.trim().toLowerCase();
+    if (q) {
+      data = data.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    return data;
+  }, [companies, activeViewId, applyFilters, searchValue]);
 
   const tableData = mergeCustomFieldValues(filteredCompanies);
 
@@ -455,14 +459,20 @@ function CompaniesIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('companies.searchPlaceholder')}
+        dropdownActions={[
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
+        ]}
       />
 
       <MiniChartsRow
@@ -480,26 +490,6 @@ function CompaniesIndex() {
           timeRange: rightTimeRange,
           onTimeRangeChange: setRightTimeRange,
         }}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newCompany'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setPanelOpen(true),
-            feature: "companies",
-            action: "create",
-          },
-          {
-            label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setImportOpen(true),
-            feature: "companies",
-            action: "create",
-          },
-        ]}
-        extra={null}
       />
 
       {!isLoading && filteredCompanies.length === 0 ? (
@@ -520,8 +510,6 @@ function CompaniesIndex() {
           data={tableData}
           stickyFirstColumn
           frozenColumns={2}
-          searchKey="name"
-          searchPlaceholder={t('companies.searchPlaceholder')}
           isLoading={isLoading}
           enableBulkSelect
           bulkActions={[
@@ -536,10 +524,7 @@ function CompaniesIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
-          ]}
+          hideToolbar
         />
       )}
 

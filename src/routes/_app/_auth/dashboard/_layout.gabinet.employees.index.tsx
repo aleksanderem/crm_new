@@ -20,7 +20,7 @@ import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { toast } from "sonner";
 import { Id, Doc } from "@cvx/_generated/dataModel";
 import { ColumnDef } from "@tanstack/react-table";
@@ -44,6 +44,7 @@ function EmployeesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const createEmployee = useMutation(api.gabinet.employees.create);
   const updateEmployee = useMutation(api.gabinet.employees.update);
@@ -329,14 +330,15 @@ function EmployeesIndex() {
         />
       </div>
 
-      <QuickActionBar
-        actions={[
+      <DataListFilterBar
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
+        dropdownActions={[
           {
-            label: t('quickActions.newEmployee'),
+            label: t("quickActions.newEmployee"),
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setShowCreate(true),
-            feature: "gabinet_employees",
-            action: "create",
           },
         ]}
       />
@@ -344,6 +346,7 @@ function EmployeesIndex() {
       <CrmDataTable
         columns={columns}
         data={employees ?? []}
+        hideToolbar
         stickyFirstColumn
         frozenColumns={2}
         searchKey="firstName"

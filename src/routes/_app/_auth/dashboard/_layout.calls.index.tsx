@@ -8,7 +8,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,8 +30,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import { Phone } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
@@ -66,11 +64,12 @@ function CallsPage() {
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "call", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   // Sidebar dispatch handlers
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
@@ -88,7 +87,12 @@ function CallsPage() {
   );
 
   const allCalls = data?.page ?? [];
-  const calls = useMemo(() => applyFilters(allCalls) as typeof allCalls, [allCalls, applyFilters]);
+  const calls = useMemo(() => {
+    const filtered = applyFilters(allCalls) as typeof allCalls;
+    if (!searchValue.trim()) return filtered;
+    const q = searchValue.toLowerCase();
+    return filtered.filter((c) => c.note?.toLowerCase().includes(q));
+  }, [allCalls, applyFilters, searchValue]);
 
   const createCall = useMutation(api.calls.create);
   const updateCall = useMutation(api.calls.update);
@@ -219,28 +223,18 @@ function CallsPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.logCall'),
-            icon: <Phone className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "calls",
-            action: "create",
-          },
-        ]}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('calls.searchPlaceholder')}
       />
 
       <CrmDataTable
@@ -248,9 +242,8 @@ function CallsPage() {
         data={calls}
         rowActions={rowActions}
         frozenColumns={2}
-        searchKey="note"
-        searchPlaceholder={t('calls.searchPlaceholder')}
         isLoading={isLoading}
+        hideToolbar
       />
 
       <SidePanel

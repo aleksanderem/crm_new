@@ -8,7 +8,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
@@ -41,7 +41,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/activities/"
@@ -76,12 +75,13 @@ function ActivitiesPage() {
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "activity", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   // Sidebar dispatch handlers
   useSidebarDispatch("openFilter", () => {
@@ -179,8 +179,12 @@ function ActivitiesPage() {
     if (!showCompleted) {
       filtered = filtered.filter((a) => !a.isCompleted);
     }
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      filtered = filtered.filter((a) => a.title.toLowerCase().includes(q));
+    }
     return filtered;
-  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted]);
+  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted, searchValue]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id as string),
@@ -395,14 +399,15 @@ function ActivitiesPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
-        onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('activities.searchPlaceholder')}
       />
 
       <div className="flex items-center gap-2 py-2">
@@ -421,17 +426,6 @@ function ActivitiesPage() {
           active={showCompleted}
           onChange={setShowCompleted}
         />
-        <QuickActionBar
-          actions={[
-            {
-              label: t('quickActions.newActivity'),
-              icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-              onClick: openCreatePanel,
-              feature: "activities",
-              action: "create",
-            },
-          ]}
-        />
       </div>
 
       <CrmDataTable<ActivityRow>
@@ -440,10 +434,9 @@ function ActivitiesPage() {
         rowActions={rowActions}
         frozenColumns={2}
         enableBulkSelect
-        searchKey="title"
-        searchPlaceholder={t('activities.searchPlaceholder')}
         isLoading={isLoading}
         defaultColumnVisibility={defaultColumnVisibility}
+        hideToolbar
       />
 
       <SidePanel

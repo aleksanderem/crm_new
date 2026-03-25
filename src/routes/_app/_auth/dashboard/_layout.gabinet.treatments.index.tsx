@@ -6,7 +6,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
@@ -23,7 +23,6 @@ import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -70,6 +69,7 @@ function TreatmentsIndex() {
     }));
   }, [topTreatments]);
 
+  const [searchValue, setSearchValue] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(
     null,
@@ -139,7 +139,6 @@ function TreatmentsIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
     columnVisibility,
     sorting,
@@ -164,8 +163,17 @@ function TreatmentsIndex() {
       default:
         data = allTreatments;
     }
-    return applyFilters(data);
-  }, [allTreatments, activeViewId, applyFilters]);
+    data = applyFilters(data);
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          (t.category && t.category.toLowerCase().includes(q)),
+      );
+    }
+    return data;
+  }, [allTreatments, activeViewId, applyFilters, searchValue]);
 
   const categoryOptions = useMemo(() => {
     const cats = new Set<string>();
@@ -425,14 +433,16 @@ function TreatmentsIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
       />
 
       {/* KPI Statistics Cards */}
@@ -467,18 +477,6 @@ function TreatmentsIndex() {
         />
       </div>
 
-      <QuickActionBar
-        actions={[
-          {
-            label: t("quickActions.newTreatment"),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "gabinet_treatments",
-            action: "create",
-          },
-        ]}
-      />
-
       {!isLoading && filteredTreatments.length === 0 ? (
         <EmptyState
           icon={Stethoscope}
@@ -495,10 +493,9 @@ function TreatmentsIndex() {
         <CrmDataTable
           columns={columns}
           data={filteredTreatments}
+          hideToolbar
           stickyFirstColumn
           frozenColumns={2}
-          searchKey="name"
-          searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
           isLoading={isLoading}
           enableBulkSelect
           bulkActions={[

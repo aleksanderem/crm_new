@@ -7,7 +7,7 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -36,7 +36,6 @@ import {
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -97,6 +96,7 @@ function LeadsIndex() {
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const { handleExport } = useCsvExport(organizationId, "leads");
 
   // Sidebar action dispatches
@@ -171,7 +171,6 @@ function LeadsIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
     columnVisibility,
     sorting,
@@ -278,7 +277,13 @@ function LeadsIndex() {
     entityType: "lead",
     entityIds: leadIds,
   });
-  const tableData = mergeCustomFieldValues(filteredLeads);
+  const searchedLeads = useMemo(() => {
+    if (!searchValue) return filteredLeads;
+    const q = searchValue.toLowerCase();
+    return filteredLeads.filter((l) => l.title?.toLowerCase().includes(q));
+  }, [filteredLeads, searchValue]);
+
+  const tableData = mergeCustomFieldValues(searchedLeads);
 
   const stageChartData: MiniChartData[] = useMemo(() => {
     if (!stages) return [];
@@ -689,14 +694,28 @@ function LeadsIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("deals.searchPlaceholder")}
+        dropdownActions={[
+          {
+            label: t("csv.export"),
+            icon: <Download className="h-4 w-4" variant="stroke" />,
+            onClick: handleExport,
+          },
+          {
+            label: t("csv.import"),
+            icon: <Upload className="h-4 w-4" variant="stroke" />,
+            onClick: () => setImportOpen(true),
+          },
+        ]}
       />
 
       <MiniChartsRow
@@ -718,26 +737,6 @@ function LeadsIndex() {
         }}
       />
 
-      <QuickActionBar
-        actions={[
-          {
-            label: t("quickActions.newLead"),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setCreateOpen(true),
-            feature: "leads",
-            action: "create",
-          },
-          {
-            label: t("quickActions.importCsv"),
-            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setImportOpen(true),
-            feature: "leads",
-            action: "create",
-          },
-        ]}
-        extra={null}
-      />
-
       {!isLoading && filteredLeads.length === 0 ? (
         <EmptyState
           icon={TrendingUp}
@@ -757,29 +756,8 @@ function LeadsIndex() {
           stickyFirstColumn
           frozenColumns={2}
           enableBulkSelect
-          searchKey="title"
-          searchPlaceholder={t("deals.searchPlaceholder")}
+          hideToolbar
           isLoading={isLoading}
-          filterableColumns={[
-            {
-              id: "status",
-              title: t("common.status"),
-              options: [
-                { label: t("deals.filters.open"), value: "open" },
-                { label: t("deals.filters.won"), value: "won" },
-                { label: t("deals.filters.lost"), value: "lost" },
-              ],
-            },
-            {
-              id: "priority",
-              title: t("common.priority"),
-              options: [
-                { label: t("deals.priority.high"), value: "high" },
-                { label: t("deals.priority.medium"), value: "medium" },
-                { label: t("deals.priority.low"), value: "low" },
-              ],
-            },
-          ]}
           bulkActions={[
             { label: t("deals.markWon"), value: "markWon" },
             { label: t("deals.markLost"), value: "markLost" },
@@ -816,18 +794,6 @@ function LeadsIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarDropdownActions={[
-            {
-              label: t("csv.export"),
-              icon: <Download className="h-4 w-4" variant="stroke" />,
-              onClick: handleExport,
-            },
-            {
-              label: t("csv.import"),
-              icon: <Upload className="h-4 w-4" variant="stroke" />,
-              onClick: () => setImportOpen(true),
-            },
-          ]}
         />
       )}
 

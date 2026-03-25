@@ -6,14 +6,13 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Users, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -58,7 +57,7 @@ function ContactsIndex() {
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [searchValue, setSearchValue] = useState("");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
@@ -105,7 +104,6 @@ function ContactsIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
     columnVisibility,
     sorting,
@@ -147,7 +145,16 @@ function ContactsIndex() {
     return applyFilters(data);
   }, [contacts, activeViewId, applyFilters]);
 
-  const tableData = mergeCustomFieldValues(filteredContacts);
+  const searchedContacts = useMemo(() => {
+    if (!searchValue.trim()) return filteredContacts;
+    const q = searchValue.toLowerCase();
+    return filteredContacts.filter((c) => {
+      const full = `${c.firstName} ${c.lastName ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase();
+      return full.includes(q);
+    });
+  }, [filteredContacts, searchValue]);
+
+  const tableData = mergeCustomFieldValues(searchedContacts);
 
   const contactsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -193,13 +200,13 @@ function ContactsIndex() {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7 shrink-0">
+          <Avatar className="h-7 w-7">
             <AvatarFallback className="text-xs">
               {row.original.firstName[0]}
               {row.original.lastName?.[0] ?? ""}
             </AvatarFallback>
           </Avatar>
-          <span className="truncate font-medium">
+          <span className="font-medium">
             {row.original.firstName} {row.original.lastName ?? ""}
           </span>
         </div>
@@ -326,12 +333,14 @@ function ContactsIndex() {
       {
         label: t('common.delete'),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: () => {
-          setDeleteTarget({ id: row._id, name: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email || "?" });
+        onClick: async () => {
+          if (window.confirm(t('contacts.confirmDelete'))) {
+            await removeContact({ organizationId, contactId: row._id });
+          }
         },
       },
     ],
-    [navigate, t]
+    [navigate, removeContact, organizationId]
   );
 
   return (
@@ -347,16 +356,22 @@ function ContactsIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
-        activeViewId={activeViewId}
+        activeViewId={activeViewId ?? undefined}
         onViewChange={onViewChange}
-        onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
-        onDeleteView={onDeleteView}
+        onCreateView={async (name) => { onCreateView(name); }}
+        onDeleteView={async (id) => { onDeleteView(id); }}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('contacts.searchPlaceholder')}
+        dropdownActions={[
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
+        ]}
       />
 
       <MiniChartsRow
@@ -394,8 +409,6 @@ function ContactsIndex() {
           data={tableData}
           stickyFirstColumn
           frozenColumns={2}
-          searchKey="firstName"
-          searchPlaceholder={t('contacts.searchPlaceholder')}
           isLoading={isLoading}
           enableBulkSelect
           bulkActions={[
@@ -404,7 +417,7 @@ function ContactsIndex() {
           onBulkAction={handleBulkAction}
           rowActions={rowActions}
           onRowClick={(row) => navigate({ to: `/dashboard/contacts/${row._id}` })}
-          totalCount={filteredContacts.length}
+          totalCount={searchedContacts.length}
           filterableColumns={sourceOptions.length > 0 ? [
             { id: "source", title: t('common.source'), options: sourceOptions },
           ] : []}
@@ -412,10 +425,7 @@ function ContactsIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
-          ]}
+          hideToolbar
         />
       )}
 
@@ -440,30 +450,6 @@ function ContactsIndex() {
           customFieldDefinitions={cfDefs}
         />
       </SidePanel>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (!deleteTarget) return;
-                await removeContact({ organizationId, contactId: deleteTarget.id as any });
-                setDeleteTarget(null);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t("common.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

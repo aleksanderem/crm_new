@@ -90,6 +90,23 @@ perl -pe 's/(?<![-])bg-primary(?![-_a-z0-9])/bg-bg-primary/g'
 
 Replacements are ordered most-specific first (e.g. `bg-primary_hover` before `bg-primary`) to prevent partial matches. The negative lookbehind `(?<![-])` ensures already-prefixed tokens like `bg-bg-primary` are not matched again, making the script fully idempotent.
 
+The same pattern applies to all prefix types:
+```perl
+# bg-primary → bg-bg-primary (after transform: bg-bg-primary, lookbehind sees `-`, skips)
+perl -pe 's/(?<![-])bg-primary(?![-_a-z0-9])/bg-bg-primary/g'
+
+# text-primary → text-fg-primary (after transform: text-fg-primary, no `text-primary` substring remains)
+perl -pe 's/(?<![-])text-primary(?![-_a-z0-9])/text-fg-primary/g'
+
+# border-primary → border-border-primary (after transform: border-border-primary, lookbehind sees `-`, skips)
+perl -pe 's/(?<![-])border-primary(?![-_a-z0-9])/border-border-primary/g'
+
+# ring-primary → ring-border-primary (after transform: ring-border-primary, no `ring-primary` substring remains)
+perl -pe 's/(?<![-])ring-primary(?![-_a-z0-9])/ring-border-primary/g'
+```
+
+For `text-*` and `ring-*` mappings, idempotency is inherent because the output (`text-fg-primary`, `ring-border-primary`) does not contain the input pattern (`text-primary`, `ring-primary`) as a substring. For `bg-*` and `border-*` where the output contains the input (e.g. `bg-bg-primary` contains `bg-primary`), the negative lookbehind on `-` prevents re-matching.
+
 ## Utility Token Aliases
 
 The badges component uses utility color aliases that don't exist in the compat CSS:
@@ -114,7 +131,7 @@ These are NOT handled by the token mapping script. Instead, add CSS variable ali
 /* ... same pattern for red→error, slate→gray-blue, sky→blue-light */
 ```
 
-This approach avoids modifying the badge component source and works for any future component that uses these aliases.
+This approach avoids modifying the badge component source and works for any future component that uses these aliases. No `.dark` block is needed for the aliases because they use `var()` indirection — the target variables (e.g. `--color-utility-gray-50`) are already overridden in the existing `.dark` section, and the `var()` reference chains through at computed-value time.
 
 ## Automation
 
@@ -173,12 +190,12 @@ When new components from CLI introduce tokens not yet in the compat CSS, the mis
 
 ## Scope
 
-### In scope
-1. Create `scripts/untitled-ui-postinstall.sh` with all mapping rules (perl-based, idempotent)
-2. Run one-time migration on all 48 files in `base/` + `application/` (recursive find)
-3. Add Claude Code PostToolUse hook to `.claude/settings.json`
-4. Fill missing tokens and utility aliases in `untitled-ui-compat.css` (light + dark)
-5. Fix dark mode `bg-warning-primary` and `bg-success-primary` values
+### In scope (ordered — steps 1-2 MUST complete before step 3)
+1. Fill missing tokens and utility aliases in `untitled-ui-compat.css` (light + dark) — FIRST, so transformed classes have variables to resolve to
+2. Fix dark mode `bg-warning-primary` and `bg-success-primary` values in compat CSS
+3. Create `scripts/untitled-ui-postinstall.sh` with all mapping rules (perl-based, idempotent)
+4. Run one-time migration on all 48 files in `base/` + `application/` (recursive find)
+5. Add Claude Code PostToolUse hook to `.claude/settings.json`
 6. Verify: `npx tsc --noEmit` passes, visual check in browser
 
 ### Out of scope

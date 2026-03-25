@@ -123,6 +123,7 @@
   --color-bg-primary: var(--color-white);
   --color-bg-primary_hover: var(--color-gray-50);
   --color-bg-primary-solid: var(--color-gray-950);
+  --color-bg-primary_alt: var(--color-gray-25);
   --color-bg-secondary: var(--color-gray-50);
   --color-bg-secondary_subtle: var(--color-gray-25);
   --color-bg-secondary_hover: var(--color-gray-100);
@@ -266,6 +267,39 @@
   --color-utility-gray-blue-500: rgb(78 91 166);
   --color-utility-gray-blue-700: rgb(54 63 114);
 
+  /* ── UTILITY ALIASES (badge color variants) ── */
+  /* neutral → gray */
+  --color-utility-neutral-50: var(--color-utility-gray-50);
+  --color-utility-neutral-100: var(--color-utility-gray-100);
+  --color-utility-neutral-200: var(--color-utility-gray-200);
+  --color-utility-neutral-400: var(--color-utility-gray-400);
+  --color-utility-neutral-500: var(--color-utility-gray-500);
+  --color-utility-neutral-700: var(--color-utility-gray-700);
+
+  /* red → error */
+  --color-utility-red-50: var(--color-utility-error-50);
+  --color-utility-red-100: var(--color-utility-error-100);
+  --color-utility-red-200: var(--color-utility-error-200);
+  --color-utility-red-400: var(--color-utility-error-400);
+  --color-utility-red-500: var(--color-utility-error-500);
+  --color-utility-red-700: var(--color-utility-error-700);
+
+  /* slate → gray-blue */
+  --color-utility-slate-50: var(--color-utility-gray-blue-50);
+  --color-utility-slate-100: var(--color-utility-gray-blue-100);
+  --color-utility-slate-200: var(--color-utility-gray-blue-200);
+  --color-utility-slate-400: var(--color-utility-gray-blue-400);
+  --color-utility-slate-500: var(--color-utility-gray-blue-500);
+  --color-utility-slate-700: var(--color-utility-gray-blue-700);
+
+  /* sky → blue-light */
+  --color-utility-sky-50: var(--color-utility-blue-light-50);
+  --color-utility-sky-100: var(--color-utility-blue-light-100);
+  --color-utility-sky-200: var(--color-utility-blue-light-200);
+  --color-utility-sky-400: var(--color-utility-blue-light-400);
+  --color-utility-sky-500: var(--color-utility-blue-light-500);
+  --color-utility-sky-700: var(--color-utility-blue-light-700);
+
   /* ── COMPONENT COLORS ── */
   --color-button-primary-icon: var(--color-brand-300);
   --color-button-primary-icon_hover: var(--color-brand-200);
@@ -308,6 +342,7 @@
   /* ── BACKGROUND COLORS ── */
   --color-bg-primary: var(--color-gray-950);
   --color-bg-primary_hover: var(--color-gray-900);
+  --color-bg-primary_alt: var(--color-gray-900);
   --color-bg-primary-solid: var(--color-gray-50);
   --color-bg-secondary: var(--color-gray-900);
   --color-bg-secondary_subtle: var(--color-gray-900);
@@ -327,8 +362,8 @@
   --color-bg-error-primary: var(--color-error-950);
   --color-bg-error-solid: var(--color-error-600);
   --color-bg-error-solid_hover: var(--color-error-500);
-  --color-bg-warning-primary: var(--color-warning-50);
-  --color-bg-success-primary: var(--color-success-50);
+  --color-bg-warning-primary: var(--color-warning-700);
+  --color-bg-success-primary: var(--color-success-700);
 
   /* ── BORDER COLORS ── */
   --color-border-primary: var(--color-gray-700);

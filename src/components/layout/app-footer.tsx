@@ -106,13 +106,14 @@ export function AppFooter() {
   return (
     <footer className="bg-card sticky bottom-0 z-40 border-t">
       <div className="flex items-center justify-between gap-3 px-4 py-2 sm:px-6">
-        <p className="text-muted-foreground text-xs text-balance max-sm:hidden">
-          {`© ${new Date().getFullYear()}`}
-        </p>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:hidden">
+          <p className="text-muted-foreground text-xs text-balance">
+            {`© ${new Date().getFullYear()}`}
+          </p>
           <LanguageSwitcher />
+        </div>
 
+        <div className="flex items-center gap-2 flex-wrap">
           {actions.map((action) => (
             <Button
               key={action.labelKey}

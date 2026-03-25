@@ -6,7 +6,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
@@ -27,7 +27,6 @@ import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
@@ -60,6 +59,7 @@ function PatientsIndex() {
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
 
@@ -134,7 +134,6 @@ function PatientsIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
     columnVisibility,
     sorting,
@@ -160,8 +159,19 @@ function PatientsIndex() {
       default:
         data = patients;
     }
-    return applyFilters(data);
-  }, [patients, activeViewId, applyFilters]);
+    data = applyFilters(data);
+    const q = searchValue.trim().toLowerCase();
+    if (q) {
+      data = data.filter(
+        (p) =>
+          p.firstName.toLowerCase().includes(q) ||
+          p.lastName.toLowerCase().includes(q) ||
+          (p.email && p.email.toLowerCase().includes(q)) ||
+          (p.phone && p.phone.toLowerCase().includes(q)),
+      );
+    }
+    return data;
+  }, [patients, activeViewId, applyFilters, searchValue]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -528,16 +538,25 @@ function PatientsIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("gabinet.patients.searchPlaceholder")}
+        dropdownActions={[
+          {
+            label: t("csv.export"),
+            icon: <Download className="h-4 w-4" variant="stroke" />,
+            onClick: handleExport,
+          },
+        ]}
       />
 
       <MiniChartsRow
@@ -555,18 +574,6 @@ function PatientsIndex() {
           timeRange: rightTimeRange,
           onTimeRangeChange: setRightTimeRange,
         }}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t("quickActions.newPatient"),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setPanelOpen(true),
-            feature: "gabinet_patients",
-            action: "create",
-          },
-        ]}
       />
 
       {!isLoading && filteredPatients.length === 0 ? (
@@ -587,8 +594,7 @@ function PatientsIndex() {
           data={filteredPatients}
           stickyFirstColumn
           frozenColumns={2}
-          searchKey="firstName"
-          searchPlaceholder={t("gabinet.patients.searchPlaceholder")}
+          hideToolbar
           isLoading={isLoading}
           enableBulkSelect
           bulkActions={[
@@ -619,13 +625,6 @@ function PatientsIndex() {
           onColumnVisibilityChange={setColumnVisibility}
           sorting={sorting}
           onSortingChange={setSorting}
-          toolbarDropdownActions={[
-            {
-              label: t("csv.export"),
-              icon: <Download className="h-4 w-4" variant="stroke" />,
-              onClick: handleExport,
-            },
-          ]}
         />
       )}
 

@@ -64,6 +64,8 @@ export interface CrmDataTableProps<TData> {
   defaultColumnVisibility?: VisibilityState;
   toolbarActions?: React.ReactNode;
   toolbarDropdownActions?: ToolbarDropdownAction[];
+  /** When true, the built-in DataTableToolbar is not rendered. Use this when providing an external toolbar (e.g. DataListFilterBar). */
+  hideToolbar?: boolean;
 }
 
 export function CrmDataTable<TData>({
@@ -88,6 +90,7 @@ export function CrmDataTable<TData>({
   defaultColumnVisibility,
   toolbarActions,
   toolbarDropdownActions,
+  hideToolbar = false,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
@@ -252,18 +255,20 @@ export function CrmDataTable<TData>({
   }
 
   return (
-    <Card className="py-0 overflow-hidden">
-      <div className="px-4 pt-4 sm:px-6">
-        <DataTableToolbar
-          table={table}
-          searchKey={searchKey}
-          searchPlaceholder={searchPlaceholder}
-          filterableColumns={filterableColumns}
-          showViewOptions
-          actions={toolbarActions}
-          dropdownActions={toolbarDropdownActions}
-        />
-      </div>
+    <Card className="py-0 overflow-x-auto">
+      {!hideToolbar && (
+        <div className="px-4 pt-4 sm:px-6">
+          <DataTableToolbar
+            table={table}
+            searchKey={searchKey}
+            searchPlaceholder={searchPlaceholder}
+            filterableColumns={filterableColumns}
+            showViewOptions
+            actions={toolbarActions}
+            dropdownActions={toolbarDropdownActions}
+          />
+        </div>
+      )}
 
       {enableBulkSelect && bulkActions && bulkActions.length > 0 && (
         <div className="px-4 sm:px-6">

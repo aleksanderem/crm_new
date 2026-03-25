@@ -10,6 +10,16 @@
           }
         ],
         "description": "Enforce module import boundaries — no cross-imports between crm and gabinet"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); file=$(echo \"$input\" | grep -o '\"file_path\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); if [ -z \"$file\" ]; then exit 0; fi; if echo \"$file\" | grep -qE \"src/components/(base|application)/\"; then bash scripts/untitled-ui-postinstall.sh \"$file\" 2>/dev/null; fi; exit 0'"
+          }
+        ],
+        "description": "Auto-transform Untitled UI components to use prefixed tokens"
       }
     ]
   }

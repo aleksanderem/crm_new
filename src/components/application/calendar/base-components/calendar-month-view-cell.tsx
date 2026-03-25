@@ -29,7 +29,7 @@ export const CalendarMonthViewCell = ({ isDisabled, children, className, day, st
             <span
                 className={cx(
                     "flex size-6 items-center justify-center rounded-full text-xs font-semibold text-foreground/80",
-                    state === "selected" && "bg-primary text-primary-foreground",
+                    state === "selected" && "bg-bg-primary text-primary-foreground",
                     state === "current" && "bg-accent",
                     isDisabled && "text-muted-foreground/50",
                 )}

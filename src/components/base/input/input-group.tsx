@@ -18,14 +18,14 @@ export const InputPrefix = ({ isDisabled, children, ...props }: InputPrefixProps
     <span
         {...props}
         className={cx(
-            "flex text-md text-tertiary shadow-xs ring-1 ring-border-primary ring-inset",
+            "flex text-md text-fg-tertiary shadow-xs ring-1 ring-border-primary ring-inset",
             // Styles when the prefix is within an `InputGroup`
             "in-data-input-wrapper:in-data-leading:-mr-px in-data-input-wrapper:in-data-leading:rounded-l-lg",
             "in-data-input-wrapper:in-data-trailing:-ml-px in-data-input-wrapper:in-data-trailing:rounded-r-lg",
             // Size styles based on size when within an `InputGroup`
             "in-data-input-wrapper:in-data-[input-size=md]:py-2.5 in-data-input-wrapper:in-data-[input-size=md]:pr-3 in-data-input-wrapper:in-data-[input-size=md]:pl-3.5 in-data-input-wrapper:in-data-[input-size=sm]:px-3 in-data-input-wrapper:in-data-[input-size=sm]:py-2",
             // Disabled styles
-            isDisabled && " opacity-50 text-tertiary",
+            isDisabled && " opacity-50 text-fg-tertiary",
             "in-data-input-wrapper:group-disabled:opacity-50 in-data-input-wrapper:group-disabled: in-data-input-wrapper:group-disabled:ring-",
 
             props.className,
@@ -97,7 +97,7 @@ export const InputGroup = ({ size = "sm", prefix, leadingAddon, trailingAddon, l
                     <div
                         data-input-size={size}
                         className={cx(
-                            "group relative flex h-max w-full flex-row justify-center rounded-lg bg-primary transition-all duration-100 ease-linear",
+                            "group relative flex h-max w-full flex-row justify-center rounded-lg bg-bg-primary transition-all duration-100 ease-linear",
 
                             // Only apply focus ring when child is select and input is focused
                             "has-[&>select]:shadow-xs has-[&>select]:ring-1 has-[&>select]:ring-border-primary has-[&>select]:ring-inset has-[&>select]:has-[input:focus]:ring-2 has-[&>select]:has-[input:focus]:ring-border-brand",
@@ -110,7 +110,7 @@ export const InputGroup = ({ size = "sm", prefix, leadingAddon, trailingAddon, l
 
                         {prefix && (
                             <span className={cx("my-auto grow pr-2", paddings[size].leadingText)}>
-                                <p className={cx("text-md text-tertiary", isDisabled && "")}>{prefix}</p>
+                                <p className={cx("text-md text-fg-tertiary", isDisabled && "")}>{prefix}</p>
                             </span>
                         )}
 

@@ -25,7 +25,7 @@ interface BreadcrumbsProps {
 
 const styles = {
     text: "gap-1.5 md:gap-2",
-    "text-line": "pl-2 gap-1.5 md:gap-2 py-2 after:pointer-events-none after:absolute after:inset-0 after:border-b after:border-t after:border-secondary",
+    "text-line": "pl-2 gap-1.5 md:gap-2 py-2 after:pointer-events-none after:absolute after:inset-0 after:border-b after:border-t after:border-border-secondary",
     button: "gap-0.5 md:gap-1",
 };
 

@@ -50,8 +50,8 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                 <div
                     className={cx(
                         "relative flex items-center rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
-                        !state.isDisabled && "group-hover:bg-primary_hover",
-                        state.isFocused && "bg-primary_hover",
+                        !state.isDisabled && "group-hover:bg-bg-primary_hover",
+                        state.isFocused && "bg-bg-primary_hover",
                         state.isFocusVisible && "outline-2 -outline-offset-2",
                     )}
                 >
@@ -65,8 +65,8 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                     <span
                         className={cx(
                             "grow truncate text-sm font-semibold",
-                            state.isDisabled ? "" : "text-secondary",
-                            state.isFocused && "text-secondary_hover",
+                            state.isDisabled ? "" : "text-fg-secondary",
+                            state.isFocused && "text-fg-secondary_hover",
                         )}
                     >
                         {label || (typeof children === "function" ? children(state) : children)}
@@ -75,8 +75,8 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                     {addon && (
                         <span
                             className={cx(
-                                "ml-3 shrink-0 rounded px-1 py-px text-xs font-medium ring-1 ring-secondary ring-inset",
-                                state.isDisabled ? "" : "text-quaternary",
+                                "ml-3 shrink-0 rounded px-1 py-px text-xs font-medium ring-1 ring-border-secondary ring-inset",
+                                state.isDisabled ? "" : "text-fg-quaternary",
                             )}
                         >
                             {addon}
@@ -112,7 +112,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
             {...props}
             className={(state) =>
                 cx(
-                    "w-62 origin-(--trigger-anchor-point) overflow-auto rounded-lg bg-primary shadow-lg ring-1 ring-secondary_alt will-change-transform",
+                    "w-62 origin-(--trigger-anchor-point) overflow-auto rounded-lg bg-bg-primary shadow-lg ring-1 ring-border-secondary_alt will-change-transform",
                     state.isEntering &&
                         "duration-150 ease-out animate-in fade-in placement-right:slide-in-from-left-0.5 placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
                     state.isExiting &&

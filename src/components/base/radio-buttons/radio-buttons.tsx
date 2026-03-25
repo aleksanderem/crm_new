@@ -25,7 +25,7 @@ export const RadioButtonBase = ({ className, isFocusVisible, isSelected, isDisab
     return (
         <div
             className={cx(
-                "flex size-4 min-h-4 min-w-4 cursor-pointer appearance-none items-center justify-center rounded-full bg-primary ring-1 ring-primary ring-inset",
+                "flex size-4 min-h-4 min-w-4 cursor-pointer appearance-none items-center justify-center rounded-full bg-bg-primary ring-1 ring-border-primary ring-inset",
                 size === "md" && "size-5 min-h-5 min-w-5",
                 isSelected && !isDisabled && "bg-brand-solid ring-brand-solid",
                 isDisabled && "cursor-not-allowed  opacity-50",
@@ -96,9 +96,9 @@ export const RadioButton = ({ label, hint, className, size = "sm", ...ariaRadioP
                     />
                     {(label || hint) && (
                         <div className={cx("inline-flex flex-col", sizes[size].textWrapper)}>
-                            {label && <p className={cx("text-secondary select-none", sizes[size].label)}>{label}</p>}
+                            {label && <p className={cx("text-fg-secondary select-none", sizes[size].label)}>{label}</p>}
                             {hint && (
-                                <span className={cx("text-tertiary", sizes[size].hint)} onClick={(event) => event.stopPropagation()}>
+                                <span className={cx("text-fg-tertiary", sizes[size].hint)} onClick={(event) => event.stopPropagation()}>
                                     {hint}
                                 </span>
                             )}

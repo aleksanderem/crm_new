@@ -9,8 +9,8 @@ import { isReactComponent } from "@/lib/utils/is-react-component";
 
 export const styles = {
     secondary:
-        "bg-primary text-fg-quaternary shadow-xs-skeuomorphic ring-1 ring-primary ring-inset hover:bg-primary_hover hover:text-fg-quaternary_hover disabled:shadow-xs disabled:",
-    tertiary: "text-fg-quaternary hover:bg-primary_hover hover:text-fg-quaternary_hover",
+        "bg-bg-primary text-fg-quaternary shadow-xs-skeuomorphic ring-1 ring-border-primary ring-inset hover:bg-bg-primary_hover hover:text-fg-quaternary_hover disabled:shadow-xs disabled:",
+    tertiary: "text-fg-quaternary hover:bg-bg-primary_hover hover:text-fg-quaternary_hover",
 };
 
 /**

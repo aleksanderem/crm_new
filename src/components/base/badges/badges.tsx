@@ -86,7 +86,7 @@ const withPillTypes = {
         common: "size-max flex items-center whitespace-nowrap rounded-md ring-1 ring-inset shadow-xs",
         styles: {
             gray: {
-                root: "bg-primary text-secondary ring-primary",
+                root: "bg-bg-primary text-fg-secondary ring-border-primary",
                 addon: "text-gray-500",
                 addonButton: "hover:bg-utility-neutral-100 text-utility-neutral-400 hover:text-utility-neutral-500",
             },
@@ -104,7 +104,7 @@ const withBadgeTypes = {
         styles: filledColors,
     },
     [badgeTypes.badgeModern]: {
-        common: "size-max flex items-center whitespace-nowrap rounded-md ring-1 ring-inset bg-primary text-secondary ring-primary shadow-xs",
+        common: "size-max flex items-center whitespace-nowrap rounded-md ring-1 ring-inset bg-bg-primary text-fg-secondary ring-border-primary shadow-xs",
         styles: addonOnlyColors,
     },
 };

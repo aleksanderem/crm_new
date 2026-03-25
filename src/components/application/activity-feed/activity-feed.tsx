@@ -70,18 +70,18 @@ export const FeedItem = ({ user, date, action, attachment, comment, labels, mess
                     <div className="flex items-center gap-2">
                         <a
                             href={user.href}
-                            className="rounded text-sm font-medium text-secondary outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                            className="rounded text-sm font-medium text-fg-secondary outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                             {user.name}
                         </a>
                         {date && (
-                            <time className="text-xs text-tertiary" dateTime={date}>
+                            <time className="text-xs text-fg-tertiary" dateTime={date}>
                                 {date}
                             </time>
                         )}
                     </div>
                     {action && (
-                        <p className="text-sm text-tertiary">
+                        <p className="text-sm text-fg-tertiary">
                             {action.content}{" "}
                             {action.target && (
                                 <Button href={action.href as string} className="inline text-sm font-medium whitespace-normal" color="link-color" size="sm">
@@ -90,7 +90,7 @@ export const FeedItem = ({ user, date, action, attachment, comment, labels, mess
                             )}
                         </p>
                     )}
-                    {user.username && <p className="text-sm text-tertiary">{user.username}</p>}
+                    {user.username && <p className="text-sm text-fg-tertiary">{user.username}</p>}
                 </header>
 
                 {attachment && (
@@ -99,8 +99,8 @@ export const FeedItem = ({ user, date, action, attachment, comment, labels, mess
                         <FileIcon type={attachment.type} theme="dark" className="size-10 not-dark:hidden" />
 
                         <figcaption>
-                            <p className="text-sm font-medium text-secondary">{attachment.name}</p>
-                            <p className="text-sm text-tertiary">{attachment.size}</p>
+                            <p className="text-sm font-medium text-fg-secondary">{attachment.name}</p>
+                            <p className="text-sm text-fg-tertiary">{attachment.size}</p>
                         </figcaption>
                     </figure>
                 )}
@@ -114,10 +114,10 @@ export const FeedItem = ({ user, date, action, attachment, comment, labels, mess
                         ))}
                     </aside>
                 )}
-                {comment && <q className="text-sm text-tertiary">{comment}</q>}
+                {comment && <q className="text-sm text-fg-tertiary">{comment}</q>}
                 {message && (
-                    <section className={cx("gap-2 rounded-lg rounded-tl-none p-3 ring-1 ring-secondary ring-inset", connector && "py-2.5")}>
-                        <p className="text-sm text-secondary">{message}</p>
+                    <section className={cx("gap-2 rounded-lg rounded-tl-none p-3 ring-1 ring-border-secondary ring-inset", connector && "py-2.5")}>
+                        <p className="text-sm text-fg-secondary">{message}</p>
                     </section>
                 )}
             </div>

@@ -83,7 +83,7 @@ export const Avatar = ({
         }
 
         if (initials) {
-            return <span className={cx("text-quaternary", styles[size].initials)}>{initials}</span>;
+            return <span className={cx("text-fg-quaternary", styles[size].initials)}>{initials}</span>;
         }
 
         if (PlaceholderIcon) {
@@ -114,7 +114,7 @@ export const Avatar = ({
         <div
             data-avatar
             className={cx(
-                "relative inline-flex shrink-0 items-center justify-center rounded-full bg-tertiary outline-transparent",
+                "relative inline-flex shrink-0 items-center justify-center rounded-full bg-bg-tertiary outline-transparent",
                 // Focus styles
                 focusable && "group-outline-focus-ring group-focus-visible:outline-2 group-focus-visible:outline-offset-2",
                 contrastBorder && "outline outline-avatar-contrast-border",

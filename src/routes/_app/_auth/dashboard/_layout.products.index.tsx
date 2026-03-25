@@ -8,7 +8,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,6 @@ import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -71,11 +70,12 @@ function ProductsPage() {
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const { handleExport } = useCsvExport(organizationId, "products");
 
   // Sidebar action dispatches
@@ -106,8 +106,16 @@ function ProductsPage() {
     if (activeViewId === "active") {
       data = allProducts.filter((p) => p.isActive);
     }
-    return applyFilters(data);
-  }, [activeViewId, allProducts, applyFilters]);
+    data = applyFilters(data);
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku?.toLowerCase().includes(q)
+      );
+    }
+    return data;
+  }, [activeViewId, allProducts, applyFilters, searchValue]);
 
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
@@ -278,27 +286,21 @@ function ProductsPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newProduct'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "products",
-            action: "create",
-          },
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('products.searchPlaceholder')}
+        dropdownActions={[
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
         ]}
       />
 
@@ -308,13 +310,8 @@ function ProductsPage() {
         stickyFirstColumn
         frozenColumns={2}
         rowActions={rowActions}
-        searchKey="name"
-        searchPlaceholder={t('products.searchPlaceholder')}
         isLoading={isLoading}
-        toolbarDropdownActions={[
-          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
-        ]}
+        hideToolbar
       />
 
       <CsvImportDialog

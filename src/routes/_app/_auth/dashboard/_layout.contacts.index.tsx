@@ -13,10 +13,10 @@ import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Users, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
@@ -58,6 +58,7 @@ function ContactsIndex() {
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
@@ -192,13 +193,13 @@ function ContactsIndex() {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
+          <Avatar className="h-7 w-7 shrink-0">
             <AvatarFallback className="text-xs">
               {row.original.firstName[0]}
               {row.original.lastName?.[0] ?? ""}
             </AvatarFallback>
           </Avatar>
-          <span className="font-medium">
+          <span className="truncate font-medium">
             {row.original.firstName} {row.original.lastName ?? ""}
           </span>
         </div>
@@ -325,14 +326,12 @@ function ContactsIndex() {
       {
         label: t('common.delete'),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          if (window.confirm(t('contacts.confirmDelete'))) {
-            await removeContact({ organizationId, contactId: row._id });
-          }
+        onClick: () => {
+          setDeleteTarget({ id: row._id, name: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email || "?" });
         },
       },
     ],
-    [navigate, removeContact, organizationId]
+    [navigate, t]
   );
 
   return (
@@ -375,26 +374,6 @@ function ContactsIndex() {
           timeRange: rightTimeRange,
           onTimeRangeChange: setRightTimeRange,
         }}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newContact'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setPanelOpen(true),
-            feature: "contacts",
-            action: "create",
-          },
-          {
-            label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setImportOpen(true),
-            feature: "contacts",
-            action: "create",
-          },
-        ]}
-        extra={null}
       />
 
       {!isLoading && filteredContacts.length === 0 ? (
@@ -461,6 +440,30 @@ function ContactsIndex() {
           customFieldDefinitions={cfDefs}
         />
       </SidePanel>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteTarget) return;
+                await removeContact({ organizationId, contactId: deleteTarget.id as any });
+                setDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

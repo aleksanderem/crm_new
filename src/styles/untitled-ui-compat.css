@@ -1,9 +1,10 @@
 /*
  * Untitled UI Compatibility Layer
  *
- * Provides ONLY the color tokens needed by Untitled UI calendar components.
- * Does NOT include --background-color-*, --text-color-*, --border-color-*
- * property overrides — those would conflict with shadcn/ui.
+ * Provides color tokens needed by Untitled UI components.
+ * Includes property-specific overrides (--background-color-*, --text-color-*,
+ * --ring-color-*, --outline-color-*) only for UTUI-namespaced tokens
+ * (brand-solid, error-solid, etc.) that don't collide with shadcn/ui names.
  */
 
 @theme {
@@ -309,6 +310,83 @@
   --color-avatar-contrast-border: rgb(0 0 0 / 0.08);
   --color-focus-ring: var(--color-brand-500);
   --color-focus-ring-error: var(--color-error-500);
+
+  /* ── MISSING BASE SEMANTIC TOKENS (used by featured-icon, etc.) ── */
+  --color-bg-error-secondary: var(--color-error-100);
+  --color-bg-warning-secondary: var(--color-warning-100);
+  --color-bg-warning-solid: var(--color-warning-600);
+  --color-bg-success-secondary: var(--color-success-100);
+  --color-bg-success-solid: var(--color-success-600);
+
+  /* ── PROPERTY-SPECIFIC OVERRIDES for UTUI Tailwind classes ── */
+  /* These bridge bg-brand-solid → --background-color-brand-solid → --color-bg-brand-solid */
+  /* Only UTUI-namespaced tokens (brand-*, error-*, warning-*, success-*) — no shadcn/ui collision */
+
+  /* Background (bg-brand-solid, bg-error-primary, etc.) */
+  --background-color-brand-solid: var(--color-bg-brand-solid);
+  --background-color-brand-solid_hover: var(--color-bg-brand-solid_hover);
+  --background-color-brand-primary: var(--color-bg-brand-primary);
+  --background-color-brand-primary_alt: var(--color-bg-brand-primary_alt);
+  --background-color-brand-secondary: var(--color-bg-brand-secondary);
+  --background-color-error-primary: var(--color-bg-error-primary);
+  --background-color-error-secondary: var(--color-bg-error-secondary);
+  --background-color-error-solid: var(--color-bg-error-solid);
+  --background-color-error-solid_hover: var(--color-bg-error-solid_hover);
+  --background-color-warning-primary: var(--color-bg-warning-primary);
+  --background-color-warning-secondary: var(--color-bg-warning-secondary);
+  --background-color-warning-solid: var(--color-bg-warning-solid);
+  --background-color-success-primary: var(--color-bg-success-primary);
+  --background-color-success-secondary: var(--color-bg-success-secondary);
+  --background-color-success-solid: var(--color-bg-success-solid);
+
+  /* Text (text-brand-secondary, text-error-primary, etc.) */
+  --text-color-brand-secondary: var(--color-text-brand-secondary);
+  --text-color-brand-secondary_hover: var(--color-text-brand-secondary_hover);
+  --text-color-brand-tertiary: var(--color-text-brand-tertiary);
+  --text-color-error-primary: var(--color-text-error-primary);
+  --text-color-error-primary_hover: var(--color-text-error-primary_hover);
+
+  /* Ring (ring-brand-solid, ring-error_subtle) */
+  --ring-color-brand-solid: var(--color-bg-brand-solid);
+  --ring-color-error_subtle: var(--color-border-error_subtle);
+
+  /* Outline (outline-error) */
+  --outline-color-error: var(--color-border-error);
+
+  /* ── BORDER-TOKEN PROPERTY OVERRIDES ── */
+  /* HeroUI overrides --color-border-secondary/tertiary with its own color-mix values. */
+  /* Property-specific vars use RAW palette refs to bypass both shadcn and HeroUI collisions. */
+
+  /* border-color (border-border-*) */
+  --border-color-border-primary: var(--color-gray-300);
+  --border-color-border-secondary: var(--color-gray-200);
+  --border-color-border-secondary_alt: rgb(0 0 0 / 0.08);
+  --border-color-border-tertiary: var(--color-gray-100);
+  --border-color-border-brand: var(--color-brand-500);
+  --border-color-border-brand_alt: var(--color-brand-600);
+  --border-color-border-error: var(--color-error-500);
+  --border-color-border-error_subtle: var(--color-error-300);
+  --border-color-border-disabled: var(--color-gray-300);
+  --border-color-border-disabled_subtle: var(--color-gray-200);
+
+  /* ring (ring-border-*) */
+  --ring-color-border-primary: var(--color-gray-300);
+  --ring-color-border-secondary: var(--color-gray-200);
+  --ring-color-border-secondary_alt: rgb(0 0 0 / 0.08);
+  --ring-color-border-brand: var(--color-brand-500);
+  --ring-color-border-error: var(--color-error-500);
+  --ring-color-border-error_subtle: var(--color-error-300);
+
+  /* background (bg-border-*) — pseudo-element row dividers in tables */
+  --background-color-border-secondary: var(--color-gray-200);
+
+  /* stroke (stroke-border-*) — SVG strokes in illustrations & icons */
+  --stroke-border-primary: var(--color-gray-300);
+  --stroke-border-secondary: var(--color-gray-200);
+  --stroke-border-secondary_alt: rgb(0 0 0 / 0.08);
+
+  /* text/color (text-border-*) — SVG patterns using currentColor */
+  --text-color-border-secondary: var(--color-gray-200);
 }
 
 /*
@@ -363,7 +441,12 @@
   --color-bg-error-solid: var(--color-error-600);
   --color-bg-error-solid_hover: var(--color-error-500);
   --color-bg-warning-primary: var(--color-warning-700);
+  --color-bg-warning-secondary: var(--color-warning-700);
+  --color-bg-warning-solid: var(--color-warning-600);
   --color-bg-success-primary: var(--color-success-700);
+  --color-bg-success-secondary: var(--color-success-700);
+  --color-bg-success-solid: var(--color-success-600);
+  --color-bg-error-secondary: var(--color-error-950);
 
   /* ── BORDER COLORS ── */
   --color-border-primary: var(--color-gray-700);
@@ -376,6 +459,29 @@
   --color-border-error_subtle: var(--color-error-600);
   --color-border-disabled: var(--color-gray-700);
   --color-border-disabled_subtle: var(--color-gray-700);
+
+  /* ── BORDER-TOKEN PROPERTY OVERRIDES (dark) ── */
+  --border-color-border-primary: var(--color-gray-700);
+  --border-color-border-secondary: var(--color-gray-800);
+  --border-color-border-secondary_alt: rgb(255 255 255 / 0.1);
+  --border-color-border-tertiary: var(--color-gray-800);
+  --border-color-border-brand: var(--color-brand-400);
+  --border-color-border-brand_alt: var(--color-brand-500);
+  --border-color-border-error: var(--color-error-400);
+  --border-color-border-error_subtle: var(--color-error-600);
+  --border-color-border-disabled: var(--color-gray-700);
+  --border-color-border-disabled_subtle: var(--color-gray-700);
+  --ring-color-border-primary: var(--color-gray-700);
+  --ring-color-border-secondary: var(--color-gray-800);
+  --ring-color-border-secondary_alt: rgb(255 255 255 / 0.1);
+  --ring-color-border-brand: var(--color-brand-400);
+  --ring-color-border-error: var(--color-error-400);
+  --ring-color-border-error_subtle: var(--color-error-600);
+  --background-color-border-secondary: var(--color-gray-800);
+  --stroke-border-primary: var(--color-gray-700);
+  --stroke-border-secondary: var(--color-gray-800);
+  --stroke-border-secondary_alt: rgb(255 255 255 / 0.1);
+  --text-color-border-secondary: var(--color-gray-800);
 
   /* ── TEXT SEMANTIC COLORS ── */
   --color-text-primary: var(--color-gray-50);

@@ -1,29 +1,24 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
+import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@untitled/base/avatar/avatar";
 import { Badge } from "@/components/ui/badge";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Heart, Trash2, Download } from "@/lib/ez-icons";
+import { Plus, Trash2, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
-import { EditableCell } from "@/components/data-table/editable-cell";
-import { genderOptions } from "@/lib/options";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
@@ -36,24 +31,14 @@ export const Route = createFileRoute(
 
 type Patient = Doc<"gabinetPatients">;
 
-const DEFAULT_HIDDEN: Record<string, boolean> = {
-  pesel: false,
-  dateOfBirth: false,
-  gender: false,
-  allergies: false,
-  bloodType: false,
-  medicalNotes: false,
-  updatedAt: false,
-};
-
 function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const createPatient = useMutation(api.gabinet.patients.create);
-  const updatePatient = useMutation(api.gabinet.patients.update);
   const removePatient = useMutation(api.gabinet.patients.remove);
 
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
@@ -109,12 +94,34 @@ function PatientsIndex() {
 
   const filterableFields = useMemo(
     (): FieldDef[] => [
+      { id: "firstName", label: t("gabinet.patients.firstName"), type: "text" },
+      { id: "lastName", label: t("gabinet.patients.lastName"), type: "text" },
+      { id: "email", label: t("common.email"), type: "text" },
+      { id: "phone", label: t("common.phone"), type: "text" },
+      {
+        id: "gender",
+        label: t("gabinet.patients.gender"),
+        type: "select",
+        options: [
+          { label: t("gabinet.patients.genderOptions.male"), value: "male" },
+          { label: t("gabinet.patients.genderOptions.female"), value: "female" },
+          { label: t("gabinet.patients.genderOptions.other"), value: "other" },
+        ],
+      },
       {
         id: "referralSource",
         label: t("gabinet.patients.referralSource"),
         type: "text",
       },
-      { id: "email", label: t("common.email"), type: "text" },
+      {
+        id: "isActive",
+        label: t("common.active"),
+        type: "select",
+        options: [
+          { label: t("common.yes"), value: "true" },
+          { label: t("common.no"), value: "false" },
+        ],
+      },
       { id: "createdAt", label: t("common.created"), type: "date" },
     ],
     [t],
@@ -135,16 +142,12 @@ function PatientsIndex() {
     onViewChange,
     onCreateView,
     onDeleteView,
-    columnVisibility,
-    sorting,
-    setColumnVisibility,
-    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
     entityType: "gabinetPatient",
     systemViews,
-    defaultColumnVisibility: DEFAULT_HIDDEN,
+    defaultColumnVisibility: {},
   });
 
   const filteredPatients = useMemo(() => {
@@ -199,261 +202,95 @@ function PatientsIndex() {
     }));
   }, [patients]);
 
-  const columns: ColumnDef<Patient>[] = [
-    {
-      accessorKey: "firstName",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.contact")}
-        />
-      ),
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-xs">
-              {row.original.firstName[0]}
-              {row.original.lastName[0]}
-            </AvatarFallback>
-          </Avatar>
-          <span className="font-medium">
-            {row.original.firstName} {row.original.lastName}
-          </span>
-          {!row.original.isActive && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              {t("common.inactive")}
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "email",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.email")} />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.email ?? ""}
-          config={{ type: "text", placeholder: "email@example.com" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              email: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "phone",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.phone")} />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.phone ?? ""}
-          config={{ type: "text", placeholder: "+48..." }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              phone: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "pesel",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.pesel")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.pesel ?? ""}
-          config={{ type: "text", placeholder: "PESEL" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              pesel: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "dateOfBirth",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.dateOfBirth")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.dateOfBirth ?? ""}
-          config={{ type: "date" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              dateOfBirth: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "gender",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.gender")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.gender ?? ""}
-          config={{
-            type: "select",
-            options: genderOptions(t),
-            placeholder: "—",
-          }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              gender: v as any,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "referralSource",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.referralSource")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.referralSource ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              referralSource: v,
-            });
-          }}
-        />
-      ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
-    },
-    {
-      accessorKey: "allergies",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.allergies")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.allergies ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              allergies: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "bloodType",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.bloodType")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.bloodType ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              bloodType: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "medicalNotes",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.patients.medicalNotes")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.medicalNotes ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updatePatient({
-              organizationId,
-              patientId: row.original._id,
-              medicalNotes: v,
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.created")} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
-    },
-    {
-      accessorKey: "updatedAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.updated")} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
-    },
-  ];
+  const columns = useMemo(
+    (): CrmColumn<Patient>[] => [
+      {
+        id: "firstName",
+        label: t("gabinet.patients.contact"),
+        sortable: true,
+        isRowHeader: true,
+        render: (item) => (
+          <div className="flex items-center gap-3">
+            <Avatar
+              size="sm"
+              initials={item.firstName[0] + item.lastName[0]}
+            />
+            <Link
+              to="/dashboard/gabinet/patients/$patientId"
+              params={{ patientId: item._id }}
+              className="font-medium text-fg-primary hover:text-brand-secondary"
+            >
+              {item.firstName} {item.lastName}
+            </Link>
+            {!item.isActive && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                {t("common.inactive")}
+              </Badge>
+            )}
+          </div>
+        ),
+        getSortValue: (item) => item.firstName + " " + item.lastName,
+      },
+      {
+        id: "email",
+        label: t("common.email"),
+        sortable: true,
+        render: (item) => item.email ?? "—",
+        getSortValue: (item) => item.email ?? "",
+      },
+      {
+        id: "phone",
+        label: t("common.phone"),
+        render: (item) => item.phone ?? "—",
+      },
+      {
+        id: "pesel",
+        label: t("gabinet.patients.pesel"),
+        render: (item) => item.pesel ?? "—",
+      },
+      {
+        id: "dateOfBirth",
+        label: t("gabinet.patients.dateOfBirth"),
+        render: (item) => item.dateOfBirth ?? "—",
+      },
+      {
+        id: "gender",
+        label: t("gabinet.patients.gender"),
+        render: (item) => item.gender ?? "—",
+      },
+      {
+        id: "referralSource",
+        label: t("gabinet.patients.referralSource"),
+        render: (item) => item.referralSource ?? "—",
+      },
+      {
+        id: "allergies",
+        label: t("gabinet.patients.allergies"),
+        render: (item) => item.allergies ?? "—",
+      },
+      {
+        id: "bloodType",
+        label: t("gabinet.patients.bloodType"),
+        render: (item) => item.bloodType ?? "—",
+      },
+      {
+        id: "medicalNotes",
+        label: t("gabinet.patients.medicalNotes"),
+        render: (item) => item.medicalNotes ?? "—",
+      },
+      {
+        id: "createdAt",
+        label: t("common.created"),
+        sortable: true,
+        render: (item) => new Date(item.createdAt).toLocaleDateString(),
+        getSortValue: (item) => item.createdAt,
+      },
+    ],
+    [t],
+  );
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const handleCreate = useCallback(
     async (formData: {
@@ -517,14 +354,6 @@ function PatientsIndex() {
     [navigate, removePatient, organizationId, t],
   );
 
-  const sourceOptions = useMemo(() => {
-    const sources = new Set<string>();
-    for (const p of patients) {
-      if (p.referralSource) sources.add(p.referralSource);
-    }
-    return Array.from(sources).map((s) => ({ label: s, value: s }));
-  }, [patients]);
-
   return (
     <div className="space-y-4">
       <PageHeader
@@ -557,6 +386,10 @@ function PatientsIndex() {
             onClick: handleExport,
           },
         ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <MiniChartsRow
@@ -576,57 +409,25 @@ function PatientsIndex() {
         }}
       />
 
-      {!isLoading && filteredPatients.length === 0 ? (
-        <EmptyState
-          icon={Heart}
-          title={t("gabinet.patients.emptyTitle")}
-          description={t("gabinet.patients.emptyDescription")}
-          action={
-            <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.patients.addPatient")}
-            </Button>
-          }
-        />
-      ) : (
-        <CrmDataTable
-          columns={columns}
-          data={filteredPatients}
-          stickyFirstColumn
-          frozenColumns={2}
-          hideToolbar
-          isLoading={isLoading}
-          enableBulkSelect
-          bulkActions={[
-            {
-              label: t("common.delete"),
-              value: "delete",
-              variant: "destructive",
-            },
-          ]}
-          onBulkAction={handleBulkAction}
-          rowActions={rowActions}
-          onRowClick={(row) =>
-            navigate({ to: `/dashboard/gabinet/patients/${row._id}` })
-          }
-          totalCount={filteredPatients.length}
-          filterableColumns={
-            sourceOptions.length > 0
-              ? [
-                  {
-                    id: "referralSource",
-                    title: t("gabinet.patients.referralSource"),
-                    options: sourceOptions,
-                  },
-                ]
-              : []
-          }
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          sorting={sorting}
-          onSortingChange={setSorting}
-        />
-      )}
+      <CrmDataTable
+        columns={allColumns}
+        data={filteredPatients}
+        isLoading={isLoading}
+        toolbar={toolbarRef.current}
+        hiddenColumnIds={hiddenColumnIds}
+        enableBulkSelect
+        bulkActions={[
+          {
+            label: t("common.delete"),
+            value: "delete",
+            variant: "destructive",
+          },
+        ]}
+        onBulkAction={handleBulkAction}
+        rowActions={rowActions}
+        emptyTitle={t("gabinet.patients.emptyTitle")}
+        emptyDescription={t("gabinet.patients.emptyDescription")}
+      />
 
       <SidePanel
         open={panelOpen}

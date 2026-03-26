@@ -1,31 +1,27 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
+import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Users, Trash2, Upload, Download } from "@/lib/ez-icons";
+import { Avatar } from "@untitled/base/avatar/avatar";
+import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { EditableCell } from "@/components/data-table/editable-cell";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 
 export const Route = createFileRoute(
@@ -36,15 +32,6 @@ export const Route = createFileRoute(
 
 type Contact = Doc<"contacts">;
 
-const DEFAULT_HIDDEN: Record<string, boolean> = {
-  lastName: false,
-  title: false,
-  tags: false,
-  notes: false,
-  createdBy: false,
-  updatedAt: false,
-};
-
 function ContactsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -52,7 +39,9 @@ function ContactsIndex() {
   const createContact = useMutation(api.contacts.create);
   const removeContact = useMutation(api.contacts.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
+  const updateContact = useMutation(api.contacts.update);
 
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -75,8 +64,12 @@ function ContactsIndex() {
   ], [t]);
 
   const filterableFields = useMemo((): FieldDef[] => [
-    { id: "source", label: t('common.source'), type: "text" },
+    { id: "firstName", label: t('contacts.firstName'), type: "text" },
+    { id: "lastName", label: t('contacts.lastName'), type: "text" },
     { id: "email", label: t('common.email'), type: "text" },
+    { id: "phone", label: t('common.phone'), type: "text" },
+    { id: "title", label: t('contacts.title'), type: "text" },
+    { id: "source", label: t('common.source'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);
 
@@ -87,18 +80,12 @@ function ContactsIndex() {
     })
   );
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
-
   const contacts = data?.page ?? [];
 
   const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
 
-  const { definitions: cfDefs, columns: cfColumns, defaultColumnVisibility: cfDefaultVis, mergeCustomFieldValues } =
+  const { definitions: cfDefs, columns: cfColumns, mergeCustomFieldValues } =
     useCustomFieldColumns<Contact>({ organizationId, entityType: "contact", entityIds: contactIds });
-
-  const mergedDefaultVis = useMemo(() => ({ ...DEFAULT_HIDDEN, ...cfDefaultVis }), [cfDefaultVis]);
 
   const {
     views,
@@ -106,28 +93,13 @@ function ContactsIndex() {
     onViewChange,
     onCreateView,
     onDeleteView,
-    columnVisibility,
-    sorting,
-    setColumnVisibility,
-    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
     entityType: "contact",
     systemViews: systemViews,
-    defaultColumnVisibility: mergedDefaultVis,
+    defaultColumnVisibility: {},
   });
-
-  // @ts-ignore unused but kept for future use
-  const _userLookup = useMemo(() => {
-    const map = new Map<string, string>();
-    if (members) {
-      for (const m of members) {
-        if (m.user) map.set(m.user._id, m.user.name ?? m.user.email ?? "Unknown");
-      }
-    }
-    return map;
-  }, [members]);
 
   const filteredContacts = useMemo(() => {
     const now = Date.now();
@@ -225,89 +197,62 @@ function ContactsIndex() {
     }));
   }, [contacts]);
 
-  const sourceOptions = useMemo(() => {
-    const sources = new Set<string>();
-    for (const c of contacts) {
-      const src = (c as Contact & { source?: string }).source;
-      if (src) sources.add(src);
-    }
-    return Array.from(sources).map((s) => ({ label: s, value: s }));
-  }, [contacts]);
+  // --- CrmColumn definitions ---
 
-  const updateContact = useMutation(api.contacts.update);
+  type ContactRow = Contact & { __cfValues: Record<string, unknown> };
 
-  const columns: ColumnDef<Contact>[] = [
+  const columns = useMemo((): CrmColumn<ContactRow>[] => [
     {
-      accessorKey: "firstName",
-      size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.contact')} />,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-xs">
-              {row.original.firstName[0]}
-              {row.original.lastName?.[0] ?? ""}
-            </AvatarFallback>
-          </Avatar>
-          <span className="font-medium">
-            {row.original.firstName} {row.original.lastName ?? ""}
-          </span>
+      id: "firstName",
+      label: t('contacts.contact'),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            size="sm"
+            initials={`${item.firstName[0]}${item.lastName?.[0] ?? ""}`}
+          />
+          <Link
+            to="/dashboard/contacts/$contactId"
+            params={{ contactId: item._id }}
+            className="font-medium text-fg-primary hover:text-brand-secondary"
+          >
+            {item.firstName} {item.lastName ?? ""}
+          </Link>
         </div>
       ),
+      getSortValue: (item) => `${item.firstName} ${item.lastName ?? ""}`,
     },
     {
-      accessorKey: "email",
-      size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.email')} />,
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.email ?? ""}
-          config={{ type: "text", placeholder: "email@example.com" }}
-          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, email: v }); }}
-        />
-      ),
+      id: "email",
+      label: t('common.email'),
+      sortable: true,
+      render: (item) => item.email ?? "—",
+      getSortValue: (item) => item.email ?? "",
     },
     {
-      accessorKey: "phone",
-      size: 150,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.phone')} />,
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.phone ?? ""}
-          config={{ type: "text", placeholder: "+48..." }}
-          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, phone: v }); }}
-        />
-      ),
+      id: "phone",
+      label: t('common.phone'),
+      render: (item) => item.phone ?? "—",
     },
     {
-      accessorKey: "title",
-      size: 150,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('contacts.title')} />,
-      cell: ({ row }) => (
-        <EditableCell
-          value={(row.original as any).title ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateContact({ organizationId, contactId: row.original._id, title: v }); }}
-        />
-      ),
+      id: "title",
+      label: t('contacts.title'),
+      render: (item) => (item as any).title ?? "—",
     },
     {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      id: "createdAt",
+      label: t('common.created'),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString(),
+      getSortValue: (item) => item.createdAt,
     },
-    {
-      accessorKey: "updatedAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
-    },
-  ];
+  ], [t]);
 
-  const allColumns = useMemo(() => {
-    return [...columns, ...cfColumns];
-  }, [columns, cfColumns]);
+  const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
+  const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const handleCreate = useCallback(
     async (
@@ -357,7 +302,7 @@ function ContactsIndex() {
   );
 
   const handleBulkAction = useCallback(
-    async (action: string, selectedRows: Contact[]) => {
+    async (action: string, selectedRows: ContactRow[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
           await removeContact({ organizationId, contactId: row._id });
@@ -368,7 +313,7 @@ function ContactsIndex() {
   );
 
   const rowActions = useCallback(
-    (row: Contact) => [
+    (row: ContactRow) => [
       {
         label: t('common.edit'),
         onClick: () => navigate({ to: `/dashboard/contacts/${row._id}` }),
@@ -383,7 +328,7 @@ function ContactsIndex() {
         },
       },
     ],
-    [navigate, removeContact, organizationId]
+    [navigate, removeContact, organizationId, t]
   );
 
   return (
@@ -403,7 +348,7 @@ function ContactsIndex() {
         views={views}
         activeViewId={activeViewId ?? undefined}
         onViewChange={onViewChange}
-        onCreateView={async (name) => { onCreateView(name); }}
+        onCreateView={onCreateView}
         onDeleteView={async (id) => { onDeleteView(id); }}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
@@ -416,6 +361,10 @@ function ContactsIndex() {
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
         ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <MiniChartsRow
@@ -435,43 +384,21 @@ function ContactsIndex() {
         }}
       />
 
-      {!isLoading && filteredContacts.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={t('contacts.emptyTitle')}
-          description={t('contacts.emptyDescription')}
-          action={
-            <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('contacts.addContact')}
-            </Button>
-          }
-        />
-      ) : (
-        <CrmDataTable
-          columns={allColumns}
-          data={tableData}
-          stickyFirstColumn
-          frozenColumns={2}
-          isLoading={isLoading}
-          enableBulkSelect
-          bulkActions={[
-            { label: t('common.delete'), value: "delete", variant: "destructive" },
-          ]}
-          onBulkAction={handleBulkAction}
-          rowActions={rowActions}
-          onRowClick={(row) => navigate({ to: `/dashboard/contacts/${row._id}` })}
-          totalCount={searchedContacts.length}
-          filterableColumns={sourceOptions.length > 0 ? [
-            { id: "source", title: t('common.source'), options: sourceOptions },
-          ] : []}
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          sorting={sorting}
-          onSortingChange={setSorting}
-          hideToolbar
-        />
-      )}
+      <CrmDataTable
+        columns={allColumns}
+        data={tableData}
+        isLoading={isLoading}
+        hiddenColumnIds={hiddenColumnIds}
+        enableBulkSelect
+        bulkActions={[
+          { label: t('common.delete'), value: "delete", variant: "destructive" },
+        ]}
+        onBulkAction={handleBulkAction}
+        rowActions={rowActions}
+        toolbar={toolbarRef.current}
+        emptyTitle={t('contacts.emptyTitle')}
+        emptyDescription={t('contacts.emptyDescription')}
+      />
 
       <CsvImportDialog
         organizationId={organizationId}

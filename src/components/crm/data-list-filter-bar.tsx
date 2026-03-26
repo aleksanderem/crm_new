@@ -1,17 +1,21 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { Fragment, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { SearchMd, Plus, DotsVertical, FilterLines } from "@untitledui/icons";
-import { Tabs, TabList, Tab } from "@untitled/app/tabs/tabs";
-import { FilterBar } from "@untitled/app/filter-bar/filter-bar";
+import {
+  SearchMd,
+  Plus,
+  DotsVertical,
+  ChevronDown,
+  FilterLines,
+  Columns03,
+} from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
+import { CloseButton } from "@untitled/base/buttons/close-button";
 import { Input } from "@untitled/base/input/input";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
+import { Select, type SelectItemType } from "@untitled/base/select/select";
 import { SlideoutMenu } from "@untitled/app/slideout-menus/slideout-menu";
-import {
-  FilterDropdown,
-  CountBadge,
-  type FilterRow,
-} from "@untitled/app/filter-bar/filter-dropdown-menu";
+import { CountBadge, type FilterRow } from "@untitled/app/filter-bar/filter-dropdown-menu";
+import { FeaturedIcon } from "@untitled/foundations/featured-icon/featured-icon";
 import {
   Dialog,
   DialogContent,
@@ -71,7 +75,7 @@ export interface DataListFilterBarProps {
   views?: SavedViewDef[];
   activeViewId?: string;
   onViewChange?: (viewId: string) => void;
-  onCreateView?: (name: string, filters: FilterCondition[]) => Promise<void>;
+  onCreateView?: (name: string, filters?: FilterConfig) => Promise<void>;
   onDeleteView?: (viewId: string) => Promise<void>;
   maxCustomViews?: number;
   filterableFields?: FieldDef[];
@@ -86,18 +90,44 @@ export interface DataListFilterBarProps {
   // Filters
   onFiltersChange?: (conditions: FilterCondition[]) => void;
 
+  // Column picker
+  columnDefs?: Array<{ id: string; label: string }>;
+  hiddenColumnIds?: Set<string>;
+  onToggleColumn?: (columnId: string) => void;
+
   // Extra dropdown actions
   dropdownActions?: Array<{
     label: string;
     icon?: React.ReactNode;
     onClick: () => void;
   }>;
+
+  // Render prop: receives the toolbar content (search + filters + actions)
+  // so the consumer can place it inside the table card.
+  renderToolbar?: (toolbar: React.ReactNode) => React.ReactNode;
 }
 
 let filterIdCounter = 0;
 function nextFilterId() {
   return `f-${++filterIdCounter}`;
 }
+
+const DottedDivider = () => (
+  <svg height="2" className="w-full shrink-0">
+    <line
+      x1="0"
+      y1="1"
+      x2="100%"
+      y2="1"
+      className="stroke-border-primary"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeDasharray="0,6"
+    />
+  </svg>
+);
 
 export function DataListFilterBar({
   views = [],
@@ -112,11 +142,16 @@ export function DataListFilterBar({
   searchValue,
   onSearchChange,
   searchPlaceholder,
+  columnDefs,
+  hiddenColumnIds,
+  onToggleColumn,
   onFiltersChange,
   dropdownActions = [],
+  renderToolbar,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [internalCreateDialogOpen, setInternalCreateDialogOpen] =
     useState(false);
   const [newViewName, setNewViewName] = useState("");
@@ -128,7 +163,28 @@ export function DataListFilterBar({
 
   // Filter state
   const [draftFilters, setDraftFilters] = useState<FilterRow[]>([]);
-  const [appliedCount, setAppliedCount] = useState(0);
+  const [appliedConditions, setAppliedConditions] = useState<FilterCondition[]>([]);
+
+  // Load filters from active view when view changes
+  const activeViewFilters = views.find((v) => v.id === activeViewId)?.filters;
+  useEffect(() => {
+    if (activeViewFilters?.conditions?.length) {
+      const rows: FilterRow[] = activeViewFilters.conditions.map((c) => ({
+        id: nextFilterId(),
+        field: c.field,
+        operator: c.operator,
+        value: c.value ?? "",
+      }));
+      setDraftFilters(rows);
+      setAppliedConditions(activeViewFilters.conditions);
+      onFiltersChange?.(activeViewFilters.conditions);
+    } else {
+      setDraftFilters([]);
+      setAppliedConditions([]);
+      onFiltersChange?.([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeViewId]);
 
   // Debounced search
   const [localSearch, setLocalSearch] = useState(searchValue);
@@ -195,24 +251,22 @@ export function DataListFilterBar({
     [filterableFields],
   );
 
-  const handleApplyFilters = useCallback(
-    (filters: FilterRow[]) => {
-      const conditions: FilterCondition[] = filters
-        .filter((f) => f.value || f.operator === "isEmpty" || f.operator === "isNotEmpty")
-        .map((f) => ({
-          field: f.field,
-          operator: f.operator as FilterCondition["operator"],
-          value: f.value,
-        }));
-      setAppliedCount(conditions.length);
-      onFiltersChange?.(conditions);
-    },
-    [onFiltersChange],
-  );
+  const handleApplyFilters = useCallback(() => {
+    const conditions: FilterCondition[] = draftFilters
+      .filter((f) => f.value || f.operator === "isEmpty" || f.operator === "isNotEmpty")
+      .map((f) => ({
+        field: f.field,
+        operator: f.operator as FilterCondition["operator"],
+        value: f.value,
+      }));
+    setAppliedConditions(conditions);
+    onFiltersChange?.(conditions);
+    setFilterSlideoutOpen(false);
+  }, [draftFilters, onFiltersChange]);
 
   const handleClearAllFilters = useCallback(() => {
     setDraftFilters([]);
-    setAppliedCount(0);
+    setAppliedConditions([]);
     onFiltersChange?.([]);
   }, [onFiltersChange]);
 
@@ -222,53 +276,23 @@ export function DataListFilterBar({
     [filterableFields],
   );
 
-  const renderFilterRow = useCallback(
-    (filter: FilterRow, onChange: (patch: Partial<Omit<FilterRow, "id">>) => void) => {
-      const fieldDef = fieldMap.get(filter.field);
-      const fieldType = fieldDef?.type ?? "text";
-      const operators = OPERATORS_BY_TYPE[fieldType];
-      const noValue = filter.operator === "isEmpty" || filter.operator === "isNotEmpty";
+  // Select items for fields
+  const fieldSelectItems: SelectItemType[] = useMemo(
+    () => filterableFields.map((f) => ({ id: f.id, label: f.label })),
+    [filterableFields],
+  );
 
-      return (
-        <>
-          {/* Field selector */}
-          <select
-            value={filter.field}
-            onChange={(e) => onChange({ field: e.target.value })}
-            className="h-9 min-w-[120px] rounded-lg border border-border-primary bg-bg-primary px-3 text-sm text-fg-primary outline-none focus:ring-2 focus:ring-brand"
-          >
-            {filterableFields.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-          {/* Operator selector */}
-          <select
-            value={filter.operator}
-            onChange={(e) => onChange({ operator: e.target.value })}
-            className="h-9 min-w-[130px] rounded-lg border border-border-primary bg-bg-primary px-3 text-sm text-fg-primary outline-none focus:ring-2 focus:ring-brand"
-          >
-            {operators.map((op) => (
-              <option key={op.value} value={op.value}>
-                {op.label}
-              </option>
-            ))}
-          </select>
-          {/* Value input */}
-          {!noValue && (
-            <input
-              type={fieldType === "number" ? "number" : fieldType === "date" ? "date" : "text"}
-              value={filter.value}
-              onChange={(e) => onChange({ value: e.target.value })}
-              placeholder="Value..."
-              className="h-9 min-w-[140px] flex-1 rounded-lg border border-border-primary bg-bg-primary px-3 text-sm text-fg-primary placeholder:text-fg-quaternary outline-none focus:ring-2 focus:ring-brand"
-            />
-          )}
-        </>
-      );
+  // Operator items per filter
+  const getOperatorItems = useCallback(
+    (fieldId: string): SelectItemType[] => {
+      const fieldDef = fieldMap.get(fieldId);
+      const fieldType = fieldDef?.type ?? "text";
+      return OPERATORS_BY_TYPE[fieldType].map((op) => ({
+        id: op.value,
+        label: op.label,
+      }));
     },
-    [filterableFields, fieldMap],
+    [fieldMap],
   );
 
   const customViewCount = views.filter((v) => !v.isSystem).length;
@@ -281,17 +305,33 @@ export function DataListFilterBar({
 
   const handleCreateView = async () => {
     if (newViewName.trim() && onCreateView) {
-      await onCreateView(newViewName.trim(), []);
+      const filters: FilterConfig | undefined =
+        appliedConditions.length > 0
+          ? { conditions: appliedConditions, logic: "and" }
+          : undefined;
+      await onCreateView(newViewName.trim(), filters);
     }
     setCreateDialogOpen(false);
     setNewViewName("");
   };
 
-  const tabItems = views.map((view) => ({
-    id: view.id,
-    label: view.name,
-    children: view.name,
-  }));
+  // "Save as view" from filter slideout — apply filters first, then open create dialog
+  const handleSaveAsView = useCallback(() => {
+    const conditions: FilterCondition[] = draftFilters
+      .filter((f) => f.value || f.operator === "isEmpty" || f.operator === "isNotEmpty")
+      .map((f) => ({
+        field: f.field,
+        operator: f.operator as FilterCondition["operator"],
+        value: f.value,
+      }));
+    setAppliedConditions(conditions);
+    onFiltersChange?.(conditions);
+    setFilterSlideoutOpen(false);
+    setNewViewName("");
+    setCreateDialogOpen(true);
+  }, [draftFilters, onFiltersChange, setCreateDialogOpen]);
+
+  const activeViewLabel = views.find((v) => v.id === activeViewId)?.name ?? views[0]?.name ?? "";
 
   const renderMoreActions = () => {
     if (dropdownActions.length === 0) return null;
@@ -315,80 +355,289 @@ export function DataListFilterBar({
 
   const hasFilterableFields = filterableFields.length > 0;
 
-  return (
-    <>
-      {/* UTUI FilterBar layout */}
-      <FilterBar.Root>
-        <FilterBar.Content>
-          {views.length > 0 && (
-            <Tabs
-              selectedKey={activeViewId ?? undefined}
-              onSelectionChange={(key) => onViewChange?.(String(key))}
-            >
-              <TabList
-                type="button-minimal"
-                size="sm"
-                items={tabItems}
-              >
-                {(item) => <Tab id={item.id}>{item.children}</Tab>}
-              </TabList>
-            </Tabs>
-          )}
-          {onCreateView && canAddMore && (
-            <button
-              type="button"
-              onClick={openCreateDialog}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-fg-quaternary transition hover:text-fg-primary"
-            >
-              <Plus className="size-4" />
-              {t("views.addView", {
-                current: customViewCount,
-                max: maxCustomViews,
-              })}
-            </button>
-          )}
-        </FilterBar.Content>
+  // --- Full toolbar: views + search + filter trigger + actions ---
+  const toolbarContent = (
+    <div className="flex items-center gap-3">
+      {/* Left: view selector + add view */}
+      <div className="flex shrink-0 items-center gap-2">
+        {views.length > 0 && (
+          <Dropdown.Root>
+            <Button size="sm" color="secondary" iconTrailing={ChevronDown}>
+              {activeViewLabel}
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu>
+                {views.map((view) => (
+                  <Dropdown.Item
+                    key={view.id}
+                    label={view.name}
+                    onAction={() => onViewChange?.(view.id)}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
+        {onCreateView && canAddMore && (
+          <button
+            type="button"
+            onClick={openCreateDialog}
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-1.5 text-sm font-medium text-fg-quaternary transition hover:text-fg-primary"
+          >
+            <Plus className="size-4" />
+            {t("views.addView", {
+              current: customViewCount,
+              max: maxCustomViews,
+            })}
+          </button>
+        )}
+      </div>
 
-        <FilterBar.Actions className="hidden md:flex">
-          <Input
-            size="sm"
-            icon={SearchMd}
-            placeholder={searchPlaceholder ?? t("common.search")}
-            value={localSearch}
-            onChange={handleSearchInput}
-            className="w-[220px]"
-          />
-          {hasFilterableFields && (
-            <FilterDropdown
-              filters={draftFilters}
-              appliedCount={appliedCount}
-              onApply={handleApplyFilters}
-              onClearAll={handleClearAllFilters}
-              onAddFilter={handleAddFilter}
-              onRemoveFilter={handleRemoveFilter}
-              onFilterChange={handleFilterChange}
-              renderFilterRow={renderFilterRow}
-              placement="bottom end"
-            />
-          )}
-          {renderMoreActions()}
-        </FilterBar.Actions>
-
-        {/* Mobile: open slideout */}
-        <div className="flex items-center gap-2 md:hidden">
+      {/* Right: search + filter trigger (desktop) */}
+      <div className="ml-auto hidden shrink-0 items-center gap-3 md:flex">
+        <Input
+          size="sm"
+          icon={SearchMd}
+          placeholder={searchPlaceholder ?? t("common.search")}
+          value={localSearch}
+          onChange={handleSearchInput}
+          className="w-[200px]"
+        />
+        {hasFilterableFields && (
           <Button
             size="sm"
             color="secondary"
-            iconLeading={SearchMd}
-            onClick={() => setMobileOpen(true)}
-          />
-          {hasFilterableFields && appliedCount > 0 && (
-            <CountBadge count={appliedCount} />
-          )}
-        </div>
-      </FilterBar.Root>
+            iconLeading={FilterLines}
+            iconTrailing={ChevronDown}
+            onClick={() => setFilterSlideoutOpen(true)}
+            className={appliedConditions.length > 0 ? "bg-bg-primary_hover" : ""}
+          >
+            <span className="flex items-center gap-1.5">
+              Filters
+              {appliedConditions.length > 0 && (
+                <CountBadge count={appliedConditions.length} />
+              )}
+            </span>
+          </Button>
+        )}
+        {columnDefs && columnDefs.length > 0 && onToggleColumn && (
+          <Dropdown.Root>
+            <Button size="sm" color="tertiary" iconLeading={Columns03} />
+            <Dropdown.Popover className="w-52">
+              <Dropdown.Menu
+                selectionMode="multiple"
+                selectedKeys={
+                  new Set(
+                    columnDefs
+                      .filter((c) => !hiddenColumnIds?.has(c.id))
+                      .map((c) => c.id),
+                  )
+                }
+                onSelectionChange={(keys) => {
+                  if (keys === "all") return;
+                  const selected = keys as Set<string>;
+                  for (const col of columnDefs) {
+                    const isVisible = selected.has(col.id);
+                    const wasHidden = hiddenColumnIds?.has(col.id) ?? false;
+                    if (isVisible && wasHidden) onToggleColumn(col.id);
+                    if (!isVisible && !wasHidden) onToggleColumn(col.id);
+                  }
+                }}
+              >
+                {columnDefs.map((col) => (
+                  <Dropdown.Item
+                    key={col.id}
+                    id={col.id}
+                    label={col.label ?? col.id}
+                    selectionIndicator="checkbox"
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
+        {renderMoreActions()}
+      </div>
 
-      {/* Mobile slideout (UTUI SlideoutMenu) */}
+      {/* Mobile: compact buttons */}
+      <div className="ml-auto flex items-center gap-2 md:hidden">
+        <Button
+          size="sm"
+          color="secondary"
+          iconLeading={SearchMd}
+          onClick={() => setMobileOpen(true)}
+        />
+        {hasFilterableFields && (
+          <Button
+            size="sm"
+            color="secondary"
+            iconLeading={FilterLines}
+            onClick={() => setFilterSlideoutOpen(true)}
+          >
+            {appliedConditions.length > 0 && (
+              <CountBadge count={appliedConditions.length} />
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Toolbar: rendered via renderToolbar prop (inside table card) or inline */}
+      {renderToolbar ? renderToolbar(toolbarContent) : toolbarContent}
+
+      {/* Filter slideout */}
+      <SlideoutMenu
+        isOpen={filterSlideoutOpen}
+        onOpenChange={setFilterSlideoutOpen}
+        isDismissable
+        className="z-50"
+      >
+        <SlideoutMenu.Header
+          onClose={() => setFilterSlideoutOpen(false)}
+          className="relative flex w-full items-start gap-3 px-4 pt-6 md:px-6"
+        >
+          <FeaturedIcon size="md" color="gray" theme="modern" icon={FilterLines} />
+          <section className="flex flex-col gap-0.5">
+            <h1 className="text-md font-semibold text-fg-primary md:text-lg">
+              {t("filters.title", { defaultValue: "Filters" })}
+            </h1>
+            <p className="text-sm text-fg-tertiary">
+              {t("filters.description", { defaultValue: "Add filters to narrow down results." })}
+            </p>
+          </section>
+        </SlideoutMenu.Header>
+
+        <SlideoutMenu.Content>
+          <DottedDivider />
+          {draftFilters.length === 0 ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex max-w-[352px] flex-col gap-1 md:gap-0.5">
+                <p className="text-sm font-semibold text-fg-primary md:text-md">
+                  {t("filters.noFilters", { defaultValue: "No filters applied" })}
+                </p>
+                <p className="text-sm text-fg-tertiary">
+                  {t("filters.description", { defaultValue: "Add filters to narrow down results." })}
+                </p>
+              </div>
+              <div>
+                <Button size="sm" color="secondary" iconLeading={Plus} onClick={handleAddFilter}>
+                  {t("filters.addFilter", { defaultValue: "Add filter" })}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {draftFilters.map((filter, index) => {
+                const fieldDef = fieldMap.get(filter.field);
+                const fieldType = fieldDef?.type ?? "text";
+                const noValue =
+                  filter.operator === "isEmpty" || filter.operator === "isNotEmpty";
+                return (
+                  <Fragment key={filter.id}>
+                    {index > 0 && <DottedDivider />}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <Select
+                          className="max-w-40 flex-1"
+                          size="sm"
+                          aria-label={t("filters.field", { defaultValue: "Filter field" })}
+                          placeholder={t("filters.selectField", { defaultValue: "Select filter" })}
+                          items={fieldSelectItems}
+                          selectedKey={filter.field || null}
+                          onSelectionChange={(key) =>
+                            handleFilterChange(filter.id, { field: String(key) })
+                          }
+                        >
+                          {(item: SelectItemType) => (
+                            <Select.Item id={item.id}>{item.label}</Select.Item>
+                          )}
+                        </Select>
+                        <Select
+                          className="max-w-40 flex-1"
+                          size="sm"
+                          aria-label={t("filters.operator", { defaultValue: "Operator" })}
+                          placeholder={t("filters.selectOperator", { defaultValue: "Operator" })}
+                          items={getOperatorItems(filter.field)}
+                          selectedKey={filter.operator || null}
+                          onSelectionChange={(key) =>
+                            handleFilterChange(filter.id, { operator: String(key) })
+                          }
+                        >
+                          {(item: SelectItemType) => (
+                            <Select.Item id={item.id}>{item.label}</Select.Item>
+                          )}
+                        </Select>
+                      </div>
+                      {!noValue && (
+                        <div className="flex items-start gap-1">
+                          <Input
+                            className="min-w-0 flex-1"
+                            size="sm"
+                            aria-label={t("filters.value", { defaultValue: "Value" })}
+                            placeholder={t("filters.enterValue", { defaultValue: "Enter a value" })}
+                            type={
+                              fieldType === "number"
+                                ? "number"
+                                : fieldType === "date"
+                                  ? "date"
+                                  : "text"
+                            }
+                            value={filter.value}
+                            onChange={(value) =>
+                              handleFilterChange(filter.id, { value })
+                            }
+                          />
+                          <CloseButton
+                            label={t("filters.removeFilter", { defaultValue: "Remove filter" })}
+                            size="sm"
+                            onPress={() => handleRemoveFilter(filter.id)}
+                          />
+                        </div>
+                      )}
+                      {noValue && (
+                        <div className="flex justify-end">
+                          <CloseButton
+                            label={t("filters.removeFilter", { defaultValue: "Remove filter" })}
+                            size="sm"
+                            onPress={() => handleRemoveFilter(filter.id)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Fragment>
+                );
+              })}
+              <DottedDivider />
+              <div>
+                <Button size="sm" color="secondary" iconLeading={Plus} onClick={handleAddFilter}>
+                  {t("filters.addFilter", { defaultValue: "Add filter" })}
+                </Button>
+              </div>
+            </>
+          )}
+        </SlideoutMenu.Content>
+
+        <SlideoutMenu.Footer className="flex w-full items-center justify-between gap-3">
+          {onCreateView && draftFilters.length > 0 && (
+            <Button size="sm" color="tertiary" onClick={handleSaveAsView}>
+              {t("filters.saveAsView", { defaultValue: "Save as view" })}
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            <Button size="sm" color="secondary" onClick={handleClearAllFilters}>
+              {t("filters.clearAll", { defaultValue: "Clear all" })}
+            </Button>
+            <Button size="sm" onClick={handleApplyFilters}>
+              {t("filters.apply", { defaultValue: "Apply filter" })}
+            </Button>
+          </div>
+        </SlideoutMenu.Footer>
+      </SlideoutMenu>
+
+      {/* Mobile search slideout */}
       <SlideoutMenu isOpen={mobileOpen} onOpenChange={setMobileOpen} isDismissable>
         <SlideoutMenu.Header onClose={() => setMobileOpen(false)}>
           <h2 className="text-lg font-semibold text-fg-primary">
@@ -427,7 +676,7 @@ export function DataListFilterBar({
         </SlideoutMenu.Content>
       </SlideoutMenu>
 
-      {/* Create view dialog (shadcn — no UTUI modal/dialog equivalent) */}
+      {/* Create view dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -444,6 +693,27 @@ export function DataListFilterBar({
                 autoFocus
               />
             </div>
+            {appliedConditions.length > 0 ? (
+              <div className="space-y-1.5">
+                <Label>{t("views.savedFilters", { defaultValue: "Filters to save" })}</Label>
+                <div className="space-y-1 rounded-lg border border-border-secondary bg-bg-secondary p-3">
+                  {appliedConditions.map((c, i) => {
+                    const fieldDef = fieldMap.get(c.field);
+                    return (
+                      <p key={i} className="text-sm text-fg-secondary">
+                        {fieldDef?.label ?? c.field}{" "}
+                        <span className="text-fg-quaternary">{c.operator}</span>{" "}
+                        {c.value && <span className="font-medium text-fg-primary">{c.value}</span>}
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-fg-quaternary">
+                {t("views.noFiltersHint", { defaultValue: "No filters applied. The view will show all records." })}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <ShadcnButton

@@ -1,18 +1,20 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/layout/empty-state";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
+import {
+  CrmDataTable,
+  type CrmColumn,
+  useColumnVisibility,
+  useAllColumns,
+} from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditableCell } from "@/components/data-table/editable-cell";
 import { leadStatusOptions, leadPriorityOptions } from "@/lib/options";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import {
   Plus,
-  TrendingUp,
   TableIcon,
   KanbanIcon,
   Trophy,
@@ -36,10 +37,8 @@ import {
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { ColumnDef } from "@tanstack/react-table";
 import { Doc, Id } from "@cvx/_generated/dataModel";
-import { cn } from "@/lib/utils";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
@@ -52,6 +51,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
 });
 
 type Lead = Doc<"leads">;
+type LeadRow = Lead & { __cfValues: Record<string, unknown> };
 
 const stageColors: Record<string, string> = {
   New: "bg-sky-100 text-sky-700",
@@ -71,20 +71,6 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-const DEFAULT_HIDDEN: Record<string, boolean> = {
-  currency: false,
-  source: false,
-  company: false,
-  assignedTo: false,
-  tags: false,
-  notes: false,
-  wonAt: false,
-  lostAt: false,
-  lostReason: false,
-  createdBy: false,
-  updatedAt: false,
-};
-
 function LeadsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -93,6 +79,7 @@ function LeadsIndex() {
   const removeLead = useMutation(api.leads.remove);
   const createLead = useMutation(api.leads.create);
 
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,6 +129,9 @@ function LeadsIndex() {
 
   const filterableFields = useMemo(
     (): FieldDef[] => [
+      { id: "title", label: t("deals.dealTitle"), type: "text" },
+      { id: "value", label: t("deals.dealValue"), type: "number" },
+      { id: "currency", label: t("deals.currency"), type: "text" },
       {
         id: "status",
         label: t("common.status"),
@@ -155,7 +145,6 @@ function LeadsIndex() {
         options: leadPriorityOptions(t),
       },
       { id: "source", label: t("common.source"), type: "text" },
-      { id: "value", label: t("deals.dealValue"), type: "number" },
       {
         id: "expectedCloseDate",
         label: t("deals.expectedClose"),
@@ -172,16 +161,11 @@ function LeadsIndex() {
     onViewChange,
     onCreateView,
     onDeleteView,
-    columnVisibility,
-    sorting,
-    setColumnVisibility,
-    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
     entityType: "lead",
     systemViews: systemViews,
-    defaultColumnVisibility: DEFAULT_HIDDEN,
   });
 
   const { data: pipelines } = useQuery(
@@ -270,7 +254,6 @@ function LeadsIndex() {
   const {
     definitions: cfDefs,
     columns: cfColumns,
-    defaultColumnVisibility: cfDefaultVis,
     mergeCustomFieldValues,
   } = useCustomFieldColumns<Lead>({
     organizationId,
@@ -317,33 +300,35 @@ function LeadsIndex() {
       .slice(-7);
   }, [leads]);
 
-  const columns: ColumnDef<Lead>[] = [
+  const columns: CrmColumn<LeadRow>[] = [
     {
-      accessorKey: "title",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("deals.dealName")} />
+      id: "title",
+      label: t("deals.dealName"),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => (
+        <Link
+          to="/dashboard/leads/$leadId"
+          params={{ leadId: item._id }}
+          className="font-medium text-fg-primary hover:text-brand-secondary"
+        >
+          {item.title}
+        </Link>
       ),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      getSortValue: (item) => item.title ?? "",
     },
     {
       id: "stage",
-      size: 150,
-      header: t("deals.stage"),
-      cell: ({ row }) => {
-        const stageId = row.original.pipelineStageId;
+      label: t("deals.stage"),
+      render: (item) => {
+        const stageId = item.pipelineStageId;
         if (!stageId || !stages) return "—";
         const stage = stages.find((s) => s._id === stageId);
         if (!stage) return "—";
         return (
           <Badge
             variant="secondary"
-            className={cn(
-              "text-xs",
-              stageColors[stage.name] ?? "bg-gray-100 text-gray-700",
-            )}
+            className={`text-xs ${stageColors[stage.name] ?? "bg-gray-100 text-gray-700"}`}
           >
             {stage.name}
           </Badge>
@@ -351,155 +336,59 @@ function LeadsIndex() {
       },
     },
     {
-      accessorKey: "value",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.amount")} />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.value ?? ""}
-          config={{ type: "number", placeholder: "—" }}
-          displayFormatter={(v) => (v ? formatCurrency(v) : "")}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              value: v || undefined,
-            });
-          }}
-        />
-      ),
+      id: "value",
+      label: t("common.amount"),
+      sortable: true,
+      render: (item) => (item.value ? formatCurrency(item.value) : "—"),
+      getSortValue: (item) => item.value ?? 0,
     },
     {
-      accessorKey: "currency",
-      size: 150,
-      header: t("deals.currency"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.currency ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              currency: v || undefined,
-            });
-          }}
-        />
-      ),
+      id: "currency",
+      label: t("deals.currency"),
+      render: (item) => item.currency ?? "—",
     },
     {
-      accessorKey: "expectedCloseDate",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("deals.expectedClose")}
-        />
-      ),
-      cell: ({ getValue }) => {
-        const v = getValue() as number | undefined;
-        return v ? new Date(v).toLocaleDateString() : "—";
-      },
+      id: "expectedCloseDate",
+      label: t("deals.expectedClose"),
+      sortable: true,
+      render: (item) =>
+        item.expectedCloseDate
+          ? new Date(item.expectedCloseDate).toLocaleDateString()
+          : "—",
+      getSortValue: (item) => item.expectedCloseDate ?? 0,
     },
     {
-      accessorKey: "status",
-      size: 150,
-      header: t("common.status"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.status}
-          config={{
-            type: "select",
-            options: leadStatusOptions(t),
-          }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              status: v,
-            });
-          }}
-        />
-      ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
+      id: "status",
+      label: t("common.status"),
+      render: (item) => item.status ?? "—",
     },
     {
-      accessorKey: "priority",
-      size: 150,
-      header: t("common.priority"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.priority ?? ""}
-          config={{
-            type: "select",
-            options: leadPriorityOptions(t),
-          }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              priority: v,
-            });
-          }}
-        />
-      ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
+      id: "priority",
+      label: t("common.priority"),
+      render: (item) => item.priority ?? "—",
     },
     {
-      accessorKey: "source",
-      size: 150,
-      header: t("common.source"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.source ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              source: v || undefined,
-            });
-          }}
-        />
-      ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
+      id: "source",
+      label: t("common.source"),
+      render: (item) => item.source ?? "—",
     },
     {
       id: "company",
-      size: 150,
-      header: t("deals.company"),
-      accessorFn: (row) =>
-        row.companyId ? (companyLookup.get(row.companyId) ?? "") : "",
-      cell: ({ row }) => {
-        const companyId = row.original.companyId;
-        if (!companyId) return "—";
-        return companyLookup.get(companyId) ?? "—";
-      },
+      label: t("deals.company"),
+      render: (item) =>
+        item.companyId ? companyLookup.get(item.companyId) ?? "—" : "—",
     },
     {
       id: "assignedTo",
-      size: 150,
-      header: t("deals.assignedTo"),
-      accessorFn: (row) =>
-        row.assignedTo ? (userLookup.get(row.assignedTo) ?? "") : "",
-      cell: ({ row }) => {
-        const userId = row.original.assignedTo;
-        if (!userId) return "—";
-        return userLookup.get(userId) ?? "—";
-      },
+      label: t("deals.assignedTo"),
+      render: (item) =>
+        item.assignedTo ? userLookup.get(item.assignedTo) ?? "—" : "—",
     },
     {
       id: "tags",
-      size: 200,
-      header: t("common.tags"),
-      accessorFn: (row) => (row.tags ?? []).join(", "),
-      cell: ({ row }) => {
-        const tags = row.original.tags;
+      label: t("common.tags"),
+      render: (item) => {
+        const tags = item.tags;
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
@@ -513,109 +402,69 @@ function LeadsIndex() {
       },
     },
     {
-      accessorKey: "notes",
-      size: 200,
-      header: t("common.notes"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.notes ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              notes: v || undefined,
-            });
-          }}
-        />
-      ),
+      id: "notes",
+      label: t("common.notes"),
+      render: (item) => item.notes ?? "—",
     },
     {
-      accessorKey: "wonAt",
-      size: 130,
-      header: t("deals.wonDate"),
-      cell: ({ getValue }) => {
-        const v = getValue() as number | undefined;
-        return v ? new Date(v).toLocaleDateString() : "—";
-      },
+      id: "wonAt",
+      label: t("deals.wonDate"),
+      render: (item) =>
+        item.wonAt ? new Date(item.wonAt).toLocaleDateString() : "—",
     },
     {
-      accessorKey: "lostAt",
-      size: 130,
-      header: t("deals.lostDate"),
-      cell: ({ getValue }) => {
-        const v = getValue() as number | undefined;
-        return v ? new Date(v).toLocaleDateString() : "—";
-      },
+      id: "lostAt",
+      label: t("deals.lostDate"),
+      render: (item) =>
+        item.lostAt ? new Date(item.lostAt).toLocaleDateString() : "—",
     },
     {
-      accessorKey: "lostReason",
-      size: 200,
-      header: t("deals.lostReason"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.lostReason ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateLead({
-              organizationId,
-              leadId: row.original._id,
-              lostReason: v || undefined,
-            });
-          }}
-        />
-      ),
+      id: "lostReason",
+      label: t("deals.lostReason"),
+      render: (item) => item.lostReason ?? "—",
     },
     {
       id: "createdBy",
-      size: 150,
-      header: t("common.createdBy"),
-      accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
-      cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
+      label: t("common.createdBy"),
+      render: (item) => userLookup.get(item.createdBy) ?? "—",
     },
     {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.created")} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
+      id: "createdAt",
+      label: t("common.created"),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString(),
+      getSortValue: (item) => item.createdAt,
     },
     {
-      accessorKey: "updatedAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.updated")} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
+      id: "updatedAt",
+      label: t("common.updated"),
+      sortable: true,
+      render: (item) => new Date(item.updatedAt).toLocaleDateString(),
+      getSortValue: (item) => item.updatedAt,
     },
   ];
 
-  const allColumns = useMemo(
+  const mergedColumns = useMemo(
     () => [...columns, ...cfColumns],
     [columns, cfColumns],
   );
-  const effectiveColumnVisibility = useMemo(
-    () => ({ ...cfDefaultVis, ...columnVisibility }),
-    [cfDefaultVis, columnVisibility],
-  );
+  const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
-  const handleMarkWon = async (lead: Lead) => {
+  const handleMarkWon = async (lead: LeadRow) => {
     await updateLead({ organizationId, leadId: lead._id, status: "won" });
   };
 
-  const handleMarkLost = async (lead: Lead) => {
+  const handleMarkLost = async (lead: LeadRow) => {
     await updateLead({ organizationId, leadId: lead._id, status: "lost" });
   };
 
-  const handleDelete = async (lead: Lead) => {
+  const handleDelete = async (lead: LeadRow) => {
     await removeLead({ organizationId, leadId: lead._id });
   };
 
   const handleBulkAction = useCallback(
-    async (action: string, selectedRows: Lead[]) => {
+    async (action: string, selectedRows: LeadRow[]) => {
       switch (action) {
         case "markWon":
           for (const row of selectedRows) {
@@ -716,6 +565,10 @@ function LeadsIndex() {
             onClick: () => setImportOpen(true),
           },
         ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <MiniChartsRow
@@ -737,65 +590,47 @@ function LeadsIndex() {
         }}
       />
 
-      {!isLoading && filteredLeads.length === 0 ? (
-        <EmptyState
-          icon={TrendingUp}
-          title={t("deals.emptyTitle")}
-          description={t("deals.emptyDescription")}
-          action={
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("deals.addDeal")}
-            </Button>
-          }
-        />
-      ) : (
-        <CrmDataTable
-          columns={allColumns}
-          data={tableData}
-          stickyFirstColumn
-          frozenColumns={2}
-          enableBulkSelect
-          hideToolbar
-          isLoading={isLoading}
-          bulkActions={[
-            { label: t("deals.markWon"), value: "markWon" },
-            { label: t("deals.markLost"), value: "markLost" },
-            {
-              label: t("common.delete"),
-              value: "delete",
-              variant: "destructive",
-            },
-          ]}
-          onBulkAction={handleBulkAction}
-          onRowClick={(row) => navigate({ to: `/dashboard/leads/${row._id}` })}
-          rowActions={(_row) => [
-            {
-              label: t("common.edit"),
-              onClick: (r) => navigate({ to: `/dashboard/leads/${r._id}` }),
-            },
-            {
-              label: t("deals.markWon"),
-              icon: <Trophy className="h-4 w-4" variant="stroke" />,
-              onClick: handleMarkWon,
-            },
-            {
-              label: t("deals.markLost"),
-              icon: <XCircle className="h-4 w-4" variant="stroke" />,
-              onClick: handleMarkLost,
-            },
-            {
-              label: t("common.delete"),
-              icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-              onClick: handleDelete,
-            },
-          ]}
-          columnVisibility={effectiveColumnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          sorting={sorting}
-          onSortingChange={setSorting}
-        />
-      )}
+      <CrmDataTable
+        columns={allColumns}
+        data={tableData}
+        enableBulkSelect
+        isLoading={isLoading}
+        hiddenColumnIds={hiddenColumnIds}
+        toolbar={toolbarRef.current}
+        bulkActions={[
+          { label: t("deals.markWon"), value: "markWon" },
+          { label: t("deals.markLost"), value: "markLost" },
+          {
+            label: t("common.delete"),
+            value: "delete",
+            variant: "destructive",
+          },
+        ]}
+        onBulkAction={handleBulkAction}
+        rowActions={(_row) => [
+          {
+            label: t("common.edit"),
+            onClick: (r) => navigate({ to: `/dashboard/leads/${r._id}` }),
+          },
+          {
+            label: t("deals.markWon"),
+            icon: <Trophy className="h-4 w-4" variant="stroke" />,
+            onClick: handleMarkWon,
+          },
+          {
+            label: t("deals.markLost"),
+            icon: <XCircle className="h-4 w-4" variant="stroke" />,
+            onClick: handleMarkLost,
+          },
+          {
+            label: t("common.delete"),
+            icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+            onClick: handleDelete,
+          },
+        ]}
+        emptyTitle={t("deals.emptyTitle")}
+        emptyDescription={t("deals.emptyDescription")}
+      />
 
       <CsvImportDialog
         organizationId={organizationId}

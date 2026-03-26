@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -7,8 +7,9 @@ import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import type { CrmColumn } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,16 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { callOutcomeOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import { Phone } from "@/lib/ez-icons";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
@@ -63,14 +60,19 @@ function CallsPage() {
       options: callOutcomeOptions(t),
     },
     { id: "callDate", label: t('calls.callDate'), type: "date" },
+    { id: "duration", label: t('calls.duration'), type: "number" },
+    { id: "note", label: t('calls.note'), type: "text" },
+    { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "call", systemViews });
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   // Sidebar dispatch handlers
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
@@ -88,7 +90,12 @@ function CallsPage() {
   );
 
   const allCalls = data?.page ?? [];
-  const calls = useMemo(() => applyFilters(allCalls) as typeof allCalls, [allCalls, applyFilters]);
+  const calls = useMemo(() => {
+    const filtered = applyFilters(allCalls) as typeof allCalls;
+    if (!searchValue.trim()) return filtered;
+    const q = searchValue.toLowerCase();
+    return filtered.filter((c) => c.note?.toLowerCase().includes(q));
+  }, [allCalls, applyFilters, searchValue]);
 
   const createCall = useMutation(api.calls.create);
   const updateCall = useMutation(api.calls.update);
@@ -143,15 +150,13 @@ function CallsPage() {
     }
   };
 
-  const columns: ColumnDef<Call, unknown>[] = [
+  const columns: CrmColumn<Call>[] = [
     {
-      accessorKey: "outcome",
-      size: 150,
-      header: t('calls.outcome'),
-      cell: ({ getValue }) => {
-        const val = getValue() as CallOutcome;
-        const config = OUTCOME_CONFIG[val];
-        if (!config) return val;
+      id: "outcome",
+      label: t('calls.outcome'),
+      render: (item) => {
+        const config = OUTCOME_CONFIG[item.outcome as CallOutcome];
+        if (!config) return item.outcome;
         return (
           <Badge variant="secondary" className={config.color}>
             {t(config.labelKey)}
@@ -160,38 +165,35 @@ function CallsPage() {
       },
     },
     {
-      accessorKey: "callDate",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('calls.callDate')} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleString(),
+      id: "callDate",
+      label: t('calls.callDate'),
+      sortable: true,
+      render: (item) => new Date(item.callDate).toLocaleString(),
+      getSortValue: (item) => item.callDate,
     },
     {
-      accessorKey: "note",
-      size: 200,
-      header: t('calls.note'),
-      cell: ({ getValue }) => {
-        const val = getValue() as string | undefined;
-        if (!val) return <span className="text-muted-foreground">—</span>;
+      id: "note",
+      label: t('calls.note'),
+      render: (item) => {
+        if (!item.note) return <span className="text-fg-quaternary">—</span>;
         return (
-          <span className="text-muted-foreground" title={val}>
-            {val.length > 60 ? val.slice(0, 60) + "..." : val}
+          <span className="text-fg-tertiary" title={item.note}>
+            {item.note.length > 60 ? item.note.slice(0, 60) + "..." : item.note}
           </span>
         );
       },
     },
     {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.created')} />
-      ),
-      cell: ({ getValue }) =>
-        new Date(getValue() as number).toLocaleDateString(),
+      id: "createdAt",
+      label: t('common.created'),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString(),
+      getSortValue: (item) => item.createdAt,
     },
   ];
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const rowActions = (row: Call) => [
     {
@@ -219,38 +221,31 @@ function CallsPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.logCall'),
-            icon: <Phone className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "calls",
-            action: "create",
-          },
-        ]}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('calls.searchPlaceholder')}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <CrmDataTable
-        columns={columns}
+        columns={allColumns}
+        hiddenColumnIds={hiddenColumnIds}
         data={calls}
         rowActions={rowActions}
-        frozenColumns={2}
-        searchKey="note"
-        searchPlaceholder={t('calls.searchPlaceholder')}
         isLoading={isLoading}
+        toolbar={toolbarRef.current}
       />
 
       <SidePanel

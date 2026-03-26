@@ -23,7 +23,7 @@ export const CalendarColumnHeader = ({ state, weekDay, day, className, onClick }
                 <span
                     className={cx(
                         "flex h-6 items-center justify-center text-xs font-semibold text-foreground/80",
-                        state === "selected" && "w-6 rounded-full bg-primary text-primary-foreground",
+                        state === "selected" && "w-6 rounded-full bg-bg-primary text-primary-foreground",
                         state === "current" && "w-6 rounded-full bg-accent",
                     )}
                 >

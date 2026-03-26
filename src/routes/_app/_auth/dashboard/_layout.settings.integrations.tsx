@@ -4,8 +4,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { GoogleIntegrationCard } from "@/components/settings/google-integration-card";
 import { SmsConfigCard } from "@/components/settings/sms-config-card";
 import { useEffect } from "react";
@@ -52,7 +52,7 @@ function IntegrationsSettings() {
             {t("settings.integrations")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("integrations.description")} />
+        <UntitledAlert>{t("integrations.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {user && (

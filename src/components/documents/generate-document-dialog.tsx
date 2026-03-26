@@ -4,12 +4,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-} from "@heroui/modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +36,6 @@ import {
   Folder,
   FolderOpen,
 } from "@/lib/ez-icons";
-import { Input } from "@heroui/input";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SurveyFormRenderer } from "./survey-form-renderer";
@@ -602,194 +597,170 @@ export function GenerateDocumentDialog({
   // --- Render ---
 
   return (
-    <Modal
-      isOpen={open}
-      onOpenChange={handleOpenChange}
-      size={step === "fill_form" ? "4xl" : "2xl"}
-      scrollBehavior="inside"
-      backdrop="blur"
-      classNames={{
-        base: "max-h-[90vh]",
-        body: "px-6 pt-2 pb-4",
-      }}
-    >
-      <ModalContent>
-        {() => (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className={`${step === "fill_form" ? "max-w-4xl" : "max-w-2xl"} max-h-[90vh] flex flex-col gap-0 p-0`}>
+        {/* --- Step 1: Template picker --- */}
+        {step === "pick_template" && (
           <>
-            {/* --- Step 1: Template picker --- */}
-            {step === "pick_template" && (
-              <>
-                <ModalHeader className="flex items-center justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      {t("documents.selectTemplate", "Wybierz szablon dokumentu")}
-                    </h2>
-                    <p className="text-sm text-default-500 font-normal mt-0.5">
-                      {t(
-                        "documents.selectTemplateDesc",
-                        "Wybierz szablon, na podstawie ktorego zostanie wygenerowany dokument.",
-                      )}
-                    </p>
+            <div className="flex items-center justify-between gap-2 px-6 pt-6 pb-2">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>{t("documents.selectTemplate", "Wybierz szablon dokumentu")}</DialogTitle>
+                <DialogDescription>
+                  {t("documents.selectTemplateDesc", "Wybierz szablon, na podstawie ktorego zostanie wygenerowany dokument.")}
+                </DialogDescription>
+              </DialogHeader>
+              <span className="text-xs text-muted-foreground font-medium shrink-0">
+                {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 1, total: 2 })}
+              </span>
+            </div>
+
+            <div className="px-6 pt-2 pb-4 flex-1 min-h-0 flex flex-col">
+              <div className="pb-3 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder={t("documents.searchTemplate", "Szukaj szablonu...")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <ScrollShadow className="flex-1 min-h-0 overflow-y-auto pb-4">
+                {templatesLoading && (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                    ))}
                   </div>
-                  <span className="text-xs text-default-400 font-medium shrink-0">
-                    {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 1, total: 2 })}
-                  </span>
-                </ModalHeader>
+                )}
 
-                <ModalBody>
-                  <div className="pb-3">
-                    <Input
-                      variant="bordered"
-                      placeholder={t(
-                        "documents.searchTemplate",
-                        "Szukaj szablonu...",
-                      )}
-                      value={search}
-                      onValueChange={setSearch}
-                      startContent={<Search className="h-4 w-4 text-muted-foreground" />}
-                      isClearable
-                      onClear={() => setSearch("")}
-                    />
-                  </div>
-
-                  <ScrollShadow className="flex-1 min-h-0 overflow-y-auto pb-4">
-                    {templatesLoading && (
-                      <div className="space-y-3">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                        ))}
-                      </div>
-                    )}
-
-                    {!templatesLoading && filteredTemplates.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                          <FileText className="h-7 w-7" />
-                        </div>
-                        <div className="text-center space-y-1">
-                          <p className="text-sm font-medium text-foreground">
-                            {search.trim()
-                              ? t("documents.noTemplatesSearch", "Nie znaleziono szablonow")
-                              : t("documents.noTemplates", "Brak szablonow")}
-                          </p>
-                          <p className="text-xs max-w-[240px]">
-                            {search.trim()
-                              ? t("documents.noTemplatesSearchDesc", "Sprobuj zmienic fraze wyszukiwania.")
-                              : t("documents.noTemplatesDesc", "Dodaj szablony dokumentow w ustawieniach, aby moc generowac dokumenty.")}
-                          </p>
-                        </div>
-                        {!search.trim() && (
-                          <Button variant="outline" size="sm" className="mt-1" asChild>
-                            <a href="/dashboard/settings">
-                              <Settings className="h-3.5 w-3.5 mr-1.5" />
-                              {t("documents.goToSettings", "Przejdz do ustawien")}
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    )}
-
-                    {!templatesLoading && filteredTemplates.length > 0 && (
-                      <TemplateFolderTree
-                        templates={filteredTemplates}
-                        search={search}
-                        onSelect={handleTemplateSelect}
-                        t={t}
-                      />
-                    )}
-                  </ScrollShadow>
-                </ModalBody>
-              </>
-            )}
-
-            {/* --- Step 2: Form fill --- */}
-            {step === "fill_form" && (
-              <>
-                <ModalHeader className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={handleBack}
-                    disabled={submitting}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="sr-only">
-                      {t("common.back", "Powrot")}
-                    </span>
-                  </Button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold">
-                        {selectedTemplate?.name ??
-                          t("documents.newDocument", "Nowy dokument")}
-                      </h2>
-                      <span className="text-xs text-default-400 font-medium shrink-0 ml-2">
-                        {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 2, total: 2 })}
-                      </span>
+                {!templatesLoading && filteredTemplates.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                      <FileText className="h-7 w-7" />
                     </div>
-                    <p className="text-sm text-default-500 font-normal">
-                      {t(
-                        "documents.fillFormDesc",
-                        "Wypelnij formularz i zatwierdz, aby wygenerowac dokument.",
-                      )}
-                    </p>
-                  </div>
-                </ModalHeader>
-
-                <ModalBody>
-                  {/* Template info bar */}
-                  {selectedTemplate?.description && (
-                    <div className="flex items-start gap-2 rounded-md bg-muted/50 border px-3 py-2 mb-4">
-                      <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {extractPlainText(selectedTemplate.description)}
+                    <div className="text-center space-y-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {search.trim()
+                          ? t("documents.noTemplatesSearch", "Nie znaleziono szablonow")
+                          : t("documents.noTemplates", "Brak szablonow")}
+                      </p>
+                      <p className="text-xs max-w-[240px]">
+                        {search.trim()
+                          ? t("documents.noTemplatesSearchDesc", "Sprobuj zmienic fraze wyszukiwania.")
+                          : t("documents.noTemplatesDesc", "Dodaj szablony dokumentow w ustawieniach, aby moc generowac dokumenty.")}
                       </p>
                     </div>
-                  )}
+                    {!search.trim() && (
+                      <Button variant="outline" size="sm" className="mt-1" asChild>
+                        <a href="/dashboard/settings">
+                          <Settings className="h-3.5 w-3.5 mr-1.5" />
+                          {t("documents.goToSettings", "Przejdz do ustawien")}
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                )}
 
-                  {previewLoading && (
-                    <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t("common.loading", "Ladowanie...")}
-                    </div>
-                  )}
-
-                  {!previewLoading && selectedTemplate && (
-                    <div className="relative">
-                      {submitting && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 rounded-lg">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
-                      )}
-                      {previewData?.templateType === "document" &&
-                      previewData.contentJson ? (
-                        <DocumentTemplateFormStep
-                          contentJson={previewData.contentJson}
-                          prefilledData={previewData.prefilledData}
-                          onComplete={handleComplete}
-                          onCancel={handleBack}
-                        />
-                      ) : (
-                        <SurveyFormRenderer
-                          formJson={selectedTemplate.formJson}
-                          prefilledData={
-                            previewData?.prefilledData as
-                              | Record<string, unknown>
-                              | undefined
-                          }
-                          onComplete={handleComplete}
-                        />
-                      )}
-                    </div>
-                  )}
-                </ModalBody>
-              </>
-            )}
+                {!templatesLoading && filteredTemplates.length > 0 && (
+                  <TemplateFolderTree
+                    templates={filteredTemplates}
+                    search={search}
+                    onSelect={handleTemplateSelect}
+                    t={t}
+                  />
+                )}
+              </ScrollShadow>
+            </div>
           </>
         )}
-      </ModalContent>
-    </Modal>
+
+        {/* --- Step 2: Form fill --- */}
+        {step === "fill_form" && (
+          <>
+            <div className="flex items-center gap-2 px-6 pt-6 pb-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={handleBack}
+                disabled={submitting}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">
+                  {t("common.back", "Powrot")}
+                </span>
+              </Button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">
+                    {selectedTemplate?.name ??
+                      t("documents.newDocument", "Nowy dokument")}
+                  </h2>
+                  <span className="text-xs text-muted-foreground font-medium shrink-0 ml-2">
+                    {t("documents.stepOf", "Krok {{current}} z {{total}}", { current: 2, total: 2 })}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground font-normal">
+                  {t(
+                    "documents.fillFormDesc",
+                    "Wypelnij formularz i zatwierdz, aby wygenerowac dokument.",
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 pt-2 pb-4 flex-1 min-h-0 overflow-y-auto">
+              {/* Template info bar */}
+              {selectedTemplate?.description && (
+                <div className="flex items-start gap-2 rounded-md bg-muted/50 border px-3 py-2 mb-4">
+                  <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {extractPlainText(selectedTemplate.description)}
+                  </p>
+                </div>
+              )}
+
+              {previewLoading && (
+                <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("common.loading", "Ladowanie...")}
+                </div>
+              )}
+
+              {!previewLoading && selectedTemplate && (
+                <div className="relative">
+                  {submitting && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 rounded-lg">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                  {previewData?.templateType === "document" &&
+                  previewData.contentJson ? (
+                    <DocumentTemplateFormStep
+                      contentJson={previewData.contentJson}
+                      prefilledData={previewData.prefilledData}
+                      onComplete={handleComplete}
+                      onCancel={handleBack}
+                    />
+                  ) : (
+                    <SurveyFormRenderer
+                      formJson={selectedTemplate.formJson}
+                      prefilledData={
+                        previewData?.prefilledData as
+                          | Record<string, unknown>
+                          | undefined
+                      }
+                      onComplete={handleComplete}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

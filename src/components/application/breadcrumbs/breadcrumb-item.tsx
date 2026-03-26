@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { type FC, type ReactNode, isValidElement, useContext } from "react";
 import { ChevronRight, SlashDivider } from "@untitledui/icons";
 import { Breadcrumb as AriaBreadcrumb, type BreadcrumbProps as AriaBreadcrumbProps, Link as AriaLink } from "react-aria-components";
-import { type BreadcrumbType, BreadcrumbsContext } from "@/components/application/breadcrumbs/breadcrumbs";
+import { type BreadcrumbType, BreadcrumbsContext } from "@untitled/app/breadcrumbs/breadcrumbs";
 import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";
 
@@ -10,14 +10,14 @@ const baseStyles = {
     text: {
         root: "",
         icon: "text-fg-quaternary group-hover:text-fg-quaternary_hover",
-        label: "text-quaternary group-hover:text-tertiary_hover",
+        label: "text-fg-quaternary group-hover:text-fg-tertiary_hover",
         current: { root: "", icon: "text-fg-brand-primary group-hover:text-fg-brand-primary", label: "text-brand-secondary group-hover:text-brand-secondary" },
     },
     button: {
-        root: "p-1 hover:bg-primary_hover",
+        root: "p-1 hover:bg-bg-primary_hover",
         icon: "text-fg-quaternary group-hover:text-fg-quaternary_hover",
-        label: "px-1 text-quaternary group-hover:text-tertiary_hover",
-        current: { root: "bg-primary_hover", icon: "text-fg-quaternary_hover", label: "text-fg-tertiary_hover" },
+        label: "px-1 text-fg-quaternary group-hover:text-fg-tertiary_hover",
+        current: { root: "bg-bg-primary_hover", icon: "text-fg-quaternary_hover", label: "text-fg-tertiary_hover" },
     },
 };
 

@@ -11,16 +11,16 @@ import {
     SearchLg,
     Users01,
 } from "@untitledui/icons";
-import type { NavItemType } from "@/components/application/app-navigation/config";
-import { SidebarNavigationSectionsSubheadings } from "@/components/application/app-navigation/sidebar-navigation/sidebar-sections-subheadings";
-import { Breadcrumbs } from "@/components/application/breadcrumbs/breadcrumbs";
-import { Calendar } from "@/components/application/calendar/calendar";
-import { events } from "@/components/application/calendar/config";
-import { TabList, Tabs } from "@/components/application/tabs/tabs";
-import { Avatar } from "@/components/base/avatar/avatar";
-import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
-import { Input } from "@/components/base/input/input";
+import type { NavItemType } from "@untitled/app/app-navigation/config";
+import { SidebarNavigationSectionsSubheadings } from "@untitled/app/app-navigation/sidebar-navigation/sidebar-sections-subheadings";
+import { Breadcrumbs } from "@untitled/app/breadcrumbs/breadcrumbs";
+import { Calendar } from "@untitled/app/calendar/calendar";
+import { events } from "@untitled/app/calendar/config";
+import { TabList, Tabs } from "@untitled/app/tabs/tabs";
+import { Avatar } from "@untitled/base/avatar/avatar";
+import { Badge } from "@untitled/base/badges/badges";
+import { Button } from "@untitled/base/buttons/button";
+import { Input } from "@untitled/base/input/input";
 
 const navItemsWithSectionsSubheadings: Array<{ label: string; items: NavItemType[] }> = [
     {

@@ -4,8 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -230,7 +230,7 @@ function LeavesPage() {
               </Dialog>
             </SectionHeader.Actions>
           </SectionHeader.Group>
-          <Alert color="primary" title={t("gabinet.leaves.description")} />
+          <UntitledAlert>{t("gabinet.leaves.description")}</UntitledAlert>
         </SectionHeader.Root>
 
         <div className="flex items-center gap-2">

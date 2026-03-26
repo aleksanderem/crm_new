@@ -4,8 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -140,7 +140,7 @@ function SchedulingSettings() {
             {t("gabinet.scheduling.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("gabinet.scheduling.description")} />
+        <UntitledAlert>{t("gabinet.scheduling.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       <div className="rounded-lg border">

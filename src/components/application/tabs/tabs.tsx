@@ -2,8 +2,8 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TabListProps as AriaTabListProps, TabProps as AriaTabProps, TabRenderProps as AriaTabRenderProps } from "react-aria-components";
 import { Tab as AriaTab, TabList as AriaTabList, TabPanel as AriaTabPanel, Tabs as AriaTabs, TabsContext, useSlottedContext } from "react-aria-components";
-import type { BadgeColors } from "@/components/base/badges/badge-types";
-import { Badge } from "@/components/base/badges/badges";
+import type { BadgeColors } from "@untitled/base/badges/badge-types";
+import { Badge } from "@untitled/base/badges/badges";
 import { cx } from "@/lib/utils/cx";
 import {
     DropdownMenu,
@@ -29,9 +29,9 @@ const getTabStyles = ({ isFocusVisible, isSelected, isHovered }: AriaTabRenderPr
     ),
     "button-gray": cx(
         "outline-focus-ring",
-        isHovered && "bg-primary_hover text-secondary",
+        isHovered && "bg-bg-primary_hover text-fg-secondary",
         isFocusVisible && "outline-2 -outline-offset-2",
-        isSelected && "bg-active text-secondary",
+        isSelected && "bg-bg-primary_hover text-fg-secondary",
     ),
     "button-border": cx(
         "outline-focus-ring",
@@ -40,9 +40,9 @@ const getTabStyles = ({ isFocusVisible, isSelected, isHovered }: AriaTabRenderPr
     ),
     "button-minimal": cx(
         "rounded-lg outline-focus-ring",
-        isHovered && "text-secondary",
+        isHovered && "text-fg-secondary",
         isFocusVisible && "outline-2 -outline-offset-2",
-        isSelected && "bg-primary_alt text-secondary shadow-xs ring-1 ring-primary ring-inset",
+        isSelected && "bg-bg-primary_alt text-fg-secondary shadow-xs ring-1 ring-border-primary ring-inset",
     ),
     underline: cx(
         "rounded-none border-b-2 border-transparent outline-focus-ring",
@@ -80,7 +80,7 @@ const getContainerStyles = ({ size }: { size?: "sm" | "md" }) => ({
     "button-brand": "",
     "button-gray": "",
     "button-border": cx("rounded-[10px] bg-muted p-1 ring-1 ring-border ring-inset", size === "md" && "rounded-xl p-1.5"),
-    "button-minimal": "rounded-lg bg-secondary_alt ring-1 ring-inset ring-secondary",
+    "button-minimal": "rounded-lg bg-bg-secondary_alt ring-1 ring-inset ring-border-secondary",
     underline: "",
     line: "",
 });
@@ -100,7 +100,7 @@ const getHorizontalStyles = ({ size, fullWidth }: { size?: "sm" | "md"; fullWidt
     "button-brand": "gap-1",
     "button-gray": "gap-1",
     "button-border": cx("gap-1 rounded-[10px] bg-muted p-1 ring-1 ring-border ring-inset", size === "md" && "rounded-xl p-1.5"),
-    "button-minimal": "gap-0.5 rounded-lg bg-secondary_alt ring-1 ring-inset ring-secondary",
+    "button-minimal": "gap-0.5 rounded-lg bg-bg-secondary_alt ring-1 ring-inset ring-border-secondary",
     underline: cx("gap-3", fullWidth && "w-full gap-4"),
     line: "gap-2",
 });

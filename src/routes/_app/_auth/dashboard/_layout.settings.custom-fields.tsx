@@ -4,13 +4,14 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { CustomFieldDefinitionForm } from "@/components/custom-fields/custom-field-definition-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -45,6 +46,7 @@ function CustomFieldsSettings() {
   const { organizationId } = useOrganization();
   const [activeTab, setActiveTab] = useState<EntityType>("contact");
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"customFieldDefinitions">; name: string } | null>(null);
 
   const createDefinition = useMutation(api.customFields.createDefinition);
   const deleteDefinition = useMutation(api.customFields.deleteDefinition);
@@ -72,7 +74,7 @@ function CustomFieldsSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("customFields.description")} />
+        <UntitledAlert>{t("customFields.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       <Tabs
@@ -156,18 +158,7 @@ function CustomFieldsSettings() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={async () => {
-                        if (
-                          window.confirm(
-                            t("customFields.confirmDelete", { name: def.name })
-                          )
-                        ) {
-                          await deleteDefinition({
-                            organizationId,
-                            definitionId: def._id as Id<"customFieldDefinitions">,
-                          });
-                        }
-                      }}
+                      onClick={() => setDeleteTarget({ id: def._id as Id<"customFieldDefinitions">, name: def.name })}
                     >
                       <Trash2 className="h-4 w-4" variant="stroke" />
                     </Button>
@@ -178,6 +169,33 @@ function CustomFieldsSettings() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteTarget) return;
+                await deleteDefinition({
+                  organizationId,
+                  definitionId: deleteTarget.id,
+                });
+                setDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

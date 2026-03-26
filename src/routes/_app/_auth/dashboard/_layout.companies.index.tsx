@@ -1,29 +1,24 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CompanyForm } from "@/components/forms/company-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditableCell } from "@/components/data-table/editable-cell";
 import { companySizeOptions } from "@/lib/options";
-import { Plus, Building2, Trash2, Upload, Download } from "@/lib/ez-icons";
+import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
-import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState } from "@/components/layout/empty-state";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
@@ -37,26 +32,17 @@ export const Route = createFileRoute(
 });
 
 type Company = Doc<"companies">;
-
-const DEFAULT_HIDDEN: Record<string, boolean> = {
-  domain: false,
-  website: false,
-  address: false,
-  tags: false,
-  notes: false,
-  createdBy: false,
-  updatedAt: false,
-};
+type CompanyRow = Company & { __cfValues: Record<string, unknown> };
 
 function CompaniesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const createCompany = useMutation(api.companies.create);
-  const updateCompany = useMutation(api.companies.update);
   const removeCompany = useMutation(api.companies.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
 
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -65,6 +51,7 @@ function CompaniesIndex() {
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  const [searchValue, setSearchValue] = useState("");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
 
@@ -75,6 +62,8 @@ function CompaniesIndex() {
   ], [t]);
 
   const filterableFields = useMemo((): FieldDef[] => [
+    { id: "name", label: t('companies.name'), type: "text" },
+    { id: "domain", label: t('companies.domain'), type: "text" },
     { id: "industry", label: t('companies.industry'), type: "text" },
     {
       id: "size",
@@ -82,6 +71,8 @@ function CompaniesIndex() {
       type: "select",
       options: companySizeOptions(),
     },
+    { id: "website", label: t('companies.website'), type: "text" },
+    { id: "phone", label: t('common.phone'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);
 
@@ -92,47 +83,26 @@ function CompaniesIndex() {
     })
   );
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
-
   const companies = data?.page ?? [];
 
   const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
 
-  const { definitions: cfDefs, columns: cfColumns, defaultColumnVisibility: cfDefaultVis, mergeCustomFieldValues } =
+  const { definitions: cfDefs, columns: cfColumns, mergeCustomFieldValues } =
     useCustomFieldColumns<Company>({ organizationId, entityType: "company", entityIds: companyIds });
-
-  const mergedDefaultVis = useMemo(() => ({ ...DEFAULT_HIDDEN, ...cfDefaultVis }), [cfDefaultVis]);
 
   const {
     views,
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
-    columnVisibility,
-    sorting,
-    setColumnVisibility,
-    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
     entityType: "company",
     systemViews: systemViews,
-    defaultColumnVisibility: mergedDefaultVis,
+    defaultColumnVisibility: {},
   });
-
-  const userLookup = useMemo(() => {
-    const map = new Map<string, string>();
-    if (members) {
-      for (const m of members) {
-        if (m.user) map.set(m.user._id, m.user.name ?? m.user.email ?? "Unknown");
-      }
-    }
-    return map;
-  }, [members]);
 
   const filteredCompanies = useMemo(() => {
     const now = Date.now();
@@ -148,8 +118,13 @@ function CompaniesIndex() {
       default:
         data = companies;
     }
-    return applyFilters(data);
-  }, [companies, activeViewId, applyFilters]);
+    data = applyFilters(data);
+    const q = searchValue.trim().toLowerCase();
+    if (q) {
+      data = data.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    return data;
+  }, [companies, activeViewId, applyFilters, searchValue]);
 
   const tableData = mergeCustomFieldValues(filteredCompanies);
 
@@ -179,130 +154,72 @@ function CompaniesIndex() {
     }));
   }, [companies]);
 
-  const industryOptions = useMemo(() => {
-    const industries = new Set<string>();
-    for (const c of companies) {
-      if (c.industry) industries.add(c.industry);
-    }
-    return Array.from(industries).map((i) => ({ label: i, value: i }));
-  }, [companies]);
+  // --- CrmColumn definitions ---
 
-  const sizeOptions = useMemo(() => {
-    const sizes = new Set<string>();
-    for (const c of companies) {
-      if (c.size) sizes.add(c.size);
-    }
-    return Array.from(sizes).map((s) => ({ label: s, value: s }));
-  }, [companies]);
-
-  const columns: ColumnDef<Company>[] = [
+  const columns = useMemo((): CrmColumn<CompanyRow>[] => [
     {
-      accessorKey: "name",
-      size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.name')} />,
-      cell: ({ row }) => (
+      id: "name",
+      label: t('common.name'),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => (
         <div>
-          <span className="font-medium">{row.original.name}</span>
-          {row.original.domain && (
-            <p className="text-xs text-muted-foreground">{row.original.domain}</p>
+          <Link
+            to="/dashboard/companies/$companyId"
+            params={{ companyId: item._id }}
+            className="font-medium text-fg-primary hover:text-brand-secondary"
+          >
+            {item.name}
+          </Link>
+          {item.domain && (
+            <p className="text-xs text-muted-foreground">{item.domain}</p>
           )}
         </div>
       ),
+      getSortValue: (item) => item.name,
     },
     {
-      accessorKey: "domain",
-      size: 180,
-      header: t('companies.domain'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.domain ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, domain: v }); }}
-        />
-      ),
+      id: "domain",
+      label: t('companies.domain'),
+      render: (item) => item.domain ?? "—",
     },
     {
-      accessorKey: "phone",
-      size: 150,
-      header: t('common.phone'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.phone ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, phone: v }); }}
-        />
-      ),
+      id: "phone",
+      label: t('common.phone'),
+      render: (item) => item.phone ?? "—",
     },
     {
-      accessorKey: "industry",
-      size: 150,
-      header: t('companies.industry'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.industry ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, industry: v }); }}
-        />
-      ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      id: "industry",
+      label: t('companies.industry'),
+      sortable: true,
+      render: (item) => item.industry ?? "—",
+      getSortValue: (item) => item.industry ?? "",
     },
     {
-      accessorKey: "size",
-      size: 150,
-      header: t('companies.size'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.size ?? ""}
-          config={{
-            type: "select",
-            placeholder: "—",
-            options: [
-              { label: "1-10", value: "1-10" },
-              { label: "11-50", value: "11-50" },
-              { label: "51-200", value: "51-200" },
-              { label: "201-500", value: "201-500" },
-              { label: "501-1000", value: "501-1000" },
-              { label: "1000+", value: "1000+" },
-            ],
-          }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, size: v }); }}
-        />
-      ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      id: "size",
+      label: t('companies.size'),
+      render: (item) => item.size ?? "—",
     },
     {
-      accessorKey: "website",
-      size: 180,
-      header: t('companies.website'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.website ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, website: v }); }}
-        />
-      ),
+      id: "website",
+      label: t('companies.website'),
+      render: (item) => item.website ?? "—",
     },
     {
       id: "address",
-      size: 200,
-      header: t('companies.address'),
-      accessorFn: (row) => {
-        const a = row.address;
-        if (!a) return "";
-        return [a.street, a.city, a.state, a.zip, a.country].filter(Boolean).join(", ");
-      },
-      cell: ({ getValue }) => {
-        const v = getValue() as string;
-        return v || "—";
+      label: t('companies.address'),
+      render: (item) => {
+        const a = item.address;
+        if (!a) return "—";
+        const parts = [a.street, a.city, a.state, a.zip, a.country].filter(Boolean).join(", ");
+        return parts || "—";
       },
     },
     {
       id: "tags",
-      size: 200,
-      header: t('common.tags'),
-      accessorFn: (row) => (row.tags ?? []).join(", "),
-      cell: ({ row }) => {
-        const tags = row.original.tags;
+      label: t('common.tags'),
+      render: (item) => {
+        const tags = item.tags;
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
@@ -314,39 +231,29 @@ function CompaniesIndex() {
       },
     },
     {
-      accessorKey: "notes",
-      size: 200,
-      header: t('common.notes'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.notes ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateCompany({ organizationId, companyId: row.original._id, notes: v }); }}
-        />
-      ),
+      id: "notes",
+      label: t('common.notes'),
+      render: (item) => item.notes ?? "—",
     },
     {
-      id: "createdBy",
-      size: 150,
-      header: t('common.createdBy'),
-      accessorFn: (row) => userLookup.get(row.createdBy) ?? "",
-      cell: ({ row }) => userLookup.get(row.original.createdBy) ?? "—",
+      id: "createdAt",
+      label: t('common.created'),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString(),
+      getSortValue: (item) => item.createdAt,
     },
     {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.created')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      id: "updatedAt",
+      label: t('common.updated'),
+      sortable: true,
+      render: (item) => new Date(item.updatedAt).toLocaleDateString(),
+      getSortValue: (item) => item.updatedAt,
     },
-    {
-      accessorKey: "updatedAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
-    },
-  ];
+  ], [t]);
 
-  const allColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
+  const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
+  const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const handleCreate = useCallback(
     async (
@@ -402,7 +309,7 @@ function CompaniesIndex() {
   );
 
   const handleBulkAction = useCallback(
-    async (action: string, selectedRows: Company[]) => {
+    async (action: string, selectedRows: CompanyRow[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
           await removeCompany({ organizationId, companyId: row._id });
@@ -413,7 +320,7 @@ function CompaniesIndex() {
   );
 
   const rowActions = useCallback(
-    (row: Company) => [
+    (row: CompanyRow) => [
       {
         label: t('common.edit'),
         onClick: () => navigate({ to: `/dashboard/companies/${row._id}` }),
@@ -428,19 +335,8 @@ function CompaniesIndex() {
         },
       },
     ],
-    [navigate, removeCompany, organizationId]
+    [navigate, removeCompany, organizationId, t]
   );
-
-  const filterableColumns = useMemo(() => {
-    const cols: { id: string; title: string; options: { label: string; value: string }[] }[] = [];
-    if (industryOptions.length > 0) {
-      cols.push({ id: "industry", title: t('companies.industry'), options: industryOptions });
-    }
-    if (sizeOptions.length > 0) {
-      cols.push({ id: "size", title: t('companies.size'), options: sizeOptions });
-    }
-    return cols;
-  }, [industryOptions, sizeOptions]);
 
   return (
     <div className="space-y-4">
@@ -455,14 +351,24 @@ function CompaniesIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('companies.searchPlaceholder')}
+        dropdownActions={[
+          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
+          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
+        ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <MiniChartsRow
@@ -482,66 +388,21 @@ function CompaniesIndex() {
         }}
       />
 
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newCompany'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setPanelOpen(true),
-            feature: "companies",
-            action: "create",
-          },
-          {
-            label: t('quickActions.importCsv'),
-            icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setImportOpen(true),
-            feature: "companies",
-            action: "create",
-          },
+      <CrmDataTable
+        columns={allColumns}
+        data={tableData}
+        isLoading={isLoading}
+        hiddenColumnIds={hiddenColumnIds}
+        toolbar={toolbarRef.current}
+        enableBulkSelect
+        bulkActions={[
+          { label: t('common.delete'), value: "delete", variant: "destructive" },
         ]}
-        extra={null}
+        onBulkAction={handleBulkAction}
+        rowActions={rowActions}
+        emptyTitle={t('companies.emptyTitle')}
+        emptyDescription={t('companies.emptyDescription')}
       />
-
-      {!isLoading && filteredCompanies.length === 0 ? (
-        <EmptyState
-          icon={Building2}
-          title={t('companies.emptyTitle')}
-          description={t('companies.emptyDescription')}
-          action={
-            <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('companies.addCompany')}
-            </Button>
-          }
-        />
-      ) : (
-        <CrmDataTable
-          columns={allColumns}
-          data={tableData}
-          stickyFirstColumn
-          frozenColumns={2}
-          searchKey="name"
-          searchPlaceholder={t('companies.searchPlaceholder')}
-          isLoading={isLoading}
-          enableBulkSelect
-          bulkActions={[
-            { label: t('common.delete'), value: "delete", variant: "destructive" },
-          ]}
-          onBulkAction={handleBulkAction}
-          rowActions={rowActions}
-          onRowClick={(row) => navigate({ to: `/dashboard/companies/${row._id}` })}
-          totalCount={filteredCompanies.length}
-          filterableColumns={filterableColumns}
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          sorting={sorting}
-          onSortingChange={setSorting}
-          toolbarDropdownActions={[
-            { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-            { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
-          ]}
-        />
-      )}
 
       <CsvImportDialog
         organizationId={organizationId}

@@ -4,8 +4,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ function LeaveTypesSettings() {
   const { organizationId } = useOrganization();
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<Id<"gabinetLeaveTypes"> | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const createLeaveType = useMutation(api.gabinet.leaveTypes.create);
   const updateLeaveType = useMutation(api.gabinet.leaveTypes.update);
@@ -71,7 +73,7 @@ function LeaveTypesSettings() {
             </div>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("gabinet.leaveTypes.description")} />
+        <UntitledAlert>{t("gabinet.leaveTypes.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {!leaveTypes?.length && (
@@ -144,15 +146,38 @@ function LeaveTypesSettings() {
             toast.success(t("common.saved"));
             setEditingId(null);
           }}
-          onDelete={async () => {
-            if (!window.confirm(t("gabinet.leaveTypes.confirmDelete"))) return;
-            await removeLeaveType({ organizationId, leaveTypeId: editingId! });
-            toast.success(t("common.delete"));
-            setEditingId(null);
+          onDelete={() => {
+            setDeleteDialogOpen(true);
           }}
           t={t}
         />
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: editing?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!editingId) return;
+                await removeLeaveType({ organizationId, leaveTypeId: editingId });
+                toast.success(t("common.deleted"));
+                setDeleteDialogOpen(false);
+                setEditingId(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

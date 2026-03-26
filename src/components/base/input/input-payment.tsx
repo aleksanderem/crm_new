@@ -1,9 +1,9 @@
 import { useControlledState } from "@react-stately/utils";
-import { HintText } from "@/components/base/input/hint-text";
-import type { InputBaseProps } from "@/components/base/input/input";
-import { InputBase, TextField } from "@/components/base/input/input";
-import { Label } from "@/components/base/input/label";
-import { AmexIcon, DiscoverIcon, MastercardIcon, UnionPayIcon, VisaIcon } from "@/components/foundations/payment-icons";
+import { HintText } from "@untitled/base/input/hint-text";
+import type { InputBaseProps } from "@untitled/base/input/input";
+import { InputBase, TextField } from "@untitled/base/input/input";
+import { Label } from "@untitled/base/input/label";
+import { AmexIcon, DiscoverIcon, MastercardIcon, UnionPayIcon, VisaIcon } from "@untitled/foundations/payment-icons";
 
 const cardTypes = [
     {

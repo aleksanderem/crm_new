@@ -74,22 +74,22 @@ export const AvatarProfilePhoto = ({
 
         if (initials) {
             return (
-                <div className={cx("flex size-full items-center justify-center rounded-full bg-tertiary ring-1 ring-secondary_alt", styles[size].content)}>
-                    <span className={cx("text-quaternary", styles[size].initials)}>{initials}</span>
+                <div className={cx("flex size-full items-center justify-center rounded-full bg-bg-tertiary ring-1 ring-border-secondary_alt", styles[size].content)}>
+                    <span className={cx("text-fg-quaternary", styles[size].initials)}>{initials}</span>
                 </div>
             );
         }
 
         if (PlaceholderIcon) {
             return (
-                <div className={cx("flex size-full items-center justify-center rounded-full bg-tertiary ring-1 ring-secondary_alt", styles[size].content)}>
+                <div className={cx("flex size-full items-center justify-center rounded-full bg-bg-tertiary ring-1 ring-border-secondary_alt", styles[size].content)}>
                     <PlaceholderIcon className={cx("text-fg-quaternary", styles[size].icon)} />
                 </div>
             );
         }
 
         return (
-            <div className={cx("flex size-full items-center justify-center rounded-full bg-tertiary ring-1 ring-secondary_alt", styles[size].content)}>
+            <div className={cx("flex size-full items-center justify-center rounded-full bg-bg-tertiary ring-1 ring-border-secondary_alt", styles[size].content)}>
                 {placeholder || <User01 className={cx("text-fg-quaternary", styles[size].icon)} />}
             </div>
         );
@@ -110,7 +110,7 @@ export const AvatarProfilePhoto = ({
     return (
         <div
             className={cx(
-                "relative flex shrink-0 items-center justify-center rounded-full bg-primary ring-1 ring-secondary_alt",
+                "relative flex shrink-0 items-center justify-center rounded-full bg-bg-primary ring-1 ring-border-secondary_alt",
                 styles[size].root,
                 (!src || isFailed) && styles[size].rootWithPlaceholder,
                 className,

@@ -1,4 +1,4 @@
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
+import { UntitledLogo } from "@untitled/foundations/logo/untitledui-logo";
 import { MobileNavigationHeader } from "../base-components/mobile-header";
 import { NavAccountCard } from "../base-components/nav-account-card";
 import { NavItemBase } from "../base-components/nav-item";
@@ -21,7 +21,7 @@ export const SidebarNavigationSectionsSubheadings = ({ activeUrl = "/", items }:
                     "--width": `${MAIN_SIDEBAR_WIDTH}px`,
                 } as React.CSSProperties
             }
-            className="flex h-full w-full max-w-full flex-col justify-between overflow-auto border-secondary bg-primary pt-4 shadow-xs md:border-r lg:w-(--width) lg:rounded-xl lg:border lg:pt-5"
+            className="flex h-full w-full max-w-full flex-col justify-between overflow-auto border-border-secondary bg-bg-primary pt-4 shadow-xs md:border-r lg:w-(--width) lg:rounded-xl lg:border lg:pt-5"
         >
             <div className="flex flex-col gap-5 px-4 lg:px-5">
                 <UntitledLogo className="h-8" />
@@ -31,7 +31,7 @@ export const SidebarNavigationSectionsSubheadings = ({ activeUrl = "/", items }:
                 {items.map((group) => (
                     <li key={group.label}>
                         <div className="px-5 pb-1">
-                            <p className="text-xs font-bold text-quaternary uppercase">{group.label}</p>
+                            <p className="text-xs font-bold text-fg-quaternary uppercase">{group.label}</p>
                         </div>
                         <ul className="px-4 pb-5">
                             {group.items.map((item) => (

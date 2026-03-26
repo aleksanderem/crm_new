@@ -1,12 +1,10 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { cx } from "@/lib/utils/cx";
+import { Button } from "@untitled/base/buttons/button";
+import { CloseButton } from "@untitled/base/buttons/close-button";
+import { Dropdown } from "@untitled/base/dropdown/dropdown";
+import { ChevronDown } from "@untitledui/icons";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, X } from "@/lib/ez-icons";
-import { cn } from "@/lib/utils";
 import type { BulkAction } from "./types";
 
 export interface BulkActionsBarProps {
@@ -24,6 +20,7 @@ export interface BulkActionsBarProps {
   actions: BulkAction[];
   onAction: (actionValue: string) => void;
   onClearSelection: () => void;
+  className?: string;
 }
 
 export function BulkActionsBar({
@@ -31,6 +28,7 @@ export function BulkActionsBar({
   actions,
   onAction,
   onClearSelection,
+  className,
 }: BulkActionsBarProps) {
   const { t } = useTranslation();
   const [confirmAction, setConfirmAction] = useState<BulkAction | null>(null);
@@ -54,50 +52,55 @@ export function BulkActionsBar({
 
   return (
     <>
-      <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2">
-        <span className="text-sm font-medium">
-          {t('table.selectedRecords', { count: selectedCount })}
+      <div className={cx("flex items-center gap-3 rounded-lg border border-border-secondary bg-bg-secondary px-4 py-2", className)}>
+        <span className="text-sm font-medium text-fg-secondary">
+          {t("table.selectedRecords", { count: selectedCount })}
         </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8">
-              Select Action
-              <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {actions.map((action) => (
-              <DropdownMenuItem
-                key={action.value}
-                className={cn(action.variant === "destructive" && "text-destructive")}
-                onClick={() => handleActionSelect(action)}
-              >
-                {action.icon && <span className="mr-2">{action.icon}</span>}
-                {action.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={onClearSelection}>
-          <X className="h-[18px] w-[18px]" variant="stroke" />
-          <span className="sr-only">{t('table.clearSelection')}</span>
-        </Button>
+
+        <Dropdown.Root>
+          <Button size="xs" color="secondary" iconTrailing={ChevronDown}>
+            {t("table.selectAction", { defaultValue: "Select Action" })}
+          </Button>
+          <Dropdown.Popover className="w-min">
+            <Dropdown.Menu>
+              {actions.map((action) => (
+                <Dropdown.Item
+                  key={action.value}
+                  label={action.label}
+                  onAction={() => handleActionSelect(action)}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+
+        <div className="ml-auto">
+          <CloseButton
+            size="xs"
+            onPress={onClearSelection}
+            label={t("table.clearSelection")}
+          />
+        </div>
       </div>
 
+      {/* Confirmation dialog for destructive actions — kept as shadcn Dialog for now */}
       <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Confirm Action</DialogTitle>
             <DialogDescription>
-              {t('table.confirmBulk', { action: confirmAction?.label?.toLowerCase(), count: selectedCount })}
+              {t("table.confirmBulk", {
+                action: confirmAction?.label?.toLowerCase(),
+                count: selectedCount,
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConfirmAction(null)}>
-              {t('common.cancel')}
+            <Button size="sm" color="secondary" onClick={() => setConfirmAction(null)}>
+              {t("common.cancel")}
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleConfirm}>
-              {t('common.confirm')}
+            <Button size="sm" color="primary-destructive" onClick={handleConfirm}>
+              {t("common.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -111,7 +114,7 @@ export function useBulkSelection<_T extends { _id: string }>() {
 
   const isSelected = useCallback(
     (id: string) => selectedIds.has(id),
-    [selectedIds]
+    [selectedIds],
   );
 
   const toggle = useCallback((id: string) => {

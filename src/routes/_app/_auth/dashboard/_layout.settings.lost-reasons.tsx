@@ -6,13 +6,14 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -30,6 +31,7 @@ function LostReasonsSettings() {
   const [editLabel, setEditLabel] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const createReason = useMutation(api.lostReasons.create);
   const updateReason = useMutation(api.lostReasons.update);
@@ -83,13 +85,17 @@ function LostReasonsSettings() {
     });
   };
 
-  const handleDelete = async (reasonId: string) => {
-    if (window.confirm(t('lostReasons.confirmDelete'))) {
-      await removeReason({
-        organizationId,
-        reasonId: reasonId as Id<"lostReasons">,
-      });
-    }
+  const handleDelete = (reason: { _id: string; label: string }) => {
+    setDeleteTarget({ id: reason._id, label: reason.label });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await removeReason({
+      organizationId,
+      reasonId: deleteTarget.id as Id<"lostReasons">,
+    });
+    setDeleteTarget(null);
   };
 
   return (
@@ -106,7 +112,7 @@ function LostReasonsSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t('lostReasons.description')} />
+        <UntitledAlert>{t('lostReasons.description')}</UntitledAlert>
       </SectionHeader.Root>
 
       {/* Org-level toggles */}
@@ -246,7 +252,7 @@ function LostReasonsSettings() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleDelete(reason._id)}
+                    onClick={() => handleDelete(reason)}
                   >
                     <Trash2 className="h-4 w-4" variant="stroke" />
                   </Button>
@@ -256,6 +262,26 @@ function LostReasonsSettings() {
           );
         })}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.label })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

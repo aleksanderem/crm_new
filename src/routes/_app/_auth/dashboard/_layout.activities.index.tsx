@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -7,8 +7,9 @@ import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import type { CrmColumn } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
@@ -24,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditableCell } from "@/components/data-table/editable-cell";
 import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import {
@@ -37,11 +36,9 @@ import {
 } from "@/lib/ez-icons";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { ToggleFilterButton } from "@/components/crm/filter-button";
-import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/activities/"
@@ -64,7 +61,9 @@ function ActivitiesPage() {
   ], [t]);
 
   const filterableFields = useMemo((): FieldDef[] => [
+    { id: "title", label: t('activities.title'), type: "text" },
     { id: "activityType", label: t('activities.activityType'), type: "text" },
+    { id: "description", label: t('common.description'), type: "text" },
     {
       id: "isCompleted", label: t('activities.completed'), type: "select",
       options: [
@@ -73,15 +72,18 @@ function ActivitiesPage() {
       ],
     },
     { id: "dueDate", label: t('activities.dueDate'), type: "date" },
+    { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "activity", systemViews });
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   // Sidebar dispatch handlers
   useSidebarDispatch("openFilter", () => {
@@ -179,8 +181,12 @@ function ActivitiesPage() {
     if (!showCompleted) {
       filtered = filtered.filter((a) => !a.isCompleted);
     }
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      filtered = filtered.filter((a) => a.title.toLowerCase().includes(q));
+    }
     return filtered;
-  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted]);
+  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted, searchValue]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id as string),
@@ -188,7 +194,7 @@ function ActivitiesPage() {
   );
 
   // Table columns: ALL custom fields (no activityTypeKey filter)
-  const { columns: cfColumns, defaultColumnVisibility, mergeCustomFieldValues } =
+  const { columns: cfColumns, mergeCustomFieldValues } =
     useCustomFieldColumns<ScheduledActivity>({ organizationId, entityType: "activity", entityIds: activityIds });
 
   // Form: type-scoped custom fields
@@ -259,100 +265,64 @@ function ActivitiesPage() {
   };
 
   // Base columns
-  const baseColumns: ColumnDef<ActivityRow, unknown>[] = [
+  const baseColumns: CrmColumn<ActivityRow>[] = [
     {
-      accessorKey: "title",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.title')} />
-      ),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      id: "title",
+      label: t('common.title'),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => <span className="font-medium">{item.title}</span>,
+      getSortValue: (item) => item.title,
     },
     {
-      accessorKey: "activityType",
-      size: 150,
-      header: t('activities.activityType'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.activityType}
-          config={{
-            type: "select",
-            options: typeFilterOptions,
-            placeholder: "—",
-          }}
-          displayRenderer={(v) => {
-            const typeDef = activityTypeDefs?.find((td) => td.key === v);
-            if (!typeDef) return null;
-            const Icon = getActivityIcon(typeDef.icon);
-            return (
-              <span className="inline-flex items-center gap-1.5 text-sm">
-                {Icon && (
-                  <span
-                    className="inline-flex h-5 w-5 items-center justify-center rounded"
-                    style={typeDef.color ? { color: typeDef.color } : undefined}
-                  >
-                    <Icon size={14} />
-                  </span>
-                )}
-                {typeDef.name}
-              </span>
-            );
-          }}
-          onChange={async (v) => {
-            await updateActivity({ organizationId, activityId: row.original._id, activityType: v });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "dueDate",
-      size: 130,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('activities.dueDate')} />
-      ),
-      cell: ({ row }) => {
-        const dueDate = row.original.dueDate;
-        const isOverdue = !row.original.isCompleted && dueDate < Date.now();
-        // Convert timestamp to YYYY-MM-DD for the date input
-        const dateStr = new Date(dueDate).toISOString().slice(0, 10);
+      id: "activityType",
+      label: t('activities.activityType'),
+      render: (item) => {
+        const typeDef = activityTypeDefs?.find((td) => td.key === item.activityType);
+        if (!typeDef) return item.activityType;
+        const Icon = getActivityIcon(typeDef.icon);
         return (
-          <EditableCell
-            value={dateStr}
-            config={{ type: "date" }}
-            className={isOverdue ? "text-red-600 font-medium" : ""}
-            onChange={async (v) => {
-              await updateActivity({ organizationId, activityId: row.original._id, dueDate: new Date(v).getTime() });
-            }}
-          />
+          <span className="inline-flex items-center gap-1.5 text-sm">
+            {Icon && (
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded"
+                style={typeDef.color ? { color: typeDef.color } : undefined}
+              >
+                <Icon size={14} />
+              </span>
+            )}
+            {typeDef.name}
+          </span>
         );
       },
     },
     {
-      accessorKey: "isCompleted",
-      size: 100,
-      header: t('activities.completed'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.isCompleted}
-          config={{ type: "boolean" }}
-          onChange={async (v) => {
-            if (v) {
-              await markComplete({ organizationId, activityId: row.original._id });
-            } else {
-              await markIncomplete({ organizationId, activityId: row.original._id });
-            }
-          }}
-        />
-      ),
+      id: "dueDate",
+      label: t('activities.dueDate'),
+      sortable: true,
+      render: (item) => {
+        const isOverdue = !item.isCompleted && item.dueDate < Date.now();
+        return (
+          <span className={isOverdue ? "text-red-600 font-medium" : ""}>
+            {new Date(item.dueDate).toLocaleDateString()}
+          </span>
+        );
+      },
+      getSortValue: (item) => item.dueDate,
+    },
+    {
+      id: "isCompleted",
+      label: t('activities.completed'),
+      render: (item) => (item.isCompleted ? "\u2713" : "\u2014"),
     },
   ];
 
-  const columns: ColumnDef<ActivityRow, unknown>[] = useMemo(
-    () => [...baseColumns, ...(cfColumns as ColumnDef<ActivityRow, unknown>[])],
+  const mergedColumns: CrmColumn<ActivityRow>[] = useMemo(
+    () => [...baseColumns, ...cfColumns],
     [baseColumns, cfColumns]
   );
+  const { allColumns: columns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const rowActions = (row: ActivityRow) => [
     {
@@ -395,14 +365,19 @@ function ActivitiesPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
-        onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t('activities.searchPlaceholder')}
+        columnDefs={columns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <div className="flex items-center gap-2 py-2">
@@ -421,29 +396,16 @@ function ActivitiesPage() {
           active={showCompleted}
           onChange={setShowCompleted}
         />
-        <QuickActionBar
-          actions={[
-            {
-              label: t('quickActions.newActivity'),
-              icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-              onClick: openCreatePanel,
-              feature: "activities",
-              action: "create",
-            },
-          ]}
-        />
       </div>
 
-      <CrmDataTable<ActivityRow>
+      <CrmDataTable
         columns={columns}
+        hiddenColumnIds={hiddenColumnIds}
         data={tableData}
         rowActions={rowActions}
-        frozenColumns={2}
         enableBulkSelect
-        searchKey="title"
-        searchPlaceholder={t('activities.searchPlaceholder')}
         isLoading={isLoading}
-        defaultColumnVisibility={defaultColumnVisibility}
+        toolbar={toolbarRef.current}
       />
 
       <SidePanel

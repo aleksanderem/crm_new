@@ -6,8 +6,8 @@ import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import {
   Card,
   CardContent,
@@ -134,7 +134,7 @@ function AutomationSettingsOverview() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("settings.automationsDescription")} />
+        <UntitledAlert>{t("settings.automationsDescription")}</UntitledAlert>
       </SectionHeader.Root>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

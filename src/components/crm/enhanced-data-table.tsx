@@ -1,370 +1,369 @@
-import { useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  RowSelectionState,
-  Updater,
-} from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import type { Selection, SortDescriptor } from "react-aria-components";
+import { SearchLg } from "@untitledui/icons";
+import { Table, TableCard } from "@untitled/app/table/table";
+import { PaginationCardMinimal } from "@untitled/app/pagination/pagination";
+import { EmptyState } from "@untitled/app/empty-state/empty-state";
+import { Dropdown } from "@untitled/base/dropdown/dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { DataTableToolbar, type ToolbarDropdownAction } from "@/components/data-table/data-table-toolbar";
 import { BulkActionsBar } from "@/components/crm/bulk-actions";
-import { MoreHorizontal, Pencil, Inbox } from "@/lib/ez-icons";
-import { cn } from "@/lib/utils";
-import type { BulkAction } from "./types";
+import type { BulkAction, FieldDef } from "./types";
+
+// ---------------------------------------------------------------------------
+// Column definition
+// ---------------------------------------------------------------------------
+
+export interface CrmColumn<TData> {
+  id: string;
+  /** Label shown in the column header. */
+  label?: string;
+  /** Whether this column is sortable. */
+  sortable?: boolean;
+  /** Mark the first meaningful column as row header for a11y. */
+  isRowHeader?: boolean;
+  /** Extra className on <Table.Head> and <Table.Cell>. */
+  className?: string;
+  /** Render cell content for this column. */
+  render: (item: TData) => ReactNode;
+  /** Value used for sorting. Required if `sortable` is true. */
+  getSortValue?: (item: TData) => string | number | boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Row action
+// ---------------------------------------------------------------------------
 
 interface RowAction<TData> {
   label: string;
-  onClick: (row: TData) => void;
+  onClick: (item: TData) => void;
   icon?: React.ReactNode;
 }
 
-export interface CrmDataTableProps<TData> {
-  columns: ColumnDef<TData, any>[];
-  data: TData[];
-  stickyFirstColumn?: boolean;
-  /** Number of leading columns to freeze (sticky). Defaults to 0. Checkbox column counts. */
-  frozenColumns?: number;
-  rowActions?: (row: TData) => RowAction<TData>[];
-  onRowClick?: (row: TData) => void;
-  enableBulkSelect?: boolean;
-  onBulkAction?: (action: string, selectedRows: TData[]) => void;
-  bulkActions?: BulkAction[];
-  totalCount?: number;
-  searchKey?: string;
-  searchPlaceholder?: string;
-  filterableColumns?: { id: string; title: string; options: { label: string; value: string }[] }[];
-  isLoading?: boolean;
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
 
-  // Controlled state for integration with saved views
-  columnVisibility?: VisibilityState;
-  onColumnVisibilityChange?: (vis: VisibilityState) => void;
-  sorting?: SortingState;
-  onSortingChange?: (sort: SortingState) => void;
-  defaultColumnVisibility?: VisibilityState;
-  toolbarActions?: React.ReactNode;
-  toolbarDropdownActions?: ToolbarDropdownAction[];
+export interface CrmDataTableProps<TData> {
+  columns: CrmColumn<TData>[];
+  data: TData[];
+  /** Extract a unique ID from each item. Defaults to `item._id ?? item.id ?? index`. */
+  getRowId?: (item: TData, index: number) => string;
+  enableBulkSelect?: boolean;
+  onBulkAction?: (action: string, items: TData[]) => void;
+  bulkActions?: BulkAction[];
+  rowActions?: (item: TData) => RowAction<TData>[];
+  isLoading?: boolean;
+  defaultPageSize?: number;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  /** Controlled sort descriptor (for saved views). */
+  sortDescriptor?: SortDescriptor;
+  onSortChange?: (descriptor: SortDescriptor) => void;
+  /** Optional toolbar rendered inside the card above the table. */
+  toolbar?: ReactNode;
+  /** Column IDs to hide. */
+  hiddenColumnIds?: Set<string>;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function defaultGetRowId(item: any, index: number): string {
+  return item._id ?? item.id ?? String(index);
+}
+
+function sortItems<T>(
+  data: T[],
+  descriptor: SortDescriptor | undefined,
+  columns: CrmColumn<T>[],
+): T[] {
+  if (!descriptor?.column) return data;
+  const col = columns.find((c) => c.id === String(descriptor.column));
+  if (!col?.getSortValue) return data;
+  return [...data].sort((a, b) => {
+    const va = col.getSortValue!(a);
+    const vb = col.getSortValue!(b);
+    let cmp = 0;
+    if (typeof va === "string" && typeof vb === "string") {
+      cmp = va.localeCompare(vb);
+    } else if (typeof va === "number" && typeof vb === "number") {
+      cmp = va - vb;
+    } else if (typeof va === "boolean" && typeof vb === "boolean") {
+      cmp = Number(va) - Number(vb);
+    }
+    return descriptor.direction === "descending" ? -cmp : cmp;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function CrmDataTable<TData>({
-  columns: userColumns,
+  columns,
   data,
-  stickyFirstColumn = false,
-  frozenColumns = 0,
-  rowActions,
-  onRowClick,
+  getRowId = defaultGetRowId,
   enableBulkSelect = false,
   onBulkAction,
   bulkActions,
-  totalCount,
-  searchKey,
-  searchPlaceholder,
-  filterableColumns = [],
+  rowActions,
   isLoading = false,
-  columnVisibility: controlledVisibility,
-  onColumnVisibilityChange: controlledVisibilityChange,
-  sorting: controlledSorting,
-  onSortingChange: controlledSortingChange,
-  defaultColumnVisibility,
-  toolbarActions,
-  toolbarDropdownActions,
+  defaultPageSize = 10,
+  emptyTitle,
+  emptyDescription,
+  sortDescriptor: controlledSort,
+  onSortChange: controlledSortChange,
+  toolbar,
+  hiddenColumnIds,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
-  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [internalVisibility, setInternalVisibility] = useState<VisibilityState>(
-    () => defaultColumnVisibility ?? {}
+
+  // --- Visible columns ---
+  const visibleColumns = useMemo(
+    () => (hiddenColumnIds?.size ? columns.filter((c) => !hiddenColumnIds.has(c.id)) : columns),
+    [columns, hiddenColumnIds],
   );
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const effectiveSorting = controlledSorting ?? internalSorting;
-  const effectiveVisibility = controlledVisibility ?? internalVisibility;
-
-  const handleSortingChange = (updater: Updater<SortingState>) => {
-    const newValue = typeof updater === "function" ? updater(effectiveSorting) : updater;
-    if (controlledSortingChange) {
-      controlledSortingChange(newValue);
-    } else {
-      setInternalSorting(newValue);
-    }
+  // --- Sorting ---
+  const [internalSort, setInternalSort] = useState<SortDescriptor | undefined>(undefined);
+  const sort = controlledSort ?? internalSort;
+  const handleSortChange = (desc: SortDescriptor) => {
+    controlledSortChange ? controlledSortChange(desc) : setInternalSort(desc);
   };
 
-  const handleVisibilityChange = (updater: Updater<VisibilityState>) => {
-    const newValue = typeof updater === "function" ? updater(effectiveVisibility) : updater;
-    if (controlledVisibilityChange) {
-      controlledVisibilityChange(newValue);
-    } else {
-      setInternalVisibility(newValue);
-    }
-  };
+  // --- Pagination ---
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
 
-  const columns: ColumnDef<TData, any>[] = [];
+  // --- Selection ---
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
 
-  if (enableBulkSelect) {
-    columns.push({
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    });
-  }
+  // --- Derived data ---
+  const sorted = useMemo(() => sortItems(data, sort, columns), [data, sort, columns]);
+  const totalPages = Math.max(Math.ceil(sorted.length / pageSize), 1);
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, page, pageSize]);
 
-  columns.push(...userColumns);
+  // --- Selected items (for bulk actions) ---
+  const selectedItems = useMemo(() => {
+    if (selectedKeys === "all") return data;
+    const keySet = selectedKeys as Set<string>;
+    return data.filter((item, i) => keySet.has(getRowId(item, i)));
+  }, [data, selectedKeys, getRowId]);
 
-  if (rowActions) {
-    columns.push({
-      id: "actions",
-      header: () => null,
-      cell: ({ row }) => {
-        const actions = rowActions(row.original);
-        if (actions.length === 0) return null;
-        return (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                actions[0]?.onClick(row.original);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {actions.map((action) => (
-                  <DropdownMenuItem
-                    key={action.label}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      action.onClick(row.original);
-                    }}
-                  >
-                    {action.icon && <span className="mr-2">{action.icon}</span>}
-                    {action.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        );
-      },
-      enableSorting: false,
-      enableHiding: false,
-      size: 80,
-    });
-  }
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting: effectiveSorting,
-      columnFilters,
-      columnVisibility: effectiveVisibility,
-      rowSelection,
-    },
-    onSortingChange: handleSortingChange,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: handleVisibilityChange,
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    enableRowSelection: enableBulkSelect,
-  });
-
-  const selectedRows = table.getFilteredSelectedRowModel().rows.map((r) => r.original);
-  const displayCount = totalCount ?? data.length;
-
+  // --- Loading ---
   if (isLoading) {
     return (
-      <Card className="py-0">
-        <div className="flex items-center gap-2 px-4 pt-4 sm:px-6">
-          <Skeleton className="h-9 w-[280px]" />
-          <Skeleton className="h-9 w-[100px]" />
-        </div>
-        <div className="p-4 space-y-3 sm:px-6">
+      <TableCard.Root size="sm">
+        <div className="space-y-3 p-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex gap-4">
-              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-5 w-5 rounded" />
               <Skeleton className="h-5 flex-1" />
               <Skeleton className="h-5 flex-1" />
-              <Skeleton className="h-5 w-[120px]" />
+              <Skeleton className="h-5 w-28" />
             </div>
           ))}
         </div>
-      </Card>
+      </TableCard.Root>
     );
   }
 
-  return (
-    <Card className="py-0 overflow-hidden">
-      <div className="px-4 pt-4 sm:px-6">
-        <DataTableToolbar
-          table={table}
-          searchKey={searchKey}
-          searchPlaceholder={searchPlaceholder}
-          filterableColumns={filterableColumns}
-          showViewOptions
-          actions={toolbarActions}
-          dropdownActions={toolbarDropdownActions}
-        />
-      </div>
+  // --- Has row actions column? ---
+  const hasActions = !!rowActions;
 
+  return (
+    <TableCard.Root size="sm">
+      {/* Toolbar (search, filters, etc.) */}
+      {toolbar && (
+        <div className="border-b border-border-secondary px-4 py-3 md:px-5">
+          {toolbar}
+        </div>
+      )}
+      {/* Bulk-actions bar */}
       {enableBulkSelect && bulkActions && bulkActions.length > 0 && (
-        <div className="px-4 sm:px-6">
-          <BulkActionsBar
-            selectedCount={selectedRows.length}
-            actions={bulkActions}
-            onAction={(actionValue) => {
-              onBulkAction?.(actionValue, selectedRows);
-              setRowSelection({});
-            }}
-            onClearSelection={() => setRowSelection({})}
-          />
+        <BulkActionsBar
+          className="mx-4 my-3 md:mx-5 md:my-4"
+          selectedCount={selectedItems.length}
+          actions={bulkActions}
+          onAction={(v) => {
+            onBulkAction?.(v, selectedItems);
+            setSelectedKeys(new Set());
+          }}
+          onClearSelection={() => setSelectedKeys(new Set())}
+        />
+      )}
+
+      {paged.length > 0 ? (
+        <Table
+          aria-label="Data table"
+          selectionMode={enableBulkSelect ? "multiple" : undefined}
+          sortDescriptor={sort}
+          onSortChange={handleSortChange}
+          selectedKeys={enableBulkSelect ? selectedKeys : undefined}
+          onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
+        >
+          <Table.Header>
+            {visibleColumns.map((col) => (
+              <Table.Head
+                key={col.id}
+                id={col.id}
+                label={col.label}
+                allowsSorting={col.sortable}
+                isRowHeader={col.isRowHeader}
+                className={col.className}
+              />
+            ))}
+            {hasActions && <Table.Head id="actions" />}
+          </Table.Header>
+          <Table.Body>
+            {paged.map((item, index) => {
+              const rowId = getRowId(item, (page - 1) * pageSize + index);
+              return (
+                <Table.Row key={rowId} id={rowId}>
+                  {visibleColumns.map((col) => (
+                    <Table.Cell key={col.id} className={col.className}>
+                      {col.render(item)}
+                    </Table.Cell>
+                  ))}
+                  {hasActions && (
+                    <Table.Cell className="px-4">
+                      <div className="flex justify-end">
+                        <Dropdown.Root>
+                          <Dropdown.DotsButton />
+                          <Dropdown.Popover className="w-min">
+                            <Dropdown.Menu>
+                              {rowActions!(item).map((a) => (
+                                <Dropdown.Item
+                                  key={a.label}
+                                  label={a.label}
+                                  onAction={() => a.onClick(item)}
+                                />
+                              ))}
+                            </Dropdown.Menu>
+                          </Dropdown.Popover>
+                        </Dropdown.Root>
+                      </div>
+                    </Table.Cell>
+                  )}
+                </Table.Row>
+              );
+            })}
+          </Table.Body>
+        </Table>
+      ) : (
+        <div className="flex items-center justify-center px-8 py-20">
+          <EmptyState size="sm">
+            <EmptyState.Header pattern="none">
+              <EmptyState.FeaturedIcon
+                icon={SearchLg}
+                color="gray"
+                theme="modern"
+                size="md"
+                className="text-fg-quaternary"
+              />
+            </EmptyState.Header>
+            <EmptyState.Content>
+              <EmptyState.Title>
+                {emptyTitle ?? t("table.noResults")}
+              </EmptyState.Title>
+              <EmptyState.Description>
+                {emptyDescription ??
+                  t("table.noResultsDescription", {
+                    defaultValue: "Try adjusting your search or filters.",
+                  })}
+              </EmptyState.Description>
+            </EmptyState.Content>
+          </EmptyState>
         </div>
       )}
 
-      {/* Table with horizontal scroll constrained to parent width */}
-      <div className="relative mt-4 border-t overflow-x-auto overflow-y-visible">
-        <table className="caption-bottom text-sm" style={{ minWidth: "100%" }}>
-          <colgroup>
-            {table.getVisibleLeafColumns().map((col) => (
-              <col key={col.id} style={{ width: col.getSize() }} />
-            ))}
-          </colgroup>
-          <thead className="[&_tr]:border-b">
-            {table.getHeaderGroups().map((headerGroup) => {
-              let stickyOffset = 0;
-              return (
-                <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
-                  {headerGroup.headers.map((header, index) => {
-                    const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
-                    const left = stickyOffset;
-                    if (isFrozen) stickyOffset += header.getSize();
-                    return (
-                      <th
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        className={cn(
-                          "h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-                          isFrozen && "sticky z-20 bg-background"
-                        )}
-                        style={isFrozen ? { left } : undefined}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </thead>
-          <tbody className="[&_tr:last-child]:border-0">
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
-                let stickyOffset = 0;
-                return (
-                  <tr
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="group border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-                  >
-                    {row.getVisibleCells().map((cell, index) => {
-                      const isFrozen = (stickyFirstColumn && index === 0) || index < frozenColumns;
-                      const left = stickyOffset;
-                      if (isFrozen) stickyOffset += cell.column.getSize();
-                      const isFirstDataCol = enableBulkSelect ? index === 1 : index === 0;
-                      return (
-                        <td
-                          key={cell.id}
-                          className={cn(
-                            "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-                            isFrozen && "sticky z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted",
-                            isFirstDataCol && onRowClick && "cursor-pointer"
-                          )}
-                          style={isFrozen ? { left } : undefined}
-                          onClick={isFirstDataCol && onRowClick ? () => onRowClick(row.original) : undefined}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={columns.length} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Inbox className="h-10 w-10" />
-                    <p className="text-sm">{t('table.noResults')}</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t px-4 pb-4 pt-2 sm:px-6">
-        <DataTablePagination table={table} totalCount={displayCount} />
-      </div>
-    </Card>
+      {/* Pagination */}
+      <PaginationCardMinimal
+        page={page}
+        total={totalPages}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
+    </TableCard.Root>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Column visibility hook
+// ---------------------------------------------------------------------------
+
+export function useColumnVisibility(defaultHidden?: Set<string>) {
+  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(
+    () => defaultHidden ?? new Set(),
+  );
+
+  const toggleColumn = useCallback((id: string) => {
+    setHiddenColumnIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  return { hiddenColumnIds, toggleColumn };
+}
+
+// ---------------------------------------------------------------------------
+// Auto-generate columns from filterableFields
+// ---------------------------------------------------------------------------
+
+/**
+ * Extends explicit `columns` with auto-generated columns for every
+ * `filterableFields` entry that doesn't already have a column.
+ * Auto-generated columns are hidden by default.
+ */
+export function useAllColumns<TData>(
+  columns: CrmColumn<TData>[],
+  filterableFields: FieldDef[],
+  getFieldValue: (item: TData, fieldId: string) => unknown = (item, id) =>
+    (item as Record<string, unknown>)[id],
+) {
+  return useMemo(() => {
+    const existingIds = new Set(columns.map((c) => c.id));
+    const defaultHidden = new Set<string>();
+
+    const autoColumns: CrmColumn<TData>[] = filterableFields
+      .filter((f) => !existingIds.has(f.id))
+      .map((f) => {
+        defaultHidden.add(f.id);
+        return {
+          id: f.id,
+          label: f.label,
+          sortable: true,
+          render: (item: TData) => {
+            const val = getFieldValue(item, f.id);
+            if (val == null || val === "") return "—";
+            if (f.type === "date" && typeof val === "number")
+              return new Date(val).toLocaleDateString();
+            if (f.type === "boolean") return String(val) === "true" ? "✓" : "—";
+            return String(val);
+          },
+          getSortValue: (item: TData) => {
+            const val = getFieldValue(item, f.id);
+            if (f.type === "number" || f.type === "date") return Number(val) || 0;
+            return String(val ?? "");
+          },
+        };
+      });
+
+    return {
+      allColumns: [...columns, ...autoColumns],
+      defaultHidden,
+    };
+  }, [columns, filterableFields, getFieldValue]);
 }

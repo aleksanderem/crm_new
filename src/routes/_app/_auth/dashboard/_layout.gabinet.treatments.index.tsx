@@ -1,29 +1,25 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import type { CrmColumn } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Plus, Stethoscope, Pencil, Trash2, Power } from "@/lib/ez-icons";
-import { EditableCell } from "@/components/data-table/editable-cell";
-import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { EmptyState } from "@/components/layout/empty-state";
-import type { ColumnDef } from "@tanstack/react-table";
+import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSavedViews } from "@/hooks/use-saved-views";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -47,7 +43,6 @@ function formatCurrency(amount: number, currency?: string): string {
 
 function TreatmentsIndex() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { organizationId } = useOrganization();
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
@@ -70,28 +65,13 @@ function TreatmentsIndex() {
     }));
   }, [topTreatments]);
 
+  const toolbarRef = useRef<React.ReactNode>(null);
+  const [searchValue, setSearchValue] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Sidebar dispatch handlers
-  useSidebarDispatch("openFilter", () => {
-    // Toggle between active/inactive views
-    if (activeViewId === "active") onViewChange("inactive");
-    else if (activeViewId === "inactive") onViewChange("all");
-    else onViewChange("active");
-  });
-  useSidebarDispatch("sortByPrice", () => {
-    setSorting((current) => {
-      const priceSort = current.find((entry) => entry.id === "price");
-      if (!priceSort) {
-        return [{ id: "price", desc: false }];
-      }
-      return [{ id: "price", desc: !priceSort.desc }];
-    });
-  });
 
   const systemViews = useMemo(
     (): SavedView[] => [
@@ -119,8 +99,20 @@ function TreatmentsIndex() {
 
   const filterableFields = useMemo(
     (): FieldDef[] => [
+      { id: "name", label: t("gabinet.treatments.name"), type: "text" },
       { id: "category", label: t("gabinet.treatments.category"), type: "text" },
       { id: "price", label: t("gabinet.treatments.price"), type: "number" },
+      { id: "duration", label: t("gabinet.treatments.duration"), type: "number" },
+      {
+        id: "isActive",
+        label: t("common.active"),
+        type: "select",
+        options: [
+          { label: t("common.yes"), value: "true" },
+          { label: t("common.no"), value: "false" },
+        ],
+      },
+      { id: "createdAt", label: t("common.created"), type: "date" },
     ],
     [t],
   );
@@ -139,12 +131,7 @@ function TreatmentsIndex() {
     activeViewId,
     onViewChange,
     onCreateView,
-    onUpdateView,
     onDeleteView,
-    columnVisibility,
-    sorting,
-    setColumnVisibility,
-    setSorting,
     applyFilters,
   } = useSavedViews({
     organizationId,
@@ -164,171 +151,92 @@ function TreatmentsIndex() {
       default:
         data = allTreatments;
     }
-    return applyFilters(data);
-  }, [allTreatments, activeViewId, applyFilters]);
-
-  const categoryOptions = useMemo(() => {
-    const cats = new Set<string>();
-    for (const tr of allTreatments) {
-      if (tr.category) cats.add(tr.category);
+    data = applyFilters(data);
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          (t.category && t.category.toLowerCase().includes(q)),
+      );
     }
-    return Array.from(cats).map((c) => ({ label: c, value: c }));
-  }, [allTreatments]);
+    return data;
+  }, [allTreatments, activeViewId, applyFilters, searchValue]);
 
-  const columns: ColumnDef<Treatment>[] = [
-    {
-      accessorKey: "name",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.treatments.name")}
-        />
-      ),
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          {row.original.color && (
-            <span
-              className="h-4 w-4 rounded-full shrink-0"
-              style={{ backgroundColor: row.original.color }}
-            />
-          )}
-          <span className="font-medium">{row.original.name}</span>
-          {!row.original.isActive && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              {t("common.inactive")}
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "category",
-      size: 150,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.treatments.category")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.category ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateTreatment({
-              organizationId,
-              treatmentId: row.original._id,
-              name: row.original.name,
-              category: v,
-            });
-          }}
-        />
-      ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(row.getValue(id)),
-    },
-    {
-      accessorKey: "duration",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.treatments.duration")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.duration}
-          config={{ type: "number", min: 5, step: 5, placeholder: "min" }}
-          displayFormatter={(v) => `${v} min`}
-          onChange={async (v) => {
-            await updateTreatment({
-              organizationId,
-              treatmentId: row.original._id,
-              name: row.original.name,
-              duration: Number(v),
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "price",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.treatments.price")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.price}
-          config={{ type: "number", min: 0, step: 1, placeholder: "0.00" }}
-          displayFormatter={(v) =>
-            formatCurrency(v, row.original.currency ?? undefined)
-          }
-          onChange={async (v) => {
-            await updateTreatment({
-              organizationId,
-              treatmentId: row.original._id,
-              name: row.original.name,
-              price: Number(v),
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "taxRate",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t("gabinet.treatments.taxRate")}
-        />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.taxRate ?? ""}
-          config={{
-            type: "number",
-            min: 0,
-            max: 100,
-            step: 1,
-            placeholder: "%",
-          }}
-          displayFormatter={(v) => (v != null && v !== "" ? `${v}%` : "—")}
-          onChange={async (v) => {
-            await updateTreatment({
-              organizationId,
-              treatmentId: row.original._id,
-              name: row.original.name,
-              taxRate: Number(v),
-            });
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: "isActive",
-      size: 100,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t("common.active")} />
-      ),
-      cell: ({ getValue }) => {
-        const active = getValue() as boolean;
-        return (
+  const columns: CrmColumn<Treatment>[] = useMemo(
+    () => [
+      {
+        id: "name",
+        label: t("gabinet.treatments.name"),
+        sortable: true,
+        isRowHeader: true,
+        render: (item) => (
+          <div className="flex items-center gap-2">
+            {item.color && (
+              <span
+                className="h-4 w-4 rounded-full shrink-0"
+                style={{ backgroundColor: item.color }}
+              />
+            )}
+            <Link
+              to="/dashboard/gabinet/treatments/$treatmentId"
+              params={{ treatmentId: item._id }}
+              className="font-medium text-fg-primary hover:text-brand-secondary"
+            >
+              {item.name}
+            </Link>
+            {!item.isActive && (
+              <Badge variant="outline" className="text-xs text-fg-quaternary">
+                {t("common.inactive")}
+              </Badge>
+            )}
+          </div>
+        ),
+        getSortValue: (item) => item.name,
+      },
+      {
+        id: "category",
+        label: t("gabinet.treatments.category"),
+        sortable: true,
+        render: (item) => item.category ?? "—",
+        getSortValue: (item) => item.category ?? "",
+      },
+      {
+        id: "duration",
+        label: t("gabinet.treatments.duration"),
+        sortable: true,
+        render: (item) => `${item.duration} min`,
+        getSortValue: (item) => item.duration,
+      },
+      {
+        id: "price",
+        label: t("gabinet.treatments.price"),
+        sortable: true,
+        render: (item) => formatCurrency(item.price, item.currency ?? undefined),
+        getSortValue: (item) => item.price,
+      },
+      {
+        id: "taxRate",
+        label: t("gabinet.treatments.taxRate"),
+        render: (item) => (item.taxRate != null ? `${item.taxRate}%` : "—"),
+      },
+      {
+        id: "isActive",
+        label: t("common.active"),
+        render: (item) => (
           <span
             className={`inline-block h-2.5 w-2.5 rounded-full ${
-              active ? "bg-green-500" : "bg-gray-300"
+              item.isActive ? "bg-green-500" : "bg-gray-300"
             }`}
           />
-        );
+        ),
       },
-    },
-  ];
+    ],
+    [t],
+  );
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const openCreatePanel = () => {
     setEditingTreatment(null);
@@ -425,14 +333,20 @@ function TreatmentsIndex() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       {/* KPI Statistics Cards */}
@@ -467,73 +381,25 @@ function TreatmentsIndex() {
         />
       </div>
 
-      <QuickActionBar
-        actions={[
+      <CrmDataTable
+        columns={allColumns}
+        data={filteredTreatments}
+        isLoading={isLoading}
+        toolbar={toolbarRef.current}
+        hiddenColumnIds={hiddenColumnIds}
+        enableBulkSelect
+        bulkActions={[
           {
-            label: t("quickActions.newTreatment"),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "gabinet_treatments",
-            action: "create",
+            label: t("common.delete"),
+            value: "delete",
+            variant: "destructive",
           },
         ]}
+        onBulkAction={handleBulkAction}
+        rowActions={rowActions}
+        emptyTitle={t("gabinet.treatments.emptyTitle")}
+        emptyDescription={t("gabinet.treatments.emptyDescription")}
       />
-
-      {!isLoading && filteredTreatments.length === 0 ? (
-        <EmptyState
-          icon={Stethoscope}
-          title={t("gabinet.treatments.emptyTitle")}
-          description={t("gabinet.treatments.emptyDescription")}
-          action={
-            <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.treatments.addTreatment")}
-            </Button>
-          }
-        />
-      ) : (
-        <CrmDataTable
-          columns={columns}
-          data={filteredTreatments}
-          stickyFirstColumn
-          frozenColumns={2}
-          searchKey="name"
-          searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}
-          isLoading={isLoading}
-          enableBulkSelect
-          bulkActions={[
-            {
-              label: t("common.delete"),
-              value: "delete",
-              variant: "destructive",
-            },
-          ]}
-          onBulkAction={handleBulkAction}
-          rowActions={rowActions}
-          onRowClick={(row) =>
-            navigate({
-              to: "/dashboard/gabinet/treatments/$treatmentId",
-              params: { treatmentId: row._id },
-            })
-          }
-          totalCount={filteredTreatments.length}
-          filterableColumns={
-            categoryOptions.length > 0
-              ? [
-                  {
-                    id: "category",
-                    title: t("gabinet.treatments.category"),
-                    options: categoryOptions,
-                  },
-                ]
-              : []
-          }
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          sorting={sorting}
-          onSortingChange={setSorting}
-        />
-      )}
 
       <SidePanel
         open={panelOpen}

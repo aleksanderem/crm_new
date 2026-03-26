@@ -6,8 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -81,6 +82,7 @@ function EmailEventsSettings() {
   const deleteBinding = useMutation(api.emailEventBindings.deleteBinding);
 
   const [bindingInProgress, setBindingInProgress] = useState<string | null>(null);
+  const [unbindTarget, setUnbindTarget] = useState<{ binding: Binding; label: string } | null>(null);
 
   const isLoading = loadingEvents || loadingBindings;
 
@@ -121,19 +123,24 @@ function EmailEventsSettings() {
     }
   };
 
-  const handleUnbind = async (binding: Binding) => {
-    if (!window.confirm(t("emailEvents.confirmUnbind"))) return;
-    setBindingInProgress(binding.eventType);
+  const handleUnbind = (binding: Binding, label: string) => {
+    setUnbindTarget({ binding, label });
+  };
+
+  const confirmUnbind = async () => {
+    if (!unbindTarget) return;
+    setBindingInProgress(unbindTarget.binding.eventType);
     try {
       await deleteBinding({
         organizationId,
-        bindingId: binding._id,
+        bindingId: unbindTarget.binding._id,
       });
       toast.success(t("emailEvents.bindingDeleted"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
+      setUnbindTarget(null);
     }
   };
 
@@ -158,7 +165,7 @@ function EmailEventsSettings() {
             {t("emailEvents.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("emailEvents.description")} />
+        <UntitledAlert>{t("emailEvents.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {/* Module filter */}
@@ -240,7 +247,7 @@ function EmailEventsSettings() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUnbind(binding)}
+                          onClick={() => handleUnbind(binding, event.displayName)}
                           disabled={isProcessing}
                         >
                           {t("emailEvents.unbind")}
@@ -281,6 +288,26 @@ function EmailEventsSettings() {
           })}
         </div>
       )}
+
+      <AlertDialog open={!!unbindTarget} onOpenChange={(open) => { if (!open) setUnbindTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: unbindTarget?.label })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmUnbind}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

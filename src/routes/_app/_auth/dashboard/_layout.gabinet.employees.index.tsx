@@ -1,29 +1,27 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
+import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditableCell } from "@/components/data-table/editable-cell";
+import { Avatar } from "@untitled/base/avatar/avatar";
 import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
 import { Plus, Trash2 } from "@/lib/ez-icons";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
+import type { FieldDef } from "@/components/crm/types";
 import { toast } from "sonner";
 import { Id, Doc } from "@cvx/_generated/dataModel";
-import { ColumnDef } from "@tanstack/react-table";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -43,10 +41,32 @@ function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  const filterableFields = useMemo((): FieldDef[] => [
+    { id: "firstName", label: t("gabinet.employees.firstName"), type: "text" },
+    { id: "lastName", label: t("gabinet.employees.lastName"), type: "text" },
+    { id: "email", label: t("common.email"), type: "text" },
+    { id: "phone", label: t("common.phone"), type: "text" },
+    {
+      id: "role", label: t("gabinet.employees.role"), type: "select",
+      options: employeeRoleOptions(t),
+    },
+    { id: "specialization", label: t("gabinet.employees.specialization"), type: "text" },
+    { id: "position", label: t("gabinet.employees.position"), type: "text" },
+    { id: "department", label: t("gabinet.employees.department"), type: "text" },
+    {
+      id: "isActive", label: t("common.active"), type: "select",
+      options: [
+        { label: t("common.yes"), value: "true" },
+        { label: t("common.no"), value: "false" },
+      ],
+    },
+  ], [t]);
 
   const createEmployee = useMutation(api.gabinet.employees.create);
-  const updateEmployee = useMutation(api.gabinet.employees.update);
   const removeEmployee = useMutation(api.gabinet.employees.remove);
 
   const { data: employees } = useQuery(
@@ -112,29 +132,32 @@ function EmployeesIndex() {
     return name.substring(0, 2).toUpperCase();
   }
 
-  const roleOptions = employeeRoleOptions(t);
-
-  const columns: ColumnDef<Employee>[] = [
+  const columns: CrmColumn<Employee>[] = useMemo(() => [
     {
-      accessorKey: "firstName",
-      size: 200,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.employee")} />,
-      cell: ({ row }) => {
-        const displayName = getDisplayName(row.original);
-        const initials = getInitials(row.original);
-        const user = userMap.get(row.original.userId);
+      id: "firstName",
+      label: t("gabinet.employees.employee"),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => {
+        const displayName = getDisplayName(item);
+        const initials = getInitials(item);
+        const user = userMap.get(item.userId);
         return (
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-3">
+            <Avatar size="sm" initials={initials} />
             <div>
-              <span className="font-medium">{displayName}</span>
+              <Link
+                to="/dashboard/gabinet/employees/$employeeId"
+                params={{ employeeId: item._id }}
+                className="font-medium text-fg-primary hover:text-brand-secondary"
+              >
+                {displayName}
+              </Link>
               {user?.email && (
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-xs text-fg-quaternary">{user.email}</p>
               )}
             </div>
-            {!row.original.isActive && (
+            {!item.isActive && (
               <Badge variant="outline" className="text-xs text-muted-foreground">
                 {t("common.inactive")}
               </Badge>
@@ -142,110 +165,62 @@ function EmployeesIndex() {
           </div>
         );
       },
+      getSortValue: (item) => getDisplayName(item),
     },
     {
-      accessorKey: "role",
-      size: 150,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.role")} />,
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.role ?? ""}
-          config={{
-            type: "select",
-            options: roleOptions,
-            placeholder: "—",
-          }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, role: v as any }); }}
-        />
-      ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      id: "role",
+      label: t("gabinet.employees.role"),
+      render: (item) => item.role ? t(`gabinet.employees.roles.${item.role}`) : "\u2014",
     },
     {
-      accessorKey: "specialization",
-      size: 150,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("gabinet.employees.specialization")} />,
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.specialization ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, specialization: v }); }}
-        />
-      ),
+      id: "specialization",
+      label: t("gabinet.employees.specialization"),
+      render: (item) => item.specialization ?? "\u2014",
     },
     {
-      accessorKey: "licenseNumber",
-      size: 150,
-      header: t("gabinet.employees.license"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.licenseNumber ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, licenseNumber: v }); }}
-        />
-      ),
+      id: "licenseNumber",
+      label: t("gabinet.employees.license"),
+      render: (item) => item.licenseNumber ?? "\u2014",
     },
     {
-      accessorKey: "hireDate",
-      size: 130,
-      header: t("gabinet.employees.hireDate"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.hireDate ?? ""}
-          config={{ type: "date" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, hireDate: v }); }}
-        />
-      ),
+      id: "hireDate",
+      label: t("gabinet.employees.hireDate"),
+      render: (item) => item.hireDate ?? "\u2014",
     },
     {
-      accessorKey: "color",
-      size: 80,
-      header: t("gabinet.employees.color"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.color ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, color: v }); }}
-          displayFormatter={(v) => v || "—"}
-        />
-      ),
+      id: "color",
+      label: t("gabinet.employees.color"),
+      render: (item) =>
+        item.color ? (
+          <span
+            className="inline-block h-4 w-4 rounded-full"
+            style={{ backgroundColor: item.color }}
+          />
+        ) : (
+          "\u2014"
+        ),
     },
     {
-      accessorKey: "notes",
-      size: 200,
-      header: t("gabinet.employees.notes"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.notes ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, notes: v }); }}
-        />
-      ),
+      id: "notes",
+      label: t("gabinet.employees.notes"),
+      render: (item) => item.notes ?? "\u2014",
     },
     {
-      accessorKey: "isActive",
-      size: 100,
-      header: t("gabinet.employees.active"),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.isActive}
-          config={{ type: "boolean" }}
-          onChange={async (v) => { await updateEmployee({ organizationId, employeeId: row.original._id, isActive: v }); }}
-        />
-      ),
+      id: "isActive",
+      label: t("gabinet.employees.active"),
+      render: (item) => (item.isActive ? "\u2713" : "\u2014"),
     },
     {
-      accessorKey: "createdAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.created")} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
+      id: "createdAt",
+      label: t("common.created"),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString(),
+      getSortValue: (item) => item.createdAt,
     },
-    {
-      accessorKey: "updatedAt",
-      size: 130,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t("common.updated")} />,
-      cell: ({ getValue }) => new Date(getValue() as number).toLocaleDateString(),
-    },
-  ];
+  ], [t, userMap]);
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const rowActions = useCallback(
     (row: Employee) => [
@@ -276,14 +251,6 @@ function EmployeesIndex() {
     },
     [removeEmployee, organizationId]
   );
-
-  const roleFilterOptions = useMemo(() => {
-    const roles = new Set<string>();
-    for (const emp of (employees ?? [])) {
-      if (emp.role) roles.add(emp.role);
-    }
-    return Array.from(roles).map((r) => ({ label: t(`gabinet.employees.roles.${r}`), value: r }));
-  }, [employees, t]);
 
   return (
     <div className="space-y-4">
@@ -329,36 +296,35 @@ function EmployeesIndex() {
         />
       </div>
 
-      <QuickActionBar
-        actions={[
+      <DataListFilterBar
+        filterableFields={filterableFields}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
+        dropdownActions={[
           {
-            label: t('quickActions.newEmployee'),
+            label: t("quickActions.newEmployee"),
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setShowCreate(true),
-            feature: "gabinet_employees",
-            action: "create",
           },
         ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <CrmDataTable
-        columns={columns}
+        columns={allColumns}
         data={employees ?? []}
-        stickyFirstColumn
-        frozenColumns={2}
-        searchKey="firstName"
-        searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
         enableBulkSelect
+        toolbar={toolbarRef.current}
+        hiddenColumnIds={hiddenColumnIds}
         bulkActions={[
           { label: t("common.delete"), value: "delete", variant: "destructive" },
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/employees/${row._id}` })}
-        totalCount={(employees ?? []).length}
-        filterableColumns={roleFilterOptions.length > 0 ? [
-          { id: "role", title: t("gabinet.employees.role"), options: roleFilterOptions },
-        ] : []}
       />
 
       {/* Create dialog */}

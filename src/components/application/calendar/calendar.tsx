@@ -486,7 +486,7 @@ const MonthView = ({
                             </div>
 
                             {remainingEventsCount > 0 && (
-                                <div className="truncate text-xs font-semibold text-utility-gray-500 max-md:pl-1">{`${remainingEventsCount} more...`}</div>
+                                <div className="truncate text-xs font-semibold text-utility-neutral-500 max-md:pl-1">{`${remainingEventsCount} more...`}</div>
                             )}
                         </CalendarMonthViewCell>
                     );

@@ -6,7 +6,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +66,6 @@ import {
   GripVertical,
   ChevronDown,
 } from "@/lib/ez-icons";
-import { Alert } from "@heroui/alert";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -804,10 +804,7 @@ function FormTemplatesListPage() {
             </DropdownMenu>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert
-          color="primary"
-          title={t("settings.formTemplates.description")}
-        />
+        <UntitledAlert>{t("settings.formTemplates.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {/* Search */}

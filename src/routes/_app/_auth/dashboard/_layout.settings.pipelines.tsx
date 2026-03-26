@@ -4,14 +4,15 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, GripVertical } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,7 +49,7 @@ function PipelinesSettings() {
             {t("settings.pipelines.title")}
           </SectionHeader.Heading>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("settings.pipelines.description")} />
+        <UntitledAlert>{t("settings.pipelines.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       <Card>
@@ -127,6 +128,7 @@ function PipelineCard({
   onRemovePipeline: (args: { organizationId: Id<"organizations">; pipelineId: Id<"pipelines"> }) => Promise<unknown>;
 }) {
   const { t } = useTranslation();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { data: stages } = useQuery(
     convexQuery(api.pipelines.getStages, {
       organizationId,
@@ -142,14 +144,7 @@ function PipelineCard({
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={async () => {
-            if (window.confirm(t("settings.pipelines.confirmDeletePipeline", { name: pipeline.name }))) {
-              await onRemovePipeline({
-                organizationId,
-                pipelineId: pipeline._id,
-              });
-            }
-          }}
+          onClick={() => setDeleteDialogOpen(true)}
         >
           <Trash2 className="h-4 w-4" variant="stroke" />
         </Button>
@@ -246,6 +241,32 @@ function PipelineCard({
           </Button>
         )}
       </CardContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: pipeline.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await onRemovePipeline({
+                  organizationId,
+                  pipelineId: pipeline._id,
+                });
+                setDeleteDialogOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

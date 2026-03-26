@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -7,25 +7,21 @@ import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { CrmDataTable } from "@/components/crm/enhanced-data-table";
-import { SavedViewsTabs } from "@/components/crm/saved-views-tabs";
+import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditableCell } from "@/components/data-table/editable-cell";
 import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import type { ColumnDef } from "@tanstack/react-table";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { QuickActionBar } from "@/components/crm/quick-action-bar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -60,6 +56,10 @@ function ProductsPage() {
   ], [t]);
 
   const filterableFields = useMemo((): FieldDef[] => [
+    { id: "name", label: t('products.name'), type: "text" },
+    { id: "sku", label: t('products.sku'), type: "text" },
+    { id: "unitPrice", label: t('products.unitPrice'), type: "number" },
+    { id: "taxRate", label: t('products.taxRate'), type: "number" },
     {
       id: "isActive", label: t('common.active'), type: "select",
       options: [
@@ -67,15 +67,17 @@ function ProductsPage() {
         { label: t('common.no'), value: "false" },
       ],
     },
-    { id: "unitPrice", label: t('products.unitPrice'), type: "number" },
+    { id: "createdAt", label: t('common.created'), type: "date" },
   ], [t]);
 
   const {
-    views, activeViewId, onViewChange, onCreateView, onUpdateView, onDeleteView, applyFilters,
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
+  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const { handleExport } = useCsvExport(organizationId, "products");
 
   // Sidebar action dispatches
@@ -106,8 +108,16 @@ function ProductsPage() {
     if (activeViewId === "active") {
       data = allProducts.filter((p) => p.isActive);
     }
-    return applyFilters(data);
-  }, [activeViewId, allProducts, applyFilters]);
+    data = applyFilters(data);
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku?.toLowerCase().includes(q)
+      );
+    }
+    return data;
+  }, [activeViewId, allProducts, applyFilters, searchValue]);
 
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
@@ -174,78 +184,41 @@ function ProductsPage() {
     }
   };
 
-  const columns: ColumnDef<Product, unknown>[] = [
+  const columns: CrmColumn<Product>[] = [
     {
-      accessorKey: "name",
-      size: 200,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('common.name')} />
-      ),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      id: "name",
+      label: t('common.name'),
+      sortable: true,
+      isRowHeader: true,
+      render: (item) => <span className="font-medium">{item.name}</span>,
+      getSortValue: (item) => item.name,
     },
     {
-      accessorKey: "sku",
-      size: 150,
-      header: t('products.sku'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.sku ?? ""}
-          config={{ type: "text", placeholder: "—" }}
-          onChange={async (v) => {
-            await updateProduct({ organizationId, productId: row.original._id, sku: v });
-          }}
-        />
-      ),
+      id: "sku",
+      label: t('products.sku'),
+      render: (item) => item.sku ?? "\u2014",
     },
     {
-      accessorKey: "unitPrice",
-      size: 120,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('products.unitPrice')} />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.unitPrice ?? 0}
-          config={{ type: "number", min: 0, step: 0.01, placeholder: "0.00" }}
-          displayFormatter={(v) => formatCurrency(v as number)}
-          onChange={async (v) => {
-            await updateProduct({ organizationId, productId: row.original._id, unitPrice: v });
-          }}
-        />
-      ),
+      id: "unitPrice",
+      label: t('products.unitPrice'),
+      sortable: true,
+      render: (item) => formatCurrency(item.unitPrice),
+      getSortValue: (item) => item.unitPrice,
     },
     {
-      accessorKey: "taxRate",
-      size: 120,
-      header: t('products.taxRate'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.taxRate ?? 0}
-          config={{ type: "number", min: 0, max: 100, step: 0.01, placeholder: "0" }}
-          displayFormatter={(v) => `${v as number}%`}
-          onChange={async (v) => {
-            await updateProduct({ organizationId, productId: row.original._id, taxRate: v });
-          }}
-        />
-      ),
+      id: "taxRate",
+      label: t('products.taxRate'),
+      render: (item) => item.taxRate != null ? `${item.taxRate}%` : "\u2014",
     },
     {
-      accessorKey: "isActive",
-      size: 100,
-      header: t('common.active'),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.isActive}
-          config={{ type: "boolean" }}
-          onChange={async () => {
-            await toggleActive({ organizationId, productId: row.original._id });
-          }}
-        />
-      ),
+      id: "isActive",
+      label: t('common.active'),
+      render: (item) => item.isActive ? "\u2713" : "\u2014",
     },
   ];
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const rowActions = (row: Product) => [
     {
@@ -278,43 +251,35 @@ function ProductsPage() {
         }
       />
 
-      <SavedViewsTabs
+      <DataListFilterBar
         views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
-        onUpdateView={onUpdateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
-      />
-
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newProduct'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreatePanel,
-            feature: "products",
-            action: "create",
-          },
-        ]}
-      />
-
-      <CrmDataTable
-        columns={columns}
-        data={products}
-        stickyFirstColumn
-        frozenColumns={2}
-        rowActions={rowActions}
-        searchKey="name"
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
         searchPlaceholder={t('products.searchPlaceholder')}
-        isLoading={isLoading}
-        toolbarDropdownActions={[
+        dropdownActions={[
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
         ]}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+      />
+
+      <CrmDataTable
+        columns={allColumns}
+        hiddenColumnIds={hiddenColumnIds}
+        data={products}
+        rowActions={rowActions}
+        isLoading={isLoading}
+        toolbar={toolbarRef.current}
       />
 
       <CsvImportDialog

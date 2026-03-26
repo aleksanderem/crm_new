@@ -9,8 +9,8 @@ import {
   CalendarDate,
   type CalendarEvent,
   type CalendarHandle,
-} from "@/components/application/calendar/calendar";
-import type { EventViewColor } from "@/components/application/calendar/base-components/calendar-month-view-event";
+} from "@untitled/app/calendar/calendar";
+import type { EventViewColor } from "@untitled/app/calendar/base-components/calendar-month-view-event";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
 
 export const Route = createFileRoute(

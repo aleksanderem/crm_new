@@ -18,7 +18,7 @@ import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { usePermissions } from "@/hooks/use-permission";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
-import { CalendarMiniMonth } from "@/components/application/calendar/base-components/calendar-mini-month";
+import { CalendarMiniMonth } from "@untitled/app/calendar/base-components/calendar-mini-month";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";

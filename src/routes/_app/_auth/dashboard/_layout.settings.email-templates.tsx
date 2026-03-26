@@ -6,8 +6,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Alert } from "@heroui/alert";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { EmailBlockBuilder } from "@/components/email/email-block-builder";
@@ -85,6 +86,7 @@ function EmailTemplatesSettings() {
   const [editingId, setEditingId] = useState<Id<"emailTemplates"> | null>(null);
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"emailTemplates">; name: string } | null>(null);
 
   const createTemplate = useMutation(api.emailTemplates.create);
   const updateTemplate = useMutation(api.emailTemplates.update);
@@ -187,10 +189,14 @@ function EmailTemplatesSettings() {
     });
   };
 
-  const handleDelete = async (templateId: Id<"emailTemplates">) => {
-    if (window.confirm(t("common.confirmDelete"))) {
-      await removeTemplate({ organizationId, templateId });
-    }
+  const handleDelete = (templateId: Id<"emailTemplates">, templateName: string) => {
+    setDeleteTarget({ id: templateId, name: templateName });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await removeTemplate({ organizationId, templateId: deleteTarget.id });
+    setDeleteTarget(null);
   };
 
   const insertVariable = (
@@ -237,7 +243,7 @@ function EmailTemplatesSettings() {
             </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
-        <Alert color="primary" title={t("emailTemplates.description")} />
+        <UntitledAlert>{t("emailTemplates.description")}</UntitledAlert>
       </SectionHeader.Root>
 
       {/* Templates list */}
@@ -296,7 +302,7 @@ function EmailTemplatesSettings() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handleDelete(template._id)}
+                  onClick={() => handleDelete(template._id, template.name)}
                 >
                   <Trash2 className="h-4 w-4" variant="stroke" />
                 </Button>
@@ -440,6 +446,26 @@ function EmailTemplatesSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

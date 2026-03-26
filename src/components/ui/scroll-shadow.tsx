@@ -1,1 +1,1 @@
-export { ScrollShadow } from "@heroui/scroll-shadow";
+export { ScrollShadow } from "@heroui/react";

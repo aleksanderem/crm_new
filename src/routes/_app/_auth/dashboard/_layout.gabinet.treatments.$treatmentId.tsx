@@ -51,8 +51,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionHeader } from "@/components/application/section-headers/section-headers";
-import { Tabs as UntitledTabs, TabList, TabPanel } from "@/components/application/tabs/tabs";
+import { SectionHeader } from "@untitled/app/section-headers/section-headers";
+import { Tabs as UntitledTabs, TabList, TabPanel } from "@untitled/app/tabs/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import {
   ChevronDown,

@@ -5,9 +5,9 @@ import { BookOpen01, ChevronSelectorVertical, LogOut01, Plus, Settings01, User01
 import { useFocusManager } from "react-aria";
 import type { DialogProps as AriaDialogProps } from "react-aria-components";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
-import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group";
-import { Button } from "@/components/base/buttons/button";
-import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
+import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
+import { Button } from "@untitled/base/buttons/button";
+import { RadioButtonBase } from "@untitled/base/radio-buttons/radio-buttons";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cx } from "@/lib/utils/cx";
 
@@ -80,24 +80,24 @@ export const NavAccountMenu = ({
         <AriaDialog
             {...dialogProps}
             ref={dialogRef}
-            className={cx("w-66 rounded-xl bg-secondary_alt shadow-lg ring ring-secondary_alt outline-hidden", className)}
+            className={cx("w-66 rounded-xl bg-bg-secondary_alt shadow-lg ring ring-border-secondary_alt outline-hidden", className)}
         >
-            <div className="rounded-xl bg-primary ring-1 ring-secondary">
+            <div className="rounded-xl bg-bg-primary ring-1 ring-border-secondary">
                 <div className="flex flex-col gap-0.5 py-1.5">
                     <NavAccountCardMenuItem label="View profile" icon={User01} shortcut="⌘K->P" />
                     <NavAccountCardMenuItem label="Account settings" icon={Settings01} shortcut="⌘S" />
                     <NavAccountCardMenuItem label="Documentation" icon={BookOpen01} />
                 </div>
-                <div className="flex flex-col gap-0.5 border-t border-secondary py-1.5">
-                    <div className="px-3 pt-1.5 pb-1 text-xs font-semibold text-tertiary">Switch account</div>
+                <div className="flex flex-col gap-0.5 border-t border-border-secondary py-1.5">
+                    <div className="px-3 pt-1.5 pb-1 text-xs font-semibold text-fg-tertiary">Switch account</div>
 
                     <div className="flex flex-col gap-0.5 px-1.5">
                         {placeholderAccounts.map((account) => (
                             <button
                                 key={account.id}
                                 className={cx(
-                                    "relative w-full cursor-pointer rounded-md px-2 py-1.5 text-left outline-focus-ring hover:bg-primary_hover focus:z-10 focus-visible:outline-2 focus-visible:outline-offset-2",
-                                    account.id === selectedAccountId && "bg-primary_hover",
+                                    "relative w-full cursor-pointer rounded-md px-2 py-1.5 text-left outline-focus-ring hover:bg-bg-primary_hover focus:z-10 focus-visible:outline-2 focus-visible:outline-offset-2",
+                                    account.id === selectedAccountId && "bg-bg-primary_hover",
                                 )}
                             >
                                 <AvatarLabelGroup status="online" size="md" src={account.avatar} title={account.name} subtitle={account.email} />
@@ -135,17 +135,17 @@ const NavAccountCardMenuItem = ({
         <button {...buttonProps} className={cx("group/item w-full cursor-pointer px-1.5 focus:outline-hidden", buttonProps.className)}>
             <div
                 className={cx(
-                    "flex w-full items-center justify-between gap-3 rounded-md p-2 group-hover/item:bg-primary_hover",
+                    "flex w-full items-center justify-between gap-3 rounded-md p-2 group-hover/item:bg-bg-primary_hover",
                     // Focus styles.
                     "outline-focus-ring group-focus-visible/item:outline-2 group-focus-visible/item:outline-offset-2",
                 )}
             >
-                <div className="flex gap-2 text-sm font-semibold text-secondary group-hover/item:text-secondary_hover">
+                <div className="flex gap-2 text-sm font-semibold text-fg-secondary group-hover/item:text-fg-secondary_hover">
                     {Icon && <Icon className="size-5 text-fg-quaternary" />} {label}
                 </div>
 
                 {shortcut && (
-                    <kbd className="flex rounded px-1 py-px font-body text-xs font-medium text-tertiary ring-1 ring-secondary ring-inset">{shortcut}</kbd>
+                    <kbd className="flex rounded px-1 py-px font-body text-xs font-medium text-fg-tertiary ring-1 ring-border-secondary ring-inset">{shortcut}</kbd>
                 )}
             </div>
         </button>
@@ -172,7 +172,7 @@ export const NavAccountCard = ({
     }
 
     return (
-        <div ref={triggerRef} className="relative flex items-center gap-3 rounded-xl p-3 ring-1 ring-secondary ring-inset">
+        <div ref={triggerRef} className="relative flex items-center gap-3 rounded-xl p-3 ring-1 ring-border-secondary ring-inset">
             <AvatarLabelGroup
                 size="md"
                 src={selectedAccount.avatar}
@@ -183,7 +183,7 @@ export const NavAccountCard = ({
 
             <div className="absolute top-1.5 right-1.5">
                 <AriaDialogTrigger>
-                    <AriaButton className="flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2 pressed:bg-primary_hover pressed:text-fg-quaternary_hover">
+                    <AriaButton className="flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2 pressed:bg-bg-primary_hover pressed:text-fg-quaternary_hover">
                         <ChevronSelectorVertical className="size-4 shrink-0" />
                     </AriaButton>
                     <AriaPopover

@@ -58,6 +58,7 @@ function env(key: string): string {
 const SUPABASE_URL = env("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 const SUPABASE_JWT_SECRET = env("SUPABASE_JWT_SECRET");
+const SUPABASE_ANON_KEY = fileEnv["VITE_SUPABASE_ANON_KEY"] || process.env["VITE_SUPABASE_ANON_KEY"] || SUPABASE_JWT_SECRET;
 
 // Test identifiers — prefixed for reliable cleanup
 const TEST_PREFIX = "__s03_test__";
@@ -100,12 +101,11 @@ async function signJwt(orgId: string, sub?: string): Promise<string> {
 }
 
 function createAuthenticatedClient(jwt: string): SupabaseClient {
-  return createClient(SUPABASE_URL, SUPABASE_JWT_SECRET, {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       headers: {
         Authorization: `Bearer ${jwt}`,
-        apikey: SUPABASE_JWT_SECRET,
       },
     },
   });
@@ -134,7 +134,6 @@ async function setup(): Promise<boolean> {
     id: TEST_USER_ID,
     name: "S03 Integration Test User",
     email: `${TEST_PREFIX}@test.local`,
-    role: "user",
     created_at: NOW_MS,
     updated_at: NOW_MS,
   });

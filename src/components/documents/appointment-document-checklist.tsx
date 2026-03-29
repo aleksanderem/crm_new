@@ -89,7 +89,7 @@ function getStatusIcon(status: FormDocumentStatus) {
 export function AppointmentDocumentChecklist({
   appointmentId,
   organizationId,
-  treatmentId,
+  treatmentId: _treatmentId,
   onDocumentClick,
 }: AppointmentDocumentChecklistProps) {
   const { t, i18n } = useTranslation();
@@ -211,7 +211,7 @@ export function AppointmentDocumentChecklist({
             documents={beforeDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t}
+            t={t as (key: string, fallback?: string) => string}
           />
         )}
 
@@ -222,7 +222,7 @@ export function AppointmentDocumentChecklist({
             documents={afterDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t}
+            t={t as (key: string, fallback?: string) => string}
           />
         )}
 
@@ -233,7 +233,7 @@ export function AppointmentDocumentChecklist({
             documents={untimed}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t}
+            t={t as (key: string, fallback?: string) => string}
           />
         )}
 

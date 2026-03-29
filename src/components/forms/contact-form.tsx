@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import type { CustomFieldType } from "@cvx/schema";
+import type { Id } from "@cvx/_generated/dataModel";
 
 interface FieldDefinition {
   _id: string;
@@ -27,7 +30,22 @@ interface ContactFormData {
   title?: string;
   source?: string;
   tags?: string[];
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
   notes?: string;
+}
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
 }
 
 interface ContactFormProps {
@@ -42,6 +60,8 @@ interface ContactFormProps {
   isSubmitting?: boolean;
   showSourceAndTags?: boolean;
   extraFields?: React.ReactNode;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function ContactForm({
@@ -53,6 +73,8 @@ export function ContactForm({
   isSubmitting = false,
   showSourceAndTags = false,
   extraFields,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: ContactFormProps) {
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
@@ -64,6 +86,8 @@ export function ContactForm({
   const [tags, setTags] = useState<string[]>(initialData?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [notes, setNotes] = useState(initialData?.notes ?? "");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     initialCustomFieldValues
   );
@@ -91,6 +115,8 @@ export function ContactForm({
         title: title || undefined,
         source: source || undefined,
         tags: tags.length > 0 ? tags : undefined,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
+        categoryId: categoryId || undefined,
         notes: notes || undefined,
       },
       customFields
@@ -182,11 +208,31 @@ export function ContactForm({
             </div>
           </>
         )}
+        {tagDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+            <TagsPicker
+              tags={tagDefinitions}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+            />
+          </div>
+        )}
+        {categoryDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker
+              categories={categoryDefinitions}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+            />
+          </div>
+        )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('contacts.form.notes')}</Label>
           <RichTextEditor
             value={notes}
-            onChange={setNotes}
+            onChange={(v) => setNotes(v ?? "")}
             minHeight="80px"
           />
         </div>

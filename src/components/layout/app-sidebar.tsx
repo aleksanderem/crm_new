@@ -23,7 +23,6 @@ import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
 import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
-import { GabinetGlobalNudges } from "@/components/sidebar-widgets/gabinet/global-nudges";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
 
@@ -190,12 +189,6 @@ export function AppSidebar() {
                 <div className="shrink-0">
                   {pageContext && (
                     <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
-                  )}
-
-                  {activeWorkspace === "gabinet" && organizationId && (
-                    <div className="flex flex-col gap-2 px-3 pb-2">
-                      <GabinetGlobalNudges organizationId={organizationId} />
-                    </div>
                   )}
 
                   {pageContext && (

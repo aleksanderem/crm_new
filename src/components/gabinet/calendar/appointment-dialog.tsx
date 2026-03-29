@@ -849,7 +849,7 @@ export function AppointmentDialog({
                     <AccordionContent className="pb-0 pt-1.5">
                       <RichTextEditor
                         value={notes}
-                        onChange={setNotes}
+                        onChange={(v) => setNotes(v ?? "")}
                         minHeight="80px"
                         placeholder={t(
                           "gabinet.appointments.notesPlaceholder",

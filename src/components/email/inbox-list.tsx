@@ -17,6 +17,7 @@ interface InboxListProps {
   selectedThreadId: string | null;
   onSelectThread: (threadId: string, emailId: string) => void;
   filter: FilterTab;
+  mailProviderId?: Id<"mailProviders">;
 }
 
 export function InboxList({
@@ -24,6 +25,7 @@ export function InboxList({
   selectedThreadId,
   onSelectThread,
   filter,
+  mailProviderId,
 }: InboxListProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -37,6 +39,7 @@ export function InboxList({
       search?: string;
       isRead?: boolean;
       direction?: "inbound" | "outbound";
+      mailProviderId?: Id<"mailProviders">;
     } = {
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
@@ -44,8 +47,9 @@ export function InboxList({
     if (search.trim()) base.search = search.trim();
     if (filter === "unread") base.isRead = false;
     if (filter === "sent") base.direction = "outbound";
+    if (mailProviderId) base.mailProviderId = mailProviderId;
     return base;
-  }, [organizationId, filter, search]);
+  }, [organizationId, filter, search, mailProviderId]);
 
   const { data: emailsData } = useQuery(
     convexQuery(api.emails.listInbox, queryFilter)

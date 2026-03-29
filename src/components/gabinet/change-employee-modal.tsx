@@ -71,11 +71,6 @@ interface EmployeeRow {
   isQualified: boolean;
 }
 
-type SlotSuggestion = {
-  date: string;
-  startTime: string;
-  endTime: string;
-} | null;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,7 +127,7 @@ export function ChangeEmployeeModal({
   endTime,
   durationMinutes,
 }: ChangeEmployeeModalProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<Id<"users"> | null>(null);
   const [useNewSlot, setUseNewSlot] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -175,14 +170,14 @@ export function ChangeEmployeeModal({
     useQuery(
       convexQuery(
         api.gabinet.appointments.getAvailableSlotsQuery,
-        selectedId
+        (selectedId
           ? {
               organizationId,
               userId: selectedId,
               date: appointmentDate,
               duration: durationMinutes,
             }
-          : "skip",
+          : "skip") as any,
       ),
     );
 
@@ -201,14 +196,14 @@ export function ChangeEmployeeModal({
   const { data: nextSlot, isLoading: isSearchingSlot } = useQuery(
     convexQuery(
       api.gabinet.scheduling.findNextAvailableSlot,
-      shouldSearchSlot
+      (shouldSearchSlot
         ? {
             organizationId,
             employeeId: selectedId,
             durationMinutes,
             fromDate: appointmentDate,
           }
-        : "skip",
+        : "skip") as any,
     ),
   );
 

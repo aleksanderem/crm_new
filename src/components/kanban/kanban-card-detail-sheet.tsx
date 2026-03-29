@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Sheet,
@@ -68,17 +67,6 @@ function getInitials(name: string): string {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-}
-
-function formatRelativeDate(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return "dzisiaj";
-  if (days === 1) return "wczoraj";
-  if (days < 7) return `${days} dni temu`;
-  if (days < 30) return `${Math.floor(days / 7)} tyg. temu`;
-  return `${Math.floor(days / 30)} mies. temu`;
 }
 
 export function KanbanCardDetailSheet({

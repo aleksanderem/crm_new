@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
 import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +24,10 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import type { FieldDef } from "@/components/crm/types";
 import { toast } from "sonner";
 import { Id, Doc } from "@cvx/_generated/dataModel";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -41,6 +47,11 @@ function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+
   const toolbarRef = useRef<React.ReactNode>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -64,7 +75,9 @@ function EmployeesIndex() {
         { label: t("common.no"), value: "false" },
       ],
     },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+  ], [t, tags, categories]);
 
   const createEmployee = useMutation(api.gabinet.employees.create);
   const removeEmployee = useMutation(api.gabinet.employees.remove);
@@ -311,6 +324,8 @@ function EmployeesIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
@@ -327,6 +342,20 @@ function EmployeesIndex() {
         rowActions={rowActions}
       />
 
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="gabinetEmployee"
+        categories={categories}
+      />
+
       {/* Create dialog */}
       <CreateEmployeeSheet
         open={showCreate}
@@ -335,6 +364,8 @@ function EmployeesIndex() {
         treatments={treatments ?? []}
         organizationId={organizationId}
         onCreate={createEmployee}
+        tagDefinitions={tags}
+        categoryDefinitions={categories}
         t={t}
       />
     </div>
@@ -348,6 +379,8 @@ function CreateEmployeeSheet({
   treatments,
   organizationId,
   onCreate,
+  tagDefinitions = [],
+  categoryDefinitions = [],
   t,
 }: {
   open: boolean;
@@ -356,6 +389,8 @@ function CreateEmployeeSheet({
   treatments: Array<{ _id: Id<"gabinetTreatments">; name: string }>;
   organizationId: Id<"organizations">;
   onCreate: any;
+  tagDefinitions?: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
+  categoryDefinitions?: Array<{ _id: Id<"categoryDefinitions">; name: string; parentId?: Id<"categoryDefinitions">; color?: string }>;
   t: any;
 }) {
   const [userId, setUserId] = useState<string>("");
@@ -366,6 +401,8 @@ function CreateEmployeeSheet({
   const [licenseNumber, setLicenseNumber] = useState("");
   const [color, setColor] = useState("#3b82f6");
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>([]);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
@@ -382,6 +419,8 @@ function CreateEmployeeSheet({
         licenseNumber: licenseNumber || undefined,
         color: color || undefined,
         qualifiedTreatmentIds: selectedTreatments as Id<"gabinetTreatments">[],
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
+        categoryId: categoryId || undefined,
       });
       toast.success(t("common.created"));
       onClose();
@@ -392,6 +431,8 @@ function CreateEmployeeSheet({
       setSpecialization("");
       setLicenseNumber("");
       setSelectedTreatments([]);
+      setTagIds([]);
+      setCategoryId(undefined);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -501,6 +542,19 @@ function CreateEmployeeSheet({
               )}
             </div>
           </div>
+
+          {tagDefinitions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+            </div>
+          )}
+          {categoryDefinitions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+              <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+            </div>
+          )}
         </div>
 
         <SheetFooter>

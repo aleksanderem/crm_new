@@ -11,7 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { GENDERS } from "@/lib/options";
+import type { Id } from "@cvx/_generated/dataModel";
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
+}
 
 interface PatientFormData {
   firstName: string;
@@ -32,6 +48,8 @@ interface PatientFormData {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   referralSource?: string;
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
 }
 
 interface PatientFormProps {
@@ -39,6 +57,8 @@ interface PatientFormProps {
   onSubmit: (data: PatientFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function PatientForm({
@@ -46,6 +66,8 @@ export function PatientForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: PatientFormProps) {
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
@@ -64,6 +86,8 @@ export function PatientForm({
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName ?? "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone ?? "");
   const [referralSource, setReferralSource] = useState(initialData?.referralSource ?? "");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +110,8 @@ export function PatientForm({
       emergencyContactName: emergencyContactName || undefined,
       emergencyContactPhone: emergencyContactPhone || undefined,
       referralSource: referralSource || undefined,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -235,11 +261,24 @@ export function PatientForm({
           <Label>{t("gabinet.patients.medicalNotes")}</Label>
           <RichTextEditor
             value={medicalNotes}
-            onChange={setMedicalNotes}
+            onChange={(v) => setMedicalNotes(v ?? "")}
             minHeight="80px"
           />
         </div>
       </div>
+
+      {tagDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+          <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+        </div>
+      )}
+      {categoryDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+        </div>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

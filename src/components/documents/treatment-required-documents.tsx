@@ -239,7 +239,7 @@ export function TreatmentRequiredDocuments({
                         onTimingChange={(newTiming) =>
                           handleTimingChange(req.templateId, newTiming)
                         }
-                        t={t}
+                        t={t as (key: string, fallback?: string) => string}
                       />
                       <Button
                         variant="ghost"

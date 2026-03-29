@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,11 @@ import {
   XCircle,
   AlertCircle,
 } from "@/lib/ez-icons";
+import {
+  CircleAlert as CircleAlertIcon,
+  TriangleAlert as TriangleAlertIcon,
+  CircleCheck as CircleCheckIcon,
+} from "lucide-react";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -85,6 +91,23 @@ function GabinetDashboard() {
     convexQuery(api.gabinet.scheduling.listLeaves, { organizationId })
   );
 
+  // --- Nudges ---
+  const { data: appointmentNudges } = useQuery(
+    convexQuery(api.gabinet.nudges.getAppointmentNudges, { organizationId })
+  );
+  const { data: leaveNudges } = useQuery(
+    convexQuery(api.gabinet.nudges.getLeaveNudges, { organizationId })
+  );
+  const { data: patientNudges } = useQuery(
+    convexQuery(api.gabinet.nudges.getPatientNudges, { organizationId })
+  );
+
+  const allNudges = useMemo(() => [
+    ...(appointmentNudges ?? []),
+    ...(leaveNudges ?? []),
+    ...(patientNudges ?? []),
+  ], [appointmentNudges, leaveNudges, patientNudges]);
+
   // --- Sparkline data ---
   const { data: weeklyAppointments } = useQuery(
     convexQuery(api.gabinet.sidebarWidgets.getWeeklyAppointments, { organizationId })
@@ -126,7 +149,7 @@ function GabinetDashboard() {
     return (todayAppointments ?? []).map((a) => ({
       ...a,
       patientName: patientMap.get(a.patientId) ?? t("common.unknown"),
-      treatmentName: treatmentMap.get(a.treatmentId) ?? t("common.unknown"),
+      treatmentName: treatmentMap.get(a.treatmentId as Id<"gabinetTreatments">) ?? t("common.unknown"),
     }));
   }, [todayAppointments, patientMap, treatmentMap, t]);
 
@@ -371,8 +394,8 @@ function GabinetDashboard() {
         />
       </div>
 
-      {/* Today's schedule + Pending leaves */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Today's schedule + Pending leaves + Nudges */}
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         {/* Today's schedule */}
         <Card className="gap-0 py-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
@@ -469,6 +492,45 @@ function GabinetDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Nudges widget */}
+        {allNudges.length > 0 && (
+          <Card className="gap-0 py-0">
+            <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold">{t("gabinet.dashboard.actionItems", "Wymagają uwagi")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {allNudges.length} {t("gabinet.dashboard.notifications", "powiadomień")}
+                </span>
+              </div>
+            </CardHeader>
+            <Separator />
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {allNudges.map((nudge, idx) => {
+                  const severityConfig = {
+                    red: { Icon: CircleAlertIcon, bgClass: "bg-red-500/10", iconClass: "text-red-500" },
+                    yellow: { Icon: TriangleAlertIcon, bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+                    green: { Icon: CircleCheckIcon, bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
+                  }[nudge.severity];
+                  return (
+                    <div key={`${nudge.message}-${idx}`} className="flex items-start gap-3 px-4 py-3">
+                      <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${severityConfig.bgClass}`}>
+                        <severityConfig.Icon className={`h-4 w-4 ${severityConfig.iconClass}`} />
+                      </div>
+                      <p className="text-sm leading-snug">
+                        {t(nudge.message, {
+                          defaultValue: nudge.message,
+                          ...(nudge.messageValues ?? {}),
+                        })}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Quick links */}

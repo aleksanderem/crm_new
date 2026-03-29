@@ -18,10 +18,13 @@ export const FEATURES = [
   "gabinet_treatments",
   "gabinet_packages",
   "gabinet_employees",
+  "gabinet_settings",
   "settings",
   "team",
   "document_templates",
   "document_instances",
+  "tagDefinitions",
+  "categoryDefinitions",
 ] as const;
 
 export const ACTIONS = ["view", "create", "edit", "delete", "approve", "sign"] as const;

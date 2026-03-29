@@ -158,6 +158,22 @@ function GabinetCalendarPage() {
     }),
   );
 
+  // Fetch Google-synced blocked time slots from scheduledActivities
+  const blockedTimeRange = useMemo(() => {
+    const s = new Date(startDate + "T00:00:00");
+    const e = new Date(endDate + "T23:59:59");
+    return { startTs: s.getTime(), endTs: e.getTime() };
+  }, [startDate, endDate]);
+
+  const { data: blockedTimeActivities } = useQuery(
+    convexQuery(api.scheduledActivities.listForCalendar, {
+      organizationId,
+      startDate: blockedTimeRange.startTs,
+      endDate: blockedTimeRange.endTs,
+      moduleFilter: "gabinet",
+    }),
+  );
+
   // Fetch employees for filter
   const { data: employees } = useQuery(
     convexQuery(api.gabinet.employees.listAll, {
@@ -290,22 +306,29 @@ function GabinetCalendarPage() {
 
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
-    if (!rawAppointments) return [];
-    const searchLower = clientSearch.toLowerCase().trim();
-    return rawAppointments
-      .filter((a) => {
-        if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) return false;
-        if (statusFilter !== "all" && a.status !== statusFilter) return false;
-        if (locationFilter !== "all" && a.locationId !== locationFilter) return false;
+    const items: Array<{
+      _id: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      patientName: string;
+      treatmentName: string;
+      status: string;
+      color?: string;
+    }> = [];
+
+    if (rawAppointments) {
+      const searchLower = clientSearch.toLowerCase().trim();
+      for (const a of rawAppointments) {
+        if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) continue;
+        if (statusFilter !== "all" && a.status !== statusFilter) continue;
+        if (locationFilter !== "all" && a.locationId !== locationFilter) continue;
         if (searchLower) {
           const name = patientMap.get(a.patientId) ?? "";
-          if (!name.toLowerCase().includes(searchLower)) return false;
+          if (!name.toLowerCase().includes(searchLower)) continue;
         }
-        return true;
-      })
-      .map((a) => {
-        const treatment = treatmentMap.get(a.treatmentId);
-        return {
+        const treatment = treatmentMap.get(a.treatmentId as string);
+        items.push({
           _id: a._id,
           date: a.date,
           startTime: a.startTime,
@@ -314,9 +337,42 @@ function GabinetCalendarPage() {
           treatmentName: treatment?.name ?? "",
           status: a.status,
           color: a.color ?? treatment?.color,
-        };
-      });
-  }, [rawAppointments, patientMap, treatmentMap, treatmentFilter, statusFilter, locationFilter, clientSearch]);
+        });
+      }
+    }
+
+    // Merge Google-synced blocked time (no gabinetAppointment counterpart)
+    if (blockedTimeActivities) {
+      const appointmentActivityIds = new Set(
+        rawAppointments?.map((a) => a.scheduledActivityId).filter(Boolean) ?? [],
+      );
+      for (const act of blockedTimeActivities) {
+        // Skip activities that already have a gabinet appointment (avoid duplicates)
+        if (appointmentActivityIds.has(act._id)) continue;
+        // Only include google-synced blocked time
+        if (act.sourceType !== "google") continue;
+
+        const dt = new Date(act.dueDate);
+        const endDt = act.endDate ? new Date(act.endDate) : dt;
+        const date = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        const startTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+        const endTime = `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`;
+
+        items.push({
+          _id: act._id,
+          date,
+          startTime,
+          endTime,
+          patientName: act.title ?? t("gabinet.calendar.blockedTime"),
+          treatmentName: t("gabinet.calendar.googleEvent"),
+          status: "blocked",
+          color: "#9ca3af",
+        });
+      }
+    }
+
+    return items;
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -324,7 +380,7 @@ function GabinetCalendarPage() {
     if (!rawAppointments) return [];
     const dayAppts = rawAppointments.filter((a) => a.date === printDate);
     return dayAppts.map((a) => {
-      const treatment = treatmentMap.get(a.treatmentId);
+      const treatment = treatmentMap.get(a.treatmentId as string);
       return {
         startTime: a.startTime,
         endTime: a.endTime,

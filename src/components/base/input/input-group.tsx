@@ -47,6 +47,14 @@ interface InputGroupProps extends Omit<InputBaseProps, "type" | "icon" | "placeh
     className?: string;
     /** The children of the input group (i.e `<InputBase />`) */
     children: ReactNode;
+    /** Label text for the input */
+    label?: string;
+    /** Helper text displayed below the input */
+    hint?: ReactNode;
+    /** Whether to hide required indicator from label */
+    hideRequiredIndicator?: boolean;
+    /** Override value to string for TextField compatibility */
+    value?: string;
 }
 
 export const InputGroup = ({ size = "sm", prefix, leadingAddon, trailingAddon, label, hint, children, ...props }: InputGroupProps) => {
@@ -70,6 +78,14 @@ export const InputGroup = ({ size = "sm", prefix, leadingAddon, trailingAddon, l
             ),
             leadingText: "pl-3.5",
         },
+        lg: {
+            input: cx(
+                // Apply padding styles when select element is passed as a child
+                hasLeading && "group-has-[&>select]:px-3.5 group-has-[&>select]:pl-3.5",
+                hasTrailing && (prefix ? "group-has-[&>select]:pr-6 group-has-[&>select]:pl-0" : "group-has-[&>select]:pr-6 group-has-[&>select]:pl-3"),
+            ),
+            leadingText: "pl-4",
+        },
     });
 
     return (
@@ -88,7 +104,7 @@ export const InputGroup = ({ size = "sm", prefix, leadingAddon, trailingAddon, l
                 // In `Input` component, there is "group-disabled" class so here we need to use "group-disabled:group-has-[&>select]" to avoid conflict
                 "group-disabled:group-has-[&>select]:bg-transparent",
             )}
-            {...props}
+            {...(props as any)}
         >
             {({ isDisabled, isInvalid, isRequired }) => (
                 <>

@@ -224,7 +224,7 @@ export function LeaveForm({
         <Label>{t("schedule.reason")}</Label>
         <RichTextEditor
           value={reason}
-          onChange={setReason}
+          onChange={(v) => setReason(v ?? "")}
           placeholder={t("schedule.reasonPlaceholder")}
           minHeight="80px"
         />

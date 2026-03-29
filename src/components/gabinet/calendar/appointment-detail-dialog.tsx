@@ -238,7 +238,7 @@ export function AppointmentDetailDialog({
     setEditStartTime(appointment.startTime);
     setEditEndTime(appointment.endTime);
     setEditNotes(appointment.notes ?? "");
-    setEditTreatmentId(appointment.treatmentId);
+    setEditTreatmentId(appointment.treatmentId ?? "");
     setEditing(true);
   };
 
@@ -360,7 +360,7 @@ export function AppointmentDetailDialog({
               <Label>{t("gabinet.appointmentDetail.cancelReason")}</Label>
               <RichTextEditor
                 value={cancelReason}
-                onChange={setCancelReason}
+                onChange={(v) => setCancelReason(v ?? "")}
                 minHeight="80px"
                 placeholder={t(
                   "gabinet.appointmentDetail.cancelReasonPlaceholder"
@@ -436,7 +436,7 @@ export function AppointmentDetailDialog({
               <Label>{t("gabinet.appointments.notes")}</Label>
               <RichTextEditor
                 value={editNotes}
-                onChange={setEditNotes}
+                onChange={(v) => setEditNotes(v ?? "")}
                 minHeight="80px"
               />
             </div>

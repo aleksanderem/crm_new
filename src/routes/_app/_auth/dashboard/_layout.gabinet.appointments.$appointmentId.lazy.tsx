@@ -54,7 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
-import { Tabs as UntitledTabs, TabList, Tab as UntitledTab, TabPanel } from "@untitled/app/tabs/tabs";
+import { Tabs as UntitledTabs, TabList, TabPanel } from "@untitled/app/tabs/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
@@ -85,7 +85,6 @@ import {
   Pencil,
   Trash2,
   Star,
-  MoreHorizontal,
   MoreVerticalCircle02,
   MessageSquare,
   Send,
@@ -289,7 +288,7 @@ function NoteItem({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                  <MoreVerticalCircle02 size={16} variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -466,7 +465,7 @@ function AppointmentDetail() {
       employee: emp,
       patientPackageUsage: pkgUsage,
       loyaltyBalance: loyBal,
-      loyaltyTier: loyTier,
+      loyaltyTier: _loyTier,
     } = detail;
 
     // Filter packages to only those containing this appointment's treatment
@@ -484,7 +483,7 @@ function AppointmentDetail() {
     const fmtDate = (d: string) => new Date(d).toLocaleDateString(i18n.language);
     const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
     const empName = emp
-      ? emp.name ?? emp.email
+      ? (emp.name ?? emp.email ?? "-")
       : "-";
 
     setSidebarContent(
@@ -512,7 +511,7 @@ function AppointmentDetail() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
-                <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                <MoreVerticalCircle02 size={16} variant="stroke" />
                 <span className="sr-only">{t("gabinet.patients.actions", "Akcje klienta")}</span>
               </Button>
             </DropdownMenuTrigger>
@@ -646,7 +645,7 @@ function AppointmentDetail() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
-                  <MoreVerticalCircle02 size={16} variant="stroke" corners="rounded" />
+                  <MoreVerticalCircle02 size={16} variant="stroke" />
                   <span className="sr-only">{t("gabinet.employees.actions", "Akcje")}</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -770,11 +769,6 @@ function AppointmentDetail() {
 
   const formatDateTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString(i18n.language);
-  };
-
-  const getPatientInitials = () => {
-    if (!patient) return "?";
-    return `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase();
   };
 
   const getEmployeeName = () => {
@@ -2215,7 +2209,7 @@ function AppointmentDetail() {
           organizationId={organizationId}
           appointmentId={appointment._id}
           appointment={appointment}
-          treatmentParameters={treatment?.parameters}
+          treatmentParameters={treatment?.parameters as any}
         />
       ),
     },
@@ -2360,7 +2354,7 @@ function AppointmentDetail() {
           <TabList
             type="button-border"
             size="sm"
-            items={tabs.map((tab, i) => ({ id: tab.label, label: tab.label, children: tab.label }))}
+            items={tabs.map((tab, _i) => ({ id: tab.label, label: tab.label, children: tab.label }))}
           />
         </div>
 
@@ -2381,7 +2375,7 @@ function AppointmentDetail() {
           onOpenChange={setChangeEmployeeOpen}
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
-          treatmentId={detail.appointment.treatmentId}
+          treatmentId={detail.appointment.treatmentId as Id<"gabinetTreatments">}
           currentEmployeeId={detail.appointment.employeeId}
           appointmentDate={detail.appointment.date}
           startTime={detail.appointment.startTime}
@@ -2436,7 +2430,7 @@ function AppointmentDetail() {
         timing={gateTiming}
         targetStatus={gateTargetStatus}
         onProceed={() => performStatusChange(gateTargetStatus)}
-        onFillDocument={(docId) => {
+        onFillDocument={(_docId) => {
           // Navigate to the documents tab — the user can click the document there
           // For now, we just close the dialog so they can use the documents tab
           setGateDialogOpen(false);

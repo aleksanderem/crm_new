@@ -26,7 +26,6 @@ import {
   VariableMentionCurly,
   variableListRef,
   updateVariableList,
-  TEMPLATE_VARIABLES,
 } from "@/components/gabinet/variable-mention";
 import {
   FormFieldNode,
@@ -127,7 +126,7 @@ export const DocumentTemplateEditor = forwardRef<
       const current = editor.getJSON();
       // Only update if structurally different (avoid cursor reset)
       if (JSON.stringify(incoming) !== JSON.stringify(current)) {
-        editor.commands.setContent(incoming, false);
+        editor.commands.setContent(incoming);
       }
     } catch {
       // Invalid JSON — ignore

@@ -20,7 +20,6 @@ import {
   ItemDescription,
   ItemGroup,
   ItemMedia,
-  ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item"
 import { MoreHorizontalIcon } from "lucide-react"
@@ -56,9 +55,9 @@ export function Pattern() {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col">
       <ItemGroup>
-        {members.map((member, index) => (
+        {members.map((member, _index) => (
           <div key={member.email}>
-            <Item variant="outline" size="xs">
+            <Item variant="outline" size="sm">
               <ItemMedia>
                 <Avatar>
                   <AvatarImage src={member.avatar} alt={member.name} />

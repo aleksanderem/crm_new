@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
+import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 
 export const list = query({
   args: {
@@ -25,7 +25,7 @@ export const create = mutation({
     label: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
     const now = Date.now();
 
     const existing = await ctx.db
@@ -56,7 +56,7 @@ export const update = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await requireOrgAdmin(ctx, args.organizationId);
 
     const reason = await ctx.db.get(args.reasonId);
     if (!reason || reason.organizationId !== args.organizationId) {
@@ -76,7 +76,7 @@ export const remove = mutation({
     reasonId: v.id("lostReasons"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await requireOrgAdmin(ctx, args.organizationId);
 
     const reason = await ctx.db.get(args.reasonId);
     if (!reason || reason.organizationId !== args.organizationId) {
@@ -137,7 +137,7 @@ export const reorder = mutation({
     reasonIds: v.array(v.id("lostReasons")),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await requireOrgAdmin(ctx, args.organizationId);
 
     for (let i = 0; i < args.reasonIds.length; i++) {
       const reason = await ctx.db.get(args.reasonIds[i]);

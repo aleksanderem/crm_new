@@ -81,6 +81,16 @@
     "insights": "Insights",
     "products": "Products",
     "calls": "Calls",
+    "gabinet": {
+      "dashboard": "Dashboard",
+      "calendar": "Calendar",
+      "patients": "Patients",
+      "treatments": "Treatments",
+      "packages": "Packages",
+      "employees": "Employees",
+      "documents": "Documents",
+      "reports": "Reports"
+    },
     "sections": {
       "main": "Main",
       "database": "Database",
@@ -717,9 +727,72 @@
     "emailTemplates": "Email Templates",
     "emailEvents": "Email Events",
     "emailSequences": "Email Sequences",
-    "email": "Email",
+    "email": {
+      "title": "Email",
+      "defaultAccount": "Default account",
+      "defaultLabel": "Default"
+    },
+    "mail": {
+      "title": "Mail",
+      "providers": "Providers",
+      "brand": "Email Brand",
+      "events": "Events",
+      "addProvider": "Add Provider",
+      "noProviders": "No providers configured",
+      "noProvidersDescription": "Add an email provider to send and receive messages",
+      "providerType": {
+        "google": "Google (Gmail)",
+        "microsoft": "Microsoft (Outlook)",
+        "mailgun": "Mailgun",
+        "resend": "Resend"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "error": "Error",
+        "pending_auth": "Pending authorization"
+      },
+      "capabilities": {
+        "send": "Send",
+        "receive": "Receive",
+        "sync": "Sync"
+      },
+      "defaultProvider": "Default",
+      "sharedProvider": "Shared",
+      "connectGoogle": "Connect with Google",
+      "connectMicrosoft": "Connect with Microsoft",
+      "testConnection": "Test connection",
+      "form": {
+        "name": "Provider name",
+        "fromName": "Sender name",
+        "fromEmail": "Sender email address",
+        "replyTo": "Reply-to address",
+        "apiKey": "API key",
+        "domain": "Domain",
+        "region": "Region"
+      }
+    },
+    "emailBrand": {
+      "companyInfo": "Company Info",
+      "companyName": "Company Name",
+      "companyNamePlaceholder": "Your company name",
+      "footerText": "Footer Text",
+      "footerTextPlaceholder": "e.g. © 2025 Your Company. All rights reserved.",
+      "colors": "Colors",
+      "primaryColor": "Primary Color",
+      "accentColor": "Accent Color",
+      "backgroundColor": "Background Color",
+      "contentBgColor": "Content Background Color",
+      "textColor": "Text Color",
+      "secondaryTextColor": "Secondary Text Color",
+      "socialLinks": "Social Links",
+      "website": "Website",
+      "saved": "Email brand config saved.",
+      "saveError": "Failed to save email brand config."
+    },
     "integrations": "Integrations",
     "sms": "SMS",
+    "gabinetSection": "Gabinet",
     "automations": "Automations",
     "automationsDescription": "Create and manage automation rules across Gabinet and CRM, then verify results in recent runs.",
     "automationRules": "Automation Rules",
@@ -1179,7 +1252,13 @@
       "templateTypes": {
         "pdfme": "PDF Form",
         "document": "Document"
-      }
+      },
+      "newFolder": "New folder",
+      "newTemplateName": "New template",
+      "seedExamples": "Load examples",
+      "seedSuccess": "Loaded {{count}} templates",
+      "migrateFolders": "Migrate folders",
+      "migrateSuccess": "Assigned folders to {{count}} templates"
     }
   },
   "leadForm": {
@@ -1507,6 +1586,7 @@
     "permissions": "Permissions",
     "auditLog": "Audit Log",
     "email": "Email",
+    "mail": "Mail",
     "sms": "SMS",
     "automations": "Automations",
     "emailTemplates": "Email Templates",
@@ -1515,7 +1595,8 @@
     "integrations": "Integrations",
     "organization": "Organization",
     "documentTemplates": "Document Templates",
-    "pipelines": "Pipelines"
+    "pipelines": "Pipelines",
+    "googleCalendar": "Google Calendar"
   },
   "activityTimeline": {
     "relative": {
@@ -1709,7 +1790,10 @@
     "linkContact": "Link to Contact",
     "linkCompany": "Link to Company",
     "linkDeal": "Link to Deal",
-    "unreadCount": "{{count}} unread"
+    "unreadCount": "{{count}} unread",
+    "allMailboxes": "All mailboxes",
+    "sendFrom": "Send from",
+    "mailbox": "Mailbox"
   },
   "team": {
     "title": "Team",
@@ -3032,7 +3116,16 @@
     "tabEventLog": "Event Log",
     "tabLayout": "Layout",
     "tabTemplates": "Templates",
-    "unknownTemplate": "Unknown Template"
+    "unknownTemplate": "Unknown Template",
+    "editor": {
+      "headerPlaceholder": "Company logo will appear here",
+      "footerPlaceholder": "Footer text will appear here",
+      "subjectPlaceholder": "Email subject line...",
+      "bodyPlaceholder": "Start writing your email content..."
+    },
+    "allModules": "All modules",
+    "moduleCrm": "CRM",
+    "moduleGabinet": "Gabinet"
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} block"
@@ -3196,5 +3289,103 @@
   "documentEditor": {
     "fillFields": "Fill in the form fields before generating the document.",
     "generate": "Generate document"
+  },
+  "tags": {
+    "manage": "Tags",
+    "manageDescription": "Manage organization tags",
+    "search": "Search tags...",
+    "noTags": "No tags",
+    "addTag": "Add tag",
+    "newName": "Tag name",
+    "assign": "Tags",
+    "noResults": "No results"
+  },
+  "categories": {
+    "manage": "Categories",
+    "manageDescription": "Manage categories",
+    "newName": "Category name",
+    "noCategories": "No categories",
+    "addCategory": "Add category",
+    "addSub": "Add subcategory",
+    "tree": "Category tree",
+    "assign": "Category",
+    "search": "Search...",
+    "noResults": "No results"
+  },
+  "billing": {
+    "title": "Billing",
+    "description": "Manage billing and your subscription plan.",
+    "plan": "Plan",
+    "currentPlanPrefix": "You are currently on the",
+    "currentPlanSuffix": "plan.",
+    "freePlan": "Free",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "expires": "Expires",
+    "renews": "Renews",
+    "testDisclaimer": "You will not be charged for testing the subscription upgrade.",
+    "upgradeToPro": "Upgrade to PRO",
+    "manageSubscription": "Manage Subscription",
+    "manageSubscriptionDescription": "Update your payment method, billing address, and more.",
+    "stripeRedirect": "You will be redirected to the Stripe Customer Portal.",
+    "manage": "Manage"
+  },
+  "googleCalendar": {
+    "settings": {
+      "title": "Google Calendar",
+      "orgDefault": "Organization default calendar",
+      "setAsDefault": "Set as default",
+      "employeeCalendars": "Employee calendars",
+      "connectCalendar": "Connect Google Calendar",
+      "disconnectCalendar": "Disconnect",
+      "noCalendarsConnected": "No calendars connected",
+      "selectCalendar": "Select calendar",
+      "targetModule": "Target module",
+      "targetModuleCrm": "CRM",
+      "targetModuleGabinet": "Gabinet",
+      "activityType": "Activity type",
+      "visibility": "Visibility",
+      "visibilityFull": "Full",
+      "visibilityBusyOnly": "Busy only",
+      "visibilityHidden": "Hidden",
+      "syncEnabled": "Sync",
+      "syncStatus": "Sync status",
+      "syncStatusIdle": "Ready",
+      "syncStatusSyncing": "Syncing...",
+      "syncStatusError": "Error",
+      "lastSync": "Last sync",
+      "syncNow": "Sync now",
+      "syncing": "Syncing...",
+      "syncSuccess": "Synced {{count}} events",
+      "syncError": "Sync error: {{error}}",
+      "calendarName": "Calendar name",
+      "module": "Module",
+      "employee": "Employee",
+      "status": "Status",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "connectionSuccess": "Google connected successfully. Select calendars to sync.",
+      "selectCalendarsToConnect": "Select calendars to connect",
+      "addCalendar": "Add calendar",
+      "adding": "Adding...",
+      "fetchingCalendars": "Fetching calendar list...",
+      "fetchCalendarsError": "Failed to fetch calendar list",
+      "calendarAdded": "Calendar added successfully",
+      "primary": "Primary",
+      "scopeUpgradeNeeded": "Your Google connection requires upgraded calendar permissions. Please reauthorize to enable calendar listing.",
+      "reauthorize": "Reauthorize"
+    },
+    "calendar": {
+      "busy": "Busy",
+      "blockedTime": "Busy",
+      "googleEvent": "Google Event",
+      "requiresCompletion": "Requires completion",
+      "completeButton": "Complete",
+      "source": "Source",
+      "sourceManual": "Manual",
+      "sourceGoogle": "Google",
+      "sourceSystem": "System",
+      "incompleteSidebarKpi": "To complete"
+    }
   }
 }

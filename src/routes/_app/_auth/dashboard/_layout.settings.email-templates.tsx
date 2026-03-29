@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -37,9 +37,8 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
-import { EmailBlockBuilder } from "@/components/email/email-block-builder";
-import { htmlToBlocks } from "@/components/email/blocks-to-html";
-import type { EmailBlock } from "@/lib/email-block-types";
+import { EmailTemplateEditor } from "@/components/email/template-editor";
+import type { EmailTemplateEditorHandle } from "@/components/email/template-editor";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/email-templates",
@@ -57,7 +56,7 @@ interface TemplateFormData {
   name: string;
   subject: string;
   body: string;
-  blocks: EmailBlock[];
+  contentJson: string;
   category: string;
   module: string;
   variables: TemplateVariable[];
@@ -67,7 +66,7 @@ const emptyForm: TemplateFormData = {
   name: "",
   subject: "",
   body: "",
-  blocks: [],
+  contentJson: "",
   category: "",
   module: "",
   variables: [],
@@ -87,6 +86,7 @@ function EmailTemplatesSettings() {
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"emailTemplates">; name: string } | null>(null);
+  const editorRef = useRef<EmailTemplateEditorHandle>(null);
 
   const createTemplate = useMutation(api.emailTemplates.create);
   const updateTemplate = useMutation(api.emailTemplates.update);
@@ -118,21 +118,11 @@ function EmailTemplatesSettings() {
     variables: TemplateVariable[];
   }) => {
     setEditingId(template._id);
-    // Try to parse blocks from body JSON, fall back to htmlToBlocks
-    let parsedBlocks: EmailBlock[] = [];
-    try {
-      const parsed = JSON.parse(template.body);
-      if (Array.isArray(parsed)) {
-        parsedBlocks = parsed;
-      }
-    } catch {
-      parsedBlocks = htmlToBlocks(template.body);
-    }
     setForm({
       name: template.name,
       subject: template.subject,
       body: template.body,
-      blocks: parsedBlocks,
+      contentJson: "",
       category: template.category ?? "",
       module: template.module ?? "",
       variables: template.variables,
@@ -143,10 +133,8 @@ function EmailTemplatesSettings() {
   const handleSave = async () => {
     if (!form.name.trim() || !form.subject.trim()) return;
     setIsSubmitting(true);
-    // Store blocks as JSON in body field; the rendered HTML is generated
-    // via blocksToHtml when actually sending/rendering the email.
-    const bodyPayload =
-      form.blocks.length > 0 ? JSON.stringify(form.blocks) : form.body;
+    // Use the HTML from the TipTap editor as the body for rendering/sending.
+    const bodyPayload = editorRef.current?.getHTML() ?? form.body;
     try {
       if (editingId) {
         await updateTemplate({
@@ -402,10 +390,14 @@ function EmailTemplatesSettings() {
 
             <div className="space-y-1.5">
               <Label>{t("inbox.body")}</Label>
-              <EmailBlockBuilder
-                blocks={form.blocks}
-                onChange={(blocks) => setForm((prev) => ({ ...prev, blocks }))}
-                variableSources={variableSources ?? undefined}
+              <EmailTemplateEditor
+                ref={editorRef}
+                value={form.body}
+                onChange={(html) => setForm((prev) => ({ ...prev, body: html }))}
+                organizationId={organizationId}
+                requiredSources={
+                  form.module ? [form.module] : undefined
+                }
               />
             </div>
 

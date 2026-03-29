@@ -66,7 +66,6 @@ function NewDocumentEditorPage() {
     signerRole: "client" as SignerRole,
   });
 
-  // @ts-expect-error — TS2589 deep type instantiation in generated Convex API
   const createTemplate = useMutation(api.documents.templates.create);
 
   const handleSave = async () => {

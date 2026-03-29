@@ -1,5 +1,5 @@
 import type { FC, FocusEventHandler, PointerEventHandler, ReactNode, RefAttributes, RefObject } from "react";
-import { isValidElement, useCallback, useContext, useRef, useState } from "react";
+import React, { isValidElement, useCallback, useContext, useRef, useState } from "react";
 import { SearchLg } from "@untitledui/icons";
 import type { ComboBoxProps as AriaComboBoxProps, GroupProps as AriaGroupProps, ListBoxProps as AriaListBoxProps } from "react-aria-components";
 import { ComboBox as AriaComboBox, Group as AriaGroup, Input as AriaInput, ListBox as AriaListBox, ComboBoxStateContext } from "react-aria-components";
@@ -32,7 +32,7 @@ interface ComboBoxValueProps extends AriaGroupProps {
     ref?: RefObject<HTMLDivElement | null>;
 }
 
-const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: IconProp, ...otherProps }: ComboBoxValueProps) => {
+const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: IconProp, ref, ...otherProps }: ComboBoxValueProps) => {
     const state = useContext(ComboBoxStateContext);
 
     const value = state?.selectedItem?.value || null;
@@ -44,6 +44,7 @@ const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: I
     return (
         <AriaGroup
             {...otherProps}
+            ref={ref as React.RefObject<HTMLDivElement>}
             className={({ isFocusWithin, isDisabled }) =>
                 cx(
                     "relative flex w-full items-center gap-2 rounded-lg bg-bg-primary shadow-xs ring-1 ring-border-primary outline-hidden transition-shadow duration-100 ease-linear ring-inset",

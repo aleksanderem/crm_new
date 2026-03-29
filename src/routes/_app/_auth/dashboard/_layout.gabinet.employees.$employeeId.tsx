@@ -565,7 +565,7 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.agenda"),
       content: (
         <UpcomingAgenda
-          appointments={employeeAppointments}
+          appointments={employeeAppointments as any}
           treatmentMap={treatmentMap}
           navigate={navigate}
           t={t}
@@ -577,11 +577,11 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.appointments"),
       content: (
         <AppointmentsTabContent
-          employeeAppointments={employeeAppointments}
+          employeeAppointments={employeeAppointments as any}
           calendarWeekStart={calendarWeekStart}
           setCalendarWeekStart={setCalendarWeekStart}
           calendarWeekDates={calendarWeekDates}
-          calendarAppointments={calendarAppointments}
+          calendarAppointments={calendarAppointments as any}
           appointmentsView={appointmentsView}
           setAppointmentsView={setAppointmentsView}
           treatmentMap={treatmentMap}
@@ -596,8 +596,8 @@ function EmployeeDetail() {
       count: employeePatients?.length,
       content: (
         <PatientsTabContent
-          employeePatients={employeePatients}
-          filteredClients={filteredClients}
+          employeePatients={employeePatients as any}
+          filteredClients={filteredClients as any}
           clientSearch={clientSearch}
           setClientSearch={setClientSearch}
           clientStatusFilter={clientStatusFilter}

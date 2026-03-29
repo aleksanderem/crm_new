@@ -18,6 +18,7 @@ import { Upload, Sun, Moon, Monitor } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { cn } from "@/utils/misc";
 import { useUploadFiles } from "@xixixao/uploadstuff/react";
+import { AVATAR_FALLBACK_GRADIENT } from "@/lib/avatar";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/profile"
@@ -158,7 +159,7 @@ function ProfileSettings() {
                 alt={user.username ?? user.email}
               />
             ) : (
-              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500" />
+              <div className={`h-20 w-20 rounded-full bg-gradient-to-br ${AVATAR_FALLBACK_GRADIENT}`} />
             )}
             <div className="absolute z-10 hidden h-full w-full items-center justify-center bg-primary/40 group-hover:flex">
               <Upload className="h-6 w-6 text-secondary" />

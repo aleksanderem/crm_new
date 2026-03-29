@@ -99,16 +99,16 @@ export default function BillingSettings() {
       {/* Plans */}
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex flex-col gap-2 p-6">
-          <h2 className="text-xl font-medium text-primary">Plan</h2>
+          <h2 className="text-xl font-medium text-primary">{t("billing.plan", "Plan")}</h2>
           <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
-            You are currently on the{" "}
+            {t("billing.currentPlanPrefix", "You are currently on the")}{" "}
             <span className="flex h-[18px] items-center rounded-md bg-primary/10 px-1.5 text-sm font-medium text-primary/80">
               {user.subscription
                 ? user.subscription.planKey.charAt(0).toUpperCase() +
                   user.subscription.planKey.slice(1)
-                : "Free"}
+                : t("billing.freePlan", "Free")}
             </span>
-            plan.
+            {t("billing.currentPlanSuffix", "plan.")}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export default function BillingSettings() {
                       htmlFor="interval-switch"
                       className="text-start text-sm text-primary/60"
                     >
-                      {selectedPlanInterval === "month" ? "Monthly" : "Yearly"}
+                      {selectedPlanInterval === "month" ? t("billing.monthly", "Monthly") : t("billing.yearly", "Yearly")}
                     </label>
                     <Switch
                       id="interval-switch"
@@ -184,11 +184,11 @@ export default function BillingSettings() {
                   <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
                     {user.subscription.cancelAtPeriodEnd === true ? (
                       <span className="flex h-[18px] items-center text-sm font-medium text-red-500">
-                        Expires
+                        {t("billing.expires", "Expires")}
                       </span>
                     ) : (
                       <span className="flex h-[18px] items-center text-sm font-medium text-green-500">
-                        Renews
+                        {t("billing.renews", "Renews")}
                       </span>
                     )}
                     on:{" "}
@@ -208,7 +208,7 @@ export default function BillingSettings() {
 
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 py-3 dark:bg-card">
           <p className="text-sm font-normal text-primary/60">
-            You will not be charged for testing the subscription upgrade.
+            {t("billing.testDisclaimer", "You will not be charged for testing the subscription upgrade.")}
           </p>
           {user.subscription?.planId === plans.free._id && (
             <Button
@@ -217,7 +217,7 @@ export default function BillingSettings() {
               onClick={handleCreateSubscriptionCheckout}
               disabled={selectedPlanId === plans.free._id}
             >
-              Upgrade to PRO
+              {t("billing.upgradeToPro", "Upgrade to PRO")}
             </Button>
           )}
         </div>
@@ -227,19 +227,19 @@ export default function BillingSettings() {
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex flex-col gap-2 p-6">
           <h2 className="text-xl font-medium text-primary">
-            Manage Subscription
+            {t("billing.manageSubscription", "Manage Subscription")}
           </h2>
           <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
-            Update your payment method, billing address, and more.
+            {t("billing.manageSubscriptionDescription", "Update your payment method, billing address, and more.")}
           </p>
         </div>
 
         <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 py-3 dark:bg-card">
           <p className="text-sm font-normal text-primary/60">
-            You will be redirected to the Stripe Customer Portal.
+            {t("billing.stripeRedirect", "You will be redirected to the Stripe Customer Portal.")}
           </p>
           <Button type="submit" size="sm" onClick={handleCreateCustomerPortal}>
-            Manage
+            {t("billing.manage", "Manage")}
           </Button>
         </div>
       </div>

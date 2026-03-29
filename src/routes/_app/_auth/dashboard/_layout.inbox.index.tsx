@@ -4,9 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { InboxList } from "@/components/email/inbox-list";
 import type { FilterTab } from "@/components/email/inbox-list";
 import { ThreadView } from "@/components/email/thread-view";
@@ -35,6 +43,11 @@ function InboxPage() {
   );
   const syncGmail = useAction(api.google.gmail.syncInbox);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const { data: mailProviders } = useQuery(
+    convexQuery(api.mailProviders.list, { organizationId })
+  );
+  const [selectedMailbox, setSelectedMailbox] = useState<string>("all");
 
   const handleSyncGmail = async () => {
     setIsSyncing(true);
@@ -96,8 +109,28 @@ function InboxPage() {
   // --- Push inbox list into the sidebar slot ---
   const { setContent: setSidebarContent } = useSidebarSlot();
   useEffect(() => {
+    const receiveProviders = mailProviders?.filter((p) => p.capabilities.canReceive) ?? [];
     setSidebarContent(
       <div className="flex flex-col gap-3 -mx-3">
+        {/* Mailbox switcher */}
+        {receiveProviders.length > 0 && (
+          <div className="px-1">
+            <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder={t("inbox.allMailboxes")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("inbox.allMailboxes")}</SelectItem>
+                {receiveProviders.map((provider) => (
+                  <SelectItem key={provider._id} value={provider._id}>
+                    {provider.name} ({provider.fromEmail})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Filter tabs */}
         <div className="px-1">
           <Tabs
@@ -147,6 +180,7 @@ function InboxPage() {
             selectedThreadId={selectedThreadId}
             onSelectThread={handleSelectThread}
             filter={filter}
+            mailProviderId={selectedMailbox !== "all" ? selectedMailbox as Id<"mailProviders"> : undefined}
           />
         </div>
       </div>
@@ -159,6 +193,8 @@ function InboxPage() {
     filter,
     googleConnection,
     isSyncing,
+    mailProviders,
+    selectedMailbox,
     t,
     setSidebarContent,
     handleSelectThread,

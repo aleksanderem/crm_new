@@ -42,6 +42,16 @@ function matchCondition(row: Record<string, any>, condition: FilterCondition): b
       return Number(value) < Number(target);
     case "after":
       return Number(value) > Number(target);
+    case "hasAnyOf": {
+      const arr = Array.isArray(value) ? value : [];
+      const targets = Array.isArray(target) ? target : [target];
+      return targets.some((t: string) => arr.includes(t));
+    }
+    case "hasAllOf": {
+      const arr = Array.isArray(value) ? value : [];
+      const targets = Array.isArray(target) ? target : [target];
+      return targets.every((t: string) => arr.includes(t));
+    }
     default:
       return true;
   }

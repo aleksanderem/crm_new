@@ -58,6 +58,26 @@ DEFAULT_PERMISSIONS.viewer.document_instances = {
   view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
 };
 
+// --- Per-feature overrides for tagDefinitions ---
+// member: create only (no edit/delete)
+DEFAULT_PERMISSIONS.member.tagDefinitions = {
+  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none",
+};
+// viewer: no CRUD
+DEFAULT_PERMISSIONS.viewer.tagDefinitions = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+};
+
+// --- Per-feature overrides for categoryDefinitions ---
+// member: create only (no edit/delete)
+DEFAULT_PERMISSIONS.member.categoryDefinitions = {
+  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none",
+};
+// viewer: no CRUD
+DEFAULT_PERMISSIONS.viewer.categoryDefinitions = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+};
+
 // --- checkPermission ---
 
 export async function checkPermission(

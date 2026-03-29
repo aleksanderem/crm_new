@@ -67,6 +67,8 @@ export function createGabinetTables({
     referredByPatientId: v.optional(v.id("gabinetPatients")),
     isActive: v.boolean(),
     tags: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     customFields: v.optional(v.any()),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -131,6 +133,8 @@ export function createGabinetTables({
     }))),
     shortDescription: v.optional(v.string()),
     image: v.optional(v.id("_storage")),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -287,6 +291,8 @@ export function createGabinetTables({
     baseSalary: v.optional(v.number()),
     commissionPercent: v.optional(v.number()),
     bankAccount: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -337,7 +343,7 @@ export function createGabinetTables({
   gabinetAppointments: defineTable({
     organizationId: v.id("organizations"),
     patientId: v.id("gabinetPatients"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.optional(v.id("gabinetTreatments")),
     employeeId: v.id("users"),
     date: v.string(), // YYYY-MM-DD
     startTime: v.string(), // HH:MM
@@ -386,6 +392,9 @@ export function createGabinetTables({
     bookedByPatientId: v.optional(v.id("gabinetPatients")),
     locationId: v.optional(v.id("gabinetLocations")),
     roomId: v.optional(v.id("gabinetRooms")),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
+    requiresCompletion: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -398,7 +407,8 @@ export function createGabinetTables({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndTreatment", ["organizationId", "treatmentId"])
     .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"])
-    .index("by_orgAndRoomAndDate", ["organizationId", "roomId", "date"]),
+    .index("by_orgAndRoomAndDate", ["organizationId", "roomId", "date"])
+    .index("by_requiresCompletion", ["organizationId", "requiresCompletion"]),
 
   // --- Gabinet: Packages & Loyalty (Phase 4) ---
 
@@ -513,6 +523,8 @@ export function createGabinetTables({
     fileStorageId: v.optional(v.id("_storage")),
     fileName: v.optional(v.string()),
     fileMimeType: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

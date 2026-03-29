@@ -72,6 +72,8 @@ export const create = mutation({
     taxRate: v.number(),
     isActive: v.boolean(),
     description: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -108,6 +110,8 @@ export const update = mutation({
     unitPrice: v.optional(v.number()),
     taxRate: v.optional(v.number()),
     description: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

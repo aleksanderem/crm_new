@@ -107,6 +107,8 @@ export const create = mutation({
     title: v.string(),
     type: gabinetDocTypeValidator,
     content: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -168,6 +170,8 @@ export const update = mutation({
     documentId: v.id("gabinetDocuments"),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

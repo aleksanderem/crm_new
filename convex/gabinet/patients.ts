@@ -132,6 +132,8 @@ export const create = mutation({
     referredByPatientId: v.optional(v.id("gabinetPatients")),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.any()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -210,6 +212,8 @@ export const update = mutation({
     referredByPatientId: v.optional(v.id("gabinetPatients")),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.any()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

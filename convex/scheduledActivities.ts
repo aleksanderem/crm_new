@@ -88,6 +88,8 @@ export const create = mutation({
     description: v.optional(v.string()),
     linkedEntityType: v.optional(v.string()),
     linkedEntityId: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -145,6 +147,8 @@ export const update = mutation({
     description: v.optional(v.string()),
     linkedEntityType: v.optional(v.string()),
     linkedEntityId: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -396,6 +400,74 @@ export const listDueToday = query({
   },
 });
 
+// Shared helper: fetch, filter by module, apply scope, enrich with Gabinet metadata
+async function fetchCalendarActivities(
+  ctx: any,
+  args: {
+    organizationId: any;
+    startDate: number;
+    endDate: number;
+    moduleFilter?: "all" | "gabinet" | "crm";
+  },
+  user: { _id: any },
+  permScope: string
+) {
+  const activities = await ctx.db
+    .query("scheduledActivities")
+    .withIndex("by_orgAndDueDate", (q: any) =>
+      q
+        .eq("organizationId", args.organizationId)
+        .gte("dueDate", args.startDate)
+        .lte("dueDate", args.endDate)
+    )
+    .collect();
+
+  let filtered = activities;
+  if (args.moduleFilter === "gabinet") {
+    filtered = activities.filter(
+      (a: any) => a.moduleRef?.moduleId === "gabinet"
+    );
+  } else if (args.moduleFilter === "crm") {
+    filtered = activities.filter(
+      (a: any) => !a.moduleRef || a.moduleRef.moduleId !== "gabinet"
+    );
+  }
+
+  if (permScope === "own") {
+    filtered = filtered.filter((a: any) => a.createdBy === user._id);
+  }
+
+  const enriched = await Promise.all(
+    filtered.map(async (activity: any) => {
+      let metadata: Record<string, unknown> = {};
+      if (
+        activity.moduleRef?.moduleId === "gabinet" &&
+        activity.moduleRef.entityType === "gabinetAppointment"
+      ) {
+        const appt = await ctx.db.get(
+          activity.moduleRef.entityId as any
+        );
+        if (appt) {
+          const patient = await ctx.db.get((appt as any).patientId);
+          const treatment = await ctx.db.get((appt as any).treatmentId);
+          metadata = {
+            patientName: patient
+              ? `${(patient as any).firstName} ${(patient as any).lastName}`
+              : "Unknown",
+            treatmentName: (treatment as any)?.name ?? "Unknown",
+            status: (appt as any).status,
+            employeeId: (appt as any).employeeId,
+            appointmentId: appt._id,
+          };
+        }
+      }
+      return { ...activity, metadata };
+    })
+  );
+
+  return enriched;
+}
+
 export const listForCalendar = query({
   args: {
     organizationId: v.id("organizations"),
@@ -415,60 +487,83 @@ export const listForCalendar = query({
     );
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const activities = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_orgAndDueDate", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .gte("dueDate", args.startDate)
-          .lte("dueDate", args.endDate)
-      )
-      .collect();
+    return fetchCalendarActivities(ctx, args, user, perm.scope);
+  },
+});
 
-    let filtered = activities;
-    if (args.moduleFilter === "gabinet") {
-      filtered = activities.filter(
-        (a) => a.moduleRef?.moduleId === "gabinet"
-      );
-    } else if (args.moduleFilter === "crm") {
-      filtered = activities.filter(
-        (a) => !a.moduleRef || a.moduleRef.moduleId !== "gabinet"
-      );
-    }
-
-    if (perm.scope === "own") {
-      filtered = filtered.filter((a) => a.createdBy === user._id);
-    }
-
-    const enriched = await Promise.all(
-      filtered.map(async (activity) => {
-        let metadata: Record<string, unknown> = {};
-        if (
-          activity.moduleRef?.moduleId === "gabinet" &&
-          activity.moduleRef.entityType === "gabinetAppointment"
-        ) {
-          const appt = await ctx.db.get(
-            activity.moduleRef.entityId as any
-          );
-          if (appt) {
-            const patient = await ctx.db.get((appt as any).patientId);
-            const treatment = await ctx.db.get((appt as any).treatmentId);
-            metadata = {
-              patientName: patient
-                ? `${(patient as any).firstName} ${(patient as any).lastName}`
-                : "Unknown",
-              treatmentName: (treatment as any)?.name ?? "Unknown",
-              status: (appt as any).status,
-              employeeId: (appt as any).employeeId,
-              appointmentId: appt._id,
-            };
-          }
-        }
-        return { ...activity, metadata };
-      })
+export const listForCalendarWithVisibility = query({
+  args: {
+    organizationId: v.id("organizations"),
+    startDate: v.number(),
+    endDate: v.number(),
+    moduleFilter: v.optional(
+      v.union(v.literal("all"), v.literal("gabinet"), v.literal("crm"))
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "activities",
+      "view"
     );
+    if (!perm.allowed) throw new Error("Permission denied");
 
-    return enriched;
+    const enriched = await fetchCalendarActivities(ctx, args, user, perm.scope);
+
+    // Cache sync configs to avoid repeated lookups for the same config
+    const syncConfigCache = new Map<string, any>();
+
+    const visibilityFiltered: typeof enriched = [];
+
+    for (const activity of enriched) {
+      // Activities without syncConfigId are always fully visible
+      if (!activity.syncConfigId) {
+        visibilityFiltered.push(activity);
+        continue;
+      }
+
+      // Owner always sees full details
+      if (activity.ownerId === user._id) {
+        visibilityFiltered.push(activity);
+        continue;
+      }
+
+      // Determine effective visibility: per-event override takes precedence over sync config default
+      let effectiveVisibility = activity.visibilityOverride;
+      if (!effectiveVisibility) {
+        const configIdStr = activity.syncConfigId as string;
+        if (!syncConfigCache.has(configIdStr)) {
+          syncConfigCache.set(configIdStr, await ctx.db.get(activity.syncConfigId));
+        }
+        const syncConfig = syncConfigCache.get(configIdStr);
+        effectiveVisibility = syncConfig?.visibility ?? "full";
+      }
+
+      if (effectiveVisibility === "hidden") {
+        // Exclude from results
+        continue;
+      }
+
+      if (effectiveVisibility === "busy_only") {
+        // Sanitize: replace title, clear sensitive fields, add marker
+        visibilityFiltered.push({
+          ...activity,
+          title: "Zajęty",
+          description: undefined,
+          location: undefined,
+          meetingUrl: undefined,
+          _isBusyOnly: true as const,
+        });
+        continue;
+      }
+
+      // "full" — return as-is
+      visibilityFiltered.push(activity);
+    }
+
+    return visibilityFiltered;
   },
 });
 

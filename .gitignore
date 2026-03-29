@@ -28,8 +28,34 @@ dist-ssr
 
 # Generated reports and local tooling
 playwright-report/
+.gsd/
 test-results/
 .claude/worktrees/
 .worktrees/
 .claude/launch.json
 .npmrc
+
+# ── GSD baseline (auto-generated) ──
+.gsd
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+coverage/
+.cache/
+tmp/

@@ -96,6 +96,7 @@ export const completeOnboarding = mutation({
       // Seed default reference data (sources, pipelines, lost reasons, etc.)
       await ctx.scheduler.runAfter(
         0,
+        // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
         internal.seedDefaults.seedOrganizationDefaults,
         { organizationId: orgId, userId },
       );
@@ -135,7 +136,11 @@ export const updateUserImage = mutation({
     if (!userId) {
       return;
     }
-    ctx.db.patch(userId, { imageId: args.imageId });
+    const url = await ctx.storage.getUrl(args.imageId);
+    await ctx.db.patch(userId, {
+      imageId: args.imageId,
+      image: url ?? undefined,
+    });
   },
 });
 

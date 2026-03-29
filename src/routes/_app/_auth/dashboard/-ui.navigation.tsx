@@ -26,6 +26,7 @@ import { Route as SettingsRoute } from "@/routes/_app/_auth/dashboard/_layout.se
 import { Route as BillingSettingsRoute } from "@/routes/_app/_auth/dashboard/_layout.settings.billing";
 import { User } from "~/types";
 import { PLANS } from "@cvx/schema";
+import { AVATAR_FALLBACK_GRADIENT } from "@/lib/avatar";
 
 export function Navigation({ user }: { user: User }) {
   const signOut = useSignOut();
@@ -64,11 +65,11 @@ export function Navigation({ user }: { user: User }) {
                       src={user.avatarUrl}
                     />
                   ) : (
-                    <span className="h-8 w-8 rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500" />
+                    <span className={`h-8 w-8 rounded-full bg-gradient-to-br ${AVATAR_FALLBACK_GRADIENT}`} />
                   )}
 
                   <p className="text-sm font-medium text-primary/80">
-                    {user?.username || ""}
+                    {user?.name || user?.username || ""}
                   </p>
                   <span className="flex h-5 items-center rounded-full bg-primary/10 px-2 text-xs font-medium text-primary/80">
                     {(user.subscription?.planKey &&
@@ -99,11 +100,11 @@ export function Navigation({ user }: { user: User }) {
                       src={user.avatarUrl}
                     />
                   ) : (
-                    <span className="h-6 w-6 rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500" />
+                    <span className={`h-6 w-6 rounded-full bg-gradient-to-br ${AVATAR_FALLBACK_GRADIENT}`} />
                   )}
 
                   <p className="text-sm font-medium text-primary/80">
-                    {user.username || ""}
+                    {user.name || user.username || ""}
                   </p>
                 </div>
                 <Check className="h-[18px] w-[18px] stroke-[1.5px] text-primary/60" />
@@ -158,7 +159,7 @@ export function Navigation({ user }: { user: User }) {
                     src={user.avatarUrl}
                   />
                 ) : (
-                  <span className="min-h-8 min-w-8 rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500" />
+                  <span className={`min-h-8 min-w-8 rounded-full bg-gradient-to-br ${AVATAR_FALLBACK_GRADIENT}`} />
                 )}
               </Button>
             </DropdownMenuTrigger>

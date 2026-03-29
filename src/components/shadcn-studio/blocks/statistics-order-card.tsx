@@ -47,8 +47,8 @@ const StatisticsOrderCard = ({
         <CardTitle className='text-lg font-semibold'>{title}</CardTitle>
         <CardDescription className='text-muted-foreground text-base'>{description}</CardDescription>
       </CardHeader>
-      <div className='relative'>
-        <ChartContainer config={orderChartConfig} className='h-21 w-full px-2.75'>
+      <div className='relative overflow-visible'>
+        <ChartContainer config={orderChartConfig} className='h-24 w-full px-2.75'>
           <BarChart
             accessibilityLayer
             data={chartData}

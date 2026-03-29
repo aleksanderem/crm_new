@@ -111,6 +111,8 @@ export const create = mutation({
       fieldDefinitionId: v.id("customFieldDefinitions"),
       value: v.any(),
     }))),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -176,6 +178,8 @@ export const update = mutation({
       fieldDefinitionId: v.id("customFieldDefinitions"),
       value: v.any(),
     }))),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

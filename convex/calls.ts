@@ -110,6 +110,8 @@ export const create = mutation({
     outcome: callOutcomeValidator,
     callDate: v.number(),
     note: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -144,6 +146,8 @@ export const update = mutation({
     outcome: v.optional(callOutcomeValidator),
     callDate: v.optional(v.number()),
     note: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

@@ -64,9 +64,11 @@ export const TableWithBorders = Table.extend({
   addNodeView() {
     // Get the parent NodeView constructor (the built-in TableView)
     const parentView = this.parent?.();
-    if (!parentView) return () => ({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!parentView) return (() => ({ dom: document.createElement("div") })) as any;
 
-    return (...args: Parameters<typeof parentView>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((...args: Parameters<typeof parentView>) => {
       const view = parentView(...args) as {
         dom: HTMLElement;
         table?: HTMLTableElement;
@@ -78,7 +80,7 @@ export const TableWithBorders = Table.extend({
       // The TableView wraps table in a div.tableWrapper
       const tableEl = view.dom.querySelector("table") as HTMLTableElement | null;
       if (tableEl) {
-        syncTableAttrs(args[0], tableEl);
+        syncTableAttrs(args[0] as unknown as { attrs: Record<string, unknown> }, tableEl);
       }
 
       // Wrap update to re-sync attrs
@@ -92,7 +94,7 @@ export const TableWithBorders = Table.extend({
       };
 
       return view;
-    };
+    }) as any;
   },
 });
 

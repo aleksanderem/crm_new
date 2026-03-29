@@ -24,6 +24,10 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/"
@@ -47,6 +51,10 @@ function CompaniesIndex() {
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "companies");
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "company");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
@@ -74,7 +82,9 @@ function CompaniesIndex() {
     { id: "website", label: t('companies.website'), type: "text" },
     { id: "phone", label: t('common.phone'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+  ], [t, tags, categories]);
 
   const { data, isLoading } = useQuery(
     convexQuery(api.companies.list, {
@@ -223,7 +233,7 @@ function CompaniesIndex() {
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
+            {tags.map((tag: any) => (
               <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
             ))}
           </div>
@@ -272,6 +282,8 @@ function CompaniesIndex() {
           country?: string;
         };
         notes?: string;
+        tagIds?: string[];
+        categoryId?: string;
       },
       customFieldRecord: Record<string, unknown>
     ) => {
@@ -286,6 +298,8 @@ function CompaniesIndex() {
           website: formData.website,
           phone: formData.phone,
           notes: formData.notes,
+          tagIds: formData.tagIds as any,
+          categoryId: formData.categoryId as any,
         });
         if (cfDefs && Object.keys(customFieldRecord).length > 0) {
           const fields = cfDefs
@@ -352,7 +366,7 @@ function CompaniesIndex() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -361,6 +375,8 @@ function CompaniesIndex() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('companies.searchPlaceholder')}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         dropdownActions={[
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
@@ -422,8 +438,24 @@ function CompaniesIndex() {
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
           customFieldDefinitions={cfDefs}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
         />
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="company"
+        categories={categories}
+      />
     </div>
   );
 }

@@ -146,7 +146,7 @@ function LeaveTypesSettings() {
             toast.success(t("common.saved"));
             setEditingId(null);
           }}
-          onDelete={() => {
+          onDelete={async () => {
             setDeleteDialogOpen(true);
           }}
           t={t}

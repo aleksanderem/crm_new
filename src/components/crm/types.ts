@@ -11,7 +11,9 @@ export interface FilterCondition {
     | "isEmpty"
     | "isNotEmpty"
     | "before"
-    | "after";
+    | "after"
+    | "hasAnyOf"
+    | "hasAllOf";
   value: any;
   valueEnd?: any;
 }
@@ -39,7 +41,7 @@ export interface QuickFilterDef {
 export interface FieldDef {
   id: string;
   label: string;
-  type: "text" | "number" | "date" | "select" | "boolean";
+  type: "text" | "number" | "date" | "select" | "boolean" | "multiSelect";
   options?: { label: string; value: string }[];
 }
 

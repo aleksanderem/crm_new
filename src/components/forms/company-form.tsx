@@ -12,7 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import type { CustomFieldType } from "@cvx/schema";
+import type { Id } from "@cvx/_generated/dataModel";
 
 interface FieldDefinition {
   _id: string;
@@ -22,6 +25,19 @@ interface FieldDefinition {
   options?: string[];
   isRequired?: boolean;
   group?: string;
+}
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
 }
 
 interface CompanyFormProps {
@@ -40,9 +56,13 @@ interface CompanyFormProps {
       country?: string;
     };
     notes?: string;
+    tagIds?: Id<"tagDefinitions">[];
+    categoryId?: Id<"categoryDefinitions">;
   };
   customFieldDefinitions?: FieldDefinition[];
   customFieldValues?: Record<string, unknown>;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
   onSubmit: (
     data: {
       name: string;
@@ -59,6 +79,8 @@ interface CompanyFormProps {
         country?: string;
       };
       notes?: string;
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions">;
     },
     customFields: Record<string, unknown>
   ) => void;
@@ -71,6 +93,8 @@ export function CompanyForm({
   initialData,
   customFieldDefinitions = [],
   customFieldValues: initialCustomFieldValues = {},
+  tagDefinitions = [],
+  categoryDefinitions = [],
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -89,6 +113,8 @@ export function CompanyForm({
   const [zip, setZip] = useState(initialData?.address?.zip ?? "");
   const [country, setCountry] = useState(initialData?.address?.country ?? "");
   const [notes, setNotes] = useState(initialData?.notes ?? "");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     initialCustomFieldValues
   );
@@ -114,6 +140,8 @@ export function CompanyForm({
             }
           : undefined,
         notes: notes || undefined,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
+        categoryId: categoryId || undefined,
       },
       customFields
     );
@@ -226,9 +254,32 @@ export function CompanyForm({
         <Label>{t('companies.form.notes')}</Label>
         <RichTextEditor
           value={notes}
-          onChange={setNotes}
+          onChange={(v) => setNotes(v ?? "")}
           minHeight="80px"
         />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {tagDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+            <TagsPicker
+              tags={tagDefinitions}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+            />
+          </div>
+        )}
+        {categoryDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker
+              categories={categoryDefinitions}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+            />
+          </div>
+        )}
       </div>
 
       {extraFields && (

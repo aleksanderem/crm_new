@@ -1,7 +1,7 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useWideContent } from "@/hooks/use-wide-content";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -17,12 +17,15 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  RefreshCcw,
 } from "@/lib/ez-icons";
+import { AlertTriangle } from "lucide-react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calendar"
@@ -43,8 +46,15 @@ interface CalendarEvent {
   dueDate: number;
   endDate?: number;
   isCompleted: boolean;
+  location?: string;
+  meetingUrl?: string;
+  description?: string;
+  googleEventId?: string;
+  googleCalendarId?: string;
   moduleRef?: { moduleId: string; entityType: string; entityId: string };
   metadata: Record<string, unknown>;
+  requiresCompletion?: boolean;
+  _isBusyOnly?: boolean;
 }
 
 // --- Helpers ---
@@ -84,6 +94,14 @@ function isGabinet(ev: CalendarEvent): boolean {
   return ev.moduleRef?.moduleId === "gabinet";
 }
 
+function isFromGoogle(ev: CalendarEvent): boolean {
+  return !!ev.googleEventId;
+}
+
+function isBusyOnly(ev: CalendarEvent): boolean {
+  return ev._isBusyOnly === true;
+}
+
 // --- Event colors ---
 
 function getEventColor(ev: CalendarEvent): {
@@ -91,6 +109,9 @@ function getEventColor(ev: CalendarEvent): {
   border: string;
   text: string;
 } {
+  // Busy-only events always get gray styling
+  if (isBusyOnly(ev))
+    return { bg: "bg-gray-100 dark:bg-gray-800", border: "border-gray-300 dark:border-gray-600", text: "text-gray-500 dark:text-gray-400" };
   if (isGabinet(ev)) {
     const status = ev.metadata.status as string | undefined;
     if (status === "cancelled")
@@ -101,6 +122,8 @@ function getEventColor(ev: CalendarEvent): {
   }
   if (ev.isCompleted)
     return { bg: "bg-gray-100", border: "border-gray-300", text: "text-gray-500" };
+  if (isFromGoogle(ev))
+    return { bg: "bg-emerald-50", border: "border-emerald-400", text: "text-emerald-800" };
   return { bg: "bg-sky-50", border: "border-sky-400", text: "text-sky-800" };
 }
 
@@ -182,6 +205,48 @@ function UnifiedCalendarPage() {
     null
   );
 
+  // Google Calendar import
+  const { data: googleConnection } = useQuery(
+    convexQuery(api.oauthConnections.getByProvider, {
+      organizationId,
+      provider: "google",
+    })
+  );
+  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const importGoogleCalendar = useAction(api.google.calendar.importFromGoogle);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+  const convexSiteUrl = convexUrl.replace(".cloud", ".site");
+
+  const handleGoogleImport = async () => {
+    if (!user?._id) return;
+    setIsImporting(true);
+    try {
+      const result = await importGoogleCalendar({
+        organizationId,
+        ownerId: user._id,
+      });
+      toast.success(
+        t("calendar.googleImportSuccess", {
+          defaultValue: "Zaimportowano {{imported}} wydarzeń, zaktualizowano {{updated}}",
+          imported: result.imported,
+          updated: result.updated,
+        })
+      );
+    } catch (e: any) {
+      toast.error(e.message ?? t("calendar.googleImportFailed", "Import failed"));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleConnectGoogle = () => {
+    if (!user?._id) return;
+    const url = `${convexSiteUrl}/google/oauth/initiate?organizationId=${organizationId}&userId=${user._id}`;
+    window.location.href = url;
+  };
+
   // Date range for query
   const { startTs, endTs, weekStart } = useMemo(() => {
     const monday = getMonday(currentDate);
@@ -205,7 +270,7 @@ function UnifiedCalendarPage() {
   }, [view, currentDate]);
 
   const { data: events } = useQuery(
-    convexQuery(api.scheduledActivities.listForCalendar, {
+    convexQuery(api.scheduledActivities.listForCalendarWithVisibility, {
       organizationId,
       startDate: startTs,
       endDate: endTs,
@@ -324,6 +389,26 @@ function UnifiedCalendarPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {googleConnection ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGoogleImport}
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCcw className="mr-2 h-3.5 w-3.5" variant="stroke" />
+              )}
+              {t("calendar.syncGoogle", "Sync Google")}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleConnectGoogle}>
+              {t("calendar.connectGoogle", "Connect Google")}
+            </Button>
+          )}
+
           <Select
             value={moduleFilter}
             onValueChange={(v) => setModuleFilter(v as ModuleFilter)}
@@ -429,7 +514,7 @@ function EventDetailPanel({
           </button>
         </div>
 
-        <div className="space-y-1 text-sm text-muted-foreground">
+        <div className="space-y-1.5 text-sm text-muted-foreground">
           <p>
             {start.toLocaleDateString()} {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             {end && ` – ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
@@ -444,12 +529,59 @@ function EventDetailPanel({
           {isGab && event.metadata.status ? (
             <p>{t("common.status", "Status")}: {String(event.metadata.status)}</p>
           ) : null}
+          {event.description && (
+            <div className="rounded bg-muted/50 p-2 text-xs">
+              {event.description}
+            </div>
+          )}
+          {event.location && (
+            <p>{t("calendar.location", "Lokalizacja")}: {event.location}</p>
+          )}
+          {event.meetingUrl && (
+            <p>
+              <a
+                href={event.meetingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-primary hover:underline"
+              >
+                {event.meetingUrl.includes("meet.google")
+                  ? "Google Meet"
+                  : t("calendar.joinMeeting", "Dołącz do spotkania")}
+                <span className="text-xs">↗</span>
+              </a>
+            </p>
+          )}
           {event.isCompleted && (
             <p className="font-medium text-green-600">{t("calendar.completed", "Completed")}</p>
           )}
-          <p className={`mt-2 inline-block rounded px-2 py-0.5 text-xs ${colors.bg} ${colors.text}`}>
-            {isGab ? "Gabinet" : "CRM"}
-          </p>
+          {event.requiresCompletion && (
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-500 text-amber-600 hover:bg-amber-50"
+              >
+                {t("googleCalendar.calendar.completeButton")}
+              </Button>
+            </div>
+          )}
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className={`inline-block rounded px-2 py-0.5 text-xs ${colors.bg} ${colors.text}`}>
+              {isGab ? "Gabinet" : "CRM"}
+            </span>
+            {isFromGoogle(event) && (
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09a6.97 6.97 0 0 1 0-4.17V7.07H2.18a11.01 11.01 0 0 0 0 9.86l3.66-2.84z" fill="#FBBC05"/>
+                  <path d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 6.07l3.66 2.84c.87-2.6 3.3-4.16 6.16-4.16z" fill="#EA4335"/>
+                </svg>
+                Google
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -648,10 +780,12 @@ function DayColumn({
 
         const durationMs = endTs - ev.dueDate;
 
+        const busy = isBusyOnly(ev);
+
         return (
           <div
             key={ev._id}
-            className={`absolute cursor-pointer rounded border-l-3 px-1 py-0.5 text-xs transition-opacity hover:opacity-80 ${colors.bg} ${colors.border} ${colors.text} ${laid.column > 0 ? "shadow-md" : ""}`}
+            className={`absolute rounded border-l-3 px-1 py-0.5 text-xs transition-opacity ${busy ? "cursor-default" : "cursor-pointer hover:opacity-80"} ${colors.bg} ${colors.border} ${colors.text} ${laid.column > 0 ? "shadow-md" : ""}`}
             style={{
               top: `${top}px`,
               height: `${height}px`,
@@ -659,20 +793,29 @@ function DayColumn({
               right: "2px",
               zIndex: 10 + laid.column,
             }}
-            draggable={canDrag}
+            draggable={canDrag && !busy}
             onDragStart={(e) => {
+              if (busy) { e.preventDefault(); return; }
               e.dataTransfer.setData(
                 "application/calendar-event",
                 JSON.stringify({ eventId: ev._id, durationMs })
               );
               e.dataTransfer.effectAllowed = "move";
             }}
-            onClick={() => onEventClick(ev)}
+            onClick={() => { if (!busy) onEventClick(ev); }}
           >
-            <div className="truncate font-medium">
-              {isGabinet(ev) ? (ev.metadata.patientName as string) ?? ev.title : ev.title}
+            <div className="flex items-center gap-1 truncate font-medium">
+              {ev.requiresCompletion && (
+                <AlertTriangle className="size-3 text-amber-500 shrink-0" />
+              )}
+              {isFromGoogle(ev) && !busy && (
+                <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm bg-white/60 text-[8px] font-bold leading-none">G</span>
+              )}
+              <span className="truncate">
+                {isGabinet(ev) ? (ev.metadata.patientName as string) ?? ev.title : ev.title}
+              </span>
             </div>
-            {height > 30 && (
+            {height > 30 && !busy && (
               <div className="truncate opacity-75">
                 {isGabinet(ev) ? (ev.metadata.treatmentName as string) : ev.activityType}
               </div>
@@ -786,18 +929,27 @@ function MonthView({
                 </div>
                 {dayEvs.slice(0, 3).map((ev) => {
                   const colors = getEventColor(ev);
+                  const busy = isBusyOnly(ev);
                   return (
                     <div
                       key={ev._id}
-                      className={`mb-0.5 truncate rounded px-1 text-[10px] ${colors.bg} ${colors.text}`}
+                      className={`mb-0.5 flex items-center gap-0.5 truncate rounded px-1 text-[10px] ${busy ? "cursor-default" : ""} ${colors.bg} ${colors.text}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEventClick(ev);
+                        if (!busy) onEventClick(ev);
                       }}
                     >
-                      {isGabinet(ev)
-                        ? (ev.metadata.patientName as string) ?? ev.title
-                        : ev.title}
+                      {ev.requiresCompletion && (
+                        <AlertTriangle className="size-2.5 text-amber-500 shrink-0" />
+                      )}
+                      {isFromGoogle(ev) && !busy && (
+                        <span className="shrink-0 text-[8px] font-bold opacity-60">G</span>
+                      )}
+                      <span className="truncate">
+                        {isGabinet(ev)
+                          ? (ev.metadata.patientName as string) ?? ev.title
+                          : ev.title}
+                      </span>
                     </div>
                   );
                 })}

@@ -20,7 +20,22 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import type { Id } from "@cvx/_generated/dataModel";
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
+}
 
 export interface TreatmentFormData {
   name: string;
@@ -39,6 +54,8 @@ export interface TreatmentFormData {
   color?: string;
   sortOrder?: number;
   treatmentCount?: number;
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
 }
 
 interface TreatmentFormProps {
@@ -47,6 +64,8 @@ interface TreatmentFormProps {
   onSubmit: (data: TreatmentFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 const COLOR_OPTIONS = [
@@ -66,6 +85,8 @@ export function TreatmentForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: TreatmentFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
@@ -90,10 +111,14 @@ export function TreatmentForm({
   const [color, setColor] = useState(initialData?.color ?? "");
   const [sortOrder, setSortOrder] = useState(String(initialData?.sortOrder ?? "0"));
   const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
-  const { data: equipmentList } = useQuery(
-    convexQuery(api.gabinet.equipment.listEquipment, { organizationId })
-  );
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — TS2589 deep type instantiation in Convex generated API; safe at runtime
+  const equipmentQueryOpts: any = convexQuery(api.gabinet.equipment.listEquipment, { organizationId });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: equipmentList } = useQuery(equipmentQueryOpts) as { data: any };
 
   const legacyEquipment = initialData?.requiredEquipment ?? [];
   const hasLegacyEquipment =
@@ -106,7 +131,7 @@ export function TreatmentForm({
   };
 
   const getEquipmentName = (id: Id<"gabinetEquipment">) => {
-    return equipmentList?.find((e) => e._id === id)?.name ?? id;
+    return equipmentList?.find((e: any) => e._id === id)?.name ?? id;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,6 +153,8 @@ export function TreatmentForm({
       color: color || undefined,
       sortOrder: parseInt(sortOrder) || undefined,
       treatmentCount: parseInt(treatmentCount) > 1 ? parseInt(treatmentCount) : undefined,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -224,7 +251,7 @@ export function TreatmentForm({
           <Label>{t("common.description")}</Label>
           <RichTextEditor
             value={description}
-            onChange={setDescription}
+            onChange={(v) => setDescription(v ?? "")}
             minHeight="80px"
           />
         </div>
@@ -291,7 +318,7 @@ export function TreatmentForm({
                 <CommandList>
                   <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
                   <CommandGroup>
-                    {(equipmentList ?? []).map((eq) => {
+                    {(equipmentList ?? []).map((eq: any) => {
                       const isSelected = selectedEquipmentIds.includes(eq._id as Id<"gabinetEquipment">);
                       return (
                         <CommandItem
@@ -328,7 +355,7 @@ export function TreatmentForm({
           <Label>{t("gabinet.treatments.contraindications")}</Label>
           <RichTextEditor
             value={contraindications}
-            onChange={setContraindications}
+            onChange={(v) => setContraindications(v ?? "")}
             minHeight="80px"
           />
         </div>
@@ -336,7 +363,7 @@ export function TreatmentForm({
           <Label>{t("gabinet.treatments.preparationInstructions")}</Label>
           <RichTextEditor
             value={preparationInstructions}
-            onChange={setPreparationInstructions}
+            onChange={(v) => setPreparationInstructions(v ?? "")}
             minHeight="80px"
           />
         </div>
@@ -344,7 +371,7 @@ export function TreatmentForm({
           <Label>{t("gabinet.treatments.aftercareInstructions")}</Label>
           <RichTextEditor
             value={aftercareInstructions}
-            onChange={setAftercareInstructions}
+            onChange={(v) => setAftercareInstructions(v ?? "")}
             minHeight="80px"
           />
         </div>
@@ -357,6 +384,19 @@ export function TreatmentForm({
         />
         <Label className="cursor-pointer">{t("gabinet.treatments.requiresApproval")}</Label>
       </div>
+
+      {tagDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+          <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+        </div>
+      )}
+      {categoryDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+        </div>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

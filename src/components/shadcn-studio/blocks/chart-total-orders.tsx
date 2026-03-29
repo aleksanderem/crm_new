@@ -101,7 +101,7 @@ const TotalOrdersCard = ({
 }: TotalOrdersCardProps) => {
   return (
     <Card className={cn('gap-4', className)}>
-      <CardHeader className='flex justify-between'>
+      <CardHeader className='flex-row items-start justify-between space-y-0'>
         <div className='flex flex-col gap-1'>
           <span className='text-lg font-semibold'>{title}</span>
           <span className='text-muted-foreground text-sm'>{subtitle}</span>

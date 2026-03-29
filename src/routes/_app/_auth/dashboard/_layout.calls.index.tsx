@@ -28,7 +28,14 @@ import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc } from "@cvx/_generated/dataModel";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
@@ -50,6 +57,8 @@ const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> =
 function CallsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "call");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('calls.views.all'), isSystem: true, isDefault: true },
   ], [t]);
@@ -63,11 +72,15 @@ function CallsPage() {
     { id: "duration", label: t('calls.duration'), type: "number" },
     { id: "note", label: t('calls.note'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+  ], [t, tags, categories]);
 
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "call", systemViews });
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
@@ -81,6 +94,8 @@ function CallsPage() {
   const [outcome, setOutcome] = useState<CallOutcome>("noAnswer");
   const [callDate, setCallDate] = useState("");
   const [note, setNote] = useState("");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   const { data, isLoading } = useQuery(
     convexQuery(api.calls.list, {
@@ -94,7 +109,7 @@ function CallsPage() {
     const filtered = applyFilters(allCalls) as typeof allCalls;
     if (!searchValue.trim()) return filtered;
     const q = searchValue.toLowerCase();
-    return filtered.filter((c) => c.note?.toLowerCase().includes(q));
+    return filtered.filter((c: any) => c.note?.toLowerCase().includes(q));
   }, [allCalls, applyFilters, searchValue]);
 
   const createCall = useMutation(api.calls.create);
@@ -105,6 +120,8 @@ function CallsPage() {
     setOutcome("noAnswer");
     setCallDate(new Date().toISOString().slice(0, 16));
     setNote("");
+    setTagIds([]);
+    setCategoryId(undefined);
     setEditingCall(null);
   };
 
@@ -118,6 +135,9 @@ function CallsPage() {
     setOutcome(call.outcome as CallOutcome);
     setCallDate(new Date(call.callDate).toISOString().slice(0, 16));
     setNote(call.note ?? "");
+    const callAny = call as Record<string, unknown>;
+    setTagIds((callAny.tagIds as Id<"tagDefinitions">[]) ?? []);
+    setCategoryId(callAny.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
   };
 
@@ -134,6 +154,8 @@ function CallsPage() {
           outcome,
           callDate: new Date(callDate).getTime(),
           note: note.trim() || undefined,
+          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          categoryId: categoryId || undefined,
         });
       } else {
         await createCall({
@@ -141,6 +163,8 @@ function CallsPage() {
           outcome,
           callDate: new Date(callDate).getTime(),
           note: note.trim() || undefined,
+          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          categoryId: categoryId || undefined,
         });
       }
       setPanelOpen(false);
@@ -222,7 +246,7 @@ function CallsPage() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -233,6 +257,8 @@ function CallsPage() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('calls.searchPlaceholder')}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
@@ -296,8 +322,34 @@ function CallsPage() {
               placeholder={t('calls.addCallNotes')}
             />
           </div>
+          {tags.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+            </div>
+          )}
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
+            </div>
+          )}
         </div>
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="call"
+        categories={categories}
+      />
     </div>
   );
 }

@@ -45,8 +45,8 @@ const StatisticsProfitCard = ({
         <CardTitle className='text-lg font-semibold'>{title}</CardTitle>
         <CardDescription className='text-muted-foreground text-base'>{description}</CardDescription>
       </CardHeader>
-      <div className='relative'>
-        <ChartContainer config={profitChartConfig} className='h-21 w-full px-4.5'>
+      <div className='relative overflow-visible'>
+        <ChartContainer config={profitChartConfig} className='h-24 w-full px-4.5'>
           <LineChart
             accessibilityLayer
             data={chartData}

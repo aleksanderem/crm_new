@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useControlledState } from "@react-stately/utils";
 import { HintText } from "@untitled/base/input/hint-text";
 import type { InputBaseProps } from "@untitled/base/input/input";
@@ -76,7 +77,20 @@ export const formatCardNumber = (number: string) => {
     return cleaned;
 };
 
-interface PaymentInputProps extends Omit<InputBaseProps, "icon"> {}
+interface PaymentInputProps extends Omit<InputBaseProps, "icon" | "value" | "defaultValue" | "onChange" | "className"> {
+    /** Card number value */
+    value?: string;
+    /** Default card number value */
+    defaultValue?: string;
+    /** Called with the formatted card number string */
+    onChange?: (value: string) => void;
+    /** Label text for the input */
+    label?: string;
+    /** Helper text displayed below the input */
+    hint?: ReactNode;
+    /** Additional className */
+    className?: string;
+}
 
 export const PaymentInput = ({ onChange, value, defaultValue, className, maxLength = 19, label, hint, ...props }: PaymentInputProps) => {
     const [cardNumber, setCardNumber] = useControlledState(value, defaultValue || "", (value) => {
@@ -91,7 +105,7 @@ export const PaymentInput = ({ onChange, value, defaultValue, className, maxLeng
     return (
         <TextField
             aria-label={!label ? props?.placeholder : undefined}
-            {...props}
+            {...(props as any)}
             className={className}
             inputMode="numeric"
             maxLength={maxLength}

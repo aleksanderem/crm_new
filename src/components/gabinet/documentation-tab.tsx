@@ -28,7 +28,6 @@ import {
 import {
   Loader2,
   Upload,
-  Trash2,
   Stethoscope,
   MessageSquare,
   Eye,
@@ -206,9 +205,9 @@ export function DocumentationTab({
   const { data: photoUrls } = useQuery(
     convexQuery(
       api.gabinet.appointments.getPhotoUrls,
-      storageIds.length > 0
+      (storageIds.length > 0
         ? { organizationId, storageIds }
-        : "skip",
+        : "skip") as any,
     ),
   );
 
@@ -477,7 +476,7 @@ export function DocumentationTab({
               onRemove={handleRemovePhoto}
               uploadFile={uploadFile}
               uploadingFiles={uploadingFiles}
-              t={t}
+              t={t as (key: string, fallback?: string) => string}
             />
             <PhotoColumn
               type="after"
@@ -487,7 +486,7 @@ export function DocumentationTab({
               onRemove={handleRemovePhoto}
               uploadFile={uploadFile}
               uploadingFiles={uploadingFiles}
-              t={t}
+              t={t as (key: string, fallback?: string) => string}
             />
           </div>
         </CardContent>

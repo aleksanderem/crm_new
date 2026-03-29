@@ -111,7 +111,7 @@ export const TEMPLATE_VARIABLE_CATEGORIES = Object.entries(CATEGORY_LABELS).map(
 type MentionSelected = { id: string; label: string };
 
 function createSuggestionList(
-  getSearchQuery: (query: string) => string,
+  _getSearchQuery: (query: string) => string,
 ): NonNullable<SuggestionOptions<TemplateVariable, MentionSelected>["render"]> {
   return () => {
     let popup: TippyInstance[] = [];
@@ -256,7 +256,7 @@ export const VariableMentionAt = Mention.extend({
     items: ({ query }: { query: string }) => findVariables(query, variableListRef.current),
     render: createSuggestionList((q) => q),
   },
-});
+} as any);
 
 export const VariableMentionCurly = Mention.extend({
   name: "variableMentionCurly",
@@ -281,4 +281,4 @@ export const VariableMentionCurly = Mention.extend({
     },
     render: createSuggestionList((q) => q),
   },
-});
+} as any);

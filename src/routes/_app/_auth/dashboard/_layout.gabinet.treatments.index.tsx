@@ -20,6 +20,10 @@ import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -47,6 +51,11 @@ function TreatmentsIndex() {
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
+
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   const { data: kpis } = useQuery(
     convexQuery(api.gabinet.sidebarWidgets.getTreatmentsKpis, { organizationId })
@@ -113,8 +122,10 @@ function TreatmentsIndex() {
         ],
       },
       { id: "createdAt", label: t("common.created"), type: "date" },
+      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+      { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
     ],
-    [t],
+    [t, tags, categories],
   );
 
   const { data, isLoading } = useQuery(
@@ -334,7 +345,7 @@ function TreatmentsIndex() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -346,6 +357,8 @@ function TreatmentsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
@@ -446,6 +459,8 @@ function TreatmentsIndex() {
                   color: editingTreatment.color ?? undefined,
                   sortOrder: editingTreatment.sortOrder ?? undefined,
                   treatmentCount: editingTreatment.treatmentCount ?? undefined,
+                  tagIds: editingTreatment.tagIds ?? undefined,
+                  categoryId: editingTreatment.categoryId ?? undefined,
                 }
               : undefined
           }
@@ -455,8 +470,24 @@ function TreatmentsIndex() {
             setEditingTreatment(null);
           }}
           isSubmitting={isSubmitting}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
         />
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="gabinetTreatment"
+        categories={categories}
+      />
     </div>
   );
 }

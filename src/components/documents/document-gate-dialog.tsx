@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, FileText, Circle } from "@/lib/ez-icons";
+import { AlertTriangle, Circle } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
@@ -56,7 +56,7 @@ export function DocumentGateDialog({
   appointmentId,
   organizationId,
   timing,
-  targetStatus,
+  targetStatus: _targetStatus,
   onProceed,
   onFillDocument,
 }: DocumentGateDialogProps) {

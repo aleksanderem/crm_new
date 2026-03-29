@@ -463,7 +463,7 @@ function TreatmentDetail() {
     await saveTreatmentParameters({
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
-      parameters: [...currentParams, newParam],
+      parameters: [...currentParams, newParam] as any,
     });
     setEditingParam(null);
     setNewOption("");
@@ -476,7 +476,7 @@ function TreatmentDetail() {
     await saveTreatmentParameters({
       organizationId,
       treatmentId: treatmentId as Id<"gabinetTreatments">,
-      parameters: newParams,
+      parameters: newParams as any,
     });
     toast.success(t("common.saved"));
   };
@@ -630,7 +630,7 @@ function TreatmentDetail() {
                         <div className="flex flex-col gap-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs shrink-0">
-                              {t(`gabinet.treatmentDetail.parameterTypes.${param.type}`, param.type)}
+                              {(t as any)(`gabinet.treatmentDetail.parameterTypes.${param.type}`, param.type)}
                             </Badge>
                             <span className="text-sm font-medium">{param.name}</span>
                             {param.unit && (

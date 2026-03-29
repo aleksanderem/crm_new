@@ -53,8 +53,8 @@ const StatisticsSalesGrowthCard = ({
         <CardTitle className='text-lg font-semibold'>{title}</CardTitle>
         <CardDescription className='text-muted-foreground text-base'>{description}</CardDescription>
       </CardHeader>
-      <div className='relative'>
-        <ChartContainer config={salesGrowthChartConfig} className='h-21 w-full'>
+      <div className='relative overflow-visible'>
+        <ChartContainer config={salesGrowthChartConfig} className='h-24 w-full'>
           <AreaChart
             data={chartData}
             margin={{ left: 0, right: 0 }}

@@ -3,7 +3,6 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
-import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 
 export function CalendarWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
@@ -31,6 +30,11 @@ export function CalendarWidgets({ organizationId }: { organizationId: Id<"organi
             color: kpis.overdue > 0 ? "text-red-500" : undefined,
           },
           { label: t("sidebar.thisWeek"), value: kpis.thisWeek },
+          {
+            label: t("googleCalendar.calendar.incompleteSidebarKpi"),
+            value: kpis.requiresCompletion,
+            color: kpis.requiresCompletion > 0 ? "text-amber-500" : undefined,
+          },
         ]}
       />
       {nudges?.map((n, index) => (
@@ -42,7 +46,6 @@ export function CalendarWidgets({ organizationId }: { organizationId: Id<"organi
           icon={n.icon}
         />
       ))}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
     </>
   );
 }

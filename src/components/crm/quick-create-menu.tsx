@@ -304,7 +304,7 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
       <DialogContent
         className={cn(
           "[&>[data-slot=dialog-close]>svg]:size-5 max-h-[90vh] overflow-y-auto",
-          selectedType ? "md:max-w-3xl" : "md:max-w-sm"
+          selectedType ? "md:max-w-4xl" : "md:max-w-sm"
         )}
       >
         <DialogHeader>

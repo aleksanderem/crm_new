@@ -11,8 +11,6 @@ import {
   BoldIcon,
   ItalicIcon,
   UnderlineIcon,
-  List,
-  ListOrdered,
 } from "lucide-react";
 
 import { ListKit } from "@/components/editor/plugins/list-kit";

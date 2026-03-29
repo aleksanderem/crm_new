@@ -60,7 +60,7 @@ const defaultEarningChartData = [
 const EarningReportCard = ({ title, subTitle, statData, chartData = defaultEarningChartData, className, blurred = false }: Props) => {
   return (
     <Card className={className}>
-      <CardHeader className='flex justify-between'>
+      <CardHeader className='flex-row items-start justify-between space-y-0'>
         <div className='flex flex-col gap-1'>
           <span className='text-lg font-semibold'>{title}</span>
           <span className='text-muted-foreground text-sm'>{subTitle}</span>

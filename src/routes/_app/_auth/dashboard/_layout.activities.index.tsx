@@ -17,6 +17,7 @@ import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -39,6 +40,12 @@ import { ToggleFilterButton } from "@/components/crm/filter-button";
 import type { SavedView, FieldDef } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/activities/"
@@ -52,6 +59,8 @@ type ActivityRow = ScheduledActivity & { __cfValues: Record<string, unknown> };
 function ActivitiesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "activity");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('activities.views.all'), isSystem: true, isDefault: true },
     { id: "open", name: t('activities.views.open'), isSystem: true, isDefault: false },
@@ -73,11 +82,25 @@ function ActivitiesPage() {
     },
     { id: "dueDate", label: t('activities.dueDate'), type: "date" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+    {
+      id: "sourceType",
+      label: t("googleCalendar.calendar.source"),
+      type: "select" as const,
+      options: [
+        { value: "manual", label: t("googleCalendar.calendar.sourceManual") },
+        { value: "google", label: t("googleCalendar.calendar.sourceGoogle") },
+        { value: "system", label: t("googleCalendar.calendar.sourceSystem") },
+      ],
+    },
+  ], [t, tags, categories]);
 
   const {
     views, activeViewId, onViewChange, onCreateView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "activity", systemViews });
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
@@ -100,6 +123,8 @@ function ActivitiesPage() {
   const [activityType, setActivityType] = useState("meeting");
   const [dueDate, setDueDate] = useState("");
   const [description, setDescription] = useState("");
+  const [formTagIds, setFormTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [formCategoryId, setFormCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   // Queries based on active view
   const { data: allData, isLoading: allLoading } = useQuery(
@@ -211,6 +236,8 @@ function ActivitiesPage() {
     setActivityType("meeting");
     setDueDate("");
     setDescription("");
+    setFormTagIds([]);
+    setFormCategoryId(undefined);
     resetCfValues();
     setEditingActivity(null);
   };
@@ -226,6 +253,8 @@ function ActivitiesPage() {
     setActivityType(activity.activityType);
     setDueDate(new Date(activity.dueDate).toISOString().slice(0, 16));
     setDescription(activity.description ?? "");
+    setFormTagIds((activity as any).tagIds ?? []);
+    setFormCategoryId((activity as any).categoryId ?? undefined);
     setPanelOpen(true);
   };
 
@@ -244,6 +273,8 @@ function ActivitiesPage() {
           activityType,
           dueDate: new Date(dueDate).getTime(),
           description: description.trim() || undefined,
+          tagIds: formTagIds.length > 0 ? formTagIds : undefined,
+          categoryId: formCategoryId || undefined,
         });
       } else {
         activityId = await createActivity({
@@ -253,6 +284,8 @@ function ActivitiesPage() {
           dueDate: new Date(dueDate).getTime(),
           ownerId: currentUser._id as Id<"users">,
           description: description.trim() || undefined,
+          tagIds: formTagIds.length > 0 ? formTagIds : undefined,
+          categoryId: formCategoryId || undefined,
         });
       }
       // Save custom field values if any
@@ -315,6 +348,23 @@ function ActivitiesPage() {
       label: t('activities.completed'),
       render: (item) => (item.isCompleted ? "\u2713" : "\u2014"),
     },
+    {
+      id: "sourceType",
+      label: t("googleCalendar.calendar.source"),
+      render: (item) => {
+        const source = item.sourceType ?? "manual";
+        const labels: Record<string, string> = {
+          manual: t("googleCalendar.calendar.sourceManual"),
+          google: t("googleCalendar.calendar.sourceGoogle"),
+          system: t("googleCalendar.calendar.sourceSystem"),
+        };
+        return (
+          <Badge variant={source === "google" ? "default" : "secondary"}>
+            {labels[source] ?? source}
+          </Badge>
+        );
+      },
+    },
   ];
 
   const mergedColumns: CrmColumn<ActivityRow>[] = useMemo(
@@ -366,7 +416,7 @@ function ActivitiesPage() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -374,6 +424,8 @@ function ActivitiesPage() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('activities.searchPlaceholder')}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         columnDefs={columns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
@@ -492,8 +544,38 @@ function ActivitiesPage() {
               onChange={onCfChange}
             />
           )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker tags={tags} selectedIds={formTagIds} onChange={setFormTagIds} />
+            </div>
+          )}
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+              <CategoryPicker categories={categories} selectedId={formCategoryId} onChange={setFormCategoryId} />
+            </div>
+          )}
         </div>
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="activity"
+        categories={categories}
+      />
     </div>
   );
 }

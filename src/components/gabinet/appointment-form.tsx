@@ -9,6 +9,8 @@ import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import {
   Popover,
   PopoverContent,
@@ -61,6 +63,19 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
+}
+
 interface AppointmentFormData {
   patientId: Id<"gabinetPatients">;
   treatmentId: Id<"gabinetTreatments">;
@@ -72,18 +87,24 @@ interface AppointmentFormData {
   sendReminder?: boolean;
   locationId?: Id<"gabinetLocations">;
   roomId?: Id<"gabinetRooms">;
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
 }
 
 interface AppointmentFormProps {
   onSubmit: (data: AppointmentFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function AppointmentForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: AppointmentFormProps) {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
@@ -167,6 +188,8 @@ export function AppointmentForm({
   const [searchingSlot, setSearchingSlot] = useState(false);
   const [locationId, setLocationId] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>();
   const convex = useConvex();
 
   // Rooms query — enabled only when a location is selected
@@ -292,6 +315,8 @@ export function AppointmentForm({
       sendReminder: sendReminder || undefined,
       locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
       roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -741,7 +766,7 @@ export function AppointmentForm({
         <Label htmlFor="appt-notes">{t("gabinet.appointments.notes")}</Label>
         <RichTextEditor
           value={notes}
-          onChange={setNotes}
+          onChange={(v) => setNotes(v ?? "")}
           minHeight="80px"
           placeholder={t("gabinet.appointments.notesPlaceholder")}
         />
@@ -768,6 +793,22 @@ export function AppointmentForm({
           )}
         </div>
       </div>
+
+      {/* Tags */}
+      {tagDefinitions && tagDefinitions.length > 0 && (
+        <div className="space-y-1.5">
+          <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+          <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+        </div>
+      )}
+
+      {/* Category */}
+      {categoryDefinitions && categoryDefinitions.length > 0 && (
+        <div className="space-y-1.5">
+          <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-end gap-2">

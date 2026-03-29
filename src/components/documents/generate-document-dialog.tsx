@@ -379,7 +379,7 @@ const TREE_INDENT = 20;
 
 function TemplateFolderTree({
   templates,
-  search,
+  search: _search,
   onSelect,
   t,
 }: {
@@ -667,7 +667,7 @@ export function GenerateDocumentDialog({
                     templates={filteredTemplates}
                     search={search}
                     onSelect={handleTemplateSelect}
-                    t={t}
+                    t={(t as unknown) as (key: string, defaultValue?: string, options?: Record<string, unknown>) => string}
                   />
                 )}
               </ScrollShadow>

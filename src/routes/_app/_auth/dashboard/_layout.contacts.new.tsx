@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -9,6 +9,7 @@ import { ContactForm } from "@/components/forms/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
 import { Id } from "@cvx/_generated/dataModel";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/new"
@@ -19,6 +20,7 @@ export const Route = createFileRoute(
 function NewContact() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createContact = useMutation(api.contacts.create);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,6 +59,8 @@ function NewContact() {
                   ...data,
                   customFields,
                 });
+                // Invalidate Supabase contacts cache after create
+                void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
                 navigate({ to: `/dashboard/contacts/${id}` });
               } finally {
                 setIsSubmitting(false);

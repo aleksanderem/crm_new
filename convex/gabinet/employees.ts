@@ -144,6 +144,8 @@ export const create = mutation({
     hireDate: v.optional(v.string()),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
@@ -244,6 +246,8 @@ export const update = mutation({
     baseSalary: v.optional(v.number()),
     commissionPercent: v.optional(v.number()),
     bankAccount: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);

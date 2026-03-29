@@ -45,6 +45,8 @@ const OPERATOR_LABELS: Record<FilterCondition["operator"], string> = {
   isNotEmpty: "is not empty",
   before: "before",
   after: "after",
+  hasAnyOf: "has any of",
+  hasAllOf: "has all of",
 };
 
 const OPERATORS_BY_TYPE: Record<FieldDef["type"], FilterCondition["operator"][]> = {
@@ -53,6 +55,7 @@ const OPERATORS_BY_TYPE: Record<FieldDef["type"], FilterCondition["operator"][]>
   date: ["equals", "before", "after", "between", "isEmpty", "isNotEmpty"],
   select: ["equals", "notEquals", "isEmpty", "isNotEmpty"],
   boolean: ["equals"],
+  multiSelect: ["hasAnyOf", "hasAllOf", "isEmpty", "isNotEmpty"],
 };
 
 const VALUE_LESS_OPERATORS: FilterCondition["operator"][] = ["isEmpty", "isNotEmpty"];

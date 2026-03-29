@@ -52,7 +52,50 @@ export async function getValidAccessToken(
     connectionId: connection._id,
     accessToken: data.access_token as string,
     expiresAt: newExpiresAt,
+    ...(data.refresh_token ? { refreshToken: data.refresh_token as string } : {}),
   });
 
   return { accessToken: data.access_token as string, connectionId: connection._id };
+}
+
+/**
+ * Gets a valid Google access token for a specific connection, refreshing if expired.
+ * Returns null if the connection doesn't exist, is inactive, or refresh fails.
+ */
+export async function getValidAccessTokenForConnection(
+  ctx: ActionCtx,
+  connectionId: Id<"oauthConnections">
+): Promise<{ accessToken: string; connectionId: Id<"oauthConnections"> } | null> {
+  const connection = await ctx.runQuery(
+    internal.oauthConnections.getById,
+    { connectionId }
+  );
+  if (!connection || !connection.isActive) return null;
+
+  const now = Date.now();
+  const bufferMs = 5 * 60 * 1000;
+  if (connection.expiresAt && connection.expiresAt - bufferMs < now) {
+    if (!connection.refreshToken) return null;
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) return null;
+    const resp = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: connection.refreshToken,
+        grant_type: "refresh_token",
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    await ctx.runMutation(internal.oauthConnections.updateTokens, {
+      connectionId: connection._id,
+      accessToken: data.access_token,
+      expiresAt: now + data.expires_in * 1000,
+    });
+    return { accessToken: data.access_token, connectionId: connection._id };
+  }
+
+  return { accessToken: connection.accessToken, connectionId: connection._id };
 }

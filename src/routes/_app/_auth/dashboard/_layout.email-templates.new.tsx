@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -22,20 +22,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ArrowLeft, Eye } from "@/lib/ez-icons";
-import {
-  EmailBuilderLazy,
-  type EmailBuilderHandle,
-  type MergeTagGroup,
-} from "@/components/email-builder";
+import { ArrowLeft } from "@/lib/ez-icons";
+import { EmailTemplateEditor } from "@/components/email/template-editor";
+import type { EmailTemplateEditorHandle } from "@/components/email/template-editor";
 import { toast } from "sonner";
-import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/email-templates/new",
@@ -59,32 +49,16 @@ function NewEmailTemplatePage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const editorRef = useRef<EmailBuilderHandle>(null);
+  const editorRef = useRef<EmailTemplateEditorHandle>(null);
 
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("");
   const [module, setModule] = useState("");
+  const [body, setBody] = useState("");
   const [variables, setVariables] = useState<TemplateVariable[]>([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState("");
   const [saving, setSaving] = useState(false);
-  const [sidebarTarget, setSidebarTarget] = useState<HTMLElement | null>(null);
 
-  // Inject portal target into app sidebar Column 2
-  const { setContent: setSidebarContent } = useSidebarSlot();
-  useEffect(() => {
-    setSidebarContent(
-      <div
-        ref={setSidebarTarget}
-        className="flex h-full flex-col overflow-y-auto"
-      />,
-    );
-    return () => {
-      setSidebarContent(null);
-      setSidebarTarget(null);
-    };
-  }, [setSidebarContent]);
   const createTemplate = useMutation(api.emailTemplates.create);
 
   const { data: variableSources } = useQuery(
@@ -92,13 +66,6 @@ function NewEmailTemplatePage() {
       module: module || undefined,
     }),
   );
-
-  // Map variableSources to MergeTagGroup[]
-  const mergeTags: MergeTagGroup[] = (variableSources ?? []).map((s) => ({
-    key: s.key,
-    label: s.label,
-    fields: s.fields.map((f) => ({ key: f.key, label: f.label })),
-  }));
 
   const insertVariable = (
     field: "subject",
@@ -128,16 +95,12 @@ function NewEmailTemplatePage() {
     }
     setSaving(true);
     try {
-      const output = await editorRef.current?.getOutput();
-      const body = JSON.stringify({
-        projectData: output?.projectData ?? {},
-        html: output?.html ?? "",
-      });
+      const bodyPayload = editorRef.current?.getHTML() ?? body;
       const templateId = await createTemplate({
         organizationId,
         name: name.trim(),
         subject: subject.trim(),
-        body,
+        body: bodyPayload,
         category: category.trim() || undefined,
         module: module || undefined,
         variables,
@@ -153,26 +116,7 @@ function NewEmailTemplatePage() {
     } finally {
       setSaving(false);
     }
-  }, [
-    name,
-    subject,
-    category,
-    module,
-    variables,
-    organizationId,
-    createTemplate,
-    navigate,
-  ]);
-
-  const handlePreview = useCallback(async () => {
-    if (showPreview) {
-      setShowPreview(false);
-      return;
-    }
-    const output = await editorRef.current?.getOutput();
-    setPreviewHtml(output?.html ?? "");
-    setShowPreview(true);
-  }, [showPreview]);
+  }, [name, subject, category, module, variables, body, organizationId, createTemplate, navigate]);
 
   return (
     <div className="flex h-full flex-col">
@@ -196,134 +140,99 @@ function NewEmailTemplatePage() {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePreview}>
-            <Eye className="mr-1.5 h-4 w-4" variant="stroke" />
-            {t("emailTemplates.preview")}
-          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? t("common.saving") : t("common.create")}
           </Button>
         </div>
       </div>
 
-      {/* GrapesJS editor — fills remaining space */}
-      <div className="min-h-0 flex-1">
-        {variableSources === undefined ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">
-              {t("common.loading")}
-            </p>
+      {/* Form + Editor */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mx-auto max-w-[900px] space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("common.name")}</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("emailTemplates.namePlaceholder")}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("common.category")}</Label>
+              <Input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder={t("emailTemplates.categoryPlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("common.module")}</Label>
+              <Select
+                value={module}
+                onValueChange={(v) => setModule(v === "all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wszystkie moduły" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODULE_OPTIONS.map((opt) => (
+                    <SelectItem
+                      key={opt.value || "all"}
+                      value={opt.value || "all"}
+                    >
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : (
-          <EmailBuilderLazy
-            ref={editorRef}
-            mergeTags={mergeTags}
-            sidebarPortalTarget={sidebarTarget}
-            sidebarHeader={
-              <div className="space-y-2 border-b p-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">{t("common.module")}</Label>
-                  <Select
-                    value={module}
-                    onValueChange={(v) => setModule(v === "all" ? "" : v)}
-                  >
-                    <SelectTrigger className="h-7 text-xs">
-                      <SelectValue placeholder="Wszystkie moduły" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MODULE_OPTIONS.map((opt) => (
-                        <SelectItem
-                          key={opt.value || "all"}
-                          value={opt.value || "all"}
-                        >
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">{t("common.name")} *</Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t("emailTemplates.namePlaceholder")}
-                    className="h-7 text-xs"
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">{t("inbox.subject")} *</Label>
-                    <VariablePicker
-                      sources={variableSources ?? []}
-                      onInsert={(sk, fk, fl, sl) =>
-                        insertVariable("subject", sk, fk, fl, sl)
-                      }
-                      label={t("emailTemplates.insertVariable")}
-                    />
-                  </div>
-                  <Input
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    placeholder={t("emailTemplates.subjectPlaceholder")}
-                    className="h-7 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">{t("common.category")}</Label>
-                  <Input
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder={t("emailTemplates.categoryPlaceholder")}
-                    className="h-7 text-xs"
-                  />
-                </div>
-                {variables.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {variables.map((v) => (
-                      <Badge
-                        key={v.key}
-                        variant="secondary"
-                        className="text-[10px] px-1.5 py-0"
-                      >
-                        {`{{${v.key}}}`}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            }
-            fallback={
-              <div className="flex h-full items-center justify-center">
-                <p className="text-sm text-muted-foreground">
-                  {t("common.loading")}
-                </p>
-              </div>
-            }
-          />
-        )}
-      </div>
 
-      {/* Preview dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-h-[90vh] sm:max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("emailTemplates.preview")}</DialogTitle>
-          </DialogHeader>
-          {previewHtml ? (
-            <div
-              className="mx-auto"
-              style={{ width: "600px" }}
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>{t("inbox.subject")}</Label>
+              <VariablePicker
+                sources={variableSources ?? []}
+                onInsert={(sk, fk, fl, sl) =>
+                  insertVariable("subject", sk, fk, fl, sl)
+                }
+                label={t("emailTemplates.insertVariable")}
+              />
+            </div>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={t("emailTemplates.subjectPlaceholder")}
             />
-          ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Dodaj bloki, aby zobaczyć podgląd
-            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("inbox.body")}</Label>
+            <EmailTemplateEditor
+              ref={editorRef}
+              value={body}
+              onChange={(html) => setBody(html)}
+              organizationId={organizationId}
+              requiredSources={module ? [module] : undefined}
+            />
+          </div>
+
+          {variables.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t("emailTemplates.usedVariables")}</Label>
+              <div className="flex flex-wrap gap-1">
+                {variables.map((v) => (
+                  <Badge key={v.key} variant="secondary" className="text-xs">
+                    {`{{${v.key}}}`}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
@@ -357,7 +266,7 @@ function VariablePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-6 text-xs">
+        <Button variant="ghost" size="sm" className="h-7 text-xs">
           {label}
         </Button>
       </PopoverTrigger>

@@ -5,6 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import type { Id } from "@cvx/_generated/dataModel";
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
+}
 
 export interface ProductFormData {
   name: string;
@@ -13,6 +29,8 @@ export interface ProductFormData {
   unitPrice: number;
   taxRate: number;
   isActive: boolean;
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
 }
 
 interface ProductFormProps {
@@ -20,6 +38,8 @@ interface ProductFormProps {
   onSubmit: (data: ProductFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function ProductForm({
@@ -27,6 +47,8 @@ export function ProductForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: ProductFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
@@ -35,6 +57,8 @@ export function ProductForm({
   const [unitPrice, setUnitPrice] = useState(initialData?.unitPrice ?? 0);
   const [taxRate, setTaxRate] = useState(initialData?.taxRate ?? 23);
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +69,8 @@ export function ProductForm({
       unitPrice,
       taxRate,
       isActive,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -104,11 +130,31 @@ export function ProductForm({
           <Label>{t("products.form.description")}</Label>
           <RichTextEditor
             value={description}
-            onChange={setDescription}
+            onChange={(v) => setDescription(v ?? "")}
             placeholder={t("products.form.descriptionPlaceholder")}
             minHeight="80px"
           />
         </div>
+        {tagDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+            <TagsPicker
+              tags={tagDefinitions}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+            />
+          </div>
+        )}
+        {categoryDefinitions.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker
+              categories={categoryDefinitions}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2">

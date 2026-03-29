@@ -67,6 +67,8 @@ export function createCrmTables({
     avatarUrl: v.optional(v.string()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     source: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -98,6 +100,8 @@ export function createCrmTables({
     ),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -124,6 +128,8 @@ export function createCrmTables({
     stageOrder: v.optional(v.number()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     wonAt: v.optional(v.number()),
     lostAt: v.optional(v.number()),
     lostReason: v.optional(v.string()),
@@ -151,6 +157,8 @@ export function createCrmTables({
     fileSize: v.optional(v.number()),
     category: v.optional(documentCategoryValidator),
     tags: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     status: v.optional(documentStatusValidator),
     amount: v.optional(v.number()),
     sentAt: v.optional(v.number()),
@@ -308,6 +316,8 @@ export function createCrmTables({
     taxRate: v.number(),
     isActive: v.boolean(),
     description: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -329,7 +339,8 @@ export function createCrmTables({
     createdAt: v.number(),
   })
     .index("by_deal", ["dealId"])
-    .index("by_product", ["productId"]),
+    .index("by_product", ["productId"])
+    .index("by_org", ["organizationId"]),
 
   // --- Calls ---
 
@@ -339,6 +350,8 @@ export function createCrmTables({
     callDate: v.number(),
     note: v.optional(v.string()),
     duration: v.optional(v.number()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -361,9 +374,15 @@ export function createCrmTables({
     description: v.optional(v.string()),
     linkedEntityType: v.optional(v.string()),
     linkedEntityId: v.optional(v.string()),
+    location: v.optional(v.string()),
+    meetingUrl: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     googleCalendarId: v.optional(v.string()),
     lastGoogleSyncAt: v.optional(v.number()),
+    requiresCompletion: v.optional(v.boolean()),
+    sourceType: v.optional(v.union(v.literal("manual"), v.literal("google"), v.literal("system"))),
+    syncConfigId: v.optional(v.id("googleCalendarSyncConfigs")),
+    visibilityOverride: v.optional(v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden"))),
     // Link to module extension record (e.g. gabinetAppointment)
     moduleRef: v.optional(
       v.object({
@@ -374,6 +393,8 @@ export function createCrmTables({
     ),
     // Resource performing the work (distinct from ownerId who created the event)
     resourceId: v.optional(v.id("users")),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -388,7 +409,8 @@ export function createCrmTables({
       "organizationId",
       "resourceId",
       "dueDate",
-    ]),
+    ])
+    .index("by_orgAndGoogleEventId", ["organizationId", "googleEventId"]),
 
   // --- Payments ---
 
@@ -581,11 +603,23 @@ export function createCrmTables({
     contactId: v.optional(v.id("contacts")),
     companyId: v.optional(v.id("companies")),
     leadId: v.optional(v.id("leads")),
-    provider: v.optional(v.union(v.literal("resend"), v.literal("gmail"))),
+    provider: v.optional(
+      v.union(
+        v.literal("resend"),
+        v.literal("google"),
+        v.literal("microsoft"),
+        v.literal("mailgun"),
+        v.literal("gmail"), // legacy — remove after migration
+      ),
+    ),
+    mailProviderId: v.optional(v.id("mailProviders")),
     gmailMessageId: v.optional(v.string()),
     gmailThreadId: v.optional(v.string()),
     sentBy: v.optional(v.id("users")),
     templateId: v.optional(v.id("emailTemplates")),
+    patientId: v.optional(v.id("gabinetPatients")),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    employeeId: v.optional(v.id("gabinetEmployees")),
     sentAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -598,6 +632,10 @@ export function createCrmTables({
     .index("by_lead", ["leadId", "sentAt"])
     .index("by_messageId", ["messageId"])
     .index("by_template", ["organizationId", "templateId"])
+    .index("by_patient", ["patientId", "sentAt"])
+    .index("by_appointment", ["appointmentId", "sentAt"])
+    .index("by_employee", ["employeeId", "sentAt"])
+    .index("by_org_provider", ["organizationId", "mailProviderId", "sentAt"])
     .searchIndex("search_emails", {
       searchField: "subject",
       filterFields: ["organizationId", "direction"],
@@ -612,16 +650,80 @@ export function createCrmTables({
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),
 
+  // --- Mail Providers ---
+
+  mailProviders: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    providerType: v.union(
+      v.literal("google"),
+      v.literal("microsoft"),
+      v.literal("mailgun"),
+      v.literal("resend"),
+    ),
+    // OAuth tokens (Google/Microsoft)
+    oauthTokens: v.optional(
+      v.object({
+        accessToken: v.string(),
+        refreshToken: v.optional(v.string()),
+        expiresAt: v.optional(v.number()),
+        scope: v.optional(v.string()),
+      }),
+    ),
+    // API key config (Resend/Mailgun)
+    apiConfig: v.optional(
+      v.object({
+        apiKey: v.optional(v.string()),
+        domain: v.optional(v.string()),
+        region: v.optional(v.string()),
+      }),
+    ),
+    fromName: v.string(),
+    fromEmail: v.string(),
+    replyToEmail: v.optional(v.string()),
+    capabilities: v.object({
+      canSend: v.boolean(),
+      canReceive: v.boolean(),
+      canSync: v.boolean(),
+    }),
+    isDefault: v.boolean(),
+    isShared: v.boolean(),
+    assignedUserIds: v.optional(v.array(v.id("users"))),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("error"),
+      v.literal("pending_auth"),
+    ),
+    lastSyncAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    statusMessage: v.optional(v.string()),
+    connectedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_default", ["organizationId", "isDefault"])
+    .index("by_org_type", ["organizationId", "providerType"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_org_email", ["organizationId", "fromEmail"]),
+
   // --- Email Templates ---
 
   emailTemplates: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
     subject: v.string(),
-    body: v.string(),
+    body: v.string(), // kept for backward compat
+    contentJson: v.optional(v.string()), // TipTap JSON
+    renderedHtml: v.optional(v.string()), // pre-rendered HTML from TipTap
+    slug: v.optional(v.string()), // machine ID, e.g. "gabinet.appointment.confirmation"
     category: v.optional(v.string()),
     module: v.optional(v.string()),
     eventType: v.optional(v.string()),
+    isSystem: v.optional(v.boolean()),
+    locale: v.optional(v.string()), // "pl" | "en"
+    requiredSources: v.optional(v.array(v.string())),
     variables: v.array(
       v.object({
         key: v.string(),
@@ -636,7 +738,8 @@ export function createCrmTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_org_active", ["organizationId", "isActive"])
-    .index("by_org_module", ["organizationId", "module"]),
+    .index("by_org_module", ["organizationId", "module"])
+    .index("by_org_slug_locale", ["organizationId", "slug", "locale"]),
 
   // --- Email Layouts (global wrapper per org) ---
 
@@ -678,6 +781,7 @@ export function createCrmTables({
     organizationId: v.id("organizations"),
     provider: v.literal("google"),
     providerAccountId: v.string(),
+    userId: v.optional(v.id("users")),
     accessToken: v.string(),
     refreshToken: v.string(),
     expiresAt: v.number(),
@@ -690,7 +794,9 @@ export function createCrmTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndProvider", ["organizationId", "provider", "isActive"]),
+    .index("by_orgAndProvider", ["organizationId", "provider", "isActive"])
+    .index("by_userAndProvider", ["userId", "provider", "isActive"])
+    .index("by_userOrgAndProvider", ["userId", "organizationId", "provider", "isActive"]),
 
   // --- Notes ---
 
@@ -707,5 +813,27 @@ export function createCrmTables({
   })
     .index("by_entity", ["entityType", "entityId"])
     .index("by_org", ["organizationId"]),
+
+  // --- Google Calendar Sync Configs ---
+
+  googleCalendarSyncConfigs: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    connectionId: v.id("oauthConnections"),
+    googleCalendarId: v.string(),
+    googleCalendarName: v.string(),
+    isOrgDefault: v.boolean(),
+    targetModule: v.union(v.literal("crm"), v.literal("gabinet")),
+    targetActivityType: v.optional(v.string()),
+    visibility: v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden")),
+    syncEnabled: v.boolean(),
+    lastSyncToken: v.optional(v.string()),
+    lastSyncAt: v.optional(v.number()),
+    syncStatus: v.optional(v.union(v.literal("idle"), v.literal("syncing"), v.literal("error"))),
+    syncError: v.optional(v.string()),
+  })
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgDefault", ["organizationId", "isOrgDefault"])
+    .index("by_syncEnabled", ["syncEnabled", "lastSyncAt"]),
   };
 }

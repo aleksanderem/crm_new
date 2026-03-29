@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@cvx/_generated/api";
 import { UntitledLogo } from "@untitled/foundations/logo/untitledui-logo";
 import { MobileNavigationHeader } from "../base-components/mobile-header";
 import { NavAccountCard } from "../base-components/nav-account-card";
@@ -13,6 +16,7 @@ interface SidebarNavigationSectionsSubheadingsProps {
 
 export const SidebarNavigationSectionsSubheadings = ({ activeUrl = "/", items }: SidebarNavigationSectionsSubheadingsProps) => {
     const MAIN_SIDEBAR_WIDTH = 292;
+    const { data: currentUser } = useQuery(convexQuery(api.app.getCurrentUser, {}));
 
     const content = (
         <aside
@@ -47,7 +51,11 @@ export const SidebarNavigationSectionsSubheadings = ({ activeUrl = "/", items }:
             </ul>
 
             <div className="mt-auto flex flex-col gap-5 px-2 py-4 lg:gap-6 lg:px-4 lg:py-4">
-                <NavAccountCard />
+                <NavAccountCard
+                    userName={currentUser?.name ?? undefined}
+                    userEmail={currentUser?.email ?? undefined}
+                    userAvatarUrl={currentUser?.avatarUrl}
+                />
             </div>
         </aside>
     );

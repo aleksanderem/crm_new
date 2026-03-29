@@ -16,9 +16,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
 const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
 type EmployeeRole = (typeof ROLES)[number];
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
+}
 
 const COLOR_OPTIONS = [
   { value: "#3b82f6", label: "Blue" },
@@ -40,6 +55,8 @@ export interface EmployeeFormData {
   licenseNumber?: string;
   color?: string;
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
+  tagIds?: Id<"tagDefinitions">[];
+  categoryId?: Id<"categoryDefinitions">;
 }
 
 interface EmployeeFormProps {
@@ -49,6 +66,8 @@ interface EmployeeFormProps {
   isSubmitting?: boolean;
   /** If true, user selection is required (create mode). If false, user is pre-selected (edit mode). */
   requireUserSelection?: boolean;
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function EmployeeForm({
@@ -57,6 +76,8 @@ export function EmployeeForm({
   onCancel,
   isSubmitting = false,
   requireUserSelection = true,
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: EmployeeFormProps) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -91,6 +112,8 @@ export function EmployeeForm({
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>(
     initialData?.qualifiedTreatmentIds?.map((id) => id as string) ?? []
   );
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +128,8 @@ export function EmployeeForm({
       licenseNumber: licenseNumber || undefined,
       color: color || undefined,
       qualifiedTreatmentIds: selectedTreatments as Id<"gabinetTreatments">[],
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -260,6 +285,19 @@ export function EmployeeForm({
           </p>
         )}
       </div>
+
+      {tagDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+          <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+        </div>
+      )}
+      {categoryDefinitions.length > 0 && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+        </div>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>

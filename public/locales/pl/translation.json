@@ -81,6 +81,16 @@
     "insights": "Statystyki",
     "products": "Produkty",
     "calls": "Połączenia",
+    "gabinet": {
+      "dashboard": "Panel",
+      "calendar": "Kalendarz",
+      "patients": "Pacjenci",
+      "treatments": "Zabiegi",
+      "packages": "Pakiety",
+      "employees": "Pracownicy",
+      "documents": "Dokumenty",
+      "reports": "Raporty"
+    },
     "sections": {
       "main": "Główne",
       "database": "Baza danych",
@@ -716,10 +726,73 @@
     },
     "emailTemplates": "Szablony e-mail",
     "emailEvents": "Zdarzenia email",
-    "email": "Email",
+    "email": {
+      "title": "Email",
+      "defaultAccount": "Domyślne konto",
+      "defaultLabel": "Domyślne"
+    },
+    "mail": {
+      "title": "Poczta",
+      "providers": "Dostawcy",
+      "brand": "Marka email",
+      "events": "Zdarzenia",
+      "addProvider": "Dodaj dostawcę",
+      "noProviders": "Brak skonfigurowanych dostawców",
+      "noProvidersDescription": "Dodaj dostawcę email, aby wysyłać i odbierać wiadomości",
+      "providerType": {
+        "google": "Google (Gmail)",
+        "microsoft": "Microsoft (Outlook)",
+        "mailgun": "Mailgun",
+        "resend": "Resend"
+      },
+      "status": {
+        "active": "Aktywny",
+        "inactive": "Nieaktywny",
+        "error": "Błąd",
+        "pending_auth": "Oczekuje na autoryzację"
+      },
+      "capabilities": {
+        "send": "Wysyłanie",
+        "receive": "Odbieranie",
+        "sync": "Synchronizacja"
+      },
+      "defaultProvider": "Domyślny",
+      "sharedProvider": "Współdzielony",
+      "connectGoogle": "Połącz z Google",
+      "connectMicrosoft": "Połącz z Microsoft",
+      "testConnection": "Testuj połączenie",
+      "form": {
+        "name": "Nazwa dostawcy",
+        "fromName": "Nazwa nadawcy",
+        "fromEmail": "Adres email nadawcy",
+        "replyTo": "Adres odpowiedzi",
+        "apiKey": "Klucz API",
+        "domain": "Domena",
+        "region": "Region"
+      }
+    },
+    "emailBrand": {
+      "companyInfo": "Dane firmy",
+      "companyName": "Nazwa firmy",
+      "companyNamePlaceholder": "Nazwa Twojej firmy",
+      "footerText": "Tekst stopki",
+      "footerTextPlaceholder": "np. © 2025 Twoja Firma. Wszelkie prawa zastrzeżone.",
+      "colors": "Kolory",
+      "primaryColor": "Kolor główny",
+      "accentColor": "Kolor akcentu",
+      "backgroundColor": "Kolor tła",
+      "contentBgColor": "Kolor tła treści",
+      "textColor": "Kolor tekstu",
+      "secondaryTextColor": "Kolor tekstu pomocniczego",
+      "socialLinks": "Linki społecznościowe",
+      "website": "Strona www",
+      "saved": "Konfiguracja marki e-mail zapisana.",
+      "saveError": "Nie udało się zapisać konfiguracji marki e-mail."
+    },
     "integrations": "Integracje",
     "sms": "SMS",
     "emailSequences": "Sekwencje email",
+    "gabinetSection": "Gabinet",
     "automations": "Automatyzacje",
     "automationsDescription": "Twórz i zarządzaj regułami automatyzacji dla Gabinetu i CRM, a wyniki sprawdzaj w ostatnich uruchomieniach.",
     "automationRules": "Reguły automatyzacji",
@@ -1181,7 +1254,13 @@
       "templateTypes": {
         "pdfme": "Formularz PDF",
         "document": "Dokument"
-      }
+      },
+      "newFolder": "Nowy folder",
+      "newTemplateName": "Nowy szablon",
+      "seedExamples": "Załaduj przykłady",
+      "seedSuccess": "Załadowano {{count}} szablonów",
+      "migrateFolders": "Migruj foldery",
+      "migrateSuccess": "Przypisano foldery do {{count}} szablonów"
     }
   },
   "leadForm": {
@@ -1509,6 +1588,7 @@
     "permissions": "Uprawnienia",
     "auditLog": "Dziennik audytu",
     "email": "Email",
+    "mail": "Poczta",
     "sms": "SMS",
     "automations": "Automatyzacje",
     "emailTemplates": "Szablony e-mail",
@@ -1517,7 +1597,8 @@
     "integrations": "Integracje",
     "organization": "Organizacja",
     "documentTemplates": "Szablony dokumentów",
-    "pipelines": "Pipeline"
+    "pipelines": "Pipeline",
+    "googleCalendar": "Kalendarz Google"
   },
   "activityTimeline": {
     "relative": {
@@ -1717,7 +1798,10 @@
     "linkContact": "Połącz z kontaktem",
     "linkCompany": "Połącz z firmą",
     "linkDeal": "Połącz z transakcją",
-    "unreadCount": "{{count}} nieprzeczytanych"
+    "unreadCount": "{{count}} nieprzeczytanych",
+    "allMailboxes": "Wszystkie skrzynki",
+    "sendFrom": "Wyślij z",
+    "mailbox": "Skrzynka"
   },
   "team": {
     "title": "Zespół",
@@ -3043,7 +3127,16 @@
     "tabEventLog": "Log zdarzeń",
     "tabLayout": "Układ",
     "tabTemplates": "Szablony",
-    "unknownTemplate": "Nieznany szablon"
+    "unknownTemplate": "Nieznany szablon",
+    "editor": {
+      "headerPlaceholder": "Logo firmy pojawi się tutaj",
+      "footerPlaceholder": "Tekst stopki pojawi się tutaj",
+      "subjectPlaceholder": "Temat wiadomości email...",
+      "bodyPlaceholder": "Zacznij pisać treść emaila..."
+    },
+    "allModules": "Wszystkie moduły",
+    "moduleCrm": "CRM",
+    "moduleGabinet": "Gabinet"
   },
   "emailBuilder": {
     "blockOverlayLabel": "{{type}} blok"
@@ -3207,5 +3300,103 @@
   "documentEditor": {
     "fillFields": "Uzupełnij pola formularza przed wygenerowaniem dokumentu.",
     "generate": "Generuj dokument"
+  },
+  "tags": {
+    "manage": "Tagi",
+    "manageDescription": "Zarządzaj tagami organizacji",
+    "search": "Szukaj tagu...",
+    "noTags": "Brak tagów",
+    "addTag": "Dodaj tag",
+    "newName": "Nazwa tagu",
+    "assign": "Tagi",
+    "noResults": "Brak wyników"
+  },
+  "categories": {
+    "manage": "Kategorie",
+    "manageDescription": "Zarządzaj kategoriami",
+    "newName": "Nazwa kategorii",
+    "noCategories": "Brak kategorii",
+    "addCategory": "Dodaj kategorię",
+    "addSub": "Dodaj podkategorię",
+    "tree": "Drzewo kategorii",
+    "assign": "Kategoria",
+    "search": "Szukaj...",
+    "noResults": "Brak wyników"
+  },
+  "billing": {
+    "title": "Rozliczenia",
+    "description": "Zarządzaj rozliczeniami i planem subskrypcji.",
+    "plan": "Plan",
+    "currentPlanPrefix": "Aktualny plan:",
+    "currentPlanSuffix": "",
+    "freePlan": "Darmowy",
+    "monthly": "miesięcznie",
+    "yearly": "rocznie",
+    "expires": "Wygasa",
+    "renews": "Odnawia się",
+    "testDisclaimer": "To jest środowisko testowe. Użyj karty testowej Stripe.",
+    "upgradeToPro": "Przejdź na Pro",
+    "manageSubscription": "Zarządzaj subskrypcją",
+    "manageSubscriptionDescription": "Zarządzaj swoją subskrypcją i metodami płatności przez Stripe",
+    "stripeRedirect": "Przekierowanie do Stripe...",
+    "manage": "Zarządzaj"
+  },
+  "googleCalendar": {
+    "settings": {
+      "title": "Kalendarz Google",
+      "orgDefault": "Domyślny kalendarz organizacji",
+      "setAsDefault": "Ustaw jako domyślny",
+      "employeeCalendars": "Kalendarze pracowników",
+      "connectCalendar": "Połącz Kalendarz Google",
+      "disconnectCalendar": "Odłącz",
+      "noCalendarsConnected": "Brak połączonych kalendarzy",
+      "selectCalendar": "Wybierz kalendarz",
+      "targetModule": "Moduł docelowy",
+      "targetModuleCrm": "CRM",
+      "targetModuleGabinet": "Gabinet",
+      "activityType": "Typ aktywności",
+      "visibility": "Widoczność",
+      "visibilityFull": "Pełna",
+      "visibilityBusyOnly": "Tylko zajęty",
+      "visibilityHidden": "Ukryty",
+      "syncEnabled": "Synchronizacja",
+      "syncStatus": "Status synchronizacji",
+      "syncStatusIdle": "Gotowy",
+      "syncStatusSyncing": "Synchronizowanie...",
+      "syncStatusError": "Błąd",
+      "lastSync": "Ostatnia synchronizacja",
+      "syncNow": "Synchronizuj teraz",
+      "syncing": "Synchronizowanie...",
+      "syncSuccess": "Zsynchronizowano {{count}} wydarzeń",
+      "syncError": "Błąd synchronizacji: {{error}}",
+      "calendarName": "Nazwa kalendarza",
+      "module": "Moduł",
+      "employee": "Pracownik",
+      "status": "Status",
+      "enabled": "Włączona",
+      "disabled": "Wyłączona",
+      "connectionSuccess": "Połączenie z Google zostało nawiązane. Wybierz kalendarze do synchronizacji.",
+      "selectCalendarsToConnect": "Wybierz kalendarze do połączenia",
+      "addCalendar": "Dodaj kalendarz",
+      "adding": "Dodawanie...",
+      "fetchingCalendars": "Pobieranie listy kalendarzy...",
+      "fetchCalendarsError": "Nie udało się pobrać listy kalendarzy",
+      "calendarAdded": "Kalendarz dodany pomyślnie",
+      "primary": "Główny",
+      "scopeUpgradeNeeded": "Połączenie z Google wymaga rozszerzonych uprawnień do kalendarza. Proszę ponownie autoryzować, aby włączyć listowanie kalendarzy.",
+      "reauthorize": "Autoryzuj ponownie"
+    },
+    "calendar": {
+      "busy": "Zajęty",
+      "blockedTime": "Zajęty",
+      "googleEvent": "Wydarzenie Google",
+      "requiresCompletion": "Wymaga uzupełnienia",
+      "completeButton": "Uzupełnij",
+      "source": "Źródło",
+      "sourceManual": "Ręczne",
+      "sourceGoogle": "Google",
+      "sourceSystem": "System",
+      "incompleteSidebarKpi": "Do uzupełnienia"
+    }
   }
 }

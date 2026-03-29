@@ -19,9 +19,15 @@ import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { SavedView, FieldDef } from "@/components/crm/types";
-import { Doc } from "@cvx/_generated/dataModel";
+import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -50,6 +56,8 @@ function formatCurrency(amount: number): string {
 function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "product");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
     { id: "active", name: t('products.views.active'), isSystem: true, isDefault: false },
@@ -68,7 +76,9 @@ function ProductsPage() {
       ],
     },
     { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+  ], [t, tags, categories]);
 
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
@@ -79,6 +89,8 @@ function ProductsPage() {
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const { handleExport } = useCsvExport(organizationId, "products");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
@@ -93,6 +105,8 @@ function ProductsPage() {
   const [taxRate, setTaxRate] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [description, setDescription] = useState("");
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   const { data, isLoading } = useQuery(
     convexQuery(api.products.list, {
@@ -131,6 +145,8 @@ function ProductsPage() {
     setTaxRate("0");
     setIsActive(true);
     setDescription("");
+    setTagIds([]);
+    setCategoryId(undefined);
     setEditingProduct(null);
   };
 
@@ -147,6 +163,8 @@ function ProductsPage() {
     setTaxRate(String(product.taxRate));
     setIsActive(product.isActive);
     setDescription(product.description ?? "");
+    setTagIds((product as any).tagIds ?? []);
+    setCategoryId((product as any).categoryId);
     setPanelOpen(true);
   };
 
@@ -165,6 +183,8 @@ function ProductsPage() {
           unitPrice: parseFloat(unitPrice),
           taxRate: parseFloat(taxRate) || 0,
           description: description.trim() || undefined,
+          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          categoryId: categoryId || undefined,
         });
       } else {
         await createProduct({
@@ -175,6 +195,8 @@ function ProductsPage() {
           taxRate: parseFloat(taxRate) || 0,
           isActive,
           description: description.trim() || undefined,
+          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          categoryId: categoryId || undefined,
         });
       }
       setPanelOpen(false);
@@ -252,7 +274,7 @@ function ProductsPage() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -263,6 +285,8 @@ function ProductsPage() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('products.searchPlaceholder')}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         dropdownActions={[
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
@@ -372,8 +396,43 @@ function ProductsPage() {
               minHeight="80px"
             />
           </div>
+
+          {tags.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker
+                tags={tags}
+                selectedIds={tagIds}
+                onChange={setTagIds}
+              />
+            </div>
+          )}
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+              <CategoryPicker
+                categories={categories}
+                selectedId={categoryId}
+                onChange={setCategoryId}
+              />
+            </div>
+          )}
         </div>
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="product"
+        categories={categories}
+      />
     </div>
   );
 }

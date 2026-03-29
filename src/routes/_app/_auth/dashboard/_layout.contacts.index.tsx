@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,6 +22,12 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/"
@@ -36,10 +41,11 @@ function ContactsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createContact = useMutation(api.contacts.create);
   const removeContact = useMutation(api.contacts.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
-  const updateContact = useMutation(api.contacts.update);
 
   const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -51,6 +57,10 @@ function ContactsIndex() {
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const { handleExport } = useCsvExport(organizationId, "contacts");
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "contact");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
@@ -71,16 +81,17 @@ function ContactsIndex() {
     { id: "title", label: t('contacts.title'), type: "text" },
     { id: "source", label: t('common.source'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-  ], [t]);
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+  ], [t, tags, categories]);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
+  // Contacts read exclusively from Supabase (PostgreSQL)
+  const {
+    data: supabaseContacts,
+    isLoading,
+  } = useSupabaseContactsList(organizationId);
 
-  const contacts = data?.page ?? [];
+  const contacts = (supabaseContacts ?? []) as unknown as Contact[];
 
   const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
 
@@ -280,6 +291,8 @@ function ContactsIndex() {
           notes: formData.notes,
           tags: formData.tags,
         });
+        // Invalidate Supabase contacts cache so the list refreshes
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
         if (cfDefs && Object.keys(customFieldRecord).length > 0) {
           const fields = cfDefs
             .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
@@ -307,9 +320,11 @@ function ContactsIndex() {
         for (const row of selectedRows) {
           await removeContact({ organizationId, contactId: row._id });
         }
+        // Invalidate Supabase contacts cache after bulk delete
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
       }
     },
-    [removeContact, organizationId]
+    [removeContact, organizationId, queryClient]
   );
 
   const rowActions = useCallback(
@@ -345,7 +360,7 @@ function ContactsIndex() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId ?? undefined}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -357,6 +372,8 @@ function ContactsIndex() {
         onSearchChange={setSearchValue}
         searchPlaceholder={t('contacts.searchPlaceholder')}
         onFiltersChange={setActiveFilters}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         dropdownActions={[
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
@@ -419,8 +436,24 @@ function ContactsIndex() {
           isSubmitting={isCreating}
           showSourceAndTags
           customFieldDefinitions={cfDefs}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
         />
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="contact"
+        categories={categories}
+      />
     </div>
   );
 }

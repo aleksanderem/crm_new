@@ -305,6 +305,8 @@ export const createSubscriptionCheckout = action({
     currency: currencyValidator,
   },
   handler: async (ctx, args): Promise<string | undefined> => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore -- TS2589: type instantiation depth in generated api types
     const user = await ctx.runQuery(api.app.getCurrentUser);
     if (!user || !user.customerId) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);

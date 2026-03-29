@@ -109,7 +109,7 @@ export const sendReminder = internalMutation({
     }
 
     const patient = await ctx.db.get(appointment.patientId);
-    const treatment = await ctx.db.get(appointment.treatmentId);
+    const treatment = appointment.treatmentId ? await ctx.db.get(appointment.treatmentId) : null;
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName ?? ""}`.trim()
       : "Klient";

@@ -1,9 +1,17 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeContactRef = internal.supabase.contacts.writeContactToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateContactRef = internal.supabase.contacts.updateContactInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteContactRef = internal.supabase.contacts.deleteContactFromSupabase;
 
 export const list = query({
   args: {
@@ -104,6 +112,8 @@ export const create = mutation({
       fieldDefinitionId: v.id("customFieldDefinitions"),
       value: v.any(),
     }))),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -142,6 +152,25 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new contact to Supabase
+    await ctx.scheduler.runAfter(0, writeContactRef, {
+      contactId: contactId as string,
+      organizationId: args.organizationId as string,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      email: args.email,
+      phone: args.phone,
+      title: args.title,
+      avatarUrl: args.avatarUrl,
+      notes: args.notes,
+      tags: args.tags,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return contactId;
   },
 });
@@ -162,6 +191,8 @@ export const update = mutation({
       fieldDefinitionId: v.id("customFieldDefinitions"),
       value: v.any(),
     }))),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -218,6 +249,28 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate updated contact to Supabase
+    const updatedContact = await ctx.db.get(contactId);
+    if (updatedContact) {
+      await ctx.scheduler.runAfter(0, updateContactRef, {
+        contactId: contactId as string,
+        organizationId: organizationId as string,
+        firstName: updatedContact.firstName,
+        lastName: updatedContact.lastName,
+        email: updatedContact.email,
+        phone: updatedContact.phone,
+        title: updatedContact.title,
+        avatarUrl: updatedContact.avatarUrl,
+        notes: updatedContact.notes,
+        tags: updatedContact.tags,
+        tagIds: updatedContact.tagIds?.map((id) => id as string),
+        categoryId: updatedContact.categoryId as string | undefined,
+        createdBy: updatedContact.createdBy as string,
+        createdAt: updatedContact.createdAt,
+        updatedAt: updatedContact.updatedAt,
+      });
+    }
+
     return contactId;
   },
 });
@@ -267,6 +320,12 @@ export const remove = mutation({
     for (const rel of [...sourceRels, ...targetRels]) {
       await ctx.db.delete(rel._id);
     }
+
+    // Dual-write: delete contact from Supabase before removing from Convex
+    await ctx.scheduler.runAfter(0, deleteContactRef, {
+      contactId: args.contactId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.contactId);
 

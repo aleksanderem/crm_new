@@ -106,6 +106,8 @@ export function GabinetDashboardWidgets({ organizationId }: { organizationId: Id
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 9 }}
+                  tickFormatter={(value: string) => value.slice(0, 2)}
+                  interval={0}
                 />
                 <ChartTooltip
                   cursor={false}

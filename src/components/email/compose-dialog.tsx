@@ -72,6 +72,15 @@ export function ComposeDialog({
     }),
   );
 
+  const { data: mailProviders } = useQuery(
+    convexQuery(api.mailProviders.list, { organizationId }),
+  );
+
+  const sendProviders = mailProviders?.filter((p) => p.capabilities.canSend) ?? [];
+  const defaultProviderId = (mailProviders?.find((p) => p.isDefault) ?? sendProviders[0])?._id;
+
+  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+
   const isGmailConnected = !!googleConnection;
 
   const [to, setTo] = useState(replyTo?.from ?? "");
@@ -113,6 +122,13 @@ export function ComposeDialog({
       lastAppliedTemplateRef.current = selectedTemplateId;
     }
   }, [renderedTemplate, selectedTemplateId]);
+
+  // Set default provider when providers load
+  useEffect(() => {
+    if (!selectedProviderId && defaultProviderId) {
+      setSelectedProviderId(defaultProviderId);
+    }
+  }, [defaultProviderId, selectedProviderId]);
 
   const handleSend = async () => {
     if (!to.trim()) return;
@@ -156,6 +172,7 @@ export function ComposeDialog({
           contactId,
           companyId,
           leadId,
+          mailProviderId: selectedProviderId ? selectedProviderId as Id<"mailProviders"> : undefined,
         });
       }
 
@@ -166,6 +183,7 @@ export function ComposeDialog({
       setBody("");
       setShowCc(false);
       setSelectedTemplateId("");
+      setSelectedProviderId(defaultProviderId ?? "");
       lastAppliedTemplateRef.current = null;
       onOpenChange(false);
     } finally {
@@ -203,6 +221,28 @@ export function ComposeDialog({
                   {emailTemplates.map((tmpl) => (
                     <SelectItem key={tmpl._id} value={tmpl._id}>
                       {tmpl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Send from */}
+          {sendProviders.length > 1 && (
+            <div className="space-y-1.5">
+              <Label>{t("inbox.sendFrom")}</Label>
+              <Select
+                value={selectedProviderId}
+                onValueChange={setSelectedProviderId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("inbox.sendFrom")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sendProviders.map((provider) => (
+                    <SelectItem key={provider._id} value={provider._id}>
+                      {provider.name} ({provider.fromEmail})
                     </SelectItem>
                   ))}
                 </SelectContent>

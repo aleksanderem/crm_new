@@ -119,7 +119,7 @@ async function fetchAppointment(
   }
 
   // Treatment
-  const treatment = await ctx.db.get(appointment.treatmentId);
+  const treatment = appointment.treatmentId ? await ctx.db.get(appointment.treatmentId) : null;
   if (treatment) {
     scope.treatment = flattenEntity(
       treatment as unknown as Record<string, unknown>,

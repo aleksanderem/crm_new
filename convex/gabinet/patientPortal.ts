@@ -68,7 +68,7 @@ export const getMyAppointments = query({
     // Enrich with treatment names
     const enriched = await Promise.all(
       appointments.map(async (appt) => {
-        const treatment = await ctx.db.get(appt.treatmentId);
+        const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
         return {
           _id: appt._id,
           date: appt.date,
@@ -487,7 +487,7 @@ export const requestReschedule = mutation({
       ? `${patient.firstName} ${patient.lastName}`
       : "Patient";
 
-    const treatment = await ctx.db.get(appt.treatmentId);
+    const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
     const treatmentName = treatment?.name ?? "appointment";
 
     // Add reschedule request to internal notes

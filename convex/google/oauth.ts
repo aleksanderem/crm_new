@@ -6,7 +6,7 @@ import { Id } from "../_generated/dataModel";
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");
 
@@ -116,12 +116,13 @@ export const callback = httpAction(async (ctx, request) => {
       scope: tokens.scope as string,
       tokenType: tokens.token_type as string,
       connectedBy: state.userId as Id<"users">,
+      userId: state.userId as Id<"users">,
     });
 
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `${redirectBase}/dashboard/settings/integrations?success=true`,
+        Location: `${redirectBase}/dashboard/settings/google-calendar?success=true`,
       },
     });
   } catch (err) {

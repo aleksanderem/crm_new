@@ -1,4 +1,4 @@
-import { defineSchema } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v, Infer } from "convex/values";
 import { createAutomationTables } from "./schema/automation";
@@ -566,6 +566,37 @@ const automationTables = createAutomationTables({
   automationStepStatusValidator,
 });
 
+// --- Tag & Category Definitions (org-wide tags, per-entity-type categories) ---
+
+const tagAndCategoryTables = {
+  tagDefinitions: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    color: v.string(),
+    sortOrder: v.number(),
+    isDeleted: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndName", ["organizationId", "name"]),
+
+  categoryDefinitions: defineTable({
+    organizationId: v.id("organizations"),
+    entityType: entityTypeValidator,
+    name: v.string(),
+    parentId: v.optional(v.id("categoryDefinitions")),
+    color: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    sortOrder: v.number(),
+    isDeleted: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_orgAndEntityType", ["organizationId", "entityType"])
+    .index("by_parent", ["parentId"]),
+};
+
 const schema = defineSchema({
   ...authTables,
   ...platformTables,
@@ -573,6 +604,7 @@ const schema = defineSchema({
   ...gabinetTables,
   ...automationTables,
   ...documentTables,
+  ...tagAndCategoryTables,
 });
 
 export default schema;

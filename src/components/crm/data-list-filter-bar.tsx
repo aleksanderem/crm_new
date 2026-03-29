@@ -7,6 +7,8 @@ import {
   ChevronDown,
   FilterLines,
   Columns03,
+  Tag01,
+  LayersTwo02,
 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { CloseButton } from "@untitled/base/buttons/close-button";
@@ -68,6 +70,11 @@ const OPERATORS_BY_TYPE: Record<
   boolean: [
     { value: "equals", label: "Is" },
   ],
+  multiSelect: [
+    { value: "hasAnyOf", label: "Has any of" },
+    { value: "hasAllOf", label: "Has all of" },
+    { value: "isEmpty", label: "Is empty" },
+  ],
 };
 
 export interface DataListFilterBarProps {
@@ -101,6 +108,10 @@ export interface DataListFilterBarProps {
     icon?: React.ReactNode;
     onClick: () => void;
   }>;
+
+  // Tags & Categories management
+  onTagsManage?: () => void;
+  onCategoriesManage?: () => void;
 
   // Render prop: receives the toolbar content (search + filters + actions)
   // so the consumer can place it inside the table card.
@@ -147,6 +158,8 @@ export function DataListFilterBar({
   onToggleColumn,
   onFiltersChange,
   dropdownActions = [],
+  onTagsManage,
+  onCategoriesManage,
   renderToolbar,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
@@ -620,19 +633,35 @@ export function DataListFilterBar({
           )}
         </SlideoutMenu.Content>
 
-        <SlideoutMenu.Footer className="flex w-full items-center justify-between gap-3">
-          {onCreateView && draftFilters.length > 0 && (
-            <Button size="sm" color="tertiary" onClick={handleSaveAsView}>
-              {t("filters.saveAsView", { defaultValue: "Save as view" })}
-            </Button>
+        <SlideoutMenu.Footer className="flex w-full flex-col gap-3">
+          {(onTagsManage || onCategoriesManage) && (
+            <div className="flex items-center gap-2 border-b border-border-secondary pb-3">
+              {onTagsManage && (
+                <Button size="sm" color="tertiary" iconLeading={Tag01} onClick={() => { setFilterSlideoutOpen(false); onTagsManage(); }}>
+                  {t("tags.manage", { defaultValue: "Tagi" })}
+                </Button>
+              )}
+              {onCategoriesManage && (
+                <Button size="sm" color="tertiary" iconLeading={LayersTwo02} onClick={() => { setFilterSlideoutOpen(false); onCategoriesManage(); }}>
+                  {t("categories.manage", { defaultValue: "Kategorie" })}
+                </Button>
+              )}
+            </div>
           )}
-          <div className="ml-auto flex items-center gap-3">
-            <Button size="sm" color="secondary" onClick={handleClearAllFilters}>
-              {t("filters.clearAll", { defaultValue: "Clear all" })}
-            </Button>
-            <Button size="sm" onClick={handleApplyFilters}>
-              {t("filters.apply", { defaultValue: "Apply filter" })}
-            </Button>
+          <div className="flex w-full items-center justify-between gap-3">
+            {onCreateView && draftFilters.length > 0 && (
+              <Button size="sm" color="tertiary" onClick={handleSaveAsView}>
+                {t("filters.saveAsView", { defaultValue: "Save as view" })}
+              </Button>
+            )}
+            <div className="ml-auto flex items-center gap-3">
+              <Button size="sm" color="secondary" onClick={handleClearAllFilters}>
+                {t("filters.clearAll", { defaultValue: "Clear all" })}
+              </Button>
+              <Button size="sm" onClick={handleApplyFilters}>
+                {t("filters.apply", { defaultValue: "Apply filter" })}
+              </Button>
+            </div>
           </div>
         </SlideoutMenu.Footer>
       </SlideoutMenu>

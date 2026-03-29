@@ -132,7 +132,7 @@ export function PackageForm({
           <Label>{t("gabinet.packages.description")}</Label>
           <RichTextEditor
             value={description}
-            onChange={setDescription}
+            onChange={(v) => setDescription(v ?? "")}
             placeholder={t("gabinet.packages.descriptionPlaceholder")}
             minHeight="80px"
           />

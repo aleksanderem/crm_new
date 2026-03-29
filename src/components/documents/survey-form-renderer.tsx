@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
+import type { EzIconType } from "@/lib/ez-icons/types";
 import {
   User,
-  Mail,
   Building2,
   Calendar,
   Stethoscope,
@@ -154,7 +154,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   company: Building2,
 };
 
-function getCategoryIcon(category: string) {
+function getCategoryIcon(category: string): EzIconType {
   return CATEGORY_ICONS[category] ?? ClipboardList;
 }
 
@@ -265,7 +265,7 @@ export function PdfmeFormRenderer({
   prefilledData,
   onComplete,
 }: PdfmeFormRendererProps) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isPl = i18n.language?.startsWith("pl") ?? true;
 
   // Parse template and classify fields

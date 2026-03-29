@@ -1,18 +1,18 @@
 {
-  "session_id": "S0089",
-  "started_at": "2026-03-20T18:00:00Z",
-  "last_updated": "2026-03-20T18:15:00Z",
+  "session_id": "S0090",
+  "started_at": "2026-03-26T21:20:00Z",
+  "last_updated": "2026-03-26T21:28:00Z",
   "status": "active",
-  "focus": "Verify checkbox rendering fix on signing page + typed treatment parameters plan",
+  "focus": "F2 Mail Accounts & Inboxes — executing plan with subagent-driven development",
   "tasks_snapshot": {
-    "total": 4,
-    "not_started": 0,
-    "in_progress": 0,
-    "passing": 4,
+    "total": 10,
+    "not_started": 4,
+    "in_progress": 4,
+    "passing": 2,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": [24, 25, 26, 27],
   "blockers": [],
-  "notes": "S0089: Continuation of S0088. All signing page fixes verified: TypeScript compiles clean, renderDocument checkbox logic confirmed via preview_eval in prior session, re-rendering from template+formFieldValues+scopeData logic in place, submitDocumentFormFields accepts pending_signature status. Code changes span 3 files: document-renderer.tsx (checkbox visual rendering), sign.form.$token.tsx (re-render from template, needsFormFill logic, scopeData pass-through), documents.ts (scopeData preservation, status check relaxation). Full E2E with fresh document needs manual verification by user - old test token is signed."
+  "notes": "S0090: Continuation of F2 plan execution. F1 completed in prior sessions. F2-T1 (schema) and F2-T2 (adapter interface) completed. T1 committed as a3646eb. Wave 2 dispatched: T3 (Resend), T4 (Google), T5 (Microsoft), T6 (Mailgun) — all in parallel worktrees. Waiting for agent completion before cherry-picking."
 }

@@ -61,13 +61,14 @@ import { Route as AppAuthDashboardLayoutSettingsProfileImport } from './routes/_
 import { Route as AppAuthDashboardLayoutSettingsPipelinesImport } from './routes/_app/_auth/dashboard/_layout.settings.pipelines'
 import { Route as AppAuthDashboardLayoutSettingsPermissionsImport } from './routes/_app/_auth/dashboard/_layout.settings.permissions'
 import { Route as AppAuthDashboardLayoutSettingsOrganizationImport } from './routes/_app/_auth/dashboard/_layout.settings.organization'
+import { Route as AppAuthDashboardLayoutSettingsMailImport } from './routes/_app/_auth/dashboard/_layout.settings.mail'
 import { Route as AppAuthDashboardLayoutSettingsLostReasonsImport } from './routes/_app/_auth/dashboard/_layout.settings.lost-reasons'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
+import { Route as AppAuthDashboardLayoutSettingsGoogleCalendarImport } from './routes/_app/_auth/dashboard/_layout.settings.google-calendar'
 import { Route as AppAuthDashboardLayoutSettingsFormTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates'
 import { Route as AppAuthDashboardLayoutSettingsEmailTemplatesImport } from './routes/_app/_auth/dashboard/_layout.settings.email-templates'
 import { Route as AppAuthDashboardLayoutSettingsEmailSequencesImport } from './routes/_app/_auth/dashboard/_layout.settings.email-sequences'
 import { Route as AppAuthDashboardLayoutSettingsEmailEventsImport } from './routes/_app/_auth/dashboard/_layout.settings.email-events'
-import { Route as AppAuthDashboardLayoutSettingsEmailImport } from './routes/_app/_auth/dashboard/_layout.settings.email'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsImport } from './routes/_app/_auth/dashboard/_layout.settings.automations'
@@ -410,6 +411,12 @@ const AppAuthDashboardLayoutSettingsOrganizationRoute =
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
+const AppAuthDashboardLayoutSettingsMailRoute =
+  AppAuthDashboardLayoutSettingsMailImport.update({
+    path: '/mail',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
 const AppAuthDashboardLayoutSettingsLostReasonsRoute =
   AppAuthDashboardLayoutSettingsLostReasonsImport.update({
     path: '/lost-reasons',
@@ -419,6 +426,12 @@ const AppAuthDashboardLayoutSettingsLostReasonsRoute =
 const AppAuthDashboardLayoutSettingsIntegrationsRoute =
   AppAuthDashboardLayoutSettingsIntegrationsImport.update({
     path: '/integrations',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
+
+const AppAuthDashboardLayoutSettingsGoogleCalendarRoute =
+  AppAuthDashboardLayoutSettingsGoogleCalendarImport.update({
+    path: '/google-calendar',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -443,12 +456,6 @@ const AppAuthDashboardLayoutSettingsEmailSequencesRoute =
 const AppAuthDashboardLayoutSettingsEmailEventsRoute =
   AppAuthDashboardLayoutSettingsEmailEventsImport.update({
     path: '/email-events',
-    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
-  } as any)
-
-const AppAuthDashboardLayoutSettingsEmailRoute =
-  AppAuthDashboardLayoutSettingsEmailImport.update({
-    path: '/email',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
 
@@ -1092,13 +1099,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsCustomFieldsImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
-    '/_app/_auth/dashboard/_layout/settings/email': {
-      id: '/_app/_auth/dashboard/_layout/settings/email'
-      path: '/email'
-      fullPath: '/dashboard/settings/email'
-      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsEmailImport
-      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
-    }
     '/_app/_auth/dashboard/_layout/settings/email-events': {
       id: '/_app/_auth/dashboard/_layout/settings/email-events'
       path: '/email-events'
@@ -1127,6 +1127,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsFormTemplatesImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
+    '/_app/_auth/dashboard/_layout/settings/google-calendar': {
+      id: '/_app/_auth/dashboard/_layout/settings/google-calendar'
+      path: '/google-calendar'
+      fullPath: '/dashboard/settings/google-calendar'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsGoogleCalendarImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
     '/_app/_auth/dashboard/_layout/settings/integrations': {
       id: '/_app/_auth/dashboard/_layout/settings/integrations'
       path: '/integrations'
@@ -1139,6 +1146,13 @@ declare module '@tanstack/react-router' {
       path: '/lost-reasons'
       fullPath: '/dashboard/settings/lost-reasons'
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsLostReasonsImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsImport
+    }
+    '/_app/_auth/dashboard/_layout/settings/mail': {
+      id: '/_app/_auth/dashboard/_layout/settings/mail'
+      path: '/mail'
+      fullPath: '/dashboard/settings/mail'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsMailImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsImport
     }
     '/_app/_auth/dashboard/_layout/settings/organization': {
@@ -1475,7 +1489,6 @@ export const routeTree = rootRoute.addChildren({
                 }),
               AppAuthDashboardLayoutSettingsBillingRoute,
               AppAuthDashboardLayoutSettingsCustomFieldsRoute,
-              AppAuthDashboardLayoutSettingsEmailRoute,
               AppAuthDashboardLayoutSettingsEmailEventsRoute,
               AppAuthDashboardLayoutSettingsEmailSequencesRoute,
               AppAuthDashboardLayoutSettingsEmailTemplatesRoute,
@@ -1485,8 +1498,10 @@ export const routeTree = rootRoute.addChildren({
                   AppAuthDashboardLayoutSettingsFormTemplatesNewRoute,
                   AppAuthDashboardLayoutSettingsFormTemplatesIndexRoute,
                 }),
+              AppAuthDashboardLayoutSettingsGoogleCalendarRoute,
               AppAuthDashboardLayoutSettingsIntegrationsRoute,
               AppAuthDashboardLayoutSettingsLostReasonsRoute,
+              AppAuthDashboardLayoutSettingsMailRoute,
               AppAuthDashboardLayoutSettingsOrganizationRoute,
               AppAuthDashboardLayoutSettingsPermissionsRoute,
               AppAuthDashboardLayoutSettingsPipelinesRoute,
@@ -1799,13 +1814,14 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/automations",
         "/_app/_auth/dashboard/_layout/settings/billing",
         "/_app/_auth/dashboard/_layout/settings/custom-fields",
-        "/_app/_auth/dashboard/_layout/settings/email",
         "/_app/_auth/dashboard/_layout/settings/email-events",
         "/_app/_auth/dashboard/_layout/settings/email-sequences",
         "/_app/_auth/dashboard/_layout/settings/email-templates",
         "/_app/_auth/dashboard/_layout/settings/form-templates",
+        "/_app/_auth/dashboard/_layout/settings/google-calendar",
         "/_app/_auth/dashboard/_layout/settings/integrations",
         "/_app/_auth/dashboard/_layout/settings/lost-reasons",
+        "/_app/_auth/dashboard/_layout/settings/mail",
         "/_app/_auth/dashboard/_layout/settings/organization",
         "/_app/_auth/dashboard/_layout/settings/permissions",
         "/_app/_auth/dashboard/_layout/settings/pipelines",
@@ -1912,10 +1928,6 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_app/_auth/dashboard/_layout.settings.custom-fields.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
-    "/_app/_auth/dashboard/_layout/settings/email": {
-      "filePath": "_app/_auth/dashboard/_layout.settings.email.tsx",
-      "parent": "/_app/_auth/dashboard/_layout/settings"
-    },
     "/_app/_auth/dashboard/_layout/settings/email-events": {
       "filePath": "_app/_auth/dashboard/_layout.settings.email-events.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
@@ -1937,12 +1949,20 @@ export const routeTree = rootRoute.addChildren({
         "/_app/_auth/dashboard/_layout/settings/form-templates/"
       ]
     },
+    "/_app/_auth/dashboard/_layout/settings/google-calendar": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.google-calendar.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
     "/_app/_auth/dashboard/_layout/settings/integrations": {
       "filePath": "_app/_auth/dashboard/_layout.settings.integrations.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/lost-reasons": {
       "filePath": "_app/_auth/dashboard/_layout.settings.lost-reasons.tsx",
+      "parent": "/_app/_auth/dashboard/_layout/settings"
+    },
+    "/_app/_auth/dashboard/_layout/settings/mail": {
+      "filePath": "_app/_auth/dashboard/_layout.settings.mail.tsx",
       "parent": "/_app/_auth/dashboard/_layout/settings"
     },
     "/_app/_auth/dashboard/_layout/settings/organization": {

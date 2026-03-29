@@ -348,6 +348,7 @@ export const TagSelectTagsValue = ({
     icon: Icon = SearchLg,
     // Omit this prop to avoid invalid HTML attribute warning
     isDisabled: _isDisabled,
+    ref,
     ...otherProps
 }: TagSelectValueProps) => {
     const tagSelectContext = useContext(TagSelectContext);
@@ -357,6 +358,7 @@ export const TagSelectTagsValue = ({
     return (
         <AriaGroup
             {...otherProps}
+            ref={ref as React.RefObject<HTMLDivElement>}
             className={({ isFocusWithin, isDisabled }) =>
                 cx(
                     "relative flex w-full items-center rounded-lg bg-bg-primary shadow-xs ring-1 ring-border-primary outline-hidden transition duration-100 ease-linear ring-inset",

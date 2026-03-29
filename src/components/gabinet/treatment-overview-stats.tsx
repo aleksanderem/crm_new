@@ -137,7 +137,7 @@ export function TreatmentOverviewStats({
   stats,
   recentAppointments,
   currency,
-  treatmentName,
+  treatmentName: _treatmentName,
 }: TreatmentOverviewStatsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();

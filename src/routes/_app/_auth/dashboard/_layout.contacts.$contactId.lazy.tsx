@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseContact } from "@/hooks/use-supabase-contacts";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
@@ -55,6 +57,7 @@ function ContactDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const updateContact = useMutation(api.contacts.update);
   const removeContact = useMutation(api.contacts.remove);
   const createRelationship = useMutation(api.relationships.create);
@@ -156,11 +159,10 @@ function ContactDetail() {
   const [sidebarDealSearch, setSidebarDealSearch] = useState("");
   const [sidebarCompanySearch, setSidebarCompanySearch] = useState("");
 
-  const { data: contact, isLoading } = useQuery(
-    convexQuery(api.contacts.getById, {
-      organizationId,
-      contactId: contactId as Id<"contacts">,
-    })
+  // Contact entity read from Supabase (PostgreSQL)
+  const { data: contact, isLoading } = useSupabaseContact(
+    organizationId,
+    contactId,
   );
 
   useEffect(() => {
@@ -278,6 +280,9 @@ function ContactDetail() {
         title: formData.title,
         tags: formData.tags,
       });
+      // Invalidate Supabase caches after update
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.detail(organizationId, contactId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
       // Save contact custom field values
       if (contactCfDefs) {
         const fieldsToSave = contactCfDefs
@@ -307,6 +312,8 @@ function ContactDetail() {
         organizationId,
         contactId: contactId as Id<"contacts">,
       });
+      // Invalidate Supabase list cache before navigating away
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
       navigate({ to: "/dashboard/contacts" });
     }
   };

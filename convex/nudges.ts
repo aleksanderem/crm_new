@@ -333,11 +333,16 @@ export const getProductsNudges = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    const dealProducts = await ctx.db
-      .query("dealProducts")
-      .collect();
-
-    const usedProductIds = new Set(dealProducts.map((dp) => String(dp.productId)));
+    const usedProductIds = new Set<string>();
+    for (const p of products) {
+      const hasDeals = await ctx.db
+        .query("dealProducts")
+        .withIndex("by_product", (q) => q.eq("productId", p._id))
+        .first();
+      if (hasDeals) {
+        usedProductIds.add(String(p._id));
+      }
+    }
     const unused = products.filter((p) => !usedProductIds.has(String(p._id)));
 
     if (unused.length > 0) {

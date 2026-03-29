@@ -94,7 +94,7 @@ async function applyAppointmentStatusChange(
 
   if (args.nextStatus === "cancelled" && args.sendCancellationNotifications !== false) {
     const patient = await ctx.db.get(args.appointment.patientId);
-    const treatment = await ctx.db.get(args.appointment.treatmentId);
+    const treatment = args.appointment.treatmentId ? await ctx.db.get(args.appointment.treatmentId) : null;
     if (patient?.email) {
       const employee = await ctx.db.get(args.appointment.employeeId);
       const patientName = patient
@@ -153,16 +153,18 @@ async function applyAppointmentStatusChange(
   }
 
   if (args.nextStatus === "completed") {
-    await handleAppointmentCompletion(ctx, {
-      organizationId: args.organizationId,
-      appointmentId: args.appointment._id,
-      patientId: args.appointment.patientId,
-      treatmentId: args.appointment.treatmentId,
-      packageUsageId: args.appointment.packageUsageId as
-        | Id<"gabinetPackageUsage">
-        | undefined,
-      userId: args.actorUserId,
-    });
+    if (args.appointment.treatmentId) {
+      await handleAppointmentCompletion(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: args.appointment._id,
+        patientId: args.appointment.patientId,
+        treatmentId: args.appointment.treatmentId,
+        packageUsageId: args.appointment.packageUsageId as
+          | Id<"gabinetPackageUsage">
+          | undefined,
+        userId: args.actorUserId,
+      });
+    }
   }
 
   await logActivity(ctx, {
@@ -644,6 +646,8 @@ export const create = mutation({
     sendReminder: v.optional(v.boolean()),
     locationId: v.optional(v.id("gabinetLocations")),
     roomId: v.optional(v.id("gabinetRooms")),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -940,6 +944,8 @@ export const update = mutation({
         }),
       ),
     ),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -1608,7 +1614,7 @@ export const getFullDetail = query({
       // Patient
       ctx.db.get(appointment.patientId),
       // Treatment
-      ctx.db.get(appointment.treatmentId),
+      appointment.treatmentId ? ctx.db.get(appointment.treatmentId) : Promise.resolve(null),
       // Employee + User
       ctx.db.get(appointment.employeeId),
       // Documents
@@ -1697,7 +1703,7 @@ export const getFullDetail = query({
       .map((a) => a.treatmentId)
       .filter(Boolean);
     const historyTreatments = await Promise.all(
-      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id)),
+      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id as Id<"gabinetTreatments">)),
     );
     const treatmentMap = new Map(
       historyTreatments.filter(Boolean).map((t) => [t!._id, t]),
@@ -1755,7 +1761,7 @@ export const getFullDetail = query({
       patientPackageUsage: enrichedPatientPackageUsage,
       patientHistory: patientHistory.map((a) => ({
         ...a,
-        treatment: treatmentMap.get(a.treatmentId),
+        treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) : undefined,
       })),
       loyaltyBalance: loyaltyBalance?.balance ?? 0,
       loyaltyTier: loyaltyBalance?.tier ?? null,

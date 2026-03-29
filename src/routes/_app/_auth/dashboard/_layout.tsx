@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
 import { OrgProvider } from "@/components/org-context";
+import { SupabaseProvider } from "@/components/supabase-provider";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -70,6 +71,7 @@ import { CallForm } from "@/components/forms/call-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
+import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
   errorComponent: ({ error, reset }) => (
@@ -89,6 +91,7 @@ const typeIcons: Record<string, React.ReactNode> = {
 function DashboardLayout() {
   const { t } = useTranslation();
   const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   const { data: orgs } = useQuery(
     convexQuery(api.organizations.getMyOrganizations, {})
@@ -115,6 +118,21 @@ function DashboardLayout() {
   const createInvitation = useMutation(api.invitations.create);
 
   const firstOrg = orgs?.[0];
+
+  // Tag & category definitions for quick-create appointment form
+  const { data: appointmentTags } = useQuery({
+    ...convexQuery(api.tagDefinitions.list, {
+      organizationId: firstOrg?._id as Id<"organizations">,
+    }),
+    enabled: !!firstOrg,
+  });
+  const { data: appointmentCategories } = useQuery({
+    ...convexQuery(api.categoryDefinitions.list, {
+      organizationId: firstOrg?._id as Id<"organizations">,
+      entityType: "gabinetAppointment" as const,
+    }),
+    enabled: !!firstOrg,
+  });
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {
@@ -316,6 +334,8 @@ function DashboardLayout() {
               }}
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
+              tagDefinitions={appointmentTags}
+              categoryDefinitions={appointmentCategories}
             />
           );
         case "treatment":
@@ -512,6 +532,7 @@ function DashboardLayout() {
   return (
     <DateRangeProvider>
     <OrgProvider initialOrgId={firstOrg?._id}>
+      <SupabaseProvider>
       <MiniCalendarProvider>
       <SidebarSlotProvider>
       <div className="flex min-h-dvh w-full">
@@ -572,18 +593,18 @@ function DashboardLayout() {
                             />
                           )}
                           <AvatarFallback className="rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
-                            {(user.username ?? user.email ?? "U")[0].toUpperCase()}
+                            {(user.name ?? user.username ?? user.email ?? "U")[0].toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="hidden flex-col items-start gap-0.5 sm:flex">
-                          <span className="text-sm font-medium">{user.username ?? user.name ?? user.email}</span>
+                          <span className="text-sm font-medium">{user.name ?? user.username ?? user.email}</span>
                           <span className="text-muted-foreground text-xs">{user.email}</span>
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-48">
                       <div className="px-2 py-1.5 sm:hidden">
-                        <p className="text-sm font-medium">{user.username ?? user.name}</p>
+                        <p className="text-sm font-medium">{user.name ?? user.username}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                       <DropdownMenuSeparator className="sm:hidden" />
@@ -625,6 +646,7 @@ function DashboardLayout() {
 
     </SidebarSlotProvider>
     </MiniCalendarProvider>
+    </SupabaseProvider>
     </OrgProvider>
     </DateRangeProvider>
   );

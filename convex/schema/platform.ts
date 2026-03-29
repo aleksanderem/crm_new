@@ -221,6 +221,36 @@ export function createPlatformTables({
     .index("by_sequence", ["sequenceId"])
     .index("by_org", ["organizationId"]),
 
+  // ---------------------------------------------------------------------------
+  // Email Brand Config (per-org email branding)
+  // ---------------------------------------------------------------------------
+
+  emailBrandConfig: defineTable({
+    organizationId: v.id("organizations"),
+    logoStorageId: v.optional(v.id("_storage")),
+    logoUrl: v.optional(v.string()),
+    companyName: v.optional(v.string()),
+    primaryColor: v.string(),
+    backgroundColor: v.string(),
+    contentBackgroundColor: v.string(),
+    textColor: v.string(),
+    secondaryTextColor: v.string(),
+    accentColor: v.string(),
+    footerText: v.optional(v.string()),
+    socialLinks: v.optional(
+      v.object({
+        website: v.optional(v.string()),
+        facebook: v.optional(v.string()),
+        instagram: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+      })
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_org", ["organizationId"]),
+
   recentlyViewed: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),

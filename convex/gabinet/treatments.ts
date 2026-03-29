@@ -1,6 +1,7 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { Id } from "../_generated/dataModel";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
@@ -83,6 +84,8 @@ export const create = mutation({
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
     treatmentCount: v.optional(v.number()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -135,6 +138,8 @@ export const update = mutation({
       templateId: v.id("formTemplates"),
       timing: v.union(v.literal("before_start"), v.literal("after_completion")),
     }))),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -383,7 +388,7 @@ export const getTreatmentDetailedStats = query({
         .sort((a, b) => b[1].completedCount - a[1].completedCount)
         .slice(0, 5)
         .map(async ([userId, data]) => {
-          const user = await ctx.db.get(userId as any);
+          const user = await ctx.db.get(userId as Id<"users">);
           return {
             userId,
             name: user?.name ?? user?.email ?? "—",
@@ -777,7 +782,7 @@ export const saveTreatmentParameters = mutation({
 export const migrateParametersToTyped = mutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    await verifyOrgAccess(ctx, args.organizationId);
     const treatments = await ctx.db
       .query("gabinetTreatments")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))

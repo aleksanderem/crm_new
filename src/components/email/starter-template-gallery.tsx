@@ -30,7 +30,7 @@ interface StarterTemplate {
   body: string;
   eventType?: string;
   variables?: string[];
-  /** MJML source for GrapesJS editing (system templates) */
+  /** MJML source (legacy, kept for backward compatibility) */
   mjml?: string;
 }
 
@@ -101,7 +101,7 @@ export function StarterTemplateGallery({
   const handleUseTemplate = async (tpl: StarterTemplate) => {
     setCreating(true);
     try {
-      // Save as {mjml, html} so GrapesJS can edit them.
+      // Save body as HTML (or {mjml, html} for legacy templates).
       const body = tpl.mjml
         ? JSON.stringify({ mjml: tpl.mjml, html: tpl.body })
         : tpl.body;

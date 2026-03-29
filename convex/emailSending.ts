@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
+import { buildEmailHtml } from "./mail/emailShell";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -10,19 +11,22 @@ import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
 /**
  * Replace {{key}} placeholders in a string with provided variable values.
- * Supports both flat keys ({{patientName}}) and prefixed keys ({{event.patientName}}).
- * The "event." prefix is stripped before lookup in the variables map.
+ * Supports flat keys ({{patientName}}) and any dot-notation prefixed keys
+ * ({{patient.name}}, {{event.patientName}}, {{current_user.email}}).
+ * The source prefix is stripped before lookup in the variables map.
  */
-function substituteVariables(
+export function substituteVariables(
   template: string,
   variables: Record<string, string>,
 ): string {
   return template.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
     const trimmed = key.trim();
-    // Try exact match first, then strip "event." prefix
+    // Exact match first
     if (variables[trimmed] !== undefined) return variables[trimmed];
-    if (trimmed.startsWith("event.")) {
-      const flatKey = trimmed.slice(6);
+    // Try stripping any source prefix (e.g., "patient.name" -> "name", "event.patientName" -> "patientName")
+    const dotIndex = trimmed.indexOf(".");
+    if (dotIndex > 0) {
+      const flatKey = trimmed.slice(dotIndex + 1);
       if (variables[flatKey] !== undefined) return variables[flatKey];
     }
     return `{{${trimmed}}}`;
@@ -76,12 +80,19 @@ export const getTemplateAndLayout = internalQuery({
     if (!template || template.organizationId !== args.organizationId)
       return null;
 
+    // Load brand config (new) — preferred over legacy layout
+    const brandConfig = await ctx.db
+      .query("emailBrandConfig")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first();
+
+    // Legacy layout fallback
     const layout = await ctx.db
       .query("emailLayouts")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first();
 
-    return { template, layout };
+    return { template, layout, brandConfig };
   },
 });
 
@@ -127,7 +138,7 @@ export const sendTemplateEmail = internalAction({
       return;
     }
 
-    const { template, layout } = data;
+    const { template, layout, brandConfig } = data;
 
     let variables: Record<string, string> = {};
     try {
@@ -138,23 +149,45 @@ export const sendTemplateEmail = internalAction({
 
     const subject = substituteVariables(template.subject, variables);
 
-    // Extract HTML from body — may be raw HTML or JSON {projectData, html} / {mjml, html}
-    let rawBodyHtml = template.body;
-    try {
-      const parsed = JSON.parse(template.body);
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        typeof parsed.html === "string"
-      ) {
-        rawBodyHtml = parsed.html;
+    // Prefer renderedHtml (new TipTap pipeline) over body (legacy GrapesJS)
+    let rawBodyHtml: string;
+    if (template.renderedHtml) {
+      rawBodyHtml = template.renderedHtml;
+    } else {
+      rawBodyHtml = template.body;
+      try {
+        const parsed = JSON.parse(template.body);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          typeof parsed.html === "string"
+        ) {
+          rawBodyHtml = parsed.html;
+        }
+      } catch {
+        // Not JSON — already raw HTML
       }
-    } catch {
-      // Not JSON — already raw HTML
     }
 
     const bodyHtml = substituteVariables(rawBodyHtml, variables);
-    const html = buildHtml(bodyHtml, layout);
+
+    let html: string;
+    if (brandConfig) {
+      html = buildEmailHtml(bodyHtml, {
+        primaryColor: brandConfig.primaryColor,
+        backgroundColor: brandConfig.backgroundColor,
+        contentBackgroundColor: brandConfig.contentBackgroundColor,
+        textColor: brandConfig.textColor,
+        secondaryTextColor: brandConfig.secondaryTextColor,
+        accentColor: brandConfig.accentColor,
+        logoUrl: brandConfig.logoUrl ?? undefined,
+        companyName: brandConfig.companyName ?? undefined,
+        footerText: brandConfig.footerText ?? undefined,
+        socialLinks: brandConfig.socialLinks ?? undefined,
+      });
+    } else {
+      html = buildHtml(bodyHtml, layout);
+    }
 
     if (!RESEND_API_KEY) {
       console.warn("[emailSending] RESEND_API_KEY not set — skipping send");

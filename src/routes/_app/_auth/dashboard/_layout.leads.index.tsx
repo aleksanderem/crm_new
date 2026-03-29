@@ -45,6 +45,10 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
@@ -85,6 +89,10 @@ function LeadsIndex() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const { handleExport } = useCsvExport(organizationId, "leads");
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "lead");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
@@ -151,8 +159,10 @@ function LeadsIndex() {
         type: "date",
       },
       { id: "createdAt", label: t("common.created"), type: "date" },
+      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
+      { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
     ],
-    [t],
+    [t, tags, categories],
   );
 
   const {
@@ -392,7 +402,7 @@ function LeadsIndex() {
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
+            {tags.map((tag: any) => (
               <Badge key={tag} variant="outline" className="text-xs">
                 {tag}
               </Badge>
@@ -544,7 +554,7 @@ function LeadsIndex() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -553,6 +563,8 @@ function LeadsIndex() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t("deals.searchPlaceholder")}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         dropdownActions={[
           {
             label: t("csv.export"),
@@ -649,6 +661,8 @@ function LeadsIndex() {
           pipelines={pipelines}
           stages={stages}
           customFieldDefinitions={cfDefs}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
           isSubmitting={isSubmitting}
           onCancel={() => setCreateOpen(false)}
           onSubmit={async (data, customFieldRecord) => {
@@ -681,6 +695,20 @@ function LeadsIndex() {
           }}
         />
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="lead"
+        categories={categories}
+      />
     </div>
   );
 }

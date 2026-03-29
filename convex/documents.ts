@@ -102,6 +102,8 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
     status: v.optional(documentStatusValidator),
     amount: v.optional(v.number()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -139,6 +141,8 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
     status: v.optional(documentStatusValidator),
     amount: v.optional(v.number()),
+    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
+    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

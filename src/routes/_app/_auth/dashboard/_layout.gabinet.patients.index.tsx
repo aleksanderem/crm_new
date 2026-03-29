@@ -22,6 +22,10 @@ import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
@@ -45,6 +49,11 @@ function PatientsIndex() {
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "gabinetPatient");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
 
@@ -123,8 +132,10 @@ function PatientsIndex() {
         ],
       },
       { id: "createdAt", label: t("common.created"), type: "date" },
+      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+      { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
     ],
-    [t],
+    [t, tags, categories],
   );
 
   const { data, isLoading } = useQuery(
@@ -308,12 +319,14 @@ function PatientsIndex() {
       emergencyContactName?: string;
       emergencyContactPhone?: string;
       referralSource?: string;
+      tagIds?: string[];
+      categoryId?: string;
     }) => {
       setIsCreating(true);
       try {
         await createPatient({
           organizationId,
-          ...formData,
+          ...(formData as any),
         });
         setPanelOpen(false);
       } finally {
@@ -368,7 +381,7 @@ function PatientsIndex() {
       />
 
       <DataListFilterBar
-        views={views}
+        views={views as any}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -389,6 +402,8 @@ function PatientsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
@@ -439,8 +454,24 @@ function PatientsIndex() {
           onSubmit={handleCreate}
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
         />
       </SidePanel>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="gabinetPatient"
+        categories={categories}
+      />
     </div>
   );
 }

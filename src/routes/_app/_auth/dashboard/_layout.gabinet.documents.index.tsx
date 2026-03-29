@@ -38,6 +38,10 @@ import { ClipboardList, Search, FileText } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { Id } from "@cvx/_generated/dataModel";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
 // ---------------------------------------------------------------------------
 // Route
@@ -93,6 +97,11 @@ function GabinetDocumentsPage() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const lang = i18n.language === "en" ? "en" : "pl";
+
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "gabinetDocument");
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
+  const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // --- State ---
   const [search, setSearch] = useState("");
@@ -434,6 +443,20 @@ function GabinetDocumentsPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tags}
+      />
+      <CategoriesManagerSlideout
+        isOpen={categoriesSlideoutOpen}
+        onOpenChange={setCategoriesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="gabinetDocument"
+        categories={categories}
+      />
     </div>
   );
 }

@@ -534,6 +534,21 @@ http.route({
   handler: googleOAuthCallback,
 });
 
+// --- Microsoft OAuth routes ---
+import { initiate as microsoftOAuthInitiate, callback as microsoftOAuthCallback } from "./microsoft/oauth";
+
+http.route({
+  path: "/microsoft/oauth/initiate",
+  method: "GET",
+  handler: microsoftOAuthInitiate,
+});
+
+http.route({
+  path: "/microsoft/oauth/callback",
+  method: "GET",
+  handler: microsoftOAuthCallback,
+});
+
 auth.addHttpRoutes(http);
 
 export default http;

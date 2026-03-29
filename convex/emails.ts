@@ -14,6 +14,7 @@ export const listInbox = query({
     search: v.optional(v.string()),
     direction: v.optional(emailDirectionValidator),
     isRead: v.optional(v.boolean()),
+    mailProviderId: v.optional(v.id("mailProviders")),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -33,39 +34,36 @@ export const listInbox = query({
 
       const results = await searchQuery.take(50);
 
-      const filtered =
-        args.isRead !== undefined
-          ? results.filter((e) => e.isRead === args.isRead)
-          : results;
+      const filtered = results.filter((e) => {
+        if (args.isRead !== undefined && e.isRead !== args.isRead) return false;
+        if (args.mailProviderId && e.mailProviderId !== args.mailProviderId) return false;
+        return true;
+      });
 
       return { page: filtered, isDone: true, continueCursor: "" };
     }
 
-    const q = ctx.db
-      .query("emails")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc");
+    const baseQuery = args.mailProviderId
+      ? ctx.db
+          .query("emails")
+          .withIndex("by_org_provider", (q) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("mailProviderId", args.mailProviderId)
+          )
+          .order("desc")
+      : ctx.db
+          .query("emails")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .order("desc");
 
-    if (args.direction) {
-      const all = await q.collect();
+    if (args.direction || args.isRead !== undefined) {
+      const all = await baseQuery.collect();
       const filtered = all.filter((e) => {
         if (args.direction && e.direction !== args.direction) return false;
         if (args.isRead !== undefined && e.isRead !== args.isRead) return false;
         return true;
       });
-      const start = 0;
-      const numItems = args.paginationOpts.numItems;
-      const page = filtered.slice(start, start + numItems);
-      return {
-        page,
-        isDone: filtered.length <= numItems,
-        continueCursor: "",
-      };
-    }
-
-    if (args.isRead !== undefined) {
-      const all = await q.collect();
-      const filtered = all.filter((e) => e.isRead === args.isRead);
       const numItems = args.paginationOpts.numItems;
       const page = filtered.slice(0, numItems);
       return {
@@ -75,7 +73,7 @@ export const listInbox = query({
       };
     }
 
-    return await q.paginate(args.paginationOpts);
+    return await baseQuery.paginate(args.paginationOpts);
   },
 });
 
@@ -183,6 +181,7 @@ export const send = mutation({
     contactId: v.optional(v.id("contacts")),
     companyId: v.optional(v.id("companies")),
     leadId: v.optional(v.id("leads")),
+    mailProviderId: v.optional(v.id("mailProviders")),
     inReplyTo: v.optional(v.string()),
     threadId: v.optional(v.string()),
   },
@@ -238,6 +237,7 @@ export const send = mutation({
       contactId: args.contactId,
       companyId: args.companyId,
       leadId: args.leadId,
+      mailProviderId: args.mailProviderId,
       sentBy: user._id,
       sentAt: now,
       createdAt: now,
@@ -337,6 +337,51 @@ export const toggleStar = mutation({
     });
 
     return args.emailId;
+  },
+});
+
+export const listByPatient = query({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await ctx.db
+      .query("emails")
+      .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
+      .order("desc")
+      .take(50);
+  },
+});
+
+export const listByAppointment = query({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await ctx.db
+      .query("emails")
+      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+      .order("desc")
+      .take(50);
+  },
+});
+
+export const listByEmployee = query({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.id("gabinetEmployees"),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    return await ctx.db
+      .query("emails")
+      .withIndex("by_employee", (q) => q.eq("employeeId", args.employeeId))
+      .order("desc")
+      .take(50);
   },
 });
 

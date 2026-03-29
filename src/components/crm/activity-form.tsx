@@ -31,6 +31,9 @@ import {
 import { cn } from "@/lib/utils";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import type { Id } from "@cvx/_generated/dataModel";
 import type { CustomFieldType } from "@cvx/schema";
 
 export type ActivityType = "call" | "meeting" | "email" | "task";
@@ -39,6 +42,19 @@ export interface GuestSearchResult {
   id: string;
   label: string;
   email?: string;
+}
+
+interface TagDef {
+  _id: Id<"tagDefinitions">;
+  name: string;
+  color: string;
+}
+
+interface CategoryDef {
+  _id: Id<"categoryDefinitions">;
+  name: string;
+  parentId?: Id<"categoryDefinitions">;
+  color?: string;
 }
 
 interface CustomFieldDef {
@@ -65,6 +81,8 @@ interface ActivityFormProps {
     guests?: string[];
     isCompleted?: boolean;
     customFieldValues?: Record<string, unknown>;
+    tagIds?: Id<"tagDefinitions">[];
+    categoryId?: Id<"categoryDefinitions">;
   }) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -72,6 +90,8 @@ interface ActivityFormProps {
   onSearchContacts?: (query: string) => void;
   activityTypes?: Array<{ key: string; name: string; icon: string; color?: string }>;
   customFieldDefs?: CustomFieldDef[];
+  tagDefinitions?: TagDef[];
+  categoryDefinitions?: CategoryDef[];
 }
 
 export function ActivityForm({
@@ -84,6 +104,8 @@ export function ActivityForm({
   onSearchContacts,
   activityTypes: activityTypesProp,
   customFieldDefs = [],
+  tagDefinitions = [],
+  categoryDefinitions = [],
 }: ActivityFormProps) {
   const { t } = useTranslation();
 
@@ -120,6 +142,8 @@ export function ActivityForm({
   const [description, setDescription] = useState("");
   const [note, setNote] = useState("");
   const [markCompleted, setMarkCompleted] = useState(false);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   // Guest tag input state
   const [guests, setGuests] = useState<string[]>([]);
@@ -218,13 +242,15 @@ export function ActivityForm({
       guests: guests.length > 0 ? guests : undefined,
       isCompleted: markCompleted,
       customFieldValues: Object.keys(filteredCfValues).length > 0 ? filteredCfValues : undefined,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col max-h-[70vh]">
-      <div className="space-y-5 overflow-y-auto flex-1 min-h-0">
+      <div className="flex flex-col">
+      <div className="space-y-5 flex-1 min-h-0">
         {/* Title */}
         <div className="space-y-1.5">
           <Label>
@@ -506,16 +532,32 @@ export function ActivityForm({
           </p>
         </div>
 
+        {/* Tags */}
+        {tagDefinitions.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+            <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+          </div>
+        )}
+
+        {/* Category */}
+        {categoryDefinitions.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+          </div>
+        )}
+
       </div>
 
         {/* Footer — pinned below scroll area */}
-        <div className="flex items-center justify-between border-t pt-4 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 shrink-0">
           <span className="text-sm text-primary">
             {t('activityForm.linkedRecord')}
           </span>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
                 {t('activityForm.markCompleted')}
               </span>
               <Switch

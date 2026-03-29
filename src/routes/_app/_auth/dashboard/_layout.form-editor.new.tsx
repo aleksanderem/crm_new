@@ -70,7 +70,6 @@ function NewFormEditorPage() {
     signerRole: "client" as SignerRole,
   });
 
-  // @ts-expect-error — TS2589 deep type instantiation in generated Convex API; resolves at runtime
   const createTemplate = useMutation(api.documents.templates.create);
 
   const handleSave = async () => {

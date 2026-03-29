@@ -22,7 +22,7 @@ export const sendDailyReminders = internalMutation({
 
     for (const appt of active) {
       const patient = await ctx.db.get(appt.patientId);
-      const treatment = await ctx.db.get(appt.treatmentId);
+      const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
 
       if (patient?.email) {
         // TODO: Send email via Resend

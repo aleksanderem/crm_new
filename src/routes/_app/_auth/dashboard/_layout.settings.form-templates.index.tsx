@@ -690,7 +690,7 @@ function FormTemplatesListPage() {
     try {
       await createTemplate({
         organizationId,
-        name: t("settings.formTemplates.newTemplateName", "Nowy szablon"),
+        name: t("settings.formTemplates.newTemplateName"),
         category: "custom" as FormCategory,
         folderPath,
         formJson: "{}",
@@ -744,38 +744,38 @@ function FormTemplatesListPage() {
                   onClick={() => setNewFolderDialogOpen(true)}
                 >
                   <FolderPlus className="mr-2 h-4 w-4" />
-                  {t("settings.formTemplates.newFolder", "Nowy folder")}
+                  {t("settings.formTemplates.newFolder")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={async () => {
                     try {
                       const result = await seedTemplates({ organizationId });
-                      toast.success(`Załadowano ${result.count} szablonów`);
+                      toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
                     } catch (e: unknown) {
                       toast.error(
-                        e instanceof Error ? e.message : "Błąd",
+                        e instanceof Error ? e.message : t("common.error"),
                       );
                     }
                   }}
                 >
-                  {t("settings.formTemplates.seedExamples", "Załaduj przykłady")}
+                  {t("settings.formTemplates.seedExamples")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={async () => {
                     try {
                       const result = await migrateFolders({ organizationId });
                       toast.success(
-                        `Przypisano foldery do ${result.patched} szablonów`,
+                        t("settings.formTemplates.migrateSuccess", { count: result.patched }),
                       );
                     } catch (e: unknown) {
                       toast.error(
-                        e instanceof Error ? e.message : "Błąd",
+                        e instanceof Error ? e.message : t("common.error"),
                       );
                     }
                   }}
                 >
-                  Migruj foldery
+                  {t("settings.formTemplates.migrateFolders")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -791,13 +791,13 @@ function FormTemplatesListPage() {
                 <DropdownMenuItem asChild>
                   <Link to="/dashboard/form-editor/new">
                     <FileText className="mr-2 h-4 w-4" />
-                    {t("settings.formTemplates.newPdfmeTemplate", "Szablon PDF (PDFme)")}
+                    {t("settings.formTemplates.newPdfmeTemplate")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/dashboard/document-editor/new">
                     <FileText className="mr-2 h-4 w-4" />
-                    {t("settings.formTemplates.newDocumentTemplate", "Szablon dokumentu (WYSIWYG)")}
+                    {t("settings.formTemplates.newDocumentTemplate")}
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -901,7 +901,7 @@ function FormTemplatesListPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {t("settings.formTemplates.newFolder", "Nowy folder")}
+              {t("settings.formTemplates.newFolder")}
             </DialogTitle>
             <DialogDescription>
               {t(

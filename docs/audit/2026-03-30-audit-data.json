@@ -1,0 +1,809 @@
+{
+  "date": "2026-03-30T05:31:34.512Z",
+  "totalChecks": 89,
+  "passes": 64,
+  "failures": 25,
+  "findings": [
+    {
+      "page": "/dashboard",
+      "element": "Widok lejka",
+      "action": "click",
+      "expected": "Navigate to leads",
+      "actual": "Navigated to http://localhost:5173/dashboard/leads",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Dodaj transakcję",
+      "action": "click",
+      "expected": "Open new deal dialog",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Dzisiejsze aktywności",
+      "action": "click",
+      "expected": "Navigate to activities",
+      "actual": "Navigated to http://localhost:5173/dashboard/activities",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Eksportuj raport",
+      "action": "click",
+      "expected": "Export or open dialog",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Date range selector",
+      "action": "click",
+      "expected": "Open date picker",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Smart Agenda Wszystkie tab",
+      "action": "click",
+      "expected": "Switch tab",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/dashboard",
+      "element": "Smart Agenda Moje tab",
+      "action": "click",
+      "expected": "Switch tab",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/contacts",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "11 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Filters",
+      "action": "click",
+      "expected": "Opens filter panel",
+      "actual": "Filter panel opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/contacts",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Dodaj kontakt (sidebar)",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Importuj CSV",
+      "action": "click",
+      "expected": "Open import dialog",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Eksportuj CSV",
+      "action": "click",
+      "expected": "Download or dialog",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/contacts",
+      "element": "Zapisane widoki",
+      "action": "click",
+      "expected": "Open views dialog",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Column sort (Kontakt)",
+      "action": "click header",
+      "expected": "Sort changes",
+      "actual": "Clicked",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts",
+      "element": "Pagination Next",
+      "action": "click",
+      "expected": "Next page loads",
+      "actual": "Clicked",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts/new",
+      "element": "Create form submit",
+      "action": "fill + submit",
+      "expected": "Contact created, dialog closes",
+      "actual": "Dialog closed (success)",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/contacts/detail",
+      "element": "Navigate to detail",
+      "action": "click row",
+      "expected": "Opens detail page",
+      "actual": "Could not navigate to detail",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/companies",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "10 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/companies",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/companies",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/companies",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/companies",
+      "element": "Dodaj firmę",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/leads",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "11 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/leads",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/leads",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/leads",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/leads",
+      "element": "Dodaj transakcję",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/leads",
+      "element": "Widok Kanban",
+      "action": "click",
+      "expected": "Navigate to kanban",
+      "actual": "Navigated to http://localhost:5173/dashboard/pipelines",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Page heading",
+      "action": "render",
+      "expected": "Aktywności",
+      "actual": "Shows 'Tytuł' instead",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/activities",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "11 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Dodaj aktywność",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Filtruj wg typu",
+      "action": "click",
+      "expected": "Open filter dropdown",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Widok kalendarza",
+      "action": "click",
+      "expected": "Switch to calendar view",
+      "actual": "Navigated to http://localhost:5173/dashboard/calendar",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/activities",
+      "element": "Tylko nadchodzące",
+      "action": "click",
+      "expected": "Toggle filter",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/activities",
+      "element": "Pokaż ukończone toggle",
+      "action": "click",
+      "expected": "Toggle completed",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calls",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "5 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calls",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calls",
+      "element": "Add call",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Button not found/visible",
+      "status": "FAIL",
+      "severity": "P1"
+    },
+    {
+      "page": "/products",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "5 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/products",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/products",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/products",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/products",
+      "element": "Dodaj produkt",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/products",
+      "element": "Filtr kategorii",
+      "action": "click",
+      "expected": "Open category filter",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/documents",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "8 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/pipelines",
+      "element": "Kanban columns",
+      "action": "render",
+      "expected": "Multiple columns",
+      "actual": "0 elements found",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/calendar",
+      "element": "Day view",
+      "action": "click",
+      "expected": "Switch to day view",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calendar",
+      "element": "Week view",
+      "action": "click",
+      "expected": "Switch to week view",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calendar",
+      "element": "Month view",
+      "action": "click",
+      "expected": "Switch to month view",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/calendar",
+      "element": "Today button",
+      "action": "click",
+      "expected": "Navigate to today",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/inbox",
+      "element": "Unread tab",
+      "action": "click",
+      "expected": "Filter unread",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/inbox",
+      "element": "Sent tab",
+      "action": "click",
+      "expected": "Filter sent",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/inbox",
+      "element": "Starred tab",
+      "action": "click",
+      "expected": "Filter starred",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/email-templates",
+      "element": "Toggle switch",
+      "action": "click",
+      "expected": "Toggles state",
+      "actual": "Changed from true to false",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet",
+      "element": "Umów wizytę",
+      "action": "click",
+      "expected": "Open appointment form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet",
+      "element": "Kalendarz",
+      "action": "click",
+      "expected": "Navigate to calendar",
+      "actual": "Navigated to http://localhost:5173/dashboard/gabinet/calendar",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet",
+      "element": "Dodaj klienta",
+      "action": "click",
+      "expected": "Open patient form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet",
+      "element": "Grafik na dziś",
+      "action": "click",
+      "expected": "Show schedule",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/gabinet/calendar",
+      "element": "Day view",
+      "action": "click",
+      "expected": "Switch to day view",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/calendar",
+      "element": "Week view",
+      "action": "click",
+      "expected": "Switch to week",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/patients",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "11 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/patients",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/patients",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/gabinet/patients",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/patients",
+      "element": "Dodaj klienta",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "11 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Search",
+      "action": "type and clear",
+      "expected": "Filters/restores",
+      "actual": "Search input works",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Row ⋮ menu",
+      "action": "click",
+      "expected": "Opens action menu",
+      "actual": "Menu opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Dodaj zabieg",
+      "action": "click",
+      "expected": "Open create form",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Filtr kategorii",
+      "action": "click",
+      "expected": "Open category filter",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P1"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Sortuj wg ceny",
+      "action": "click",
+      "expected": "Sort by price",
+      "actual": "Content changed",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Zarządzaj kategoriami",
+      "action": "click",
+      "expected": "Navigate to category manager",
+      "actual": "Navigated to http://localhost:5173/dashboard/gabinet/settings",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/gabinet/treatments",
+      "element": "Smart Agenda widget",
+      "action": "render",
+      "expected": "Not present on catalog page",
+      "actual": "Smart Agenda appears (irrelevant here)",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/gabinet/employees",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "Empty state shown",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/gabinet/employees",
+      "element": "Row click",
+      "action": "click first row",
+      "expected": "Navigate to detail",
+      "actual": "No reaction",
+      "status": "NO_REACTION",
+      "severity": "P2"
+    },
+    {
+      "page": "/gabinet/documents",
+      "element": "Data table",
+      "action": "render",
+      "expected": "At least 1 rows",
+      "actual": "8 rows",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/settings/profile",
+      "element": "Labels",
+      "action": "render",
+      "expected": "Polish translations",
+      "actual": "English labels (Display Name, Email Address)",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/settings/organization",
+      "element": "Save button",
+      "action": "visible",
+      "expected": "Visible",
+      "actual": "Present",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/settings/team",
+      "element": "Invite button",
+      "action": "click",
+      "expected": "Open invite dialog",
+      "actual": "Dialog opened",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/settings/billing",
+      "element": "Page render",
+      "action": "navigate",
+      "expected": "Page renders",
+      "actual": "Error boundary: Something went wrong",
+      "status": "CRASH",
+      "severity": "P0"
+    },
+    {
+      "page": "/settings/mail",
+      "element": "Mail providers",
+      "action": "render",
+      "expected": "Providers listed",
+      "actual": "Not visible",
+      "status": "FAIL",
+      "severity": "P2"
+    },
+    {
+      "page": "/settings/sources",
+      "element": "Source toggle",
+      "action": "click",
+      "expected": "Toggle state",
+      "actual": "true → false",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/settings/automations",
+      "element": "Automation toggles",
+      "action": "visible",
+      "expected": "Toggles present",
+      "actual": "45 toggles",
+      "status": "PASS",
+      "severity": "P3"
+    },
+    {
+      "page": "/settings/audit-log",
+      "element": "Page content",
+      "action": "render",
+      "expected": "Polish translations",
+      "actual": "English content",
+      "status": "FAIL",
+      "severity": "P2"
+    }
+  ]
+}

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseEmailSequencesList, useSupabaseEmailSequence, useSupabaseEmailSequenceSteps } from "@/hooks/use-supabase-email-sequences";
+import { useSupabaseEmailEventTypes } from "@/hooks/use-supabase-email-events";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +63,7 @@ export const Route = createFileRoute(
 // ---------------------------------------------------------------------------
 
 interface Sequence {
-  _id: Id<"emailSequences">;
+  _id: string;
   name: string;
   triggerEventType: string;
   isActive: boolean;
@@ -69,11 +72,11 @@ interface Sequence {
 }
 
 interface SequenceStep {
-  _id: Id<"emailSequenceSteps">;
-  sequenceId: Id<"emailSequences">;
+  _id: string;
+  sequenceId: string;
   order: number;
   delayMs: number;
-  templateId: Id<"emailTemplates">;
+  templateId: string;
 }
 
 
@@ -102,17 +105,17 @@ function EmailSequencesSettings() {
 
   // Sequence to edit (open the editor dialog)
   const [editingSequenceId, setEditingSequenceId] =
-    useState<Id<"emailSequences"> | null>(null);
+    useState<string | null>(null);
   // "new" dialog
   const [showCreate, setShowCreate] = useState(false);
   // Delete confirmation
   const [deletingSequenceId, setDeletingSequenceId] =
-    useState<Id<"emailSequences"> | null>(null);
+    useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   // Sequences list
-  const { data: sequences, isLoading } = useQuery(
-    convexQuery(api.emailSequences.listSequences, { organizationId })
-  );
+  const { data: sequences, isLoading } = useSupabaseEmailSequencesList(organizationId);
 
   // Mutations
   const updateSequence = useMutation(api.emailSequences.updateSequence);
@@ -123,9 +126,10 @@ function EmailSequencesSettings() {
     try {
       await updateSequence({
         organizationId,
-        sequenceId: seq._id,
+        sequenceId: seq._id as Id<"emailSequences">,
         isActive: !seq.isActive,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequences.list(organizationId) });
       toast.success(
         seq.isActive
           ? t("emailSequences.deactivatedSuccess")
@@ -139,7 +143,8 @@ function EmailSequencesSettings() {
   const handleDeleteConfirm = async () => {
     if (!deletingSequenceId) return;
     try {
-      await deleteSequence({ organizationId, sequenceId: deletingSequenceId });
+      await deleteSequence({ organizationId, sequenceId: deletingSequenceId as Id<"emailSequences"> });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequences.list(organizationId) });
       toast.success(t("emailSequences.deleteSuccess"));
     } catch {
       toast.error(t("emailSequences.deleteError"));
@@ -306,10 +311,9 @@ function CreateSequenceDialog({
   const [saving, setSaving] = useState(false);
 
   const createSequence = useMutation(api.emailSequences.createSequence);
+  const queryClient = useQueryClient();
 
-  const { data: eventTypes } = useQuery(
-    convexQuery(api.emailEvents.listEventTypes, { organizationId })
-  );
+  const { data: eventTypes } = useSupabaseEmailEventTypes(organizationId as string);
 
   const handleSave = async () => {
     if (!name.trim() || !triggerEventType) return;
@@ -321,6 +325,7 @@ function CreateSequenceDialog({
         triggerEventType,
         isActive: false,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequences.list(organizationId as string) });
       toast.success(t("emailSequences.createSuccess"));
       setName("");
       setTriggerEventType("");
@@ -400,22 +405,30 @@ function SequenceEditorDialog({
   organizationId,
   onClose,
 }: {
-  sequenceId: Id<"emailSequences">;
+  sequenceId: string;
   organizationId: Id<"organizations">;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
 
-  const { data: sequence, isLoading } = useQuery(
-    convexQuery(api.emailSequences.getSequence, { organizationId, sequenceId })
+  const queryClient = useQueryClient();
+
+  const { data: sequenceBase, isLoading: seqLoading } = useSupabaseEmailSequence(
+    organizationId as string, sequenceId,
   );
 
-  const { data: eventTypes } = useQuery(
-    convexQuery(api.emailEvents.listEventTypes, { organizationId })
+  const { data: stepsRaw, isLoading: stepsLoading } = useSupabaseEmailSequenceSteps(
+    organizationId as string, sequenceId,
   );
 
-  const { data: templates } = useQuery(
-    convexQuery(api.emailTemplates.list, { organizationId, activeOnly: true })
+  const steps = (stepsRaw ?? []) as unknown as SequenceStep[];
+  const sequence = sequenceBase ? { ...sequenceBase, steps } : null;
+  const isLoading = seqLoading || stepsLoading;
+
+  const { data: eventTypes } = useSupabaseEmailEventTypes(organizationId as string);
+
+  const { data: templates } = useSupabaseEmailTemplatesList(
+    organizationId as string, { activeOnly: true },
   );
 
   const updateSequence = useMutation(api.emailSequences.updateSequence);
@@ -437,10 +450,11 @@ function SequenceEditorDialog({
     try {
       await updateSequence({
         organizationId,
-        sequenceId,
+        sequenceId: sequenceId as Id<"emailSequences">,
         name: resolvedName,
         triggerEventType: resolvedTrigger,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequences.detail(organizationId as string, sequenceId) });
       toast.success(t("emailSequences.savedSuccess"));
       setName(null);
       setTrigger(null);
@@ -466,20 +480,21 @@ function SequenceEditorDialog({
     try {
       await upsertStep({
         organizationId,
-        sequenceId,
-        stepId: step._id,
+        sequenceId: sequenceId as Id<"emailSequences">,
+        stepId: step._id as Id<"emailSequenceSteps">,
         order: sibling.order,
         delayMs: step.delayMs,
-        templateId: step.templateId,
+        templateId: step.templateId as Id<"emailTemplates">,
       });
       await upsertStep({
         organizationId,
-        sequenceId,
-        stepId: sibling._id,
+        sequenceId: sequenceId as Id<"emailSequences">,
+        stepId: sibling._id as Id<"emailSequenceSteps">,
         order: step.order,
         delayMs: sibling.delayMs,
-        templateId: sibling.templateId,
+        templateId: sibling.templateId as Id<"emailTemplates">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequenceSteps.detail(organizationId as string, sequenceId) });
     } catch {
       toast.error(t("emailSequences.stepMoveError"));
     }
@@ -488,7 +503,7 @@ function SequenceEditorDialog({
   const handleAddStep = async () => {
     if (!sequence) return;
     const maxOrder = sequence.steps.reduce(
-      (m, s) => Math.max(m, s.order),
+      (m: number, s: SequenceStep) => Math.max(m, s.order),
       -1
     );
     const defaultTemplate = templates?.[0]?._id;
@@ -499,19 +514,21 @@ function SequenceEditorDialog({
     try {
       await upsertStep({
         organizationId,
-        sequenceId,
+        sequenceId: sequenceId as Id<"emailSequences">,
         order: maxOrder + 1,
         delayMs: MS_PER_HOUR * 24, // 24h default
-        templateId: defaultTemplate,
+        templateId: defaultTemplate as Id<"emailTemplates">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequenceSteps.detail(organizationId as string, sequenceId) });
     } catch {
       toast.error(t("emailSequences.stepAddError"));
     }
   };
 
-  const handleDeleteStep = async (stepId: Id<"emailSequenceSteps">) => {
+  const handleDeleteStep = async (stepId: string) => {
     try {
-      await deleteStep({ organizationId, stepId });
+      await deleteStep({ organizationId, stepId: stepId as Id<"emailSequenceSteps"> });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequenceSteps.detail(organizationId as string, sequenceId) });
     } catch {
       toast.error(t("emailSequences.stepDeleteError"));
     }
@@ -519,17 +536,18 @@ function SequenceEditorDialog({
 
   const handleUpdateStep = async (
     step: SequenceStep,
-    patch: { delayMs?: number; templateId?: Id<"emailTemplates"> }
+    patch: { delayMs?: number; templateId?: string }
   ) => {
     try {
       await upsertStep({
         organizationId,
-        sequenceId,
-        stepId: step._id,
+        sequenceId: sequenceId as Id<"emailSequences">,
+        stepId: step._id as Id<"emailSequenceSteps">,
         order: step.order,
         delayMs: patch.delayMs ?? step.delayMs,
-        templateId: patch.templateId ?? step.templateId,
+        templateId: (patch.templateId ?? step.templateId) as Id<"emailTemplates">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailSequenceSteps.detail(organizationId as string, sequenceId) });
     } catch {
       toast.error(t("emailSequences.stepSaveError"));
     }
@@ -664,13 +682,13 @@ function StepRow({
   step: SequenceStep;
   index: number;
   total: number;
-  templates: { _id: Id<"emailTemplates">; name: string }[];
+  templates: { _id: string; name: string }[];
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
   onUpdate: (patch: {
     delayMs?: number;
-    templateId?: Id<"emailTemplates">;
+    templateId?: string;
   }) => void;
 }) {
   const { t } = useTranslation();
@@ -725,7 +743,7 @@ function StepRow({
           <Select
             value={step.templateId}
             onValueChange={(v) =>
-              onUpdate({ templateId: v as Id<"emailTemplates"> })
+              onUpdate({ templateId: v })
             }
           >
             <SelectTrigger

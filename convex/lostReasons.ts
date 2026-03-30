@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeReasonRef = internal.supabase.lostReasons.writeLostReasonToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateReasonRef = internal.supabase.lostReasons.updateLostReasonInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteReasonRef = internal.supabase.lostReasons.deleteLostReasonFromSupabase;
 
 export const list = query({
   args: {
@@ -44,6 +52,18 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new lost reason to Supabase
+    await ctx.scheduler.runAfter(0, writeReasonRef, {
+      reasonId: reasonId as string,
+      organizationId: args.organizationId as string,
+      label: args.label,
+      order: maxOrder + 1,
+      isActive: true,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return reasonId;
   },
 });
@@ -64,7 +84,16 @@ export const update = mutation({
     }
 
     const { organizationId, reasonId, ...updates } = args;
-    await ctx.db.patch(reasonId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(reasonId, { ...updates, updatedAt: now });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateReasonRef, {
+      reasonId: reasonId as string,
+      organizationId: organizationId as string,
+      ...updates,
+      updatedAt: now,
+    });
 
     return reasonId;
   },
@@ -82,6 +111,12 @@ export const remove = mutation({
     if (!reason || reason.organizationId !== args.organizationId) {
       throw new Error("Lost reason not found");
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteReasonRef, {
+      reasonId: args.reasonId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.reasonId);
     return args.reasonId;

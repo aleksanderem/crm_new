@@ -8,20 +8,71 @@
  *   supabaseKeys.contacts.detail(orgId, id)  → ["supabase", "contacts", "detail", orgId, id]
  */
 
+// ─── Helper: create a standard entity key factory ─────────────────────────────
+function entityKeys<T extends string>(entity: T) {
+  return {
+    all: ["supabase", entity] as const,
+    list: (orgId: string) => ["supabase", entity, "list", orgId] as const,
+    detail: (orgId: string, id: string) =>
+      ["supabase", entity, "detail", orgId, id] as const,
+  };
+}
+
 export const supabaseKeys = {
   /** Root key — invalidate everything from Supabase. */
   all: ["supabase"] as const,
 
-  contacts: {
-    /** All contact queries. */
-    all: ["supabase", "contacts"] as const,
+  // ── CRM Core Entities ───────────────────────────────────────────────────
+  contacts: entityKeys("contacts"),
+  companies: entityKeys("companies"),
+  products: entityKeys("products"),
+  notes: entityKeys("notes"),
+  activities: entityKeys("activities"),
+  calls: entityKeys("calls"),
+  documents: entityKeys("documents"),
+  sources: entityKeys("sources"),
+  savedViews: entityKeys("savedViews"),
+  lostReasons: entityKeys("lostReasons"),
 
-    /** Contacts list for a specific organization. */
-    list: (orgId: string) =>
-      ["supabase", "contacts", "list", orgId] as const,
+  // ── Custom Fields & Relationships ───────────────────────────────────────
+  customFieldDefinitions: entityKeys("customFieldDefinitions"),
+  customFieldValues: entityKeys("customFieldValues"),
+  objectRelationships: entityKeys("objectRelationships"),
 
-    /** Single contact detail. */
-    detail: (orgId: string, contactId: string) =>
-      ["supabase", "contacts", "detail", orgId, contactId] as const,
-  },
+  // ── Lead Pipeline & Kanban ──────────────────────────────────────────────
+  leads: entityKeys("leads"),
+  pipelines: entityKeys("pipelines"),
+  pipelineStages: entityKeys("pipelineStages"),
+  pipelineStageActions: entityKeys("pipelineStageActions"),
+  dealProducts: entityKeys("dealProducts"),
+  scheduledActivities: entityKeys("scheduledActivities"),
+
+  // ── Email System ──────────────────────────────────────────────────────────
+  emails: entityKeys("emails"),
+  emailAccounts: entityKeys("emailAccounts"),
+  mailProviders: entityKeys("mailProviders"),
+  emailTemplates: entityKeys("emailTemplates"),
+  emailLayouts: entityKeys("emailLayouts"),
+  emailBrandConfig: entityKeys("emailBrandConfig"),
+  emailEventTypes: entityKeys("emailEventTypes"),
+  emailEventBindings: entityKeys("emailEventBindings"),
+  emailEventLog: entityKeys("emailEventLog"),
+  emailSequences: entityKeys("emailSequences"),
+  emailSequenceSteps: entityKeys("emailSequenceSteps"),
+  emailSequenceEnrollments: entityKeys("emailSequenceEnrollments"),
+
+  // ── Automation Engine ───────────────────────────────────────────────────
+  automationRules: entityKeys("automationRules"),
+  automationRuns: entityKeys("automationRuns"),
+  automationRunSteps: entityKeys("automationRunSteps"),
+
+  // ── Platform Entities ───────────────────────────────────────────────────
+  organizations: entityKeys("organizations"),
+  teamMemberships: entityKeys("teamMemberships"),
+  invitations: entityKeys("invitations"),
+  notifications: entityKeys("notifications"),
+  recentlyViewed: entityKeys("recentlyViewed"),
+  orgSettings: entityKeys("orgSettings"),
+  auditLog: entityKeys("auditLog"),
+  activityTypes: entityKeys("activityTypes"),
 } as const;

@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import {
+  useSupabaseCustomFieldDefinitions,
+} from "@/hooks/use-supabase-custom-fields";
 import type { FieldDefinition } from "@/components/custom-fields/types";
 
 interface UseCustomFieldFormOptions {
@@ -28,14 +29,17 @@ export function useCustomFieldForm({
 }: UseCustomFieldFormOptions): UseCustomFieldFormResult {
   const [values, setValues] = useState<Record<string, unknown>>({});
 
-  const { data: definitions } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId: organizationId as Id<"organizations">,
-      entityType: entityType as any,
-      ...(activityTypeKey !== undefined ? { activityTypeKey } : {}),
-    })
+  const { data: rawDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    entityType,
+    { activityTypeKey },
   );
 
+  // Cast to FieldDefinition to preserve downstream compatibility
+  const definitions = rawDefs as FieldDefinition[] | undefined;
+
+  // Mutations still go through Convex (dual-write handles Supabase sync)
+  // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit
   const setCustomFields = useMutation(api.customFields.setValues);
 
   const onChange = useCallback((fieldKey: string, value: unknown) => {

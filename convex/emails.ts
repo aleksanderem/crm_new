@@ -6,6 +6,14 @@ import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEmailRef = internal.supabase.emails.updateEmailInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteEmailRef = internal.supabase.emails.deleteEmailFromSupabase;
 
 export const listInbox = query({
   args: {
@@ -244,6 +252,34 @@ export const send = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new email to Supabase
+    await ctx.scheduler.runAfter(0, writeEmailRef, {
+      emailId: emailId as string,
+      organizationId: args.organizationId as string,
+      threadId,
+      messageId,
+      inReplyTo: args.inReplyTo,
+      direction: "outbound",
+      from: defaultAccount.fromEmail,
+      to: args.to,
+      cc: args.cc,
+      bcc: args.bcc,
+      subject: args.subject,
+      bodyHtml: args.bodyHtml,
+      bodyText: args.bodyText,
+      snippet,
+      isRead: true,
+      isStarred: false,
+      contactId: args.contactId as string | undefined,
+      companyId: args.companyId as string | undefined,
+      leadId: args.leadId as string | undefined,
+      mailProviderId: args.mailProviderId as string | undefined,
+      sentBy: user._id as string,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "email_sent",
@@ -292,6 +328,14 @@ export const markRead = mutation({
       updatedAt: Date.now(),
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateEmailRef, {
+      emailId: args.emailId as string,
+      organizationId: args.organizationId as string,
+      isRead: true,
+      updatedAt: Date.now(),
+    });
+
     return args.emailId;
   },
 });
@@ -314,6 +358,14 @@ export const markUnread = mutation({
       updatedAt: Date.now(),
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateEmailRef, {
+      emailId: args.emailId as string,
+      organizationId: args.organizationId as string,
+      isRead: false,
+      updatedAt: Date.now(),
+    });
+
     return args.emailId;
   },
 });
@@ -332,6 +384,14 @@ export const toggleStar = mutation({
     }
 
     await ctx.db.patch(args.emailId, {
+      isStarred: !email.isStarred,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateEmailRef, {
+      emailId: args.emailId as string,
+      organizationId: args.organizationId as string,
       isStarred: !email.isStarred,
       updatedAt: Date.now(),
     });
@@ -405,6 +465,16 @@ export const linkToEntity = mutation({
       contactId: args.contactId,
       companyId: args.companyId,
       leadId: args.leadId,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateEmailRef, {
+      emailId: args.emailId as string,
+      organizationId: args.organizationId as string,
+      contactId: args.contactId as string | undefined,
+      companyId: args.companyId as string | undefined,
+      leadId: args.leadId as string | undefined,
       updatedAt: Date.now(),
     });
 

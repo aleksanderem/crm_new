@@ -6,9 +6,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Image from "@tiptap/extension-image";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
+import { useSupabaseEmailBrandConfig } from "@/hooks/use-supabase-email-config";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +36,7 @@ export const EmailTemplateEditor = forwardRef<
 ) {
   const { t } = useTranslation();
 
-  const { data: brandConfig } = useQuery(
-    convexQuery(api.emailBrandConfig.getForOrg, {
-      organizationId: organizationId as any,
-    }),
-  );
+  const { data: brandConfig } = useSupabaseEmailBrandConfig(organizationId);
 
   // Update variable list when requiredSources change
   useEffect(() => {

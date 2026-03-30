@@ -1,9 +1,17 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeCompanyRef = internal.supabase.companies.writeCompanyToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateCompanyRef = internal.supabase.companies.updateCompanyInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteCompanyRef = internal.supabase.companies.deleteCompanyFromSupabase;
 
 export const list = query({
   args: {
@@ -151,6 +159,26 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new company to Supabase
+    await ctx.scheduler.runAfter(0, writeCompanyRef, {
+      companyId: companyId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      domain: args.domain,
+      industry: args.industry,
+      size: args.size,
+      website: args.website,
+      phone: args.phone,
+      address: args.address,
+      notes: args.notes,
+      tags: args.tags,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return companyId;
   },
 });
@@ -236,6 +264,22 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateCompanyRef, {
+      companyId: companyId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates)
+          .filter(([k]) => k !== "updatedAt")
+          .map(([k, val]) => {
+            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "categoryId" && val) return [k, val as string];
+            return [k, val];
+          })
+      ),
+      updatedAt: now,
+    });
+
     return companyId;
   },
 });
@@ -283,6 +327,12 @@ export const remove = mutation({
     for (const rel of [...sourceRels, ...targetRels]) {
       await ctx.db.delete(rel._id);
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteCompanyRef, {
+      companyId: args.companyId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.companyId);
 

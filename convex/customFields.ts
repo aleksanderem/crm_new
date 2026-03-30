@@ -1,7 +1,21 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { entityTypeValidator, customFieldTypeValidator } from "@cvx/schema";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeDefRef = internal.supabase.customFields.writeDefinitionToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateDefRef = internal.supabase.customFields.updateDefinitionInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteDefRef = internal.supabase.customFields.deleteDefinitionFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeValueRef = internal.supabase.customFields.writeValueToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateValueRef = internal.supabase.customFields.updateValueInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteValueRef = internal.supabase.customFields.deleteValueFromSupabase;
 
 export const getDefinitions = query({
   args: {
@@ -62,11 +76,30 @@ export const createDefinition = mutation({
       .unique();
     if (existing) throw new Error(`Field key "${args.fieldKey}" already exists`);
 
-    return await ctx.db.insert("customFieldDefinitions", {
+    const defId = await ctx.db.insert("customFieldDefinitions", {
       ...args,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new definition to Supabase
+    await ctx.scheduler.runAfter(0, writeDefRef, {
+      definitionId: defId as string,
+      organizationId: args.organizationId as string,
+      entityType: args.entityType,
+      name: args.name,
+      fieldKey: args.fieldKey,
+      fieldType: args.fieldType,
+      options: args.options,
+      isRequired: args.isRequired,
+      order: args.order,
+      group: args.group,
+      activityTypeKey: args.activityTypeKey,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return defId;
   },
 });
 
@@ -89,7 +122,17 @@ export const updateDefinition = mutation({
     }
 
     const { organizationId, definitionId, ...updates } = args;
-    await ctx.db.patch(definitionId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(definitionId, { ...updates, updatedAt: now });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateDefRef, {
+      definitionId: definitionId as string,
+      organizationId: organizationId as string,
+      ...updates,
+      updatedAt: now,
+    });
+
     return definitionId;
   },
 });
@@ -113,8 +156,19 @@ export const deleteDefinition = mutation({
       .withIndex("by_fieldDef", (q) => q.eq("fieldDefinitionId", args.definitionId))
       .collect();
     for (const val of values) {
+      // Dual-write: delete each value from Supabase
+      await ctx.scheduler.runAfter(0, deleteValueRef, {
+        valueId: val._id as string,
+        organizationId: args.organizationId as string,
+      });
       await ctx.db.delete(val._id);
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteDefRef, {
+      definitionId: args.definitionId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.definitionId);
     return args.definitionId;
@@ -215,10 +269,28 @@ export const setValues = mutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { value: field.value, updatedAt: now });
+        // Dual-write: replicate value update to Supabase
+        await ctx.scheduler.runAfter(0, updateValueRef, {
+          valueId: existing._id as string,
+          organizationId: args.organizationId as string,
+          value: field.value,
+          updatedAt: now,
+        });
       } else {
-        await ctx.db.insert("customFieldValues", {
+        const valueId = await ctx.db.insert("customFieldValues", {
           organizationId: args.organizationId,
           fieldDefinitionId: field.fieldDefinitionId,
+          entityType: args.entityType,
+          entityId: args.entityId,
+          value: field.value,
+          createdAt: now,
+          updatedAt: now,
+        });
+        // Dual-write: replicate new value to Supabase
+        await ctx.scheduler.runAfter(0, writeValueRef, {
+          valueId: valueId as string,
+          organizationId: args.organizationId as string,
+          fieldDefinitionId: field.fieldDefinitionId as string,
           entityType: args.entityType,
           entityId: args.entityId,
           value: field.value,

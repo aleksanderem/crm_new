@@ -1,6 +1,10 @@
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;
 
 export const findEmailAccountByAddress = internalQuery({
   args: { addresses: v.array(v.string()) },
@@ -76,7 +80,7 @@ export const insertOutboundGmail = internalMutation({
       snippet = args.bodyHtml.replace(/<[^>]*>/g, "").slice(0, 200);
     }
 
-    await ctx.db.insert("emails", {
+    const emailId = await ctx.db.insert("emails", {
       organizationId: args.organizationId,
       threadId,
       messageId,
@@ -99,6 +103,36 @@ export const insertOutboundGmail = internalMutation({
       companyId: args.companyId,
       leadId: args.leadId,
       sentBy: args.sentBy,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate new email to Supabase
+    await ctx.scheduler.runAfter(0, writeEmailRef, {
+      emailId: emailId as string,
+      organizationId: args.organizationId as string,
+      threadId,
+      messageId,
+      inReplyTo: args.inReplyTo,
+      direction: "outbound",
+      from: args.fromEmail,
+      to: args.to,
+      cc: args.cc,
+      bcc: args.bcc,
+      subject: args.subject,
+      bodyHtml: args.bodyHtml,
+      bodyText: args.bodyText,
+      snippet,
+      isRead: true,
+      isStarred: false,
+      provider: "google",
+      gmailMessageId: args.gmailMessageId,
+      gmailThreadId: args.gmailThreadId,
+      contactId: args.contactId as string | undefined,
+      companyId: args.companyId as string | undefined,
+      leadId: args.leadId as string | undefined,
+      sentBy: args.sentBy as string,
       sentAt: now,
       createdAt: now,
       updatedAt: now,
@@ -154,6 +188,28 @@ export const insertInboundGmail = internalMutation({
       gmailMessageId: args.gmailMessageId,
       gmailThreadId: args.gmailThreadId,
       contactId: contact?._id,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate new email to Supabase
+    await ctx.scheduler.runAfter(0, writeEmailRef, {
+      emailId: emailId as string,
+      organizationId: args.organizationId as string,
+      threadId: args.gmailThreadId,
+      messageId,
+      direction: "inbound",
+      from: args.from,
+      to: args.to,
+      subject: args.subject,
+      snippet: args.snippet,
+      isRead: false,
+      isStarred: false,
+      provider: "google",
+      gmailMessageId: args.gmailMessageId,
+      gmailThreadId: args.gmailThreadId,
+      contactId: contact?._id as string | undefined,
       sentAt: now,
       createdAt: now,
       updatedAt: now,
@@ -223,6 +279,28 @@ export const insertInbound = internalMutation({
       isRead: false,
       isStarred: false,
       contactId: args.contactId,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate new email to Supabase
+    await ctx.scheduler.runAfter(0, writeEmailRef, {
+      emailId: emailId as string,
+      organizationId: args.organizationId as string,
+      threadId: args.threadId,
+      messageId: args.messageId,
+      inReplyTo: args.inReplyTo,
+      direction: "inbound",
+      from: args.from,
+      to: args.to,
+      subject: args.subject,
+      bodyHtml: args.bodyHtml,
+      bodyText: args.bodyText,
+      snippet: args.snippet,
+      isRead: false,
+      isStarred: false,
+      contactId: args.contactId as string | undefined,
       sentAt: now,
       createdAt: now,
       updatedAt: now,

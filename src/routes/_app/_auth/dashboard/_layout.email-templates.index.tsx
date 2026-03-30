@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { useSupabaseEmailEventTypes, useSupabaseEmailEventBindings, useSupabaseEmailEventLog } from "@/hooks/use-supabase-email-events";
+import type { MappedEmailEventType } from "@/lib/supabase/mappers/email-event-types";
+import type { MappedEmailEventBinding } from "@/lib/supabase/mappers/email-event-bindings";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,19 +148,17 @@ function TemplatesTab() {
   const updateTemplate = useMutation(api.emailTemplates.update);
   const removeTemplate = useMutation(api.emailTemplates.remove);
 
-  const { data: templates } = useQuery(
-    convexQuery(api.emailTemplates.list, { organizationId }),
-  );
+  const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
 
   const handleToggleActive = async (
-    templateId: Id<"emailTemplates">,
+    templateId: string,
     isActive: boolean,
   ) => {
-    await updateTemplate({ organizationId, templateId, isActive });
+    await updateTemplate({ organizationId, templateId: templateId as Id<"emailTemplates">, isActive });
   };
 
-  const handleDelete = async (templateId: Id<"emailTemplates">) => {
-    await removeTemplate({ organizationId, templateId });
+  const handleDelete = async (templateId: string) => {
+    await removeTemplate({ organizationId, templateId: templateId as Id<"emailTemplates"> });
   };
 
   return (
@@ -275,21 +275,9 @@ function LayoutTab() {
 // Event Bindings Tab
 // ---------------------------------------------------------------------------
 
-type EventType = {
-  _id: Id<"emailEventTypes">;
-  eventType: string;
-  module: "crm" | "gabinet" | "platform";
-  displayName: string;
-  description?: string;
-  isActive: boolean;
-};
+type EventType = MappedEmailEventType;
 
-type Binding = {
-  _id: Id<"emailEventBindings">;
-  eventType: string;
-  templateId: Id<"emailTemplates">;
-  enabled: boolean;
-  priority: number;
+type Binding = MappedEmailEventBinding & {
   templateName: string | null;
   templateIsActive: boolean;
 };
@@ -312,15 +300,23 @@ function EventBindingsTab() {
   const toggleBinding = useMutation(api.emailEventBindings.toggleBinding);
   const deleteBinding = useMutation(api.emailEventBindings.deleteBinding);
 
-  const { data: eventTypes, isLoading: loadingTypes } = useQuery(
-    convexQuery(api.emailEvents.listEventTypes, { organizationId }),
-  );
-  const { data: bindings, isLoading: loadingBindings } = useQuery(
-    convexQuery(api.emailEventBindings.listBindings, { organizationId }),
-  );
-  const { data: templates } = useQuery(
-    convexQuery(api.emailTemplates.list, { organizationId }),
-  );
+  const { data: eventTypes, isLoading: loadingTypes } = useSupabaseEmailEventTypes(organizationId);
+  const { data: rawBindings, isLoading: loadingBindings } = useSupabaseEmailEventBindings(organizationId);
+  const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
+
+  // Enrich bindings with template name/active status (Convex query did this server-side)
+  const bindings = useMemo(() => {
+    if (!rawBindings) return undefined;
+    const templateMap = new Map((templates ?? []).map((t) => [t._id, t]));
+    return rawBindings.map((b) => {
+      const tmpl = templateMap.get(b.templateId);
+      return {
+        ...b,
+        templateName: tmpl?.name ?? null,
+        templateIsActive: tmpl?.isActive ?? false,
+      } as Binding;
+    });
+  }, [rawBindings, templates]);
 
   const isLoading = loadingTypes || loadingBindings;
 
@@ -369,11 +365,11 @@ function EventBindingsTab() {
   };
 
   const handleToggle = async (
-    bindingId: Id<"emailEventBindings">,
+    bindingId: string,
     enabled: boolean,
   ) => {
     try {
-      await toggleBinding({ organizationId, bindingId, enabled });
+      await toggleBinding({ organizationId, bindingId: bindingId as Id<"emailEventBindings">, enabled });
       toast.success(
         enabled
           ? t("emailTemplates.bindingEnabled")
@@ -384,9 +380,9 @@ function EventBindingsTab() {
     }
   };
 
-  const handleDelete = async (bindingId: Id<"emailEventBindings">) => {
+  const handleDelete = async (bindingId: string) => {
     try {
-      await deleteBinding({ organizationId, bindingId });
+      await deleteBinding({ organizationId, bindingId: bindingId as Id<"emailEventBindings"> });
       toast.success(t("emailTemplates.bindingDeleted"));
     } catch {
       toast.error(t("common.error"));
@@ -597,16 +593,13 @@ function EventLogTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
 
-  const { data: log, isLoading } = useQuery(
-    convexQuery(api.emailEvents.getEventLog, {
-      organizationId,
-      status:
-        statusFilter !== "all"
-          ? (statusFilter as "pending" | "sent" | "failed" | "skipped")
-          : undefined,
-      limit: 100,
-    }),
-  );
+  const { data: log, isLoading } = useSupabaseEmailEventLog(organizationId, {
+    status:
+      statusFilter !== "all"
+        ? (statusFilter as "pending" | "sent" | "failed" | "skipped")
+        : undefined,
+    limit: 100,
+  });
 
   const selectedEntryData = useMemo(
     () => log?.find((e) => e._id === selectedEntry),

@@ -1,10 +1,18 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeDocumentRef = internal.supabase.documents.writeDocumentToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateDocumentRef = internal.supabase.documents.updateDocumentInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteDocumentRef = internal.supabase.documents.deleteDocumentFromSupabase;
 
 export const list = query({
   args: {
@@ -127,6 +135,27 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new document to Supabase
+    await ctx.scheduler.runAfter(0, writeDocumentRef, {
+      documentId: docId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      description: args.description,
+      fileId: args.fileId,
+      fileUrl: args.fileUrl,
+      mimeType: args.mimeType,
+      fileSize: args.fileSize,
+      category: args.category,
+      tags: args.tags,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      status: args.status,
+      amount: args.amount,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return docId;
   },
 });
@@ -158,7 +187,8 @@ export const update = mutation({
     }
 
     const { organizationId, documentId, ...updates } = args;
-    await ctx.db.patch(documentId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(documentId, { ...updates, updatedAt: now });
 
     await logActivity(ctx, {
       organizationId,
@@ -167,6 +197,20 @@ export const update = mutation({
       action: "updated",
       description: `Updated document "${doc.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateDocumentRef, {
+      documentId: documentId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates).map(([k, val]) => {
+          if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+          if (k === "categoryId" && val) return [k, val as string];
+          return [k, val];
+        })
+      ),
+      updatedAt: now,
     });
 
     return documentId;
@@ -200,6 +244,12 @@ export const remove = mutation({
     for (const cv of customValues) {
       await ctx.db.delete(cv._id);
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteDocumentRef, {
+      documentId: args.documentId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.documentId);
 
@@ -248,6 +298,16 @@ export const updateStatus = mutation({
     }
 
     await ctx.db.patch(args.documentId, updateData);
+
+    // Dual-write: replicate status change to Supabase
+    await ctx.scheduler.runAfter(0, updateDocumentRef, {
+      documentId: args.documentId as string,
+      organizationId: args.organizationId as string,
+      status: args.status,
+      sentAt: updateData.sentAt,
+      acceptedAt: updateData.acceptedAt,
+      updatedAt: now,
+    });
 
     await logActivity(ctx, {
       organizationId: args.organizationId,

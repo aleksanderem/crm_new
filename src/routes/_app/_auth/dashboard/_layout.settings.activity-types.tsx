@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { ActivityTypeForm } from "@/components/settings/activity-type-form";
@@ -52,9 +54,8 @@ function ActivityTypesSettings() {
     }
   }, [organizationId, seedDefaults]);
 
-  const { data: activityTypes } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
+  const queryClient = useQueryClient();
+  const { data: activityTypes } = useSupabaseActivityTypesList(organizationId);
 
   const sortedTypes = activityTypes
     ? [...activityTypes].sort((a, b) => a.order - b.order)
@@ -67,12 +68,10 @@ function ActivityTypesSettings() {
     }
   }, [sortedTypes.length, activeFieldTab]);
 
-  const { data: fieldDefinitions } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "activity" as any,
-      activityTypeKey: activeFieldTab || undefined,
-    })
+  const { data: fieldDefinitions } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "activity",
+    { activityTypeKey: activeFieldTab || undefined },
   );
 
   const handleCreate = async (data: {
@@ -90,6 +89,7 @@ function ActivityTypesSettings() {
         icon: data.icon,
         color: data.color,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.activityTypes.list(organizationId) });
       setShowCreateForm(false);
     } finally {
       setIsSubmitting(false);
@@ -109,6 +109,7 @@ function ActivityTypesSettings() {
         icon: data.icon,
         color: data.color,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.activityTypes.list(organizationId) });
       setEditingId(null);
     } finally {
       setIsSubmitting(false);
@@ -319,7 +320,7 @@ function ActivityTypesSettings() {
                               initialData={{
                                 name: def.name,
                                 fieldKey: def.fieldKey,
-                                fieldType: def.fieldType,
+                                fieldType: def.fieldType as any,
                                 options: def.options,
                                 isRequired: def.isRequired,
                                 group: def.group,
@@ -403,11 +404,13 @@ function ActivityTypesSettings() {
                     organizationId,
                     activityTypeId: deleteTarget.id as Id<"activityTypeDefinitions">,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.activityTypes.list(organizationId) });
                 } else {
                   await deleteFieldDefinition({
                     organizationId,
                     definitionId: deleteTarget.id as Id<"customFieldDefinitions">,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.customFieldDefinitions.list(organizationId) });
                 }
                 setDeleteTarget(null);
               }}

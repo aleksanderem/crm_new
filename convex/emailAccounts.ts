@@ -1,6 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeAccountRef = internal.supabase.emailAccounts.writeEmailAccountToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteAccountRef = internal.supabase.emailAccounts.deleteEmailAccountFromSupabase;
 
 export const list = query({
   args: {
@@ -54,11 +60,34 @@ export const upsert = mutation({
         isDefault: args.isDefault,
         updatedAt: now,
       });
+
+      // Dual-write: replicate update to Supabase
+      await ctx.scheduler.runAfter(0, writeAccountRef, {
+        accountId: existingAccount._id as string,
+        organizationId: args.organizationId as string,
+        fromName: args.fromName,
+        fromEmail: args.fromEmail,
+        isDefault: args.isDefault,
+        createdAt: existingAccount.createdAt,
+        updatedAt: now,
+      });
+
       return existingAccount._id;
     }
 
     const accountId = await ctx.db.insert("emailAccounts", {
       organizationId: args.organizationId,
+      fromName: args.fromName,
+      fromEmail: args.fromEmail,
+      isDefault: args.isDefault,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate new account to Supabase
+    await ctx.scheduler.runAfter(0, writeAccountRef, {
+      accountId: accountId as string,
+      organizationId: args.organizationId as string,
       fromName: args.fromName,
       fromEmail: args.fromEmail,
       isDefault: args.isDefault,
@@ -82,6 +111,12 @@ export const remove = mutation({
     if (!account || account.organizationId !== args.organizationId) {
       throw new Error("Email account not found");
     }
+
+    // Dual-write: schedule delete BEFORE Convex delete (Knowledge Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteAccountRef, {
+      accountId: args.accountId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.accountId);
     return args.accountId;

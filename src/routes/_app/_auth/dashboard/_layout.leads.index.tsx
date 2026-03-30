@@ -4,6 +4,12 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
+import { useSupabasePipelinesList, useSupabasePipelineStages } from "@/hooks/use-supabase-pipelines";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
+import type { MappedLead } from "@/lib/supabase/mappers";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   CrmDataTable,
@@ -37,7 +43,7 @@ import {
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
@@ -54,7 +60,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
 });
 
-type Lead = Doc<"leads">;
+type Lead = MappedLead;
 type LeadRow = Lead & { __cfValues: Record<string, unknown> };
 
 const stageColors: Record<string, string> = {
@@ -82,6 +88,7 @@ function LeadsIndex() {
   const updateLead = useMutation(api.leads.update);
   const removeLead = useMutation(api.leads.remove);
   const createLead = useMutation(api.leads.create);
+  const queryClient = useQueryClient();
 
   const toolbarRef = useRef<React.ReactNode>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -178,9 +185,7 @@ function LeadsIndex() {
     systemViews: systemViews,
   });
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId }),
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(
     null,
@@ -191,31 +196,19 @@ function LeadsIndex() {
     pipelines?.[0];
 
   const firstPipelineId = pipelines?.[0]?._id;
-  const { data: stages } = useQuery({
-    ...convexQuery(api.pipelines.getStages, {
-      organizationId,
-      pipelineId: firstPipelineId ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!firstPipelineId,
-  });
-
-  const { data, isLoading } = useQuery(
-    convexQuery(api.leads.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
+  const { data: stages } = useSupabasePipelineStages(
+    organizationId,
+    firstPipelineId,
+    { enabled: !!firstPipelineId },
   );
+
+  const { data, isLoading } = useSupabaseLeadsList(organizationId);
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
-  const { data: companiesData } = useQuery(
-    convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 500, cursor: null },
-    }),
-  );
+  const { data: companiesData } = useSupabaseCompaniesList(organizationId, { limit: 500 });
 
   const userLookup = useMemo(() => {
     const map = new Map<string, string>();
@@ -230,8 +223,8 @@ function LeadsIndex() {
 
   const companyLookup = useMemo(() => {
     const map = new Map<string, string>();
-    if (companiesData?.page) {
-      for (const c of companiesData.page) {
+    if (companiesData) {
+      for (const c of companiesData) {
         map.set(c._id, c.name);
       }
     }
@@ -462,15 +455,18 @@ function LeadsIndex() {
   const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
 
   const handleMarkWon = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id, status: "won" });
+    await updateLead({ organizationId, leadId: lead._id as Id<"leads">, status: "won" });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleMarkLost = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id, status: "lost" });
+    await updateLead({ organizationId, leadId: lead._id as Id<"leads">, status: "lost" });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleDelete = async (lead: LeadRow) => {
-    await removeLead({ organizationId, leadId: lead._id });
+    await removeLead({ organizationId, leadId: lead._id as Id<"leads"> });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleBulkAction = useCallback(
@@ -480,7 +476,7 @@ function LeadsIndex() {
           for (const row of selectedRows) {
             await updateLead({
               organizationId,
-              leadId: row._id,
+              leadId: row._id as Id<"leads">,
               status: "won",
             });
           }
@@ -489,19 +485,20 @@ function LeadsIndex() {
           for (const row of selectedRows) {
             await updateLead({
               organizationId,
-              leadId: row._id,
+              leadId: row._id as Id<"leads">,
               status: "lost",
             });
           }
           break;
         case "delete":
           for (const row of selectedRows) {
-            await removeLead({ organizationId, leadId: row._id });
+            await removeLead({ organizationId, leadId: row._id as Id<"leads"> });
           }
           break;
       }
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
     },
-    [updateLead, removeLead, organizationId],
+    [updateLead, removeLead, organizationId, queryClient],
   );
 
   return (
@@ -658,8 +655,8 @@ function LeadsIndex() {
         description={t("deals.createDescription")}
       >
         <LeadForm
-          pipelines={pipelines}
-          stages={stages}
+          pipelines={pipelines as any}
+          stages={stages as any}
           customFieldDefinitions={cfDefs}
           tagDefinitions={tags}
           categoryDefinitions={categories}
@@ -688,6 +685,7 @@ function LeadsIndex() {
                 ...data,
                 customFields,
               });
+              queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
               setCreateOpen(false);
             } finally {
               setIsSubmitting(false);

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
+import {
+  useSupabaseCustomFieldDefinitions,
+  useSupabaseCustomFieldValuesBulk,
+} from "@/hooks/use-supabase-custom-fields";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
 import type { FieldDefinition } from "@/components/custom-fields/types";
 
@@ -25,22 +25,20 @@ export function useCustomFieldColumns<TRow extends { _id: string }>({
   entityIds,
   activityTypeKey,
 }: UseCustomFieldColumnsOptions): UseCustomFieldColumnsResult<TRow> {
-  const { data: definitions } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId: organizationId as Id<"organizations">,
-      entityType: entityType as any,
-      ...(activityTypeKey !== undefined ? { activityTypeKey } : {}),
-    })
+  const { data: rawDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    entityType,
+    { activityTypeKey },
   );
 
-  const { data: bulkValues } = useQuery({
-    ...convexQuery(api.customFields.getValuesBulk, {
-      organizationId: organizationId as Id<"organizations">,
-      entityType: entityType as any,
-      entityIds,
-    }),
-    enabled: entityIds.length > 0,
-  });
+  // Cast to FieldDefinition to preserve downstream compatibility
+  const definitions = rawDefs as FieldDefinition[] | undefined;
+
+  const { data: bulkValues } = useSupabaseCustomFieldValuesBulk(
+    organizationId,
+    entityType,
+    entityIds,
+  );
 
   const columns: CrmColumn<TRow & { __cfValues: Record<string, unknown> }>[] = useMemo(() => {
     if (!definitions || definitions.length === 0) return [];

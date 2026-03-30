@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabasePipelinesList, useSupabasePipelineStages, useSupabasePipelineStageActions } from "@/hooks/use-supabase-pipelines";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,19 +28,19 @@ export const Route = createFileRoute(
 function PipelinesSettings() {
   const { organizationId } = useOrganization();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [newPipelineName, setNewPipelineName] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#3b82f6");
   const [addingStageFor, setAddingStageFor] = useState<string | null>(null);
 
+  // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
   const createPipeline = useMutation(api.pipelines.create);
   const removePipeline = useMutation(api.pipelines.remove);
   const addStage = useMutation(api.pipelines.addStage);
   const removeStage = useMutation(api.pipelines.removeStage);
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
@@ -66,6 +67,7 @@ function PipelinesSettings() {
                 organizationId,
                 name: newPipelineName,
               });
+              queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelines.all });
               setNewPipelineName("");
             }}
           >
@@ -115,7 +117,7 @@ function PipelineCard({
   onRemoveStage,
   onRemovePipeline,
 }: {
-  pipeline: { _id: Id<"pipelines">; name: string; stages?: { _id: Id<"pipelineStages">; name: string; color?: string; order: number }[] };
+  pipeline: { _id: string; name: string };
   organizationId: Id<"organizations">;
   addingStageFor: string | null;
   setAddingStageFor: (id: string | null) => void;
@@ -128,12 +130,11 @@ function PipelineCard({
   onRemovePipeline: (args: { organizationId: Id<"organizations">; pipelineId: Id<"pipelines"> }) => Promise<unknown>;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { data: stages } = useQuery(
-    convexQuery(api.pipelines.getStages, {
-      organizationId,
-      pipelineId: pipeline._id,
-    })
+  const { data: stages } = useSupabasePipelineStages(
+    organizationId,
+    pipeline._id,
   );
 
   return (
@@ -168,7 +169,9 @@ function PipelineCard({
                 size="icon"
                 className="h-6 w-6"
                 onClick={() =>
-                  onRemoveStage({ organizationId, stageId: stage._id })
+                  onRemoveStage({ organizationId, stageId: stage._id as Id<"pipelineStages"> }).then(() => {
+                    queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
+                  })
                 }
               >
                 <Trash2 className="h-4 w-4" variant="stroke" />
@@ -188,11 +191,12 @@ function PipelineCard({
               if (!newStageName.trim()) return;
               await onAddStage({
                 organizationId,
-                pipelineId: pipeline._id,
+                pipelineId: pipeline._id as Id<"pipelines">,
                 name: newStageName,
                 color: newStageColor,
                 order: (stages?.length ?? 0) + 1,
               });
+              queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
               setNewStageName("");
               setAddingStageFor(null);
             }}
@@ -256,8 +260,9 @@ function PipelineCard({
               onClick={async () => {
                 await onRemovePipeline({
                   organizationId,
-                  pipelineId: pipeline._id,
+                  pipelineId: pipeline._id as Id<"pipelines">,
                 });
+                queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelines.all });
                 setDeleteDialogOpen(false);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -276,9 +281,10 @@ function StageActions({
   stageId,
 }: {
   organizationId: Id<"organizations">;
-  stageId: Id<"pipelineStages">;
+  stageId: string;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [dueInDays, setDueInDays] = useState(3);
@@ -288,11 +294,9 @@ function StageActions({
   const createAction = useMutation(api.pipelineStageActions.create);
   const removeAction = useMutation(api.pipelineStageActions.remove);
 
-  const { data: actions } = useQuery(
-    convexQuery(api.pipelineStageActions.listByStage, {
-      organizationId,
-      stageId,
-    })
+  const { data: actions } = useSupabasePipelineStageActions(
+    organizationId,
+    stageId,
   );
 
   if (!actions?.length && !isAdding) {
@@ -317,16 +321,18 @@ function StageActions({
         {t("stageActions.autoActions")}
       </p>
 
-      {actions?.map((action) => (
+      {actions?.map((action) => {
+        const cfg = action.config as { title: string; dueInDays: number; assignToOwner?: boolean; description?: string };
+        return (
         <div
           key={action._id}
           className="flex items-center justify-between rounded border border-dashed px-2 py-1.5 text-xs"
         >
           <div className="flex flex-col gap-0.5">
-            <span className="font-medium">{action.config.title}</span>
+            <span className="font-medium">{cfg.title}</span>
             <span className="text-muted-foreground">
-              {t("stageActions.dueInDaysLabel", { count: action.config.dueInDays })}
-              {action.config.assignToOwner
+              {t("stageActions.dueInDaysLabel", { count: cfg.dueInDays })}
+              {cfg.assignToOwner
                 ? ` · ${t("stageActions.assignedToDealOwner")}`
                 : ""}
             </span>
@@ -336,13 +342,16 @@ function StageActions({
             size="icon"
             className="h-5 w-5"
             onClick={() =>
-              removeAction({ organizationId, actionId: action._id })
+              removeAction({ organizationId, actionId: action._id as Id<"pipelineStageActions"> }).then(() => {
+                queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStageActions.all });
+              })
             }
           >
             <Trash2 className="h-3 w-3" variant="stroke" />
           </Button>
         </div>
-      ))}
+        );
+      })}
 
       {isAdding ? (
         <form
@@ -352,7 +361,7 @@ function StageActions({
             if (!title.trim()) return;
             await createAction({
               organizationId,
-              stageId,
+              stageId: stageId as Id<"pipelineStages">,
               config: {
                 title: title.trim(),
                 description: description.trim() || undefined,
@@ -360,6 +369,7 @@ function StageActions({
                 assignToOwner,
               },
             });
+            queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStageActions.all });
             setTitle("");
             setDescription("");
             setDueInDays(3);

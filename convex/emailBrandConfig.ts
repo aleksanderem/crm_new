@@ -1,6 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeBrandConfigRef = internal.supabase.emailBrandConfig.writeEmailBrandConfigToSupabase;
 
 export const getForOrg = query({
   args: { organizationId: v.id("organizations") },
@@ -67,13 +71,58 @@ export const upsert = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, data);
+
+      // Dual-write: replicate update to Supabase
+      await ctx.scheduler.runAfter(0, writeBrandConfigRef, {
+        configId: existing._id as string,
+        organizationId: args.organizationId as string,
+        logoStorageId: args.logoStorageId as string | undefined,
+        logoUrl,
+        companyName: args.companyName,
+        primaryColor: args.primaryColor,
+        backgroundColor: args.backgroundColor,
+        contentBackgroundColor: args.contentBackgroundColor,
+        textColor: args.textColor,
+        secondaryTextColor: args.secondaryTextColor,
+        accentColor: args.accentColor,
+        footerText: args.footerText,
+        socialLinks: args.socialLinks,
+        createdBy: existing.createdBy as string,
+        createdAt: existing.createdAt,
+        updatedBy: user._id as string,
+        updatedAt: now,
+      });
+
       return existing._id;
     } else {
-      return await ctx.db.insert("emailBrandConfig", {
+      const configId = await ctx.db.insert("emailBrandConfig", {
         ...data,
         createdBy: user._id,
         createdAt: now,
       });
+
+      // Dual-write: replicate new config to Supabase
+      await ctx.scheduler.runAfter(0, writeBrandConfigRef, {
+        configId: configId as string,
+        organizationId: args.organizationId as string,
+        logoStorageId: args.logoStorageId as string | undefined,
+        logoUrl,
+        companyName: args.companyName,
+        primaryColor: args.primaryColor,
+        backgroundColor: args.backgroundColor,
+        contentBackgroundColor: args.contentBackgroundColor,
+        textColor: args.textColor,
+        secondaryTextColor: args.secondaryTextColor,
+        accentColor: args.accentColor,
+        footerText: args.footerText,
+        socialLinks: args.socialLinks,
+        createdBy: user._id as string,
+        createdAt: now,
+        updatedBy: user._id as string,
+        updatedAt: now,
+      });
+
+      return configId;
     }
   },
 });

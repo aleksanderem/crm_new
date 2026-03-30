@@ -1,10 +1,18 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { callOutcomeValidator } from "@cvx/schema";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeCallRef = internal.supabase.calls.writeCallToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateCallRef = internal.supabase.calls.updateCallInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteCallRef = internal.supabase.calls.deleteCallFromSupabase;
 
 export const list = query({
   args: {
@@ -135,6 +143,20 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new call to Supabase
+    await ctx.scheduler.runAfter(0, writeCallRef, {
+      callId: callId as string,
+      organizationId: args.organizationId as string,
+      outcome: args.outcome,
+      callDate: args.callDate,
+      note: args.note,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return callId;
   },
 });
@@ -163,7 +185,8 @@ export const update = mutation({
     }
 
     const { organizationId, callId, ...updates } = args;
-    await ctx.db.patch(callId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(callId, { ...updates, updatedAt: now });
 
     await logActivity(ctx, {
       organizationId,
@@ -172,6 +195,20 @@ export const update = mutation({
       action: "updated",
       description: `Updated call`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateCallRef, {
+      callId: callId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates).map(([k, val]) => {
+          if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+          if (k === "categoryId" && val) return [k, val as string];
+          return [k, val];
+        })
+      ),
+      updatedAt: now,
     });
 
     return callId;
@@ -206,6 +243,12 @@ export const remove = mutation({
     for (const rel of sourceRels) {
       await ctx.db.delete(rel._id);
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteCallRef, {
+      callId: args.callId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.callId);
 

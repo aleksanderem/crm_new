@@ -1,6 +1,12 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+
+// @ts-ignore — TS2589
+const writeRecentlyViewedRef = internal.supabase.recentlyViewed.writeRecentlyViewedToSupabase;
+// @ts-ignore — TS2589
+const deleteRecentlyViewedRef = internal.supabase.recentlyViewed.deleteRecentlyViewedFromSupabase;
 
 export const track = mutation({
   args: {
@@ -30,10 +36,31 @@ export const track = mutation({
         viewedAt: now,
         entityLabel: args.entityLabel,
       });
+      // Dual-write: upsert
+      await ctx.scheduler.runAfter(0, writeRecentlyViewedRef, {
+        recentlyViewedId: existing._id as any,
+        organizationId: args.organizationId as any,
+        userId: user._id as any,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        entityLabel: args.entityLabel,
+        viewedAt: now,
+      });
     } else {
-      await ctx.db.insert("recentlyViewed", {
+      const newId = await ctx.db.insert("recentlyViewed", {
         organizationId: args.organizationId,
         userId: user._id,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        entityLabel: args.entityLabel,
+        viewedAt: now,
+      });
+
+      // Dual-write: insert
+      await ctx.scheduler.runAfter(0, writeRecentlyViewedRef, {
+        recentlyViewedId: newId as any,
+        organizationId: args.organizationId as any,
+        userId: user._id as any,
         entityType: args.entityType,
         entityId: args.entityId,
         entityLabel: args.entityLabel,
@@ -55,6 +82,10 @@ export const track = mutation({
         allItems.sort((a, b) => a.viewedAt - b.viewedAt);
         const toDelete = allItems.slice(0, allItems.length - 50);
         for (const item of toDelete) {
+          // Dual-write: schedule delete before ctx.db.delete (Pattern #4)
+          await ctx.scheduler.runAfter(0, deleteRecentlyViewedRef, {
+            recentlyViewedId: item._id as any,
+          });
           await ctx.db.delete(item._id);
         }
       }

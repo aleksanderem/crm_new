@@ -1,7 +1,15 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeNoteRef = internal.supabase.notes.writeNoteToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateNoteRef = internal.supabase.notes.updateNoteInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteNoteRef = internal.supabase.notes.deleteNoteFromSupabase;
 
 export const listByEntity = query({
   args: {
@@ -104,6 +112,19 @@ export const create = mutation({
       ],
     });
 
+    // Dual-write: replicate new note to Supabase
+    await ctx.scheduler.runAfter(0, writeNoteRef, {
+      noteId: noteId as string,
+      organizationId: args.organizationId as string,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      content: args.content,
+      parentNoteId: args.parentNoteId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return noteId;
   },
 });
@@ -123,6 +144,14 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.noteId, {
+      content: args.content,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateNoteRef, {
+      noteId: args.noteId as string,
+      organizationId: args.organizationId as string,
       content: args.content,
       updatedAt: Date.now(),
     });
@@ -178,6 +207,12 @@ export const remove = mutation({
       await ctx.db.delete(child._id);
     }
 
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteNoteRef, {
+      noteId: args.noteId as string,
+      organizationId: args.organizationId as string,
+    });
+
     await ctx.db.delete(args.noteId);
 
     await publishActivityEnvelope(ctx, {
@@ -221,6 +256,14 @@ export const togglePin = mutation({
     }
 
     await ctx.db.patch(args.noteId, {
+      isPinned: !note.isPinned,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate pin toggle to Supabase
+    await ctx.scheduler.runAfter(0, updateNoteRef, {
+      noteId: args.noteId as string,
+      organizationId: args.organizationId as string,
       isPinned: !note.isPinned,
       updatedAt: Date.now(),
     });

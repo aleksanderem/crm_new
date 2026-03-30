@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +28,7 @@ export const Route = createFileRoute(
 function LostReasonsSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
@@ -38,9 +41,7 @@ function LostReasonsSettings() {
   const removeReason = useMutation(api.lostReasons.remove);
   const upsertSettings = useMutation(api.orgSettings.upsert);
 
-  const { data: reasons } = useQuery(
-    convexQuery(api.lostReasons.list, { organizationId })
-  );
+  const { data: reasons } = useSupabaseLostReasonsList(organizationId);
 
   const { data: orgSettings } = useQuery(
     convexQuery(api.orgSettings.get, { organizationId })
@@ -57,6 +58,7 @@ function LostReasonsSettings() {
       await createReason({ organizationId, label: newLabel.trim() });
       setNewLabel("");
       setShowCreateForm(false);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -72,6 +74,7 @@ function LostReasonsSettings() {
         label: editLabel.trim(),
       });
       setEditingId(null);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -83,6 +86,7 @@ function LostReasonsSettings() {
       reasonId: reasonId as Id<"lostReasons">,
       isActive,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
   };
 
   const handleDelete = (reason: { _id: string; label: string }) => {
@@ -96,6 +100,7 @@ function LostReasonsSettings() {
       reasonId: deleteTarget.id as Id<"lostReasons">,
     });
     setDeleteTarget(null);
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
   };
 
   return (

@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
+import { useSupabaseSavedViewsList } from "@/hooks/use-supabase-saved-views";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import type { VisibilityState, SortingState } from "@tanstack/react-table";
 import type { SavedView, FilterConfig, FilterCondition } from "@/components/crm/types";
 
@@ -86,15 +87,15 @@ export function useSavedViews({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(defaultColumnVisibility);
 
+  // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit; runtime works fine
   const createViewMut = useMutation(api.savedViews.create);
   const updateViewMut = useMutation(api.savedViews.update);
   const removeViewMut = useMutation(api.savedViews.remove);
+  const queryClient = useQueryClient();
 
-  const { data: convexViews } = useQuery(
-    convexQuery(api.savedViews.listByEntityType, {
-      organizationId,
-      entityType,
-    })
+  const { data: convexViews } = useSupabaseSavedViewsList(
+    organizationId as string,
+    { entityType },
   );
 
   const customViews: SavedView[] = useMemo(() => {
@@ -160,8 +161,9 @@ export function useSavedViews({
         isSystem: false,
       });
       setActiveViewId(viewId as string);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.savedViews.list(organizationId as string) });
     },
-    [createViewMut, organizationId, entityType, allColumnIds, columnVisibility, sorting]
+    [createViewMut, organizationId, entityType, allColumnIds, columnVisibility, sorting, queryClient]
   );
 
   const onUpdateView = useCallback(
@@ -176,8 +178,9 @@ export function useSavedViews({
         sortField: updates.sortField,
         sortDirection: updates.sortDirection,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.savedViews.list(organizationId as string) });
     },
-    [updateViewMut, organizationId, systemViews]
+    [updateViewMut, organizationId, systemViews, queryClient]
   );
 
   const onDeleteView = useCallback(
@@ -187,11 +190,12 @@ export function useSavedViews({
         organizationId,
         viewId: viewId as Id<"savedViews">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.savedViews.list(organizationId as string) });
       if (activeViewId === viewId) {
         setActiveViewId(defaultViewId);
       }
     },
-    [removeViewMut, organizationId, systemViews, activeViewId, defaultViewId]
+    [removeViewMut, organizationId, systemViews, activeViewId, defaultViewId, queryClient]
   );
 
   const applyFilters = useCallback(

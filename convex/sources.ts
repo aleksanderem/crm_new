@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeSourceRef = internal.supabase.sources.writeSourceToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateSourceRef = internal.supabase.sources.updateSourceInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteSourceRef = internal.supabase.sources.deleteSourceFromSupabase;
 
 export const list = query({
   args: {
@@ -44,6 +52,18 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new source to Supabase
+    await ctx.scheduler.runAfter(0, writeSourceRef, {
+      sourceId: sourceId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      order: maxOrder + 1,
+      isActive: true,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return sourceId;
   },
 });
@@ -64,7 +84,16 @@ export const update = mutation({
     }
 
     const { organizationId, sourceId, ...updates } = args;
-    await ctx.db.patch(sourceId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(sourceId, { ...updates, updatedAt: now });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateSourceRef, {
+      sourceId: sourceId as string,
+      organizationId: organizationId as string,
+      ...updates,
+      updatedAt: now,
+    });
 
     return sourceId;
   },
@@ -82,6 +111,12 @@ export const remove = mutation({
     if (!source || source.organizationId !== args.organizationId) {
       throw new Error("Source not found");
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteSourceRef, {
+      sourceId: args.sourceId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.sourceId);
     return args.sourceId;

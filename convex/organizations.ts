@@ -6,6 +6,17 @@ import { logActivity } from "./_helpers/activities";
 import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeOrgRef = internal.supabase.organizations.writeOrganizationToSupabase;
+// @ts-ignore — TS2589
+const updateOrgRef = internal.supabase.organizations.updateOrganizationInSupabase;
+// @ts-ignore — TS2589
+const writeMembershipRef = internal.supabase.organizations.writeTeamMembershipToSupabase;
+// @ts-ignore — TS2589
+const updateMembershipRef = internal.supabase.organizations.updateTeamMembershipInSupabase;
+// @ts-ignore — TS2589
+const deleteMembershipRef = internal.supabase.organizations.deleteTeamMembershipFromSupabase;
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -55,6 +66,18 @@ export const create = mutation({
       internal.seedDefaults.seedOrganizationDefaults,
       { organizationId: orgId, userId: user._id },
     );
+
+    // Dual-write: sync org + initial membership to Supabase
+    await ctx.scheduler.runAfter(0, writeOrgRef, {
+      organizationId: orgId as any,
+      name: args.name,
+      slug: args.slug,
+      ownerId: user._id as any,
+      logo: args.logo,
+      website: args.website,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     return orgId;
   },
@@ -120,6 +143,13 @@ export const update = mutation({
       action: "updated",
       description: `Updated organization settings`,
       performedBy: user._id,
+    });
+
+    // Dual-write: sync update to Supabase
+    await ctx.scheduler.runAfter(0, updateOrgRef, {
+      organizationId: organizationId as any,
+      ...updates,
+      updatedAt: Date.now(),
     });
 
     return organizationId;
@@ -196,6 +226,16 @@ export const inviteMember = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: sync membership to Supabase
+    await ctx.scheduler.runAfter(0, writeMembershipRef, {
+      membershipId: membershipId as any,
+      userId: args.userId as any,
+      organizationId: args.organizationId as any,
+      role: args.role,
+      invitedBy: user._id as any,
+      joinedAt: Date.now(),
+    });
+
     return membershipId;
   },
 });
@@ -228,6 +268,12 @@ export const updateMemberRole = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: sync role update to Supabase
+    await ctx.scheduler.runAfter(0, updateMembershipRef, {
+      membershipId: args.membershipId as any,
+      role: args.role,
+    });
+
     return args.membershipId;
   },
 });
@@ -247,6 +293,12 @@ export const removeMember = mutation({
     if (membership.role === "owner") {
       throw new Error("Cannot remove the organization owner");
     }
+
+    // Dual-write: schedule delete BEFORE ctx.db.delete (Knowledge Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteMembershipRef, {
+      membershipId: args.membershipId as any,
+      organizationId: args.organizationId as any,
+    });
 
     await ctx.db.delete(args.membershipId);
 

@@ -1,11 +1,27 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseLead } from "@/hooks/use-supabase-leads";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { useSupabaseCustomFieldDefinitions, useSupabaseCustomFieldValues } from "@/hooks/use-supabase-custom-fields";
+import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import {
+  useSupabasePipelinesList,
+  useSupabasePipelineStages,
+  useSupabaseAllPipelineStages,
+} from "@/hooks/use-supabase-pipelines";
+import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseRelationshipsByEntity } from "@/hooks/use-supabase-relationships";
+import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -94,9 +110,9 @@ function PipelineProgressBar({
   currentStageId,
   onStageClick,
 }: {
-  stages: { _id: Id<"pipelineStages">; name: string; color?: string; order: number }[];
-  currentStageId?: Id<"pipelineStages">;
-  onStageClick: (stageId: Id<"pipelineStages">) => void;
+  stages: { _id: string; name: string; color?: string; order: number }[];
+  currentStageId?: string;
+  onStageClick: (stageId: string) => void;
 }) {
   const sorted = [...stages].sort((a, b) => a.order - b.order);
   const currentIndex = sorted.findIndex((s) => s._id === currentStageId);
@@ -138,11 +154,9 @@ function LostReasonDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (reason: string) => void;
-  organizationId: Id<"organizations">;
+  organizationId: string;
 }) {
-  const { data: lostReasons } = useQuery(
-    convexQuery(api.lostReasons.list, { organizationId })
-  );
+  const { data: lostReasons } = useSupabaseLostReasonsList(organizationId);
   const { t } = useTranslation();
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -213,6 +227,8 @@ function LeadDetail() {
   const { leadId } = Route.useParams();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
   const updateLead = useMutation(api.leads.update);
   const removeLead = useMutation(api.leads.remove);
   const moveToStage = useMutation(api.leads.moveToStage);
@@ -233,15 +249,11 @@ function LeadDetail() {
     convexQuery(api.app.getCurrentUser, {})
   );
 
-  const { data: activityTypeDefs } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
 
-  const { data: activityCustomFieldDefs } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "activity",
-    })
+  const { data: activityCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "activity",
   );
 
   // Lead entity custom fields
@@ -249,14 +261,11 @@ function LeadDetail() {
     definitions: leadCfDefs,
   } = useCustomFieldForm({ organizationId, entityType: "lead" });
 
-  const { data: leadCfValuesRaw } = useQuery({
-    ...convexQuery(api.customFields.getValues, {
-      organizationId,
-      entityType: "lead" as any,
-      entityId: leadId,
-    }),
-    enabled: !!leadId,
-  });
+  const { data: leadCfValuesRaw } = useSupabaseCustomFieldValues(
+    organizationId,
+    "lead",
+    leadId,
+  );
 
   const leadCfValues = useMemo(() => {
     if (!leadCfValuesRaw || !leadCfDefs) return {};
@@ -273,14 +282,11 @@ function LeadDetail() {
   // Activity custom field values for drawer
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
 
-  const { data: selectedActivityCfRaw } = useQuery({
-    ...convexQuery(api.customFields.getValues, {
-      organizationId,
-      entityType: "activity",
-      entityId: selectedActivityId ?? "",
-    }),
-    enabled: !!selectedActivityId,
-  });
+  const { data: selectedActivityCfRaw } = useSupabaseCustomFieldValues(
+    organizationId,
+    "activity",
+    selectedActivityId ?? undefined,
+  );
 
   const selectedActivityCfValues = useMemo(() => {
     if (!selectedActivityCfRaw || !activityCustomFieldDefs) return {};
@@ -317,12 +323,7 @@ function LeadDetail() {
 
   // --- Data queries ---
 
-  const { data: lead, isLoading } = useQuery(
-    convexQuery(api.leads.getById, {
-      organizationId,
-      leadId: leadId as Id<"leads">,
-    })
-  );
+  const { data: lead, isLoading } = useSupabaseLead(organizationId, leadId);
 
   useEffect(() => {
     if (lead && organizationId) {
@@ -330,39 +331,34 @@ function LeadDetail() {
     }
   }, [lead?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pipelineId = lead?.stage?.pipelineId;
-  const { data: stages } = useQuery({
-    ...convexQuery(api.pipelines.getStages, {
-      organizationId,
-      pipelineId: pipelineId ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!pipelineId,
-  });
+  const { data: allStages } = useSupabaseAllPipelineStages(organizationId);
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
+  // Derive pipelineId from the lead's current stage
+  const pipelineId = useMemo(() => {
+    if (!lead?.pipelineStageId || !allStages) return undefined;
+    const currentStage = allStages.find((s) => s._id === lead.pipelineStageId);
+    return currentStage?.pipelineId;
+  }, [lead?.pipelineStageId, allStages]);
+
+  const { data: stages } = useSupabasePipelineStages(
+    organizationId,
+    pipelineId,
+    { enabled: !!pipelineId },
   );
 
-  const { data: allStages } = useQuery(
-    convexQuery(api.pipelines.getAllStages, { organizationId })
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "lead",
-      entityId: leadId,
-      paginationOpts: { numItems: 50, cursor: null },
-    })
+  const { data: activitiesRaw } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "lead",
+    leadId,
   );
-  const activities = activitiesData?.page;
+  const activities = activitiesRaw;
 
-  const { data: relationships } = useQuery(
-    convexQuery(api.relationships.getForEntity, {
-      organizationId,
-      entityType: "lead",
-      entityId: leadId,
-    })
+  const { data: relationships } = useSupabaseRelationshipsByEntity(
+    organizationId,
+    "lead",
+    leadId,
   );
 
   const { data: dealProducts } = useQuery(
@@ -372,69 +368,45 @@ function LeadDetail() {
     })
   );
 
-  const { data: notesData } = useQuery(
-    convexQuery(api.notes.listByEntity, {
-      organizationId,
-      entityType: "lead",
-      entityId: leadId,
-    })
+  const { data: notesData } = useSupabaseNotesByEntity(
+    organizationId,
+    "lead",
+    leadId,
   );
 
-  const { data: scheduledActivitiesData } = useQuery(
-    convexQuery(api.scheduledActivities.listByEntity, {
-      organizationId,
-      linkedEntityType: "lead",
-      linkedEntityId: leadId,
-    })
+  const { data: scheduledActivitiesData } = useSupabaseScheduledActivitiesByEntity(
+    organizationId,
+    "lead",
+    leadId,
   );
 
   // Edit drawer search
-  const { data: contactSearchResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 20, cursor: null },
-      search: contactSearch || undefined,
-    }),
-    enabled: contactSearch.length > 0,
-  });
+  const { data: contactSearchResults } = useSupabaseContactsList(
+    organizationId,
+    { search: contactSearch || undefined, enabled: contactSearch.length > 0 },
+  );
 
-  const { data: companySearchResults } = useQuery({
-    ...convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 20, cursor: null },
-      search: companySearch || undefined,
-    }),
-    enabled: companySearch.length > 0,
-  });
+  const { data: companySearchResults } = useSupabaseCompaniesList(
+    organizationId,
+    { search: companySearch || undefined, enabled: companySearch.length > 0 },
+  );
 
   // Sidebar inline search
-  const { data: sidebarContactResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: sidebarContactSearch || undefined,
-    }),
-    enabled: sidebarContactSearch.length > 0,
-  });
+  const { data: sidebarContactResults } = useSupabaseContactsList(
+    organizationId,
+    { search: sidebarContactSearch || undefined, enabled: sidebarContactSearch.length > 0 },
+  );
 
-  const { data: sidebarCompanyResults } = useQuery({
-    ...convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: sidebarCompanySearch || undefined,
-    }),
-    enabled: sidebarCompanySearch.length > 0,
-  });
+  const { data: sidebarCompanyResults } = useSupabaseCompaniesList(
+    organizationId,
+    { search: sidebarCompanySearch || undefined, enabled: sidebarCompanySearch.length > 0 },
+  );
 
   // Guest contact search for activity form
-  const { data: guestContactResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: guestContactSearch || undefined,
-    }),
-    enabled: guestContactSearch.length > 0,
-  });
+  const { data: guestContactResults } = useSupabaseContactsList(
+    organizationId,
+    { search: guestContactSearch || undefined, enabled: guestContactSearch.length > 0 },
+  );
 
   // --- Loading / not found handled by EntityDetailLayout ---
 
@@ -489,6 +461,8 @@ function LeadDetail() {
         }
       }
       setEditDrawerOpen(false);
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -500,6 +474,7 @@ function LeadDetail() {
       leadId: leadId as Id<"leads">,
       status: "won",
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleMarkLost = async (reason: string) => {
@@ -509,6 +484,7 @@ function LeadDetail() {
       status: "lost",
       lostReason: reason,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
     setLostDialogOpen(false);
   };
 
@@ -518,17 +494,19 @@ function LeadDetail() {
         organizationId,
         leadId: leadId as Id<"leads">,
       });
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
       navigate({ to: "/dashboard/leads" });
     }
   };
 
-  const handleStageClick = async (stageId: Id<"pipelineStages">) => {
+  const handleStageClick = async (stageId: string) => {
     await moveToStage({
       organizationId,
       leadId: leadId as Id<"leads">,
-      pipelineStageId: stageId,
+      pipelineStageId: stageId as Id<"pipelineStages">,
       stageOrder: 0,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleLinkContact = async (item: RelationshipItem) => {
@@ -539,12 +517,14 @@ function LeadDetail() {
       targetType: "contact",
       targetId: item.id,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
   };
 
   const handleUnlinkContact = async (targetId: string) => {
     const rel = contactRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id });
+      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     }
   };
 
@@ -556,12 +536,14 @@ function LeadDetail() {
       targetType: "company",
       targetId: item.id,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
   };
 
   const handleUnlinkCompany = async (targetId: string) => {
     const rel = companyRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id });
+      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     }
   };
 
@@ -587,6 +569,7 @@ function LeadDetail() {
         targetId: contactId,
       });
       setCreateContactDrawerOpen(false);
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -616,6 +599,7 @@ function LeadDetail() {
         targetId: companyId,
       });
       setCreateCompanyDrawerOpen(false);
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -632,6 +616,7 @@ function LeadDetail() {
         content: newNote.trim(),
       });
       setNewNote("");
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.all });
     } finally {
       setIsAddingNote(false);
     }
@@ -766,8 +751,12 @@ function LeadDetail() {
     (a) => a._id === selectedActivityId
   ) ?? null;
 
-  const pipelineName = lead?.stage?.pipelineId
-    ? pipelines?.find((p) => p._id === lead?.stage?.pipelineId)?.name
+  const pipelineName = pipelineId
+    ? pipelines?.find((p) => p._id === pipelineId)?.name
+    : undefined;
+
+  const currentStageName = lead?.pipelineStageId
+    ? allStages?.find((s) => s._id === lead.pipelineStageId)?.name
     : undefined;
 
   const totalProductValue = dealProducts?.reduce(
@@ -808,7 +797,7 @@ function LeadDetail() {
           fieldKey: "priority",
         },
         { label: t('detail.fields.source'), value: lead.source, fieldKey: "source" },
-        { label: t('detail.fields.company'), value: lead.company?.name, fieldKey: "company" },
+        { label: t('detail.fields.company'), value: companyRelationships[0] ? (companyRelationships[0] as any).targetName ?? undefined : undefined, fieldKey: "company" },
         {
           label: t('detail.fields.tags'),
           value: lead.tags?.length ? (
@@ -888,11 +877,11 @@ function LeadDetail() {
             </div>
             {sidebarContactSearch.length > 0 && (
               <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                {sidebarContactResults?.page?.filter(
+                {sidebarContactResults?.filter(
                   (c) => !contactRelationships.some((r) => r.targetId === c._id)
                 ).length ? (
                   <ul className="max-h-[200px] overflow-y-auto p-1">
-                    {sidebarContactResults.page
+                    {sidebarContactResults
                       .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
                       .map((c) => (
                         <li key={c._id}>
@@ -1003,11 +992,11 @@ function LeadDetail() {
             </div>
             {sidebarCompanySearch.length > 0 && (
               <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                {sidebarCompanyResults?.page?.filter(
+                {sidebarCompanyResults?.filter(
                   (c) => !companyRelationships.some((r) => r.targetId === c._id)
                 ).length ? (
                   <ul className="max-h-[200px] overflow-y-auto p-1">
-                    {sidebarCompanyResults.page
+                    {sidebarCompanyResults
                       .filter((c) => !companyRelationships.some((r) => r.targetId === c._id))
                       .map((c) => (
                         <li key={c._id}>
@@ -1154,8 +1143,8 @@ function LeadDetail() {
       {dealProducts && dealProducts.length > 0 && (
         <span>{t('detail.productsCount', { count: dealProducts.length })} &middot; {formatCurrency(totalProductValue)}</span>
       )}
-      {pipelineName && lead?.stage && (
-        <span>{pipelineName} &gt; {lead.stage.name}</span>
+      {pipelineName && currentStageName && (
+        <span>{pipelineName} &gt; {currentStageName}</span>
       )}
       <span>
         {lead ? new Date(lead.createdAt).toLocaleDateString("pl-PL") : ""}
@@ -1201,7 +1190,7 @@ function LeadDetail() {
             </Button>
           </div>
           <ActivityTimeline
-            activities={activities ?? []}
+            activities={(activities ?? []) as any}
             maxHeight="600px"
           />
         </>
@@ -1235,9 +1224,9 @@ function LeadDetail() {
                 onCancel={() => setShowActivityForm(false)}
                 isSubmitting={isSubmitting}
                 activityTypes={activityTypeDefs}
-                customFieldDefs={activityCustomFieldDefs}
+                customFieldDefs={activityCustomFieldDefs as any}
                 contactSearchResults={
-                  guestContactResults?.page?.map((c) => ({
+                  guestContactResults?.map((c) => ({
                     id: c._id,
                     label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
                     email: c.email ?? undefined,
@@ -1400,7 +1389,7 @@ function LeadDetail() {
           { label: t('detail.lost'), onClick: () => setLostDialogOpen(true), variant: "destructive" },
         ]}
         onEdit={() => setEditDrawerOpen(true)}
-        owner={lead?.assignedUser ? { name: lead.assignedUser.name ?? t('detail.actions.owner') } : undefined}
+        owner={lead?.assignedTo ? { name: t('detail.actions.owner') } : undefined}
         actionsMenu={actionsMenu}
         fields={fields}
         expandedFieldCount={4}
@@ -1423,14 +1412,14 @@ function LeadDetail() {
             initialData={{
               title: lead.title,
               value: lead.value,
-              status: lead.status,
-              priority: lead.priority,
+              status: lead.status as "open" | "won" | "lost" | "archived",
+              priority: lead.priority as "low" | "medium" | "high" | "urgent" | undefined,
               source: lead.source ?? undefined,
-              pipelineStageId: lead.pipelineStageId,
+              pipelineStageId: lead.pipelineStageId as Id<"pipelineStages"> | undefined,
               notes: lead.notes ?? undefined,
             }}
-            pipelines={pipelines}
-            stages={allStages}
+            pipelines={pipelines as any}
+            stages={allStages as any}
             customFieldDefinitions={leadCfDefs}
             customFieldValues={leadCfValues}
             onSubmit={handleEditSubmit}
@@ -1442,7 +1431,7 @@ function LeadDetail() {
                   label={t('detail.relationships.contacts')}
                   placeholder={t('detail.relationships.searchContacts')}
                   items={
-                    contactSearchResults?.page?.map((c) => ({
+                    contactSearchResults?.map((c) => ({
                       id: c._id,
                       label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
                       sublabel: c.email ?? undefined,
@@ -1463,7 +1452,7 @@ function LeadDetail() {
                   label={t('detail.relationships.companies')}
                   placeholder={t('detail.relationships.searchCompanies')}
                   items={
-                    companySearchResults?.page?.map((c) => ({
+                    companySearchResults?.map((c) => ({
                       id: c._id,
                       label: c.name,
                       sublabel: c.domain ?? undefined,

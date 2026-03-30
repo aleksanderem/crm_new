@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,17 +62,17 @@ function TeamSettings() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const queryClient = useQueryClient();
 
-  const { data: invitations } = useQuery(
-    convexQuery(api.invitations.listPending, { organizationId })
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
+  const { data: invitations } = useSupabasePendingInvitations(organizationId);
+
+  // Seat usage stays on Convex — involves plan/subscription lookup logic
   const { data: seatUsage } = useQuery(
+    // @ts-expect-error — convexQuery type instantiation too deep, runtime is correct
     convexQuery(api.organizations.getSeatUsage, { organizationId })
-  );
+  ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
 
   const seatPercentage = seatUsage
     ? Math.round((seatUsage.currentSeats / seatUsage.seatLimit) * 100)
@@ -98,6 +101,7 @@ function TeamSettings() {
       membershipId,
       role: role as "admin" | "member" | "viewer" | "owner",
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
   };
 
   const handleRemoveMember = (membershipId: Id<"teamMemberships">, memberName: string) => {
@@ -107,15 +111,18 @@ function TeamSettings() {
   const confirmRemoveMember = async () => {
     if (!removeTarget) return;
     await removeMember({ organizationId, membershipId: removeTarget.id });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
     setRemoveTarget(null);
   };
 
   const handleCancelInvitation = async (invitationId: Id<"invitations">) => {
     await cancelInvitation({ organizationId, invitationId });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
   };
 
   const handleResendInvitation = async (invitationId: Id<"invitations">) => {
     await resendInvitation({ organizationId, invitationId });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
   };
 
   const navigate = useNavigate();
@@ -132,6 +139,7 @@ function TeamSettings() {
       setInviteEmail("");
       setInviteRole("member");
       setInviteOpen(false);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       toast.success(t("team.invitationSent"));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -407,12 +415,16 @@ function TeamSettings() {
                   <div>
                     <p className="text-sm font-medium">{invitation.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {invitation.inviterName && (
-                        <span>
-                          {t("team.invitedBy")} {invitation.inviterName}
-                          {" \u00B7 "}
-                        </span>
-                      )}
+                      {invitation.invitedBy && (() => {
+                        const inviter = members?.find((m) => m.userId === invitation.invitedBy);
+                        const inviterName = inviter?.user?.name ?? null;
+                        return inviterName ? (
+                          <span>
+                            {t("team.invitedBy")} {inviterName}
+                            {" \u00B7 "}
+                          </span>
+                        ) : null;
+                      })()}
                       {t("team.sentDate")} {formatDate(invitation.createdAt)}
                     </p>
                   </div>

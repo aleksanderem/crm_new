@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/layout/page-header";
 import type {
@@ -42,6 +45,7 @@ function NewAutomationRulePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createRule = useMutation(api.automation.createRule);
+  const queryClient = useQueryClient();
 
   const {
     data: eventCatalog,
@@ -67,26 +71,19 @@ function NewAutomationRulePage() {
     data: emailTemplates,
     isPending: isEmailTemplatesPending,
     isError: isEmailTemplatesError,
-  } = useQuery(
-    convexQuery(api.emailTemplates.list, {
-      organizationId,
-      activeOnly: true,
-    }),
-  );
+  } = useSupabaseEmailTemplatesList(organizationId, { activeOnly: true });
 
   const customFieldEntityTypes = useMemo<AutomationUpdateFieldTargetEntityType[]>(
     () => ["gabinetPatient", "gabinetAppointment", "gabinetEmployee", "lead"],
     [],
   );
 
-  const customFieldResults = useQueries({
-    queries: customFieldEntityTypes.map((entityType) =>
-      convexQuery(api.customFields.getDefinitions, {
-        organizationId,
-        entityType,
-      }),
-    ),
-  });
+  const cfGabinetPatient = useSupabaseCustomFieldDefinitions(organizationId, "gabinetPatient");
+  const cfGabinetAppointment = useSupabaseCustomFieldDefinitions(organizationId, "gabinetAppointment");
+  const cfGabinetEmployee = useSupabaseCustomFieldDefinitions(organizationId, "gabinetEmployee");
+  const cfLead = useSupabaseCustomFieldDefinitions(organizationId, "lead");
+
+  const customFieldResults = [cfGabinetPatient, cfGabinetAppointment, cfGabinetEmployee, cfLead];
 
   const customFieldsByEntityType = useMemo<
     Partial<Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>>
@@ -101,7 +98,8 @@ function NewAutomationRulePage() {
         Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>
       >,
     );
-  }, [customFieldEntityTypes, customFieldResults]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customFieldEntityTypes, cfGabinetPatient.data, cfGabinetAppointment.data, cfGabinetEmployee.data, cfLead.data]);
 
   const isCustomFieldsPending = customFieldResults.some((result) => result.isPending);
   const isCustomFieldsError = customFieldResults.some((result) => result.isError);
@@ -142,6 +140,7 @@ function NewAutomationRulePage() {
         enabled: payload.enabled,
       });
       toast.success(t("settings.automationRuleCreated"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
       navigate({ to: "/dashboard/settings/automations" });
     } catch {
       toast.error(t("settings.automationSaveError"));
@@ -185,7 +184,7 @@ function NewAutomationRulePage() {
         <AutomationSimpleMode
           eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
-          emailTemplates={emailTemplates as AutomationEmailTemplateRecord[]}
+          emailTemplates={emailTemplates as unknown as AutomationEmailTemplateRecord[]}
           customFieldsByEntityType={customFieldsByEntityType}
           isSubmitting={isSubmitting}
           onCancel={handleCancel}

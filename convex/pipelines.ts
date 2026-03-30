@@ -3,6 +3,20 @@ import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writePipelineRef = internal.supabase.pipelines.writePipelineToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updatePipelineRef = internal.supabase.pipelines.updatePipelineInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deletePipelineRef = internal.supabase.pipelines.deletePipelineFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeStageRef = internal.supabase.pipelines.writeStageToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateStageRef = internal.supabase.pipelines.updateStageInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteStageRef = internal.supabase.pipelines.deleteStageFromSupabase;
 
 export const seed = mutation({
   args: {
@@ -41,7 +55,7 @@ export const seed = mutation({
     ];
 
     for (let i = 0; i < stages.length; i++) {
-      await ctx.db.insert("pipelineStages", {
+      const stageId = await ctx.db.insert("pipelineStages", {
         pipelineId,
         organizationId: args.organizationId,
         name: stages[i].name,
@@ -52,7 +66,33 @@ export const seed = mutation({
         createdAt: now,
         updatedAt: now,
       });
+
+      // Dual-write: replicate stage to Supabase
+      await ctx.scheduler.runAfter(0, writeStageRef, {
+        stageId: stageId as string,
+        pipelineId: pipelineId as string,
+        organizationId: args.organizationId as string,
+        name: stages[i].name,
+        color: stages[i].color,
+        order: i,
+        isWonStage: stages[i].isWonStage,
+        isLostStage: stages[i].isLostStage,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
+
+    // Dual-write: replicate pipeline to Supabase
+    await ctx.scheduler.runAfter(0, writePipelineRef, {
+      pipelineId: pipelineId as string,
+      organizationId: args.organizationId as string,
+      name: "Sales Pipeline",
+      description: "Default sales pipeline",
+      isDefault: true,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     return pipelineId;
   },
@@ -125,9 +165,23 @@ export const create = mutation({
 
     if (stages) {
       for (let i = 0; i < stages.length; i++) {
-        await ctx.db.insert("pipelineStages", {
+        const stageId = await ctx.db.insert("pipelineStages", {
           pipelineId,
           organizationId: args.organizationId,
+          name: stages[i].name,
+          color: stages[i].color,
+          order: i,
+          isWonStage: stages[i].isWonStage,
+          isLostStage: stages[i].isLostStage,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Dual-write: replicate stage to Supabase
+        await ctx.scheduler.runAfter(0, writeStageRef, {
+          stageId: stageId as string,
+          pipelineId: pipelineId as string,
+          organizationId: args.organizationId as string,
           name: stages[i].name,
           color: stages[i].color,
           order: i,
@@ -146,6 +200,19 @@ export const create = mutation({
       action: "created",
       description: `Created pipeline "${args.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate pipeline to Supabase
+    await ctx.scheduler.runAfter(0, writePipelineRef, {
+      pipelineId: pipelineId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      description: args.description,
+      type: args.type,
+      isDefault: args.isDefault,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return pipelineId;
@@ -175,7 +242,8 @@ export const update = mutation({
     }
 
     const { organizationId, pipelineId, ...updates } = args;
-    await ctx.db.patch(pipelineId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(pipelineId, { ...updates, updatedAt: now });
 
     await logActivity(ctx, {
       organizationId,
@@ -184,6 +252,21 @@ export const update = mutation({
       action: "updated",
       description: `Updated pipeline "${pipeline.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate pipeline update to Supabase
+    await ctx.scheduler.runAfter(0, updatePipelineRef, {
+      pipelineId: pipelineId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries({
+          name: updates.name,
+          description: updates.description,
+          type: updates.type,
+          isDefault: updates.isDefault,
+        }).filter(([, v]) => v !== undefined),
+      ),
+      updatedAt: now,
     });
 
     return pipelineId;
@@ -228,6 +311,12 @@ export const remove = mutation({
         });
       }
       await ctx.db.delete(stage._id);
+
+      // Dual-write: replicate stage deletion to Supabase
+      await ctx.scheduler.runAfter(0, deleteStageRef, {
+        stageId: stage._id as string,
+        organizationId: args.organizationId as string,
+      });
     }
 
     await ctx.db.delete(args.pipelineId);
@@ -239,6 +328,12 @@ export const remove = mutation({
       action: "deleted",
       description: `Deleted pipeline "${pipeline.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate pipeline deletion to Supabase
+    await ctx.scheduler.runAfter(0, deletePipelineRef, {
+      pipelineId: args.pipelineId as string,
+      organizationId: args.organizationId as string,
     });
 
     return args.pipelineId;
@@ -319,6 +414,20 @@ export const addStage = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new stage to Supabase
+    await ctx.scheduler.runAfter(0, writeStageRef, {
+      stageId: stageId as string,
+      pipelineId: args.pipelineId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      color: args.color,
+      order: args.order,
+      isWonStage: args.isWonStage,
+      isLostStage: args.isLostStage,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return stageId;
   },
 });
@@ -344,7 +453,8 @@ export const updateStage = mutation({
     }
 
     const { organizationId, stageId, ...updates } = args;
-    await ctx.db.patch(stageId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(stageId, { ...updates, updatedAt: now });
 
     await logActivity(ctx, {
       organizationId,
@@ -353,6 +463,22 @@ export const updateStage = mutation({
       action: "updated",
       description: `Updated stage "${stage.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate stage update to Supabase
+    await ctx.scheduler.runAfter(0, updateStageRef, {
+      stageId: stageId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries({
+          name: updates.name,
+          color: updates.color,
+          order: updates.order,
+          isWonStage: updates.isWonStage,
+          isLostStage: updates.isLostStage,
+        }).filter(([, v]) => v !== undefined),
+      ),
+      updatedAt: now,
     });
 
     return stageId;
@@ -407,6 +533,12 @@ export const removeStage = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate stage deletion to Supabase
+    await ctx.scheduler.runAfter(0, deleteStageRef, {
+      stageId: args.stageId as string,
+      organizationId: args.organizationId as string,
+    });
+
     return args.stageId;
   },
 });
@@ -429,6 +561,14 @@ export const reorderStages = mutation({
         throw new Error("Stage not found");
       }
       await ctx.db.patch(args.stageIds[i], { order: i, updatedAt: now });
+
+      // Dual-write: replicate stage reorder to Supabase
+      await ctx.scheduler.runAfter(0, updateStageRef, {
+        stageId: args.stageIds[i] as string,
+        organizationId: args.organizationId as string,
+        order: i,
+        updatedAt: now,
+      });
     }
 
     await logActivity(ctx, {

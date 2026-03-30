@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
+import {
+  useSupabaseAutomationRulesList,
+  useSupabaseAutomationRunsList,
+} from "@/hooks/use-supabase-automation";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -31,7 +35,8 @@ import {
 import { Id } from "@cvx/_generated/dataModel";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { type AutomationRuleRecord } from "@/components/settings/automation-builder/automation-simple-presets";
+import type { AutomationRuleRecord } from "@/components/settings/automation-builder/automation-simple-presets";
+import type { AutomationRuleAction, AutomationRuleCondition } from "@/components/settings/automation-builder/automation-simple-presets";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/automations/",
@@ -40,7 +45,7 @@ export const Route = createFileRoute(
 });
 
 type RuleRecord = AutomationRuleRecord & {
-  _id: Id<"automationRules">;
+  _id: string;
   lastRun?: {
     status: string;
     createdAt: number;
@@ -56,32 +61,32 @@ function AutomationSettingsOverview() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const [deletingRule, setDeletingRule] = useState<RuleRecord | null>(null);
+  const queryClient = useQueryClient();
 
+  // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
   const updateRule = useMutation(api.automation.updateRule);
+  // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
   const deleteRule = useMutation(api.automation.deleteRule);
 
   const {
-    data: rules = [],
+    data: rawRules,
     isPending: isRulesPending,
     isError: isRulesError,
-  } = useQuery(
-    convexQuery(api.automation.listRules, {
-      organizationId,
-    }),
-  );
+  } = useSupabaseAutomationRulesList(organizationId);
 
-  const typedRules = rules as RuleRecord[];
+  // Cast JSONB columns (actions, conditions) and narrow module to typed union at consumption boundary
+  const typedRules: RuleRecord[] = (rawRules ?? []).map((rule) => ({
+    ...rule,
+    module: rule.module as "gabinet" | "crm" | "platform",
+    actions: (rule.actions ?? []) as AutomationRuleAction[],
+    conditions: (rule.conditions ?? []) as AutomationRuleCondition[],
+  }));
 
   const {
     data: runs = [],
     isPending: isRunsPending,
     isError: isRunsError,
-  } = useQuery(
-    convexQuery(api.automation.listRuns, {
-      organizationId,
-      limit: 20,
-    }),
-  );
+  } = useSupabaseAutomationRunsList(organizationId, { limit: 20 });
 
   const formatDateTime = (timestamp: number) =>
     new Date(timestamp).toLocaleString(i18n.language);
@@ -90,9 +95,10 @@ function AutomationSettingsOverview() {
     try {
       await updateRule({
         organizationId,
-        ruleId: rule._id,
+        ruleId: rule._id as Id<"automationRules">,
         enabled,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
       toast.success(
         enabled
           ? t("settings.automationRuleEnabled")
@@ -108,8 +114,10 @@ function AutomationSettingsOverview() {
     try {
       await deleteRule({
         organizationId,
-        ruleId: deletingRule._id,
+        ruleId: deletingRule._id as Id<"automationRules">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRuns.all });
       toast.success(t("settings.automationRuleDeleted"));
     } catch {
       toast.error(t("settings.automationDeleteError"));

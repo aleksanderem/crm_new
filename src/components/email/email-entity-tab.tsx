@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { useSupabaseEmailsByEntity } from "@/hooks/use-supabase-emails";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Mail } from "@/lib/ez-icons";
@@ -29,15 +27,13 @@ export function EmailEntityTab({
   const { t } = useTranslation();
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const { data: emailsData } = useQuery(
-    convexQuery(api.emails.listByEntity, {
-      organizationId,
-      entityType,
-      entityId,
-    })
+  const { data: emails } = useSupabaseEmailsByEntity(
+    organizationId,
+    entityType,
+    entityId,
   );
 
-  const emails = emailsData ?? [];
+  const emailsList = emails ?? [];
 
   const formatDate = (timestamp: number) =>
     new Date(timestamp).toLocaleDateString(undefined, {
@@ -64,7 +60,7 @@ export function EmailEntityTab({
           </Button>
         </div>
 
-        {emails.length === 0 ? (
+        {emailsList.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
             <Mail className="mb-3 h-8 w-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
@@ -74,7 +70,7 @@ export function EmailEntityTab({
         ) : (
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
-              {emails.map((email) => (
+              {emailsList.map((email) => (
                 <div
                   key={email._id}
                   className="flex items-start gap-3 rounded-lg border p-3"

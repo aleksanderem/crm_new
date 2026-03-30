@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useConvex, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabase } from "@/components/supabase-provider";
+import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -98,7 +100,7 @@ function DashboardLayout() {
   );
   const signOut = useSignOut();
   const navigate = useNavigate();
-  const convex = useConvex();
+  const { client: supabase } = useSupabase();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -136,11 +138,8 @@ function DashboardLayout() {
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {
-      if (!firstOrg || !query.trim()) return [];
-      const raw = await convex.query(api.search.globalSearch, {
-        organizationId: firstOrg._id,
-        query,
-      });
+      if (!firstOrg || !query.trim() || !supabase) return [];
+      const raw = await supabaseGlobalSearch(supabase, firstOrg._id, query);
       return raw.map((group) => ({
         type: group.type,
         label: t(`globalSearch.types.${group.type}`),
@@ -152,7 +151,7 @@ function DashboardLayout() {
         totalCount: group.results.length,
       }));
     },
-    [convex, firstOrg, t]
+    [supabase, firstOrg, t]
   );
 
   const handleSearchSelect = useCallback(

@@ -1,10 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
+import {
+  useSupabaseAutomationRulesList,
+} from "@/hooks/use-supabase-automation";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/layout/page-header";
 import type {
@@ -19,6 +25,8 @@ import {
   type AutomationEmailTemplateRecord,
   type AutomationRuleRecord,
   type AutomationUpdateFieldTargetEntityType,
+  type AutomationRuleAction,
+  type AutomationRuleCondition,
 } from "@/components/settings/automation-builder/automation-simple-presets";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +48,7 @@ export const Route = createFileRoute(
 });
 
 type RuleRecord = AutomationRuleRecord & {
-  _id: Id<"automationRules">;
+  _id: string;
 };
 
 function EditAutomationRulePage() {
@@ -52,16 +60,13 @@ function EditAutomationRulePage() {
 
   const updateRule = useMutation(api.automation.updateRule);
   const deleteRule = useMutation(api.automation.deleteRule);
+  const queryClient = useQueryClient();
 
   const {
-    data: rules,
+    data: rawRules,
     isPending: isRulesPending,
     isError: isRulesError,
-  } = useQuery(
-    convexQuery(api.automation.listRules, {
-      organizationId,
-    }),
-  );
+  } = useSupabaseAutomationRulesList(organizationId);
 
   const {
     data: eventCatalog,
@@ -87,26 +92,19 @@ function EditAutomationRulePage() {
     data: emailTemplates,
     isPending: isEmailTemplatesPending,
     isError: isEmailTemplatesError,
-  } = useQuery(
-    convexQuery(api.emailTemplates.list, {
-      organizationId,
-      activeOnly: true,
-    }),
-  );
+  } = useSupabaseEmailTemplatesList(organizationId, { activeOnly: true });
 
   const customFieldEntityTypes = useMemo<AutomationUpdateFieldTargetEntityType[]>(
     () => ["gabinetPatient", "gabinetAppointment", "gabinetEmployee", "lead"],
     [],
   );
 
-  const customFieldResults = useQueries({
-    queries: customFieldEntityTypes.map((entityType) =>
-      convexQuery(api.customFields.getDefinitions, {
-        organizationId,
-        entityType,
-      }),
-    ),
-  });
+  const cfGabinetPatient = useSupabaseCustomFieldDefinitions(organizationId, "gabinetPatient");
+  const cfGabinetAppointment = useSupabaseCustomFieldDefinitions(organizationId, "gabinetAppointment");
+  const cfGabinetEmployee = useSupabaseCustomFieldDefinitions(organizationId, "gabinetEmployee");
+  const cfLead = useSupabaseCustomFieldDefinitions(organizationId, "lead");
+
+  const customFieldResults = [cfGabinetPatient, cfGabinetAppointment, cfGabinetEmployee, cfLead];
 
   const customFieldsByEntityType = useMemo<
     Partial<Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>>
@@ -121,7 +119,8 @@ function EditAutomationRulePage() {
         Record<AutomationUpdateFieldTargetEntityType, AutomationCustomFieldDefinition[]>
       >,
     );
-  }, [customFieldEntityTypes, customFieldResults]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customFieldEntityTypes, cfGabinetPatient.data, cfGabinetAppointment.data, cfGabinetEmployee.data, cfLead.data]);
 
   const isCustomFieldsPending = customFieldResults.some((result) => result.isPending);
   const isCustomFieldsError = customFieldResults.some((result) => result.isError);
@@ -140,7 +139,12 @@ function EditAutomationRulePage() {
     isEmailTemplatesError ||
     isCustomFieldsError;
 
-  const typedRules = (rules ?? []) as RuleRecord[];
+  const typedRules: RuleRecord[] = (rawRules ?? []).map((r) => ({
+    ...r,
+    module: r.module as "gabinet" | "crm" | "platform",
+    actions: (r.actions ?? []) as AutomationRuleAction[],
+    conditions: (r.conditions ?? []) as AutomationRuleCondition[],
+  }));
   const rule = typedRules.find((item) => item._id === ruleId);
 
   const playgroundValue = useMemo(
@@ -166,8 +170,10 @@ function EditAutomationRulePage() {
     try {
       await deleteRule({
         organizationId,
-        ruleId: rule._id,
+        ruleId: rule._id as Id<"automationRules">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRuns.all });
       toast.success(t("settings.automationRuleDeleted"));
       navigate({ to: "/dashboard/settings/automations" });
     } catch {
@@ -184,7 +190,7 @@ function EditAutomationRulePage() {
     try {
       await updateRule({
         organizationId,
-        ruleId: rule._id,
+        ruleId: rule._id as Id<"automationRules">,
         name: payload.name,
         description: payload.description,
         module: payload.module,
@@ -197,6 +203,7 @@ function EditAutomationRulePage() {
         actions: payload.actions,
         enabled: payload.enabled,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
       toast.success(t("settings.automationRuleUpdated"));
       navigate({ to: "/dashboard/settings/automations" });
     } catch {
@@ -213,9 +220,10 @@ function EditAutomationRulePage() {
     try {
       await updateRule({
         organizationId,
-        ruleId: rule._id,
+        ruleId: rule._id as Id<"automationRules">,
         name: name.trim(),
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
       toast.success(t("settings.automationRuleUpdated"));
     } catch {
       toast.error(t("settings.automationSaveError"));
@@ -231,9 +239,10 @@ function EditAutomationRulePage() {
     try {
       await updateRule({
         organizationId,
-        ruleId: rule._id,
+        ruleId: rule._id as Id<"automationRules">,
         enabled,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.automationRules.all });
       toast.success(
         enabled
           ? t("settings.automationRuleEnabled")
@@ -323,7 +332,7 @@ function EditAutomationRulePage() {
         <AutomationSimpleMode
           eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
-          emailTemplates={emailTemplates as AutomationEmailTemplateRecord[]}
+          emailTemplates={emailTemplates as unknown as AutomationEmailTemplateRecord[]}
           customFieldsByEntityType={customFieldsByEntityType}
           initialValue={playgroundValue}
           isSubmitting={isSubmitting}

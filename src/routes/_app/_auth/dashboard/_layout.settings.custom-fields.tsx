@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { CustomFieldDefinitionForm } from "@/components/custom-fields/custom-field-definition-form";
@@ -48,14 +49,13 @@ function CustomFieldsSettings() {
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"customFieldDefinitions">; name: string } | null>(null);
 
+  const queryClient = useQueryClient();
   const createDefinition = useMutation(api.customFields.createDefinition);
   const deleteDefinition = useMutation(api.customFields.deleteDefinition);
 
-  const { data: definitions } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: activeTab,
-    })
+  const { data: definitions } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    activeTab,
   );
 
   const crmTypes = ENTITY_TYPE_CONFIG.filter((c) => c.group === "crm");
@@ -123,6 +123,7 @@ function CustomFieldsSettings() {
                         ...data,
                         order: (definitions?.length ?? 0) + 1,
                       });
+                      void queryClient.invalidateQueries({ queryKey: supabaseKeys.customFieldDefinitions.list(organizationId) });
                       setShowForm(false);
                     }}
                   />
@@ -187,6 +188,7 @@ function CustomFieldsSettings() {
                   organizationId,
                   definitionId: deleteTarget.id,
                 });
+                void queryClient.invalidateQueries({ queryKey: supabaseKeys.customFieldDefinitions.list(organizationId) });
                 setDeleteTarget(null);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

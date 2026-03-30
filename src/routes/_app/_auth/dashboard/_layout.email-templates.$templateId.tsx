@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseEmailTemplate } from "@/hooks/use-supabase-email-templates";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,11 +80,9 @@ function EditEmailTemplatePage() {
   const updateTemplate = useMutation(api.emailTemplates.update);
   const removeTemplate = useMutation(api.emailTemplates.remove);
 
-  const { data: template } = useQuery(
-    convexQuery(api.emailTemplates.getById, {
-      organizationId,
-      templateId,
-    }),
+  const { data: template } = useSupabaseEmailTemplate(
+    organizationId,
+    templateId,
   );
 
   const { data: variableSources } = useQuery(
@@ -100,7 +99,7 @@ function EditEmailTemplatePage() {
       setCategory(template.category ?? "");
       setModule(template.module ?? "");
       setIsActive(template.isActive);
-      setVariables(template.variables);
+      setVariables(template.variables as TemplateVariable[]);
 
       // Extract HTML body — try JSON formats, fallback to raw HTML
       let htmlBody = template.body;

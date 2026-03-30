@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseEmailEventTypes, useSupabaseEmailEventBindings } from "@/hooks/use-supabase-email-events";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,27 +56,32 @@ function EmailEventsSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
+  const queryClient = useQueryClient();
   const [selectedModule, setSelectedModule] = useState<string>("all");
 
   // Fetch event types
-  const { data: eventTypes, isLoading: loadingEvents } = useQuery(
-    convexQuery(api.emailEvents.listEventTypes, {
-      organizationId,
-      module: selectedModule === "all" 
-        ? undefined 
-        : selectedModule as "crm" | "gabinet" | "platform",
-    }),
-  );
+  const { data: eventTypesRaw, isLoading: loadingEvents } = useSupabaseEmailEventTypes(organizationId);
+
+  // Client-side module filtering (Supabase hook fetches all, we filter here)
+  const eventTypes = (selectedModule === "all"
+    ? eventTypesRaw
+    : eventTypesRaw?.filter((e) => e.module === selectedModule)) as EventType[] | undefined;
 
   // Fetch bindings
-  const { data: bindings, isLoading: loadingBindings } = useQuery(
-    convexQuery(api.emailEventBindings.listBindings, { organizationId }),
-  );
+  const { data: bindingsRaw, isLoading: loadingBindings } = useSupabaseEmailEventBindings(organizationId);
 
   // Fetch templates for dropdown
-  const { data: templates } = useQuery(
-    convexQuery(api.emailTemplates.list, { organizationId }),
-  );
+  const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
+
+  // Enrich bindings with template name/active status from the templates list
+  const bindings = bindingsRaw?.map((b) => {
+    const tpl = templates?.find((t) => t._id === b.templateId);
+    return {
+      ...b,
+      templateName: tpl?.name ?? null,
+      templateIsActive: tpl?.isActive ?? false,
+    };
+  }) as Binding[] | undefined;
 
   // Mutations
   const upsertBinding = useMutation(api.emailEventBindings.upsertBinding);
@@ -99,6 +106,7 @@ function EmailEventsSettings() {
         templateId: templateId as Id<"emailTemplates">,
         enabled: true,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -115,6 +123,7 @@ function EmailEventsSettings() {
         bindingId: binding._id,
         enabled: !binding.enabled,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -135,6 +144,7 @@ function EmailEventsSettings() {
         organizationId,
         bindingId: unbindTarget.binding._id,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingDeleted"));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));

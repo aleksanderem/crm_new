@@ -9,6 +9,13 @@ import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
 import { internal } from "./_generated/api";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLeadRef = internal.supabase.leads.writeLeadToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLeadRef = internal.supabase.leads.updateLeadInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteLeadRef = internal.supabase.leads.deleteLeadFromSupabase;
+
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
@@ -218,6 +225,30 @@ export const create = mutation({
       });
     }
 
+    // Dual-write: replicate new lead to Supabase
+    await ctx.scheduler.runAfter(0, writeLeadRef, {
+      leadId: leadId as string,
+      organizationId: args.organizationId as string,
+      title: args.title,
+      value: args.value,
+      currency: args.currency,
+      status: args.status,
+      priority: args.priority,
+      expectedCloseDate: args.expectedCloseDate,
+      source: args.source,
+      companyId: args.companyId as string | undefined,
+      assignedTo: args.assignedTo as string | undefined,
+      pipelineStageId: args.pipelineStageId as string | undefined,
+      stageOrder: args.stageOrder,
+      notes: args.notes,
+      tags: args.tags,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return leadId;
   },
 });
@@ -414,6 +445,33 @@ export const update = mutation({
       });
     }
 
+    // Dual-write: replicate lead update to Supabase
+    await ctx.scheduler.runAfter(0, updateLeadRef, {
+      leadId: leadId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries({
+          title: updates.title,
+          value: updates.value,
+          currency: updates.currency,
+          status: updates.status,
+          priority: updates.priority,
+          expectedCloseDate: updates.expectedCloseDate,
+          source: updates.source,
+          companyId: updates.companyId ? (updates.companyId as string) : updates.companyId,
+          assignedTo: updates.assignedTo ? (updates.assignedTo as string) : updates.assignedTo,
+          notes: updates.notes,
+          tags: updates.tags,
+          tagIds: updates.tagIds?.map((id) => id as string),
+          categoryId: updates.categoryId ? (updates.categoryId as string) : updates.categoryId,
+          lostReason: updates.lostReason,
+          wonAt: (updates as any).wonAt,
+          lostAt: (updates as any).lostAt,
+        }).filter(([, v]) => v !== undefined),
+      ),
+      updatedAt: now,
+    });
+
     return leadId;
   },
 });
@@ -475,6 +533,12 @@ export const remove = mutation({
       entityType: "lead",
       entityId: args.leadId,
       details: JSON.stringify({ title: lead.title }),
+    });
+
+    // Dual-write: replicate lead deletion to Supabase
+    await ctx.scheduler.runAfter(0, deleteLeadRef, {
+      leadId: args.leadId as string,
+      organizationId: args.organizationId as string,
     });
 
     return args.leadId;
@@ -699,6 +763,18 @@ export const moveToStage = mutation({
         occurredAt: now,
       });
     }
+
+    // Dual-write: replicate stage move to Supabase
+    await ctx.scheduler.runAfter(0, updateLeadRef, {
+      leadId: args.leadId as string,
+      organizationId: args.organizationId as string,
+      pipelineStageId: args.pipelineStageId as string,
+      stageOrder: args.stageOrder,
+      status: updateData.status,
+      wonAt: updateData.wonAt,
+      lostAt: updateData.lostAt,
+      updatedAt: now,
+    });
 
     return args.leadId;
   },

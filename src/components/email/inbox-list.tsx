@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { useSupabaseEmailsList } from "@/hooks/use-supabase-emails";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,30 +29,17 @@ export function InboxList({
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
 
-  const toggleStar = useMutation(api.emails.toggleStar);
+  // @ts-ignore — TS2589: Convex mutation type instantiation depth exceeded
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toggleStar: any = useMutation(api.emails.toggleStar);
 
-  const queryFilter = useMemo(() => {
-    const base: {
-      organizationId: Id<"organizations">;
-      paginationOpts: { numItems: number; cursor: null };
-      search?: string;
-      isRead?: boolean;
-      direction?: "inbound" | "outbound";
-      mailProviderId?: Id<"mailProviders">;
-    } = {
-      organizationId,
-      paginationOpts: { numItems: 50, cursor: null },
-    };
-    if (search.trim()) base.search = search.trim();
-    if (filter === "unread") base.isRead = false;
-    if (filter === "sent") base.direction = "outbound";
-    if (mailProviderId) base.mailProviderId = mailProviderId;
-    return base;
-  }, [organizationId, filter, search, mailProviderId]);
-
-  const { data: emailsData } = useQuery(
-    convexQuery(api.emails.listInbox, queryFilter)
-  );
+  const { data: emailsData } = useSupabaseEmailsList(organizationId, {
+    search: search.trim() || undefined,
+    isRead: filter === "unread" ? false : undefined,
+    direction: filter === "sent" ? "outbound" : undefined,
+    mailProviderId,
+    limit: 50,
+  });
 
   const emails = emailsData?.page ?? [];
 

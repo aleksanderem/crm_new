@@ -1,9 +1,17 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeProductRef = internal.supabase.products.writeProductToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateProductRef = internal.supabase.products.updateProductInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteProductRef = internal.supabase.products.deleteProductFromSupabase;
 
 export const list = query({
   args: {
@@ -97,6 +105,23 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new product to Supabase
+    await ctx.scheduler.runAfter(0, writeProductRef, {
+      productId: productId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      sku: args.sku,
+      unitPrice: args.unitPrice,
+      taxRate: args.taxRate,
+      isActive: args.isActive,
+      description: args.description,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId as string | undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return productId;
   },
 });
@@ -127,7 +152,8 @@ export const update = mutation({
     }
 
     const { organizationId, productId, ...updates } = args;
-    await ctx.db.patch(productId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(productId, { ...updates, updatedAt: now });
 
     await logActivity(ctx, {
       organizationId,
@@ -136,6 +162,20 @@ export const update = mutation({
       action: "updated",
       description: `Updated product "${product.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateProductRef, {
+      productId: productId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates).map(([k, val]) => {
+          if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+          if (k === "categoryId" && val) return [k, val as string];
+          return [k, val];
+        })
+      ),
+      updatedAt: now,
     });
 
     return productId;
@@ -168,6 +208,12 @@ export const remove = mutation({
     for (const dp of dealProducts) {
       await ctx.db.delete(dp._id);
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteProductRef, {
+      productId: args.productId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.productId);
 
@@ -203,6 +249,14 @@ export const toggleActive = mutation({
     }
 
     await ctx.db.patch(args.productId, {
+      isActive: !product.isActive,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate toggle to Supabase
+    await ctx.scheduler.runAfter(0, updateProductRef, {
+      productId: args.productId as string,
+      organizationId: args.organizationId as string,
       isActive: !product.isActive,
       updatedAt: Date.now(),
     });

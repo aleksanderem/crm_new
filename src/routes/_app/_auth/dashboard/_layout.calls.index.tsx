@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCallsList } from "@/hooks/use-supabase-calls";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -27,8 +28,8 @@ import { callOutcomeOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { SavedView, FieldDef } from "@/components/crm/types";
-import { Doc } from "@cvx/_generated/dataModel";
 import type { Id } from "@cvx/_generated/dataModel";
+import type { MappedCall } from "@/lib/supabase/mappers";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
@@ -43,7 +44,7 @@ export const Route = createFileRoute(
   component: CallsPage,
 });
 
-type Call = Doc<"calls">;
+type Call = MappedCall;
 type CallOutcome = "busy" | "leftVoiceMessage" | "movedConversationForward" | "wrongNumber" | "noAnswer";
 
 const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> = {
@@ -57,6 +58,7 @@ const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> =
 function CallsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "call");
   const systemViews: SavedView[] = useMemo(() => [
@@ -97,14 +99,7 @@ function CallsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.calls.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const allCalls = data?.page ?? [];
+  const { data: allCalls = [], isLoading } = useSupabaseCallsList(organizationId);
   const calls = useMemo(() => {
     const filtered = applyFilters(allCalls) as typeof allCalls;
     if (!searchValue.trim()) return filtered;
@@ -135,7 +130,7 @@ function CallsPage() {
     setOutcome(call.outcome as CallOutcome);
     setCallDate(new Date(call.callDate).toISOString().slice(0, 16));
     setNote(call.note ?? "");
-    const callAny = call as Record<string, unknown>;
+    const callAny = call as unknown as Record<string, unknown>;
     setTagIds((callAny.tagIds as Id<"tagDefinitions">[]) ?? []);
     setCategoryId(callAny.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
@@ -150,7 +145,7 @@ function CallsPage() {
       if (editingCall) {
         await updateCall({
           organizationId,
-          callId: editingCall._id,
+          callId: editingCall._id as any,
           outcome,
           callDate: new Date(callDate).getTime(),
           note: note.trim() || undefined,
@@ -169,6 +164,7 @@ function CallsPage() {
       }
       setPanelOpen(false);
       resetForm();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -228,7 +224,11 @@ function CallsPage() {
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeCall({ organizationId, callId: row._id }),
+      onClick: () => {
+        void removeCall({ organizationId, callId: row._id as any }).then(() => {
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(organizationId) });
+        });
+      },
     },
   ];
 

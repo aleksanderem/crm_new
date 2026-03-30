@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { Id } from "@cvx/_generated/dataModel";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmPipelineChart } from "@/components/dashboard/crm-pipeline-chart";
 import { UpcomingActivities } from "@/components/dashboard/upcoming-activities";
@@ -13,6 +12,22 @@ import { TopPerformers } from "@/components/dashboard/top-performers";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ChartConfig } from "@/components/ui/chart";
 import { useDateRange } from "@/components/crm/date-range-context";
+
+// Supabase dashboard hooks
+import {
+  useSupabaseDashboardStats,
+  useSupabaseDashboardLeadsByStage,
+  useSupabaseDashboardWonDealsByDay,
+  useSupabaseDashboardRevenueByMonth,
+  useSupabaseDashboardContactsBySource,
+  useSupabaseDashboardCallOutcomeOverview,
+  useSupabaseDashboardTopPerformers,
+  useSupabaseDashboardUpcomingActivities,
+} from "@/hooks/use-supabase-dashboard";
+
+// Existing Supabase hooks for sources & pipelines (from S01/S02)
+import { useSupabaseSourcesList } from "@/hooks/use-supabase-sources";
+import { useSupabasePipelinesList } from "@/hooks/use-supabase-pipelines";
 
 // shadcn/studio blocks – used directly
 import TotalIncomeCard from "@/components/shadcn-studio/blocks/chart-total-income";
@@ -127,9 +142,8 @@ function DashboardIndex() {
   const { timeRange } = useDateRange();
 
   // --- Auto-seed defaults for existing orgs ---
-  const { data: sources } = useQuery(
-    convexQuery(api.sources.list, { organizationId })
-  );
+  const { data: sources } = useSupabaseSourcesList(organizationId);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const { mutate: seedAll } = useMutation({
     mutationFn: useConvexMutation(api.seedDefaults.seedAll),
   });
@@ -141,60 +155,41 @@ function DashboardIndex() {
     }
   }, [sources, organizationId, seedAll]);
 
-  // --- KPI + stats ---
-  const { data: stats, isLoading: statsLoading } = useQuery(
-    convexQuery(api.dashboard.getStats, { organizationId })
-  );
+  // --- KPI + stats (Supabase) ---
+  const { data: stats, isLoading: statsLoading } = useSupabaseDashboardStats(organizationId);
 
-  // --- Pipeline stages ---
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
-  );
+  // --- Pipeline stages (Supabase) ---
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
   const defaultPipeline = pipelines?.find((p) => p.isDefault) ?? pipelines?.[0];
-  const { data: stageData } = useQuery({
-    ...convexQuery(api.dashboard.getLeadsByStage, {
-      organizationId,
-      pipelineId: defaultPipeline?._id ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!defaultPipeline,
-  });
-
-  // --- Chart data ---
-  const { data: wonDealsData } = useQuery(
-    convexQuery(api.dashboard.getWonDealsByDay, {
-      organizationId,
-      timeRange,
-    })
-  );
-  const { data: revenueData } = useQuery(
-    convexQuery(api.dashboard.getRevenueByMonth, {
-      organizationId,
-      timeRange,
-    })
-  );
-  const { data: contactsSourceData } = useQuery(
-    convexQuery(api.dashboard.getContactsBySource, {
-      organizationId,
-      timeRange,
-    })
-  );
-  const { data: callOutcomesData } = useQuery(
-    convexQuery(api.dashboard.getCallOutcomeOverview, {
-      organizationId,
-      timeRange,
-    })
+  const { data: stageData } = useSupabaseDashboardLeadsByStage(
+    organizationId,
+    defaultPipeline?._id ?? "",
   );
 
-  // --- Bottom sections ---
-  const { data: performersData } = useQuery(
-    convexQuery(api.dashboard.getTopPerformers, {
-      organizationId,
-      timeRange,
-    })
+  // --- Chart data (Supabase) ---
+  const { data: wonDealsData } = useSupabaseDashboardWonDealsByDay(
+    organizationId,
+    timeRange,
   );
-  const { data: upcomingData } = useQuery(
-    convexQuery(api.dashboard.getUpcomingActivities, { organizationId })
+  const { data: revenueData } = useSupabaseDashboardRevenueByMonth(
+    organizationId,
+    timeRange,
   );
+  const { data: contactsSourceData } = useSupabaseDashboardContactsBySource(
+    organizationId,
+    timeRange,
+  );
+  const { data: callOutcomesData } = useSupabaseDashboardCallOutcomeOverview(
+    organizationId,
+    timeRange,
+  );
+
+  // --- Bottom sections (Supabase) ---
+  const { data: performersData } = useSupabaseDashboardTopPerformers(
+    organizationId,
+    timeRange,
+  );
+  const { data: upcomingData } = useSupabaseDashboardUpcomingActivities(organizationId);
 
   // --- Transform data for shadcn/studio blocks ---
 

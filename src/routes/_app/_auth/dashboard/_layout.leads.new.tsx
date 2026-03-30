@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabasePipelinesList, useSupabasePipelineStages } from "@/hooks/use-supabase-pipelines";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { LeadForm } from "@/components/forms/lead-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,27 +22,22 @@ function NewLead() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const createLead = useMutation(api.leads.create);
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
   const firstPipelineId = pipelines?.[0]?._id;
 
-  const { data: stages } = useQuery({
-    ...convexQuery(api.pipelines.getStages, {
-      organizationId,
-      pipelineId: firstPipelineId ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!firstPipelineId,
-  });
+  const { data: stages } = useSupabasePipelineStages(
+    organizationId,
+    firstPipelineId,
+    { enabled: !!firstPipelineId },
+  );
 
-  const { data: customFieldDefs } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "lead",
-    })
+  const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "lead",
   );
 
   return (
@@ -49,9 +46,9 @@ function NewLead() {
       <Card>
         <CardContent className="pt-6">
           <LeadForm
-            pipelines={pipelines}
-            stages={stages}
-            customFieldDefinitions={customFieldDefs}
+            pipelines={pipelines as any}
+            stages={stages as any}
+            customFieldDefinitions={customFieldDefs as any}
             isSubmitting={isSubmitting}
             onCancel={() => navigate({ to: "/dashboard/leads" })}
             onSubmit={async (data, customFieldRecord) => {
@@ -73,6 +70,7 @@ function NewLead() {
                   ...data,
                   customFields,
                 });
+                queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
                 navigate({ to: `/dashboard/leads/${id}` });
               } finally {
                 setIsSubmitting(false);

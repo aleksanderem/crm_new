@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -19,8 +20,11 @@ import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { SavedView, FieldDef } from "@/components/crm/types";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import type { MappedProduct } from "@/lib/supabase/mappers";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
+
+type Product = MappedProduct;
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
@@ -34,8 +38,6 @@ export const Route = createFileRoute(
 )({
   component: ProductsPage,
 });
-
-type Product = Doc<"products">;
 
 function generateSku(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -56,6 +58,7 @@ function formatCurrency(amount: number): string {
 function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "product");
   const systemViews: SavedView[] = useMemo(() => [
@@ -108,14 +111,7 @@ function ProductsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.products.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const allProducts = data?.page ?? [];
+  const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
 
   const products = useMemo(() => {
     let data = allProducts;
@@ -177,7 +173,7 @@ function ProductsPage() {
       if (editingProduct) {
         await updateProduct({
           organizationId,
-          productId: editingProduct._id,
+          productId: editingProduct._id as any,
           name: name.trim(),
           sku: sku.trim(),
           unitPrice: parseFloat(unitPrice),
@@ -201,6 +197,7 @@ function ProductsPage() {
       }
       setPanelOpen(false);
       resetForm();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -251,12 +248,20 @@ function ProductsPage() {
     {
       label: row.isActive ? t('products.deactivate') : t('products.activate'),
       icon: <Power className="h-4 w-4" variant="stroke" />,
-      onClick: () => toggleActive({ organizationId, productId: row._id }),
+      onClick: () => {
+        void toggleActive({ organizationId, productId: row._id as any }).then(() => {
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+        });
+      },
     },
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeProduct({ organizationId, productId: row._id }),
+      onClick: () => {
+        void removeProduct({ organizationId, productId: row._id as any }).then(() => {
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+        });
+      },
     },
   ];
 

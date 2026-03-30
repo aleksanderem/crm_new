@@ -1,10 +1,20 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCompany } from "@/hooks/use-supabase-companies";
+import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseCustomFieldValues, useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useSupabaseRelationshipsByEntity } from "@/hooks/use-supabase-relationships";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
+import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CompanyForm } from "@/components/forms/company-form";
 import { ContactForm } from "@/components/forms/contact-form";
@@ -54,6 +64,7 @@ function CompanyDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const updateCompany = useMutation(api.companies.update);
   const removeCompany = useMutation(api.companies.remove);
   const createRelationship = useMutation(api.relationships.create);
@@ -73,15 +84,11 @@ function CompanyDetail() {
     convexQuery(api.app.getCurrentUser, {})
   );
 
-  const { data: activityTypeDefs } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
 
-  const { data: activityCustomFieldDefs } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "activity",
-    })
+  const { data: activityCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "activity",
   );
 
   // Company entity custom fields
@@ -90,14 +97,11 @@ function CompanyDetail() {
     saveValues: _saveCompanyCfValues,
   } = useCustomFieldForm({ organizationId, entityType: "company" });
 
-  const { data: companyCfValuesRaw } = useQuery({
-    ...convexQuery(api.customFields.getValues, {
-      organizationId,
-      entityType: "company" as any,
-      entityId: companyId,
-    }),
-    enabled: !!companyId,
-  });
+  const { data: companyCfValuesRaw } = useSupabaseCustomFieldValues(
+    organizationId,
+    "company",
+    companyId,
+  );
 
   const companyCfValues = useMemo(() => {
     if (!companyCfValuesRaw || !companyCfDefs) return {};
@@ -114,14 +118,11 @@ function CompanyDetail() {
   // Custom field values for the selected activity in the drawer
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
 
-  const { data: selectedActivityCfRaw } = useQuery({
-    ...convexQuery(api.customFields.getValues, {
-      organizationId,
-      entityType: "activity",
-      entityId: selectedActivityId ?? "",
-    }),
-    enabled: !!selectedActivityId,
-  });
+  const { data: selectedActivityCfRaw } = useSupabaseCustomFieldValues(
+    organizationId,
+    "activity",
+    selectedActivityId ?? undefined,
+  );
 
   const selectedActivityCfValues = useMemo(() => {
     if (!selectedActivityCfRaw || !activityCustomFieldDefs) return {};
@@ -154,12 +155,7 @@ function CompanyDetail() {
   const [sidebarDealSearch, setSidebarDealSearch] = useState("");
   const [sidebarContactSearch, setSidebarContactSearch] = useState("");
 
-  const { data: company, isLoading } = useQuery(
-    convexQuery(api.companies.getById, {
-      organizationId,
-      companyId: companyId as Id<"companies">,
-    })
-  );
+  const { data: company, isLoading } = useSupabaseCompany(organizationId, companyId);
 
   useEffect(() => {
     if (company && organizationId) {
@@ -167,87 +163,57 @@ function CompanyDetail() {
     }
   }, [company?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "company",
-      entityId: companyId,
-      paginationOpts: { numItems: 50, cursor: null },
-    })
-  );
-  const activities = activitiesData?.page;
-
-  const { data: relationships } = useQuery(
-    convexQuery(api.relationships.getForEntity, {
-      organizationId,
-      entityType: "company",
-      entityId: companyId,
-    })
+  const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "company",
+    companyId,
   );
 
-  const { data: notesData } = useQuery(
-    convexQuery(api.notes.listByEntity, {
-      organizationId,
-      entityType: "company",
-      entityId: companyId,
-    })
+  const { data: relationships } = useSupabaseRelationshipsByEntity(
+    organizationId,
+    "company",
+    companyId,
   );
 
-  const { data: scheduledActivitiesData } = useQuery(
-    convexQuery(api.scheduledActivities.listByEntity, {
-      organizationId,
-      linkedEntityType: "company",
-      linkedEntityId: companyId,
-    })
+  const { data: notesData } = useSupabaseNotesByEntity(
+    organizationId,
+    "company",
+    companyId,
+  );
+
+  const { data: scheduledActivitiesData } = useSupabaseScheduledActivitiesByEntity(
+    organizationId,
+    "company",
+    companyId,
   );
 
   // Search queries for relationship fields in edit drawer
-  const { data: dealSearchResults } = useQuery({
-    ...convexQuery(api.leads.list, {
-      organizationId,
-      paginationOpts: { numItems: 20, cursor: null },
-      search: dealSearch || undefined,
-    }),
-    enabled: dealSearch.length > 0,
-  });
+  const { data: dealSearchResults } = useSupabaseLeadsList(
+    organizationId,
+    { search: dealSearch || undefined, enabled: dealSearch.length > 0 },
+  );
 
-  const { data: contactSearchResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 20, cursor: null },
-      search: contactSearch || undefined,
-    }),
-    enabled: contactSearch.length > 0,
-  });
+  const { data: contactSearchResults } = useSupabaseContactsList(
+    organizationId,
+    { search: contactSearch || undefined, enabled: contactSearch.length > 0 },
+  );
 
   // Sidebar inline search queries
-  const { data: sidebarDealResults } = useQuery({
-    ...convexQuery(api.leads.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: sidebarDealSearch || undefined,
-    }),
-    enabled: sidebarDealSearch.length > 0,
-  });
+  const { data: sidebarDealResults } = useSupabaseLeadsList(
+    organizationId,
+    { search: sidebarDealSearch || undefined, enabled: sidebarDealSearch.length > 0 },
+  );
 
-  const { data: sidebarContactResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: sidebarContactSearch || undefined,
-    }),
-    enabled: sidebarContactSearch.length > 0,
-  });
+  const { data: sidebarContactResults } = useSupabaseContactsList(
+    organizationId,
+    { search: sidebarContactSearch || undefined, enabled: sidebarContactSearch.length > 0 },
+  );
 
   // Guest contact search for activity form
-  const { data: guestContactResults } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 10, cursor: null },
-      search: guestContactSearch || undefined,
-    }),
-    enabled: guestContactSearch.length > 0,
-  });
+  const { data: guestContactResults } = useSupabaseContactsList(
+    organizationId,
+    { search: guestContactSearch || undefined, enabled: guestContactSearch.length > 0 },
+  );
 
   // --- Handlers ---
 
@@ -294,6 +260,7 @@ function CompanyDetail() {
         }
       }
       setEditDrawerOpen(false);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -305,6 +272,7 @@ function CompanyDetail() {
         organizationId,
         companyId: companyId as Id<"companies">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.all });
       navigate({ to: "/dashboard/companies" });
     }
   };
@@ -317,12 +285,14 @@ function CompanyDetail() {
       targetType: "deal",
       targetId: item.id,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkDeal = async (targetId: string) => {
     const rel = dealRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id });
+      await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
 
@@ -334,12 +304,14 @@ function CompanyDetail() {
       targetType: "contact",
       targetId: item.id,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkContact = async (targetId: string) => {
     const rel = contactRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id });
+      await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
 
@@ -386,6 +358,7 @@ function CompanyDetail() {
         entityId: companyId,
         content: newNote.trim(),
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.list(organizationId) });
       setNewNote("");
     } finally {
       setIsAddingNote(false);
@@ -477,6 +450,8 @@ function CompanyDetail() {
       }
     }
     setShowActivityForm(false);
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.list(organizationId) });
   };
 
   const handleUpdateActivity = async (data: {
@@ -496,6 +471,7 @@ function CompanyDetail() {
       endDate: data.endDate,
       description: data.description,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
   };
 
   const handleDeleteActivity = async (activityId: string) => {
@@ -503,6 +479,7 @@ function CompanyDetail() {
       organizationId,
       activityId: activityId as Id<"scheduledActivities">,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
     setActivityDrawerOpen(false);
     setSelectedActivityId(null);
   };
@@ -513,6 +490,7 @@ function CompanyDetail() {
     } else {
       await markActivityIncomplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
     }
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
   };
 
   const handleSaveActivityCustomFields = async (activityId: string, values: Record<string, unknown>) => {
@@ -695,11 +673,11 @@ function CompanyDetail() {
           </div>
           {sidebarContactSearch.length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {sidebarContactResults?.page?.filter(
+              {sidebarContactResults?.filter(
                 (c) => !contactRelationships.some((r) => r.targetId === c._id)
               ).length ? (
                 <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {sidebarContactResults.page
+                  {sidebarContactResults
                     .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
                     .map((c) => (
                       <li key={c._id}>
@@ -853,7 +831,7 @@ function CompanyDetail() {
                   </Button>
                 </div>
                 <ActivityTimeline
-                  activities={activities ?? []}
+                  activities={(activities ?? []) as any}
                   maxHeight="600px"
                 />
               </>
@@ -892,9 +870,9 @@ function CompanyDetail() {
                       onCancel={() => setShowActivityForm(false)}
                       isSubmitting={isSubmitting}
                       activityTypes={activityTypeDefs}
-                      customFieldDefs={activityCustomFieldDefs}
+                      customFieldDefs={activityCustomFieldDefs as any}
                       contactSearchResults={
-                        guestContactResults?.page?.map((c) => ({
+                        guestContactResults?.map((c) => ({
                           id: c._id,
                           label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
                           email: c.email ?? undefined,
@@ -1104,7 +1082,7 @@ function CompanyDetail() {
                 label={t('detail.relationships.contacts')}
                 placeholder={t('detail.relationships.searchContacts')}
                 items={
-                  contactSearchResults?.page?.map((c) => ({
+                  contactSearchResults?.map((c) => ({
                     id: c._id,
                     label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
                     sublabel: c.email ?? undefined,

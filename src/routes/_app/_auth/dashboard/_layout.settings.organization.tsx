@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseOrganization, useSupabaseOrgSettings, useSupabaseOrgUsageStats } from "@/hooks/use-supabase-organizations";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,15 +67,11 @@ function OrganizationSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: org } = useQuery(
-    convexQuery(api.organizations.getById, { organizationId })
-  );
-  const { data: settings } = useQuery(
-    convexQuery(api.orgSettings.get, { organizationId })
-  );
-  const { data: usage } = useQuery(
-    convexQuery(api.organizations.getUsageStats, { organizationId })
-  );
+  const queryClient = useQueryClient();
+
+  const { data: org } = useSupabaseOrganization(organizationId);
+  const { data: settings } = useSupabaseOrgSettings(organizationId);
+  const { data: usage } = useSupabaseOrgUsageStats(organizationId);
 
   const updateOrg = useMutation(api.organizations.update);
   const upsertSettings = useMutation(api.orgSettings.upsert);
@@ -112,6 +109,8 @@ function OrganizationSettings() {
         defaultCurrency: currency,
         timezone,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.organizations.detail(organizationId, organizationId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.orgSettings.detail(organizationId, organizationId) });
     } finally {
       setIsSaving(false);
     }

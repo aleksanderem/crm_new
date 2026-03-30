@@ -1,7 +1,16 @@
 import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeProviderRef = internal.supabase.mailProviders.writeMailProviderToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateProviderRef = internal.supabase.mailProviders.updateMailProviderInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteProviderRef = internal.supabase.mailProviders.deleteMailProviderFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const getByIdRef = api.mailProviders.getById;
 
 const providerTypeValidator = v.union(
   v.literal("google"),
@@ -127,6 +136,25 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new provider to Supabase
+    await ctx.scheduler.runAfter(0, writeProviderRef, {
+      providerId: providerId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      providerType: args.providerType,
+      oauthTokens: args.oauthTokens,
+      apiConfig: args.apiConfig,
+      fromName: args.fromName,
+      fromEmail: args.fromEmail,
+      replyToEmail: args.replyToEmail,
+      capabilities: args.capabilities,
+      isDefault: isFirst,
+      isShared: args.isShared ?? false,
+      status,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return providerId;
   },
 });
@@ -176,6 +204,23 @@ export const update = mutation({
     }
 
     await ctx.db.patch(providerId, patch);
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateProviderRef, {
+      providerId: providerId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      fromName: args.fromName,
+      fromEmail: args.fromEmail,
+      replyToEmail: args.replyToEmail,
+      apiConfig: args.apiConfig,
+      capabilities: args.capabilities,
+      isShared: args.isShared,
+      assignedUserIds: args.assignedUserIds?.map((id) => id as string),
+      status: args.status,
+      updatedAt: patch.updatedAt as number,
+    });
+
     return providerId;
   },
 });
@@ -192,6 +237,12 @@ export const remove = mutation({
     if (!provider || provider.organizationId !== args.organizationId) {
       throw new Error("Mail provider not found");
     }
+
+    // Dual-write: schedule delete BEFORE Convex delete (Knowledge Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteProviderRef, {
+      providerId: args.providerId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.providerId);
 
@@ -246,6 +297,14 @@ export const setDefault = mutation({
     // Set the target as default
     await ctx.db.patch(args.providerId, { isDefault: true, updatedAt: now });
 
+    // Dual-write: replicate setDefault to Supabase
+    await ctx.scheduler.runAfter(0, updateProviderRef, {
+      providerId: args.providerId as string,
+      organizationId: args.organizationId as string,
+      isDefault: true,
+      updatedAt: now,
+    });
+
     return args.providerId;
   },
 });
@@ -256,7 +315,7 @@ export const testConnection = action({
     providerId: v.id("mailProviders"),
   },
   handler: async (ctx, args) => {
-    const provider = await ctx.runQuery(api.mailProviders.getById, {
+    const provider = await ctx.runQuery(getByIdRef, {
       organizationId: args.organizationId,
       providerId: args.providerId,
     });

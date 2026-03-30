@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useUploadFiles } from "@xixixao/uploadstuff/react";
 import { useConvexMutation } from "@convex-dev/react-query";
+import { useSupabaseEmailBrandConfig } from "@/hooks/use-supabase-email-config";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -31,9 +30,7 @@ export function EmailBrandEditor({ organizationId }: EmailBrandEditorProps) {
   const { t } = useTranslation();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: config, isLoading } = useQuery(
-    convexQuery(api.emailBrandConfig.getForOrg, { organizationId }) as any
-  ) as { data: any; isLoading: boolean };
+  const { data: config, isLoading } = useSupabaseEmailBrandConfig(organizationId) as { data: any; isLoading: boolean };
 
   const upsert = useMutation(api.emailBrandConfig.upsert);
   const generateUploadUrl = useConvexMutation(api.app.generateUploadUrl);

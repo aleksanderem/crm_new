@@ -1,11 +1,10 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { useSupabaseEmailThread } from "@/hooks/use-supabase-emails";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -37,8 +36,9 @@ export function ThreadView({
   const navigate = useNavigate();
   const markRead = useMutation(api.emails.markRead);
 
-  const { data: thread } = useQuery(
-    convexQuery(api.emails.getThread, { organizationId, threadId })
+  const { data: thread } = useSupabaseEmailThread(
+    organizationId,
+    threadId,
   );
 
   const messages = thread ?? [];

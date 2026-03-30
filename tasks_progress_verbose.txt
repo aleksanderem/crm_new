@@ -891,3 +891,38 @@ Files created:
 Files modified:
   - src/routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId.tsx
   - src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx
+
+---
+
+=== SESSION S0091 START === 2026-03-30T12:00:00Z
+Focus: Assess time-budget warning, verify and document Supabase migration state
+Continuing from: S0090 (F2 Mail Accounts & Inboxes — paused)
+
+---
+
+S0091. State assessment:
+- Found 14 modified files + 2 new untracked hooks, all uncommitted in working tree.
+- Changes are Supabase migration rewiring: replacing Convex queries with Supabase React Query hooks.
+- Scope of uncommitted changes:
+  1. NEW: src/hooks/use-supabase-dashboard.ts (528 lines) — dashboard KPI/chart analytics hooks
+  2. NEW: src/hooks/use-supabase-search.ts (160 lines) — global search via Supabase
+  3. MODIFIED: src/hooks/use-supabase-email-sequences.ts — email sequence hooks
+  4. MODIFIED: src/routes/_app/_auth/dashboard/_layout.tsx — global search uses supabaseGlobalSearch
+  5. MODIFIED: src/routes/_app/_auth/dashboard/_layout.index.tsx — dashboard KPIs use supabase hooks
+  6. MODIFIED: _layout.contacts.$contactId.lazy.tsx — contact detail uses supabase
+  7. MODIFIED: _layout.companies.$companyId.tsx — company detail uses supabase
+  8. MODIFIED: _layout.leads.$leadId.lazy.tsx — lead detail uses supabase
+  9. MODIFIED: _layout.activities.index.tsx — activities list uses supabase
+  10. MODIFIED: 6 settings pages (activity-types, audit-log, custom-fields, email-events, email-sequences, organization, team)
+- Typecheck: `npx tsc -p tsconfig.app.json --noEmit --pretty false` PASS (zero errors)
+- No runtime/browser verification performed yet.
+
+---
+
+=== SESSION S0091 HANDOFF === 2026-03-30T12:05:00Z
+Status: paused
+Current state: All uncommitted Supabase migration changes typecheck cleanly. No runtime verification done.
+Immediate next action: Run the dev server and verify key pages load correctly (dashboard, contacts, leads, companies, settings). Then commit the batch as a Supabase migration commit.
+Open questions: Whether S0090's F2 Mail Accounts work was completed in a separate worktree or merged — the current working tree only has the broader Supabase migration changes.
+Warnings: Do not discard these uncommitted changes — they represent substantial migration work across 16 files.
+Files modified: see list above (14 modified + 2 new)

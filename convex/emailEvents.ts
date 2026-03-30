@@ -9,6 +9,15 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEventTypeRef = internal.supabase.emailEventTypes.writeEmailEventTypeToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEventTypeRef = internal.supabase.emailEventTypes.updateEmailEventTypeInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEventLogRef = internal.supabase.emailEventLog.updateEmailEventLogInSupabase;
+
 const moduleValidator = v.union(
   v.literal("crm"),
   v.literal("gabinet"),
@@ -119,10 +128,18 @@ export const registerEventType = mutation({
         payloadSchema: args.payloadSchema,
         updatedAt: now,
       });
+      await ctx.scheduler.runAfter(0, updateEventTypeRef, {
+        emailEventTypeId: existing._id,
+        organizationId: args.organizationId as string,
+        displayName: args.displayName,
+        description: args.description,
+        payloadSchema: args.payloadSchema,
+        updatedAt: now,
+      });
       return existing._id;
     }
 
-    return ctx.db.insert("emailEventTypes", {
+    const newId = await ctx.db.insert("emailEventTypes", {
       organizationId: args.organizationId,
       eventType: args.eventType,
       module: args.module,
@@ -133,6 +150,19 @@ export const registerEventType = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, writeEventTypeRef, {
+      emailEventTypeId: newId as string,
+      organizationId: args.organizationId as string,
+      eventType: args.eventType,
+      module: args.module,
+      displayName: args.displayName,
+      description: args.description,
+      payloadSchema: args.payloadSchema,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return newId;
   },
 });
 
@@ -160,6 +190,19 @@ export const emitEvent = mutation({
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       triggeredBy: args.triggeredBy,
+      createdAt: Date.now(),
+    });
+
+    // Sync to Supabase
+    await ctx.scheduler.runAfter(0, writeEventLogRef, {
+      emailEventLogId: logId as string,
+      organizationId: args.organizationId as string,
+      eventType: args.eventType,
+      status: "pending",
+      payload: args.payload,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      triggeredBy: args.triggeredBy as string | undefined,
       createdAt: Date.now(),
     });
 
@@ -208,7 +251,22 @@ export const updateLogStatus = internalMutation({
       processedAt,
     });
 
+    // Sync to Supabase
     const entry = await ctx.db.get(args.logId);
+    if (entry) {
+      await ctx.scheduler.runAfter(0, updateEventLogRef, {
+        emailEventLogId: args.logId as string,
+        organizationId: entry.organizationId as string,
+        status: args.status,
+        bindingId: args.bindingId as string | undefined,
+        templateId: args.templateId as string | undefined,
+        renderedSubject: args.renderedSubject,
+        renderedBody: args.renderedBody,
+        errorMessage: args.errorMessage,
+        processedAt,
+      });
+    }
+
     if (!entry?.idempotencyKey) return;
 
     const history = await ctx.db

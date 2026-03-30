@@ -1,7 +1,11 @@
 import { query, MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589
+const writeAuditLogRef = internal.supabase.auditLog.writeAuditLogToSupabase;
 
 export const list = query({
   args: {
@@ -66,8 +70,20 @@ export async function logAudit(
     details?: string;
   }
 ) {
-  await ctx.db.insert("auditLog", {
+  const auditLogId = await ctx.db.insert("auditLog", {
     ...data,
+    createdAt: Date.now(),
+  });
+
+  // Dual-write
+  await ctx.scheduler.runAfter(0, writeAuditLogRef, {
+    auditLogId: auditLogId as any,
+    organizationId: data.organizationId as any,
+    userId: data.userId as any,
+    action: data.action,
+    entityType: data.entityType,
+    entityId: data.entityId,
+    details: data.details,
     createdAt: Date.now(),
   });
 }

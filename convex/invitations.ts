@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
@@ -6,6 +7,11 @@ import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen
+const writeInvitationRef = internal.supabase.invitations.writeInvitationToSupabase;
+// @ts-ignore — TS2589
+const updateInvitationRef = internal.supabase.invitations.updateInvitationInSupabase;
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -141,6 +147,20 @@ export const create = mutation({
       details: JSON.stringify({ email: args.email, role: args.role }),
     });
 
+    // Dual-write: sync invitation to Supabase
+    await ctx.scheduler.runAfter(0, writeInvitationRef, {
+      invitationId: invitationId as any,
+      organizationId: args.organizationId as any,
+      email: args.email,
+      role: args.role,
+      token,
+      status: "pending",
+      invitedBy: user._id as any,
+      expiresAt,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return invitationId;
   },
 });
@@ -216,6 +236,14 @@ export const accept = mutation({
       });
     }
 
+    // Dual-write: update invitation status in Supabase
+    await ctx.scheduler.runAfter(0, updateInvitationRef, {
+      invitationId: invitation._id as any,
+      status: "accepted",
+      acceptedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
     return invitation.organizationId;
   },
 });
@@ -234,6 +262,13 @@ export const decline = mutation({
     if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
 
     await ctx.db.patch(invitation._id, {
+      status: "declined",
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateInvitationRef, {
+      invitationId: invitation._id as any,
       status: "declined",
       updatedAt: Date.now(),
     });
@@ -257,6 +292,13 @@ export const cancel = mutation({
     }
 
     await ctx.db.patch(args.invitationId, {
+      status: "expired",
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateInvitationRef, {
+      invitationId: args.invitationId as any,
       status: "expired",
       updatedAt: Date.now(),
     });

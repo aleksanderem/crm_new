@@ -1,7 +1,13 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeRelRef = internal.supabase.relationships.writeRelationshipToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteRelRef = internal.supabase.relationships.deleteRelationshipFromSupabase;
 
 export const getForEntity = query({
   args: {
@@ -134,6 +140,19 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
+    // Dual-write: replicate new relationship to Supabase
+    await ctx.scheduler.runAfter(0, writeRelRef, {
+      relationshipId: relId as string,
+      organizationId: args.organizationId as string,
+      sourceType: args.sourceType,
+      sourceId: args.sourceId,
+      targetType: args.targetType,
+      targetId: args.targetId,
+      relationshipType: args.relationshipType,
+      createdBy: user._id as string,
+      createdAt: Date.now(),
+    });
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: args.sourceType,
@@ -160,6 +179,12 @@ export const remove = mutation({
     if (!rel || rel.organizationId !== args.organizationId) {
       throw new Error("Relationship not found");
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteRelRef, {
+      relationshipId: args.relationshipId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.relationshipId);
 

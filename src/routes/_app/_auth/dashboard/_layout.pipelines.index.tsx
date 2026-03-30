@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/components/org-context";
+import { useSupabasePipelinesList } from "@/hooks/use-supabase-pipelines";
+import { useSupabaseLeadsByPipeline } from "@/hooks/use-supabase-leads";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { KanbanBoard, KanbanLead } from "@/components/kanban/kanban-board";
 import { KanbanCardDetailSheet } from "@/components/kanban/kanban-card-detail-sheet";
+import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Kanban, TableIcon, KanbanIcon } from "@/lib/ez-icons";
 import { useState } from "react";
@@ -24,13 +26,13 @@ function PipelinesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  // @ts-ignore — Convex type instantiation too deep (pre-existing)
   const moveToStage = useMutation(api.leads.moveToStage);
   const updateLead = useMutation(api.leads.update);
   const removeLead = useMutation(api.leads.remove);
+  const queryClient = useQueryClient();
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId })
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(
     null
@@ -43,16 +45,14 @@ function PipelinesIndex() {
     pipelines?.find((p) => p.isDefault) ??
     pipelines?.[0];
 
-  const { data: stagesWithLeads } = useQuery({
-    ...convexQuery(api.leads.getByPipeline, {
-      organizationId,
-      pipelineId: activePipeline?._id ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!activePipeline,
-  });
+  const { data: stagesWithLeads } = useSupabaseLeadsByPipeline(
+    organizationId,
+    activePipeline?._id,
+    { enabled: !!activePipeline },
+  );
 
   const stages = (stagesWithLeads ?? []).map((s) => ({
-    _id: s._id,
+    _id: s._id as Id<"pipelineStages">,
     name: s.name,
     color: s.color,
     order: s.order,
@@ -60,11 +60,11 @@ function PipelinesIndex() {
 
   const kanbanLeads: KanbanLead[] = (stagesWithLeads ?? []).flatMap((stage) =>
     stage.leads.map((l) => ({
-      _id: l._id,
+      _id: l._id as Id<"leads">,
       title: l.title,
       value: l.value,
       currency: l.currency,
-      pipelineStageId: l.pipelineStageId,
+      pipelineStageId: l.pipelineStageId as Id<"pipelineStages"> | undefined,
       stageOrder: l.stageOrder,
       priority: l.priority,
       expectedCloseDate: l.expectedCloseDate,
@@ -82,6 +82,8 @@ function PipelinesIndex() {
       pipelineStageId: stageId,
       stageOrder: order,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
   };
 
   const handleMarkWon = async (leadId: Id<"leads">) => {
@@ -90,6 +92,7 @@ function PipelinesIndex() {
       leadId,
       status: "won",
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleMarkLost = async (leadId: Id<"leads">) => {
@@ -98,6 +101,7 @@ function PipelinesIndex() {
       leadId,
       status: "lost",
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleDelete = async (leadId: Id<"leads">) => {
@@ -105,6 +109,7 @@ function PipelinesIndex() {
       organizationId,
       leadId,
     });
+    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   return (

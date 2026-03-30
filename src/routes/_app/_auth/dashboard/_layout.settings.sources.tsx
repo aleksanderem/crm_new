@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseSourcesList } from "@/hooks/use-supabase-sources";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export const Route = createFileRoute(
 function SourcesSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -36,9 +38,7 @@ function SourcesSettings() {
   const updateSource = useMutation(api.sources.update);
   const removeSource = useMutation(api.sources.remove);
 
-  const { data: sources } = useQuery(
-    convexQuery(api.sources.list, { organizationId })
-  );
+  const { data: sources } = useSupabaseSourcesList(organizationId);
 
   const sortedSources = sources
     ? [...sources].sort((a, b) => a.order - b.order)
@@ -51,6 +51,7 @@ function SourcesSettings() {
       await createSource({ organizationId, name: newName.trim() });
       setNewName("");
       setShowCreateForm(false);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.sources.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -66,6 +67,7 @@ function SourcesSettings() {
         name: editName.trim(),
       });
       setEditingId(null);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.sources.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -77,6 +79,7 @@ function SourcesSettings() {
       sourceId: sourceId as Id<"sources">,
       isActive,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.sources.list(organizationId) });
   };
 
   const handleDelete = (source: { _id: string; name: string }) => {
@@ -90,6 +93,7 @@ function SourcesSettings() {
       sourceId: deleteTarget.id as Id<"sources">,
     });
     setDeleteTarget(null);
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.sources.list(organizationId) });
   };
 
   return (

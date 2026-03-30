@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -16,7 +17,6 @@ import { companySizeOptions } from "@/lib/options";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
@@ -35,13 +35,16 @@ export const Route = createFileRoute(
   component: CompaniesIndex,
 });
 
-type Company = Doc<"companies">;
+import type { MappedCompany } from "@/lib/supabase/mappers";
+
+type Company = MappedCompany;
 type CompanyRow = Company & { __cfValues: Record<string, unknown> };
 
 function CompaniesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createCompany = useMutation(api.companies.create);
   const removeCompany = useMutation(api.companies.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
@@ -86,14 +89,7 @@ function CompaniesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const companies = data?.page ?? [];
+  const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
 
   const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
 
@@ -219,7 +215,7 @@ function CompaniesIndex() {
       id: "address",
       label: t('companies.address'),
       render: (item) => {
-        const a = item.address;
+        const a = item.address as { street?: string; city?: string; state?: string; zip?: string; country?: string } | undefined;
         if (!a) return "—";
         const parts = [a.street, a.city, a.state, a.zip, a.country].filter(Boolean).join(", ");
         return parts || "—";
@@ -315,6 +311,7 @@ function CompaniesIndex() {
           }
         }
         setPanelOpen(false);
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
       } finally {
         setIsCreating(false);
       }
@@ -326,11 +323,12 @@ function CompaniesIndex() {
     async (action: string, selectedRows: CompanyRow[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeCompany({ organizationId, companyId: row._id });
+          await removeCompany({ organizationId, companyId: row._id as any });
         }
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
       }
     },
-    [removeCompany, organizationId]
+    [removeCompany, organizationId, queryClient]
   );
 
   const rowActions = useCallback(
@@ -344,7 +342,8 @@ function CompaniesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t('companies.confirmDelete'))) {
-            await removeCompany({ organizationId, companyId: row._id });
+            await removeCompany({ organizationId, companyId: row._id as any });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
           }
         },
       },

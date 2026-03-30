@@ -9,6 +9,14 @@ import {
   PLATFORM_DATA_SOURCES,
 } from "./documentDataSources";
 import type { DataSourceResolverContext } from "./documentDataSources";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTemplateRef = internal.supabase.emailTemplates.writeEmailTemplateToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateTemplateRef = internal.supabase.emailTemplates.updateEmailTemplateInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteTemplateRef = internal.supabase.emailTemplates.deleteEmailTemplateFromSupabase;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -229,6 +237,24 @@ export const create = mutation({
       isActive: true,
       createdAt: now,
       updatedAt: now,
+    }).then(async (templateId) => {
+      // Dual-write: replicate new template to Supabase
+      await ctx.scheduler.runAfter(0, writeTemplateRef, {
+        templateId: templateId as string,
+        organizationId: args.organizationId as string,
+        name: args.name,
+        subject: args.subject,
+        body: args.body,
+        category: args.category,
+        module: args.module,
+        eventType: args.eventType,
+        variables: args.variables,
+        createdBy: user._id as string,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return templateId;
     });
   },
 });
@@ -265,6 +291,22 @@ export const update = mutation({
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 
     await ctx.db.patch(args.templateId, updates);
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateTemplateRef, {
+      templateId: args.templateId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      subject: args.subject,
+      body: args.body,
+      category: args.category,
+      module: args.module,
+      eventType: args.eventType,
+      variables: args.variables,
+      isActive: args.isActive,
+      updatedAt: updates.updatedAt as number,
+    });
+
     return args.templateId;
   },
 });
@@ -287,6 +329,14 @@ export const archive = mutation({
       updatedAt: Date.now(),
     });
 
+    // Dual-write: replicate archive to Supabase
+    await ctx.scheduler.runAfter(0, updateTemplateRef, {
+      templateId: args.templateId as string,
+      organizationId: args.organizationId as string,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
     return args.templateId;
   },
 });
@@ -303,6 +353,12 @@ export const remove = mutation({
     if (!template || template.organizationId !== args.organizationId) {
       throw new Error("Email template not found");
     }
+
+    // Dual-write: schedule delete BEFORE Convex delete (Knowledge Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteTemplateRef, {
+      templateId: args.templateId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.templateId);
     return args.templateId;

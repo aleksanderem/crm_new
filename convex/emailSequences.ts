@@ -18,6 +18,25 @@ import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { checkPermission } from "./_helpers/permissions";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeSequenceRef = internal.supabase.emailSequences.writeEmailSequenceToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateSequenceRef = internal.supabase.emailSequences.updateEmailSequenceInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteSequenceRef = internal.supabase.emailSequences.deleteEmailSequenceFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeStepRef = internal.supabase.emailSequenceSteps.writeEmailSequenceStepToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteStepRef = internal.supabase.emailSequenceSteps.deleteEmailSequenceStepFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEnrollmentRef = internal.supabase.emailSequenceEnrollments.writeEmailSequenceEnrollmentToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEnrollmentRef = internal.supabase.emailSequenceEnrollments.updateEmailSequenceEnrollmentInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteEnrollmentRef = internal.supabase.emailSequenceEnrollments.deleteEmailSequenceEnrollmentFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -83,7 +102,7 @@ export const createSequence = mutation({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
-    return ctx.db.insert("emailSequences", {
+    const newId = await ctx.db.insert("emailSequences", {
       organizationId: args.organizationId,
       name: args.name,
       triggerEventType: args.triggerEventType,
@@ -91,6 +110,16 @@ export const createSequence = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, writeSequenceRef, {
+      emailSequenceId: newId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      triggerEventType: args.triggerEventType,
+      isActive: args.isActive ?? false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return newId;
   },
 });
 
@@ -120,6 +149,14 @@ export const updateSequence = mutation({
     if (args.isActive !== undefined) patch.isActive = args.isActive;
 
     await ctx.db.patch(args.sequenceId, patch);
+    await ctx.scheduler.runAfter(0, updateSequenceRef, {
+      emailSequenceId: args.sequenceId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      triggerEventType: args.triggerEventType,
+      isActive: args.isActive,
+      updatedAt: patch.updatedAt as number,
+    });
   },
 });
 
@@ -141,16 +178,22 @@ export const deleteSequence = mutation({
       throw new Error("Sequence not found");
     }
 
-    // Delete all steps
+    // Delete all steps — schedule Supabase deletes BEFORE Convex deletes
     const steps = await ctx.db
       .query("emailSequenceSteps")
       .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
       .collect();
     for (const step of steps) {
+      await ctx.scheduler.runAfter(0, deleteStepRef, {
+        emailSequenceStepId: step._id as string,
+        organizationId: args.organizationId as string,
+      });
+    }
+    for (const step of steps) {
       await ctx.db.delete(step._id);
     }
 
-    // Cancel active enrollments
+    // Cancel active enrollments + sync to Supabase
     const enrollments = await ctx.db
       .query("emailSequenceEnrollments")
       .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
@@ -162,9 +205,20 @@ export const deleteSequence = mutation({
           status: "cancelled",
           cancelledAt: now,
         });
+        await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
+          emailSequenceEnrollmentId: enrollment._id as string,
+          organizationId: args.organizationId as string,
+          status: "cancelled",
+          cancelledAt: now,
+        });
       }
     }
 
+    // Schedule Supabase delete for the sequence BEFORE Convex delete
+    await ctx.scheduler.runAfter(0, deleteSequenceRef, {
+      emailSequenceId: args.sequenceId as string,
+      organizationId: args.organizationId as string,
+    });
     await ctx.db.delete(args.sequenceId);
   },
 });
@@ -205,10 +259,20 @@ export const upsertStep = mutation({
         templateId: args.templateId,
         conditionJson: args.conditionJson,
       });
+      await ctx.scheduler.runAfter(0, writeStepRef, {
+        emailSequenceStepId: args.stepId as string,
+        sequenceId: args.sequenceId as string,
+        organizationId: args.organizationId as string,
+        order: args.order,
+        delayMs: args.delayMs,
+        templateId: args.templateId as string,
+        conditionJson: args.conditionJson,
+        createdAt: existing.createdAt,
+      });
       return args.stepId;
     }
 
-    return ctx.db.insert("emailSequenceSteps", {
+    const newId = await ctx.db.insert("emailSequenceSteps", {
       sequenceId: args.sequenceId,
       organizationId: args.organizationId,
       order: args.order,
@@ -217,6 +281,17 @@ export const upsertStep = mutation({
       conditionJson: args.conditionJson,
       createdAt: now,
     });
+    await ctx.scheduler.runAfter(0, writeStepRef, {
+      emailSequenceStepId: newId as string,
+      sequenceId: args.sequenceId as string,
+      organizationId: args.organizationId as string,
+      order: args.order,
+      delayMs: args.delayMs,
+      templateId: args.templateId as string,
+      conditionJson: args.conditionJson,
+      createdAt: now,
+    });
+    return newId;
   },
 });
 
@@ -237,6 +312,10 @@ export const deleteStep = mutation({
       throw new Error("Step not found");
     }
 
+    await ctx.scheduler.runAfter(0, deleteStepRef, {
+      emailSequenceStepId: args.stepId as string,
+      organizationId: args.organizationId as string,
+    });
     await ctx.db.delete(args.stepId);
   },
 });
@@ -261,6 +340,12 @@ export const cancelEnrollment = mutation({
     }
 
     await ctx.db.patch(args.enrollmentId, {
+      status: "cancelled",
+      cancelledAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
+      emailSequenceEnrollmentId: args.enrollmentId as string,
+      organizationId: args.organizationId as string,
       status: "cancelled",
       cancelledAt: Date.now(),
     });
@@ -300,6 +385,19 @@ export const enrollRecipient = internalMutation({
     const enrollmentId = await ctx.db.insert("emailSequenceEnrollments", {
       sequenceId: args.sequenceId,
       organizationId: args.organizationId,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      payload: args.payload,
+      currentStep: 0,
+      status: "active",
+      enrolledAt: now,
+    });
+
+    // Sync to Supabase
+    await ctx.scheduler.runAfter(0, writeEnrollmentRef, {
+      emailSequenceEnrollmentId: enrollmentId as string,
+      sequenceId: args.sequenceId as string,
+      organizationId: args.organizationId as string,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       payload: args.payload,
@@ -425,10 +523,22 @@ export const getStepsInternal = internalQuery({
 export const markEnrollmentCompleted = internalMutation({
   args: { enrollmentId: v.id("emailSequenceEnrollments") },
   handler: async (ctx, args) => {
+    const now = Date.now();
     await ctx.db.patch(args.enrollmentId, {
       status: "completed",
-      completedAt: Date.now(),
+      completedAt: now,
     });
+
+    // Sync to Supabase
+    const enrollment = await ctx.db.get(args.enrollmentId);
+    if (enrollment) {
+      await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
+        emailSequenceEnrollmentId: args.enrollmentId as string,
+        organizationId: enrollment.organizationId as string,
+        status: "completed",
+        completedAt: now,
+      });
+    }
   },
 });
 
@@ -441,6 +551,16 @@ export const advanceEnrollmentStep = internalMutation({
     await ctx.db.patch(args.enrollmentId, {
       currentStep: args.nextStep,
     });
+
+    // Sync to Supabase
+    const enrollment = await ctx.db.get(args.enrollmentId);
+    if (enrollment) {
+      await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
+        emailSequenceEnrollmentId: args.enrollmentId as string,
+        organizationId: enrollment.organizationId as string,
+        currentStep: args.nextStep,
+      });
+    }
   },
 });
 
@@ -454,7 +574,8 @@ export const insertSequenceLog = internalMutation({
     payload: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return ctx.db.insert("emailEventLog", {
+    const now = Date.now();
+    const logId = await ctx.db.insert("emailEventLog", {
       organizationId: args.organizationId,
       eventType: `sequence.step`,
       templateId: args.templateId,
@@ -462,7 +583,22 @@ export const insertSequenceLog = internalMutation({
       recipientName: args.recipientName,
       payload: args.payload,
       status: "pending",
-      createdAt: Date.now(),
+      createdAt: now,
     });
+
+    // Sync to Supabase
+    await ctx.scheduler.runAfter(0, writeEventLogRef, {
+      emailEventLogId: logId as string,
+      organizationId: args.organizationId as string,
+      eventType: "sequence.step",
+      templateId: args.templateId as string,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      payload: args.payload,
+      status: "pending",
+      createdAt: now,
+    });
+
+    return logId;
   },
 });

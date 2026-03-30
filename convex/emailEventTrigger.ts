@@ -2,6 +2,9 @@ import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
+
 /**
  * Internal email event trigger.
  *
@@ -73,6 +76,23 @@ export const triggerEmailEvent = internalMutation({
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       triggeredBy: args.triggeredBy,
+      createdAt: Date.now(),
+    });
+
+    // Sync to Supabase
+    await ctx.scheduler.runAfter(0, writeEventLogRef, {
+      emailEventLogId: logId as string,
+      organizationId: args.organizationId as string,
+      eventType: args.eventType,
+      status: "pending",
+      payload: args.payload,
+      source: args.source,
+      relatedEntityType: args.relatedEntityType,
+      relatedEntityId: args.relatedEntityId,
+      idempotencyKey: args.idempotencyKey,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      triggeredBy: args.triggeredBy as string | undefined,
       createdAt: Date.now(),
     });
 

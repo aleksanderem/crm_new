@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "convex/react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseEmailLayout } from "@/hooks/use-supabase-email-config";
+import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,9 +60,7 @@ export function StarterTemplateGallery({
   const upsertBinding = useMutation(api.emailEventBindings.upsertBinding);
 
   // Load org layout for preview wrapping
-  const { data: rawLayout } = useQuery(
-    convexQuery(api.emailLayouts.get, { organizationId }),
-  );
+  const { data: rawLayout } = useSupabaseEmailLayout(organizationId);
 
   // Convert Convex doc (JSON string blocks) to EmailLayoutData (parsed blocks)
   const layout: EmailLayoutData | null = useMemo(() => {

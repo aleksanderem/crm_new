@@ -1,6 +1,14 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeBindingRef = internal.supabase.emailEventBindings.writeEmailEventBindingToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateBindingRef = internal.supabase.emailEventBindings.updateEmailEventBindingInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteBindingRef = internal.supabase.emailEventBindings.deleteEmailEventBindingFromSupabase;
 
 // ---------------------------------------------------------------------------
 // Internal Queries (used by processEvent action)
@@ -174,10 +182,19 @@ export const upsertBinding = mutation({
         priority: args.priority ?? existing.priority,
         updatedAt: now,
       });
+      await ctx.scheduler.runAfter(0, updateBindingRef, {
+        emailEventBindingId: existing._id as string,
+        organizationId: args.organizationId as string,
+        templateId: args.templateId as string,
+        enabled: args.enabled ?? existing.enabled,
+        priority: args.priority ?? existing.priority,
+        conditions: args.conditions ?? existing.conditions,
+        updatedAt: now,
+      });
       return existing._id;
     }
 
-    return ctx.db.insert("emailEventBindings", {
+    const newId = await ctx.db.insert("emailEventBindings", {
       organizationId: args.organizationId,
       eventType: args.eventType,
       templateId: args.templateId,
@@ -188,6 +205,19 @@ export const upsertBinding = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, writeBindingRef, {
+      emailEventBindingId: newId as string,
+      organizationId: args.organizationId as string,
+      eventType: args.eventType,
+      templateId: args.templateId as string,
+      enabled: args.enabled ?? true,
+      priority: args.priority ?? 0,
+      conditions: args.conditions,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return newId;
   },
 });
 
@@ -209,6 +239,12 @@ export const toggleBinding = mutation({
       enabled: args.enabled,
       updatedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, updateBindingRef, {
+      emailEventBindingId: args.bindingId as string,
+      organizationId: args.organizationId as string,
+      enabled: args.enabled,
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -225,6 +261,10 @@ export const deleteBinding = mutation({
       throw new Error("Binding not found");
     }
 
+    await ctx.scheduler.runAfter(0, deleteBindingRef, {
+      emailEventBindingId: args.bindingId as string,
+      organizationId: args.organizationId as string,
+    });
     await ctx.db.delete(args.bindingId);
   },
 });

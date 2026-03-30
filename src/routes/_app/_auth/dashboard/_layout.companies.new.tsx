@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CompanyForm } from "@/components/forms/company-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ export const Route = createFileRoute(
 function NewCompany() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createCompany = useMutation(api.companies.create);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,6 +60,7 @@ function NewCompany() {
                   customFields,
                 });
                 navigate({ to: `/dashboard/companies/${id}` });
+                void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
               } finally {
                 setIsSubmitting(false);
               }

@@ -1,6 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+import { internal } from "./_generated/api";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLayoutRef = internal.supabase.emailLayouts.writeEmailLayoutToSupabase;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -60,9 +64,44 @@ export const upsert = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, data);
+
+      // Dual-write: replicate update to Supabase
+      await ctx.scheduler.runAfter(0, writeLayoutRef, {
+        layoutId: existing._id as string,
+        organizationId: args.organizationId as string,
+        headerBlocks: args.headerBlocks,
+        footerBlocks: args.footerBlocks,
+        backgroundColor: args.backgroundColor,
+        contentBackgroundColor: args.contentBackgroundColor,
+        primaryColor: args.primaryColor,
+        logoUrl: args.logoUrl,
+        companyName: args.companyName,
+        footerText: args.footerText,
+        updatedBy: user._id as string,
+        updatedAt: data.updatedAt,
+      });
+
       return existing._id;
     }
 
-    return ctx.db.insert("emailLayouts", data);
+    const layoutId = await ctx.db.insert("emailLayouts", data);
+
+    // Dual-write: replicate new layout to Supabase
+    await ctx.scheduler.runAfter(0, writeLayoutRef, {
+      layoutId: layoutId as string,
+      organizationId: args.organizationId as string,
+      headerBlocks: args.headerBlocks,
+      footerBlocks: args.footerBlocks,
+      backgroundColor: args.backgroundColor,
+      contentBackgroundColor: args.contentBackgroundColor,
+      primaryColor: args.primaryColor,
+      logoUrl: args.logoUrl,
+      companyName: args.companyName,
+      footerText: args.footerText,
+      updatedBy: user._id as string,
+      updatedAt: data.updatedAt,
+    });
+
+    return layoutId;
   },
 });

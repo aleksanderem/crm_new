@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589
+const writeActivityTypeRef = internal.supabase.activityTypes.writeActivityTypeToSupabase;
+// @ts-ignore — TS2589
+const updateActivityTypeRef = internal.supabase.activityTypes.updateActivityTypeInSupabase;
+// @ts-ignore — TS2589
+const deleteActivityTypeRef = internal.supabase.activityTypes.deleteActivityTypeFromSupabase;
 
 export const DEFAULT_ACTIVITY_TYPES = [
   { key: "call", name: "Połączenie", icon: "phone", color: "#3b82f6" },
@@ -79,7 +87,7 @@ export const create = mutation({
     const maxOrder = all.length > 0 ? Math.max(...all.map((a) => a.order)) + 1 : 0;
 
     const now = Date.now();
-    return await ctx.db.insert("activityTypeDefinitions", {
+    const actTypeId = await ctx.db.insert("activityTypeDefinitions", {
       organizationId: args.organizationId,
       key: args.key,
       name: args.name,
@@ -90,6 +98,22 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write
+    await ctx.scheduler.runAfter(0, writeActivityTypeRef, {
+      activityTypeId: actTypeId as any,
+      organizationId: args.organizationId as any,
+      key: args.key,
+      name: args.name,
+      icon: args.icon,
+      color: args.color,
+      isSystem: false,
+      order: maxOrder,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return actTypeId;
   },
 });
 
@@ -111,6 +135,14 @@ export const update = mutation({
 
     const { organizationId, activityTypeId, ...updates } = args;
     await ctx.db.patch(activityTypeId, { ...updates, updatedAt: Date.now() });
+
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateActivityTypeRef, {
+      activityTypeId: activityTypeId as any,
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
     return activityTypeId;
   },
 });
@@ -130,6 +162,12 @@ export const remove = mutation({
     if (def.isSystem) {
       throw new Error("Cannot delete system activity types");
     }
+
+    // Dual-write: schedule delete BEFORE ctx.db.delete (Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteActivityTypeRef, {
+      activityTypeId: args.activityTypeId as any,
+      organizationId: args.organizationId as any,
+    });
 
     await ctx.db.delete(args.activityTypeId);
     return args.activityTypeId;
@@ -151,6 +189,13 @@ export const reorder = mutation({
         throw new Error("Activity type not found");
       }
       await ctx.db.patch(args.activityTypeIds[i], { order: i, updatedAt: now });
+
+      // Dual-write
+      await ctx.scheduler.runAfter(0, updateActivityTypeRef, {
+        activityTypeId: args.activityTypeIds[i] as any,
+        order: i,
+        updatedAt: now,
+      });
     }
   },
 });

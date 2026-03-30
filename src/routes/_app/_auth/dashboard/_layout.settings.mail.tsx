@@ -7,6 +7,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseMailProvidersList } from "@/hooks/use-supabase-mail-providers";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -59,9 +60,7 @@ function MailSettings() {
 
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
 
-  const { data: providers } = useQuery(
-    convexQuery(api.mailProviders.list, { organizationId })
-  );
+  const { data: providers } = useSupabaseMailProvidersList(organizationId);
 
   const removeProvider = useMutation(api.mailProviders.remove);
   const setDefault = useMutation(api.mailProviders.setDefault);

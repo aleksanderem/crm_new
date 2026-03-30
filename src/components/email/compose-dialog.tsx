@@ -5,6 +5,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
+import { useSupabaseMailProvidersList } from "@/hooks/use-supabase-mail-providers";
 import {
   Dialog,
   DialogContent,
@@ -65,18 +67,17 @@ export function ComposeDialog({
     convexQuery(api.app.getCurrentUser, {}),
   );
 
-  const { data: emailTemplates } = useQuery(
-    convexQuery(api.emailTemplates.list, {
-      organizationId,
-      activeOnly: true,
-    }),
+  const { data: emailTemplates } = useSupabaseEmailTemplatesList(
+    organizationId,
+    { activeOnly: true },
   );
 
-  const { data: mailProviders } = useQuery(
-    convexQuery(api.mailProviders.list, { organizationId }),
-  );
+  const { data: mailProviders } = useSupabaseMailProvidersList(organizationId);
 
-  const sendProviders = mailProviders?.filter((p) => p.capabilities.canSend) ?? [];
+  const sendProviders = mailProviders?.filter((p) => {
+    const caps = p.capabilities as { canSend?: boolean } | undefined;
+    return caps?.canSend;
+  }) ?? [];
   const defaultProviderId = (mailProviders?.find((p) => p.isDefault) ?? sendProviders[0])?._id;
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");

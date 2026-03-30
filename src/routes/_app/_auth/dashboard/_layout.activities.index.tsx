@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseScheduledActivitiesList, useSupabaseScheduledActivitiesDueToday, useSupabaseScheduledActivitiesDueThisWeek, useSupabaseScheduledActivitiesOverdue } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -126,41 +129,30 @@ function ActivitiesPage() {
   const [formTagIds, setFormTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [formCategoryId, setFormCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  // Queries based on active view
-  const { data: allData, isLoading: allLoading } = useQuery(
-    convexQuery(api.scheduledActivities.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
+  const queryClient = useQueryClient();
+
+  // Queries based on active view — Supabase hooks
+  const { data: allData, isLoading: allLoading } = useSupabaseScheduledActivitiesList(
+    organizationId,
+    { limit: 100 },
   );
 
-  const { data: openData } = useQuery(
-    convexQuery(api.scheduledActivities.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-      isCompleted: false,
-    })
+  const { data: openData } = useSupabaseScheduledActivitiesList(
+    organizationId,
+    { isCompleted: false, limit: 100 },
   );
 
-  const { data: dueTodayData } = useQuery(
-    convexQuery(api.scheduledActivities.listDueToday, { organizationId })
-  );
+  const { data: dueTodayData } = useSupabaseScheduledActivitiesDueToday(organizationId);
 
-  const { data: dueThisWeekData } = useQuery(
-    convexQuery(api.scheduledActivities.listDueThisWeek, { organizationId })
-  );
+  const { data: dueThisWeekData } = useSupabaseScheduledActivitiesDueThisWeek(organizationId);
 
-  const { data: overdueData } = useQuery(
-    convexQuery(api.scheduledActivities.listOverdue, { organizationId })
-  );
+  const { data: overdueData } = useSupabaseScheduledActivitiesOverdue(organizationId);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
   );
 
-  const { data: activityTypeDefs } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
 
   const typeFilterOptions: { label: string; value: string }[] = useMemo(() => {
     if (activityTypeDefs) {
@@ -185,19 +177,19 @@ function ActivitiesPage() {
     let data: ScheduledActivity[];
     switch (activeViewId) {
       case "open":
-        data = openData?.page ?? [];
+        data = (openData ?? []) as unknown as ScheduledActivity[];
         break;
       case "due-today":
-        data = dueTodayData ?? [];
+        data = (dueTodayData ?? []) as unknown as ScheduledActivity[];
         break;
       case "due-this-week":
-        data = dueThisWeekData ?? [];
+        data = (dueThisWeekData ?? []) as unknown as ScheduledActivity[];
         break;
       case "overdue":
-        data = overdueData ?? [];
+        data = (overdueData ?? []) as unknown as ScheduledActivity[];
         break;
       default:
-        data = allData?.page ?? [];
+        data = (allData ?? []) as unknown as ScheduledActivity[];
     }
     let filtered = applyFilters(data);
     if (typeFilter) {
@@ -290,6 +282,7 @@ function ActivitiesPage() {
       }
       // Save custom field values if any
       await saveCfValues(activityId);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
       setPanelOpen(false);
       resetForm();
     } finally {
@@ -387,18 +380,22 @@ function ActivitiesPage() {
       ) : (
         <Check className="h-4 w-4" variant="stroke" />
       ),
-      onClick: () => {
+      onClick: async () => {
         if (row.isCompleted) {
-          markIncomplete({ organizationId, activityId: row._id });
+          await markIncomplete({ organizationId, activityId: row._id });
         } else {
-          markComplete({ organizationId, activityId: row._id });
+          await markComplete({ organizationId, activityId: row._id });
         }
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
       },
     },
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeActivity({ organizationId, activityId: row._id }),
+      onClick: async () => {
+        await removeActivity({ organizationId, activityId: row._id });
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
+      },
     },
   ];
 

@@ -8,6 +8,13 @@ import { checkPermission } from "./_helpers/permissions";
 import { activityTypeValidator } from "@cvx/schema";
 import { createNotificationDirect } from "./notifications";
 
+// @ts-ignore — TS2589
+const writeScheduledRef = internal.supabase.scheduledActivities.writeScheduledActivityToSupabase;
+// @ts-ignore — TS2589
+const updateScheduledRef = internal.supabase.scheduledActivities.updateScheduledActivityInSupabase;
+// @ts-ignore — TS2589
+const deleteScheduledRef = internal.supabase.scheduledActivities.deleteScheduledActivityFromSupabase;
+
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
@@ -131,6 +138,26 @@ export const create = mutation({
       activityId,
     });
 
+    // Dual-write: sync to Supabase
+    await ctx.scheduler.runAfter(0, writeScheduledRef, {
+      scheduledActivityId: activityId as any,
+      organizationId: args.organizationId as any,
+      title: args.title,
+      activityType: args.activityType,
+      dueDate: args.dueDate,
+      endDate: args.endDate,
+      isCompleted: false,
+      ownerId: args.ownerId as any,
+      description: args.description,
+      linkedEntityType: args.linkedEntityType,
+      linkedEntityId: args.linkedEntityId,
+      tagIds: args.tagIds as any,
+      categoryId: args.categoryId as any,
+      createdBy: user._id as any,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return activityId;
   },
 });
@@ -194,6 +221,16 @@ export const update = mutation({
       });
     }
 
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateScheduledRef, {
+      scheduledActivityId: activityId as any,
+      ...updates,
+      ownerId: updates.ownerId as any,
+      tagIds: updates.tagIds as any,
+      categoryId: updates.categoryId as any,
+      updatedAt: Date.now(),
+    });
+
     return activityId;
   },
 });
@@ -223,6 +260,12 @@ export const remove = mutation({
         activityId: args.activityId,
       });
     }
+
+    // Dual-write: schedule delete BEFORE ctx.db.delete (Pattern #4)
+    await ctx.scheduler.runAfter(0, deleteScheduledRef, {
+      scheduledActivityId: args.activityId as any,
+      organizationId: args.organizationId as any,
+    });
 
     await ctx.db.delete(args.activityId);
 
@@ -281,6 +324,14 @@ export const markComplete = mutation({
       });
     }
 
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateScheduledRef, {
+      scheduledActivityId: args.activityId as any,
+      isCompleted: true,
+      completedAt: now,
+      updatedAt: now,
+    });
+
     return args.activityId;
   },
 });
@@ -316,6 +367,13 @@ export const markIncomplete = mutation({
       action: "updated",
       description: `Reopened ${activity.activityType} "${activity.title}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write
+    await ctx.scheduler.runAfter(0, updateScheduledRef, {
+      scheduledActivityId: args.activityId as any,
+      isCompleted: false,
+      updatedAt: Date.now(),
     });
 
     return args.activityId;

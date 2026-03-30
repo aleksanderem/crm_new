@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
-import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useRole } from "@/hooks/use-permission";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -18,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
-import { useQuery as useTanstackQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseAuditLog } from "@/hooks/use-supabase-audit-log";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/audit-log"
@@ -88,30 +85,24 @@ function AuditLogSettings() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const { data: members } = useTanstackQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
-  const entries = useQuery(
-    api.auditLog.list,
-    role === "admin" || role === "owner"
-      ? {
-          organizationId,
-          limit: 100,
-          actionFilter: actionFilter !== "all" ? actionFilter : undefined,
-          userFilter:
-            userFilter !== "all"
-              ? (userFilter as Id<"users">)
-              : undefined,
-          startDate: startDate
-            ? new Date(startDate).getTime()
-            : undefined,
-          endDate: endDate
-            ? new Date(endDate + "T23:59:59").getTime()
-            : undefined,
-        }
-      : "skip"
-  );
+  const isAuthorized = role === "admin" || role === "owner";
+  const { data: rawEntries } = useSupabaseAuditLog(organizationId, {
+    enabled: isAuthorized,
+    limit: 100,
+    actionFilter: actionFilter !== "all" ? actionFilter : undefined,
+    userFilter: userFilter !== "all" ? userFilter : undefined,
+    startDate: startDate ? new Date(startDate).getTime() : undefined,
+    endDate: endDate ? new Date(endDate + "T23:59:59").getTime() : undefined,
+  });
+
+  // Enrich entries with user name/email from members list
+  const memberMap = new Map(members?.map((m) => [m.userId, m.user]) ?? []);
+  const entries = rawEntries?.map((e) => ({
+    ...e,
+    user: memberMap.get(e.userId) ?? null,
+  }));
 
   const formatTimestamp = (ts: number) => {
     return new Date(ts).toLocaleString(i18n.language, {

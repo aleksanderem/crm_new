@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeViewRef = internal.supabase.savedViews.writeSavedViewToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateViewRef = internal.supabase.savedViews.updateSavedViewInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteViewRef = internal.supabase.savedViews.deleteSavedViewFromSupabase;
 
 export const listByEntityType = query({
   args: {
@@ -87,6 +95,24 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new saved view to Supabase
+    await ctx.scheduler.runAfter(0, writeViewRef, {
+      viewId: viewId as string,
+      organizationId: args.organizationId as string,
+      entityType: args.entityType,
+      name: args.name,
+      filters: args.filters,
+      columns: args.columns,
+      sortField: args.sortField,
+      sortDirection: args.sortDirection,
+      isDefault: args.isDefault,
+      isSystem: args.isSystem,
+      order: maxOrder + 1,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return viewId;
   },
 });
@@ -117,7 +143,16 @@ export const update = mutation({
     }
 
     const { organizationId, viewId, ...updates } = args;
-    await ctx.db.patch(viewId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(viewId, { ...updates, updatedAt: now });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateViewRef, {
+      viewId: viewId as string,
+      organizationId: organizationId as string,
+      ...updates,
+      updatedAt: now,
+    });
 
     return viewId;
   },
@@ -141,6 +176,12 @@ export const remove = mutation({
     if (!isOwner && !isAdmin) {
       throw new Error("Not authorized to delete this view");
     }
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteViewRef, {
+      viewId: args.viewId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.viewId);
     return args.viewId;

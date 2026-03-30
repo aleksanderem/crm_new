@@ -82,7 +82,13 @@ export default function BillingSettings() {
   };
 
   if (!user || !plans) {
-    return null;
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground text-center">
+          {!user ? "Ładowanie..." : "Plan cenowy nie został jeszcze skonfigurowany."}
+        </p>
+      </div>
+    );
   }
 
   return (

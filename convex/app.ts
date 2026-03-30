@@ -171,7 +171,7 @@ export const getActivePlans = query({
           .unique(),
     );
     if (!free || !pro) {
-      throw new Error("Plan not found");
+      return null;
     }
     return { free, pro };
   },

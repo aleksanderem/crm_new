@@ -405,7 +405,7 @@ function ActivitiesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={t('activities.title')}
+        title={t('activities.pageTitle', 'Aktywności')}
         description={t('activities.description')}
         actions={
           <Button onClick={openCreatePanel}>

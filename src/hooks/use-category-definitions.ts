@@ -8,9 +8,9 @@ export function useCategoryDefinitions(
   organizationId: Id<"organizations">,
   entityType: EntityType,
 ) {
-  const { data, isLoading } = useQuery(
-    convexQuery(api.categoryDefinitions.list, { organizationId, entityType })
-  );
+  // @ts-ignore -- TS2589: deep type instantiation in Convex API types
+  const queryArgs = convexQuery(api.categoryDefinitions.list, { organizationId, entityType } as any);
+  const { data, isLoading } = useQuery(queryArgs) as { data: any[] | undefined; isLoading: boolean };
 
   return {
     categories: data ?? [],

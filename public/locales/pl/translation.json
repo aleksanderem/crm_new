@@ -82,14 +82,14 @@
     "products": "Produkty",
     "calls": "Połączenia",
     "gabinet": {
-      "dashboard": "Panel",
+      "_": "Gabinet",
+      "dashboard": "Panel Gabinetu",
       "calendar": "Kalendarz",
-      "patients": "Pacjenci",
+      "patients": "Klienci",
       "treatments": "Zabiegi",
       "packages": "Pakiety",
-      "employees": "Pracownicy",
       "documents": "Dokumenty",
-      "reports": "Raporty"
+      "employees": "Pracownicy"
     },
     "sections": {
       "main": "Główne",
@@ -173,7 +173,6 @@
       "gabinet": "Gabinet",
       "gabinetDesc": "Klinika i klienci"
     },
-    "gabinet": "Gabinet",
     "settings": "Ustawienia",
     "home": "Strona główna"
   },
@@ -526,7 +525,8 @@
       "filterByType": "Filtruj wg typu",
       "showCompleted": "Pokaż ukończone",
       "hideCompleted": "Ukryj ukończone"
-    }
+    },
+    "pageTitle": "Aktywności"
   },
   "documents": {
     "title": "Dokumenty",

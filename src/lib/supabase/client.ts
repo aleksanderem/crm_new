@@ -33,6 +33,17 @@ export const SUPABASE_URL: string = (() => {
 // Client factory
 // ---------------------------------------------------------------------------
 
+export const SUPABASE_ANON_KEY: string = (() => {
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!key) {
+    throw new Error(
+      "VITE_SUPABASE_ANON_KEY is not set. " +
+        "Add it to your .env file — it's the anon/public key from your Supabase project.",
+    );
+  }
+  return key;
+})();
+
 /**
  * Create a typed Supabase client authenticated with the given JWT.
  *
@@ -44,7 +55,7 @@ export function createSupabaseClient(
   supabaseUrl: string,
   accessToken: string,
 ): SupabaseClient<Database> {
-  return createClient<Database>(supabaseUrl, "public-anon-unused", {
+  return createClient<Database>(supabaseUrl, SUPABASE_ANON_KEY, {
     global: {
       headers: {
         Authorization: `Bearer ${accessToken}`,

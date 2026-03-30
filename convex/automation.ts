@@ -965,7 +965,9 @@ export const emitEvent = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(0, internal.automation.processRun, { runId });
+    // @ts-ignore -- TS2589: type instantiation depth in generated Convex API types
+    const processRunRef = internal.automation.processRun;
+    await ctx.scheduler.runAfter(0, processRunRef, { runId });
     return runId;
   },
 });

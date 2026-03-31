@@ -70,7 +70,7 @@ function TeamSettings() {
 
   // Seat usage stays on Convex — involves plan/subscription lookup logic
   const { data: seatUsage } = useQuery(
-    // @ts-expect-error — convexQuery type instantiation too deep, runtime is correct
+    // @ts-ignore — TS2589: convexQuery type instantiation too deep, runtime is correct
     convexQuery(api.organizations.getSeatUsage, { organizationId })
   ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
 

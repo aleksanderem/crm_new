@@ -1,10 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetTreatment, useSupabaseGabinetTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
@@ -92,6 +94,15 @@ const APPOINTMENT_STATUSES = [
   "no_show",
 ] as const;
 
+type TreatmentParam = {
+  name: string;
+  type: string;
+  description?: string;
+  unit?: string;
+  options?: string[];
+  isRequired?: boolean;
+};
+
 function TreatmentDetail() {
   const { treatmentId } = Route.useParams();
   const { organizationId } = useOrganization();
@@ -147,13 +158,12 @@ function TreatmentDetail() {
   const updateVariantMut = useMutation(api.gabinet.treatments.updateVariant);
   const deleteVariantMut = useMutation(api.gabinet.treatments.deleteVariant);
   const trackView = useMutation(api.recentlyViewed.track);
+  const queryClient = useQueryClient();
 
-  // Queries
-  const { data: treatment, isLoading } = useQuery(
-    convexQuery(api.gabinet.treatments.getById, {
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-    }),
+  // Queries — treatment detail + variants from Supabase
+  const { data: treatment, isLoading } = useSupabaseGabinetTreatment(
+    organizationId,
+    treatmentId,
   );
 
   const { data: detailedStats } = useQuery(
@@ -180,12 +190,25 @@ function TreatmentDetail() {
     }),
   );
 
-  const { data: variants } = useQuery(
-    convexQuery(api.gabinet.treatments.listVariants, {
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-    }),
+  const { data: rawVariants } = useSupabaseGabinetTreatmentVariants(
+    organizationId,
+    treatmentId,
   );
+
+  // Enrich variants with resolved/inherited fields (previously computed server-side in Convex)
+  const variants = useMemo(() => {
+    if (!rawVariants) return undefined;
+    return rawVariants.map((v) => ({
+      ...v,
+      resolvedPrice: v.price ?? (treatment?.price ?? 0),
+      resolvedDuration: v.duration ?? (treatment?.duration ?? 0),
+      resolvedShortDescription: v.shortDescription ?? (treatment?.shortDescription ?? undefined),
+      priceInherited: v.price == null,
+      durationInherited: v.duration == null,
+      descriptionInherited: v.description == null,
+      shortDescriptionInherited: v.shortDescription == null,
+    }));
+  }, [rawVariants, treatment?.price, treatment?.duration, treatment?.shortDescription]);
 
   // Activities for the new Activity tab
   const { data: activitiesData } = useQuery(
@@ -425,6 +448,7 @@ function TreatmentDetail() {
         organizationId,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/treatments" });
     }
   };
@@ -437,6 +461,8 @@ function TreatmentDetail() {
         treatmentId: treatmentId as Id<"gabinetTreatments">,
         ...formData,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       setEditPanelOpen(false);
       toast.success(t("common.saved"));
     } finally {
@@ -451,7 +477,7 @@ function TreatmentDetail() {
       toast.error(t("gabinet.treatmentDetail.optionsRequired"));
       return;
     }
-    const currentParams = treatment!.parameters ?? [];
+    const currentParams = (treatment!.parameters as TreatmentParam[] | undefined) ?? [];
     const newParam = {
       name: editingParam.name.trim(),
       type: editingParam.type,
@@ -471,7 +497,7 @@ function TreatmentDetail() {
   };
 
   const handleRemoveParameter = async (index: number) => {
-    const currentParams = treatment!.parameters ?? [];
+    const currentParams = (treatment!.parameters as TreatmentParam[] | undefined) ?? [];
     const newParams = currentParams.filter((_, i) => i !== index);
     await saveTreatmentParameters({
       organizationId,
@@ -553,6 +579,7 @@ function TreatmentDetail() {
       }
       setVariantDialogOpen(false);
       resetVariantForm();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentVariants.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -564,6 +591,7 @@ function TreatmentDetail() {
       organizationId,
       variantId: variantId as Id<"gabinetTreatmentVariants">,
     });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentVariants.list(organizationId) });
     toast.success(t("gabinet.treatmentDetail.variants.deleted"));
   };
 
@@ -620,9 +648,9 @@ function TreatmentDetail() {
                 </p>
 
                 {/* Existing parameters list */}
-                {(treatment.parameters ?? []).length > 0 ? (
+                {((treatment.parameters as TreatmentParam[] | undefined) ?? []).length > 0 ? (
                   <div className="space-y-2">
-                    {(treatment.parameters ?? []).map((param, idx) => (
+                    {((treatment.parameters as TreatmentParam[] | undefined) ?? []).map((param, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between rounded-md border p-3"
@@ -1285,7 +1313,7 @@ function TreatmentDetail() {
               currency: treatment.currency ?? undefined,
               taxRate: treatment.taxRate ?? undefined,
               requiredEquipment: treatment.requiredEquipment ?? undefined,
-              requiredEquipmentIds: treatment.requiredEquipmentIds ?? undefined,
+              requiredEquipmentIds: (treatment.requiredEquipmentIds as Id<"gabinetEquipment">[] | undefined) ?? undefined,
               contraindications: treatment.contraindications ?? undefined,
               preparationInstructions: treatment.preparationInstructions ?? undefined,
               aftercareInstructions: treatment.aftercareInstructions ?? undefined,

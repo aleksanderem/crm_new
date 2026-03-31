@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -16,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
 import type { SavedView, FieldDef } from "@/components/crm/types";
-import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSavedViews } from "@/hooks/use-saved-views";
@@ -36,7 +39,7 @@ export const Route = createFileRoute(
   component: TreatmentsIndex,
 });
 
-type Treatment = Doc<"gabinetTreatments">;
+type Treatment = MappedGabinetTreatment;
 
 function formatCurrency(amount: number, currency?: string): string {
   return new Intl.NumberFormat("pl-PL", {
@@ -48,9 +51,11 @@ function formatCurrency(amount: number, currency?: string): string {
 function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  // @ts-ignore — TS2589: pre-existing deep type instantiation from Convex useMutation
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
+  const queryClient = useQueryClient();
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
@@ -128,14 +133,9 @@ function TreatmentsIndex() {
     [t, tags, categories],
   );
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.gabinet.treatments.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
+  const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(
+    organizationId,
   );
-
-  const allTreatments = data?.page ?? [];
 
   const {
     views,
@@ -266,7 +266,7 @@ function TreatmentsIndex() {
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
-            treatmentId: editingTreatment._id,
+            treatmentId: editingTreatment._id as Id<"gabinetTreatments">,
             ...formData,
           });
         } else {
@@ -277,22 +277,24 @@ function TreatmentsIndex() {
         }
         setPanelOpen(false);
         setEditingTreatment(null);
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, organizationId],
+    [editingTreatment, createTreatment, updateTreatment, organizationId, queryClient],
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Treatment[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeTreatment({ organizationId, treatmentId: row._id });
+          await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
         }
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       }
     },
-    [removeTreatment, organizationId],
+    [removeTreatment, organizationId, queryClient],
   );
 
   const rowActions = useCallback(
@@ -308,14 +310,15 @@ function TreatmentsIndex() {
         onClick: async () => {
           // Soft toggle by removing (deactivate) or updating
           if (row.isActive) {
-            await removeTreatment({ organizationId, treatmentId: row._id });
+            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
           } else {
             await updateTreatment({
               organizationId,
-              treatmentId: row._id,
+              treatmentId: row._id as Id<"gabinetTreatments">,
               name: row.name,
             });
           }
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
         },
       },
       {
@@ -323,12 +326,13 @@ function TreatmentsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
-            await removeTreatment({ organizationId, treatmentId: row._id });
+            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
           }
         },
       },
     ],
-    [t, removeTreatment, updateTreatment, organizationId],
+    [t, removeTreatment, updateTreatment, organizationId, queryClient],
   );
 
   return (
@@ -447,7 +451,7 @@ function TreatmentsIndex() {
                   requiredEquipment:
                     editingTreatment.requiredEquipment ?? undefined,
                   requiredEquipmentIds:
-                    editingTreatment.requiredEquipmentIds ?? undefined,
+                    (editingTreatment.requiredEquipmentIds as Id<"gabinetEquipment">[] | undefined) ?? undefined,
                   contraindications:
                     editingTreatment.contraindications ?? undefined,
                   preparationInstructions:
@@ -459,8 +463,8 @@ function TreatmentsIndex() {
                   color: editingTreatment.color ?? undefined,
                   sortOrder: editingTreatment.sortOrder ?? undefined,
                   treatmentCount: editingTreatment.treatmentCount ?? undefined,
-                  tagIds: editingTreatment.tagIds ?? undefined,
-                  categoryId: editingTreatment.categoryId ?? undefined,
+                  tagIds: (editingTreatment.tagIds as Id<"tagDefinitions">[] | undefined) ?? undefined,
+                  categoryId: (editingTreatment.categoryId as Id<"categoryDefinitions"> | undefined) ?? undefined,
                 }
               : undefined
           }

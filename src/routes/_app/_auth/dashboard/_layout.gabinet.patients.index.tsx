@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import type { MappedGabinetPatient } from "@/lib/supabase/mappers/gabinet/patients";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -16,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
@@ -33,7 +35,7 @@ export const Route = createFileRoute(
   component: PatientsIndex,
 });
 
-type Patient = Doc<"gabinetPatients">;
+type Patient = MappedGabinetPatient;
 
 function PatientsIndex() {
   const { t } = useTranslation();
@@ -41,6 +43,7 @@ function PatientsIndex() {
   const navigate = useNavigate();
   const createPatient = useMutation(api.gabinet.patients.create);
   const removePatient = useMutation(api.gabinet.patients.remove);
+  const queryClient = useQueryClient();
 
   const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -138,14 +141,9 @@ function PatientsIndex() {
     [t, tags, categories],
   );
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
+  const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(
+    organizationId,
   );
-
-  const patients = data?.page ?? [];
 
   const {
     views,
@@ -328,6 +326,7 @@ function PatientsIndex() {
           organizationId,
           ...(formData as any),
         });
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
         setPanelOpen(false);
       } finally {
         setIsCreating(false);
@@ -340,11 +339,12 @@ function PatientsIndex() {
     async (action: string, selectedRows: Patient[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removePatient({ organizationId, patientId: row._id });
+          await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
         }
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       }
     },
-    [removePatient, organizationId],
+    [removePatient, organizationId, queryClient],
   );
 
   const rowActions = useCallback(
@@ -359,12 +359,13 @@ function PatientsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-            await removePatient({ organizationId, patientId: row._id });
+            await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
           }
         },
       },
     ],
-    [navigate, removePatient, organizationId, t],
+    [navigate, removePatient, organizationId, t, queryClient],
   );
 
   return (

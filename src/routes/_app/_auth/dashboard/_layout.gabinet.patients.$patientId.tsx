@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -52,15 +55,14 @@ function PatientDetail() {
   const updatePatient = useMutation(api.gabinet.patients.update);
   const removePatient = useMutation(api.gabinet.patients.remove);
   const trackView = useMutation(api.recentlyViewed.track);
+  const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: patient, isLoading } = useQuery(
-    convexQuery(api.gabinet.patients.getById, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    }),
+  const { data: patient, isLoading } = useSupabaseGabinetPatient(
+    organizationId,
+    patientId,
   );
 
   useEffect(() => {
@@ -135,6 +137,8 @@ function PatientDetail() {
         patientId: patientId as Id<"gabinetPatients">,
         ...formData,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       setEditDrawerOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -147,6 +151,7 @@ function PatientDetail() {
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/patients" });
     }
   };
@@ -200,14 +205,10 @@ function PatientDetail() {
         },
         {
           label: t("gabinet.patients.address"),
-          value:
-            [
-              patient.address?.street,
-              patient.address?.postalCode,
-              patient.address?.city,
-            ]
-              .filter(Boolean)
-              .join(", ") || undefined,
+          value: (() => {
+            const addr = patient.address as { street?: string; postalCode?: string; city?: string } | undefined;
+            return [addr?.street, addr?.postalCode, addr?.city].filter(Boolean).join(", ") || undefined;
+          })(),
           fieldKey: "address",
         },
         {
@@ -650,8 +651,8 @@ function PatientDetail() {
               phone: patient.phone ?? undefined,
               pesel: patient.pesel ?? undefined,
               dateOfBirth: patient.dateOfBirth ?? undefined,
-              gender: patient.gender ?? undefined,
-              address: patient.address ?? undefined,
+              gender: (patient.gender as "male" | "female" | "other" | undefined) ?? undefined,
+              address: (patient.address as { street?: string; city?: string; postalCode?: string } | undefined) ?? undefined,
               medicalNotes: patient.medicalNotes ?? undefined,
               allergies: patient.allergies ?? undefined,
               bloodType: patient.bloodType ?? undefined,

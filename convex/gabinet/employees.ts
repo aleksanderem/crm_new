@@ -1,10 +1,18 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { gabinetEmployeeRoleValidator } from "../schema";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEmployeeRef = internal.supabase.gabinet.employees.writeEmployeeToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEmployeeRef = internal.supabase.gabinet.employees.updateEmployeeInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteEmployeeRef = internal.supabase.gabinet.employees.deleteEmployeeFromSupabase;
 
 export const list = query({
   args: {
@@ -191,6 +199,28 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new employee to Supabase
+    await ctx.scheduler.runAfter(0, writeEmployeeRef, {
+      employeeId: id as string,
+      organizationId: args.organizationId as string,
+      userId: args.userId as string,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      role: args.role,
+      specialization: args.specialization,
+      qualifiedTreatmentIds: (args.qualifiedTreatmentIds ?? []).map((id) => id as string),
+      licenseNumber: args.licenseNumber,
+      hireDate: args.hireDate,
+      isActive: true,
+      color: args.color,
+      notes: args.notes,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return id;
   },
 });
@@ -274,6 +304,23 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateEmployeeRef, {
+      employeeId: employeeId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates)
+          .filter(([k]) => k !== "updatedAt")
+          .map(([k, val]) => {
+            if (k === "qualifiedTreatmentIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "categoryId" && val) return [k, val as string];
+            return [k, val];
+          })
+      ),
+      updatedAt: Date.now(),
+    });
+
     return employeeId;
   },
 });
@@ -306,6 +353,12 @@ export const remove = mutation({
       action: "deleted",
       description: `Deactivated employee profile`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate soft-delete to Supabase
+    await ctx.scheduler.runAfter(0, deleteEmployeeRef, {
+      employeeId: args.employeeId as string,
+      organizationId: args.organizationId as string,
     });
   },
 });
@@ -366,6 +419,14 @@ export const setQualifiedTreatments = mutation({
       action: "updated",
       description: `Updated treatment qualifications (${args.treatmentIds.length} treatments)`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate qualified treatment IDs to Supabase
+    await ctx.scheduler.runAfter(0, updateEmployeeRef, {
+      employeeId: args.employeeId as string,
+      organizationId: args.organizationId as string,
+      qualifiedTreatmentIds: args.treatmentIds.map((id) => id as string),
+      updatedAt: Date.now(),
     });
   },
 });

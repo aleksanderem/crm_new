@@ -2,9 +2,23 @@ import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTreatmentRef = internal.supabase.gabinet.treatments.writeTreatmentToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateTreatmentRef = internal.supabase.gabinet.treatments.updateTreatmentInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteTreatmentRef = internal.supabase.gabinet.treatments.deleteTreatmentFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeVariantRef = internal.supabase.gabinet.treatments.writeVariantToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateVariantRef = internal.supabase.gabinet.treatments.updateVariantInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteVariantRef = internal.supabase.gabinet.treatments.deleteVariantFromSupabase;
 
 export const list = query({
   args: {
@@ -110,6 +124,34 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new treatment to Supabase
+    await ctx.scheduler.runAfter(0, writeTreatmentRef, {
+      treatmentId: treatmentId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      duration: args.duration,
+      price: args.price,
+      currency: args.currency,
+      taxRate: args.taxRate,
+      requiredEquipment: args.requiredEquipment,
+      requiredEquipmentIds: args.requiredEquipmentIds?.map((id) => id as string),
+      contraindications: args.contraindications,
+      preparationInstructions: args.preparationInstructions,
+      aftercareInstructions: args.aftercareInstructions,
+      isActive: true,
+      requiresApproval: args.requiresApproval,
+      color: args.color,
+      sortOrder: args.sortOrder,
+      treatmentCount: args.treatmentCount,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return treatmentId;
   },
 });
@@ -166,6 +208,26 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
+      treatmentId: treatmentId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates)
+          .filter(([k]) => k !== "updatedAt")
+          .map(([k, val]) => {
+            if (k === "requiredEquipmentIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "categoryId" && val) return [k, val as string];
+            if (k === "requiredFormTemplates" && Array.isArray(val)) {
+              return [k, val.map((t: any) => ({ ...t, templateId: t.templateId as string }))];
+            }
+            return [k, val];
+          })
+      ),
+      updatedAt: Date.now(),
+    });
+
     return treatmentId;
   },
 });
@@ -200,6 +262,12 @@ export const remove = mutation({
       action: "deleted",
       description: `Deleted treatment "${treatment.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate soft-delete to Supabase
+    await ctx.scheduler.runAfter(0, deleteTreatmentRef, {
+      treatmentId: args.treatmentId as string,
+      organizationId: args.organizationId as string,
     });
 
     return args.treatmentId;
@@ -690,6 +758,17 @@ export const setRequiredFormTemplates = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate form templates update to Supabase
+    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
+      treatmentId: args.treatmentId as string,
+      organizationId: args.organizationId as string,
+      requiredFormTemplates: args.requiredFormTemplates.map((t) => ({
+        ...t,
+        templateId: t.templateId as string,
+      })),
+      updatedAt: Date.now(),
+    });
+
     return args.treatmentId;
   },
 });
@@ -722,6 +801,14 @@ export const setRequiredDocumentTemplates = mutation({
       action: "updated",
       description: `Updated required documents for treatment "${treatment.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate document template IDs to Supabase
+    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
+      treatmentId: args.treatmentId as string,
+      organizationId: args.organizationId as string,
+      requiredDocumentTemplateIds: args.templateIds.map((id) => id as string),
+      updatedAt: Date.now(),
     });
 
     return args.treatmentId;
@@ -771,6 +858,14 @@ export const saveTreatmentParameters = mutation({
       action: "updated",
       description: `Updated parameters for treatment "${treatment.name}"`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate parameters to Supabase
+    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
+      treatmentId: args.treatmentId as string,
+      organizationId: args.organizationId as string,
+      parameters: args.parameters,
+      updatedAt: Date.now(),
     });
 
     return args.treatmentId;
@@ -928,6 +1023,21 @@ export const createVariant = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate new variant to Supabase
+    await ctx.scheduler.runAfter(0, writeVariantRef, {
+      variantId: variantId as string,
+      organizationId: args.organizationId as string,
+      treatmentId: args.treatmentId as string,
+      name: args.name,
+      price: args.price,
+      duration: args.duration,
+      description: args.description,
+      shortDescription: args.shortDescription,
+      image: args.image ? (args.image as string) : undefined,
+      isActive: args.isActive ?? true,
+      sortOrder: args.sortOrder,
+    });
+
     return variantId;
   },
 });
@@ -996,6 +1106,25 @@ export const updateVariant = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate variant update to Supabase
+    await ctx.scheduler.runAfter(0, updateVariantRef, {
+      variantId: args.variantId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      price: args.price,
+      duration: args.duration,
+      description: args.description,
+      shortDescription: args.shortDescription,
+      image: args.image ? (args.image as string) : undefined,
+      isActive: args.isActive,
+      sortOrder: args.sortOrder,
+      clearPrice: args.clearPrice,
+      clearDuration: args.clearDuration,
+      clearDescription: args.clearDescription,
+      clearShortDescription: args.clearShortDescription,
+      clearImage: args.clearImage,
+    });
+
     return args.variantId;
   },
 });
@@ -1016,6 +1145,12 @@ export const deleteVariant = mutation({
     }
 
     const treatment = await ctx.db.get(variant.treatmentId);
+
+    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
+    await ctx.scheduler.runAfter(0, deleteVariantRef, {
+      variantId: args.variantId as string,
+      organizationId: args.organizationId as string,
+    });
 
     await ctx.db.delete(args.variantId);
 

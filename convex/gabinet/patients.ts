@@ -6,6 +6,13 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writePatientRef = internal.supabase.gabinet.patients.writePatientToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updatePatientRef = internal.supabase.gabinet.patients.updatePatientInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deletePatientRef = internal.supabase.gabinet.patients.deletePatientFromSupabase;
+
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
@@ -182,6 +189,36 @@ export const create = mutation({
       occurredAt: now,
     });
 
+    // Dual-write: replicate new patient to Supabase
+    await ctx.scheduler.runAfter(0, writePatientRef, {
+      patientId: patientId as string,
+      organizationId: args.organizationId as string,
+      contactId: args.contactId ? (args.contactId as string) : undefined,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      pesel: args.pesel,
+      dateOfBirth: args.dateOfBirth,
+      gender: args.gender,
+      email: args.email,
+      phone: args.phone,
+      address: args.address,
+      medicalNotes: args.medicalNotes,
+      allergies: args.allergies,
+      bloodType: args.bloodType,
+      emergencyContactName: args.emergencyContactName,
+      emergencyContactPhone: args.emergencyContactPhone,
+      referralSource: args.referralSource,
+      referredByPatientId: args.referredByPatientId ? (args.referredByPatientId as string) : undefined,
+      isActive: true,
+      tags: args.tags,
+      tagIds: args.tagIds?.map((id) => id as string),
+      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
+      customFields: args.customFields,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return patientId;
   },
 });
@@ -240,6 +277,24 @@ export const update = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updatePatientRef, {
+      patientId: patientId as string,
+      organizationId: organizationId as string,
+      ...Object.fromEntries(
+        Object.entries(updates)
+          .filter(([k]) => k !== "updatedAt")
+          .map(([k, val]) => {
+            if (k === "contactId" && val) return [k, val as string];
+            if (k === "referredByPatientId" && val) return [k, val as string];
+            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
+            if (k === "categoryId" && val) return [k, val as string];
+            return [k, val];
+          })
+      ),
+      updatedAt: Date.now(),
+    });
+
     return patientId;
   },
 });
@@ -274,6 +329,12 @@ export const remove = mutation({
       action: "deleted",
       description: `Deleted patient ${patient.firstName} ${patient.lastName}`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate soft-delete to Supabase
+    await ctx.scheduler.runAfter(0, deletePatientRef, {
+      patientId: args.patientId as string,
+      organizationId: args.organizationId as string,
     });
 
     return args.patientId;

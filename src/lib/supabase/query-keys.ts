@@ -66,6 +66,20 @@ export const supabaseKeys = {
   automationRuns: entityKeys("automationRuns"),
   automationRunSteps: entityKeys("automationRunSteps"),
 
+  // ── Gabinet Entities ─────────────────────────────────────────────────────
+  gabinetPatients: entityKeys("gabinetPatients"),
+  gabinetTreatments: entityKeys("gabinetTreatments"),
+  gabinetTreatmentVariants: entityKeys("gabinetTreatmentVariants"),
+  gabinetEmployees: entityKeys("gabinetEmployees"),
+  gabinetLocations: entityKeys("gabinetLocations"),
+  gabinetRooms: entityKeys("gabinetRooms"),
+  gabinetEquipment: entityKeys("gabinetEquipment"),
+  gabinetEquipmentTransfers: entityKeys("gabinetEquipmentTransfers"),
+  gabinetLeaveTypes: entityKeys("gabinetLeaveTypes"),
+  gabinetLeaveBalances: entityKeys("gabinetLeaveBalances"),
+  gabinetWorkingHours: entityKeys("gabinetWorkingHours"),
+  gabinetEmployeeSchedules: entityKeys("gabinetEmployeeSchedules"),
+
   // ── Platform Entities ───────────────────────────────────────────────────
   organizations: entityKeys("organizations"),
   teamMemberships: entityKeys("teamMemberships"),

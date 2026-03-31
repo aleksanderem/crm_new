@@ -4548,3 +4548,52 @@ export type ScheduledActivityUpdate = Database["public"]["Tables"]["scheduled_ac
 export type EmailSequenceRow = Database["public"]["Tables"]["email_sequences"]["Row"];
 export type EmailSequenceInsert = Database["public"]["Tables"]["email_sequences"]["Insert"];
 export type EmailSequenceUpdate = Database["public"]["Tables"]["email_sequences"]["Update"];
+
+// ── Gabinet Entities ──────────────────────────────────────────────────────
+export type GabinetPatientRow = Database["public"]["Tables"]["gabinet_patients"]["Row"];
+export type GabinetPatientInsert = Database["public"]["Tables"]["gabinet_patients"]["Insert"];
+export type GabinetPatientUpdate = Database["public"]["Tables"]["gabinet_patients"]["Update"];
+
+export type GabinetTreatmentRow = Database["public"]["Tables"]["gabinet_treatments"]["Row"];
+export type GabinetTreatmentInsert = Database["public"]["Tables"]["gabinet_treatments"]["Insert"];
+export type GabinetTreatmentUpdate = Database["public"]["Tables"]["gabinet_treatments"]["Update"];
+
+export type GabinetTreatmentVariantRow = Database["public"]["Tables"]["gabinet_treatment_variants"]["Row"];
+export type GabinetTreatmentVariantInsert = Database["public"]["Tables"]["gabinet_treatment_variants"]["Insert"];
+export type GabinetTreatmentVariantUpdate = Database["public"]["Tables"]["gabinet_treatment_variants"]["Update"];
+
+export type GabinetEmployeeRow = Database["public"]["Tables"]["gabinet_employees"]["Row"];
+export type GabinetEmployeeInsert = Database["public"]["Tables"]["gabinet_employees"]["Insert"];
+export type GabinetEmployeeUpdate = Database["public"]["Tables"]["gabinet_employees"]["Update"];
+
+export type GabinetLocationRow = Database["public"]["Tables"]["gabinet_locations"]["Row"];
+export type GabinetLocationInsert = Database["public"]["Tables"]["gabinet_locations"]["Insert"];
+export type GabinetLocationUpdate = Database["public"]["Tables"]["gabinet_locations"]["Update"];
+
+export type GabinetRoomRow = Database["public"]["Tables"]["gabinet_rooms"]["Row"];
+export type GabinetRoomInsert = Database["public"]["Tables"]["gabinet_rooms"]["Insert"];
+export type GabinetRoomUpdate = Database["public"]["Tables"]["gabinet_rooms"]["Update"];
+
+export type GabinetEquipmentRow = Database["public"]["Tables"]["gabinet_equipment"]["Row"];
+export type GabinetEquipmentInsert = Database["public"]["Tables"]["gabinet_equipment"]["Insert"];
+export type GabinetEquipmentUpdate = Database["public"]["Tables"]["gabinet_equipment"]["Update"];
+
+export type GabinetEquipmentTransferRow = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Row"];
+export type GabinetEquipmentTransferInsert = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Insert"];
+export type GabinetEquipmentTransferUpdate = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Update"];
+
+export type GabinetLeaveTypeRow = Database["public"]["Tables"]["gabinet_leave_types"]["Row"];
+export type GabinetLeaveTypeInsert = Database["public"]["Tables"]["gabinet_leave_types"]["Insert"];
+export type GabinetLeaveTypeUpdate = Database["public"]["Tables"]["gabinet_leave_types"]["Update"];
+
+export type GabinetLeaveBalanceRow = Database["public"]["Tables"]["gabinet_leave_balances"]["Row"];
+export type GabinetLeaveBalanceInsert = Database["public"]["Tables"]["gabinet_leave_balances"]["Insert"];
+export type GabinetLeaveBalanceUpdate = Database["public"]["Tables"]["gabinet_leave_balances"]["Update"];
+
+export type GabinetWorkingHoursRow = Database["public"]["Tables"]["gabinet_working_hours"]["Row"];
+export type GabinetWorkingHoursInsert = Database["public"]["Tables"]["gabinet_working_hours"]["Insert"];
+export type GabinetWorkingHoursUpdate = Database["public"]["Tables"]["gabinet_working_hours"]["Update"];
+
+export type GabinetEmployeeScheduleRow = Database["public"]["Tables"]["gabinet_employee_schedules"]["Row"];
+export type GabinetEmployeeScheduleInsert = Database["public"]["Tables"]["gabinet_employee_schedules"]["Insert"];
+export type GabinetEmployeeScheduleUpdate = Database["public"]["Tables"]["gabinet_employee_schedules"]["Update"];

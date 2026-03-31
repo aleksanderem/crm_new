@@ -1,10 +1,24 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlots } from "./_availability";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeWorkingHoursRef = internal.supabase.gabinet["working-hours"].writeWorkingHoursToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateWorkingHoursRef = internal.supabase.gabinet["working-hours"].updateWorkingHoursInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeScheduleRef = internal.supabase.gabinet["employee-schedules"].writeEmployeeScheduleToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateScheduleRef = internal.supabase.gabinet["employee-schedules"].updateEmployeeScheduleInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteScheduleRef = internal.supabase.gabinet["employee-schedules"].deleteEmployeeScheduleFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].updateLeaveBalanceInSupabase;
 
 // --- Working Hours (clinic-level defaults) ---
 
@@ -52,10 +66,23 @@ export const setWorkingHours = mutation({
         locationId: args.locationId,
         updatedAt: now,
       });
+
+      await ctx.scheduler.runAfter(0, updateWorkingHoursRef, {
+        workingHoursId: existing._id,
+        organizationId: args.organizationId,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        isOpen: args.isOpen,
+        breakStart: args.breakStart,
+        breakEnd: args.breakEnd,
+        locationId: args.locationId,
+        updatedAt: now,
+      });
+
       return existing._id;
     }
 
-    return await ctx.db.insert("gabinetWorkingHours", {
+    const whId = await ctx.db.insert("gabinetWorkingHours", {
       organizationId: args.organizationId,
       dayOfWeek: args.dayOfWeek,
       startTime: args.startTime,
@@ -68,6 +95,23 @@ export const setWorkingHours = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeWorkingHoursRef, {
+      workingHoursId: whId,
+      organizationId: args.organizationId,
+      dayOfWeek: args.dayOfWeek,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      isOpen: args.isOpen,
+      breakStart: args.breakStart,
+      breakEnd: args.breakEnd,
+      locationId: args.locationId,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return whId;
   },
 });
 
@@ -99,10 +143,37 @@ export const bulkSetWorkingHours = mutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { ...h, updatedAt: now });
+
+        await ctx.scheduler.runAfter(0, updateWorkingHoursRef, {
+          workingHoursId: existing._id,
+          organizationId: args.organizationId,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isOpen: h.isOpen,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          locationId: h.locationId,
+          updatedAt: now,
+        });
       } else {
-        await ctx.db.insert("gabinetWorkingHours", {
+        const whId = await ctx.db.insert("gabinetWorkingHours", {
           organizationId: args.organizationId,
           ...h,
+          createdBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await ctx.scheduler.runAfter(0, writeWorkingHoursRef, {
+          workingHoursId: whId,
+          organizationId: args.organizationId,
+          dayOfWeek: h.dayOfWeek,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isOpen: h.isOpen,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          locationId: h.locationId,
           createdBy: user._id,
           createdAt: now,
           updatedAt: now,
@@ -171,10 +242,25 @@ export const setEmployeeSchedule = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, { ...data, updatedAt: now });
+
+      await ctx.scheduler.runAfter(0, updateScheduleRef, {
+        scheduleId: existing._id,
+        organizationId: args.organizationId,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        isWorking: args.isWorking,
+        breakStart: args.breakStart,
+        breakEnd: args.breakEnd,
+        effectiveFrom: args.effectiveFrom,
+        effectiveTo: args.effectiveTo,
+        locationId: args.locationId,
+        updatedAt: now,
+      });
+
       return existing._id;
     }
 
-    return await ctx.db.insert("gabinetEmployeeSchedules", {
+    const scheduleId = await ctx.db.insert("gabinetEmployeeSchedules", {
       organizationId: args.organizationId,
       userId: args.userId,
       dayOfWeek: args.dayOfWeek,
@@ -183,6 +269,26 @@ export const setEmployeeSchedule = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeScheduleRef, {
+      scheduleId,
+      organizationId: args.organizationId,
+      userId: args.userId,
+      dayOfWeek: args.dayOfWeek,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      isWorking: args.isWorking,
+      breakStart: args.breakStart,
+      breakEnd: args.breakEnd,
+      effectiveFrom: args.effectiveFrom,
+      effectiveTo: args.effectiveTo,
+      locationId: args.locationId,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return scheduleId;
   },
 });
 
@@ -217,11 +323,39 @@ export const bulkSetEmployeeSchedule = mutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { ...h, updatedAt: now });
+
+        await ctx.scheduler.runAfter(0, updateScheduleRef, {
+          scheduleId: existing._id,
+          organizationId: args.organizationId,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isWorking: h.isWorking,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          locationId: h.locationId,
+          updatedAt: now,
+        });
       } else {
-        await ctx.db.insert("gabinetEmployeeSchedules", {
+        const scheduleId = await ctx.db.insert("gabinetEmployeeSchedules", {
           organizationId: args.organizationId,
           userId: args.userId,
           ...h,
+          createdBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await ctx.scheduler.runAfter(0, writeScheduleRef, {
+          scheduleId,
+          organizationId: args.organizationId,
+          userId: args.userId,
+          dayOfWeek: h.dayOfWeek,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isWorking: h.isWorking,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          locationId: h.locationId,
           createdBy: user._id,
           createdAt: now,
           updatedAt: now,
@@ -280,11 +414,43 @@ export const saveSchedulePeriod = mutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { ...data, updatedAt: now });
+
+        await ctx.scheduler.runAfter(0, updateScheduleRef, {
+          scheduleId: existing._id,
+          organizationId: args.organizationId,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isWorking: h.isWorking,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          effectiveFrom: args.effectiveFrom,
+          effectiveTo: args.effectiveTo,
+          locationId: h.locationId,
+          updatedAt: now,
+        });
       } else {
-        await ctx.db.insert("gabinetEmployeeSchedules", {
+        const scheduleId = await ctx.db.insert("gabinetEmployeeSchedules", {
           organizationId: args.organizationId,
           userId: args.userId,
           ...data,
+          createdBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await ctx.scheduler.runAfter(0, writeScheduleRef, {
+          scheduleId,
+          organizationId: args.organizationId,
+          userId: args.userId,
+          dayOfWeek: h.dayOfWeek,
+          startTime: h.startTime,
+          endTime: h.endTime,
+          isWorking: h.isWorking,
+          breakStart: h.breakStart,
+          breakEnd: h.breakEnd,
+          effectiveFrom: args.effectiveFrom,
+          effectiveTo: args.effectiveTo,
+          locationId: h.locationId,
           createdBy: user._id,
           createdAt: now,
           updatedAt: now,
@@ -320,6 +486,11 @@ export const removeSchedulePeriod = mutation({
 
     for (const s of toRemove) {
       await ctx.db.delete(s._id);
+
+      await ctx.scheduler.runAfter(0, deleteScheduleRef, {
+        scheduleId: s._id,
+        organizationId: args.organizationId,
+      });
     }
   },
 });
@@ -449,6 +620,13 @@ export const approveLeave = mutation({
             usedDays: balance.usedDays + days,
             updatedAt: now,
           });
+
+          await ctx.scheduler.runAfter(0, updateLeaveBalanceRef, {
+            balanceId: balance._id,
+            organizationId: args.organizationId,
+            usedDays: balance.usedDays + days,
+            updatedAt: now,
+          });
         }
       }
     }
@@ -517,6 +695,11 @@ export const removeEmployeeSchedule = mutation({
     }
 
     await ctx.db.delete(args.scheduleId);
+
+    await ctx.scheduler.runAfter(0, deleteScheduleRef, {
+      scheduleId: args.scheduleId,
+      organizationId: args.organizationId,
+    });
   },
 });
 

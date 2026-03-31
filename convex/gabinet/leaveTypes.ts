@@ -1,6 +1,18 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLeaveTypeRef = internal.supabase.gabinet["leave-types"].writeLeaveTypeToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLeaveTypeRef = internal.supabase.gabinet["leave-types"].updateLeaveTypeInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteLeaveTypeRef = internal.supabase.gabinet["leave-types"].deleteLeaveTypeFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].writeLeaveBalanceToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].updateLeaveBalanceInSupabase;
 
 export const list = query({
   args: {
@@ -54,7 +66,7 @@ export const create = mutation({
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
     const now = Date.now();
 
-    return await ctx.db.insert("gabinetLeaveTypes", {
+    const leaveTypeId = await ctx.db.insert("gabinetLeaveTypes", {
       organizationId: args.organizationId,
       name: args.name,
       color: args.color,
@@ -66,6 +78,22 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeLeaveTypeRef, {
+      leaveTypeId,
+      organizationId: args.organizationId,
+      name: args.name,
+      color: args.color,
+      isPaid: args.isPaid,
+      annualQuotaDays: args.annualQuotaDays,
+      requiresApproval: args.requiresApproval,
+      isActive: true,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return leaveTypeId;
   },
 });
 
@@ -89,7 +117,21 @@ export const update = mutation({
     }
 
     const { organizationId, leaveTypeId, ...updates } = args;
-    await ctx.db.patch(leaveTypeId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(leaveTypeId, { ...updates, updatedAt: now });
+
+    await ctx.scheduler.runAfter(0, updateLeaveTypeRef, {
+      leaveTypeId,
+      organizationId: args.organizationId,
+      name: args.name,
+      color: args.color,
+      isPaid: args.isPaid,
+      annualQuotaDays: args.annualQuotaDays,
+      requiresApproval: args.requiresApproval,
+      isActive: args.isActive,
+      updatedAt: now,
+    });
+
     return leaveTypeId;
   },
 });
@@ -109,6 +151,11 @@ export const remove = mutation({
 
     // Soft-delete
     await ctx.db.patch(args.leaveTypeId, { isActive: false, updatedAt: Date.now() });
+
+    await ctx.scheduler.runAfter(0, deleteLeaveTypeRef, {
+      leaveTypeId: args.leaveTypeId,
+      organizationId: args.organizationId,
+    });
   },
 });
 
@@ -175,6 +222,13 @@ export const initializeBalance = mutation({
     if (existing) {
       if (args.totalDays !== undefined) {
         await ctx.db.patch(existing._id, { totalDays: args.totalDays, updatedAt: now });
+
+        await ctx.scheduler.runAfter(0, updateLeaveBalanceRef, {
+          balanceId: existing._id,
+          organizationId: args.organizationId,
+          totalDays: args.totalDays,
+          updatedAt: now,
+        });
       }
       return existing._id;
     }
@@ -183,16 +237,31 @@ export const initializeBalance = mutation({
     const leaveType = await ctx.db.get(args.leaveTypeId);
     if (!leaveType) throw new Error("Leave type not found");
 
-    return await ctx.db.insert("gabinetLeaveBalances", {
+    const totalDays = args.totalDays ?? leaveType.annualQuotaDays ?? 0;
+    const balanceId = await ctx.db.insert("gabinetLeaveBalances", {
       organizationId: args.organizationId,
       employeeId: args.employeeId,
       leaveTypeId: args.leaveTypeId,
       year: args.year,
-      totalDays: args.totalDays ?? leaveType.annualQuotaDays ?? 0,
+      totalDays,
       usedDays: 0,
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeLeaveBalanceRef, {
+      balanceId,
+      organizationId: args.organizationId,
+      employeeId: args.employeeId,
+      leaveTypeId: args.leaveTypeId,
+      year: args.year,
+      totalDays,
+      usedDays: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return balanceId;
   },
 });
 
@@ -211,11 +280,20 @@ export const adjustBalance = mutation({
       throw new Error("Balance not found");
     }
 
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    const now = Date.now();
+    const updates: Record<string, unknown> = { updatedAt: now };
     if (args.totalDays !== undefined) updates.totalDays = args.totalDays;
     if (args.usedDays !== undefined) updates.usedDays = args.usedDays;
 
     await ctx.db.patch(args.balanceId, updates);
+
+    await ctx.scheduler.runAfter(0, updateLeaveBalanceRef, {
+      balanceId: args.balanceId,
+      organizationId: args.organizationId,
+      totalDays: args.totalDays,
+      usedDays: args.usedDays,
+      updatedAt: now,
+    });
   },
 });
 
@@ -259,7 +337,7 @@ export const initializeAllBalances = mutation({
           .first();
 
         if (!existing) {
-          await ctx.db.insert("gabinetLeaveBalances", {
+          const balanceId = await ctx.db.insert("gabinetLeaveBalances", {
             organizationId: args.organizationId,
             employeeId: emp._id,
             leaveTypeId: lt._id,
@@ -269,6 +347,19 @@ export const initializeAllBalances = mutation({
             createdAt: now,
             updatedAt: now,
           });
+
+          await ctx.scheduler.runAfter(0, writeLeaveBalanceRef, {
+            balanceId,
+            organizationId: args.organizationId,
+            employeeId: emp._id,
+            leaveTypeId: lt._id,
+            year: args.year,
+            totalDays: lt.annualQuotaDays!,
+            usedDays: 0,
+            createdAt: now,
+            updatedAt: now,
+          });
+
           created++;
         }
       }

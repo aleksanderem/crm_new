@@ -1,10 +1,18 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeEquipmentRef = internal.supabase.gabinet.equipment.writeEquipmentToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateEquipmentRef = internal.supabase.gabinet.equipment.updateEquipmentInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTransferRef = internal.supabase.gabinet.equipment.writeEquipmentTransferToSupabase;
 
 export const listEquipment = query({
   args: {
@@ -71,13 +79,29 @@ export const createEquipment = mutation({
     const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
-    return await ctx.db.insert("gabinetEquipment", {
+    const equipmentId = await ctx.db.insert("gabinetEquipment", {
       ...args,
       status: args.status ?? "available",
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeEquipmentRef, {
+      equipmentId,
+      organizationId: args.organizationId,
+      name: args.name,
+      description: args.description,
+      serialNumber: args.serialNumber,
+      currentLocationId: args.currentLocationId,
+      currentRoomId: args.currentRoomId,
+      status: args.status ?? "available",
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return equipmentId;
   },
 });
 
@@ -100,7 +124,19 @@ export const updateEquipment = mutation({
       throw new Error("Equipment not found");
     }
     const { organizationId, equipmentId, ...updates } = args;
-    await ctx.db.patch(equipmentId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(equipmentId, { ...updates, updatedAt: now });
+
+    await ctx.scheduler.runAfter(0, updateEquipmentRef, {
+      equipmentId,
+      organizationId: args.organizationId,
+      name: args.name,
+      description: args.description,
+      serialNumber: args.serialNumber,
+      status: args.status,
+      updatedAt: now,
+    });
+
     return equipmentId;
   },
 });
@@ -131,7 +167,7 @@ export const transferEquipment = mutation({
 
     const now = Date.now();
 
-    await ctx.db.insert("gabinetEquipmentTransfers", {
+    const transferId = await ctx.db.insert("gabinetEquipmentTransfers", {
       organizationId: args.organizationId,
       equipmentId: args.equipmentId,
       fromLocationId: equipment.currentLocationId ?? undefined,
@@ -143,6 +179,26 @@ export const transferEquipment = mutation({
     });
 
     await ctx.db.patch(args.equipmentId, {
+      currentLocationId: args.toLocationId,
+      currentRoomId: args.toRoomId,
+      updatedAt: now,
+    });
+
+    await ctx.scheduler.runAfter(0, writeTransferRef, {
+      transferId,
+      organizationId: args.organizationId,
+      equipmentId: args.equipmentId,
+      fromLocationId: equipment.currentLocationId,
+      toLocationId: args.toLocationId,
+      toRoomId: args.toRoomId,
+      transferredBy: user._id,
+      transferredAt: now,
+      notes: args.notes,
+    });
+
+    await ctx.scheduler.runAfter(0, updateEquipmentRef, {
+      equipmentId: args.equipmentId,
+      organizationId: args.organizationId,
       currentLocationId: args.toLocationId,
       currentRoomId: args.toRoomId,
       updatedAt: now,

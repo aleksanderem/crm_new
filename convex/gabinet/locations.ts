@@ -1,9 +1,23 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLocationRef = internal.supabase.gabinet.locations.writeLocationToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLocationRef = internal.supabase.gabinet.locations.updateLocationInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteLocationRef = internal.supabase.gabinet.locations.deleteLocationFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeRoomRef = internal.supabase.gabinet.rooms.writeRoomToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateRoomRef = internal.supabase.gabinet.rooms.updateRoomInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deleteRoomRef = internal.supabase.gabinet.rooms.deleteRoomFromSupabase;
 
 export const listLocations = query({
   args: { organizationId: v.id("organizations") },
@@ -53,13 +67,29 @@ export const createLocation = mutation({
     const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
     if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
-    return await ctx.db.insert("gabinetLocations", {
+    const locationId = await ctx.db.insert("gabinetLocations", {
       ...args,
       isActive: true,
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeLocationRef, {
+      locationId,
+      organizationId: args.organizationId,
+      name: args.name,
+      address: args.address,
+      phone: args.phone,
+      email: args.email,
+      color: args.color,
+      isActive: true,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return locationId;
   },
 });
 
@@ -89,7 +119,21 @@ export const updateLocation = mutation({
       throw new Error("Location not found");
     }
     const { organizationId, locationId, ...updates } = args;
-    await ctx.db.patch(locationId, { ...updates, updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(locationId, { ...updates, updatedAt: now });
+
+    await ctx.scheduler.runAfter(0, updateLocationRef, {
+      locationId,
+      organizationId: args.organizationId,
+      name: args.name,
+      address: args.address,
+      phone: args.phone,
+      email: args.email,
+      color: args.color,
+      isActive: args.isActive,
+      updatedAt: now,
+    });
+
     return locationId;
   },
 });
@@ -124,6 +168,12 @@ export const deleteLocation = mutation({
       throw new Error("Cannot delete location with active appointments");
     }
     await ctx.db.patch(args.locationId, { isActive: false, updatedAt: Date.now() });
+
+    await ctx.scheduler.runAfter(0, deleteLocationRef, {
+      locationId: args.locationId,
+      organizationId: args.organizationId,
+    });
+
     return args.locationId;
   },
 });
@@ -161,11 +211,25 @@ export const createRoom = mutation({
     if (!location || location.organizationId !== args.organizationId) {
       throw new Error("Location not found");
     }
-    return await ctx.db.insert("gabinetRooms", {
+    const now = Date.now();
+    const roomId = await ctx.db.insert("gabinetRooms", {
       ...args,
       isActive: true,
-      createdAt: Date.now(),
+      createdAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, writeRoomRef, {
+      roomId,
+      organizationId: args.organizationId,
+      locationId: args.locationId,
+      name: args.name,
+      description: args.description,
+      floor: args.floor,
+      isActive: true,
+      createdAt: now,
+    });
+
+    return roomId;
   },
 });
 
@@ -189,6 +253,16 @@ export const updateRoom = mutation({
     }
     const { organizationId, roomId, ...updates } = args;
     await ctx.db.patch(roomId, updates);
+
+    await ctx.scheduler.runAfter(0, updateRoomRef, {
+      roomId,
+      organizationId: args.organizationId,
+      name: args.name,
+      description: args.description,
+      floor: args.floor,
+      isActive: args.isActive,
+    });
+
     return roomId;
   },
 });
@@ -224,6 +298,12 @@ export const deleteRoom = mutation({
       throw new Error("Cannot delete room with active appointments");
     }
     await ctx.db.patch(args.roomId, { isActive: false });
+
+    await ctx.scheduler.runAfter(0, deleteRoomRef, {
+      roomId: args.roomId,
+      organizationId: args.organizationId,
+    });
+
     return args.roomId;
   },
 });

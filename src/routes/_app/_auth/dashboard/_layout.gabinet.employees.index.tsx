@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
@@ -23,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import type { FieldDef } from "@/components/crm/types";
 import { toast } from "sonner";
-import { Id, Doc } from "@cvx/_generated/dataModel";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -41,7 +44,7 @@ export const Route = createFileRoute(
 });
 
 
-type Employee = Doc<"gabinetEmployees">;
+type Employee = MappedGabinetEmployee;
 
 function EmployeesIndex() {
   const { t } = useTranslation();
@@ -79,12 +82,12 @@ function EmployeesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
+  // @ts-ignore — TS2589 pre-existing deep type instantiation on Convex mutation
   const createEmployee = useMutation(api.gabinet.employees.create);
   const removeEmployee = useMutation(api.gabinet.employees.remove);
+  const queryClient = useQueryClient();
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId })
-  );
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId })
@@ -246,23 +249,25 @@ function EmployeesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.employees.confirmDelete"))) {
-            await removeEmployee({ organizationId, employeeId: row._id });
+            await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
           }
         },
       },
     ],
-    [navigate, removeEmployee, organizationId, t]
+    [navigate, removeEmployee, organizationId, t, queryClient]
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Employee[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeEmployee({ organizationId, employeeId: row._id });
+          await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
         }
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
       }
     },
-    [removeEmployee, organizationId]
+    [removeEmployee, organizationId, queryClient]
   );
 
   return (
@@ -363,7 +368,10 @@ function EmployeesIndex() {
         availableUsers={availableUsers}
         treatments={treatments ?? []}
         organizationId={organizationId}
-        onCreate={createEmployee}
+        onCreate={async (a: any) => {
+          await createEmployee(a);
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+        }}
         tagDefinitions={tags}
         categoryDefinitions={categories}
         t={t}

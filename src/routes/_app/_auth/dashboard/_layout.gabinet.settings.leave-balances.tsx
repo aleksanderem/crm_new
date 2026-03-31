@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetLeaveTypesList } from "@/hooks/use-supabase-gabinet-leave-types";
+import { useSupabaseGabinetLeaveBalancesList } from "@/hooks/use-supabase-gabinet-leave-balances";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,17 +25,11 @@ function LeaveBalancesPage() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
-  );
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
-  const { data: leaveTypes } = useQuery(
-    convexQuery(api.gabinet.leaveTypes.list, { organizationId, activeOnly: true })
-  );
+  const { data: leaveTypes } = useSupabaseGabinetLeaveTypesList(organizationId, { activeOnly: true });
 
-  const { data: balances } = useQuery(
-    convexQuery(api.gabinet.leaveTypes.getAllBalances, { organizationId, year })
-  );
+  const { data: balances } = useSupabaseGabinetLeaveBalancesList(organizationId, { year });
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId })

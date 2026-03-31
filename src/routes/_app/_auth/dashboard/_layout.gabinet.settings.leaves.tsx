@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -65,9 +66,7 @@ function LeavesPage() {
     })
   );
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
-  );
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
   const { data: teamMembers } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId })

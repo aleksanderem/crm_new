@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation, useQuery as useConvexQuery } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ function LocationCard({
   onDeleted: () => void;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addRoomOpen, setAddRoomOpen] = useState(false);
@@ -153,6 +155,7 @@ function LocationCard({
         },
       });
       toast.success(t("common.saved"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -164,6 +167,7 @@ function LocationCard({
     try {
       await deleteLocation({ organizationId, locationId });
       toast.success(t("common.deleted"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
       onDeleted();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
@@ -181,7 +185,7 @@ function LocationCard({
         floor: newRoomFloor.trim() || undefined,
       });
       toast.success(t("common.saved"));
-      setNewRoomName("");
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetRooms.list(organizationId) });
       setNewRoomFloor("");
       setAddRoomOpen(false);
     } catch (e: unknown) {
@@ -481,10 +485,9 @@ function LocationsSettingsPage() {
   const [newCity, setNewCity] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
-  const { data: locations } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, { organizationId })
-  );
+  const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
 
   const createLocation = useMutation(api.gabinet.locations.createLocation);
 
@@ -500,6 +503,7 @@ function LocationsSettingsPage() {
         address: newCity.trim() ? { city: newCity.trim() } : undefined,
       });
       toast.success(t("gabinet.locations.addLocation"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
       setCreateOpen(false);
       setNewName("");
       setNewPhone("");
@@ -543,7 +547,7 @@ function LocationsSettingsPage() {
             visibleLocations.map((loc) => (
               <LocationCard
                 key={loc._id}
-                locationId={loc._id}
+                locationId={loc._id as Id<"gabinetLocations">}
                 organizationId={organizationId}
                 onDeleted={() =>
                   setDeletedIds((prev) => new Set([...prev, loc._id]))

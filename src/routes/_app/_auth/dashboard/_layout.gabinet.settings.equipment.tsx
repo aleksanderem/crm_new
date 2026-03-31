@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation, useQuery as useConvexQuery } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -56,7 +58,7 @@ type EquipmentItem = {
 };
 
 type LocationItem = {
-  _id: Id<"gabinetLocations">;
+  _id: string;
   name: string;
 };
 
@@ -154,6 +156,7 @@ function EquipmentCard({
   locations: LocationItem[];
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [editName, setEditName] = useState(item.name);
   const [editDescription, setEditDescription] = useState(
@@ -204,6 +207,7 @@ function EquipmentCard({
         status: editStatus,
       });
       toast.success(t("common.saved"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -225,7 +229,7 @@ function EquipmentCard({
         notes: transferNotes.trim() || undefined,
       });
       toast.success(t("common.saved"));
-      setTransferOpen(false);
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
       setTransferLocationId("");
       setTransferRoomId("");
       setTransferNotes("");
@@ -491,13 +495,11 @@ function EquipmentSettingsPage() {
   const [newLocationId, setNewLocationId] = useState<string>("");
   const [creating, setCreating] = useState(false);
 
-  const { data: equipment } = useQuery(
-    convexQuery(api.gabinet.equipment.listEquipment, { organizationId })
-  );
+  const queryClient = useQueryClient();
 
-  const { data: locations } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, { organizationId })
-  );
+  const { data: equipment } = useSupabaseGabinetEquipmentList(organizationId);
+
+  const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
 
   const createEquipment = useMutation(api.gabinet.equipment.createEquipment);
 
@@ -531,6 +533,7 @@ function EquipmentSettingsPage() {
           : undefined,
       });
       toast.success(t("gabinet.equipment.addEquipment"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
       setCreateOpen(false);
       setNewName("");
       setNewDescription("");
@@ -571,7 +574,7 @@ function EquipmentSettingsPage() {
             (equipment ?? []).map((item) => (
               <EquipmentCard
                 key={item._id}
-                item={item as EquipmentItem}
+                item={item as unknown as EquipmentItem}
                 organizationId={organizationId}
                 locations={locationList}
               />

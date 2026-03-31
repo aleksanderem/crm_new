@@ -1,10 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetEmployee } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
+import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -88,6 +92,16 @@ function EmployeeDetail() {
   const removeSchedulePeriod = useMutation(api.gabinet.scheduling.removeSchedulePeriod);
   const trackView = useMutation(api.recentlyViewed.track);
 
+  // Supabase cache invalidation helpers
+  const invalidateEmployeeCache = () => {
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.detail(organizationId, employeeId) });
+  };
+  const invalidateScheduleCache = () => {
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployeeSchedules.list(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetWorkingHours.list(organizationId) });
+  };
+
   // UI state
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
@@ -113,12 +127,12 @@ function EmployeeDetail() {
   const [clientStatusFilter, setClientStatusFilter] = useState<string>("all");
   const [clientTreatmentFilter, setClientTreatmentFilter] = useState<string>("all");
 
+  const queryClient = useQueryClient();
+
   // Queries
-  const { data: employee, isLoading } = useQuery(
-    convexQuery(api.gabinet.employees.getById, {
-      organizationId,
-      employeeId: employeeId as Id<"gabinetEmployees">,
-    })
+  const { data: employee, isLoading } = useSupabaseGabinetEmployee(
+    organizationId,
+    employeeId,
   );
 
   const { data: members } = useQuery(
@@ -178,18 +192,16 @@ function EmployeeDetail() {
   });
 
   // Employee schedule (per-employee working hours)
-  const { data: employeeScheduleData } = useQuery({
-    ...convexQuery(api.gabinet.scheduling.getEmployeeSchedule, {
-      organizationId,
-      userId: (employee?.userId ?? "") as Id<"users">,
-    }),
-    enabled: !!employee,
-  });
+  const { data: employeeScheduleData } = useSupabaseGabinetEmployeeSchedulesList(
+    organizationId,
+    {
+      userId: employee?.userId ?? "",
+      enabled: !!employee,
+    },
+  );
 
   // Clinic-wide working hours (fallback)
-  const { data: clinicHours } = useQuery(
-    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
-  );
+  const { data: clinicHours } = useSupabaseGabinetWorkingHoursList(organizationId);
 
   // Selected activity for drawer
   const selectedActivity = scheduledActivitiesData?.find(
@@ -314,18 +326,20 @@ function EmployeeDetail() {
         organizationId,
         employeeId: employeeId as Id<"gabinetEmployees">,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/employees" });
     }
   };
 
   const handleAddTreatment = async (treatmentId: string) => {
     if (!employee) return;
-    const updated = [...employee.qualifiedTreatmentIds, treatmentId as Id<"gabinetTreatments">];
+    const updated = [...employee.qualifiedTreatmentIds, treatmentId] as Id<"gabinetTreatments">[];
     await setQualifiedTreatments({
       organizationId,
       employeeId: employeeId as Id<"gabinetEmployees">,
       treatmentIds: updated,
     });
+    invalidateEmployeeCache();
     setTreatmentSearch("");
   };
 
@@ -337,6 +351,7 @@ function EmployeeDetail() {
       employeeId: employeeId as Id<"gabinetEmployees">,
       treatmentIds: updated as Id<"gabinetTreatments">[],
     });
+    invalidateEmployeeCache();
   };
 
   const handleUpdateActivity = async (data: {
@@ -615,13 +630,13 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.detailedData"),
       content: (
         <DetailedDataTab
-          employee={employee}
+          employee={employee as any}
           userEmail={user?.email}
           treatments={treatments}
           treatmentMap={treatmentMap}
           organizationId={organizationId}
-          onUpdate={updateEmployee}
-          onSetTreatments={setQualifiedTreatments}
+          onUpdate={async (a: any) => { await updateEmployee(a); invalidateEmployeeCache(); }}
+          onSetTreatments={async (a: any) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
           t={t}
           i18nLanguage={i18n.language}
         />
@@ -635,9 +650,9 @@ function EmployeeDetail() {
           userId={employee.userId as Id<"users">}
           periods={schedulePeriods}
           clinicHours={clinicHours ?? []}
-          onSavePeriod={saveSchedulePeriod}
-          onRemovePeriod={removeSchedulePeriod}
-          onSaveLegacy={bulkSetEmployeeSchedule}
+          onSavePeriod={async (a: any) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
+          onRemovePeriod={async (a: any) => { await removeSchedulePeriod(a); invalidateScheduleCache(); }}
+          onSaveLegacy={async (a: any) => { await bulkSetEmployeeSchedule(a); invalidateScheduleCache(); }}
         />
       ),
     },
@@ -700,9 +715,9 @@ function EmployeeDetail() {
         <EditEmployeeDrawer
           open={editDrawerOpen}
           onOpenChange={setEditDrawerOpen}
-          employee={employee}
+          employee={employee as any}
           organizationId={organizationId}
-          onUpdate={updateEmployee}
+          onUpdate={async (a: any) => { await updateEmployee(a); invalidateEmployeeCache(); }}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
           t={t}

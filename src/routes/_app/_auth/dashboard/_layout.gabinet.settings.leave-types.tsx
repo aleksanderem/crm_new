@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetLeaveTypesList } from "@/hooks/use-supabase-gabinet-leave-types";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ function LeaveTypesSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const [showCreate, setShowCreate] = useState(false);
-  const [editingId, setEditingId] = useState<Id<"gabinetLeaveTypes"> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const createLeaveType = useMutation(api.gabinet.leaveTypes.create);
@@ -38,9 +39,9 @@ function LeaveTypesSettings() {
   const removeLeaveType = useMutation(api.gabinet.leaveTypes.remove);
   const initAllBalances = useMutation(api.gabinet.leaveTypes.initializeAllBalances);
 
-  const { data: leaveTypes } = useQuery(
-    convexQuery(api.gabinet.leaveTypes.list, { organizationId })
-  );
+  const queryClient = useQueryClient();
+
+  const { data: leaveTypes } = useSupabaseGabinetLeaveTypesList(organizationId);
 
   const editing = editingId ? leaveTypes?.find((lt) => lt._id === editingId) : null;
   const currentYear = new Date().getFullYear();
@@ -130,6 +131,7 @@ function LeaveTypesSettings() {
         onSubmit={async (data) => {
           await createLeaveType({ organizationId, ...data });
           toast.success(t("common.created"));
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaveTypes.list(organizationId) });
           setShowCreate(false);
         }}
         t={t}
@@ -142,8 +144,9 @@ function LeaveTypesSettings() {
           onClose={() => setEditingId(null)}
           initial={editing}
           onSubmit={async (data) => {
-            await updateLeaveType({ organizationId, leaveTypeId: editingId!, ...data });
+            await updateLeaveType({ organizationId, leaveTypeId: editingId! as Id<"gabinetLeaveTypes">, ...data });
             toast.success(t("common.saved"));
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaveTypes.list(organizationId) });
             setEditingId(null);
           }}
           onDelete={async () => {
@@ -166,8 +169,9 @@ function LeaveTypesSettings() {
             <AlertDialogAction
               onClick={async () => {
                 if (!editingId) return;
-                await removeLeaveType({ organizationId, leaveTypeId: editingId });
+                await removeLeaveType({ organizationId, leaveTypeId: editingId as Id<"gabinetLeaveTypes"> });
                 toast.success(t("common.deleted"));
+                void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaveTypes.list(organizationId) });
                 setDeleteDialogOpen(false);
                 setEditingId(null);
               }}

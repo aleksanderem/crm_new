@@ -694,7 +694,7 @@ function EmployeeDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
+        variant="sidebar-slot"
         isLoading={isLoading}
         notFound={!employee && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/employees" })}

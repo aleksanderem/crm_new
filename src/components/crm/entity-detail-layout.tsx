@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Plus } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -332,17 +333,21 @@ export function EntityDetailLayout({
     </Tabs>
   );
 
-  // sidebar-slot variant: header + full-width tabs, no inline sidebar column
+  // sidebar-slot variant: entity details go into the sidebar slot, tabs fill the main content area
   if (variant === "sidebar-slot") {
     return (
-      <div className="flex h-full flex-col">
-        <div className="shrink-0 border-b p-4">
-          <EntityDetailHeader {...headerProps} />
-        </div>
-        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          {tabsContent}
-        </div>
-      </div>
+      <SidebarSlotEntityDetail
+        headerProps={headerProps}
+        fields={visibleFields}
+        hiddenCount={hiddenCount}
+        showAllFields={showAllFields}
+        onToggleFields={() => setShowAllFields(!showAllFields)}
+        associations={associations}
+        attachments={attachments}
+        sidebarExtra={sidebarExtra}
+      >
+        {tabsContent}
+      </SidebarSlotEntityDetail>
     );
   }
 
@@ -440,6 +445,123 @@ export function EntityDetailLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         {tabsContent}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SidebarSlotEntityDetail — pushes entity details into the sidebar slot
+// ---------------------------------------------------------------------------
+
+function SidebarSlotEntityDetail({
+  headerProps,
+  fields,
+  hiddenCount,
+  showAllFields,
+  onToggleFields,
+  associations,
+  attachments,
+  sidebarExtra,
+  children,
+}: {
+  headerProps: EntityDetailHeaderProps;
+  fields: DetailField[];
+  hiddenCount: number;
+  showAllFields: boolean;
+  onToggleFields: () => void;
+  associations?: AssociationSection[];
+  attachments?: React.ReactNode;
+  sidebarExtra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { setContent } = useSidebarSlot();
+
+  useEffect(() => {
+    setContent(
+      <div className="space-y-4">
+        {/* Entity header */}
+        <EntityDetailHeader {...headerProps} />
+
+        <Separator />
+
+        {/* Details section */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold">Details</h2>
+          <dl className="space-y-2">
+            {fields.map((field) => (
+              <div key={field.fieldKey}>
+                <dt className="text-xs text-muted-foreground">{field.label}</dt>
+                <dd className="text-sm">{field.value ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {hiddenCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground"
+              onClick={onToggleFields}
+            >
+              {showAllFields ? (
+                <>
+                  Show less <ChevronUp className="ml-1 h-3 w-3" />
+                </>
+              ) : (
+                <>
+                  {hiddenCount} more fields <ChevronDown className="ml-1 h-3 w-3" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Associations */}
+        {associations?.map((section) => (
+          <div key={section.title} className="space-y-2">
+            <Separator />
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">
+                {section.title}{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({section.count})
+                </span>
+              </h3>
+              {section.onCreateNew && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={section.onCreateNew}>
+                  <Plus className="h-[17px] w-[17px]" variant="stroke" />
+                </Button>
+              )}
+            </div>
+            {section.children}
+          </div>
+        ))}
+
+        {/* Attachments */}
+        {attachments && (
+          <div className="space-y-2">
+            <Separator />
+            <h3 className="text-sm font-semibold">Attachments</h3>
+            {attachments}
+          </div>
+        )}
+
+        {/* Extra */}
+        {sidebarExtra && (
+          <div className="space-y-2">
+            <Separator />
+            {sidebarExtra}
+          </div>
+        )}
+      </div>
+    );
+
+    return () => setContent(null);
+  });
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {children}
     </div>
   );
 }

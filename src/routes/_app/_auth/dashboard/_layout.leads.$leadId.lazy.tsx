@@ -1377,7 +1377,7 @@ function LeadDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
+        variant="sidebar-slot"
         isLoading={isLoading}
         notFound={!lead && !isLoading}
         onBack={() => navigate({ to: "/dashboard/leads" })}

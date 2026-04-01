@@ -65,6 +65,7 @@ function CompanyDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateCompany = useMutation(api.companies.update);
   const removeCompany = useMutation(api.companies.remove);
   const createRelationship = useMutation(api.relationships.create);
@@ -768,7 +769,7 @@ function CompanyDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
+        variant="sidebar-slot"
         isLoading={isLoading}
         notFound={!isLoading && !company}
         onBack={() => navigate({ to: "/dashboard/companies" })}

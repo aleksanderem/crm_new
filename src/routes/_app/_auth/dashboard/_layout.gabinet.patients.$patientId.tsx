@@ -620,7 +620,7 @@ function PatientDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
+        variant="sidebar-slot"
         isLoading={isLoading}
         notFound={!patient && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/patients" })}

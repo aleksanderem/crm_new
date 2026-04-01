@@ -63,7 +63,7 @@ export function EntityDetailHeader({
           &larr; Back
         </Button>
       )}
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <Avatar className="h-16 w-16 shrink-0">
           {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
           <AvatarFallback className="text-lg">
@@ -83,35 +83,42 @@ export function EntityDetailHeader({
             </div>
           )}
         </div>
+        {/* Inline actions when only actionsMenu is present */}
+        {!primaryAction && !onEdit && !secondaryActions?.length && actionsMenu && (
+          <div className="shrink-0">{actionsMenu}</div>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
-        {primaryAction && (
-          <Button
-            size="sm"
-            className="bg-green-600 hover:bg-green-700 text-white"
-            onClick={primaryAction.onClick}
-          >
-            {primaryAction.label}
-          </Button>
-        )}
-        {onEdit && (
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            Edit
-          </Button>
-        )}
-        {secondaryActions?.map((action) => (
-          <Button
-            key={action.label}
-            variant={action.variant === "destructive" ? "destructive" : "outline"}
-            size="sm"
-            onClick={action.onClick}
-          >
-            {action.label}
-          </Button>
-        ))}
-        {actionsMenu}
-      </div>
+      {/* Separate actions row when primary/edit/secondary buttons exist */}
+      {(primaryAction || onEdit || (secondaryActions && secondaryActions.length > 0)) && (
+        <div className="flex items-center gap-2">
+          {primaryAction && (
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={primaryAction.onClick}
+            >
+              {primaryAction.label}
+            </Button>
+          )}
+          {onEdit && (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          )}
+          {secondaryActions?.map((action) => (
+            <Button
+              key={action.label}
+              variant={action.variant === "destructive" ? "destructive" : "outline"}
+              size="sm"
+              onClick={action.onClick}
+            >
+              {action.label}
+            </Button>
+          ))}
+          {actionsMenu}
+        </div>
+      )}
 
       {owner && (
         <button
@@ -212,6 +219,9 @@ interface EntityDetailLayoutProps {
     content: React.ReactNode;
   }[];
   defaultTab?: string;
+  /** Controlled active tab value. When set, tabs become controlled. */
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 
   timelineFilter?: React.ReactNode;
 
@@ -243,6 +253,8 @@ export function EntityDetailLayout({
   attachments,
   tabs,
   defaultTab,
+  activeTab,
+  onTabChange,
   timelineFilter,
   beforeTabs,
   breadcrumbs,
@@ -282,7 +294,7 @@ export function EntityDetailLayout({
   };
 
   const tabsContent = (
-    <Tabs defaultValue={defaultTabValue} className="flex flex-1 flex-col min-h-0">
+    <Tabs defaultValue={activeTab ? undefined : defaultTabValue} value={activeTab} onValueChange={onTabChange} className="flex flex-1 flex-col min-h-0">
       <div className="shrink-0 border-b px-4 pt-2">
         {beforeTabs}
         <TabsList className="h-9 bg-transparent p-0">

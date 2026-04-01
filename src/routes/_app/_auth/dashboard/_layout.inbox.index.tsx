@@ -36,6 +36,7 @@ function InboxPage() {
   const { organizationId } = useOrganization();
 
   const { data: googleConnection } = useQuery(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
     convexQuery(api.oauthConnections.getByProvider, {
       organizationId,
       provider: "google",
@@ -109,7 +110,7 @@ function InboxPage() {
   // --- Push inbox list into the sidebar slot ---
   const { setContent: setSidebarContent } = useSidebarSlot();
   useEffect(() => {
-    const receiveProviders = mailProviders?.filter((p) => p.capabilities.canReceive) ?? [];
+    const receiveProviders = mailProviders?.filter((p: any) => p.capabilities.canReceive) ?? [];
     setSidebarContent(
       <div className="flex flex-col gap-3 -mx-3">
         {/* Mailbox switcher */}
@@ -121,7 +122,7 @@ function InboxPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("inbox.allMailboxes")}</SelectItem>
-                {receiveProviders.map((provider) => (
+                {receiveProviders.map((provider: any) => (
                   <SelectItem key={provider._id} value={provider._id}>
                     {provider.name} ({provider.fromEmail})
                   </SelectItem>

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
-import { useSupabaseEmailsByEntity } from "@/hooks/use-supabase-emails";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Mail } from "@/lib/ez-icons";
@@ -14,6 +16,8 @@ interface EmailEntityTabProps {
   contactId?: Id<"contacts">;
   companyId?: Id<"companies">;
   leadId?: Id<"leads">;
+  defaultTo?: string;
+  autoCompose?: number;
 }
 
 export function EmailEntityTab({
@@ -23,17 +27,27 @@ export function EmailEntityTab({
   contactId,
   companyId,
   leadId,
+  defaultTo,
+  autoCompose,
 }: EmailEntityTabProps) {
   const { t } = useTranslation();
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const { data: emails } = useSupabaseEmailsByEntity(
-    organizationId,
-    entityType,
-    entityId,
+  useEffect(() => {
+    if (autoCompose && autoCompose > 0) {
+      setComposeOpen(true);
+    }
+  }, [autoCompose]);
+
+  const { data: emailsData } = useQuery(
+    convexQuery(api.emails.listByEntity, {
+      organizationId,
+      entityType,
+      entityId,
+    })
   );
 
-  const emailsList = emails ?? [];
+  const emails = emailsData ?? [];
 
   const formatDate = (timestamp: number) =>
     new Date(timestamp).toLocaleDateString(undefined, {
@@ -60,7 +74,7 @@ export function EmailEntityTab({
           </Button>
         </div>
 
-        {emailsList.length === 0 ? (
+        {emails.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
             <Mail className="mb-3 h-8 w-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
@@ -70,7 +84,7 @@ export function EmailEntityTab({
         ) : (
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
-              {emailsList.map((email) => (
+              {emails.map((email) => (
                 <div
                   key={email._id}
                   className="flex items-start gap-3 rounded-lg border p-3"
@@ -109,6 +123,7 @@ export function EmailEntityTab({
         contactId={contactId}
         companyId={companyId}
         leadId={leadId}
+        defaultTo={defaultTo}
       />
     </>
   );

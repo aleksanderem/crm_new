@@ -4,12 +4,6 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
-import { useSupabasePipelinesList, useSupabasePipelineStages } from "@/hooks/use-supabase-pipelines";
-import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
-import type { MappedLead } from "@/lib/supabase/mappers";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   CrmDataTable,
@@ -43,24 +37,27 @@ import {
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Id } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
+import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
 });
 
-type Lead = MappedLead;
+type Lead = Doc<"leads">;
 type LeadRow = Lead & { __cfValues: Record<string, unknown> };
 
 const stageColors: Record<string, string> = {
@@ -85,13 +82,10 @@ function LeadsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateLead = useMutation(api.leads.update);
   const removeLead = useMutation(api.leads.remove);
   const createLead = useMutation(api.leads.create);
-  const queryClient = useQueryClient();
 
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,10 +95,15 @@ function LeadsIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "lead");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   const [chartTimeRange, setChartTimeRange] = useState<TimeRange>("last30days");
 
   const systemViews = useMemo(
@@ -186,7 +185,9 @@ function LeadsIndex() {
     systemViews: systemViews,
   });
 
-  const { data: pipelines } = useSupabasePipelinesList(organizationId);
+  const { data: pipelines } = useQuery(
+    convexQuery(api.pipelines.list, { organizationId }),
+  );
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(
     null,
@@ -197,19 +198,31 @@ function LeadsIndex() {
     pipelines?.[0];
 
   const firstPipelineId = pipelines?.[0]?._id;
-  const { data: stages } = useSupabasePipelineStages(
-    organizationId,
-    firstPipelineId,
-    { enabled: !!firstPipelineId },
-  );
+  const { data: stages } = useQuery({
+    ...convexQuery(api.pipelines.getStages, {
+      organizationId,
+      pipelineId: firstPipelineId ?? ("" as Id<"pipelines">),
+    }),
+    enabled: !!firstPipelineId,
+  });
 
-  const { data, isLoading } = useSupabaseLeadsList(organizationId);
+  const { data, isLoading } = useQuery(
+    convexQuery(api.leads.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    }),
+  );
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
-  const { data: companiesData } = useSupabaseCompaniesList(organizationId, { limit: 500 });
+  const { data: companiesData } = useQuery(
+    convexQuery(api.companies.list, {
+      organizationId,
+      paginationOpts: { numItems: 500, cursor: null },
+    }),
+  );
 
   const userLookup = useMemo(() => {
     const map = new Map<string, string>();
@@ -224,8 +237,8 @@ function LeadsIndex() {
 
   const companyLookup = useMemo(() => {
     const map = new Map<string, string>();
-    if (companiesData) {
-      for (const c of companiesData) {
+    if (companiesData?.page) {
+      for (const c of companiesData.page) {
         map.set(c._id, c.name);
       }
     }
@@ -235,7 +248,7 @@ function LeadsIndex() {
   const leads = data?.page ?? [];
 
   const filteredLeads = useMemo(() => {
-    let data = leads;
+    let data = applyFilterConditions(leads, activeFilters);
     switch (activeViewId) {
       case "this-month": {
         const start = new Date();
@@ -249,7 +262,7 @@ function LeadsIndex() {
         break;
     }
     return applyFilters(data);
-  }, [leads, activeViewId, applyFilters]);
+  }, [leads, activeViewId, applyFilters, activeFilters]);
 
   const leadIds = useMemo(
     () => filteredLeads.map((l) => l._id as string),
@@ -396,7 +409,7 @@ function LeadsIndex() {
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
-            {tags.map((tag: any) => (
+            {tags.map((tag) => (
               <Badge key={tag} variant="outline" className="text-xs">
                 {tag}
               </Badge>
@@ -453,21 +466,18 @@ function LeadsIndex() {
     [columns, cfColumns],
   );
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "leads");
 
   const handleMarkWon = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id as Id<"leads">, status: "won" });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    await updateLead({ organizationId, leadId: lead._id, status: "won" });
   };
 
   const handleMarkLost = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id as Id<"leads">, status: "lost" });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    await updateLead({ organizationId, leadId: lead._id, status: "lost" });
   };
 
   const handleDelete = async (lead: LeadRow) => {
-    await removeLead({ organizationId, leadId: lead._id as Id<"leads"> });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    await removeLead({ organizationId, leadId: lead._id });
   };
 
   const handleBulkAction = useCallback(
@@ -477,7 +487,7 @@ function LeadsIndex() {
           for (const row of selectedRows) {
             await updateLead({
               organizationId,
-              leadId: row._id as Id<"leads">,
+              leadId: row._id,
               status: "won",
             });
           }
@@ -486,20 +496,19 @@ function LeadsIndex() {
           for (const row of selectedRows) {
             await updateLead({
               organizationId,
-              leadId: row._id as Id<"leads">,
+              leadId: row._id,
               status: "lost",
             });
           }
           break;
         case "delete":
           for (const row of selectedRows) {
-            await removeLead({ organizationId, leadId: row._id as Id<"leads"> });
+            await removeLead({ organizationId, leadId: row._id });
           }
           break;
       }
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
     },
-    [updateLead, removeLead, organizationId, queryClient],
+    [updateLead, removeLead, organizationId],
   );
 
   return (
@@ -552,7 +561,7 @@ function LeadsIndex() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -563,6 +572,7 @@ function LeadsIndex() {
         searchPlaceholder={t("deals.searchPlaceholder")}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
+        onFiltersChange={setActiveFilters}
         dropdownActions={[
           {
             label: t("csv.export"),
@@ -578,7 +588,7 @@ function LeadsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
       />
 
       <MiniChartsRow
@@ -606,7 +616,6 @@ function LeadsIndex() {
         enableBulkSelect
         isLoading={isLoading}
         hiddenColumnIds={hiddenColumnIds}
-        toolbar={toolbarRef.current}
         bulkActions={[
           { label: t("deals.markWon"), value: "markWon" },
           { label: t("deals.markLost"), value: "markLost" },
@@ -617,7 +626,6 @@ function LeadsIndex() {
           },
         ]}
         onBulkAction={handleBulkAction}
-        onRowClick={(row) => navigate({ to: `/dashboard/leads/${row._id}` })}
         rowActions={(_row) => [
           {
             label: t("common.edit"),
@@ -639,6 +647,7 @@ function LeadsIndex() {
             onClick: handleDelete,
           },
         ]}
+        onRowAction={(id) => navigate({ to: '/dashboard/leads/$leadId', params: { leadId: id } })}
         emptyTitle={t("deals.emptyTitle")}
         emptyDescription={t("deals.emptyDescription")}
       />
@@ -652,18 +661,38 @@ function LeadsIndex() {
 
       <SidePanel
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setTagIds([]);
+            setCategoryId(undefined);
+          }
+        }}
         title={t("deals.newDeal")}
         description={t("deals.createDescription")}
       >
         <LeadForm
-          pipelines={pipelines as any}
-          stages={stages as any}
+          pipelines={pipelines}
+          stages={stages}
           customFieldDefinitions={cfDefs}
-          tagDefinitions={tags}
-          categoryDefinitions={categories}
           isSubmitting={isSubmitting}
           onCancel={() => setCreateOpen(false)}
+          extraFields={
+            <>
+              {tags.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+                  <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+                </div>
+              )}
+              {categories.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+                  <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
+                </div>
+              )}
+            </>
+          }
           onSubmit={async (data, customFieldRecord) => {
             setIsSubmitting(true);
             try {
@@ -686,8 +715,9 @@ function LeadsIndex() {
                 organizationId,
                 ...data,
                 customFields,
+                tagIds: tagIds.length > 0 ? tagIds : undefined,
+                categoryId,
               });
-              queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
               setCreateOpen(false);
             } finally {
               setIsSubmitting(false);

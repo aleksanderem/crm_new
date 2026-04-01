@@ -1,12 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
-import type { MappedGabinetPatient } from "@/lib/supabase/mappers/gabinet/patients";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -14,20 +11,24 @@ import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { Button } from "@/components/ui/button";
-import { Avatar } from "@untitled/base/avatar/avatar";
+import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
+import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
@@ -35,7 +36,7 @@ export const Route = createFileRoute(
   component: PatientsIndex,
 });
 
-type Patient = MappedGabinetPatient;
+type Patient = Doc<"gabinetPatients">;
 
 function PatientsIndex() {
   const { t } = useTranslation();
@@ -43,20 +44,21 @@ function PatientsIndex() {
   const navigate = useNavigate();
   const createPatient = useMutation(api.gabinet.patients.create);
   const removePatient = useMutation(api.gabinet.patients.remove);
-  const queryClient = useQueryClient();
 
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetPatient");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
 
@@ -79,6 +81,8 @@ function PatientsIndex() {
     if (activeView) onViewChange("active");
   });
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   const systemViews = useMemo(
     (): SavedView[] => [
@@ -135,15 +139,20 @@ function PatientsIndex() {
         ],
       },
       { id: "createdAt", label: t("common.created"), type: "date" },
-      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
       { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
     ],
     [t, tags, categories],
   );
 
-  const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(
-    organizationId,
+  const { data, isLoading } = useQuery(
+    convexQuery(api.gabinet.patients.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    }),
   );
+
+  const patients = data?.page ?? [];
 
   const {
     views,
@@ -172,6 +181,7 @@ function PatientsIndex() {
         data = patients;
     }
     data = applyFilters(data);
+    data = applyFilterConditions(data, activeFilters);
     const q = searchValue.trim().toLowerCase();
     if (q) {
       data = data.filter(
@@ -183,7 +193,7 @@ function PatientsIndex() {
       );
     }
     return data;
-  }, [patients, activeViewId, applyFilters, searchValue]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -220,16 +230,18 @@ function PatientsIndex() {
         isRowHeader: true,
         render: (item) => (
           <div className="flex items-center gap-3">
-            <Avatar
-              size="sm"
-              initials={item.firstName[0] + item.lastName[0]}
-            />
             <Link
               to="/dashboard/gabinet/patients/$patientId"
               params={{ patientId: item._id }}
-              className="font-medium text-fg-primary hover:text-brand-secondary"
+              className="hover:opacity-80"
             >
-              {item.firstName} {item.lastName}
+              <AvatarLabelGroup
+                size="sm"
+                src={["/images/avatars/blue.jpg", "/images/avatars/purple.jpg", "/images/avatars/red.jpg"][item._id.charCodeAt(item._id.length - 1) % 3]}
+                initials={item.firstName[0] + item.lastName[0]}
+                title={`${item.firstName} ${item.lastName}`}
+                subtitle={item.email ?? item.phone ?? "—"}
+              />
             </Link>
             {!item.isActive && (
               <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -299,7 +311,7 @@ function PatientsIndex() {
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-patients");
 
   const handleCreate = useCallback(
     async (formData: {
@@ -317,34 +329,34 @@ function PatientsIndex() {
       emergencyContactName?: string;
       emergencyContactPhone?: string;
       referralSource?: string;
-      tagIds?: string[];
-      categoryId?: string;
     }) => {
       setIsCreating(true);
       try {
         await createPatient({
           organizationId,
-          ...(formData as any),
+          ...formData,
+          tagIds,
+          categoryId,
         });
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
         setPanelOpen(false);
+        setTagIds([]);
+        setCategoryId(undefined);
       } finally {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId],
+    [createPatient, organizationId, tagIds, categoryId],
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Patient[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+          await removePatient({ organizationId, patientId: row._id });
         }
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       }
     },
-    [removePatient, organizationId, queryClient],
+    [removePatient, organizationId],
   );
 
   const rowActions = useCallback(
@@ -359,13 +371,12 @@ function PatientsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-            await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
-            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
+            await removePatient({ organizationId, patientId: row._id });
           }
         },
       },
     ],
-    [navigate, removePatient, organizationId, t, queryClient],
+    [navigate, removePatient, organizationId, t],
   );
 
   return (
@@ -382,7 +393,7 @@ function PatientsIndex() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -403,9 +414,10 @@ function PatientsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onSetHiddenColumns={setHiddenColumns}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onFiltersChange={setActiveFilters}
       />
 
       <MiniChartsRow
@@ -429,7 +441,6 @@ function PatientsIndex() {
         columns={allColumns}
         data={filteredPatients}
         isLoading={isLoading}
-        toolbar={toolbarRef.current}
         hiddenColumnIds={hiddenColumnIds}
         enableBulkSelect
         bulkActions={[
@@ -441,14 +452,20 @@ function PatientsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/patients/${row._id}` })}
+        onRowAction={(id) => navigate({ to: '/dashboard/gabinet/patients/$patientId', params: { patientId: id } })}
         emptyTitle={t("gabinet.patients.emptyTitle")}
         emptyDescription={t("gabinet.patients.emptyDescription")}
       />
 
       <SidePanel
         open={panelOpen}
-        onOpenChange={setPanelOpen}
+        onOpenChange={(open) => {
+          setPanelOpen(open);
+          if (!open) {
+            setTagIds([]);
+            setCategoryId(undefined);
+          }
+        }}
         title={t("gabinet.patients.createPatient")}
         description={t("gabinet.patients.createDescription")}
       >
@@ -456,9 +473,19 @@ function PatientsIndex() {
           onSubmit={handleCreate}
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
-          tagDefinitions={tags}
-          categoryDefinitions={categories}
         />
+        {tags.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+            <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+          </div>
+        )}
+        {categories.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
+          </div>
+        )}
       </SidePanel>
 
       <TagsManagerSlideout

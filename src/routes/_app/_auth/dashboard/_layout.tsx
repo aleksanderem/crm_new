@@ -57,6 +57,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { MiniCalendarProvider } from "@/components/layout/mini-calendar-context";
 import { SidebarSlotProvider } from "@/components/layout/sidebar-slot-context";
+import { HeaderSlotProvider, HeaderBackButton } from "@/components/layout/header-slot-context";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -534,6 +535,7 @@ function DashboardLayout() {
       <SupabaseProvider>
       <MiniCalendarProvider>
       <SidebarSlotProvider>
+      <HeaderSlotProvider>
       <div className="flex min-h-dvh w-full">
         <SidebarActionsContext.Provider value={sidebarActionsValue}>
           <SidebarProvider
@@ -547,6 +549,7 @@ function DashboardLayout() {
             <div className="flex min-w-0 flex-1 flex-col">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
+                  <HeaderBackButton />
                   <SidebarTrigger className="[&_svg]:!size-4 [&_easier-icon]:!size-4" />
                   <Separator orientation="vertical" className="hidden !h-4 sm:block" />
                   <Button
@@ -643,6 +646,7 @@ function DashboardLayout() {
         onOpenChange={setSearchOpen}
       />
 
+    </HeaderSlotProvider>
     </SidebarSlotProvider>
     </MiniCalendarProvider>
     </SupabaseProvider>

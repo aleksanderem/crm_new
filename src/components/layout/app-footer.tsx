@@ -10,6 +10,7 @@ import {
   Phone,
   PlusCircle,
   Send,
+  Tag,
   UserPlus,
 } from "@/lib/ez-icons";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
@@ -27,20 +28,30 @@ const routeActions: Record<string, FooterAction[]> = {
     { labelKey: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead" },
     { labelKey: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/leads" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   contacts: [
     { labelKey: "nav.actions.addContact", icon: UserPlus, quickCreate: "contact" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/contacts" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   companies: [
     { labelKey: "nav.actions.addCompany", icon: PlusCircle, quickCreate: "company" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/companies" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   activities: [
     { labelKey: "nav.actions.addActivity", icon: PlusCircle, quickCreate: "activity" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   calls: [
     { labelKey: "nav.actions.logCall", icon: Phone, quickCreate: "call" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   documents: [
     { labelKey: "nav.actions.createFromTemplate", icon: PlusCircle, href: "/dashboard/settings/form-templates" },
@@ -51,6 +62,8 @@ const routeActions: Record<string, FooterAction[]> = {
   products: [
     { labelKey: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "document" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
 };
 
@@ -64,15 +77,21 @@ const gabinetRouteActions: Record<string, FooterAction[]> = {
   patients: [
     { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/gabinet/patients" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   treatments: [
     { labelKey: "nav.actions.addTreatment", icon: PlusCircle, quickCreate: "treatment" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   packages: [
     { labelKey: "nav.actions.addPackage", icon: PlusCircle, quickCreate: "package" },
   ],
   employees: [
     { labelKey: "nav.actions.addEmployee", icon: UserPlus, quickCreate: "employee" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
+    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
   ],
   documents: [
     { labelKey: "nav.actions.addDocument", icon: PlusCircle, quickCreate: "gabinetDocument" },

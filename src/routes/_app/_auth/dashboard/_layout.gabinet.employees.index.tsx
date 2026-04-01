@@ -1,12 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
-import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
@@ -18,19 +15,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
 import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
-import { TagsPicker } from "@/components/categories-tags/tags-picker";
-import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Plus, Trash2 } from "@/lib/ez-icons";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
-import type { FieldDef } from "@/components/crm/types";
+import type { FieldDef, FilterCondition } from "@/components/crm/types";
 import { toast } from "sonner";
-import type { Id } from "@cvx/_generated/dataModel";
+import { Id, Doc } from "@cvx/_generated/dataModel";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { applyFilterConditions } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -44,7 +43,7 @@ export const Route = createFileRoute(
 });
 
 
-type Employee = MappedGabinetEmployee;
+type Employee = Doc<"gabinetEmployees">;
 
 function EmployeesIndex() {
   const { t } = useTranslation();
@@ -55,9 +54,12 @@ function EmployeesIndex() {
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
-  const toolbarRef = useRef<React.ReactNode>(null);
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+
   const [showCreate, setShowCreate] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
 
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "firstName", label: t("gabinet.employees.firstName"), type: "text" },
@@ -78,16 +80,16 @@ function EmployeesIndex() {
         { label: t("common.no"), value: "false" },
       ],
     },
-    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  // @ts-ignore — TS2589 pre-existing deep type instantiation on Convex mutation
   const createEmployee = useMutation(api.gabinet.employees.create);
   const removeEmployee = useMutation(api.gabinet.employees.remove);
-  const queryClient = useQueryClient();
 
-  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
+  const { data: employees } = useQuery(
+    convexQuery(api.gabinet.employees.listAll, { organizationId })
+  );
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId })
@@ -235,8 +237,18 @@ function EmployeesIndex() {
     },
   ], [t, userMap]);
 
+  const filteredEmployees = useMemo(() => {
+    const data = applyFilterConditions(employees ?? [], activeFilters);
+    if (!searchValue.trim()) return data;
+    const q = searchValue.toLowerCase();
+    return data.filter((e) => {
+      const name = getDisplayName(e).toLowerCase();
+      return name.includes(q) || e.specialization?.toLowerCase().includes(q) || e.role?.toLowerCase().includes(q);
+    });
+  }, [employees, activeFilters, searchValue]);
+
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-employees");
 
   const rowActions = useCallback(
     (row: Employee) => [
@@ -249,25 +261,23 @@ function EmployeesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.employees.confirmDelete"))) {
-            await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
-            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+            await removeEmployee({ organizationId, employeeId: row._id });
           }
         },
       },
     ],
-    [navigate, removeEmployee, organizationId, t, queryClient]
+    [navigate, removeEmployee, organizationId, t]
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Employee[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+          await removeEmployee({ organizationId, employeeId: row._id });
         }
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
       }
     },
-    [removeEmployee, organizationId, queryClient]
+    [removeEmployee, organizationId]
   );
 
   return (
@@ -329,23 +339,23 @@ function EmployeesIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onSetHiddenColumns={setHiddenColumns}
+        onFiltersChange={setActiveFilters}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
       />
 
       <CrmDataTable
         columns={allColumns}
-        data={employees ?? []}
+        data={filteredEmployees}
         enableBulkSelect
-        toolbar={toolbarRef.current}
         hiddenColumnIds={hiddenColumnIds}
         bulkActions={[
           { label: t("common.delete"), value: "delete", variant: "destructive" },
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/employees/${row._id}` })}
+        onRowAction={(id) => navigate({ to: '/dashboard/gabinet/employees/$employeeId', params: { employeeId: id } })}
       />
 
       <TagsManagerSlideout
@@ -369,12 +379,9 @@ function EmployeesIndex() {
         availableUsers={availableUsers}
         treatments={treatments ?? []}
         organizationId={organizationId}
-        onCreate={async (a: any) => {
-          await createEmployee(a);
-          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
-        }}
-        tagDefinitions={tags}
-        categoryDefinitions={categories}
+        onCreate={createEmployee}
+        tags={tags}
+        categories={categories}
         t={t}
       />
     </div>
@@ -388,8 +395,8 @@ function CreateEmployeeSheet({
   treatments,
   organizationId,
   onCreate,
-  tagDefinitions = [],
-  categoryDefinitions = [],
+  tags,
+  categories,
   t,
 }: {
   open: boolean;
@@ -398,8 +405,8 @@ function CreateEmployeeSheet({
   treatments: Array<{ _id: Id<"gabinetTreatments">; name: string }>;
   organizationId: Id<"organizations">;
   onCreate: any;
-  tagDefinitions?: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
-  categoryDefinitions?: Array<{ _id: Id<"categoryDefinitions">; name: string; parentId?: Id<"categoryDefinitions">; color?: string }>;
+  tags: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
+  categories: Array<{ _id: Id<"categoryDefinitions">; name: string; parentId?: Id<"categoryDefinitions">; color?: string }>;
   t: any;
 }) {
   const [userId, setUserId] = useState<string>("");
@@ -429,7 +436,7 @@ function CreateEmployeeSheet({
         color: color || undefined,
         qualifiedTreatmentIds: selectedTreatments as Id<"gabinetTreatments">[],
         tagIds: tagIds.length > 0 ? tagIds : undefined,
-        categoryId: categoryId || undefined,
+        categoryId,
       });
       toast.success(t("common.created"));
       onClose();
@@ -552,16 +559,16 @@ function CreateEmployeeSheet({
             </div>
           </div>
 
-          {tagDefinitions.length > 0 && (
+          {tags.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
             </div>
           )}
-          {categoryDefinitions.length > 0 && (
+          {categories.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-              <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
             </div>
           )}
         </div>

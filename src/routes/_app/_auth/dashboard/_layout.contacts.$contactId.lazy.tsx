@@ -27,6 +27,7 @@ import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,
@@ -35,10 +36,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Calendar,
   ChevronDown,
+  ChevronUp,
+  Mail,
   Pencil,
   Plus,
-  Tag,
   Upload,
   PhoneCall,
   FileText,
@@ -50,9 +53,10 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { useTranslation } from "react-i18next";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
-import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { useHeaderSlot } from "@/components/layout/header-slot-context";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/$contactId"
@@ -149,6 +153,8 @@ function ContactDetail() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [createLeadDrawerOpen, setCreateLeadDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
+  const [autoComposeCounter, setAutoComposeCounter] = useState(0);
   const [showSidebarDealLink, setShowSidebarDealLink] = useState(false);
   const [showSidebarCompanyLink, setShowSidebarCompanyLink] = useState(false);
 
@@ -586,6 +592,139 @@ function ContactDetail() {
       ]
     : [];
 
+  // --- Header back button ---
+  const { setBackAction } = useHeaderSlot();
+  useEffect(() => {
+    setBackAction(() => navigate({ to: "/dashboard/contacts" }));
+    return () => setBackAction(null);
+  }, [setBackAction, navigate]);
+
+  // --- Sidebar slot ---
+  const { setContent: setSidebarContent } = useSidebarSlot();
+  const [showAllFields, setShowAllFields] = useState(false);
+  const visibleFields = showAllFields ? allFields : allFields.slice(0, 3);
+  const hiddenCount = allFields.length - 3;
+
+  useEffect(() => {
+    if (!contact) return;
+    setSidebarContent(
+      <div className="space-y-4">
+        {/* Quick actions dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full">
+              {t("detail.quickActions", { defaultValue: "Czynności" })}
+              <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.activities')); setShowActivityForm(true); }}>
+              <Calendar className="mr-2 h-4 w-4" variant="stroke" />
+              {t("entityActions.scheduleActivity", { defaultValue: "Zaplanuj aktywność" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.emails')); setAutoComposeCounter(c => c + 1); }}>
+              <Mail className="mr-2 h-4 w-4" variant="stroke" />
+              {t("entityActions.sendEmail", { defaultValue: "Wyślij email" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.notes')); setIsAddingNote(true); }}>
+              <FileText className="mr-2 h-4 w-4" variant="stroke" />
+              {t("entityActions.addNote", { defaultValue: "Dodaj notatkę" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setActiveTab(t('detail.tabs.calls'))}>
+              <PhoneCall className="mr-2 h-4 w-4" variant="stroke" />
+              {t("entityActions.logCall", { defaultValue: "Zarejestruj połączenie" })}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Details */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold">{t("detail.details", { defaultValue: "Details" })}</h3>
+          <dl className="space-y-2">
+            {visibleFields.map((field) => (
+              <div key={field.fieldKey}>
+                <dt className="text-xs text-muted-foreground">{field.label}</dt>
+                <dd className="text-sm">{field.value ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          {hiddenCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground"
+              onClick={() => setShowAllFields((prev) => !prev)}
+            >
+              {showAllFields ? (
+                <>
+                  {t("detail.showLess", { defaultValue: "Show less" })} <ChevronUp className="ml-1 h-3 w-3" variant="stroke" />
+                </>
+              ) : (
+                <>
+                  {hiddenCount} {t("detail.moreFields", { defaultValue: "more fields" })} <ChevronDown className="ml-1 h-3 w-3" variant="stroke" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Leads association */}
+        <Separator />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">
+              {t("detail.relationships.leads")}{" "}
+              <span className="text-muted-foreground font-normal">({dealRelationships.length})</span>
+            </h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                setShowSidebarDealLink((prev) => !prev);
+                setSidebarDealSearch("");
+              }}
+            >
+              <Plus className="h-[17px] w-[17px]" variant="stroke" />
+            </Button>
+          </div>
+          {dealsAssociationChildren}
+        </div>
+
+        {/* Companies association */}
+        <Separator />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">
+              {t("detail.relationships.companies")}{" "}
+              <span className="text-muted-foreground font-normal">({companyRelationships.length})</span>
+            </h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                setShowSidebarCompanyLink((prev) => !prev);
+                setSidebarCompanySearch("");
+              }}
+            >
+              <Plus className="h-[17px] w-[17px]" variant="stroke" />
+            </Button>
+          </div>
+          {companiesAssociationChildren}
+        </div>
+
+        {/* Attachments */}
+        <Separator />
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">{t("detail.attachments.title", { defaultValue: "Attachments" })}</h3>
+          {attachmentsContent}
+        </div>
+      </div>,
+    );
+    return () => setSidebarContent(null);
+  });
+
   // --- Actions menu ---
   const actionsMenu = (
     <DropdownMenu>
@@ -596,6 +735,10 @@ function ContactDetail() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setCreateLeadDrawerOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
+          {t('detail.actions.addLead')}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" variant="stroke" />
           {t('detail.actions.edit')}
@@ -666,24 +809,26 @@ function ContactDetail() {
         </div>
       )}
       {dealRelationships.length > 0 ? (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {dealRelationships.map((r) => (
             <li key={r._id}>
               <button
-                className="flex items-center gap-2 text-sm text-primary hover:underline"
+                className="flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-sm hover:bg-accent transition-colors"
                 onClick={() =>
                   navigate({
                     to: `/dashboard/leads/${r.targetId}`,
                   })
                 }
               >
-                <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                <span>{(r as any).targetName ?? r.targetId}</span>
-                {(r as any).targetSublabel && (
-                  <span className="text-xs text-muted-foreground">
-                    {(r as any).targetSublabel}
-                  </span>
-                )}
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="truncate font-medium">{(r as any).targetName ?? r.targetId}</div>
+                  {(r as any).targetSublabel && (
+                    <div className="text-xs text-muted-foreground">
+                      {(r as any).targetSublabel}
+                    </div>
+                  )}
+                </div>
               </button>
             </li>
           ))}
@@ -756,24 +901,26 @@ function ContactDetail() {
         </div>
       )}
       {companyRelationships.length > 0 ? (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {companyRelationships.map((r) => (
             <li key={r._id}>
               <button
-                className="flex items-center gap-2 text-sm text-primary hover:underline"
+                className="flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-sm hover:bg-accent transition-colors"
                 onClick={() =>
                   navigate({
                     to: `/dashboard/companies/${r.targetId}`,
                   })
                 }
               >
-                <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                <span>{(r as any).targetName ?? r.targetId}</span>
-                {(r as any).targetSublabel && (
-                  <span className="text-xs text-muted-foreground">
-                    ({(r as any).targetSublabel})
-                  </span>
-                )}
+                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="truncate font-medium">{(r as any).targetName ?? r.targetId}</div>
+                  {(r as any).targetSublabel && (
+                    <div className="text-xs text-muted-foreground">
+                      {(r as any).targetSublabel}
+                    </div>
+                  )}
+                </div>
               </button>
             </li>
           ))}
@@ -894,6 +1041,8 @@ function ContactDetail() {
           entityType="contact"
           entityId={contactId}
           contactId={contactId as Id<"contacts">}
+          defaultTo={contact?.email ?? undefined}
+          autoCompose={autoComposeCounter}
         />
       ),
     },
@@ -1024,54 +1173,17 @@ function ContactDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
+        variant="sidebar-slot"
         isLoading={isLoading}
         notFound={!isLoading && !contact}
-        onBack={() => navigate({ to: "/dashboard/contacts" })}
         title={fullName}
-        subtitle={<Tag className="h-4 w-4 text-muted-foreground" variant="stroke" />}
         avatarFallback={avatarFallback}
-        primaryAction={{
-          label: t('detail.actions.addLead'),
-          onClick: () => setCreateLeadDrawerOpen(true),
-        }}
-        onEdit={() => setEditDrawerOpen(true)}
-        owner={{
-          name: fullName || "?",
-        }}
         actionsMenu={actionsMenu}
         fields={allFields}
-        expandedFieldCount={3}
-        associations={[
-          {
-            title: t('detail.relationships.leads'),
-            count: dealRelationships.length,
-            onCreateNew: () => {
-              setShowSidebarDealLink(!showSidebarDealLink);
-              setSidebarDealSearch("");
-            },
-            children: dealsAssociationChildren,
-          },
-          {
-            title: t('detail.relationships.companies'),
-            count: companyRelationships.length,
-            onCreateNew: () => {
-              setShowSidebarCompanyLink(!showSidebarCompanyLink);
-              setSidebarCompanySearch("");
-            },
-            children: companiesAssociationChildren,
-          },
-        ]}
-        attachments={attachmentsContent}
         tabs={tabs}
         defaultTab={t('detail.tabs.all')}
-        beforeTabs={
-          <EntityQuickActions entityType="contact" entityId={contactId} onAction={(action) => {
-            switch (action) {
-              case "scheduleActivity": setShowActivityForm(true); break;
-            }
-          }} />
-        }
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
       {/* === Edit contact drawer === */}

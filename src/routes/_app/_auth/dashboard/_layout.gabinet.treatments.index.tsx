@@ -1,14 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
-import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -18,15 +14,20 @@ import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
-import type { SavedView, FieldDef } from "@/components/crm/types";
-import { useState, useMemo, useCallback, useRef } from "react";
+import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -39,7 +40,7 @@ export const Route = createFileRoute(
   component: TreatmentsIndex,
 });
 
-type Treatment = MappedGabinetTreatment;
+type Treatment = Doc<"gabinetTreatments">;
 
 function formatCurrency(amount: number, currency?: string): string {
   return new Intl.NumberFormat("pl-PL", {
@@ -52,16 +53,17 @@ function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  // @ts-ignore — TS2589: pre-existing deep type instantiation from Convex useMutation
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
   const removeTreatment = useMutation(api.gabinet.treatments.remove);
-  const queryClient = useQueryClient();
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   const { data: kpis } = useQuery(
     convexQuery(api.gabinet.sidebarWidgets.getTreatmentsKpis, { organizationId })
@@ -80,13 +82,15 @@ function TreatmentsIndex() {
     }));
   }, [topTreatments]);
 
-  const toolbarRef = useRef<React.ReactNode>(null);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   const systemViews = useMemo(
     (): SavedView[] => [
@@ -128,15 +132,20 @@ function TreatmentsIndex() {
         ],
       },
       { id: "createdAt", label: t("common.created"), type: "date" },
-      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+      { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
       { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
     ],
     [t, tags, categories],
   );
 
-  const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(
-    organizationId,
+  const { data, isLoading } = useQuery(
+    convexQuery(api.gabinet.treatments.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    }),
   );
+
+  const allTreatments = data?.page ?? [];
 
   const {
     views,
@@ -164,6 +173,7 @@ function TreatmentsIndex() {
         data = allTreatments;
     }
     data = applyFilters(data);
+    data = applyFilterConditions(data, activeFilters);
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
       data = data.filter(
@@ -173,7 +183,7 @@ function TreatmentsIndex() {
       );
     }
     return data;
-  }, [allTreatments, activeViewId, applyFilters, searchValue]);
+  }, [allTreatments, activeViewId, applyFilters, activeFilters, searchValue]);
 
   const columns: CrmColumn<Treatment>[] = useMemo(
     () => [
@@ -248,15 +258,19 @@ function TreatmentsIndex() {
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-treatments");
 
   const openCreatePanel = () => {
     setEditingTreatment(null);
+    setTagIds([]);
+    setCategoryId(undefined);
     setPanelOpen(true);
   };
 
   const openEditPanel = (treatment: Treatment) => {
     setEditingTreatment(treatment);
+    setTagIds((treatment.tagIds as Id<"tagDefinitions">[]) ?? []);
+    setCategoryId(treatment.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
   };
 
@@ -267,35 +281,39 @@ function TreatmentsIndex() {
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
-            treatmentId: editingTreatment._id as Id<"gabinetTreatments">,
+            treatmentId: editingTreatment._id,
             ...formData,
+            tagIds,
+            categoryId,
           });
         } else {
           await createTreatment({
             organizationId,
             ...formData,
+            tagIds,
+            categoryId,
           });
         }
         setPanelOpen(false);
         setEditingTreatment(null);
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
+        setTagIds([]);
+        setCategoryId(undefined);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, organizationId, queryClient],
+    [editingTreatment, createTreatment, updateTreatment, organizationId, tagIds, categoryId],
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Treatment[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+          await removeTreatment({ organizationId, treatmentId: row._id });
         }
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       }
     },
-    [removeTreatment, organizationId, queryClient],
+    [removeTreatment, organizationId],
   );
 
   const rowActions = useCallback(
@@ -311,15 +329,14 @@ function TreatmentsIndex() {
         onClick: async () => {
           // Soft toggle by removing (deactivate) or updating
           if (row.isActive) {
-            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+            await removeTreatment({ organizationId, treatmentId: row._id });
           } else {
             await updateTreatment({
               organizationId,
-              treatmentId: row._id as Id<"gabinetTreatments">,
+              treatmentId: row._id,
               name: row.name,
             });
           }
-          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
         },
       },
       {
@@ -327,13 +344,12 @@ function TreatmentsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
-            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
-            void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
+            await removeTreatment({ organizationId, treatmentId: row._id });
           }
         },
       },
     ],
-    [t, removeTreatment, updateTreatment, organizationId, queryClient],
+    [t, removeTreatment, updateTreatment, organizationId],
   );
 
   return (
@@ -350,7 +366,7 @@ function TreatmentsIndex() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -362,9 +378,10 @@ function TreatmentsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
+        onSetHiddenColumns={setHiddenColumns}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onFiltersChange={setActiveFilters}
       />
 
       {/* KPI Statistics Cards */}
@@ -403,7 +420,6 @@ function TreatmentsIndex() {
         columns={allColumns}
         data={filteredTreatments}
         isLoading={isLoading}
-        toolbar={toolbarRef.current}
         hiddenColumnIds={hiddenColumnIds}
         enableBulkSelect
         bulkActions={[
@@ -415,7 +431,7 @@ function TreatmentsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/treatments/${row._id}` })}
+        onRowAction={(id) => navigate({ to: '/dashboard/gabinet/treatments/$treatmentId', params: { treatmentId: id } })}
         emptyTitle={t("gabinet.treatments.emptyTitle")}
         emptyDescription={t("gabinet.treatments.emptyDescription")}
       />
@@ -424,7 +440,11 @@ function TreatmentsIndex() {
         open={panelOpen}
         onOpenChange={(open) => {
           setPanelOpen(open);
-          if (!open) setEditingTreatment(null);
+          if (!open) {
+            setEditingTreatment(null);
+            setTagIds([]);
+            setCategoryId(undefined);
+          }
         }}
         title={
           editingTreatment
@@ -453,7 +473,7 @@ function TreatmentsIndex() {
                   requiredEquipment:
                     editingTreatment.requiredEquipment ?? undefined,
                   requiredEquipmentIds:
-                    (editingTreatment.requiredEquipmentIds as Id<"gabinetEquipment">[] | undefined) ?? undefined,
+                    editingTreatment.requiredEquipmentIds ?? undefined,
                   contraindications:
                     editingTreatment.contraindications ?? undefined,
                   preparationInstructions:
@@ -465,8 +485,6 @@ function TreatmentsIndex() {
                   color: editingTreatment.color ?? undefined,
                   sortOrder: editingTreatment.sortOrder ?? undefined,
                   treatmentCount: editingTreatment.treatmentCount ?? undefined,
-                  tagIds: (editingTreatment.tagIds as Id<"tagDefinitions">[] | undefined) ?? undefined,
-                  categoryId: (editingTreatment.categoryId as Id<"categoryDefinitions"> | undefined) ?? undefined,
                 }
               : undefined
           }
@@ -476,9 +494,20 @@ function TreatmentsIndex() {
             setEditingTreatment(null);
           }}
           isSubmitting={isSubmitting}
-          tagDefinitions={tags}
-          categoryDefinitions={categories}
-        />
+        >
+          {tags.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+            </div>
+          )}
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
+            </div>
+          )}
+        </TreatmentForm>
       </SidePanel>
 
       <TagsManagerSlideout

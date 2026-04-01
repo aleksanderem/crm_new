@@ -627,6 +627,18 @@ Only output `GATE2_APPROVED` after ALL checks pass.
 
 Organizations have subscription-based seat limits enforced when inviting team members. The flow is: `checkSeatLimit()` helper in `convex/_helpers/seatLimits.ts` counts active `teamMemberships` and compares against the plan's `seatLimit` field. The `invitations.create` mutation calls this helper and throws if the limit is reached. The `getSeatUsage` query in `convex/organizations.ts` exposes seat usage to the frontend. The team settings page (`_layout.settings.team.tsx`) shows a progress bar, warning at 80%, and upgrade CTA at limit. Fail-open behavior: if subscription lookup fails, defaults to free tier limit (5 seats). See `docs/seat-limits.md` for user-facing documentation.
 
+## UTUI Component Rules (MANDATORY)
+
+The project mixes shadcn/ui (Radix) and Untitled UI (react-aria) components. These two systems use DIFFERENT CSS variable namespaces. Violating these rules WILL break colors and layouts.
+
+1. After installing ANY UTUI component (`npx untitledui@latest add ...`), ALWAYS run `./scripts/untitled-ui-postinstall.sh --all`. This transforms bare Tailwind classes (e.g. `bg-primary`, `text-secondary`, `ring-primary`) to prefixed versions (`bg-bg-primary`, `text-fg-secondary`, `ring-border-primary`) that resolve to the correct UTUI tokens in `src/styles/untitled-ui-compat.css`. Without this step, UTUI components render with wrong colors (white backgrounds, invisible text, etc.).
+
+2. NEVER replace `src/components/crm/side-panel.tsx` (Radix Sheet) with UTUI SlideoutMenu. The SidePanel is used by 15+ create/edit forms across the entire app. It MUST stay as Radix Sheet.
+
+3. NEVER rewrite working Radix Popover-based pickers (tags-picker.tsx, category-picker.tsx) to use UTUI TagSelect/ComboBox. The current approach (Radix Popover shell + UTUI primitives like Button/Input/CheckboxBase/Badge inside) works correctly. UTUI popover components do NOT position correctly inside Radix Sheet portals.
+
+4. When reverting changes, use `git checkout -- <file>` per file. NEVER use `git stash drop` without showing the user what's being discarded.
+
 ## Key Files
 
 - `convex/schema.ts` — full database schema (~1290 lines)
@@ -636,3 +648,6 @@ Organizations have subscription-based seat limits enforced when inviting team me
 - `src/components/layout/app-sidebar.tsx` — main navigation sidebar
 - `src/routes/_app/_auth/dashboard/_layout.tsx` — authenticated dashboard layout
 - `src/index.css` — Tailwind v4 theme config with CSS variables
+- `src/styles/untitled-ui-compat.css` — UTUI color token mappings (@theme block)
+- `scripts/untitled-ui-postinstall.sh` — MANDATORY post-install script for UTUI components
+- `src/components/crm/side-panel.tsx` — shared dialog shell (Radix Sheet, DO NOT replace)

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,12 +11,12 @@ import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
-import { Avatar } from "@untitled/base/avatar/avatar";
+import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { Doc } from "@cvx/_generated/dataModel";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
@@ -26,8 +27,6 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
-import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/"
@@ -41,13 +40,10 @@ function ContactsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createContact = useMutation(api.contacts.create);
   const removeContact = useMutation(api.contacts.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
 
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -66,6 +62,8 @@ function ContactsIndex() {
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t('contacts.views.all'), isSystem: true, isDefault: true },
@@ -81,17 +79,18 @@ function ContactsIndex() {
     { id: "title", label: t('contacts.title'), type: "text" },
     { id: "source", label: t('common.source'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  // Contacts read exclusively from Supabase (PostgreSQL)
-  const {
-    data: supabaseContacts,
-    isLoading,
-  } = useSupabaseContactsList(organizationId);
+  const { data, isLoading } = useQuery(
+    convexQuery(api.contacts.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    })
+  );
 
-  const contacts = (supabaseContacts ?? []) as unknown as Contact[];
+  const contacts = data?.page ?? [];
 
   const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
 
@@ -219,19 +218,19 @@ function ContactsIndex() {
       sortable: true,
       isRowHeader: true,
       render: (item) => (
-        <div className="flex items-center gap-3">
-          <Avatar
+        <Link
+          to="/dashboard/contacts/$contactId"
+          params={{ contactId: item._id }}
+          className="hover:opacity-80"
+        >
+          <AvatarLabelGroup
             size="sm"
+            src={["/images/avatars/blue.jpg", "/images/avatars/purple.jpg", "/images/avatars/red.jpg"][item._id.charCodeAt(item._id.length - 1) % 3]}
             initials={`${item.firstName[0]}${item.lastName?.[0] ?? ""}`}
+            title={`${item.firstName} ${item.lastName ?? ""}`}
+            subtitle={item.email ?? "—"}
           />
-          <Link
-            to="/dashboard/contacts/$contactId"
-            params={{ contactId: item._id }}
-            className="font-medium text-fg-primary hover:text-brand-secondary"
-          >
-            {item.firstName} {item.lastName ?? ""}
-          </Link>
-        </div>
+        </Link>
       ),
       getSortValue: (item) => `${item.firstName} ${item.lastName ?? ""}`,
     },
@@ -263,7 +262,7 @@ function ContactsIndex() {
 
   const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "contacts");
 
   const handleCreate = useCallback(
     async (
@@ -291,8 +290,6 @@ function ContactsIndex() {
           notes: formData.notes,
           tags: formData.tags,
         });
-        // Invalidate Supabase contacts cache so the list refreshes
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
         if (cfDefs && Object.keys(customFieldRecord).length > 0) {
           const fields = cfDefs
             .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
@@ -320,11 +317,9 @@ function ContactsIndex() {
         for (const row of selectedRows) {
           await removeContact({ organizationId, contactId: row._id });
         }
-        // Invalidate Supabase contacts cache after bulk delete
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
       }
     },
-    [removeContact, organizationId, queryClient]
+    [removeContact, organizationId]
   );
 
   const rowActions = useCallback(
@@ -360,7 +355,7 @@ function ContactsIndex() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId ?? undefined}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -381,7 +376,7 @@ function ContactsIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
       />
 
       <MiniChartsRow
@@ -412,8 +407,7 @@ function ContactsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/contacts/${row._id}` })}
-        toolbar={toolbarRef.current}
+        onRowAction={(id) => navigate({ to: '/dashboard/contacts/$contactId', params: { contactId: id } })}
         emptyTitle={t('contacts.emptyTitle')}
         emptyDescription={t('contacts.emptyDescription')}
       />

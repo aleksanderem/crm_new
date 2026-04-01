@@ -1,12 +1,11 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseCallsList } from "@/hooks/use-supabase-calls";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -27,10 +26,9 @@ import {
 import { callOutcomeOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import type { SavedView, FieldDef } from "@/components/crm/types";
-import type { Id } from "@cvx/_generated/dataModel";
-import type { MappedCall } from "@/lib/supabase/mappers";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -44,7 +42,7 @@ export const Route = createFileRoute(
   component: CallsPage,
 });
 
-type Call = MappedCall;
+type Call = Doc<"calls">;
 type CallOutcome = "busy" | "leftVoiceMessage" | "movedConversationForward" | "wrongNumber" | "noAnswer";
 
 const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> = {
@@ -58,12 +56,15 @@ const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> =
 function CallsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const queryClient = useQueryClient();
-  const { tags } = useTagDefinitions(organizationId);
-  const { categories } = useCategoryDefinitions(organizationId, "call");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('calls.views.all'), isSystem: true, isDefault: true },
   ], [t]);
+
+  const {
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
+  } = useSavedViews({ organizationId, entityType: "call", systemViews });
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "call");
 
   const filterableFields = useMemo((): FieldDef[] => [
     {
@@ -74,23 +75,21 @@ function CallsPage() {
     { id: "duration", label: t('calls.duration'), type: "number" },
     { id: "note", label: t('calls.note'), type: "text" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
-
-  const {
-    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
-  } = useSavedViews({ organizationId, entityType: "call", systemViews });
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
 
   // Sidebar dispatch handlers
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   // Form state
   const [outcome, setOutcome] = useState<CallOutcome>("noAnswer");
@@ -99,13 +98,21 @@ function CallsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data: allCalls = [], isLoading } = useSupabaseCallsList(organizationId);
+  const { data, isLoading } = useQuery(
+    convexQuery(api.calls.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    })
+  );
+
+  const allCalls = data?.page ?? [];
   const calls = useMemo(() => {
-    const filtered = applyFilters(allCalls) as typeof allCalls;
+    const withConditions = applyFilterConditions(allCalls, activeFilters);
+    const filtered = applyFilters(withConditions) as typeof allCalls;
     if (!searchValue.trim()) return filtered;
     const q = searchValue.toLowerCase();
     return filtered.filter((c: any) => c.note?.toLowerCase().includes(q));
-  }, [allCalls, applyFilters, searchValue]);
+  }, [allCalls, activeFilters, applyFilters, searchValue]);
 
   const createCall = useMutation(api.calls.create);
   const updateCall = useMutation(api.calls.update);
@@ -130,9 +137,8 @@ function CallsPage() {
     setOutcome(call.outcome as CallOutcome);
     setCallDate(new Date(call.callDate).toISOString().slice(0, 16));
     setNote(call.note ?? "");
-    const callAny = call as unknown as Record<string, unknown>;
-    setTagIds((callAny.tagIds as Id<"tagDefinitions">[]) ?? []);
-    setCategoryId(callAny.categoryId as Id<"categoryDefinitions"> | undefined);
+    setTagIds((call.tagIds as Id<"tagDefinitions">[]) ?? []);
+    setCategoryId(call.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
   };
 
@@ -145,12 +151,12 @@ function CallsPage() {
       if (editingCall) {
         await updateCall({
           organizationId,
-          callId: editingCall._id as any,
+          callId: editingCall._id,
           outcome,
           callDate: new Date(callDate).getTime(),
           note: note.trim() || undefined,
-          tagIds: tagIds.length > 0 ? tagIds : undefined,
-          categoryId: categoryId || undefined,
+          tagIds,
+          categoryId,
         });
       } else {
         await createCall({
@@ -158,13 +164,12 @@ function CallsPage() {
           outcome,
           callDate: new Date(callDate).getTime(),
           note: note.trim() || undefined,
-          tagIds: tagIds.length > 0 ? tagIds : undefined,
-          categoryId: categoryId || undefined,
+          tagIds,
+          categoryId,
         });
       }
       setPanelOpen(false);
       resetForm();
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -213,7 +218,7 @@ function CallsPage() {
   ];
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "calls");
 
   const rowActions = (row: Call) => [
     {
@@ -224,11 +229,7 @@ function CallsPage() {
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => {
-        void removeCall({ organizationId, callId: row._id as any }).then(() => {
-          void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(organizationId) });
-        });
-      },
+      onClick: () => removeCall({ organizationId, callId: row._id }),
     },
   ];
 
@@ -246,7 +247,7 @@ function CallsPage() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -258,11 +259,12 @@ function CallsPage() {
         onSearchChange={setSearchValue}
         searchPlaceholder={t('calls.searchPlaceholder')}
         onTagsManage={() => setTagsSlideoutOpen(true)}
+        onFiltersChange={setActiveFilters}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
       />
 
       <CrmDataTable
@@ -271,7 +273,6 @@ function CallsPage() {
         data={calls}
         rowActions={rowActions}
         isLoading={isLoading}
-        toolbar={toolbarRef.current}
       />
 
       <SidePanel
@@ -322,6 +323,7 @@ function CallsPage() {
               placeholder={t('calls.addCallNotes')}
             />
           </div>
+
           {tags.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>

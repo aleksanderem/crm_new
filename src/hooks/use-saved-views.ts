@@ -58,6 +58,14 @@ function matchCondition(row: Record<string, any>, condition: FilterCondition): b
   }
 }
 
+export function applyFilterConditions<T>(data: T[], conditions: FilterCondition[]): T[] {
+  if (!conditions.length) return data;
+  return data.filter((item) => {
+    const row = item as Record<string, any>;
+    return conditions.filter((c) => c.field).every((c) => matchCondition(row, c));
+  });
+}
+
 function applyFilterConfig<T>(data: T[], filterConfig: FilterConfig): T[] {
   if (!filterConfig.conditions.length) return data;
 

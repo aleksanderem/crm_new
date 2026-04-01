@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -17,17 +16,21 @@ import { companySizeOptions } from "@/lib/options";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
+import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/"
@@ -35,21 +38,17 @@ export const Route = createFileRoute(
   component: CompaniesIndex,
 });
 
-import type { MappedCompany } from "@/lib/supabase/mappers";
-
-type Company = MappedCompany;
+type Company = Doc<"companies">;
 type CompanyRow = Company & { __cfValues: Record<string, unknown> };
 
 function CompaniesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const createCompany = useMutation(api.companies.create);
   const removeCompany = useMutation(api.companies.remove);
   const setCustomFieldValues = useMutation(api.customFields.setValues);
 
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -58,10 +57,15 @@ function CompaniesIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "company");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
@@ -89,7 +93,14 @@ function CompaniesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
+  const { data, isLoading } = useQuery(
+    convexQuery(api.companies.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    })
+  );
+
+  const companies = data?.page ?? [];
 
   const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
 
@@ -125,12 +136,13 @@ function CompaniesIndex() {
         data = companies;
     }
     data = applyFilters(data);
+    data = applyFilterConditions(data, activeFilters);
     const q = searchValue.trim().toLowerCase();
     if (q) {
       data = data.filter((c) => c.name.toLowerCase().includes(q));
     }
     return data;
-  }, [companies, activeViewId, applyFilters, searchValue]);
+  }, [companies, activeViewId, applyFilters, activeFilters, searchValue]);
 
   const tableData = mergeCustomFieldValues(filteredCompanies);
 
@@ -215,7 +227,7 @@ function CompaniesIndex() {
       id: "address",
       label: t('companies.address'),
       render: (item) => {
-        const a = item.address as { street?: string; city?: string; state?: string; zip?: string; country?: string } | undefined;
+        const a = item.address;
         if (!a) return "—";
         const parts = [a.street, a.city, a.state, a.zip, a.country].filter(Boolean).join(", ");
         return parts || "—";
@@ -229,7 +241,7 @@ function CompaniesIndex() {
         if (!tags || tags.length === 0) return "—";
         return (
           <div className="flex flex-wrap gap-1">
-            {tags.map((tag: any) => (
+            {tags.map((tag) => (
               <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
             ))}
           </div>
@@ -259,7 +271,7 @@ function CompaniesIndex() {
 
   const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "companies");
 
   const handleCreate = useCallback(
     async (
@@ -278,8 +290,6 @@ function CompaniesIndex() {
           country?: string;
         };
         notes?: string;
-        tagIds?: string[];
-        categoryId?: string;
       },
       customFieldRecord: Record<string, unknown>
     ) => {
@@ -294,8 +304,8 @@ function CompaniesIndex() {
           website: formData.website,
           phone: formData.phone,
           notes: formData.notes,
-          tagIds: formData.tagIds as any,
-          categoryId: formData.categoryId as any,
+          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          categoryId,
         });
         if (cfDefs && Object.keys(customFieldRecord).length > 0) {
           const fields = cfDefs
@@ -311,24 +321,24 @@ function CompaniesIndex() {
           }
         }
         setPanelOpen(false);
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
+        setTagIds([]);
+        setCategoryId(undefined);
       } finally {
         setIsCreating(false);
       }
     },
-    [createCompany, organizationId, cfDefs, setCustomFieldValues]
+    [createCompany, organizationId, cfDefs, setCustomFieldValues, tagIds, categoryId]
   );
 
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: CompanyRow[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeCompany({ organizationId, companyId: row._id as any });
+          await removeCompany({ organizationId, companyId: row._id });
         }
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
       }
     },
-    [removeCompany, organizationId, queryClient]
+    [removeCompany, organizationId]
   );
 
   const rowActions = useCallback(
@@ -342,8 +352,7 @@ function CompaniesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t('companies.confirmDelete'))) {
-            await removeCompany({ organizationId, companyId: row._id as any });
-            void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
+            await removeCompany({ organizationId, companyId: row._id });
           }
         },
       },
@@ -365,7 +374,7 @@ function CompaniesIndex() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -374,6 +383,7 @@ function CompaniesIndex() {
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('companies.searchPlaceholder')}
+        onFiltersChange={setActiveFilters}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         dropdownActions={[
@@ -383,7 +393,7 @@ function CompaniesIndex() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
       />
 
       <MiniChartsRow
@@ -408,14 +418,13 @@ function CompaniesIndex() {
         data={tableData}
         isLoading={isLoading}
         hiddenColumnIds={hiddenColumnIds}
-        toolbar={toolbarRef.current}
         enableBulkSelect
         bulkActions={[
           { label: t('common.delete'), value: "delete", variant: "destructive" },
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowClick={(row) => navigate({ to: `/dashboard/companies/${row._id}` })}
+        onRowAction={(id) => navigate({ to: '/dashboard/companies/$companyId', params: { companyId: id } })}
         emptyTitle={t('companies.emptyTitle')}
         emptyDescription={t('companies.emptyDescription')}
       />
@@ -438,8 +447,22 @@ function CompaniesIndex() {
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
           customFieldDefinitions={cfDefs}
-          tagDefinitions={tags}
-          categoryDefinitions={categories}
+          extraFields={
+            <>
+              {tags.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+                  <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+                </div>
+              )}
+              {categories.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+                  <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
+                </div>
+              )}
+            </>
+          }
         />
       </SidePanel>
 

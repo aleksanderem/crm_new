@@ -41,6 +41,7 @@ interface ComposeDialogProps {
   contactId?: Id<"contacts">;
   companyId?: Id<"companies">;
   leadId?: Id<"leads">;
+  defaultTo?: string;
 }
 
 export function ComposeDialog({
@@ -51,6 +52,7 @@ export function ComposeDialog({
   contactId,
   companyId,
   leadId,
+  defaultTo,
 }: ComposeDialogProps) {
   const { t } = useTranslation();
   const sendEmail = useMutation(api.emails.send);
@@ -84,8 +86,14 @@ export function ComposeDialog({
 
   const isGmailConnected = !!googleConnection;
 
-  const [to, setTo] = useState(replyTo?.from ?? "");
+  const [to, setTo] = useState(replyTo?.from ?? defaultTo ?? "");
   const [cc, setCc] = useState("");
+
+  useEffect(() => {
+    if (open && !replyTo && defaultTo && !to) {
+      setTo(defaultTo);
+    }
+  }, [open, defaultTo]);
   const [showCc, setShowCc] = useState(false);
   const [subject, setSubject] = useState(
     replyTo ? `Re: ${replyTo.subject.replace(/^Re:\s*/i, "")}` : "",

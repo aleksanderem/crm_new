@@ -240,7 +240,7 @@ export function GoogleCalendarSyncSettings({
 
   // IDs of calendars already connected
   const connectedCalendarIds = new Set(
-    myConfigs?.map((c) => c.googleCalendarId) ?? []
+    myConfigs?.map((c: any) => c.googleCalendarId) ?? []
   );
 
   return (
@@ -396,7 +396,7 @@ export function GoogleCalendarSyncSettings({
             </p>
           ) : (
             <div className="space-y-4">
-              {myConfigs.map((config) => (
+              {myConfigs.map((config: any) => (
                 <div
                   key={config._id}
                   className="flex flex-col gap-4 rounded-lg border p-4"
@@ -603,7 +603,7 @@ export function GoogleCalendarSyncSettings({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allConfigs.map((config) => (
+                  {allConfigs.map((config: any) => (
                     <TableRow key={config._id}>
                       <TableCell>
                         <div className="flex items-center gap-2">

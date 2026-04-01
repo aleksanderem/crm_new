@@ -1,14 +1,11 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseScheduledActivitiesList, useSupabaseScheduledActivitiesDueToday, useSupabaseScheduledActivitiesDueThisWeek, useSupabaseScheduledActivitiesOverdue } from "@/hooks/use-supabase-scheduled-activities";
-import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -20,7 +17,6 @@ import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -29,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SidebarFilterAction } from "@/components/layout/sidebar-filter-action";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import {
   Plus,
@@ -39,8 +34,8 @@ import {
   RotateCcw,
 } from "@/lib/ez-icons";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
-import { ToggleFilterButton } from "@/components/crm/filter-button";
-import type { SavedView, FieldDef } from "@/components/crm/types";
+import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
+import { applyFilterConditions } from "@/hooks/use-saved-views";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
@@ -62,8 +57,6 @@ type ActivityRow = ScheduledActivity & { __cfValues: Record<string, unknown> };
 function ActivitiesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const { tags } = useTagDefinitions(organizationId);
-  const { categories } = useCategoryDefinitions(organizationId, "activity");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('activities.views.all'), isSystem: true, isDefault: true },
     { id: "open", name: t('activities.views.open'), isSystem: true, isDefault: false },
@@ -72,9 +65,27 @@ function ActivitiesPage() {
     { id: "overdue", name: t('activities.views.overdue'), isSystem: true, isDefault: false },
   ], [t]);
 
+  const {
+    views, activeViewId, onViewChange, onCreateView, applyFilters,
+  } = useSavedViews({ organizationId, entityType: "activity", systemViews });
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "activity");
+
+  const { data: activityTypeDefs } = useQuery(
+    convexQuery(api.activityTypes.list, { organizationId })
+  );
+
+  const typeFilterOptions: { label: string; value: string }[] = useMemo(
+    () => (activityTypeDefs ?? []).map((td) => ({ label: td.name, value: td.key })),
+    [activityTypeDefs],
+  );
+
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "title", label: t('activities.title'), type: "text" },
-    { id: "activityType", label: t('activities.activityType'), type: "text" },
+    {
+      id: "activityType", label: t('activities.activityType'), type: "select",
+      options: typeFilterOptions,
+    },
     { id: "description", label: t('common.description'), type: "text" },
     {
       id: "isCompleted", label: t('activities.completed'), type: "select",
@@ -85,86 +96,63 @@ function ActivitiesPage() {
     },
     { id: "dueDate", label: t('activities.dueDate'), type: "date" },
     { id: "createdAt", label: t('common.created'), type: "date" },
-    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
-    {
-      id: "sourceType",
-      label: t("googleCalendar.calendar.source"),
-      type: "select" as const,
-      options: [
-        { value: "manual", label: t("googleCalendar.calendar.sourceManual") },
-        { value: "google", label: t("googleCalendar.calendar.sourceGoogle") },
-        { value: "system", label: t("googleCalendar.calendar.sourceSystem") },
-      ],
-    },
-  ], [t, tags, categories]);
-
-  const {
-    views, activeViewId, onViewChange, onCreateView, applyFilters,
-  } = useSavedViews({ organizationId, entityType: "activity", systemViews });
+  ], [t, tags, categories, typeFilterOptions]);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
-  const toolbarRef = useRef<React.ReactNode>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [showCompleted, setShowCompleted] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
   // Sidebar dispatch handlers
-  useSidebarDispatch("openFilter", () => {
-    // Toggle showCompleted as a simple filter toggle
-    setShowCompleted((prev) => !prev);
-  });
   useSidebarDispatch("upcomingOnly", () => {
     // Switch to "open" view which shows only incomplete activities
     onViewChange("open");
   });
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   // Form state
   const [title, setTitle] = useState("");
   const [activityType, setActivityType] = useState("meeting");
   const [dueDate, setDueDate] = useState("");
   const [description, setDescription] = useState("");
-  const [formTagIds, setFormTagIds] = useState<Id<"tagDefinitions">[]>([]);
-  const [formCategoryId, setFormCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const queryClient = useQueryClient();
-
-  // Queries based on active view — Supabase hooks
-  const { data: allData, isLoading: allLoading } = useSupabaseScheduledActivitiesList(
-    organizationId,
-    { limit: 100 },
+  // Queries based on active view
+  const { data: allData, isLoading: allLoading } = useQuery(
+    convexQuery(api.scheduledActivities.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    })
   );
 
-  const { data: openData } = useSupabaseScheduledActivitiesList(
-    organizationId,
-    { isCompleted: false, limit: 100 },
+  const { data: openData } = useQuery(
+    convexQuery(api.scheduledActivities.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+      isCompleted: false,
+    })
   );
 
-  const { data: dueTodayData } = useSupabaseScheduledActivitiesDueToday(organizationId);
+  const { data: dueTodayData } = useQuery(
+    convexQuery(api.scheduledActivities.listDueToday, { organizationId })
+  );
 
-  const { data: dueThisWeekData } = useSupabaseScheduledActivitiesDueThisWeek(organizationId);
+  const { data: dueThisWeekData } = useQuery(
+    convexQuery(api.scheduledActivities.listDueThisWeek, { organizationId })
+  );
 
-  const { data: overdueData } = useSupabaseScheduledActivitiesOverdue(organizationId);
+  const { data: overdueData } = useQuery(
+    convexQuery(api.scheduledActivities.listOverdue, { organizationId })
+  );
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
   );
-
-  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
-
-  const typeFilterOptions: { label: string; value: string }[] = useMemo(() => {
-    if (activityTypeDefs) {
-      return activityTypeDefs.map((td) => ({ label: td.name, value: td.key }));
-    }
-    return [
-      { label: t('activities.types.meeting'), value: "meeting" },
-      { label: t('activities.types.call'), value: "call" },
-      { label: t('activities.types.email'), value: "email" },
-      { label: t('activities.types.task'), value: "task" },
-    ];
-  }, [activityTypeDefs, t]);
 
   // Mutations
   const createActivity = useMutation(api.scheduledActivities.create);
@@ -177,33 +165,28 @@ function ActivitiesPage() {
     let data: ScheduledActivity[];
     switch (activeViewId) {
       case "open":
-        data = (openData ?? []) as unknown as ScheduledActivity[];
+        data = openData?.page ?? [];
         break;
       case "due-today":
-        data = (dueTodayData ?? []) as unknown as ScheduledActivity[];
+        data = dueTodayData ?? [];
         break;
       case "due-this-week":
-        data = (dueThisWeekData ?? []) as unknown as ScheduledActivity[];
+        data = dueThisWeekData ?? [];
         break;
       case "overdue":
-        data = (overdueData ?? []) as unknown as ScheduledActivity[];
+        data = overdueData ?? [];
         break;
       default:
-        data = (allData ?? []) as unknown as ScheduledActivity[];
+        data = allData?.page ?? [];
     }
     let filtered = applyFilters(data);
-    if (typeFilter) {
-      filtered = filtered.filter((a) => a.activityType === typeFilter);
-    }
-    if (!showCompleted) {
-      filtered = filtered.filter((a) => !a.isCompleted);
-    }
+    filtered = applyFilterConditions(filtered, activeFilters);
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
       filtered = filtered.filter((a) => a.title.toLowerCase().includes(q));
     }
     return filtered;
-  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, typeFilter, showCompleted, searchValue]);
+  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id as string),
@@ -228,8 +211,8 @@ function ActivitiesPage() {
     setActivityType("meeting");
     setDueDate("");
     setDescription("");
-    setFormTagIds([]);
-    setFormCategoryId(undefined);
+    setTagIds([]);
+    setCategoryId(undefined);
     resetCfValues();
     setEditingActivity(null);
   };
@@ -245,8 +228,8 @@ function ActivitiesPage() {
     setActivityType(activity.activityType);
     setDueDate(new Date(activity.dueDate).toISOString().slice(0, 16));
     setDescription(activity.description ?? "");
-    setFormTagIds((activity as any).tagIds ?? []);
-    setFormCategoryId((activity as any).categoryId ?? undefined);
+    setTagIds((activity.tagIds as Id<"tagDefinitions">[]) ?? []);
+    setCategoryId(activity.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
   };
 
@@ -265,8 +248,8 @@ function ActivitiesPage() {
           activityType,
           dueDate: new Date(dueDate).getTime(),
           description: description.trim() || undefined,
-          tagIds: formTagIds.length > 0 ? formTagIds : undefined,
-          categoryId: formCategoryId || undefined,
+          tagIds,
+          categoryId,
         });
       } else {
         activityId = await createActivity({
@@ -276,13 +259,12 @@ function ActivitiesPage() {
           dueDate: new Date(dueDate).getTime(),
           ownerId: currentUser._id as Id<"users">,
           description: description.trim() || undefined,
-          tagIds: formTagIds.length > 0 ? formTagIds : undefined,
-          categoryId: formCategoryId || undefined,
+          tagIds,
+          categoryId,
         });
       }
       // Save custom field values if any
       await saveCfValues(activityId);
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
       setPanelOpen(false);
       resetForm();
     } finally {
@@ -341,23 +323,6 @@ function ActivitiesPage() {
       label: t('activities.completed'),
       render: (item) => (item.isCompleted ? "\u2713" : "\u2014"),
     },
-    {
-      id: "sourceType",
-      label: t("googleCalendar.calendar.source"),
-      render: (item) => {
-        const source = item.sourceType ?? "manual";
-        const labels: Record<string, string> = {
-          manual: t("googleCalendar.calendar.sourceManual"),
-          google: t("googleCalendar.calendar.sourceGoogle"),
-          system: t("googleCalendar.calendar.sourceSystem"),
-        };
-        return (
-          <Badge variant={source === "google" ? "default" : "secondary"}>
-            {labels[source] ?? source}
-          </Badge>
-        );
-      },
-    },
   ];
 
   const mergedColumns: CrmColumn<ActivityRow>[] = useMemo(
@@ -365,7 +330,7 @@ function ActivitiesPage() {
     [baseColumns, cfColumns]
   );
   const { allColumns: columns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "activities");
 
   const rowActions = (row: ActivityRow) => [
     {
@@ -380,29 +345,25 @@ function ActivitiesPage() {
       ) : (
         <Check className="h-4 w-4" variant="stroke" />
       ),
-      onClick: async () => {
+      onClick: () => {
         if (row.isCompleted) {
-          await markIncomplete({ organizationId, activityId: row._id });
+          markIncomplete({ organizationId, activityId: row._id });
         } else {
-          await markComplete({ organizationId, activityId: row._id });
+          markComplete({ organizationId, activityId: row._id });
         }
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
       },
     },
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: async () => {
-        await removeActivity({ organizationId, activityId: row._id });
-        void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
-      },
+      onClick: () => removeActivity({ organizationId, activityId: row._id }),
     },
   ];
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title={t('activities.pageTitle', 'Aktywności')}
+        title={t('activities.title')}
         description={t('activities.description')}
         actions={
           <Button onClick={openCreatePanel}>
@@ -413,11 +374,12 @@ function ActivitiesPage() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
         filterableFields={filterableFields}
+        onFiltersChange={setActiveFilters}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('activities.searchPlaceholder')}
@@ -426,26 +388,8 @@ function ActivitiesPage() {
         columnDefs={columns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
       />
-
-      <div className="flex items-center gap-2 py-2">
-        <SidebarFilterAction
-          dispatchId="openFilter"
-          options={typeFilterOptions}
-          selected={typeFilter ? [typeFilter] : []}
-          onChange={(vals) => setTypeFilter(vals[0] || null)}
-          label={t('activities.actions.filterByType')}
-          singleSelect
-        />
-        <ToggleFilterButton
-          label={t('activities.actions.showCompleted')}
-          activeLabel={t('activities.actions.hideCompleted')}
-          icon={<Check className="mr-1.5 h-4 w-4" variant="stroke" />}
-          active={showCompleted}
-          onChange={setShowCompleted}
-        />
-      </div>
 
       <CrmDataTable
         columns={columns}
@@ -454,7 +398,6 @@ function ActivitiesPage() {
         rowActions={rowActions}
         enableBulkSelect
         isLoading={isLoading}
-        toolbar={toolbarRef.current}
       />
 
       <SidePanel
@@ -542,19 +485,16 @@ function ActivitiesPage() {
             />
           )}
 
-          {/* Tags */}
           {tags.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tags} selectedIds={formTagIds} onChange={setFormTagIds} />
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
             </div>
           )}
-
-          {/* Category */}
           {categories.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-              <CategoryPicker categories={categories} selectedId={formCategoryId} onChange={setFormCategoryId} />
+              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
             </div>
           )}
         </div>

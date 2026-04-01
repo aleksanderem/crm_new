@@ -7,6 +7,7 @@ import { PaginationCardMinimal } from "@untitled/app/pagination/pagination";
 import { EmptyState } from "@untitled/app/empty-state/empty-state";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BadgeWithDot } from "@untitled/base/badges/badges";
 import { BulkActionsBar } from "@/components/crm/bulk-actions";
 import type { BulkAction, FieldDef } from "./types";
 
@@ -66,8 +67,8 @@ export interface CrmDataTableProps<TData> {
   toolbar?: ReactNode;
   /** Column IDs to hide. */
   hiddenColumnIds?: Set<string>;
-  /** Called when a row body is clicked (not the checkbox). Use for navigation. */
-  onRowClick?: (item: TData) => void;
+  /** Called when a non-interactive cell is clicked. Receives the row ID (from getRowId). Use for navigation. */
+  onRowAction?: (rowId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +122,7 @@ export function CrmDataTable<TData>({
   onSortChange: controlledSortChange,
   toolbar,
   hiddenColumnIds,
-  onRowClick,
+  onRowAction,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
 
@@ -207,10 +208,12 @@ export function CrmDataTable<TData>({
         <Table
           aria-label="Data table"
           selectionMode={enableBulkSelect ? "multiple" : undefined}
+          selectionBehavior={enableBulkSelect ? "toggle" : undefined}
           sortDescriptor={sort}
           onSortChange={handleSortChange}
           selectedKeys={enableBulkSelect ? selectedKeys : undefined}
           onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
+          onRowAction={onRowAction ? (key) => onRowAction(String(key)) : undefined}
         >
           <Table.Header>
             {visibleColumns.map((col) => (
@@ -232,12 +235,12 @@ export function CrmDataTable<TData>({
                 <Table.Row key={rowId} id={rowId}>
                   {visibleColumns.map((col) => (
                     <Table.Cell key={col.id} className={col.className}>
-                      {onRowClick && !col.interactive ? (
+                      {onRowAction && !col.interactive ? (
                         <div
                           className="cursor-pointer -mx-5 -my-3 px-5 py-3"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onRowClick(item);
+                            onRowAction(rowId);
                           }}
                           onPointerDown={(e) => {
                             // Prevent React Aria from starting selection on pointer down
@@ -322,21 +325,37 @@ export function CrmDataTable<TData>({
 // Column visibility hook
 // ---------------------------------------------------------------------------
 
-export function useColumnVisibility(defaultHidden?: Set<string>) {
-  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(
-    () => defaultHidden ?? new Set(),
-  );
+export function useColumnVisibility(defaultHidden?: Set<string>, storageKey?: string) {
+  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(() => {
+    if (storageKey) {
+      try {
+        const stored = localStorage.getItem(`col-vis:${storageKey}`);
+        if (stored) return new Set(JSON.parse(stored) as string[]);
+      } catch { /* ignore */ }
+    }
+    return defaultHidden ?? new Set();
+  });
 
   const toggleColumn = useCallback((id: string) => {
     setHiddenColumnIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      if (storageKey) {
+        try { localStorage.setItem(`col-vis:${storageKey}`, JSON.stringify([...next])); } catch { /* ignore */ }
+      }
       return next;
     });
-  }, []);
+  }, [storageKey]);
 
-  return { hiddenColumnIds, toggleColumn };
+  const setHiddenColumns = useCallback((ids: Set<string>) => {
+    setHiddenColumnIds(ids);
+    if (storageKey) {
+      try { localStorage.setItem(`col-vis:${storageKey}`, JSON.stringify([...ids])); } catch { /* ignore */ }
+    }
+  }, [storageKey]);
+
+  return { hiddenColumnIds, toggleColumn, setHiddenColumns };
 }
 
 // ---------------------------------------------------------------------------
@@ -372,6 +391,30 @@ export function useAllColumns<TData>(
             if (f.type === "date" && typeof val === "number")
               return new Date(val).toLocaleDateString();
             if (f.type === "boolean") return String(val) === "true" ? "✓" : "—";
+            if (f.type === "multiSelect" && f.options && Array.isArray(val)) {
+              if (val.length === 0) return "—";
+              const optMap = new Map(f.options.map((o) => [o.value, o.label]));
+              return (
+                <span className="flex flex-wrap gap-1">
+                  {val.map((v: string) => (
+                    <BadgeWithDot key={v} type="modern" color="brand" size="sm">
+                      {optMap.get(v) ?? v}
+                    </BadgeWithDot>
+                  ))}
+                </span>
+              );
+            }
+            if (f.type === "select" && f.options) {
+              const match = f.options.find((o) => o.value === String(val));
+              if (match) {
+                return (
+                  <BadgeWithDot type="modern" color="brand" size="sm">
+                    {match.label}
+                  </BadgeWithDot>
+                );
+              }
+              return String(val);
+            }
             return String(val);
           },
           getSortValue: (item: TData) => {

@@ -7,8 +7,6 @@ import {
   ChevronDown,
   FilterLines,
   Columns03,
-  Tag01,
-  LayersTwo02,
 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { CloseButton } from "@untitled/base/buttons/close-button";
@@ -18,6 +16,7 @@ import { Select, type SelectItemType } from "@untitled/base/select/select";
 import { SlideoutMenu } from "@untitled/app/slideout-menus/slideout-menu";
 import { CountBadge, type FilterRow } from "@untitled/app/filter-bar/filter-dropdown-menu";
 import { FeaturedIcon } from "@untitled/foundations/featured-icon/featured-icon";
+import { CheckboxBase } from "@untitled/base/checkbox/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,19 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input as ShadcnInput } from "@/components/ui/input";
 import { Button as ShadcnButton } from "@/components/ui/button";
-import type { FieldDef, FilterCondition, FilterConfig } from "./types";
+import type { FieldDef, FilterCondition, FilterConfig, SavedView } from "./types";
 
-interface SavedViewDef {
-  id: string;
-  name: string;
-  isSystem?: boolean;
-  filters?: FilterConfig;
-  columns?: Record<string, boolean>;
-  sorting?: Array<{ id: string; desc: boolean }>;
-}
 
 const OPERATORS_BY_TYPE: Record<
   FieldDef["type"],
@@ -79,7 +71,7 @@ const OPERATORS_BY_TYPE: Record<
 
 export interface DataListFilterBarProps {
   // Saved views (left side)
-  views?: SavedViewDef[];
+  views?: SavedView[];
   activeViewId?: string;
   onViewChange?: (viewId: string) => void;
   onCreateView?: (name: string, filters?: FilterConfig) => Promise<void>;
@@ -101,6 +93,7 @@ export interface DataListFilterBarProps {
   columnDefs?: Array<{ id: string; label: string }>;
   hiddenColumnIds?: Set<string>;
   onToggleColumn?: (columnId: string) => void;
+  onSetHiddenColumns?: (ids: Set<string>) => void;
 
   // Extra dropdown actions
   dropdownActions?: Array<{
@@ -112,10 +105,6 @@ export interface DataListFilterBarProps {
   // Tags & Categories management
   onTagsManage?: () => void;
   onCategoriesManage?: () => void;
-
-  // Render prop: receives the toolbar content (search + filters + actions)
-  // so the consumer can place it inside the table card.
-  renderToolbar?: (toolbar: React.ReactNode) => React.ReactNode;
 }
 
 let filterIdCounter = 0;
@@ -156,11 +145,11 @@ export function DataListFilterBar({
   columnDefs,
   hiddenColumnIds,
   onToggleColumn,
+  onSetHiddenColumns: _onSetHiddenColumns,
   onFiltersChange,
   dropdownActions = [],
-  onTagsManage,
-  onCategoriesManage,
-  renderToolbar,
+  onTagsManage: _onTagsManage,
+  onCategoriesManage: _onCategoriesManage,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -434,40 +423,35 @@ export function DataListFilterBar({
           </Button>
         )}
         {columnDefs && columnDefs.length > 0 && onToggleColumn && (
-          <Dropdown.Root>
-            <Button size="sm" color="tertiary" iconLeading={Columns03} />
-            <Dropdown.Popover className="w-52">
-              <Dropdown.Menu
-                selectionMode="multiple"
-                selectedKeys={
-                  new Set(
-                    columnDefs
-                      .filter((c) => !hiddenColumnIds?.has(c.id))
-                      .map((c) => c.id),
-                  )
-                }
-                onSelectionChange={(keys) => {
-                  if (keys === "all") return;
-                  const selected = keys as Set<string>;
-                  for (const col of columnDefs) {
-                    const isVisible = selected.has(col.id);
-                    const wasHidden = hiddenColumnIds?.has(col.id) ?? false;
-                    if (isVisible && wasHidden) onToggleColumn(col.id);
-                    if (!isVisible && !wasHidden) onToggleColumn(col.id);
-                  }
-                }}
-              >
-                {columnDefs.map((col) => (
-                  <Dropdown.Item
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center rounded-lg border border-border-primary bg-bg-primary px-2 py-1.5 text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary">
+                <Columns03 className="size-4 stroke-[2px]" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-1" align="end">
+              {columnDefs.map((col) => {
+                const isVisible = !hiddenColumnIds?.has(col.id);
+                return (
+                  <button
                     key={col.id}
-                    id={col.id}
-                    label={col.label ?? col.id}
-                    selectionIndicator="checkbox"
-                  />
-                ))}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-bg-primary_hover"
+                    onClick={() => onToggleColumn(col.id)}
+                  >
+                    <CheckboxBase
+                      isSelected={isVisible}
+                      size="sm"
+                      className="shrink-0 pointer-events-none"
+                    />
+                    <span className="grow truncate text-sm font-semibold text-fg-secondary">
+                      {col.label ?? col.id}
+                    </span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
         )}
         {renderMoreActions()}
       </div>
@@ -498,8 +482,7 @@ export function DataListFilterBar({
 
   return (
     <>
-      {/* Toolbar: rendered via renderToolbar prop (inside table card) or inline */}
-      {renderToolbar ? renderToolbar(toolbarContent) : toolbarContent}
+      {toolbarContent}
 
       {/* Filter slideout */}
       <SlideoutMenu
@@ -586,23 +569,41 @@ export function DataListFilterBar({
                       </div>
                       {!noValue && (
                         <div className="flex items-start gap-1">
-                          <Input
-                            className="min-w-0 flex-1"
-                            size="sm"
-                            aria-label={t("filters.value", { defaultValue: "Value" })}
-                            placeholder={t("filters.enterValue", { defaultValue: "Enter a value" })}
-                            type={
-                              fieldType === "number"
-                                ? "number"
-                                : fieldType === "date"
-                                  ? "date"
-                                  : "text"
-                            }
-                            value={filter.value}
-                            onChange={(value) =>
-                              handleFilterChange(filter.id, { value })
-                            }
-                          />
+                          {(fieldType === "select" || fieldType === "multiSelect") && fieldDef?.options?.length ? (
+                            <Select
+                              className="min-w-0 flex-1"
+                              size="sm"
+                              aria-label={t("filters.value", { defaultValue: "Value" })}
+                              placeholder={t("filters.selectValue", { defaultValue: "Select a value" })}
+                              items={fieldDef.options.map((o) => ({ id: o.value, label: o.label }))}
+                              selectedKey={filter.value || null}
+                              onSelectionChange={(key) =>
+                                handleFilterChange(filter.id, { value: String(key) })
+                              }
+                            >
+                              {(item: SelectItemType) => (
+                                <Select.Item id={item.id}>{item.label}</Select.Item>
+                              )}
+                            </Select>
+                          ) : (
+                            <Input
+                              className="min-w-0 flex-1"
+                              size="sm"
+                              aria-label={t("filters.value", { defaultValue: "Value" })}
+                              placeholder={t("filters.enterValue", { defaultValue: "Enter a value" })}
+                              type={
+                                fieldType === "number"
+                                  ? "number"
+                                  : fieldType === "date"
+                                    ? "date"
+                                    : "text"
+                              }
+                              value={filter.value}
+                              onChange={(value) =>
+                                handleFilterChange(filter.id, { value })
+                              }
+                            />
+                          )}
                           <CloseButton
                             label={t("filters.removeFilter", { defaultValue: "Remove filter" })}
                             size="sm"
@@ -634,20 +635,6 @@ export function DataListFilterBar({
         </SlideoutMenu.Content>
 
         <SlideoutMenu.Footer className="flex w-full flex-col gap-3">
-          {(onTagsManage || onCategoriesManage) && (
-            <div className="flex items-center gap-2 border-b border-border-secondary pb-3">
-              {onTagsManage && (
-                <Button size="sm" color="tertiary" iconLeading={Tag01} onClick={() => { setFilterSlideoutOpen(false); onTagsManage(); }}>
-                  {t("tags.manage", { defaultValue: "Tagi" })}
-                </Button>
-              )}
-              {onCategoriesManage && (
-                <Button size="sm" color="tertiary" iconLeading={LayersTwo02} onClick={() => { setFilterSlideoutOpen(false); onCategoriesManage(); }}>
-                  {t("categories.manage", { defaultValue: "Kategorie" })}
-                </Button>
-              )}
-            </div>
-          )}
           <div className="flex w-full items-center justify-between gap-3">
             {onCreateView && draftFilters.length > 0 && (
               <Button size="sm" color="tertiary" onClick={handleSaveAsView}>

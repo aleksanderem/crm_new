@@ -1,12 +1,11 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -19,25 +18,24 @@ import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import type { SavedView, FieldDef } from "@/components/crm/types";
-import type { MappedProduct } from "@/lib/supabase/mappers";
-import type { Id } from "@cvx/_generated/dataModel";
-import { useSavedViews } from "@/hooks/use-saved-views";
-
-type Product = MappedProduct;
+import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
+import { Doc, Id } from "@cvx/_generated/dataModel";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
-import { TagsPicker } from "@/components/categories-tags/tags-picker";
-import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
 )({
   component: ProductsPage,
 });
+
+type Product = Doc<"products">;
 
 function generateSku(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -58,13 +56,22 @@ function formatCurrency(amount: number): string {
 function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const queryClient = useQueryClient();
-  const { tags } = useTagDefinitions(organizationId);
-  const { categories } = useCategoryDefinitions(organizationId, "product");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
     { id: "active", name: t('products.views.active'), isSystem: true, isDefault: false },
   ], [t]);
+
+  const {
+    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
+  } = useSavedViews({ organizationId, entityType: "product", systemViews });
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const { handleExport } = useCsvExport(organizationId, "products");
+  const { tags } = useTagDefinitions(organizationId);
+  const { categories } = useCategoryDefinitions(organizationId, "product");
 
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "name", label: t('products.name'), type: "text" },
@@ -79,19 +86,9 @@ function ProductsPage() {
       ],
     },
     { id: "createdAt", label: t('common.created'), type: "date" },
-    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map((tag: any) => ({ label: tag.name, value: tag._id })) },
+    { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
-
-  const {
-    views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
-  } = useSavedViews({ organizationId, entityType: "product", systemViews });
-  const toolbarRef = useRef<React.ReactNode>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-  const { handleExport } = useCsvExport(organizationId, "products");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
@@ -99,6 +96,8 @@ function ProductsPage() {
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form state
@@ -111,7 +110,14 @@ function ProductsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
+  const { data, isLoading } = useQuery(
+    convexQuery(api.products.list, {
+      organizationId,
+      paginationOpts: { numItems: 100, cursor: null },
+    })
+  );
+
+  const allProducts = data?.page ?? [];
 
   const products = useMemo(() => {
     let data = allProducts;
@@ -119,6 +125,7 @@ function ProductsPage() {
       data = allProducts.filter((p) => p.isActive);
     }
     data = applyFilters(data);
+    data = applyFilterConditions(data, activeFilters);
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
       data = data.filter((p) =>
@@ -127,7 +134,7 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, searchValue]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue]);
 
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
@@ -159,8 +166,8 @@ function ProductsPage() {
     setTaxRate(String(product.taxRate));
     setIsActive(product.isActive);
     setDescription(product.description ?? "");
-    setTagIds((product as any).tagIds ?? []);
-    setCategoryId((product as any).categoryId);
+    setTagIds((product.tagIds as Id<"tagDefinitions">[]) ?? []);
+    setCategoryId(product.categoryId as Id<"categoryDefinitions"> | undefined);
     setPanelOpen(true);
   };
 
@@ -173,14 +180,14 @@ function ProductsPage() {
       if (editingProduct) {
         await updateProduct({
           organizationId,
-          productId: editingProduct._id as any,
+          productId: editingProduct._id,
           name: name.trim(),
           sku: sku.trim(),
           unitPrice: parseFloat(unitPrice),
           taxRate: parseFloat(taxRate) || 0,
           description: description.trim() || undefined,
-          tagIds: tagIds.length > 0 ? tagIds : undefined,
-          categoryId: categoryId || undefined,
+          tagIds,
+          categoryId,
         });
       } else {
         await createProduct({
@@ -191,13 +198,12 @@ function ProductsPage() {
           taxRate: parseFloat(taxRate) || 0,
           isActive,
           description: description.trim() || undefined,
-          tagIds: tagIds.length > 0 ? tagIds : undefined,
-          categoryId: categoryId || undefined,
+          tagIds,
+          categoryId,
         });
       }
       setPanelOpen(false);
       resetForm();
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
     } finally {
       setIsSubmitting(false);
     }
@@ -237,7 +243,7 @@ function ProductsPage() {
   ];
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn } = useColumnVisibility(defaultHidden);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
 
   const rowActions = (row: Product) => [
     {
@@ -248,20 +254,12 @@ function ProductsPage() {
     {
       label: row.isActive ? t('products.deactivate') : t('products.activate'),
       icon: <Power className="h-4 w-4" variant="stroke" />,
-      onClick: () => {
-        void toggleActive({ organizationId, productId: row._id as any }).then(() => {
-          void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
-        });
-      },
+      onClick: () => toggleActive({ organizationId, productId: row._id }),
     },
     {
       label: t('common.delete'),
       icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => {
-        void removeProduct({ organizationId, productId: row._id as any }).then(() => {
-          void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
-        });
-      },
+      onClick: () => removeProduct({ organizationId, productId: row._id }),
     },
   ];
 
@@ -279,7 +277,7 @@ function ProductsPage() {
       />
 
       <DataListFilterBar
-        views={views as any}
+        views={views}
         activeViewId={activeViewId}
         onViewChange={onViewChange}
         onCreateView={onCreateView}
@@ -299,7 +297,8 @@ function ProductsPage() {
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
-        renderToolbar={(toolbar) => { toolbarRef.current = toolbar; return null; }}
+        onSetHiddenColumns={setHiddenColumns}
+        onFiltersChange={setActiveFilters}
       />
 
       <CrmDataTable
@@ -308,7 +307,6 @@ function ProductsPage() {
         data={products}
         rowActions={rowActions}
         isLoading={isLoading}
-        toolbar={toolbarRef.current}
       />
 
       <CsvImportDialog
@@ -405,21 +403,13 @@ function ProductsPage() {
           {tags.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker
-                tags={tags}
-                selectedIds={tagIds}
-                onChange={setTagIds}
-              />
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
             </div>
           )}
           {categories.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-              <CategoryPicker
-                categories={categories}
-                selectedId={categoryId}
-                onChange={setCategoryId}
-              />
+              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
             </div>
           )}
         </div>

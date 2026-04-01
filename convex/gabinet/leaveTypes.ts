@@ -4,15 +4,15 @@ import { internal } from "../_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLeaveTypeRef = internal.supabase.gabinet["leave-types"].writeLeaveTypeToSupabase;
+const writeLeaveTypeRef = internal.supabase.gabinet.leaveTypes.writeLeaveTypeToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLeaveTypeRef = internal.supabase.gabinet["leave-types"].updateLeaveTypeInSupabase;
+const updateLeaveTypeRef = internal.supabase.gabinet.leaveTypes.updateLeaveTypeInSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteLeaveTypeRef = internal.supabase.gabinet["leave-types"].deleteLeaveTypeFromSupabase;
+const deleteLeaveTypeRef = internal.supabase.gabinet.leaveTypes.deleteLeaveTypeFromSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].writeLeaveBalanceToSupabase;
+const writeLeaveBalanceRef = internal.supabase.gabinet.leaveBalances.writeLeaveBalanceToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].updateLeaveBalanceInSupabase;
+const updateLeaveBalanceRef = internal.supabase.gabinet.leaveBalances.updateLeaveBalanceInSupabase;
 
 export const list = query({
   args: {

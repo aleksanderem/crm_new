@@ -8,17 +8,17 @@ import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schem
 import { getAvailableSlots } from "./_availability";
 
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeWorkingHoursRef = internal.supabase.gabinet["working-hours"].writeWorkingHoursToSupabase;
+const writeWorkingHoursRef = internal.supabase.gabinet.workingHours.writeWorkingHoursToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateWorkingHoursRef = internal.supabase.gabinet["working-hours"].updateWorkingHoursInSupabase;
+const updateWorkingHoursRef = internal.supabase.gabinet.workingHours.updateWorkingHoursInSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeScheduleRef = internal.supabase.gabinet["employee-schedules"].writeEmployeeScheduleToSupabase;
+const writeScheduleRef = internal.supabase.gabinet.employeeSchedules.writeEmployeeScheduleToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateScheduleRef = internal.supabase.gabinet["employee-schedules"].updateEmployeeScheduleInSupabase;
+const updateScheduleRef = internal.supabase.gabinet.employeeSchedules.updateEmployeeScheduleInSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteScheduleRef = internal.supabase.gabinet["employee-schedules"].deleteEmployeeScheduleFromSupabase;
+const deleteScheduleRef = internal.supabase.gabinet.employeeSchedules.deleteEmployeeScheduleFromSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].updateLeaveBalanceInSupabase;
+const updateLeaveBalanceRef = internal.supabase.gabinet.leaveBalances.updateLeaveBalanceInSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const writeLeaveRef = internal.supabase.gabinet.leaves.writeLeaveToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)

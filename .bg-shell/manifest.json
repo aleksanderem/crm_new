@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "b7988d01",
+    "label": "vite dev server",
+    "command": "cd /Users/alfred/projects/crm_new && npm run dev",
+    "cwd": "/Users/alfred/projects/crm_new",
+    "ownerSessionFile": "/Users/alfred/.gsd/sessions/--Users-alfred-projects-crm_new--/2026-04-01T18-20-05-400Z_8708f83a-39b3-409b-8727-30842fbe5e99.jsonl",
+    "persistAcrossSessions": false,
+    "startedAt": 1775070612019,
+    "processType": "server",
+    "group": null,
+    "readyPattern": null,
+    "readyPort": 3000,
+    "pid": 67382
+  }
+]

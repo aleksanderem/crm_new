@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -42,6 +42,14 @@ import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card"
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
+import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
@@ -108,6 +116,7 @@ function GabinetCalendarPage() {
 
   // Mutations
   const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const queryClient = useQueryClient();
 
   // DnD sensors
   const sensors = useSensors(
@@ -147,15 +156,15 @@ function GabinetCalendarPage() {
     return { startDate: formatDateStr(first), endDate: formatDateStr(last) };
   }, [viewMode, currentDate]);
 
-  // Fetch appointments
-  const { data: rawAppointments } = useQuery(
-    convexQuery(api.gabinet.appointments.listByDateRange, {
-      organizationId,
-      startDate,
-      endDate,
+  // Fetch appointments from Supabase
+  const { data: rawAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId,
+    startDate,
+    endDate,
+    {
       employeeId:
-        employeeFilter !== "all" ? (employeeFilter as Id<"users">) : undefined,
-    }),
+        employeeFilter !== "all" ? employeeFilter : undefined,
+    },
   );
 
   // Fetch Google-synced blocked time slots from scheduledActivities
@@ -174,18 +183,14 @@ function GabinetCalendarPage() {
     }),
   );
 
-  // Fetch employees for filter
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId,
-      activeOnly: true,
-    }),
+  // Fetch employees for filter from Supabase
+  const { data: employees } = useSupabaseGabinetEmployeesList(
+    organizationId,
+    { activeOnly: true },
   );
 
-  // Fetch locations for filter
-  const { data: locationsRaw } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, { organizationId }),
-  );
+  // Fetch locations for filter from Supabase
+  const { data: locationsRaw } = useSupabaseGabinetLocationsList(organizationId);
   const locations = useMemo(
     () => (locationsRaw ?? []).filter((l) => l.isActive),
     [locationsRaw],
@@ -196,51 +201,44 @@ function GabinetCalendarPage() {
     convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
-  // Fetch patients + treatments for display names
-  const { data: patientsPage } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
-      organizationId,
-      paginationOpts: { numItems: 200, cursor: null },
-    }),
+  // Fetch patients from Supabase (flat list, replaces paginated Convex query)
+  const { data: patients } = useSupabaseGabinetPatientsList(
+    organizationId,
+    { limit: 200 },
   );
-  const { data: treatmentsPage } = useQuery(
-    convexQuery(api.gabinet.treatments.list, {
-      organizationId,
-      paginationOpts: { numItems: 200, cursor: null },
-    }),
+  // Fetch treatments from Supabase (flat list, replaces paginated Convex query)
+  const { data: treatments } = useSupabaseGabinetTreatmentsList(
+    organizationId,
+    { limit: 200 },
   );
 
-  // Fetch employee schedules for working hours display
-  const { data: employeeSchedulesRaw } = useQuery(
-    convexQuery(api.gabinet.scheduling.listEmployeeSchedules, {
-      organizationId,
-    }),
+  // Fetch employee schedules from Supabase
+  const { data: employeeSchedulesRaw } = useSupabaseGabinetEmployeeSchedulesList(
+    organizationId,
   );
 
-  // Fetch clinic working hours as fallback
-  const { data: clinicWorkingHours } = useQuery(
-    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId }),
-  );
+  // Fetch clinic working hours from Supabase
+  const { data: clinicWorkingHours } = useSupabaseGabinetWorkingHoursList(organizationId);
 
   const patientMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (patientsPage?.page) {
-      for (const p of patientsPage.page) {
+    if (patients) {
+      for (const p of patients) {
         map.set(p._id, `${p.firstName} ${p.lastName}`);
       }
     }
     return map;
-  }, [patientsPage]);
+  }, [patients]);
 
   const treatmentMap = useMemo(() => {
     const map = new Map<string, { name: string; color?: string }>();
-    if (treatmentsPage?.page) {
-      for (const tr of treatmentsPage.page) {
+    if (treatments) {
+      for (const tr of treatments) {
         map.set(tr._id, { name: tr.name, color: tr.color });
       }
     }
     return map;
-  }, [treatmentsPage]);
+  }, [treatments]);
 
   const userMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -505,6 +503,8 @@ function GabinetCalendarPage() {
           toast.success(
             t("gabinet.appointments.rescheduled", "Appointment rescheduled"),
           );
+          // Invalidate Supabase appointments cache after Convex mutation
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
         } catch (e: any) {
           toast.error(
             e.message ??
@@ -719,7 +719,7 @@ function GabinetCalendarPage() {
                       <SelectItem value="all">
                         {t("gabinet.calendar.allTreatments", "Wszystkie zabiegi")}
                       </SelectItem>
-                      {(treatmentsPage?.page ?? []).map((tr) => (
+                      {(treatments ?? []).map((tr) => (
                         <SelectItem key={tr._id} value={tr._id}>
                           {tr.name}
                         </SelectItem>

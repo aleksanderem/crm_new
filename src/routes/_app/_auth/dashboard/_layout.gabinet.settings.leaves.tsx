@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -53,18 +55,20 @@ const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as con
 function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createLeave = useMutation(api.gabinet.scheduling.createLeave);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const approveLeave = useMutation(api.gabinet.scheduling.approveLeave);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const rejectLeave = useMutation(api.gabinet.scheduling.rejectLeave);
+  const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: leaves } = useQuery(
-    convexQuery(api.gabinet.scheduling.listLeaves, {
-      organizationId,
-      status: statusFilter !== "all" ? (statusFilter as "pending" | "approved" | "rejected") : undefined,
-    })
-  );
+  // Fetch leaves from Supabase
+  const { data: leaves } = useSupabaseGabinetLeavesList(organizationId, {
+    status: statusFilter !== "all" ? statusFilter : undefined,
+  });
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
@@ -96,6 +100,8 @@ function LeavesPage() {
         reason: reason || undefined,
       });
       toast.success(t("gabinet.leaves.created"));
+      // Invalidate Supabase leaves cache after Convex mutation
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
       setDialogOpen(false);
       setSelectedUserId("");
       setStartDate("");
@@ -128,6 +134,8 @@ function LeavesPage() {
         await rejectLeave({ organizationId, leaveId: confirmLeaveId });
         toast.success(t("gabinet.leaves.rejected"));
       }
+      // Invalidate Supabase leaves cache after status change
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -278,10 +286,10 @@ function LeavesPage() {
                   <td className="px-4 py-2 text-right">
                     {leave.status === "pending" && (
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id)}>
+                        <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id as Id<"gabinetLeaves">)}>
                           <Check className="h-4 w-4 text-green-600" variant="stroke" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id)}>
+                        <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id as Id<"gabinetLeaves">)}>
                           <X className="h-4 w-4 text-red-600" variant="stroke" />
                         </Button>
                       </div>

@@ -1,9 +1,15 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { logActivity } from "../_helpers/activities";
 import { gabinetDocTypeValidator, gabinetDocStatusValidator } from "../schema";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeDocRef = internal.supabase.gabinet.documents.writeDocumentToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateDocRef = internal.supabase.gabinet.documents.updateDocumentInSupabase;
 
 function renderTemplate(content: string, data: Record<string, string>): string {
   return content.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, key) => {
@@ -160,6 +166,22 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeDocRef, {
+      documentId: id,
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      appointmentId: args.appointmentId,
+      templateId: args.templateId,
+      title: args.title,
+      type: args.type,
+      content,
+      status: "draft",
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return id;
   },
 });
@@ -180,6 +202,18 @@ export const update = mutation({
 
     const { organizationId, documentId, ...updates } = args;
     await ctx.db.patch(documentId, { ...updates, updatedAt: Date.now() });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, updateDocRef, {
+      documentId,
+      organizationId,
+      title: args.title,
+      content: args.content,
+      tagIds: args.tagIds as string[] | undefined,
+      categoryId: args.categoryId as string | undefined,
+      updatedAt: Date.now(),
+    });
+
     return documentId;
   },
 });
@@ -195,6 +229,14 @@ export const requestSignature = mutation({
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Document not found");
 
     await ctx.db.patch(args.documentId, {
+      status: "pending_signature",
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate status change to Supabase
+    await ctx.scheduler.runAfter(0, updateDocRef, {
+      documentId: args.documentId,
+      organizationId: args.organizationId,
       status: "pending_signature",
       updatedAt: Date.now(),
     });
@@ -214,6 +256,18 @@ export const sign = mutation({
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Document not found");
 
     await ctx.db.patch(args.documentId, {
+      status: "signed",
+      signatureData: args.signatureData,
+      signedAt: Date.now(),
+      signedByPatient: args.signedByPatient,
+      signedByEmployee: args.signedByPatient ? undefined : user._id,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate signature to Supabase
+    await ctx.scheduler.runAfter(0, updateDocRef, {
+      documentId: args.documentId,
+      organizationId: args.organizationId,
       status: "signed",
       signatureData: args.signatureData,
       signedAt: Date.now(),
@@ -244,5 +298,13 @@ export const archive = mutation({
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Document not found");
 
     await ctx.db.patch(args.documentId, { status: "archived", updatedAt: Date.now() });
+
+    // Dual-write: replicate archive to Supabase
+    await ctx.scheduler.runAfter(0, updateDocRef, {
+      documentId: args.documentId,
+      organizationId: args.organizationId,
+      status: "archived",
+      updatedAt: Date.now(),
+    });
   },
 });

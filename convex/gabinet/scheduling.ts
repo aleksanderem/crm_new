@@ -19,6 +19,10 @@ const updateScheduleRef = internal.supabase.gabinet["employee-schedules"].update
 const deleteScheduleRef = internal.supabase.gabinet["employee-schedules"].deleteEmployeeScheduleFromSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const updateLeaveBalanceRef = internal.supabase.gabinet["leave-balances"].updateLeaveBalanceInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLeaveRef = internal.supabase.gabinet.leaves.writeLeaveToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLeaveRef = internal.supabase.gabinet.leaves.updateLeaveInSupabase;
 
 // --- Working Hours (clinic-level defaults) ---
 
@@ -549,7 +553,7 @@ export const createLeave = mutation({
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
     const now = Date.now();
 
-    return await ctx.db.insert("gabinetLeaves", {
+    const leaveId = await ctx.db.insert("gabinetLeaves", {
       organizationId: args.organizationId,
       userId: args.userId,
       type: args.type,
@@ -564,6 +568,26 @@ export const createLeave = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write leave to Supabase
+    await ctx.scheduler.runAfter(0, writeLeaveRef, {
+      leaveId: String(leaveId),
+      organizationId: String(args.organizationId),
+      userId: String(args.userId),
+      type: args.type,
+      leaveTypeId: args.leaveTypeId ? String(args.leaveTypeId) : undefined,
+      startDate: args.startDate,
+      endDate: args.endDate,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      status: "pending",
+      reason: args.reason,
+      createdBy: String(user._id),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return leaveId;
   },
 });
 
@@ -585,6 +609,16 @@ export const approveLeave = mutation({
     await ctx.db.patch(args.leaveId, {
       status: "approved",
       approvedBy: user._id,
+      approvedAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write approve to Supabase
+    await ctx.scheduler.runAfter(0, updateLeaveRef, {
+      leaveId: String(args.leaveId),
+      organizationId: String(args.organizationId),
+      status: "approved",
+      approvedBy: String(user._id),
       approvedAt: now,
       updatedAt: now,
     });
@@ -650,6 +684,16 @@ export const rejectLeave = mutation({
     await ctx.db.patch(args.leaveId, {
       status: "rejected",
       approvedBy: user._id,
+      approvedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write reject to Supabase
+    await ctx.scheduler.runAfter(0, updateLeaveRef, {
+      leaveId: String(args.leaveId),
+      organizationId: String(args.organizationId),
+      status: "rejected",
+      approvedBy: String(user._id),
       approvedAt: Date.now(),
       updatedAt: Date.now(),
     });

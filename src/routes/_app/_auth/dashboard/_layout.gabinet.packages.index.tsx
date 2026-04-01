@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetTreatmentPackagesList, useSupabaseGabinetPackageUsageActive } from "@/hooks/use-supabase-gabinet-packages";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
@@ -42,11 +44,16 @@ import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
+import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
 import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
+
+// Type alias for Convex mutation compatibility (Knowledge Pattern #9/#12)
+type TreatmentPackage = MappedGabinetTreatmentPackage;
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/packages/"
@@ -54,38 +61,102 @@ export const Route = createFileRoute(
   component: PackagesIndex,
 });
 
+// ---------------------------------------------------------------------------
+// Client-side aggregation helpers (replace Convex server-side queries)
+// ---------------------------------------------------------------------------
+
+/** Build { [packageId]: activeCount } from raw usage rows */
+function buildActiveUsageCounts(usages: MappedGabinetPackageUsage[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const u of usages) {
+    counts[u.packageId] = (counts[u.packageId] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Build per-package treatment progress from raw usage rows */
+function buildActiveUsageDetails(
+  usages: MappedGabinetPackageUsage[],
+): Record<string, { count: number; treatmentProgress: Record<string, { usedCount: number; totalCount: number }> }> {
+  const byPackage: Record<
+    string,
+    { count: number; treatmentProgress: Record<string, { usedCount: number; totalCount: number }> }
+  > = {};
+
+  for (const u of usages) {
+    if (!byPackage[u.packageId]) {
+      byPackage[u.packageId] = { count: 0, treatmentProgress: {} };
+    }
+    byPackage[u.packageId].count += 1;
+    for (const t of u.treatmentsUsed) {
+      const key = t.treatmentId;
+      if (!byPackage[u.packageId].treatmentProgress[key]) {
+        byPackage[u.packageId].treatmentProgress[key] = { usedCount: 0, totalCount: 0 };
+      }
+      byPackage[u.packageId].treatmentProgress[key].usedCount += t.usedCount;
+      byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalAllowed;
+    }
+  }
+
+  return byPackage;
+}
+
+/** Derive KPIs from packages list + active usage data */
+function derivePackageKpis(
+  packages: MappedGabinetTreatmentPackage[],
+  activeUsages: MappedGabinetPackageUsage[],
+): { totalPackages: number; activePackages: number; expiringPackages: number } {
+  const now = Date.now();
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+
+  return {
+    totalPackages: packages.length,
+    activePackages: packages.filter((p) => p.isActive).length,
+    expiringPackages: activeUsages.filter(
+      (u) => u.expiresAt != null && u.expiresAt > now && u.expiresAt <= now + thirtyDays,
+    ).length,
+  };
+}
+
 function PackagesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createPkg = useMutation(api.gabinet.packages.create);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updatePkg = useMutation(api.gabinet.packages.update);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const removePkg = useMutation(api.gabinet.packages.remove);
 
-  const { data: packages } = useQuery(
-    convexQuery(api.gabinet.packages.list, {
-      organizationId,
-      paginationOpts: { numItems: 50, cursor: null },
-    })
+  // Supabase-backed queries (replacing convexQuery)
+  const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: activeUsagesData } = useSupabaseGabinetPackageUsageActive(organizationId);
+
+  // Filter treatments to active-only (original Convex query was listActive)
+  const treatments = useMemo(
+    () => (treatmentsData ?? []).filter((tr) => tr.isActive),
+    [treatmentsData],
   );
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
+  // Client-side aggregation (replaces getActiveUsageCounts, getActiveUsageDetails, getPackagesKpis)
+  const activeUsageCounts = useMemo(
+    () => buildActiveUsageCounts(activeUsagesData ?? []),
+    [activeUsagesData],
   );
-
-  const { data: activeUsageCounts } = useQuery(
-    convexQuery(api.gabinet.packages.getActiveUsageCounts, { organizationId })
+  const activeUsageDetails = useMemo(
+    () => buildActiveUsageDetails(activeUsagesData ?? []),
+    [activeUsagesData],
   );
-
-  const { data: activeUsageDetails } = useQuery(
-    convexQuery(api.gabinet.packages.getActiveUsageDetails, { organizationId })
-  );
-
-  const { data: pkgKpis } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getPackagesKpis, { organizationId })
+  const pkgKpis = useMemo(
+    () => derivePackageKpis(packagesData ?? [], activeUsagesData ?? []),
+    [packagesData, activeUsagesData],
   );
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editingId, setEditingId] = useState<Id<"gabinetTreatmentPackages"> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [totalPrice, setTotalPrice] = useState("");
@@ -95,7 +166,13 @@ function PackagesIndex() {
   const [selectedTreatments, setSelectedTreatments] = useState<Array<{ treatmentId: string; quantity: number }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<Id<"gabinetTreatmentPackages"> | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Cache invalidation helper
+  const invalidatePackages = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentPackages.list(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPackageUsage.list(organizationId) });
+  }, [queryClient, organizationId]);
 
   const resetForm = useCallback(() => {
     setName("");
@@ -113,16 +190,7 @@ function PackagesIndex() {
     setPanelOpen(true);
   }, [resetForm]);
 
-  const openEdit = useCallback((pkg: {
-    _id: Id<"gabinetTreatmentPackages">;
-    name: string;
-    description?: string;
-    totalPrice: number;
-    validityDays?: number;
-    discountPercent?: number;
-    loyaltyPointsAwarded?: number;
-    treatments: Array<{ treatmentId: Id<"gabinetTreatments">; quantity: number }>;
-  }) => {
+  const openEdit = useCallback((pkg: TreatmentPackage) => {
     setEditingId(pkg._id);
     setName(pkg.name);
     setDescription(pkg.description ?? "");
@@ -164,7 +232,7 @@ function PackagesIndex() {
       if (editingId) {
         await updatePkg({
           organizationId,
-          packageId: editingId,
+          packageId: editingId as Id<"gabinetTreatmentPackages">,
           name,
           description: description || undefined,
           treatments: treatmentsList,
@@ -187,6 +255,7 @@ function PackagesIndex() {
         });
         toast.success(t("gabinet.packages.created"));
       }
+      invalidatePackages();
       setPanelOpen(false);
       resetForm();
     } catch (e: any) {
@@ -196,7 +265,7 @@ function PackagesIndex() {
     }
   };
 
-  const confirmDelete = (id: Id<"gabinetTreatmentPackages">) => {
+  const confirmDelete = (id: string) => {
     setDeletingId(id);
     setDeleteDialogOpen(true);
   };
@@ -204,8 +273,9 @@ function PackagesIndex() {
   const handleRemove = async () => {
     if (!deletingId) return;
     try {
-      await removePkg({ organizationId, packageId: deletingId });
+      await removePkg({ organizationId, packageId: deletingId as Id<"gabinetTreatmentPackages"> });
       toast.success(t("common.deleted"));
+      invalidatePackages();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -214,7 +284,7 @@ function PackagesIndex() {
     }
   };
 
-  const items = packages?.page ?? [];
+  const items = packagesData ?? [];
 
   // Build a treatment name lookup from loaded treatments
   const treatmentNameMap = useMemo(() => {
@@ -240,21 +310,21 @@ function PackagesIndex() {
         <StatisticsOrderCard
           title={t("gabinet.packages.totalPackages", "Pakiety")}
           description={t("gabinet.packages.inCatalog", "W ofercie")}
-          value={String(pkgKpis?.totalPackages ?? 0)}
-          changePercentage={`${pkgKpis?.activePackages ?? 0} ${t("gabinet.packages.active", "aktywnych")}`}
+          value={String(pkgKpis.totalPackages)}
+          changePercentage={`${pkgKpis.activePackages} ${t("gabinet.packages.active", "aktywnych")}`}
         />
         <StatisticsProfitCard
           title={t("gabinet.packages.activePackages", "Aktywne wykupione")}
           description={t("gabinet.packages.inUse", "W użyciu")}
-          value={String(pkgKpis?.activePackages ?? 0)}
+          value={String(pkgKpis.activePackages)}
           changePercentage={t("gabinet.packages.byPatients", "u klientów")}
         />
         <StatisticsImpressionCard
           title={t("gabinet.packages.expiringSoon", "Wygasające")}
           description={t("gabinet.packages.next30Days", "W ciągu 30 dni")}
-          value={String(pkgKpis?.expiringPackages ?? 0)}
+          value={String(pkgKpis.expiringPackages)}
           changePercentage={
-            pkgKpis && pkgKpis.expiringPackages > 0
+            pkgKpis.expiringPackages > 0
               ? t("gabinet.packages.needsRenewal", "do odnowienia")
               : t("gabinet.packages.allGood", "wszystko ok")
           }
@@ -282,8 +352,8 @@ function PackagesIndex() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((pkg) => {
-            const usageDetail = activeUsageDetails?.[pkg._id];
-            const activeCount = activeUsageCounts?.[pkg._id] ?? 0;
+            const usageDetail = activeUsageDetails[pkg._id];
+            const activeCount = activeUsageCounts[pkg._id] ?? 0;
 
             return (
               <div key={pkg._id} className="rounded-lg border p-4 space-y-3">

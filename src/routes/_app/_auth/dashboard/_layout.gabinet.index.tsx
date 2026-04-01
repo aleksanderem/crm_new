@@ -1,9 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import {
+  useSupabaseGabinetWeeklyAppointments,
+  useSupabaseGabinetMonthlyNewPatients,
+  useSupabaseGabinetWeeklyCompletedTreatments,
+  useSupabaseGabinetMonthlyAppointments,
+  useSupabaseGabinetAppointmentStatusDistribution,
+  useSupabaseGabinetTopTreatments,
+  useSupabaseGabinetAppointmentNudges,
+  useSupabaseGabinetLeaveNudges,
+  useSupabaseGabinetPatientNudges,
+} from "@/hooks/use-supabase-gabinet-dashboard";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -68,39 +79,25 @@ function GabinetDashboard() {
   const { organizationId } = useOrganization();
   const today = new Date().toISOString().split("T")[0];
 
-  // --- Data queries ---
-  const { data: todayAppointments } = useQuery(
-    convexQuery(api.gabinet.appointments.listByDate, {
-      organizationId,
-      date: today,
-    })
+  // --- Data queries (Supabase-backed) ---
+  const { data: todayAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId, today, today,
   );
 
-  const { data: patients } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
-      organizationId,
-      paginationOpts: { numItems: 200, cursor: null },
-    })
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const treatments = useMemo(
+    () => (treatmentsData ?? []).filter((tr) => tr.isActive),
+    [treatmentsData],
   );
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
-  );
+  const { data: leavesData } = useSupabaseGabinetLeavesList(organizationId);
 
-  const { data: leaves } = useQuery(
-    convexQuery(api.gabinet.scheduling.listLeaves, { organizationId })
-  );
-
-  // --- Nudges ---
-  const { data: appointmentNudges } = useQuery(
-    convexQuery(api.gabinet.nudges.getAppointmentNudges, { organizationId })
-  );
-  const { data: leaveNudges } = useQuery(
-    convexQuery(api.gabinet.nudges.getLeaveNudges, { organizationId })
-  );
-  const { data: patientNudges } = useQuery(
-    convexQuery(api.gabinet.nudges.getPatientNudges, { organizationId })
-  );
+  // --- Nudges (Supabase-backed) ---
+  const { data: appointmentNudges } = useSupabaseGabinetAppointmentNudges(organizationId);
+  const { data: leaveNudges } = useSupabaseGabinetLeaveNudges(organizationId);
+  const { data: patientNudges } = useSupabaseGabinetPatientNudges(organizationId);
 
   const allNudges = useMemo(() => [
     ...(appointmentNudges ?? []),
@@ -108,53 +105,37 @@ function GabinetDashboard() {
     ...(patientNudges ?? []),
   ], [appointmentNudges, leaveNudges, patientNudges]);
 
-  // --- Sparkline data ---
-  const { data: weeklyAppointments } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getWeeklyAppointments, { organizationId })
-  );
+  // --- Sparkline data (Supabase-backed) ---
+  const { data: weeklyAppointments } = useSupabaseGabinetWeeklyAppointments(organizationId);
+  const { data: monthlyPatients } = useSupabaseGabinetMonthlyNewPatients(organizationId);
+  const { data: weeklyCompleted } = useSupabaseGabinetWeeklyCompletedTreatments(organizationId);
 
-  const { data: monthlyPatients } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getMonthlyNewPatients, { organizationId })
-  );
-
-  const { data: weeklyCompleted } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getWeeklyCompletedTreatments, { organizationId })
-  );
-
-  // --- Chart block data ---
-  const { data: monthlyAppointments } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getMonthlyAppointments, { organizationId })
-  );
-
-  const { data: statusDistribution } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getAppointmentStatusDistribution, { organizationId })
-  );
-
-  const { data: topTreatments } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId })
-  );
+  // --- Chart block data (Supabase-backed) ---
+  const { data: monthlyAppointments } = useSupabaseGabinetMonthlyAppointments(organizationId);
+  const { data: statusDistribution } = useSupabaseGabinetAppointmentStatusDistribution(organizationId);
+  const { data: topTreatments } = useSupabaseGabinetTopTreatments(organizationId);
 
   // --- Derived data ---
   const patientMap = useMemo(
-    () => new Map((patients?.page ?? []).map((p) => [p._id, `${p.firstName} ${p.lastName}`])),
-    [patients]
+    () => new Map((patientsData ?? []).map((p) => [p._id, `${p.firstName} ${p.lastName}`])),
+    [patientsData],
   );
 
   const treatmentMap = useMemo(
     () => new Map((treatments ?? []).map((tr) => [tr._id, tr.name])),
-    [treatments]
+    [treatments],
   );
 
   const enrichedAppointments = useMemo(() => {
     return (todayAppointments ?? []).map((a) => ({
       ...a,
       patientName: patientMap.get(a.patientId) ?? t("common.unknown"),
-      treatmentName: treatmentMap.get(a.treatmentId as Id<"gabinetTreatments">) ?? t("common.unknown"),
+      treatmentName: a.treatmentId ? (treatmentMap.get(a.treatmentId) ?? t("common.unknown")) : t("common.unknown"),
     }));
   }, [todayAppointments, patientMap, treatmentMap, t]);
 
-  const pendingLeaves = (leaves ?? []).filter((l) => l.status === "pending");
-  const totalPatients = patients?.page?.length ?? 0;
+  const pendingLeaves = (leavesData ?? []).filter((l) => l.status === "pending");
+  const totalPatients = patientsData?.length ?? 0;
   const totalTreatments = treatments?.length ?? 0;
   const todayCount = enrichedAppointments.length;
 

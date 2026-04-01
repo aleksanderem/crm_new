@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -51,6 +51,7 @@ function formatCurrency(amount: number, currency?: string): string {
 function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
   // @ts-ignore — TS2589: pre-existing deep type instantiation from Convex useMutation
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const updateTreatment = useMutation(api.gabinet.treatments.update);
@@ -414,6 +415,7 @@ function TreatmentsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
+        onRowClick={(row) => navigate({ to: `/dashboard/gabinet/treatments/${row._id}` })}
         emptyTitle={t("gabinet.treatments.emptyTitle")}
         emptyDescription={t("gabinet.treatments.emptyDescription")}
       />

@@ -75,3 +75,59 @@ export {
   mapGabinetEmployeeScheduleToSupabase,
   type MappedGabinetEmployeeSchedule,
 } from "./employee-schedules";
+
+export {
+  mapGabinetAppointmentFromSupabase,
+  mapGabinetAppointmentToSupabase,
+  type MappedGabinetAppointment,
+} from "./appointments";
+
+export {
+  mapGabinetLeaveFromSupabase,
+  mapGabinetLeaveToSupabase,
+  type MappedGabinetLeave,
+} from "./leaves";
+
+export {
+  mapGabinetOvertimeFromSupabase,
+  mapGabinetOvertimeToSupabase,
+  type MappedGabinetOvertime,
+} from "./overtime";
+
+export {
+  mapGabinetDocumentTemplateFromSupabase,
+  mapGabinetDocumentTemplateToSupabase,
+  type MappedGabinetDocumentTemplate,
+} from "./document-templates";
+
+export {
+  mapGabinetDocumentFromSupabase,
+  mapGabinetDocumentToSupabase,
+  type MappedGabinetDocument,
+} from "./documents";
+
+export {
+  mapGabinetTreatmentPackageFromSupabase,
+  mapGabinetTreatmentPackageToSupabase,
+  type MappedGabinetTreatmentPackage,
+  type PackageTreatmentEntry,
+} from "./treatment-packages";
+
+export {
+  mapGabinetPackageUsageFromSupabase,
+  mapGabinetPackageUsageToSupabase,
+  type MappedGabinetPackageUsage,
+  type PackageTreatmentUsageEntry,
+} from "./package-usage";
+
+export {
+  mapGabinetLoyaltyPointsFromSupabase,
+  mapGabinetLoyaltyPointsToSupabase,
+  type MappedGabinetLoyaltyPoints,
+} from "./loyalty-points";
+
+export {
+  mapGabinetLoyaltyTransactionFromSupabase,
+  mapGabinetLoyaltyTransactionToSupabase,
+  type MappedGabinetLoyaltyTransaction,
+} from "./loyalty-transactions";

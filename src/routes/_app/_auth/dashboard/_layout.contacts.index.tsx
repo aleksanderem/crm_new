@@ -412,6 +412,7 @@ function ContactsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
+        onRowClick={(row) => navigate({ to: `/dashboard/contacts/${row._id}` })}
         toolbar={toolbarRef.current}
         emptyTitle={t('contacts.emptyTitle')}
         emptyDescription={t('contacts.emptyDescription')}

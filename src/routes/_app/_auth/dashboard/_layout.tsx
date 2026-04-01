@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import { useSupabase } from "@/components/supabase-provider";
+import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
@@ -100,7 +100,7 @@ function DashboardLayout() {
   );
   const signOut = useSignOut();
   const navigate = useNavigate();
-  const { client: supabase } = useSupabase();
+  const { client: supabase } = useSupabaseSafe();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);

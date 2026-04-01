@@ -1,10 +1,28 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writePackageRef = internal.supabase.gabinet.packages.writePackageToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updatePackageRef = internal.supabase.gabinet.packages.updatePackageInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const deletePackageRef = internal.supabase.gabinet.packages.deletePackageFromSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeUsageRef = internal.supabase.gabinet.packages.writePackageUsageToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateUsageRef = internal.supabase.gabinet.packages.updatePackageUsageInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLoyaltyRef = internal.supabase.gabinet.loyalty.writeLoyaltyPointsToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLoyaltyRef = internal.supabase.gabinet.loyalty.updateLoyaltyPointsInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTxnRef = internal.supabase.gabinet.loyalty.writeLoyaltyTransactionToSupabase;
 
 export const list = query({
   args: {
@@ -105,6 +123,24 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writePackageRef, {
+      packageId: id,
+      organizationId: args.organizationId,
+      name: args.name,
+      description: args.description,
+      treatments: args.treatments,
+      totalPrice: args.totalPrice,
+      currency: args.currency,
+      discountPercent: args.discountPercent,
+      validityDays: args.validityDays,
+      isActive: true,
+      loyaltyPointsAwarded: args.loyaltyPointsAwarded,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     return id;
   },
 });
@@ -139,6 +175,23 @@ export const update = mutation({
 
     const { organizationId, packageId, ...updates } = args;
     await ctx.db.patch(packageId, { ...updates, updatedAt: Date.now() });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, updatePackageRef, {
+      packageId,
+      organizationId,
+      name: args.name,
+      description: args.description,
+      treatments: args.treatments,
+      totalPrice: args.totalPrice,
+      currency: args.currency,
+      discountPercent: args.discountPercent,
+      validityDays: args.validityDays,
+      isActive: args.isActive,
+      loyaltyPointsAwarded: args.loyaltyPointsAwarded,
+      updatedAt: Date.now(),
+    });
+
     return packageId;
   },
 });
@@ -158,6 +211,12 @@ export const remove = mutation({
     if (perm.scope === "own" && pkg.createdBy !== user._id) {
       throw new Error("Permission denied: you can only delete your own records");
     }
+
+    // Dual-write: replicate soft-delete to Supabase BEFORE Convex patch (Knowledge #4)
+    await ctx.scheduler.runAfter(0, deletePackageRef, {
+      packageId: args.packageId,
+      organizationId: args.organizationId,
+    });
 
     await ctx.db.patch(args.packageId, { isActive: false, updatedAt: Date.now() });
   },
@@ -280,6 +339,85 @@ export const purchasePackage = mutation({
         createdBy: user._id,
         createdAt: now,
       });
+
+      // Dual-write: replicate loyalty points to Supabase
+      if (loyalty) {
+        await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
+          loyaltyId: loyalty._id,
+          organizationId: args.organizationId,
+          balance: newBalance,
+          lifetimeEarned: newLifetimeEarned,
+          updatedAt: now,
+        });
+      }
+      // Note: if loyalty was just created (else branch above), we rely on the
+      // writeLoyaltyRef call below to handle it via the loyaltyPointsId.
+    }
+
+    // Dual-write: replicate package usage to Supabase
+    await ctx.scheduler.runAfter(0, writeUsageRef, {
+      usageId,
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      packageId: args.packageId,
+      purchasedAt: now,
+      expiresAt,
+      status: "active",
+      treatmentsUsed: treatmentsUsed,
+      paidAmount: args.paidAmount,
+      paymentMethod: args.paymentMethod,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate loyalty records to Supabase (for newly created records)
+    if (pkg.loyaltyPointsAwarded && pkg.loyaltyPointsAwarded > 0) {
+      const loyaltyFresh = await ctx.db
+        .query("gabinetLoyaltyPoints")
+        .withIndex("by_orgAndPatient", (q) =>
+          q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
+        )
+        .first();
+
+      if (loyaltyFresh) {
+        // Upsert the loyalty points record
+        await ctx.scheduler.runAfter(0, writeLoyaltyRef, {
+          loyaltyId: loyaltyFresh._id,
+          organizationId: args.organizationId,
+          patientId: args.patientId,
+          balance: loyaltyFresh.balance,
+          lifetimeEarned: loyaltyFresh.lifetimeEarned,
+          lifetimeSpent: loyaltyFresh.lifetimeSpent,
+          createdAt: loyaltyFresh.createdAt,
+          updatedAt: loyaltyFresh.updatedAt,
+        });
+      }
+
+      // Find and replicate the transaction
+      const txns = await ctx.db
+        .query("gabinetLoyaltyTransactions")
+        .withIndex("by_orgAndPatient", (q) =>
+          q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
+        )
+        .order("desc")
+        .first();
+
+      if (txns) {
+        await ctx.scheduler.runAfter(0, writeTxnRef, {
+          transactionId: txns._id,
+          organizationId: args.organizationId,
+          patientId: args.patientId,
+          type: txns.type,
+          points: txns.points,
+          reason: txns.reason,
+          referenceType: txns.referenceType,
+          referenceId: txns.referenceId,
+          balanceAfter: txns.balanceAfter,
+          createdBy: txns.createdBy,
+          createdAt: txns.createdAt,
+        });
+      }
     }
 
     return usageId;
@@ -319,6 +457,15 @@ export const usePackageTreatment = mutation({
     await ctx.db.patch(args.usageId, {
       treatmentsUsed: updatedTreatments,
       status: allUsed ? "completed" : "active",
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate usage update to Supabase
+    await ctx.scheduler.runAfter(0, updateUsageRef, {
+      usageId: args.usageId,
+      organizationId: args.organizationId,
+      status: allUsed ? "completed" : "active",
+      treatmentsUsed: updatedTreatments,
       updatedAt: Date.now(),
     });
   },
@@ -428,6 +575,15 @@ export const usePackageTreatmentsBatch = mutation({
       action: "updated",
       description: `Used ${totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
       performedBy: user._id,
+    });
+
+    // Dual-write: replicate usage update to Supabase
+    await ctx.scheduler.runAfter(0, updateUsageRef, {
+      usageId: args.usageId,
+      organizationId: args.organizationId,
+      status: allUsed ? "completed" : "active",
+      treatmentsUsed: updatedTreatments,
+      updatedAt: Date.now(),
     });
   },
 });

@@ -4597,3 +4597,39 @@ export type GabinetWorkingHoursUpdate = Database["public"]["Tables"]["gabinet_wo
 export type GabinetEmployeeScheduleRow = Database["public"]["Tables"]["gabinet_employee_schedules"]["Row"];
 export type GabinetEmployeeScheduleInsert = Database["public"]["Tables"]["gabinet_employee_schedules"]["Insert"];
 export type GabinetEmployeeScheduleUpdate = Database["public"]["Tables"]["gabinet_employee_schedules"]["Update"];
+
+export type GabinetAppointmentRow = Database["public"]["Tables"]["gabinet_appointments"]["Row"];
+export type GabinetAppointmentInsert = Database["public"]["Tables"]["gabinet_appointments"]["Insert"];
+export type GabinetAppointmentUpdate = Database["public"]["Tables"]["gabinet_appointments"]["Update"];
+
+export type GabinetLeaveRow = Database["public"]["Tables"]["gabinet_leaves"]["Row"];
+export type GabinetLeaveInsert = Database["public"]["Tables"]["gabinet_leaves"]["Insert"];
+export type GabinetLeaveUpdate = Database["public"]["Tables"]["gabinet_leaves"]["Update"];
+
+export type GabinetOvertimeRow = Database["public"]["Tables"]["gabinet_overtime"]["Row"];
+export type GabinetOvertimeInsert = Database["public"]["Tables"]["gabinet_overtime"]["Insert"];
+export type GabinetOvertimeUpdate = Database["public"]["Tables"]["gabinet_overtime"]["Update"];
+
+export type GabinetDocumentTemplateRow = Database["public"]["Tables"]["gabinet_document_templates"]["Row"];
+export type GabinetDocumentTemplateInsert = Database["public"]["Tables"]["gabinet_document_templates"]["Insert"];
+export type GabinetDocumentTemplateUpdate = Database["public"]["Tables"]["gabinet_document_templates"]["Update"];
+
+export type GabinetDocumentRow = Database["public"]["Tables"]["gabinet_documents"]["Row"];
+export type GabinetDocumentInsert = Database["public"]["Tables"]["gabinet_documents"]["Insert"];
+export type GabinetDocumentUpdate = Database["public"]["Tables"]["gabinet_documents"]["Update"];
+
+export type GabinetTreatmentPackageRow = Database["public"]["Tables"]["gabinet_treatment_packages"]["Row"];
+export type GabinetTreatmentPackageInsert = Database["public"]["Tables"]["gabinet_treatment_packages"]["Insert"];
+export type GabinetTreatmentPackageUpdate = Database["public"]["Tables"]["gabinet_treatment_packages"]["Update"];
+
+export type GabinetPackageUsageRow = Database["public"]["Tables"]["gabinet_package_usage"]["Row"];
+export type GabinetPackageUsageInsert = Database["public"]["Tables"]["gabinet_package_usage"]["Insert"];
+export type GabinetPackageUsageUpdate = Database["public"]["Tables"]["gabinet_package_usage"]["Update"];
+
+export type GabinetLoyaltyPointsRow = Database["public"]["Tables"]["gabinet_loyalty_points"]["Row"];
+export type GabinetLoyaltyPointsInsert = Database["public"]["Tables"]["gabinet_loyalty_points"]["Insert"];
+export type GabinetLoyaltyPointsUpdate = Database["public"]["Tables"]["gabinet_loyalty_points"]["Update"];
+
+export type GabinetLoyaltyTransactionRow = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Row"];
+export type GabinetLoyaltyTransactionInsert = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Insert"];
+export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Update"];

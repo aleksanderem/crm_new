@@ -28,6 +28,8 @@ export interface CrmColumn<TData> {
   render: (item: TData) => ReactNode;
   /** Value used for sorting. Required if `sortable` is true. */
   getSortValue?: (item: TData) => string | number | boolean;
+  /** If true, this cell has its own interaction (toggle, button, etc.) and won't be wrapped in a row-click link. */
+  interactive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +66,8 @@ export interface CrmDataTableProps<TData> {
   toolbar?: ReactNode;
   /** Column IDs to hide. */
   hiddenColumnIds?: Set<string>;
+  /** Called when a row body is clicked (not the checkbox). Use for navigation. */
+  onRowClick?: (item: TData) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +121,7 @@ export function CrmDataTable<TData>({
   onSortChange: controlledSortChange,
   toolbar,
   hiddenColumnIds,
+  onRowClick,
 }: CrmDataTableProps<TData>) {
   const { t } = useTranslation();
 
@@ -227,7 +232,23 @@ export function CrmDataTable<TData>({
                 <Table.Row key={rowId} id={rowId}>
                   {visibleColumns.map((col) => (
                     <Table.Cell key={col.id} className={col.className}>
-                      {col.render(item)}
+                      {onRowClick && !col.interactive ? (
+                        <div
+                          className="cursor-pointer -mx-5 -my-3 px-5 py-3"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRowClick(item);
+                          }}
+                          onPointerDown={(e) => {
+                            // Prevent React Aria from starting selection on pointer down
+                            e.stopPropagation();
+                          }}
+                        >
+                          {col.render(item)}
+                        </div>
+                      ) : (
+                        col.render(item)
+                      )}
                     </Table.Cell>
                   ))}
                   {hasActions && (

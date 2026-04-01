@@ -1,6 +1,14 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateLoyaltyRef = internal.supabase.gabinet.loyalty.updateLoyaltyPointsInSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLoyaltyRef = internal.supabase.gabinet.loyalty.writeLoyaltyPointsToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTxnRef = internal.supabase.gabinet.loyalty.writeLoyaltyTransactionToSupabase;
 
 export const getBalance = query({
   args: {
@@ -83,7 +91,34 @@ export const earnPoints = mutation({
       updatedAt: now,
     });
 
-    await ctx.db.insert("gabinetLoyaltyTransactions", {
+    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      type: "earn",
+      points: args.points,
+      reason: args.reason,
+      referenceType: args.referenceType,
+      referenceId: args.referenceId,
+      balanceAfter: newBalance,
+      createdBy: user._id,
+      createdAt: now,
+    });
+
+    // Dual-write: replicate loyalty points update to Supabase
+    await ctx.scheduler.runAfter(0, writeLoyaltyRef, {
+      loyaltyId: loyalty._id,
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      balance: newBalance,
+      lifetimeEarned: loyalty.lifetimeEarned + args.points,
+      lifetimeSpent: loyalty.lifetimeSpent,
+      createdAt: loyalty.createdAt,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate transaction to Supabase
+    await ctx.scheduler.runAfter(0, writeTxnRef, {
+      transactionId: txnId,
       organizationId: args.organizationId,
       patientId: args.patientId,
       type: "earn",
@@ -122,7 +157,29 @@ export const spendPoints = mutation({
       updatedAt: now,
     });
 
-    await ctx.db.insert("gabinetLoyaltyTransactions", {
+    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      type: "spend",
+      points: args.points,
+      reason: args.reason,
+      balanceAfter: newBalance,
+      createdBy: user._id,
+      createdAt: now,
+    });
+
+    // Dual-write: replicate loyalty points update to Supabase
+    await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
+      loyaltyId: loyalty._id,
+      organizationId: args.organizationId,
+      balance: newBalance,
+      lifetimeSpent: loyalty.lifetimeSpent + args.points,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate transaction to Supabase
+    await ctx.scheduler.runAfter(0, writeTxnRef, {
+      transactionId: txnId,
       organizationId: args.organizationId,
       patientId: args.patientId,
       type: "spend",
@@ -158,7 +215,30 @@ export const adjustPoints = mutation({
       updatedAt: now,
     });
 
-    await ctx.db.insert("gabinetLoyaltyTransactions", {
+    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
+      organizationId: args.organizationId,
+      patientId: args.patientId,
+      type: "adjust",
+      points: args.points,
+      reason: args.reason,
+      balanceAfter: newBalance,
+      createdBy: user._id,
+      createdAt: now,
+    });
+
+    // Dual-write: replicate loyalty points update to Supabase
+    await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
+      loyaltyId: loyalty._id,
+      organizationId: args.organizationId,
+      balance: newBalance,
+      lifetimeEarned: args.points > 0 ? loyalty.lifetimeEarned + args.points : loyalty.lifetimeEarned,
+      lifetimeSpent: args.points < 0 ? loyalty.lifetimeSpent + Math.abs(args.points) : loyalty.lifetimeSpent,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate transaction to Supabase
+    await ctx.scheduler.runAfter(0, writeTxnRef, {
+      transactionId: txnId,
       organizationId: args.organizationId,
       patientId: args.patientId,
       type: "adjust",

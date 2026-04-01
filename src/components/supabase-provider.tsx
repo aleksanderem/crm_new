@@ -102,6 +102,20 @@ export function useSupabase(): SupabaseContextValue {
 }
 
 /**
+ * Non-throwing variant of `useSupabase()`.
+ *
+ * Returns `{ client: null, isReady: false }` when called outside
+ * `<SupabaseProvider>` instead of throwing. Use in components that
+ * render *above* the provider but conditionally need the client
+ * (e.g. the dashboard layout which both renders the provider and
+ * uses global search).
+ */
+export function useSupabaseSafe(): SupabaseContextValue {
+  const ctx = useContext(SupabaseContext);
+  return ctx ?? { client: null, isReady: false };
+}
+
+/**
  * Convenience hook — returns the Supabase client directly.
  *
  * @throws if the client is not yet ready (JWT still loading) or if called

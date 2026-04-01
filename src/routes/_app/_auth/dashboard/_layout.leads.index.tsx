@@ -85,6 +85,7 @@ function LeadsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateLead = useMutation(api.leads.update);
   const removeLead = useMutation(api.leads.remove);
   const createLead = useMutation(api.leads.create);
@@ -616,6 +617,7 @@ function LeadsIndex() {
           },
         ]}
         onBulkAction={handleBulkAction}
+        onRowClick={(row) => navigate({ to: `/dashboard/leads/${row._id}` })}
         rowActions={(_row) => [
           {
             label: t("common.edit"),

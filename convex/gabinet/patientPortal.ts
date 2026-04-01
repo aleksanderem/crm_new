@@ -1,4 +1,5 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -8,6 +9,9 @@ import {
 } from "./_availability";
 import { createNotificationDirect } from "../notifications";
 import { validatePortalSession } from "../_helpers/portalSession";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateDocRef = internal.supabase.gabinet.documents.updateDocumentInSupabase;
 
 export const getMyProfile = query({
   args: { tokenHash: v.string() },
@@ -188,6 +192,17 @@ export const signDocument = mutation({
     }
 
     await ctx.db.patch(args.documentId, {
+      status: "signed",
+      signatureData: args.signatureData,
+      signedAt: Date.now(),
+      signedByPatient: true,
+      updatedAt: Date.now(),
+    });
+
+    // Dual-write: replicate patient signature to Supabase
+    await ctx.scheduler.runAfter(0, updateDocRef, {
+      documentId: args.documentId,
+      organizationId,
       status: "signed",
       signatureData: args.signatureData,
       signedAt: Date.now(),

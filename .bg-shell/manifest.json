@@ -1,16 +1,1 @@
-[
-  {
-    "id": "3bc60a94",
-    "label": "vite",
-    "command": "cd /Users/alfred/projects/crm_new && unset VITE_SUPABASE_URL && unset VITE_SUPABASE_ANON_KEY && npx vite --port 5173 --strictPort",
-    "cwd": "/Users/alfred/projects/crm_new",
-    "ownerSessionFile": "/Users/alfred/.gsd/sessions/--Users-alfred-.gsd-projects-fe8a7f660d27-worktrees-dapper-carving-dawn--/2026-03-29T19-41-02-882Z_34bf8da9-ca53-4926-8237-b49333aba5cd.jsonl",
-    "persistAcrossSessions": false,
-    "startedAt": 1774820247757,
-    "processType": "server",
-    "group": null,
-    "readyPattern": null,
-    "readyPort": 5173,
-    "pid": 39072
-  }
-]
+[]

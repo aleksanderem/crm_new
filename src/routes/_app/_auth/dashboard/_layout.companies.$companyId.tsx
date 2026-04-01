@@ -213,6 +213,10 @@ function CompanyDetail() {
     { search: guestContactSearch || undefined, enabled: guestContactSearch.length > 0 },
   );
 
+  // Full-list lookups for enriching association items with names/values
+  const { data: allLeads } = useSupabaseLeadsList(organizationId);
+  const { data: allContacts } = useSupabaseContactsList(organizationId);
+
   // --- Handlers ---
 
   const handleEditSubmit = async (
@@ -596,18 +600,37 @@ function CompanyDetail() {
     })
   );
 
-  // --- Association panel items ---
-  const dealAssociationItems = dealRelationships.map((r) => ({
-    id: r.targetId,
-    label: (r as any).targetName ?? r.targetId,
-    sublabel: (r as any).targetSublabel,
-  }));
+  // --- Association panel items (enriched from full lists) ---
+  const leadMap = useMemo(() => {
+    const m = new Map<string, { title: string; value?: number; currency?: string }>();
+    const list = Array.isArray(allLeads) ? allLeads : allLeads?.page ?? [];
+    for (const l of list) m.set(l._id, { title: l.title, value: l.value, currency: l.currency });
+    return m;
+  }, [allLeads]);
 
-  const contactAssociationItems = contactRelationships.map((r) => ({
-    id: r.targetId,
-    label: (r as any).targetName ?? r.targetId,
-    sublabel: (r as any).targetSublabel,
-  }));
+  const contactMap = useMemo(() => {
+    const m = new Map<string, { name: string; email?: string }>();
+    for (const c of allContacts ?? []) m.set(c._id, { name: `${c.firstName} ${c.lastName ?? ""}`.trim(), email: c.email });
+    return m;
+  }, [allContacts]);
+
+  const dealAssociationItems = dealRelationships.map((r) => {
+    const lead = leadMap.get(r.targetId);
+    return {
+      id: r.targetId,
+      label: lead?.title ?? r.targetId,
+      sublabel: lead?.value != null ? `${lead.value.toLocaleString("pl-PL")} ${lead.currency ?? "PLN"}` : undefined,
+    };
+  });
+
+  const contactAssociationItems = contactRelationships.map((r) => {
+    const contact = contactMap.get(r.targetId);
+    return {
+      id: r.targetId,
+      label: contact?.name ?? r.targetId,
+      sublabel: contact?.email,
+    };
+  });
 
   const dealSearchResultsForPanel: SearchResultItem[] = (sidebarDealResults?.page ?? [])
     .map((d) => ({ id: d._id, label: d.title, sublabel: d.value != null ? `${d.value.toLocaleString()} PLN` : undefined }));

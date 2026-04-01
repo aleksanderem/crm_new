@@ -51,16 +51,16 @@ interface EntityDetailHeaderProps {
 export function EntityDetailHeader({
   title,
   subtitle,
-  headerSubtitle,
+  headerSubtitle: _headerSubtitle,
   avatarUrl,
   avatarFallback,
-  primaryAction,
-  secondaryActions,
-  onEdit,
+  primaryAction: _primaryAction,
+  secondaryActions: _secondaryActions,
+  onEdit: _onEdit,
   owner,
   onOwnerChange,
-  actionsMenu,
-  onBack,
+  actionsMenu: _actionsMenu,
+  onBack: _onBack,
   breadcrumbs,
 }: EntityDetailHeaderProps) {
   return (
@@ -358,27 +358,29 @@ export function EntityDetailLayout({
           </div>
 
           {/* Association sections */}
-          {associations?.map((section) => (
-            <div key={section.title} className="space-y-2">
+          {associations?.map((section, idx) => (
+            <div key={section.title || `assoc-${idx}`} className="space-y-2">
               <Separator />
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
-                  {section.title}{" "}
-                  <span className="text-muted-foreground font-normal">
-                    ({section.count})
-                  </span>
-                </h3>
-                {section.onCreateNew && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={section.onCreateNew}
-                  >
-                    <Plus className="h-[17px] w-[17px]" variant="stroke" />
+              {section.title && (
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">
+                    {section.title}{" "}
+                    <span className="text-muted-foreground font-normal">
+                      ({section.count})
+                    </span>
+                  </h3>
+                  {section.onCreateNew && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={section.onCreateNew}
+                    >
+                      <Plus className="h-[17px] w-[17px]" variant="stroke" />
                   </Button>
                 )}
               </div>
+              )}
               {section.children}
             </div>
           ))}
@@ -530,22 +532,24 @@ function SidebarSlotEntityDetail({
         </div>
 
         {/* Associations */}
-        {associations?.map((section) => (
-          <div key={section.title} className="space-y-2">
+        {associations?.map((section, idx) => (
+          <div key={section.title || `assoc-${idx}`} className="space-y-2">
             <Separator />
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">
-                {section.title}{" "}
-                <span className="text-muted-foreground font-normal">
-                  ({section.count})
-                </span>
-              </h3>
-              {section.onCreateNew && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={section.onCreateNew}>
-                  <Plus className="h-[17px] w-[17px]" variant="stroke" />
-                </Button>
-              )}
-            </div>
+            {section.title && (
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  {section.title}{" "}
+                  <span className="text-muted-foreground font-normal">
+                    ({section.count})
+                  </span>
+                </h3>
+                {section.onCreateNew && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={section.onCreateNew}>
+                    <Plus className="h-[17px] w-[17px]" variant="stroke" />
+                  </Button>
+                )}
+              </div>
+            )}
             {section.children}
           </div>
         ))}

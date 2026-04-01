@@ -25,7 +25,6 @@ import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
 import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
@@ -38,20 +37,18 @@ import {
   ChevronDown,
   Plus,
   PhoneCall,
-  FileText,
   Pin,
-  User,
-  Search,
   Upload,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { useTranslation } from "react-i18next";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
-import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { EntityAssociationPanel } from "@/components/crm/entity-association-panel";
+import type { SearchResultItem } from "@/components/crm/entity-association-panel";
 import { CompanyOverviewTab } from "@/components/crm/company-overview-tab";
 
 export const Route = createFileRoute(
@@ -147,8 +144,7 @@ function CompanyDetail() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [createLeadDrawerOpen, setCreateLeadDrawerOpen] = useState(false);
-  const [showSidebarDealLink, setShowSidebarDealLink] = useState(false);
-  const [showSidebarContactLink, setShowSidebarContactLink] = useState(false);
+  // Sidebar link toggles removed — EntityAssociationPanel manages its own search state
 
   // Relationship search state for edit drawer
   const [dealSearch, setDealSearch] = useState("");
@@ -600,176 +596,24 @@ function CompanyDetail() {
     })
   );
 
-  // --- Deals sidebar association content ---
-  const dealsAssociationContent = (
-    <>
-      {showSidebarDealLink && (
-        <div className="mb-3 relative">
-          <div className="flex items-center w-full rounded-md border bg-transparent">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-            <Input
-              type="text"
-              className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
-              placeholder={t('detail.relationships.searchLeads')}
-              value={sidebarDealSearch}
-              onChange={(e) => setSidebarDealSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {sidebarDealSearch.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {sidebarDealResults?.page?.filter(
-                (d) => !dealRelationships.some((r) => r.targetId === d._id)
-              ).length ? (
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {sidebarDealResults.page
-                    .filter((d) => !dealRelationships.some((r) => r.targetId === d._id))
-                    .map((d) => (
-                      <li key={d._id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={async () => {
-                            await handleLinkDeal({ id: d._id, label: d.title });
-                            setSidebarDealSearch("");
-                            setShowSidebarDealLink(false);
-                          }}
-                        >
-                          <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                          <span>{d.title}</span>
-                          {d.value != null && (
-                            <span className="text-xs text-muted-foreground">
-                              ${d.value.toLocaleString()}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              ) : (
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t('detail.relationships.noResults')}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {dealRelationships.length > 0 ? (
-        <ul className="space-y-2">
-          {dealRelationships.map((r) => (
-            <li key={r._id}>
-              <button
-                className="flex items-center gap-2 text-sm text-primary hover:underline"
-                onClick={() => navigate({ to: `/dashboard/leads/${r.targetId}` })}
-              >
-                <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                <span>{(r as any).targetName ?? r.targetId}</span>
-                {(r as any).targetSublabel && (
-                  <span className="text-xs text-muted-foreground">
-                    {(r as any).targetSublabel}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        !showSidebarDealLink && (
-          <p className="text-sm text-muted-foreground">
-            {t('detail.relationships.emptyCompanyLeads')}
-          </p>
-        )
-      )}
-    </>
-  );
+  // --- Association panel items ---
+  const dealAssociationItems = dealRelationships.map((r) => ({
+    id: r.targetId,
+    label: (r as any).targetName ?? r.targetId,
+    sublabel: (r as any).targetSublabel,
+  }));
 
-  // --- Contacts sidebar association content ---
-  const contactsAssociationContent = (
-    <>
-      {showSidebarContactLink && (
-        <div className="mb-3 relative">
-          <div className="flex items-center w-full rounded-md border bg-transparent">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-            <Input
-              type="text"
-              className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
-              placeholder={t('detail.relationships.searchContacts')}
-              value={sidebarContactSearch}
-              onChange={(e) => setSidebarContactSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {sidebarContactSearch.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {sidebarContactResults?.filter(
-                (c) => !contactRelationships.some((r) => r.targetId === c._id)
-              ).length ? (
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {sidebarContactResults
-                    .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
-                    .map((c) => (
-                      <li key={c._id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={async () => {
-                            await handleLinkContact({
-                              id: c._id,
-                              label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
-                            });
-                            setSidebarContactSearch("");
-                            setShowSidebarContactLink(false);
-                          }}
-                        >
-                          <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                          <span>{`${c.firstName} ${c.lastName ?? ""}`.trim()}</span>
-                          {c.email && (
-                            <span className="text-xs text-muted-foreground">
-                              ({c.email})
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              ) : (
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t('detail.relationships.noResults')}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {contactRelationships.length > 0 ? (
-        <ul className="space-y-2">
-          {contactRelationships.map((r) => (
-            <li key={r._id}>
-              <button
-                className="flex items-center gap-2 text-sm text-primary hover:underline"
-                onClick={() => navigate({ to: `/dashboard/contacts/${r.targetId}` })}
-              >
-                <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                <span>{(r as any).targetName ?? r.targetId}</span>
-                {(r as any).targetSublabel && (
-                  <span className="text-xs text-muted-foreground">
-                    ({(r as any).targetSublabel})
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        !showSidebarContactLink && (
-          <p className="text-sm text-muted-foreground">
-            {t('detail.relationships.emptyCompanyContacts')}
-          </p>
-        )
-      )}
-    </>
-  );
+  const contactAssociationItems = contactRelationships.map((r) => ({
+    id: r.targetId,
+    label: (r as any).targetName ?? r.targetId,
+    sublabel: (r as any).targetSublabel,
+  }));
+
+  const dealSearchResultsForPanel: SearchResultItem[] = (sidebarDealResults?.page ?? [])
+    .map((d) => ({ id: d._id, label: d.title, sublabel: d.value != null ? `${d.value.toLocaleString()} PLN` : undefined }));
+
+  const contactSearchResultsForPanel: SearchResultItem[] = (sidebarContactResults ?? [])
+    .map((c) => ({ id: c._id, label: `${c.firstName} ${c.lastName ?? ""}`.trim(), sublabel: c.email ?? undefined }));
 
   // --- Actions menu ---
   const actionsMenu = (
@@ -816,16 +660,38 @@ function CompanyDetail() {
         expandedFieldCount={3}
         associations={[
           {
-            title: t('detail.relationships.leads'),
-            count: dealRelationships.length,
-            onCreateNew: () => setCreateLeadDrawerOpen(true),
-            children: dealsAssociationContent,
+            title: "",
+            count: 0,
+            children: (
+              <EntityAssociationPanel
+                title={t('detail.relationships.leads')}
+                items={dealAssociationItems}
+                searchPlaceholder={t('detail.relationships.searchLeads')}
+                emptyText={t('detail.relationships.emptyCompanyLeads')}
+                onItemClick={(id) => navigate({ to: `/dashboard/leads/${id}` })}
+                onLink={(item) => handleLinkDeal(item)}
+                onCreateNew={() => setCreateLeadDrawerOpen(true)}
+                searchResults={dealSearchResultsForPanel}
+                onSearchChange={setSidebarDealSearch}
+              />
+            ),
           },
           {
-            title: t('detail.relationships.contacts'),
-            count: contactRelationships.length,
-            onCreateNew: () => setCreateContactDrawerOpen(true),
-            children: contactsAssociationContent,
+            title: "",
+            count: 0,
+            children: (
+              <EntityAssociationPanel
+                title={t('detail.relationships.contacts')}
+                items={contactAssociationItems}
+                searchPlaceholder={t('detail.relationships.searchContacts')}
+                emptyText={t('detail.relationships.emptyCompanyContacts')}
+                onItemClick={(id) => navigate({ to: `/dashboard/contacts/${id}` })}
+                onLink={(item) => handleLinkContact(item)}
+                onCreateNew={() => setCreateContactDrawerOpen(true)}
+                searchResults={contactSearchResultsForPanel}
+                onSearchChange={setSidebarContactSearch}
+              />
+            ),
           },
         ]}
         attachments={

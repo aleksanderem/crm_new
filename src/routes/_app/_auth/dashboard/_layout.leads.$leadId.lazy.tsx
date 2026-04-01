@@ -77,7 +77,6 @@ import { Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
-import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 
 export const Route = createLazyFileRoute(

@@ -3,7 +3,14 @@ import { ChevronDown, ChevronUp, Plus } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { useHeaderSlot } from "@/components/layout/header-slot-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,83 +64,35 @@ export function EntityDetailHeader({
   breadcrumbs,
 }: EntityDetailHeaderProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {breadcrumbs && <div className="text-xs">{breadcrumbs}</div>}
-      {onBack && (
-        <Button variant="ghost" size="sm" className="mb-1 -ml-2 text-xs text-muted-foreground" onClick={onBack}>
-          &larr; Back
-        </Button>
-      )}
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold">{title}</h1>
-          {subtitle && (
-            <div className="truncate text-sm text-muted-foreground">
-              {subtitle}
-            </div>
-          )}
-          {headerSubtitle && (
-            <div className="mt-1 text-sm text-muted-foreground">
-              {headerSubtitle}
-            </div>
-          )}
-        </div>
-        <Avatar className="h-16 w-16 shrink-0">
+        <Avatar className="h-12 w-12 shrink-0">
           {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
-          <AvatarFallback className="text-lg">
+          <AvatarFallback className="text-base">
             {avatarFallback ?? title[0]?.toUpperCase() ?? "?"}
           </AvatarFallback>
         </Avatar>
-      </div>
-
-      {/* Separate actions row when primary/edit/secondary buttons exist */}
-      {(primaryAction || onEdit || (secondaryActions && secondaryActions.length > 0)) && (
-        <div className="flex items-center gap-2">
-          {primaryAction && (
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={primaryAction.onClick}
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-lg font-semibold">{title}</h1>
+          {owner && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onOwnerChange}
             >
-              {primaryAction.label}
-            </Button>
+              <Avatar className="h-4 w-4">
+                {owner.avatarUrl && <AvatarImage src={owner.avatarUrl} alt={owner.name} />}
+                <AvatarFallback className="text-[8px]">{owner.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span>{owner.name}</span>
+            </button>
           )}
-          {onEdit && (
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              Edit
-            </Button>
+          {subtitle && (
+            <div className="truncate text-sm text-muted-foreground">{subtitle}</div>
           )}
-          {secondaryActions?.map((action) => (
-            <Button
-              key={action.label}
-              variant={action.variant === "destructive" ? "destructive" : "outline"}
-              size="sm"
-              onClick={action.onClick}
-            >
-              {action.label}
-            </Button>
-          ))}
-          {actionsMenu}
         </div>
-      )}
-
-      {owner && (
-        <button
-          type="button"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          onClick={onOwnerChange}
-        >
-          <Avatar className="h-5 w-5">
-            {owner.avatarUrl && (
-              <AvatarImage src={owner.avatarUrl} alt={owner.name} />
-            )}
-            <AvatarFallback className="text-[10px]">
-              {owner.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <span>Owner: {owner.name}</span>
-        </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -475,10 +434,56 @@ function SidebarSlotEntityDetail({
   children: React.ReactNode;
 }) {
   const { setContent } = useSidebarSlot();
+  const { setBackAction } = useHeaderSlot();
+
+  // Register back button in the top header bar
+  useEffect(() => {
+    if (headerProps.onBack) {
+      setBackAction(headerProps.onBack);
+    }
+    return () => setBackAction(null);
+  }, [headerProps.onBack, setBackAction]);
+
+  // Build all action items for the "Akcje" dropdown
+  const allActions: { label: string; onClick: () => void; variant?: string }[] = [];
+  if (headerProps.primaryAction) {
+    allActions.push({ label: headerProps.primaryAction.label, onClick: headerProps.primaryAction.onClick });
+  }
+  if (headerProps.onEdit) {
+    allActions.push({ label: "Edit", onClick: headerProps.onEdit });
+  }
+  if (headerProps.secondaryActions) {
+    for (const a of headerProps.secondaryActions) {
+      allActions.push({ label: a.label, onClick: a.onClick, variant: a.variant });
+    }
+  }
 
   useEffect(() => {
     setContent(
       <div className="space-y-4">
+        {/* Actions dropdown */}
+        {allActions.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-between">
+                Akcje
+                <ChevronDown className="ml-2 h-3 w-3" variant="stroke" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {allActions.map((action) => (
+                <DropdownMenuItem
+                  key={action.label}
+                  onClick={action.onClick}
+                  className={action.variant === "destructive" ? "text-destructive focus:text-destructive" : ""}
+                >
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {/* Details section */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold">Details</h2>

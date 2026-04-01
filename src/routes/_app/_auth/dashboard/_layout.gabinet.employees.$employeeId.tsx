@@ -16,7 +16,8 @@ import {
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
-import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { ActivityFeed } from "@/components/crm/activity-feed";
+import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -683,8 +684,8 @@ function EmployeeDetail() {
     {
       label: t("gabinet.employees.activity"),
       content: (
-        <ActivityTimeline
-          activities={activities ?? []}
+        <ActivityFeed
+          entries={activitiesToFeedEntries((activities ?? []) as any[])}
           maxHeight="600px"
         />
       ),

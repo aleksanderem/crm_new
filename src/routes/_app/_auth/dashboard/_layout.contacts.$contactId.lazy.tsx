@@ -22,7 +22,8 @@ import { RelationshipField } from "@/components/crm/relationship-field";
 import type { RelationshipItem } from "@/components/crm/relationship-field";
 import { ActivityForm } from "@/components/crm/activity-form";
 import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
-import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { ActivityFeed } from "@/components/crm/activity-feed";
+import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Input } from "@/components/ui/input";
@@ -961,8 +962,8 @@ function ContactDetail() {
               <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
             </Button>
           </div>
-          <ActivityTimeline
-            activities={(activities ?? []) as unknown as import("@/components/activity-timeline/presenter/activity-presenter").ActivityWithMetadata[]}
+          <ActivityFeed
+            entries={activitiesToFeedEntries((activities ?? []) as any[])}
             maxHeight="600px"
           />
         </>

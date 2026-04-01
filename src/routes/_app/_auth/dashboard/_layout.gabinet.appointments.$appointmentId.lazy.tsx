@@ -56,7 +56,8 @@ import {
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { Tabs as UntitledTabs, TabList, TabPanel } from "@untitled/app/tabs/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
-import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { ActivityFeed } from "@/components/crm/activity-feed";
+import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
 import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
 import { AppointmentDocumentChecklist, useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
@@ -1691,8 +1692,8 @@ function AppointmentDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-6 py-4">
-              <ActivityTimeline
-                activities={mergedTimeline}
+              <ActivityFeed
+                entries={activitiesToFeedEntries(mergedTimeline as any[])}
                 maxHeight="400px"
               />
             </CardContent>

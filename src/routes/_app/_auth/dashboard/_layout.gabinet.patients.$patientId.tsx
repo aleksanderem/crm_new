@@ -14,7 +14,8 @@ import {
 } from "@/components/crm/entity-detail-layout";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
-import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { ActivityFeed } from "@/components/crm/activity-feed";
+import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -609,8 +610,8 @@ function PatientDetail() {
     {
       label: t("gabinet.patients.tabs.activity"),
       content: (
-        <ActivityTimeline
-          activities={activities ?? []}
+        <ActivityFeed
+          entries={activitiesToFeedEntries((activities ?? []) as any[])}
           maxHeight="600px"
         />
       ),

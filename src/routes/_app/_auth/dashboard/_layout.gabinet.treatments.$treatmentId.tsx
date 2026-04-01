@@ -15,7 +15,8 @@ import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab"
 import { TreatmentRequiredDocuments } from "@/components/documents/treatment-required-documents";
 import type { RequiredFormTemplate } from "@/components/documents/treatment-required-documents";
 import { Separator } from "@/components/ui/separator";
-import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import { ActivityFeed } from "@/components/crm/activity-feed";
+import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { TreatmentOverviewStats } from "@/components/gabinet/treatment-overview-stats";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1191,8 +1192,8 @@ function TreatmentDetail() {
       {
         label: t("gabinet.treatmentDetail.tabs.activity"),
         content: (
-          <ActivityTimeline
-            activities={activities ?? []}
+          <ActivityFeed
+            entries={activitiesToFeedEntries((activities ?? []) as any[])}
             maxHeight="600px"
           />
         ),

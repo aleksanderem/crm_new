@@ -1,16 +1,20 @@
 /**
  * EntityAssociationPanel — reusable sidebar component for linking/creating related entities.
  *
- * Shows: list of linked items, search-to-link popover, "+" to create new or link existing.
+ * Shows: list of linked items, EntityLinkModal for search-to-link, "+" to create new or link existing.
  * Used in entity detail sidebars for Deals, Contacts, Products, etc.
  */
 
 import { useState, useCallback, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus } from "@/lib/ez-icons";
+import {
+  EntityLinkModal,
+  type EntityLinkResult,
+  type EntityTypeConfig,
+} from "@/components/crm/entity-link-modal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,7 +49,7 @@ export interface EntityAssociationPanelProps {
   onLink?: (item: SearchResultItem) => void | Promise<void>;
   /** Called when user clicks "Create new" */
   onCreateNew?: () => void;
-  /** Search results to show in the dropdown. Parent controls the query. */
+  /** Search results to show in the modal. Parent controls the query. */
   searchResults?: SearchResultItem[];
   /** Called when the search input changes — parent fetches results */
   onSearchChange?: (query: string) => void;
@@ -53,6 +57,8 @@ export interface EntityAssociationPanelProps {
   icon?: ReactNode;
   /** Whether to allow unlinking (shows x button) */
   onUnlink?: (id: string) => void | Promise<void>;
+  /** Entity type config for the modal header/tabs */
+  entityTypeConfig?: EntityTypeConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,31 +76,39 @@ export function EntityAssociationPanel({
   searchResults,
   onSearchChange,
   onUnlink,
+  entityTypeConfig,
 }: EntityAssociationPanelProps) {
   const { t } = useTranslation();
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchValue(value);
-      onSearchChange?.(value);
+    (query: string) => {
+      onSearchChange?.(query);
     },
     [onSearchChange],
   );
 
-  const handleLink = useCallback(
-    async (item: SearchResultItem) => {
-      await onLink?.(item);
-      setSearchValue("");
-      setShowSearch(false);
+  const handleSelect = useCallback(
+    async (result: EntityLinkResult) => {
+      await onLink?.({ id: result.id, label: result.label, sublabel: result.sublabel });
     },
     [onLink],
   );
 
-  const filteredResults = (searchResults ?? []).filter(
-    (r) => !items.some((i) => i.id === r.id),
-  );
+  // Convert search results to EntityLinkResult format
+  const modalResults: EntityLinkResult[] = (searchResults ?? [])
+    .filter((r) => !items.some((i) => i.id === r.id))
+    .map((r) => ({
+      id: r.id,
+      label: r.label,
+      sublabel: r.sublabel,
+      entityType: entityTypeConfig?.type ?? "entity",
+      avatarFallback: r.label.slice(0, 2).toUpperCase(),
+    }));
+
+  const entityTypes: EntityTypeConfig[] = entityTypeConfig
+    ? [entityTypeConfig]
+    : [{ type: "entity", label: title }];
 
   return (
     <div className="space-y-2">
@@ -110,7 +124,7 @@ export function EntityAssociationPanel({
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={() => setShowSearch(!showSearch)}
+              onClick={() => setModalOpen(true)}
               title={t("detail.relationships.link", "Podepnij")}
             >
               <Search className="h-[15px] w-[15px]" variant="stroke" />
@@ -130,55 +144,17 @@ export function EntityAssociationPanel({
         </div>
       </div>
 
-      {/* Search-to-link */}
-      {showSearch && (
-        <div className="relative">
-          <div className="flex items-center w-full rounded-md border bg-transparent">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-            <Input
-              type="text"
-              className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
-              placeholder={searchPlaceholder ?? t("detail.relationships.search", "Szukaj...")}
-              value={searchValue}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {searchValue.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {filteredResults.length > 0 ? (
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {filteredResults.map((r) => (
-                    <li key={r.id}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                        onClick={() => handleLink(r)}
-                      >
-                        <Avatar className="h-7 w-7 shrink-0">
-                          <AvatarFallback className="text-[10px] bg-muted font-medium">
-                            {r.label.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="truncate font-medium">{r.label}</p>
-                          {r.sublabel && (
-                            <p className="text-xs text-muted-foreground truncate">{r.sublabel}</p>
-                          )}
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t("detail.relationships.noResults", "Brak wyników")}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {/* EntityLinkModal */}
+      <EntityLinkModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title={searchPlaceholder ?? t("detail.relationships.search", "Szukaj...")}
+        entityTypes={entityTypes}
+        onSelect={handleSelect}
+        onSearchChange={handleSearchChange}
+        searchResults={modalResults}
+        onCreateNew={onCreateNew ? () => { setModalOpen(false); onCreateNew(); } : undefined}
+      />
 
       {/* Linked items list */}
       {items.length > 0 ? (
@@ -217,11 +193,9 @@ export function EntityAssociationPanel({
           ))}
         </ul>
       ) : (
-        !showSearch && (
-          <p className="text-sm text-muted-foreground py-1">
-            {emptyText ?? t("detail.relationships.empty", "Brak powiązanych.")}
-          </p>
-        )
+        <p className="text-sm text-muted-foreground py-1">
+          {emptyText ?? t("detail.relationships.empty", "Brak powiązanych.")}
+        </p>
       )}
     </div>
   );

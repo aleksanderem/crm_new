@@ -65,12 +65,6 @@ export function EntityDetailHeader({
         </Button>
       )}
       <div className="flex items-center gap-3">
-        <Avatar className="h-16 w-16 shrink-0">
-          {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
-          <AvatarFallback className="text-lg">
-            {avatarFallback ?? title[0]?.toUpperCase() ?? "?"}
-          </AvatarFallback>
-        </Avatar>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold">{title}</h1>
           {subtitle && (
@@ -84,10 +78,12 @@ export function EntityDetailHeader({
             </div>
           )}
         </div>
-        {/* Inline actions when only actionsMenu is present */}
-        {!primaryAction && !onEdit && !secondaryActions?.length && actionsMenu && (
-          <div className="shrink-0">{actionsMenu}</div>
-        )}
+        <Avatar className="h-16 w-16 shrink-0">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
+          <AvatarFallback className="text-lg">
+            {avatarFallback ?? title[0]?.toUpperCase() ?? "?"}
+          </AvatarFallback>
+        </Avatar>
       </div>
 
       {/* Separate actions row when primary/edit/secondary buttons exist */}
@@ -333,7 +329,8 @@ export function EntityDetailLayout({
     </Tabs>
   );
 
-  // sidebar-slot variant: entity details go into the sidebar slot, tabs fill the main content area
+  // sidebar-slot variant: entity details go into the sidebar slot,
+  // header (avatar+name+actions) goes above tabs in main content area
   if (variant === "sidebar-slot") {
     return (
       <SidebarSlotEntityDetail
@@ -345,6 +342,7 @@ export function EntityDetailLayout({
         associations={associations}
         attachments={attachments}
         sidebarExtra={sidebarExtra}
+        header={<EntityDetailHeader {...headerProps} />}
       >
         {tabsContent}
       </SidebarSlotEntityDetail>
@@ -462,6 +460,7 @@ function SidebarSlotEntityDetail({
   associations,
   attachments,
   sidebarExtra,
+  header,
   children,
 }: {
   headerProps: EntityDetailHeaderProps;
@@ -472,6 +471,7 @@ function SidebarSlotEntityDetail({
   associations?: AssociationSection[];
   attachments?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
+  header: React.ReactNode;
   children: React.ReactNode;
 }) {
   const { setContent } = useSidebarSlot();
@@ -479,11 +479,6 @@ function SidebarSlotEntityDetail({
   useEffect(() => {
     setContent(
       <div className="space-y-4">
-        {/* Entity header */}
-        <EntityDetailHeader {...headerProps} />
-
-        <Separator />
-
         {/* Details section */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold">Details</h2>
@@ -561,6 +556,10 @@ function SidebarSlotEntityDetail({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
+      {/* Entity header above tabs in main content */}
+      <div className="shrink-0 border-b p-4">
+        {header}
+      </div>
       {children}
     </div>
   );

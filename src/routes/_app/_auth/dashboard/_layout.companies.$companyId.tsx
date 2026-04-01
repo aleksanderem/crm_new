@@ -52,6 +52,7 @@ import { EntityQuickActions } from "@/components/crm/entity-quick-actions";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
 import type { DetailField } from "@/components/crm/entity-detail-layout";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { CompanyOverviewTab } from "@/components/crm/company-overview-tab";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/$companyId"
@@ -525,6 +526,33 @@ function CompanyDetail() {
   const contactRelationships =
     relationships?.filter((r) => r.targetType === "contact") ?? [];
 
+  // --- Deal summary for overview tab ---
+  const dealSummary = useMemo(() => {
+    const deals = dealRelationships;
+    // We don't have deal values from relationships alone — use sidebar deal search results as proxy
+    // For now, compute counts from relationship data
+    return {
+      totalDeals: deals.length,
+      totalValue: 0,
+      wonValue: 0,
+      openDeals: deals.length, // relationships don't carry status
+      wonDeals: 0,
+      lostDeals: 0,
+      currency: "PLN",
+    };
+  }, [dealRelationships]);
+
+  // --- Custom field entries for overview tab ---
+  const overviewCustomFields = useMemo(() => {
+    if (!companyCfDefs || !companyCfValuesRaw) return [];
+    return companyCfDefs
+      .map((def: any) => {
+        const val = companyCfValuesRaw.find((v: any) => v.fieldKey === def.fieldKey);
+        return { label: def.label ?? def.fieldKey, value: String(val?.value ?? "") };
+      })
+      .filter((cf: any) => cf.value);
+  }, [companyCfDefs, companyCfValuesRaw]);
+
   // All detail fields for EntityDetailLayout
   const allFields: DetailField[] = company ? [
     {
@@ -816,8 +844,20 @@ function CompanyDetail() {
           { key: "addNote", label: t("entityActions.addNote"), onClick: () => {} },
           { key: "share", label: t("entityActions.share"), onClick: () => {} },
         ]}
-        defaultTab={t('detail.tabs.all')}
+        defaultTab={t('detail.tabs.overview', 'Przegląd')}
         tabs={[
+          {
+            label: t('detail.tabs.overview', 'Przegląd'),
+            content: company ? (
+              <CompanyOverviewTab
+                company={company}
+                contactCount={contactRelationships.length}
+                dealSummary={dealSummary}
+                recentActivities={(activities ?? []).slice(0, 5) as any}
+                customFields={overviewCustomFields}
+              />
+            ) : null,
+          },
           {
             label: t('detail.tabs.all'),
             content: (

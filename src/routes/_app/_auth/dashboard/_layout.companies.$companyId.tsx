@@ -811,13 +811,11 @@ function CompanyDetail() {
             </Button>
           </div>
         }
-        beforeTabs={
-          <EntityQuickActions entityType="company" entityId={companyId} onAction={(action) => {
-            switch (action) {
-              case "scheduleActivity": setShowActivityForm(true); break;
-            }
-          }} />
-        }
+        quickActionItems={[
+          { key: "scheduleActivity", label: t("entityActions.scheduleActivity"), onClick: () => setShowActivityForm(true) },
+          { key: "addNote", label: t("entityActions.addNote"), onClick: () => {} },
+          { key: "share", label: t("entityActions.share"), onClick: () => {} },
+        ]}
         defaultTab={t('detail.tabs.all')}
         tabs={[
           {

@@ -1166,13 +1166,13 @@ function LeadDetail() {
 
   // --- Quick actions + tab content ---
 
-  const quickActionsBar = (
-    <EntityQuickActions entityType="lead" entityId={leadId} onAction={(action) => {
-      switch (action) {
-        case "scheduleActivity": setShowActivityForm(true); break;
-      }
-    }} />
-  );
+  const quickActions = [
+    { key: "scheduleActivity", label: t("entityActions.scheduleActivity"), onClick: () => setShowActivityForm(true) },
+    { key: "sendEmail", label: t("entityActions.sendEmail"), onClick: () => {} },
+    { key: "addNote", label: t("entityActions.addNote"), onClick: () => {} },
+    { key: "logCall", label: t("entityActions.logCall"), onClick: () => {} },
+    { key: "share", label: t("entityActions.share"), onClick: () => {} },
+  ];
 
   // --- Tab definitions ---
 
@@ -1181,7 +1181,6 @@ function LeadDetail() {
       label: t('detail.tabs.all'),
       content: (
         <>
-          {quickActionsBar}
           <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <span>{t('detail.actions.filterBy')}</span>
             <Button variant="outline" size="sm" className="h-7">
@@ -1397,6 +1396,7 @@ function LeadDetail() {
         attachments={attachmentsContent}
         sidebarExtra={productsSidebarCard}
         beforeTabs={pipelineProgressBar}
+        quickActionItems={quickActions}
         tabs={tabs}
         defaultTab={t('detail.tabs.all')}
       />

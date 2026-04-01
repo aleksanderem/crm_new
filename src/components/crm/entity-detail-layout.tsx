@@ -185,6 +185,8 @@ interface EntityDetailLayoutProps {
   beforeTabs?: React.ReactNode;
   breadcrumbs?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
+  /** Quick action items to include in the sidebar "Akcje" dropdown (sidebar-slot variant only). */
+  quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
 }
 
 export function EntityDetailLayout({
@@ -215,6 +217,7 @@ export function EntityDetailLayout({
   beforeTabs,
   breadcrumbs,
   sidebarExtra,
+  quickActionItems,
 }: EntityDetailLayoutProps) {
   const [showAllFields, setShowAllFields] = useState(false);
 
@@ -301,6 +304,7 @@ export function EntityDetailLayout({
         associations={associations}
         attachments={attachments}
         sidebarExtra={sidebarExtra}
+        quickActionItems={quickActionItems}
         header={<EntityDetailHeader {...headerProps} />}
       >
         {tabsContent}
@@ -419,6 +423,7 @@ function SidebarSlotEntityDetail({
   associations,
   attachments,
   sidebarExtra,
+  quickActionItems,
   header,
   children,
 }: {
@@ -430,6 +435,7 @@ function SidebarSlotEntityDetail({
   associations?: AssociationSection[];
   attachments?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
+  quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
   header: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -445,7 +451,7 @@ function SidebarSlotEntityDetail({
   }, [headerProps.onBack, setBackAction]);
 
   // Build all action items for the "Akcje" dropdown
-  const allActions: { label: string; onClick: () => void; variant?: string }[] = [];
+  const allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[] = [];
   if (headerProps.primaryAction) {
     allActions.push({ label: headerProps.primaryAction.label, onClick: headerProps.primaryAction.onClick });
   }
@@ -455,6 +461,12 @@ function SidebarSlotEntityDetail({
   if (headerProps.secondaryActions) {
     for (const a of headerProps.secondaryActions) {
       allActions.push({ label: a.label, onClick: a.onClick, variant: a.variant });
+    }
+  }
+  // Merge quick actions (schedule activity, add note, share, etc.)
+  if (quickActionItems) {
+    for (const qa of quickActionItems) {
+      allActions.push({ label: qa.label, icon: qa.icon, onClick: qa.onClick });
     }
   }
 
@@ -477,6 +489,7 @@ function SidebarSlotEntityDetail({
                   onClick={action.onClick}
                   className={action.variant === "destructive" ? "text-destructive focus:text-destructive" : ""}
                 >
+                  {action.icon && <span className="mr-2">{action.icon}</span>}
                   {action.label}
                 </DropdownMenuItem>
               ))}

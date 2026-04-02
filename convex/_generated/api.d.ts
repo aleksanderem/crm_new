@@ -32,6 +32,7 @@ import type * as companies from "../companies.js";
 import type * as contacts from "../contacts.js";
 import type * as crm__registry from "../crm/_registry.js";
 import type * as crm_documentDataSources from "../crm/documentDataSources.js";
+import type * as crm_seed from "../crm/seed.js";
 import type * as crons from "../crons.js";
 import type * as csvExport from "../csvExport.js";
 import type * as csvImport from "../csvImport.js";
@@ -239,6 +240,7 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   "crm/_registry": typeof crm__registry;
   "crm/documentDataSources": typeof crm_documentDataSources;
+  "crm/seed": typeof crm_seed;
   crons: typeof crons;
   csvExport: typeof csvExport;
   csvImport: typeof csvImport;

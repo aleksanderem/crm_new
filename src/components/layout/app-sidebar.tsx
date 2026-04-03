@@ -36,12 +36,12 @@ export function AppSidebar() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
-  const { content: sidebarSlotContent, wideContent, dayAgendaDate } = useSidebarSlot();
+  const { content: sidebarSlotContent, wideContent, dayAgendaDate, shellSidebarMode } = useSidebarSlot();
+
   const { can: canCreate } = usePermissions("create");
 
-  const { data: activeProducts } = useQuery(
-    convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
-  );
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as dashboard layout)
+  const { data: activeProducts } = useQuery(convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }));
 
   const visibleModules = getVisibleModules(activeProducts);
   const hasGabinet = visibleModules.some((module) => module.id === "gabinet");
@@ -130,124 +130,126 @@ export function AppSidebar() {
         </SidebarContent>
       </Sidebar>
 
-      <div
-        className={cn(
-          "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
-          wideContent ? "max-2xl:hidden lg:flex" : "max-lg:hidden",
-        )}
-      >
-        <div className="px-4 pt-3 pb-2">
-          <WorkspaceSwitcher
-            activeWorkspace={activeWorkspace}
-            workspaces={visibleModules.map((module) => module.workspace)}
-          />
-        </div>
-
-        {isSettingsRoute ? (
-          <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-            <div className="px-1 pb-2 text-lg font-semibold">{t("nav.settings")}</div>
-            {settingsNav.map((item) => {
-              const isActive = !!matchRoute({ to: item.to });
-              return (
-                <div key={item.to}>
-                  {item.sectionKey && (
-                    <div className="mt-4 mb-1 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t(item.sectionKey)}
-                    </div>
-                  )}
-                  <Link
-                    to={item.to}
-                    className={cn(
-                      "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-primary/10 font-medium text-primary"
-                        : "text-foreground hover:bg-muted-foreground/10",
-                    )}
-                  >
-                    <span>{t(item.labelKey)}</span>
-                    {item.to === "/dashboard/gabinet/settings/leaves" && pendingLeaveCount > 0 && (
-                      <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
-                        {pendingLeaveCount > 99 ? "99+" : pendingLeaveCount}
-                      </span>
-                    )}
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        ) : sidebarSlotContent ? (
-          <div className="flex-1 overflow-y-auto px-3 pb-4">{sidebarSlotContent}</div>
-        ) : (
-          <>
-            {dayAgendaDate ? (
-              <div className="flex-1 overflow-y-auto px-3 pb-4">
-                <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
-              </div>
-            ) : (
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {/* Fixed top section */}
-                <div className="shrink-0">
-                  {pageContext && (
-                    <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
-                  )}
-
-                  {pageContext && (
-                    <div className="flex flex-col px-4">
-                      <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
-                      <div className="mb-3 grid grid-cols-2 gap-4">
-                        {pageContext.actions
-                          .filter((action) => {
-                            if (!action.permissionFeature) return true;
-                            return canCreate(action.permissionFeature);
-                          })
-                          .map((action) => (
-                            <button
-                              key={action.labelKey}
-                              type="button"
-                              className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
-                              onClick={() => {
-                                if (action.quickCreate) {
-                                  openQuickCreate(action.quickCreate);
-                                } else if (action.dispatch) {
-                                  dispatch(action.dispatch);
-                                } else if (action.href) {
-                                  navigateTo(action.href);
-                                }
-                              }}
-                            >
-                              <action.icon className="size-4" variant="stroke" />
-                              <span className="text-center leading-tight">{t(action.labelKey)}</span>
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Widgets fill remaining space */}
-                {pageContext?.widgets && organizationId && (
-                  <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2">
-                    <pageContext.widgets organizationId={organizationId} />
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {activeWorkspace === "gabinet" && !isSettingsRoute && <GabinetQuickActionsDropdown />}
-
-        {miniCalState.visible &&
-          miniCalState.selectedDate &&
-          miniCalState.onDateChange && (
-            <CalendarMiniMonth
-              selectedDate={miniCalState.selectedDate}
-              onDateChange={miniCalState.onDateChange}
-              highlightedDates={miniCalState.highlightedDates}
-              className="border-t-0 px-3 py-3"
-            />
+      {shellSidebarMode !== "icon-only" && (
+        <div
+          className={cn(
+            "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
+            wideContent ? "max-2xl:hidden lg:flex" : "max-lg:hidden",
           )}
-      </div>
+        >
+          <div className="px-4 pt-3 pb-2">
+            <WorkspaceSwitcher
+              activeWorkspace={activeWorkspace}
+              workspaces={visibleModules.map((module) => module.workspace)}
+            />
+          </div>
+
+          {isSettingsRoute ? (
+            <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
+              <div className="px-1 pb-2 text-lg font-semibold">{t("nav.settings")}</div>
+              {settingsNav.map((item) => {
+                const isActive = !!matchRoute({ to: item.to });
+                return (
+                  <div key={item.to}>
+                    {item.sectionKey && (
+                      <div className="mt-4 mb-1 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {t(item.sectionKey)}
+                      </div>
+                    )}
+                    <Link
+                      to={item.to}
+                      className={cn(
+                        "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
+                        isActive
+                          ? "bg-primary/10 font-medium text-primary"
+                          : "text-foreground hover:bg-muted-foreground/10",
+                      )}
+                    >
+                      <span>{t(item.labelKey)}</span>
+                      {item.to === "/dashboard/gabinet/settings/leaves" && pendingLeaveCount > 0 && (
+                        <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
+                          {pendingLeaveCount > 99 ? "99+" : pendingLeaveCount}
+                        </span>
+                      )}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          ) : sidebarSlotContent ? (
+            <div className="flex-1 overflow-y-auto px-3 pb-4">{sidebarSlotContent}</div>
+          ) : (
+            <>
+              {dayAgendaDate ? (
+                <div className="flex-1 overflow-y-auto px-3 pb-4">
+                  <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
+                </div>
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {/* Fixed top section */}
+                  <div className="shrink-0">
+                    {pageContext && (
+                      <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
+                    )}
+
+                    {pageContext && (
+                      <div className="flex flex-col px-4">
+                        <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
+                        <div className="mb-3 grid grid-cols-2 gap-4">
+                          {pageContext.actions
+                            .filter((action) => {
+                              if (!action.permissionFeature) return true;
+                              return canCreate(action.permissionFeature);
+                            })
+                            .map((action) => (
+                              <button
+                                key={action.labelKey}
+                                type="button"
+                                className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
+                                onClick={() => {
+                                  if (action.quickCreate) {
+                                    openQuickCreate(action.quickCreate);
+                                  } else if (action.dispatch) {
+                                    dispatch(action.dispatch);
+                                  } else if (action.href) {
+                                    navigateTo(action.href);
+                                  }
+                                }}
+                              >
+                                <action.icon className="size-4" variant="stroke" />
+                                <span className="text-center leading-tight">{t(action.labelKey)}</span>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Widgets fill remaining space */}
+                  {pageContext?.widgets && organizationId && (
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2">
+                      <pageContext.widgets organizationId={organizationId} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeWorkspace === "gabinet" && !isSettingsRoute && <GabinetQuickActionsDropdown />}
+
+          {miniCalState.visible &&
+            miniCalState.selectedDate &&
+            miniCalState.onDateChange && (
+              <CalendarMiniMonth
+                selectedDate={miniCalState.selectedDate}
+                onDateChange={miniCalState.onDateChange}
+                highlightedDates={miniCalState.highlightedDates}
+                className="border-t-0 px-3 py-3"
+              />
+            )}
+        </div>
+      )}
     </>
   );
 }

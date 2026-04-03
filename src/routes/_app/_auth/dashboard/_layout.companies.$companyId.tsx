@@ -9,7 +9,10 @@ import { useSupabaseCompany } from "@/hooks/use-supabase-companies";
 import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseCustomFieldValues, useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
-import { useSupabaseRelationshipsByEntity } from "@/hooks/use-supabase-relationships";
+import {
+  useSupabaseRelationshipsByEntity,
+  type MappedRelationship,
+} from "@/hooks/use-supabase-relationships";
 import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
 import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
@@ -51,6 +54,7 @@ import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab"
 import { EntityAssociationPanel } from "@/components/crm/entity-association-panel";
 import type { SearchResultItem } from "@/components/crm/entity-association-panel";
 import { CompanyOverviewTab } from "@/components/crm/company-overview-tab";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/$companyId"
@@ -64,6 +68,7 @@ function CompanyDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { setShellSidebarMode } = useSidebarSlot();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateCompany = useMutation(api.companies.update);
   const removeCompany = useMutation(api.companies.remove);
@@ -157,6 +162,11 @@ function CompanyDetail() {
   const { data: company, isLoading } = useSupabaseCompany(organizationId, companyId);
 
   useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
+
+  useEffect(() => {
     if (company && organizationId) {
       trackView({ organizationId, entityType: "companies", entityId: company._id, entityLabel: company.name });
     }
@@ -168,6 +178,7 @@ function CompanyDetail() {
     companyId,
   );
 
+  const relationshipsQueryKey = [...supabaseKeys.objectRelationships.list(organizationId), "company", companyId] as const;
   const { data: relationships } = useSupabaseRelationshipsByEntity(
     organizationId,
     "company",
@@ -197,15 +208,17 @@ function CompanyDetail() {
     { search: contactSearch || undefined, enabled: contactSearch.length > 0 },
   );
 
-  // Sidebar inline search queries
+  const sidebarDealSearchQuery = sidebarDealSearch.trim();
+  const sidebarContactSearchQuery = sidebarContactSearch.trim();
+
   const { data: sidebarDealResults } = useSupabaseLeadsList(
     organizationId,
-    { search: sidebarDealSearch || undefined, enabled: sidebarDealSearch.length > 0 },
+    { search: sidebarDealSearchQuery || undefined, enabled: sidebarDealSearchQuery.length >= 3 },
   );
 
   const { data: sidebarContactResults } = useSupabaseContactsList(
     organizationId,
-    { search: sidebarContactSearch || undefined, enabled: sidebarContactSearch.length > 0 },
+    { search: sidebarContactSearchQuery || undefined, enabled: sidebarContactSearchQuery.length >= 3 },
   );
 
   // Guest contact search for activity form
@@ -214,9 +227,7 @@ function CompanyDetail() {
     { search: guestContactSearch || undefined, enabled: guestContactSearch.length > 0 },
   );
 
-  // Full-list lookups for enriching association items with names/values
-  const { data: allLeads } = useSupabaseLeadsList(organizationId);
-  const { data: allContacts } = useSupabaseContactsList(organizationId);
+  // Full-list lookups NOT needed — relationships already carry targetName/targetSublabel
 
   // --- Handlers ---
 
@@ -281,39 +292,121 @@ function CompanyDetail() {
   };
 
   const handleLinkDeal = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:company:${companyId}:deal:${item.id}`,
       organizationId,
       sourceType: "company",
       sourceId: companyId,
       targetType: "deal",
       targetId: item.id,
-    });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "deal" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "company",
+        sourceId: companyId,
+        targetType: "deal",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkDeal = async (targetId: string) => {
     const rel = dealRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
 
   const handleLinkContact = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:company:${companyId}:contact:${item.id}`,
       organizationId,
       sourceType: "company",
       sourceId: companyId,
       targetType: "contact",
       targetId: item.id,
-    });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "contact" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "company",
+        sourceId: companyId,
+        targetType: "contact",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkContact = async (targetId: string) => {
     const rel = contactRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as any });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
@@ -345,6 +438,7 @@ function CompanyDetail() {
         targetType: "contact",
         targetId: contactId,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateContactDrawerOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -393,6 +487,7 @@ function CompanyDetail() {
         targetType: "deal",
         targetId: leadId,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateLeadDrawerOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -601,37 +696,17 @@ function CompanyDetail() {
     })
   );
 
-  // --- Association panel items (enriched from full lists) ---
-  const leadMap = useMemo(() => {
-    const m = new Map<string, { title: string; value?: number; currency?: string }>();
-    const list = Array.isArray(allLeads) ? allLeads : allLeads?.page ?? [];
-    for (const l of list) m.set(l._id, { title: l.title, value: l.value, currency: l.currency });
-    return m;
-  }, [allLeads]);
+  const dealAssociationItems = dealRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
 
-  const contactMap = useMemo(() => {
-    const m = new Map<string, { name: string; email?: string }>();
-    for (const c of allContacts ?? []) m.set(c._id, { name: `${c.firstName} ${c.lastName ?? ""}`.trim(), email: c.email });
-    return m;
-  }, [allContacts]);
-
-  const dealAssociationItems = dealRelationships.map((r) => {
-    const lead = leadMap.get(r.targetId);
-    return {
-      id: r.targetId,
-      label: lead?.title ?? r.targetId,
-      sublabel: lead?.value != null ? `${lead.value.toLocaleString("pl-PL")} ${lead.currency ?? "PLN"}` : undefined,
-    };
-  });
-
-  const contactAssociationItems = contactRelationships.map((r) => {
-    const contact = contactMap.get(r.targetId);
-    return {
-      id: r.targetId,
-      label: contact?.name ?? r.targetId,
-      sublabel: contact?.email,
-    };
-  });
+  const contactAssociationItems = contactRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
 
   const dealSearchResultsForPanel: SearchResultItem[] = (sidebarDealResults?.page ?? [])
     .map((d) => ({ id: d._id, label: d.title, sublabel: d.value != null ? `${d.value.toLocaleString()} PLN` : undefined }));
@@ -665,7 +740,7 @@ function CompanyDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="sidebar-slot"
+        variant="default"
         isLoading={isLoading}
         notFound={!isLoading && !company}
         onBack={() => navigate({ to: "/dashboard/companies" })}

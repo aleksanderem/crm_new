@@ -12,6 +12,7 @@ import { useSupabaseCustomFieldDefinitions, useSupabaseCustomFieldValues } from 
 import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
 import {
   useSupabasePipelinesList,
   useSupabasePipelineStages,
@@ -19,13 +20,20 @@ import {
 } from "@/hooks/use-supabase-pipelines";
 import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
-import { useSupabaseRelationshipsByEntity } from "@/hooks/use-supabase-relationships";
+import {
+  useSupabaseRelationshipsByEntity,
+  type MappedRelationship,
+} from "@/hooks/use-supabase-relationships";
 import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
   type DetailField,
 } from "@/components/crm/entity-detail-layout";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { EntityAssociationPanel } from "@/components/crm/entity-association-panel";
+import type { SearchResultItem } from "@/components/crm/entity-association-panel";
+import { LeadProductsSidebarCard } from "@/components/crm/lead-products-sidebar-card";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
 import { ContactForm } from "@/components/forms/contact-form";
@@ -41,6 +49,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,13 +63,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,11 +76,6 @@ import {
   Upload,
   PhoneCall,
   Pin,
-  User,
-  Search,
-  Link2,
-  Building2,
-  Package,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -226,6 +229,7 @@ function LeadDetail() {
   const { t } = useTranslation();
   const { leadId } = Route.useParams();
   const { organizationId } = useOrganization();
+  const { setShellSidebarMode } = useSidebarSlot();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
@@ -244,6 +248,8 @@ function LeadDetail() {
   const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
   const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
+  const addProductToDeal = useMutation(api.products.addToDeal);
+  const removeProductFromDeal = useMutation(api.products.removeFromDeal);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -311,11 +317,15 @@ function LeadDetail() {
   // Sidebar UI state
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
-  const [showSidebarContactLink, setShowSidebarContactLink] = useState(false);
-  const [showSidebarCompanyLink, setShowSidebarCompanyLink] = useState(false);
   const [sidebarContactSearch, setSidebarContactSearch] = useState("");
   const [sidebarCompanySearch, setSidebarCompanySearch] = useState("");
   const [guestContactSearch, setGuestContactSearch] = useState("");
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [productQuantity, setProductQuantity] = useState("1");
+  const [productUnitPrice, setProductUnitPrice] = useState("");
+  const [productDiscount, setProductDiscount] = useState("");
 
   // Edit drawer relationship search
   const [contactSearch, setContactSearch] = useState("");
@@ -324,6 +334,11 @@ function LeadDetail() {
   // --- Data queries ---
 
   const { data: lead, isLoading } = useSupabaseLead(organizationId, leadId);
+
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
   useEffect(() => {
     if (lead && organizationId) {
@@ -355,18 +370,20 @@ function LeadDetail() {
   );
   const activities = activitiesRaw;
 
-  const { data: relationships } = useSupabaseRelationshipsByEntity(
+  const relationshipsQueryKey = [...supabaseKeys.objectRelationships.list(organizationId), "lead", leadId] as const;
+  const relationshipsQuery = useSupabaseRelationshipsByEntity(
     organizationId,
     "lead",
     leadId,
   );
+  const relationships = relationshipsQuery.data;
 
-  const { data: dealProducts } = useQuery(
-    convexQuery(api.products.listByDeal, {
-      organizationId,
-      dealId: leadId as Id<"leads">,
-    })
-  );
+  const dealProductsQuery = convexQuery(api.products.listByDeal, {
+    organizationId,
+    dealId: leadId as Id<"leads">,
+  });
+
+  const { data: dealProducts } = useQuery(dealProductsQuery);
 
   const { data: notesData } = useSupabaseNotesByEntity(
     organizationId,
@@ -392,15 +409,30 @@ function LeadDetail() {
   );
 
   // Sidebar inline search
-  const { data: sidebarContactResults } = useSupabaseContactsList(
+  const sidebarContactSearchQuery = sidebarContactSearch.trim();
+  const sidebarCompanySearchQuery = sidebarCompanySearch.trim();
+
+  const { data: sidebarContactResults, isFetching: isSearchingContacts } = useSupabaseContactsList(
     organizationId,
-    { search: sidebarContactSearch || undefined, enabled: sidebarContactSearch.length > 0 },
+    { search: sidebarContactSearchQuery || undefined, enabled: sidebarContactSearchQuery.length >= 3 },
   );
 
-  const { data: sidebarCompanyResults } = useSupabaseCompaniesList(
+  const { data: sidebarCompanyResults, isFetching: isSearchingCompanies } = useSupabaseCompaniesList(
     organizationId,
-    { search: sidebarCompanySearch || undefined, enabled: sidebarCompanySearch.length > 0 },
+    { search: sidebarCompanySearchQuery || undefined, enabled: sidebarCompanySearchQuery.length >= 3 },
   );
+
+  const productSearchQuery = productSearch.trim();
+  const { data: productSearchResults, isFetching: isSearchingProducts } = useSupabaseProductsList(
+    organizationId,
+    {
+      search: productSearchQuery || undefined,
+      enabled: productDialogOpen && productSearchQuery.length >= 3,
+      sortOrder: "asc",
+    },
+  );
+
+  // Full-list lookups NOT needed — relationships already carry targetName/targetSublabel
 
   // Guest contact search for activity form
   const { data: guestContactResults } = useSupabaseContactsList(
@@ -510,40 +542,122 @@ function LeadDetail() {
   };
 
   const handleLinkContact = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:lead:${leadId}:contact:${item.id}`,
       organizationId,
       sourceType: "lead",
       sourceId: leadId,
       targetType: "contact",
       targetId: item.id,
-    });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "contact" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "lead",
+        sourceId: leadId,
+        targetType: "contact",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkContact = async (targetId: string) => {
     const rel = contactRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     }
   };
 
   const handleLinkCompany = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:lead:${leadId}:company:${item.id}`,
       organizationId,
       sourceType: "lead",
       sourceId: leadId,
       targetType: "company",
       targetId: item.id,
-    });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "company" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "lead",
+        sourceId: leadId,
+        targetType: "company",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
   const handleUnlinkCompany = async (targetId: string) => {
     const rel = companyRelationships.find((r) => r.targetId === targetId);
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     }
   };
 
@@ -569,7 +683,7 @@ function LeadDetail() {
         targetId: contactId,
       });
       setCreateContactDrawerOpen(false);
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -599,7 +713,7 @@ function LeadDetail() {
         targetId: companyId,
       });
       setCreateCompanyDrawerOpen(false);
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
     } finally {
       setIsSubmitting(false);
     }
@@ -620,6 +734,60 @@ function LeadDetail() {
     } finally {
       setIsAddingNote(false);
     }
+  };
+
+  const handleOpenProductDialog = () => {
+    setProductDialogOpen(true);
+  };
+
+  const handleCloseProductDialog = (open: boolean) => {
+    setProductDialogOpen(open);
+    if (!open) {
+      setProductSearch("");
+      setSelectedProductId(null);
+      setProductQuantity("1");
+      setProductUnitPrice("");
+      setProductDiscount("");
+    }
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProductId(productId);
+    const selectedProduct = productSearchResults?.find((product) => product._id === productId);
+    setProductUnitPrice(selectedProduct ? String(selectedProduct.unitPrice) : "");
+  };
+
+  const handleAddDealProduct = async () => {
+    if (!selectedProductId) return;
+
+    const quantity = Number(productQuantity);
+    const unitPrice = Number(productUnitPrice);
+    const discount = productDiscount.trim() ? Number(productDiscount) : undefined;
+
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) return;
+    if (discount !== undefined && (!Number.isFinite(discount) || discount < 0)) return;
+
+    await addProductToDeal({
+      organizationId,
+      dealId: leadId as Id<"leads">,
+      productId: selectedProductId as Id<"products">,
+      quantity,
+      unitPrice,
+      discount,
+    });
+
+    await queryClient.invalidateQueries({ queryKey: dealProductsQuery.queryKey });
+    handleCloseProductDialog(false);
+  };
+
+  const handleRemoveDealProduct = async (dealProductId: string) => {
+    await removeProductFromDeal({
+      organizationId,
+      dealProductId: dealProductId as Id<"dealProducts">,
+    });
+
+    await queryClient.invalidateQueries({ queryKey: dealProductsQuery.queryKey });
   };
 
   const handleCreateActivity = async (data: {
@@ -732,20 +900,40 @@ function LeadDetail() {
 
   const avatarFallback = lead?.title[0]?.toUpperCase() ?? "D";
 
-  const contactRelationships = relationships?.filter((r) => r.targetType === "contact") ?? [];
-  const companyRelationships = relationships?.filter((r) => r.targetType === "company") ?? [];
+  const relationshipItems = relationships ?? [];
+  const contactRelationships = relationshipItems.filter((r) => r.targetType === "contact");
+  const companyRelationships = relationshipItems.filter((r) => r.targetType === "company");
 
   const selectedContacts: RelationshipItem[] = contactRelationships.map((r) => ({
     id: r.targetId,
-    label: (r as any).targetName ?? r.targetId,
-    sublabel: (r as any).targetSublabel,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
   }));
 
   const selectedCompanies: RelationshipItem[] = companyRelationships.map((r) => ({
     id: r.targetId,
-    label: (r as any).targetName ?? r.targetId,
-    sublabel: (r as any).targetSublabel,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
   }));
+
+  // Association items — use targetName/targetSublabel from relationships directly (no full-list lookup)
+  const contactAssociationItems = contactRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
+
+  const companyAssociationItems = companyRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
+
+  const contactSearchResultsForPanel: SearchResultItem[] = (sidebarContactResults ?? [])
+    .map((c) => ({ id: c._id, label: `${c.firstName} ${c.lastName ?? ""}`.trim(), sublabel: c.email ?? undefined }));
+
+  const companySearchResultsForPanel: SearchResultItem[] = (sidebarCompanyResults ?? [])
+    .map((c) => ({ id: c._id, label: c.name, sublabel: c.domain ?? undefined }));
 
   const selectedActivity = scheduledActivitiesData?.find(
     (a) => a._id === selectedActivityId
@@ -763,6 +951,9 @@ function LeadDetail() {
     (sum, dp) => sum + dp.quantity * dp.unitPrice,
     0
   ) ?? 0;
+
+  const selectedProduct = productSearchResults?.find((product) => product._id === selectedProductId) ?? null;
+  const canSubmitProduct = !!selectedProductId && !!productQuantity.trim() && !!productUnitPrice.trim();
 
   // All sidebar detail fields
   const priorityLabels: Record<string, string> = {
@@ -828,273 +1019,104 @@ function LeadDetail() {
       ]
     : [];
 
-  // --- Sidebar association sections ---
+  // --- Sidebar association sections (using EntityAssociationPanel like company page) ---
 
   const contactsAssociation = {
     title: t('detail.relationships.contacts'),
     count: contactRelationships.length,
-    onCreateNew: () => {
-      setShowSidebarContactLink(!showSidebarContactLink);
-      setSidebarContactSearch("");
-    },
+    onCreateNew: () => setCreateContactDrawerOpen(true),
     children: (
-      <>
-        <div className="flex items-center gap-1 mb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2"
-            onClick={() => {
-              setShowSidebarContactLink(!showSidebarContactLink);
-              setSidebarContactSearch("");
-            }}
-          >
-            <Link2 className="h-4 w-4 mr-1" variant="stroke" />
-            {t('detail.relationships.add')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2"
-            onClick={() => setCreateContactDrawerOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" variant="stroke" />
-            {t('detail.relationships.addNew')}
-          </Button>
-        </div>
-        {showSidebarContactLink && (
-          <div className="mb-3 relative">
-            <div className="flex items-center w-full rounded-md border bg-transparent">
-              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-              <Input
-                type="text"
-                className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
-                placeholder={t('detail.relationships.searchContacts')}
-                value={sidebarContactSearch}
-                onChange={(e) => setSidebarContactSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            {sidebarContactSearch.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                {sidebarContactResults?.filter(
-                  (c) => !contactRelationships.some((r) => r.targetId === c._id)
-                ).length ? (
-                  <ul className="max-h-[200px] overflow-y-auto p-1">
-                    {sidebarContactResults
-                      .filter((c) => !contactRelationships.some((r) => r.targetId === c._id))
-                      .map((c) => (
-                        <li key={c._id}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                            onClick={async () => {
-                              await handleLinkContact({
-                                id: c._id,
-                                label: `${c.firstName} ${c.lastName ?? ""}`.trim(),
-                              });
-                              setSidebarContactSearch("");
-                              setShowSidebarContactLink(false);
-                            }}
-                          >
-                            <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                            <span>{`${c.firstName} ${c.lastName ?? ""}`.trim()}</span>
-                            {c.email && (
-                              <span className="text-xs text-muted-foreground">{c.email}</span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
-                ) : (
-                  <div className="py-3 px-3 text-sm text-muted-foreground">
-                    {t('detail.relationships.noResults')}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {contactRelationships.length > 0 ? (
-          <ul className="space-y-2">
-            {contactRelationships.map((r) => (
-              <li key={r._id}>
-                <button
-                  className="flex items-center gap-2 text-sm text-primary hover:underline"
-                  onClick={() => navigate({ to: `/dashboard/contacts/${r.targetId}` })}
-                >
-                  <User className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                  <span>{(r as any).targetName ?? r.targetId}</span>
-                  {(r as any).targetSublabel && (
-                    <span className="text-xs text-muted-foreground">
-                      {(r as any).targetSublabel}
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          !showSidebarContactLink && (
-            <p className="text-sm text-muted-foreground">
-              {t('detail.relationships.emptyDealContacts')}
-            </p>
-          )
-        )}
-      </>
+      <EntityAssociationPanel
+        hideHeader
+        title={t('detail.relationships.contacts')}
+        items={contactAssociationItems}
+        searchPlaceholder={t('detail.relationships.searchContacts')}
+        emptyText={t('detail.relationships.emptyDealContacts')}
+        onItemClick={(id) => navigate({ to: `/dashboard/contacts/${id}` })}
+        onLink={(item) => handleLinkContact({ id: item.id, label: item.label })}
+        onUnlink={handleUnlinkContact}
+        onCreateNew={() => setCreateContactDrawerOpen(true)}
+        searchResults={contactSearchResultsForPanel}
+        isSearching={isSearchingContacts}
+        onSearchChange={setSidebarContactSearch}
+      />
     ),
   };
 
   const companiesAssociation = {
     title: t('detail.relationships.companies'),
     count: companyRelationships.length,
-    onCreateNew: () => {
-      setShowSidebarCompanyLink(!showSidebarCompanyLink);
-      setSidebarCompanySearch("");
-    },
+    onCreateNew: () => setCreateCompanyDrawerOpen(true),
     children: (
-      <>
-        <div className="flex items-center gap-1 mb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2"
-            onClick={() => {
-              setShowSidebarCompanyLink(!showSidebarCompanyLink);
-              setSidebarCompanySearch("");
-            }}
-          >
-            <Link2 className="h-4 w-4 mr-1" variant="stroke" />
-            {t('detail.relationships.add')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2"
-            onClick={() => setCreateCompanyDrawerOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" variant="stroke" />
-            {t('detail.relationships.addNew')}
-          </Button>
-        </div>
-        {showSidebarCompanyLink && (
-          <div className="mb-3 relative">
-            <div className="flex items-center w-full rounded-md border bg-transparent">
-              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-              <Input
-                type="text"
-                className="h-8 border-0 shadow-none focus-visible:ring-0 px-2"
-                placeholder={t('detail.relationships.searchCompanies')}
-                value={sidebarCompanySearch}
-                onChange={(e) => setSidebarCompanySearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            {sidebarCompanySearch.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                {sidebarCompanyResults?.filter(
-                  (c) => !companyRelationships.some((r) => r.targetId === c._id)
-                ).length ? (
-                  <ul className="max-h-[200px] overflow-y-auto p-1">
-                    {sidebarCompanyResults
-                      .filter((c) => !companyRelationships.some((r) => r.targetId === c._id))
-                      .map((c) => (
-                        <li key={c._id}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                            onClick={async () => {
-                              await handleLinkCompany({ id: c._id, label: c.name });
-                              setSidebarCompanySearch("");
-                              setShowSidebarCompanyLink(false);
-                            }}
-                          >
-                            <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                            <span>{c.name}</span>
-                            {c.domain && (
-                              <span className="text-xs text-muted-foreground">({c.domain})</span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
-                ) : (
-                  <div className="py-3 px-3 text-sm text-muted-foreground">
-                    {t('detail.relationships.noResults')}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {companyRelationships.length > 0 ? (
-          <ul className="space-y-2">
-            {companyRelationships.map((r) => (
-              <li key={r._id}>
-                <button
-                  className="flex items-center gap-2 text-sm text-primary hover:underline"
-                  onClick={() => navigate({ to: `/dashboard/companies/${r.targetId}` })}
-                >
-                  <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                  <span>{(r as any).targetName ?? r.targetId}</span>
-                  {(r as any).targetSublabel && (
-                    <span className="text-xs text-muted-foreground">
-                      ({(r as any).targetSublabel})
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          !showSidebarCompanyLink && (
-            <p className="text-sm text-muted-foreground">
-              {t('detail.relationships.emptyDealCompany')}
-            </p>
-          )
-        )}
-      </>
+      <EntityAssociationPanel
+        hideHeader
+        title={t('detail.relationships.companies')}
+        items={companyAssociationItems}
+        searchPlaceholder={t('detail.relationships.searchCompanies')}
+        emptyText={t('detail.relationships.emptyDealCompany')}
+        onItemClick={(id) => navigate({ to: `/dashboard/companies/${id}` })}
+        onLink={(item) => handleLinkCompany({ id: item.id, label: item.label })}
+        onUnlink={handleUnlinkCompany}
+        onCreateNew={() => setCreateCompanyDrawerOpen(true)}
+        searchResults={companySearchResultsForPanel}
+        isSearching={isSearchingCompanies}
+        onSearchChange={setSidebarCompanySearch}
+      />
     ),
   };
 
   // --- Products sidebar card ---
 
   const productsSidebarCard = (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">
-          {t('detail.relationships.products')}{" "}
-          {dealProducts && dealProducts.length > 0 && (
-            <span className="text-muted-foreground font-normal">
-              ({dealProducts.length})
-            </span>
-          )}
-        </h3>
-      </div>
-      {dealProducts && dealProducts.length > 0 ? (
-        <div className="space-y-2">
-          {dealProducts.map((dp) => (
-            <div key={dp._id} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                <span>{dp.product?.name ?? t('detail.fields.unknown')}</span>
-              </div>
-              <span className="text-muted-foreground">
-                {dp.quantity} x {formatCurrency(dp.unitPrice)}
-              </span>
-            </div>
-          ))}
-          <div className="pt-2 border-t flex justify-between text-sm font-medium">
-            <span>{t('detail.fields.total')}</span>
-            <span>{formatCurrency(totalProductValue)}</span>
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          {t('detail.relationships.emptyDealProducts')}
-        </p>
-      )}
-    </div>
+    <LeadProductsSidebarCard
+      title={t('detail.relationships.products')}
+      emptyText={t('detail.relationships.emptyDealProducts')}
+      totalLabel={t('detail.fields.total')}
+      addLabel={t('detail.relationships.add')}
+      products={dealProducts ?? []}
+      onAddProduct={handleOpenProductDialog}
+      onRemoveProduct={handleRemoveDealProduct}
+      formatCurrency={formatCurrency}
+      unknownLabel={t('detail.fields.unknown')}
+      productDialog={{
+        open: productDialogOpen,
+        onOpenChange: handleCloseProductDialog,
+        searchValue: productSearch,
+        onSearchChange: setProductSearch,
+        searchResults: (productSearchResults ?? []).map((product) => ({
+          _id: product._id,
+          name: product.name,
+          unitPrice: product.unitPrice,
+        })),
+        isSearching: isSearchingProducts,
+        selectedProductId,
+        selectedProduct: selectedProduct
+          ? {
+              _id: selectedProduct._id,
+              name: selectedProduct.name,
+              unitPrice: selectedProduct.unitPrice,
+            }
+          : null,
+        onSelectProduct: handleSelectProduct,
+        quantity: productQuantity,
+        onQuantityChange: setProductQuantity,
+        unitPrice: productUnitPrice,
+        onUnitPriceChange: setProductUnitPrice,
+        discount: productDiscount,
+        onDiscountChange: setProductDiscount,
+        searchPlaceholder: t('detail.relationships.searchProducts'),
+        searchLoadingLabel: `${t('common.search')}...`,
+        noResultsLabel: t('detail.relationships.noResults'),
+        minimumSearchLabel: t('detail.relationships.minimumSearchProducts'),
+        quantityLabel: t('products.quantity'),
+        unitPriceLabel: t('products.unitPrice'),
+        discountLabel: t('products.discount'),
+        cancelLabel: t('common.cancel'),
+        confirmLabel: t('common.add'),
+        canConfirm: canSubmitProduct,
+        onConfirm: handleAddDealProduct,
+      }}
+    />
   );
 
   // --- Attachments sidebar card ---
@@ -1376,7 +1398,7 @@ function LeadDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="sidebar-slot"
+        variant="default"
         isLoading={isLoading}
         notFound={!lead && !isLoading}
         onBack={() => navigate({ to: "/dashboard/leads" })}
@@ -1528,6 +1550,7 @@ function LeadDetail() {
         onConfirm={handleMarkLost}
         organizationId={organizationId}
       />
+
     </>
   );
 }

@@ -8,6 +8,14 @@
 import type { ActivityRow } from "../database.types";
 import { createEntityMapper } from "./generic";
 
+type ActivityRowWithUser = ActivityRow & {
+  users?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+};
+
 export interface MappedActivity {
   _id: string;
   organizationId: string;
@@ -17,11 +25,21 @@ export interface MappedActivity {
   description: string;
   metadata?: unknown;
   performedBy: string;
+  performedByName?: string;
   createdAt: number;
   _source: "supabase";
 }
 
-const activityMapper = createEntityMapper<ActivityRow, MappedActivity>();
+const activityMapper = createEntityMapper<ActivityRowWithUser, MappedActivity>({
+  exclude: ["users"],
+});
 
-export const mapActivityFromSupabase = activityMapper.mapFromSupabase;
+export function mapActivityFromSupabase(row: ActivityRowWithUser): MappedActivity {
+  const mapped = activityMapper.mapFromSupabase(row);
+  return {
+    ...mapped,
+    performedByName: row.users?.name ?? row.users?.email ?? undefined,
+  };
+}
+
 export const mapActivityToSupabase = activityMapper.mapToSupabase;

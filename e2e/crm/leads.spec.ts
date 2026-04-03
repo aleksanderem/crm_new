@@ -292,6 +292,27 @@ test.describe("CRM — Leads", () => {
     expect(hasStatusInfo).toBe(true);
   });
 
+  test("lead detail hides the wide shell sidebar after a fresh reload", async ({ page }) => {
+    await navigateTo(page, "/dashboard/leads");
+
+    const leadLink = page.locator('a[href*="/leads/"]').first();
+    if (!(await leadLink.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await leadLink.click();
+    await waitForApp(page);
+    expect(page.url()).toContain("/leads/");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForApp(page);
+    await assertNoErrorBoundary(page);
+
+    await expect(page.getByRole("heading", { name: "Produkty" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Widok Kanban" })).toHaveCount(1);
+  });
+
   test("bulk action mark won available for selected leads", async ({ page }) => {
     await navigateTo(page, "/dashboard/leads");
 

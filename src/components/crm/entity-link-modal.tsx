@@ -45,7 +45,7 @@ export interface EntityLinkModalProps {
   /** Entity types to search in. If single, no type tabs. */
   entityTypes: EntityTypeConfig[];
   /** Called when user selects an entity to link */
-  onSelect: (result: EntityLinkResult) => void;
+  onSelect: (result: EntityLinkResult) => void | Promise<void>;
   /** Called when search text changes — parent provides results */
   onSearchChange?: (query: string, entityType: string) => void;
   /** Search results from parent */
@@ -94,20 +94,27 @@ export function EntityLinkModal({
 
   // Notify parent of search changes
   useEffect(() => {
-    if (search.length > 0) {
-      onSearchChange?.(search, activeType);
-    }
+    const trimmed = search.trim();
+    if (trimmed.length < 3) return;
+
+    const timeout = window.setTimeout(() => {
+      onSearchChange?.(trimmed, activeType);
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
   }, [search, activeType, onSearchChange]);
 
   const handleSelect = useCallback(
-    (result: EntityLinkResult) => {
-      onSelect(result);
+    async (result: EntityLinkResult) => {
+      await onSelect(result);
       onOpenChange(false);
     },
     [onSelect, onOpenChange],
   );
 
-  const showRecent = search.length === 0;
+  const trimmedSearch = search.trim();
+  const showRecent = trimmedSearch.length === 0;
+  const showMinSearchHint = trimmedSearch.length > 0 && trimmedSearch.length < 3;
   const displayItems = showRecent ? recentItems : searchResults;
 
   // Group by entity type if multiple types
@@ -177,7 +184,11 @@ export function EntityLinkModal({
         {/* Results */}
         <ScrollArea className="max-h-[320px]">
           <div className="px-2 pb-2">
-            {isSearching ? (
+            {showMinSearchHint ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                {t("entityLink.minSearchLength", "Wpisz co najmniej 3 znaki")}
+              </div>
+            ) : isSearching ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>

@@ -8,6 +8,8 @@ interface SidebarSlotContextValue {
   setWideContent: (wide: boolean) => void;
   dayAgendaDate: string | null;
   setDayAgendaDate: (d: string | null) => void;
+  shellSidebarMode: "default" | "icon-only";
+  setShellSidebarMode: (mode: "default" | "icon-only") => void;
 }
 
 const SidebarSlotContext = createContext<SidebarSlotContextValue>({
@@ -17,12 +19,15 @@ const SidebarSlotContext = createContext<SidebarSlotContextValue>({
   setWideContent: () => {},
   dayAgendaDate: null,
   setDayAgendaDate: () => {},
+  shellSidebarMode: "default",
+  setShellSidebarMode: () => {},
 });
 
 export function SidebarSlotProvider({ children }: { children: ReactNode }) {
   const [content, setContentState] = useState<ReactNode | null>(null);
   const [wideContent, setWideContentState] = useState(false);
   const [dayAgendaDate, setDayAgendaDateState] = useState<string | null>(null);
+  const [shellSidebarMode, setShellSidebarModeState] = useState<"default" | "icon-only">("default");
   const location = useLocation();
 
   const setContent = useCallback((node: ReactNode | null) => {
@@ -37,6 +42,10 @@ export function SidebarSlotProvider({ children }: { children: ReactNode }) {
     setDayAgendaDateState(d);
   }, []);
 
+  const setShellSidebarMode = useCallback((mode: "default" | "icon-only") => {
+    setShellSidebarModeState(mode);
+  }, []);
+
   // Clear slot content and day agenda on route change
   useEffect(() => {
     setContentState(null);
@@ -45,7 +54,16 @@ export function SidebarSlotProvider({ children }: { children: ReactNode }) {
 
   return (
     <SidebarSlotContext.Provider
-      value={{ content, setContent, wideContent, setWideContent, dayAgendaDate, setDayAgendaDate }}
+      value={{
+        content,
+        setContent,
+        wideContent,
+        setWideContent,
+        dayAgendaDate,
+        setDayAgendaDate,
+        shellSidebarMode,
+        setShellSidebarMode,
+      }}
     >
       {children}
     </SidebarSlotContext.Provider>

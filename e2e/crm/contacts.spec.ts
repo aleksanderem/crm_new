@@ -593,6 +593,36 @@ test.describe("CRM — Contacts", () => {
     }
   });
 
+  test("contact detail hides the wide shell sidebar after a fresh reload", async ({ page }) => {
+    await navigateTo(page, "/dashboard/contacts");
+
+    const contactLink = page.locator('a[href*="/contacts/"]').first();
+    const tableRow = page.locator("table tbody tr").first();
+
+    if (await contactLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await contactLink.click();
+    } else if (await tableRow.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await tableRow.click();
+    } else {
+      test.skip();
+      return;
+    }
+
+    await waitForApp(page);
+
+    if (!page.url().includes("/contacts/")) {
+      test.skip();
+      return;
+    }
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForApp(page);
+    await assertNoErrorBoundary(page);
+
+    await expect(page.getByRole("button", { name: /CRM Sprzedaż i kontakty/ })).toHaveCount(0);
+    await expect(page.locator("main h1")).toBeVisible();
+  });
+
   test("all tabs render on detail page", async ({ page }) => {
     await navigateTo(page, "/dashboard/contacts");
 

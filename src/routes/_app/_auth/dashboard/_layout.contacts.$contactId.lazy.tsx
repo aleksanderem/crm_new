@@ -8,7 +8,10 @@ import { useOrganization } from "@/components/org-context";
 import { useSupabaseContact, useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
-import { useSupabaseRelationshipsByEntity } from "@/hooks/use-supabase-relationships";
+import {
+  useSupabaseRelationshipsByEntity,
+  type MappedRelationship,
+} from "@/hooks/use-supabase-relationships";
 import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
@@ -26,9 +29,7 @@ import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,
@@ -37,27 +38,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Calendar,
   ChevronDown,
-  ChevronUp,
-  Mail,
   Pencil,
   Plus,
   Upload,
   PhoneCall,
-  FileText,
   Pin,
-  Search,
-  Building2,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { useTranslation } from "react-i18next";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityDetailLayout } from "@/components/crm/entity-detail-layout";
+import { EntityAssociationPanel } from "@/components/crm/entity-association-panel";
+import type { SearchResultItem } from "@/components/crm/entity-association-panel";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
-import { useHeaderSlot } from "@/components/layout/header-slot-context";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/$contactId"
@@ -71,6 +67,8 @@ function ContactDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { setShellSidebarMode } = useSidebarSlot();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateContact = useMutation(api.contacts.update);
   const removeContact = useMutation(api.contacts.remove);
   const createRelationship = useMutation(api.relationships.create);
@@ -156,8 +154,7 @@ function ContactDetail() {
   const [createLeadDrawerOpen, setCreateLeadDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
   const [autoComposeCounter, setAutoComposeCounter] = useState(0);
-  const [showSidebarDealLink, setShowSidebarDealLink] = useState(false);
-  const [showSidebarCompanyLink, setShowSidebarCompanyLink] = useState(false);
+  // sidebar link toggle state removed — EntityAssociationPanel manages its own modal
 
   // Relationship search state for edit drawer
   const [dealSearch, setDealSearch] = useState("");
@@ -173,6 +170,11 @@ function ContactDetail() {
   );
 
   useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
+
+  useEffect(() => {
     if (contact && organizationId) {
       const label = `${contact.firstName} ${contact.lastName ?? ""}`.trim();
       trackView({ organizationId, entityType: "contacts", entityId: contact._id, entityLabel: label });
@@ -185,11 +187,13 @@ function ContactDetail() {
     contactId,
   );
 
-  const { data: relationships } = useSupabaseRelationshipsByEntity(
+  const relationshipsQueryKey = [...supabaseKeys.objectRelationships.list(organizationId), "contact", contactId] as const;
+  const relationshipsQuery = useSupabaseRelationshipsByEntity(
     organizationId,
     "contact",
     contactId,
   );
+  const relationships = relationshipsQuery.data;
 
   const { data: notesData } = useSupabaseNotesByEntity(
     organizationId,
@@ -220,15 +224,20 @@ function ContactDetail() {
   );
 
   // Sidebar inline search queries
-  const { data: sidebarDealResults } = useSupabaseLeadsList(
+  const sidebarDealSearchQuery = sidebarDealSearch.trim();
+  const sidebarCompanySearchQuery = sidebarCompanySearch.trim();
+
+  const { data: sidebarDealResults, isFetching: isSearchingDeals } = useSupabaseLeadsList(
     organizationId,
-    { search: sidebarDealSearch || undefined, enabled: sidebarDealSearch.length > 0 },
+    { search: sidebarDealSearchQuery || undefined, enabled: sidebarDealSearchQuery.length >= 3 },
   );
 
-  const { data: sidebarCompanyResults } = useSupabaseCompaniesList(
+  const { data: sidebarCompanyResults, isFetching: isSearchingCompanies } = useSupabaseCompaniesList(
     organizationId,
-    { search: sidebarCompanySearch || undefined, enabled: sidebarCompanySearch.length > 0 },
+    { search: sidebarCompanySearchQuery || undefined, enabled: sidebarCompanySearchQuery.length >= 3 },
   );
+
+  // Full-list lookups NOT needed — relationships already carry targetName/targetSublabel
 
   // --- Handlers ---
 
@@ -296,13 +305,43 @@ function ContactDetail() {
   };
 
   const handleLinkDeal = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:contact:${contactId}:deal:${item.id}`,
       organizationId,
       sourceType: "contact",
       sourceId: contactId,
       targetType: "deal",
       targetId: item.id,
-    });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "deal" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "contact",
+        sourceId: contactId,
+        targetType: "deal",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
@@ -311,19 +350,60 @@ function ContactDetail() {
       (r) => r.targetId === targetId
     );
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
 
   const handleLinkCompany = async (item: RelationshipItem) => {
-    await createRelationship({
+    const optimisticRelationship: MappedRelationship = {
+      _id: `optimistic:contact:${contactId}:company:${item.id}`,
       organizationId,
       sourceType: "contact",
       sourceId: contactId,
       targetType: "company",
       targetId: item.id,
-    });
+      createdBy: currentUser?._id ?? "optimistic",
+      createdAt: Date.now(),
+      targetName: item.label,
+      targetSublabel: item.sublabel,
+      _source: "supabase",
+    };
+
+    queryClient.setQueryData<MappedRelationship[] | undefined>(
+      relationshipsQueryKey,
+      (current = []) => {
+        if (current.some((rel) => rel.targetType === "company" && rel.targetId === item.id)) {
+          return current;
+        }
+        return [...current, optimisticRelationship];
+      },
+    );
+
+    try {
+      await createRelationship({
+        organizationId,
+        sourceType: "contact",
+        sourceId: contactId,
+        targetType: "company",
+        targetId: item.id,
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+      throw error;
+    }
+
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
   };
 
@@ -332,7 +412,18 @@ function ContactDetail() {
       (r) => r.targetId === targetId
     );
     if (rel) {
-      await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      queryClient.setQueryData<MappedRelationship[] | undefined>(
+        relationshipsQueryKey,
+        (current = []) => current.filter((item) => item._id !== rel._id),
+      );
+
+      try {
+        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+      } catch (error) {
+        void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
+        throw error;
+      }
+
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
     }
   };
@@ -368,6 +459,7 @@ function ContactDetail() {
         targetType: "company",
         targetId: companyId,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateCompanyDrawerOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -416,6 +508,7 @@ function ContactDetail() {
         targetType: "deal",
         targetId: leadId,
       });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateLeadDrawerOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -542,10 +635,10 @@ function ContactDetail() {
   const fullName = contact ? `${contact.firstName} ${contact.lastName ?? ""}`.trim() : "";
   const avatarFallback = contact ? `${contact.firstName[0]}${contact.lastName?.[0] ?? ""}` : "";
 
+  const relationshipItems = relationships ?? [];
   const dealRelationships =
-    relationships?.filter((r) => r.targetType === "deal" || r.targetType === "lead") ?? [];
-  const companyRelationships =
-    relationships?.filter((r) => r.targetType === "company") ?? [];
+    relationshipItems.filter((r) => r.targetType === "deal" || r.targetType === "lead");
+  const companyRelationships = relationshipItems.filter((r) => r.targetType === "company");
 
   const selectedActivity = scheduledActivitiesData?.find(
     (a) => a._id === selectedActivityId
@@ -556,20 +649,36 @@ function ContactDetail() {
     tags?: string[];
   };
 
-  // Build relationship items for edit drawer
   const selectedDeals: RelationshipItem[] = dealRelationships.map((r) => ({
     id: r.targetId,
-    label: (r as any).targetName ?? r.targetId,
-    sublabel: (r as any).targetSublabel,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
   }));
 
-  const selectedCompanies: RelationshipItem[] = companyRelationships.map(
-    (r) => ({
-      id: r.targetId,
-      label: (r as any).targetName ?? r.targetId,
-      sublabel: (r as any).targetSublabel,
-    })
-  );
+  const selectedCompanies: RelationshipItem[] = companyRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
+
+  // Association items for sidebar panels — use targetName/targetSublabel from relationships directly
+  const dealAssociationItems = dealRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
+
+  const companyAssociationItems = companyRelationships.map((r) => ({
+    id: r.targetId,
+    label: r.targetName ?? r.targetId,
+    sublabel: r.targetSublabel,
+  }));
+
+  const dealSearchResultsForPanel: SearchResultItem[] = (sidebarDealResults?.page ?? [])
+    .map((d) => ({ id: d._id, label: d.title, sublabel: d.value != null ? `${d.value.toLocaleString()} PLN` : undefined }));
+
+  const companySearchResultsForPanel: SearchResultItem[] = (sidebarCompanyResults ?? [])
+    .map((c) => ({ id: c._id, label: c.name, sublabel: c.domain ?? undefined }));
 
   // All detail fields for sidebar
   const allFields = contact
@@ -593,138 +702,13 @@ function ContactDetail() {
       ]
     : [];
 
-  // --- Header back button ---
-  const { setBackAction } = useHeaderSlot();
-  useEffect(() => {
-    setBackAction(() => navigate({ to: "/dashboard/contacts" }));
-    return () => setBackAction(null);
-  }, [setBackAction, navigate]);
-
-  // --- Sidebar slot ---
-  const { setContent: setSidebarContent } = useSidebarSlot();
-  const [showAllFields, setShowAllFields] = useState(false);
-  const visibleFields = showAllFields ? allFields : allFields.slice(0, 3);
-  const hiddenCount = allFields.length - 3;
-
-  useEffect(() => {
-    if (!contact) return;
-    setSidebarContent(
-      <div className="space-y-4">
-        {/* Quick actions dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full">
-              {t("detail.quickActions", { defaultValue: "Czynności" })}
-              <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.activities')); setShowActivityForm(true); }}>
-              <Calendar className="mr-2 h-4 w-4" variant="stroke" />
-              {t("entityActions.scheduleActivity", { defaultValue: "Zaplanuj aktywność" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.emails')); setAutoComposeCounter(c => c + 1); }}>
-              <Mail className="mr-2 h-4 w-4" variant="stroke" />
-              {t("entityActions.sendEmail", { defaultValue: "Wyślij email" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.notes')); setIsAddingNote(true); }}>
-              <FileText className="mr-2 h-4 w-4" variant="stroke" />
-              {t("entityActions.addNote", { defaultValue: "Dodaj notatkę" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setActiveTab(t('detail.tabs.calls'))}>
-              <PhoneCall className="mr-2 h-4 w-4" variant="stroke" />
-              {t("entityActions.logCall", { defaultValue: "Zarejestruj połączenie" })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Details */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold">{t("detail.details", { defaultValue: "Details" })}</h3>
-          <dl className="space-y-2">
-            {visibleFields.map((field) => (
-              <div key={field.fieldKey}>
-                <dt className="text-xs text-muted-foreground">{field.label}</dt>
-                <dd className="text-sm">{field.value ?? "—"}</dd>
-              </div>
-            ))}
-          </dl>
-          {hiddenCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs text-muted-foreground"
-              onClick={() => setShowAllFields((prev) => !prev)}
-            >
-              {showAllFields ? (
-                <>
-                  {t("detail.showLess", { defaultValue: "Show less" })} <ChevronUp className="ml-1 h-3 w-3" variant="stroke" />
-                </>
-              ) : (
-                <>
-                  {hiddenCount} {t("detail.moreFields", { defaultValue: "more fields" })} <ChevronDown className="ml-1 h-3 w-3" variant="stroke" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-
-        {/* Leads association */}
-        <Separator />
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">
-              {t("detail.relationships.leads")}{" "}
-              <span className="text-muted-foreground font-normal">({dealRelationships.length})</span>
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => {
-                setShowSidebarDealLink((prev) => !prev);
-                setSidebarDealSearch("");
-              }}
-            >
-              <Plus className="h-[17px] w-[17px]" variant="stroke" />
-            </Button>
-          </div>
-          {dealsAssociationChildren}
-        </div>
-
-        {/* Companies association */}
-        <Separator />
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">
-              {t("detail.relationships.companies")}{" "}
-              <span className="text-muted-foreground font-normal">({companyRelationships.length})</span>
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => {
-                setShowSidebarCompanyLink((prev) => !prev);
-                setSidebarCompanySearch("");
-              }}
-            >
-              <Plus className="h-[17px] w-[17px]" variant="stroke" />
-            </Button>
-          </div>
-          {companiesAssociationChildren}
-        </div>
-
-        {/* Attachments */}
-        <Separator />
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold">{t("detail.attachments.title", { defaultValue: "Attachments" })}</h3>
-          {attachmentsContent}
-        </div>
-      </div>,
-    );
-    return () => setSidebarContent(null);
-  });
+  // --- Sidebar content passed as props (no useEffect loop) ---
+  const quickActionItems = [
+    { key: "scheduleActivity", label: t("entityActions.scheduleActivity", { defaultValue: "Zaplanuj aktywność" }), onClick: () => { setActiveTab(t('detail.tabs.activities')); setShowActivityForm(true); } },
+    { key: "sendEmail", label: t("entityActions.sendEmail", { defaultValue: "Wyślij email" }), onClick: () => { setActiveTab(t('detail.tabs.emails')); setAutoComposeCounter(c => c + 1); } },
+    { key: "addNote", label: t("entityActions.addNote", { defaultValue: "Dodaj notatkę" }), onClick: () => { setActiveTab(t('detail.tabs.notes')); setIsAddingNote(true); } },
+    { key: "logCall", label: t("entityActions.logCall", { defaultValue: "Zarejestruj połączenie" }), onClick: () => setActiveTab(t('detail.tabs.calls')) },
+  ];
 
   // --- Actions menu ---
   const actionsMenu = (
@@ -755,187 +739,6 @@ function ContactDetail() {
   );
 
   // --- Sidebar association sections ---
-  const dealsAssociationChildren = (
-    <>
-      {showSidebarDealLink && (
-        <div className="mb-3 relative">
-          <div className="flex items-center w-full rounded-md border bg-transparent">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-            <Input
-              type="text"
-              className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
-              placeholder={t('detail.relationships.searchLeads')}
-              value={sidebarDealSearch}
-              onChange={(e) => setSidebarDealSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {sidebarDealSearch.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {sidebarDealResults?.page?.filter(
-                (d) => !dealRelationships.some((r) => r.targetId === d._id)
-              ).length ? (
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {sidebarDealResults.page
-                    .filter((d) => !dealRelationships.some((r) => r.targetId === d._id))
-                    .map((d) => (
-                      <li key={d._id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={async () => {
-                            await handleLinkDeal({ id: d._id, label: d.title });
-                            setSidebarDealSearch("");
-                            setShowSidebarDealLink(false);
-                          }}
-                        >
-                          <FileText className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                          <span>{d.title}</span>
-                          {d.value != null && (
-                            <span className="text-xs text-muted-foreground">
-                              ${d.value.toLocaleString()}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              ) : (
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t('detail.relationships.noResults')}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {dealRelationships.length > 0 ? (
-        <ul className="space-y-1.5">
-          {dealRelationships.map((r) => (
-            <li key={r._id}>
-              <button
-                className="flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-sm hover:bg-accent transition-colors"
-                onClick={() =>
-                  navigate({
-                    to: `/dashboard/leads/${r.targetId}`,
-                  })
-                }
-              >
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate font-medium">{(r as any).targetName ?? r.targetId}</div>
-                  {(r as any).targetSublabel && (
-                    <div className="text-xs text-muted-foreground">
-                      {(r as any).targetSublabel}
-                    </div>
-                  )}
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        !showSidebarDealLink && (
-          <p className="text-sm text-muted-foreground">
-            {t('detail.relationships.emptyContactLeads')}
-          </p>
-        )
-      )}
-    </>
-  );
-
-  const companiesAssociationChildren = (
-    <>
-      {showSidebarCompanyLink && (
-        <div className="mb-3 relative">
-          <div className="flex items-center w-full rounded-md border bg-transparent">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-            <Input
-              type="text"
-              className="h-8 border-0 shadow-none focus-visible:ring-0 bg-transparent px-2"
-              placeholder={t('detail.relationships.searchCompanies')}
-              value={sidebarCompanySearch}
-              onChange={(e) => setSidebarCompanySearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {sidebarCompanySearch.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-              {sidebarCompanyResults?.filter(
-                (c) => !companyRelationships.some((r) => r.targetId === c._id)
-              ).length ? (
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {sidebarCompanyResults
-                    .filter((c) => !companyRelationships.some((r) => r.targetId === c._id))
-                    .map((c) => (
-                      <li key={c._id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={async () => {
-                            await handleLinkCompany({
-                              id: c._id,
-                              label: c.name,
-                            });
-                            setSidebarCompanySearch("");
-                            setShowSidebarCompanyLink(false);
-                          }}
-                        >
-                          <Building2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                          <span>{c.name}</span>
-                          {c.domain && (
-                            <span className="text-xs text-muted-foreground">
-                              ({c.domain})
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              ) : (
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t('detail.relationships.noResults')}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {companyRelationships.length > 0 ? (
-        <ul className="space-y-1.5">
-          {companyRelationships.map((r) => (
-            <li key={r._id}>
-              <button
-                className="flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-sm hover:bg-accent transition-colors"
-                onClick={() =>
-                  navigate({
-                    to: `/dashboard/companies/${r.targetId}`,
-                  })
-                }
-              >
-                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate font-medium">{(r as any).targetName ?? r.targetId}</div>
-                  {(r as any).targetSublabel && (
-                    <div className="text-xs text-muted-foreground">
-                      {(r as any).targetSublabel}
-                    </div>
-                  )}
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        !showSidebarCompanyLink && (
-          <p className="text-sm text-muted-foreground">
-            {t('detail.relationships.emptyContactCompany')}
-          </p>
-        )
-      )}
-    </>
-  );
-
   // --- Attachments placeholder ---
   const attachmentsContent = (
     <div>
@@ -1174,13 +977,56 @@ function ContactDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="sidebar-slot"
+        variant="default"
         isLoading={isLoading}
         notFound={!isLoading && !contact}
+        onBack={() => navigate({ to: "/dashboard/contacts" })}
         title={fullName}
         avatarFallback={avatarFallback}
         actionsMenu={actionsMenu}
         fields={allFields}
+        associations={[
+          {
+            title: "",
+            count: 0,
+            children: (
+              <EntityAssociationPanel
+                title={t("detail.relationships.leads")}
+                items={dealAssociationItems}
+                searchPlaceholder={t('detail.relationships.searchLeads')}
+                emptyText={t('detail.relationships.emptyContactLeads')}
+                onItemClick={(id) => navigate({ to: `/dashboard/leads/${id}` })}
+                onLink={(item) => handleLinkDeal({ id: item.id, label: item.label })}
+                onUnlink={handleUnlinkDeal}
+                onCreateNew={() => setCreateLeadDrawerOpen(true)}
+                searchResults={dealSearchResultsForPanel}
+                isSearching={isSearchingDeals}
+                onSearchChange={setSidebarDealSearch}
+              />
+            ),
+          },
+          {
+            title: "",
+            count: 0,
+            children: (
+              <EntityAssociationPanel
+                title={t("detail.relationships.companies")}
+                items={companyAssociationItems}
+                searchPlaceholder={t('detail.relationships.searchCompanies')}
+                emptyText={t('detail.relationships.emptyContactCompany')}
+                onItemClick={(id) => navigate({ to: `/dashboard/companies/${id}` })}
+                onLink={(item) => handleLinkCompany({ id: item.id, label: item.label })}
+                onUnlink={handleUnlinkCompany}
+                onCreateNew={() => setCreateCompanyDrawerOpen(true)}
+                searchResults={companySearchResultsForPanel}
+                isSearching={isSearchingCompanies}
+                onSearchChange={setSidebarCompanySearch}
+              />
+            ),
+          },
+        ]}
+        attachments={attachmentsContent}
+        quickActionItems={quickActionItems}
         tabs={tabs}
         defaultTab={t('detail.tabs.all')}
         activeTab={activeTab}

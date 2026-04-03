@@ -183,6 +183,31 @@ test.describe("CRM — Companies", () => {
     expect(hasContactsSection).toBe(true);
   });
 
+  test("company detail hides the wide shell sidebar after a fresh reload", async ({ page }) => {
+    await navigateTo(page, "/dashboard/companies");
+
+    const companyLink = page.locator('a[href*="/companies/"]').first();
+    if (!(await companyLink.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await companyLink.click();
+    await waitForApp(page);
+
+    if (!page.url().includes("/companies/")) {
+      test.skip();
+      return;
+    }
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForApp(page);
+    await assertNoErrorBoundary(page);
+
+    await expect(page.getByRole("button", { name: /CRM Sprzedaż i kontakty/ })).toHaveCount(0);
+    await expect(page.locator("main h1")).toBeVisible();
+  });
+
   test("add contact button exists in company detail", async ({ page }) => {
     await navigateTo(page, "/dashboard/companies");
 

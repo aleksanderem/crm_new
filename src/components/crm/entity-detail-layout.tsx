@@ -29,6 +29,7 @@ interface AssociationSection {
   title: string;
   count: number;
   onCreateNew?: () => void;
+  childrenOwnHeader?: boolean;
   children: React.ReactNode;
 }
 
@@ -146,6 +147,42 @@ function EntityDetailNotFound({ onBack }: { onBack?: () => void }) {
   );
 }
 
+function buildDetailActions({
+  primaryAction,
+  secondaryActions,
+  onEdit,
+  quickActionItems,
+}: {
+  primaryAction?: { label: string; onClick: () => void };
+  secondaryActions?: { label: string; onClick: () => void; variant?: "default" | "outline" | "destructive" }[];
+  onEdit?: () => void;
+  quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
+}) {
+  const allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[] = [];
+
+  if (primaryAction) {
+    allActions.push({ label: primaryAction.label, onClick: primaryAction.onClick });
+  }
+
+  if (onEdit) {
+    allActions.push({ label: "Edit", onClick: onEdit });
+  }
+
+  if (secondaryActions) {
+    for (const action of secondaryActions) {
+      allActions.push({ label: action.label, onClick: action.onClick, variant: action.variant });
+    }
+  }
+
+  if (quickActionItems) {
+    for (const quickAction of quickActionItems) {
+      allActions.push({ label: quickAction.label, icon: quickAction.icon, onClick: quickAction.onClick });
+    }
+  }
+
+  return allActions;
+}
+
 interface EntityDetailLayoutProps {
   variant?: "default" | "sidebar-slot";
   isLoading?: boolean;
@@ -252,6 +289,13 @@ export function EntityDetailLayout({
     breadcrumbs,
   };
 
+  const allActions = buildDetailActions({
+    primaryAction,
+    secondaryActions,
+    onEdit,
+    quickActionItems,
+  });
+
   const tabsContent = (
     <Tabs defaultValue={activeTab ? undefined : defaultTabValue} value={activeTab} onValueChange={onTabChange} className="flex flex-1 flex-col min-h-0">
       <div className="shrink-0 border-b px-4 pt-2">
@@ -304,7 +348,7 @@ export function EntityDetailLayout({
         associations={associations}
         attachments={attachments}
         sidebarExtra={sidebarExtra}
-        quickActionItems={quickActionItems}
+        allActions={allActions}
         header={<EntityDetailHeader {...headerProps} />}
       >
         {tabsContent}
@@ -320,6 +364,29 @@ export function EntityDetailLayout({
         <div className="p-4 space-y-4">
           {/* Entity header */}
           <EntityDetailHeader {...headerProps} />
+
+          {allActions.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-between">
+                  Akcje
+                  <ChevronDown className="ml-2 h-3 w-3" variant="stroke" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {allActions.map((action) => (
+                  <DropdownMenuItem
+                    key={action.label}
+                    onClick={action.onClick}
+                    className={action.variant === "destructive" ? "text-destructive focus:text-destructive" : ""}
+                  >
+                    {action.icon && <span className="mr-2">{action.icon}</span>}
+                    {action.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <Separator />
 
@@ -361,7 +428,7 @@ export function EntityDetailLayout({
           {associations?.map((section, idx) => (
             <div key={section.title || `assoc-${idx}`} className="space-y-2">
               <Separator />
-              {section.title && (
+              {section.title && !section.childrenOwnHeader && (
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold">
                     {section.title}{" "}
@@ -425,7 +492,7 @@ function SidebarSlotEntityDetail({
   associations,
   attachments,
   sidebarExtra,
-  quickActionItems,
+  allActions,
   header,
   children,
 }: {
@@ -437,7 +504,7 @@ function SidebarSlotEntityDetail({
   associations?: AssociationSection[];
   attachments?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
-  quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
+  allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[];
   header: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -451,26 +518,6 @@ function SidebarSlotEntityDetail({
     }
     return () => setBackAction(null);
   }, [headerProps.onBack, setBackAction]);
-
-  // Build all action items for the "Akcje" dropdown
-  const allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[] = [];
-  if (headerProps.primaryAction) {
-    allActions.push({ label: headerProps.primaryAction.label, onClick: headerProps.primaryAction.onClick });
-  }
-  if (headerProps.onEdit) {
-    allActions.push({ label: "Edit", onClick: headerProps.onEdit });
-  }
-  if (headerProps.secondaryActions) {
-    for (const a of headerProps.secondaryActions) {
-      allActions.push({ label: a.label, onClick: a.onClick, variant: a.variant });
-    }
-  }
-  // Merge quick actions (schedule activity, add note, share, etc.)
-  if (quickActionItems) {
-    for (const qa of quickActionItems) {
-      allActions.push({ label: qa.label, icon: qa.icon, onClick: qa.onClick });
-    }
-  }
 
   useEffect(() => {
     setContent(
@@ -535,7 +582,7 @@ function SidebarSlotEntityDetail({
         {associations?.map((section, idx) => (
           <div key={section.title || `assoc-${idx}`} className="space-y-2">
             <Separator />
-            {section.title && (
+            {section.title && !section.childrenOwnHeader && (
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">
                   {section.title}{" "}
@@ -574,7 +621,7 @@ function SidebarSlotEntityDetail({
     );
 
     return () => setContent(null);
-  });
+  }, [setContent, allActions, fields, hiddenCount, showAllFields, onToggleFields, associations, attachments, sidebarExtra]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

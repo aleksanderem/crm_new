@@ -6,7 +6,6 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
@@ -41,6 +40,7 @@ import {
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -53,18 +53,29 @@ function PatientDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this mutation
   const updatePatient = useMutation(api.gabinet.patients.update);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this mutation
   const removePatient = useMutation(api.gabinet.patients.remove);
   const trackView = useMutation(api.recentlyViewed.track);
   const queryClient = useQueryClient();
+  const { setShellSidebarMode } = useSidebarSlot();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: patient, isLoading } = useSupabaseGabinetPatient(
+  const patientDetailQuery = convexQuery(api.gabinet.patients.getById, {
     organizationId,
-    patientId,
-  );
+    patientId: patientId as Id<"gabinetPatients">,
+  });
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this query shape
+  const { data: patient, isLoading } = useQuery(patientDetailQuery);
+
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
   useEffect(() => {
     if (patient && organizationId) {
@@ -138,6 +149,7 @@ function PatientDetail() {
         patientId: patientId as Id<"gabinetPatients">,
         ...formData,
       });
+      void queryClient.invalidateQueries({ queryKey: patientDetailQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       setEditDrawerOpen(false);
@@ -621,7 +633,7 @@ function PatientDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="sidebar-slot"
+        variant="default"
         isLoading={isLoading}
         notFound={!patient && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/patients" })}

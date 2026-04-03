@@ -1328,6 +1328,8 @@
       "companies": "Companies",
       "leads": "Leads",
       "products": "Products",
+      "searchProducts": "Search products...",
+      "minimumSearchProducts": "Min. 3 characters",
       "createContact": "+ Create New Contact",
       "createCompany": "+ Create New Company",
       "emptyDealContacts": "This deal has no linked contacts.",

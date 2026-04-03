@@ -1330,6 +1330,8 @@
       "companies": "Firmy",
       "leads": "Leady",
       "products": "Produkty",
+      "searchProducts": "Szukaj produktów...",
+      "minimumSearchProducts": "Min. 3 znaki",
       "createContact": "+ Utwórz nowy kontakt",
       "createCompany": "+ Utwórz nową firmę",
       "emptyDealContacts": "Ten deal nie ma powiązanych kontaktów.",

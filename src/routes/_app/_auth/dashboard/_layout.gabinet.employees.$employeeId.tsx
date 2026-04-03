@@ -64,6 +64,7 @@ import {
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId"
@@ -129,6 +130,7 @@ function EmployeeDetail() {
   const [clientTreatmentFilter, setClientTreatmentFilter] = useState<string>("all");
 
   const queryClient = useQueryClient();
+  const { setShellSidebarMode } = useSidebarSlot();
 
   // Queries
   const { data: employee, isLoading } = useSupabaseGabinetEmployee(
@@ -208,6 +210,11 @@ function EmployeeDetail() {
   const selectedActivity = scheduledActivitiesData?.find(
     (a) => a._id === selectedActivityId
   ) ?? null;
+
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
   // Memos
   const userMap = useMemo(() => {
@@ -695,7 +702,7 @@ function EmployeeDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="sidebar-slot"
+        variant="default"
         isLoading={isLoading}
         notFound={!employee && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/employees" })}

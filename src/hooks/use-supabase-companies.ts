@@ -35,11 +35,14 @@ export function useSupabaseCompaniesList(
         .select("*")
         .eq("organization_id", organizationId);
 
-      if (search?.trim()) {
-        query = query.textSearch("search_vector", search.trim(), {
-          type: "websearch",
-          config: "simple",
-        });
+      const trimmedSearch = search?.trim();
+      if (trimmedSearch) {
+        query = query.or(
+          [
+            `name.ilike.%${trimmedSearch}%`,
+            `domain.ilike.%${trimmedSearch}%`,
+          ].join(","),
+        );
       }
 
       const { data, error } = await query

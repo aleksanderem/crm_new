@@ -1,16 +1,30 @@
 [
   {
-    "id": "b7988d01",
-    "label": "vite dev server",
+    "id": "7f8542a4",
+    "label": "cd /Users/alfred/projects/crm_new && npm run dev",
     "command": "cd /Users/alfred/projects/crm_new && npm run dev",
     "cwd": "/Users/alfred/projects/crm_new",
-    "ownerSessionFile": "/Users/alfred/.gsd/sessions/--Users-alfred-projects-crm_new--/2026-04-01T18-20-05-400Z_8708f83a-39b3-409b-8727-30842fbe5e99.jsonl",
+    "ownerSessionFile": "/Users/alfred/.gsd/sessions/--Users-alfred-projects-crm_new--/2026-04-02T16-26-06-424Z_48808e29-b26b-4d32-b0c3-3f43bf11e3b7.jsonl",
     "persistAcrossSessions": false,
-    "startedAt": 1775070612019,
+    "startedAt": 1775154049937,
     "processType": "server",
     "group": null,
-    "readyPattern": null,
-    "readyPort": 3000,
-    "pid": 67382
+    "readyPattern": "Local:|ready",
+    "readyPort": null,
+    "pid": 19856
+  },
+  {
+    "id": "ef23aa99",
+    "label": "cd /Users/alfred/projects/crm_new && npm run dev",
+    "command": "cd /Users/alfred/projects/crm_new && npm run dev",
+    "cwd": "/Users/alfred/projects/crm_new",
+    "ownerSessionFile": "/Users/alfred/.gsd/sessions/--Users-alfred-projects-crm_new--/2026-04-02T16-26-06-424Z_48808e29-b26b-4d32-b0c3-3f43bf11e3b7.jsonl",
+    "persistAcrossSessions": false,
+    "startedAt": 1775154064698,
+    "processType": "server",
+    "group": null,
+    "readyPattern": "Local:|ready|Convex functions ready",
+    "readyPort": null,
+    "pid": 19945
   }
 ]

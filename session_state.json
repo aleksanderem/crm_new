@@ -1,18 +1,17 @@
 {
-  "session_id": "S0091",
-  "started_at": "2026-03-26T14:00:00Z",
-  "last_updated": "2026-03-26T14:15:00Z",
+  "session_id": "S0092",
+  "started_at": "2026-04-03T00:00:00Z",
+  "last_updated": "2026-04-03T11:20:00Z",
   "status": "active",
-  "focus": "Finalizing implementation plans for milestone features F1/F2/F3",
+  "focus": "Close CRM sidebar verification and continue remaining Gabinet direct-slot migrations",
   "tasks_snapshot": {
-    "total": 3,
-    "not_started": 0,
-    "in_progress": 0,
-    "passing": 3,
+    "total": 20,
+    "not_started": 1,
+    "in_progress": 6,
+    "passing": 13,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": [42, 32],
   "blockers": [],
-  "notes": "S0091: Continuation of S0090. Applied all remaining review fixes to F2 plan (Issues 15-19, 21-22). Fixed F1 task numbering (now 11 tasks). All 3 plans ready for commit and execution."
-}
+  "notes": "S0092: Gabinet patient verification is green, and the CRM contact/company route-owned sidebar slice is also now fully green. Fresh focused Playwright checks passed for contacts (4/4) and companies (3/3), plus app typecheck is clean. The remaining open sidebar rollout work is the Gabinet direct-slot routes, where icon-only cannot be enabled safely until the routes own their sidebar content."}

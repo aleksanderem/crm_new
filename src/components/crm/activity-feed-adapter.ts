@@ -9,6 +9,21 @@
 import type { FeedEntry } from "@/components/crm/activity-feed";
 import type { ActivityAction } from "@cvx/schema";
 
+function readEnvelopeActorLabel(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const envelope = (metadata as { activityEnvelope?: unknown }).activityEnvelope;
+  if (!envelope || typeof envelope !== "object") return undefined;
+  const actor = (envelope as { actor?: unknown }).actor;
+  if (!actor || typeof actor !== "object") return undefined;
+  const label = (actor as { label?: unknown }).label;
+  return typeof label === "string" && label.trim().length > 0 ? label.trim() : undefined;
+}
+
+function looksLikeOpaqueId(value: string | undefined): boolean {
+  if (!value) return false;
+  return /^[a-z0-9]{20,}$/i.test(value);
+}
+
 /** Shape returned by useSupabaseActivitiesByEntity */
 interface MappedActivityLike {
   _id: string;
@@ -35,7 +50,7 @@ function actionToFeedType(action: string): FeedEntry["type"] {
       action === "stage_changed" || action === "status_changed" ||
       action === "assigned" || action === "relationship_added" ||
       action === "relationship_removed" || action === "document_uploaded" ||
-      action === "package_assigned") return "system";
+      action === "package_assigned") return "activity";
   return "activity";
 }
 
@@ -57,6 +72,9 @@ export function activitiesToFeedEntries(
     const meta = extractMetadata(a.metadata);
     const feedType = actionToFeedType(a.action);
 
+    const actorLabel = a.performedByName ?? readEnvelopeActorLabel(a.metadata);
+    const safeLegacyActor = looksLikeOpaqueId(a.performedBy) ? undefined : a.performedBy;
+
     const entry: FeedEntry = {
       _id: a._id,
       type: feedType,
@@ -64,8 +82,8 @@ export function activitiesToFeedEntries(
       title: a.description,
       body: a.contentSnapshot ?? a.description,
       createdAt: a.createdAt,
-      performedBy: a.performedByName ?? a.performedBy
-        ? { name: a.performedByName ?? a.performedBy! }
+      performedBy: actorLabel ?? safeLegacyActor
+        ? { name: actorLabel ?? safeLegacyActor! }
         : undefined,
     };
 

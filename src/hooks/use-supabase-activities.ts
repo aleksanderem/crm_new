@@ -37,7 +37,14 @@ export function useSupabaseActivitiesByEntity(
 
       const { data, error } = await client
         .from("activities")
-        .select("*")
+        .select(`
+          *,
+          users:users!activities_performed_by_fkey (
+            id,
+            name,
+            email
+          )
+        `)
         .eq("organization_id", organizationId)
         .eq("entity_type", entityType)
         .eq("entity_id", entityId)

@@ -24,6 +24,8 @@ export interface MappedRelationship {
   relationshipType?: string;
   createdBy: string;
   createdAt: number;
+  targetName?: string;
+  targetSublabel?: string;
   _source: "supabase";
 }
 
@@ -97,6 +99,69 @@ export function useSupabaseRelationshipsByEntity(
           unique.push(mapRelationship(row));
         }
       }
+
+      // Enrich with target entity names/sublabels
+      const targetIds = new Map<string, { type: string; ids: Set<string> }>();
+      for (const rel of unique) {
+        if (!targetIds.has(rel.targetType)) {
+          targetIds.set(rel.targetType, { type: rel.targetType, ids: new Set() });
+        }
+        targetIds.get(rel.targetType)!.ids.add(rel.targetId);
+      }
+
+      const tableMap: Record<string, { table: string; cols: string[]; nameJoin?: (row: Record<string, unknown>) => string; subFmt?: (row: Record<string, unknown>) => string | undefined }> = {
+        contact: {
+          table: "contacts",
+          cols: ["first_name", "last_name", "email"],
+          nameJoin: (r) => `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim(),
+          subFmt: (r) => (r.email as string) || undefined,
+        },
+        company: {
+          table: "companies",
+          cols: ["name", "domain"],
+          nameJoin: (r) => (r.name as string) ?? "",
+          subFmt: (r) => (r.domain as string) || undefined,
+        },
+        deal: {
+          table: "leads",
+          cols: ["title", "value"],
+          nameJoin: (r) => (r.title as string) ?? "",
+          subFmt: (r) => r.value != null ? `${Number(r.value).toLocaleString("pl-PL")} PLN` : undefined,
+        },
+        lead: {
+          table: "leads",
+          cols: ["title", "value"],
+          nameJoin: (r) => (r.title as string) ?? "",
+          subFmt: (r) => r.value != null ? `${Number(r.value).toLocaleString("pl-PL")} PLN` : undefined,
+        },
+      };
+
+      for (const [, group] of targetIds) {
+        const cfg = tableMap[group.type];
+        if (!cfg) continue;
+        const ids = [...group.ids];
+        const { data: rows } = await client
+          .from(cfg.table)
+          .select(`id, ${cfg.cols.join(", ")}`)
+          .in("id", ids);
+        if (!rows) continue;
+        const lookup = new Map<string, { name?: string; sub?: string }>();
+        for (const r of rows as Record<string, unknown>[]) {
+          const name = cfg.nameJoin?.(r) ?? "";
+          const sub = cfg.subFmt?.(r);
+          lookup.set(r.id as string, { name: name || undefined, sub });
+        }
+        for (const rel of unique) {
+          if (rel.targetType === group.type) {
+            const entry = lookup.get(rel.targetId);
+            if (entry) {
+              rel.targetName = entry.name || undefined;
+              rel.targetSublabel = entry.sub || undefined;
+            }
+          }
+        }
+      }
+
       return unique;
     },
     enabled: enabled && isReady && !!organizationId && !!entityId,

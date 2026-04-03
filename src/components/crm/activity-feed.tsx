@@ -342,6 +342,7 @@ export function ActivityFeed({
 function FeedEntryCard({ entry }: { entry: FeedEntry }) {
   const Icon = typeIcons[entry.action] ?? typeIcons[entry.type] ?? Pencil;
   const colorClass = typeColors[entry.action] ?? typeColors[entry.type] ?? "bg-muted text-muted-foreground border-border";
+  const actorLabel = entry.performedBy?.name ?? (entry.type === "system" ? "System" : undefined);
 
   return (
     <div className="relative pb-6 group">
@@ -364,7 +365,7 @@ function FeedEntryCard({ entry }: { entry: FeedEntry }) {
               </AvatarFallback>
             </Avatar>
           )}
-          <span className="text-xs font-medium">{entry.performedBy?.name ?? "System"}</span>
+          {actorLabel && <span className="text-xs font-medium">{actorLabel}</span>}
           <span className="text-[11px] text-muted-foreground">{timeAgo(entry.createdAt)}</span>
           {entry.pinned && (
             <Pin className="h-3 w-3 text-amber-500 ml-auto" />

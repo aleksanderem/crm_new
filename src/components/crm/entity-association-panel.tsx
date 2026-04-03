@@ -5,7 +5,7 @@
  * Used in entity detail sidebars for Deals, Contacts, Products, etc.
  */
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -37,6 +37,7 @@ export interface SearchResultItem {
 export interface EntityAssociationPanelProps {
   /** Section title, e.g. "Leady", "Kontakty" */
   title: string;
+  hideHeader?: boolean;
   /** Currently linked items */
   items: AssociationItem[];
   /** Placeholder for the search input */
@@ -51,6 +52,8 @@ export interface EntityAssociationPanelProps {
   onCreateNew?: () => void;
   /** Search results to show in the modal. Parent controls the query. */
   searchResults?: SearchResultItem[];
+  /** Whether the parent is currently searching */
+  isSearching?: boolean;
   /** Called when the search input changes — parent fetches results */
   onSearchChange?: (query: string) => void;
   /** Icon to show next to each item. Defaults to first letter avatar. */
@@ -67,6 +70,7 @@ export interface EntityAssociationPanelProps {
 
 export function EntityAssociationPanel({
   title,
+  hideHeader = false,
   items,
   searchPlaceholder,
   emptyText,
@@ -74,12 +78,14 @@ export function EntityAssociationPanel({
   onLink,
   onCreateNew,
   searchResults,
+  isSearching = false,
   onSearchChange,
   onUnlink,
   entityTypeConfig,
 }: EntityAssociationPanelProps) {
   const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
 
   const handleSearchChange = useCallback(
     (query: string) => {
@@ -90,7 +96,12 @@ export function EntityAssociationPanel({
 
   const handleSelect = useCallback(
     async (result: EntityLinkResult) => {
-      await onLink?.({ id: result.id, label: result.label, sublabel: result.sublabel });
+      setIsLinking(true);
+      try {
+        await onLink?.({ id: result.id, label: result.label, sublabel: result.sublabel });
+      } finally {
+        setIsLinking(false);
+      }
     },
     [onLink],
   );
@@ -106,43 +117,49 @@ export function EntityAssociationPanel({
       avatarFallback: r.label.slice(0, 2).toUpperCase(),
     }));
 
-  const entityTypes: EntityTypeConfig[] = entityTypeConfig
-    ? [entityTypeConfig]
-    : [{ type: "entity", label: title }];
+  const entityTypes: EntityTypeConfig[] = useMemo(
+    () =>
+      entityTypeConfig
+        ? [entityTypeConfig]
+        : [{ type: "entity", label: title }],
+    [entityTypeConfig, title],
+  );
 
   return (
     <div className="space-y-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">
-          {title}{" "}
-          <span className="text-muted-foreground font-normal">({items.length})</span>
-        </h3>
-        <div className="flex items-center gap-1">
-          {onLink && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => setModalOpen(true)}
-              title={t("detail.relationships.link", "Podepnij")}
-            >
-              <Search className="h-[15px] w-[15px]" variant="stroke" />
-            </Button>
-          )}
-          {onCreateNew && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={onCreateNew}
-              title={t("detail.relationships.createNew", "Utwórz nowy")}
-            >
-              <Plus className="h-[17px] w-[17px]" variant="stroke" />
-            </Button>
-          )}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">
+            {title}{" "}
+            <span className="text-muted-foreground font-normal">({items.length})</span>
+          </h3>
+          <div className="flex items-center gap-1">
+            {onLink && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setModalOpen(true)}
+                title={t("detail.relationships.link", "Podepnij")}
+              >
+                <Search className="h-[15px] w-[15px]" variant="stroke" />
+              </Button>
+            )}
+            {onCreateNew && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onCreateNew}
+                title={t("detail.relationships.createNew", "Utwórz nowy")}
+              >
+                <Plus className="h-[17px] w-[17px]" variant="stroke" />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* EntityLinkModal */}
       <EntityLinkModal
@@ -153,6 +170,7 @@ export function EntityAssociationPanel({
         onSelect={handleSelect}
         onSearchChange={handleSearchChange}
         searchResults={modalResults}
+        isSearching={isSearching || isLinking}
         onCreateNew={onCreateNew ? () => { setModalOpen(false); onCreateNew(); } : undefined}
       />
 

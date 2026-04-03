@@ -48,11 +48,15 @@ export function useSupabaseContactsList(
         .select("*")
         .eq("organization_id", organizationId);
 
-      if (search?.trim()) {
-        query = query.textSearch("search_vector", search.trim(), {
-          type: "websearch",
-          config: "simple",
-        });
+      const trimmedSearch = search?.trim();
+      if (trimmedSearch) {
+        query = query.or(
+          [
+            `first_name.ilike.%${trimmedSearch}%`,
+            `last_name.ilike.%${trimmedSearch}%`,
+            `email.ilike.%${trimmedSearch}%`,
+          ].join(","),
+        );
       }
 
       const { data, error } = await query

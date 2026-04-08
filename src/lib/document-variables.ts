@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
-// PDFme Variable Registry
+// Template Variable Registry
 //
 // Frontend-usable registry of available template variables organized by entity
-// type. Field names in PDFme templates ARE the variable paths (e.g.
+// type. Field names in templates ARE the variable paths (e.g.
 // "patient.firstName"), eliminating the need for a separate binding step.
 // ---------------------------------------------------------------------------
 
 export interface VariableField {
-  /** Dot-notation path used as the PDFme field name, e.g. "patient.firstName" */
+  /** Dot-notation path used as the template field name, e.g. "patient.firstName" */
   path: string;
   /** Polish display label */
   label: string;
@@ -179,8 +179,8 @@ export function groupVariablesByCategory(
 
 /**
  * Flatten nested scope data (from resolveScope) to dot-notation keys
- * for direct use as PDFme inputs. Field names in the template ARE the
- * variable paths, so this flat map can be passed directly to PDFme.
+ * for direct use as template inputs. Field names in the template ARE the
+ * variable paths, so this flat map can be used directly for variable resolution.
  *
  * Input:  { patient: { firstName: "Jan", lastName: "Kowalski" }, organization: { name: "Klinika" } }
  * Output: { "patient.firstName": "Jan", "patient.lastName": "Kowalski", "organization.name": "Klinika" }

@@ -82,8 +82,6 @@ export const supabaseKeys = {
   gabinetAppointments: entityKeys("gabinetAppointments"),
   gabinetLeaves: entityKeys("gabinetLeaves"),
   gabinetOvertime: entityKeys("gabinetOvertime"),
-  gabinetDocumentTemplates: entityKeys("gabinetDocumentTemplates"),
-  gabinetDocuments: entityKeys("gabinetDocuments"),
   gabinetTreatmentPackages: entityKeys("gabinetTreatmentPackages"),
   gabinetPackageUsage: entityKeys("gabinetPackageUsage"),
   gabinetLoyaltyPoints: entityKeys("gabinetLoyaltyPoints"),

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ArrowLeft } from "@/lib/ez-icons";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { EmailTemplateEditor } from "@/components/email/template-editor";
 import type { EmailTemplateEditorHandle } from "@/components/email/template-editor";
 import { toast } from "sonner";
@@ -48,6 +49,13 @@ interface TemplateVariable {
 function NewEmailTemplatePage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+
+  // Collapse sidebar to icon-only like other detail views
+  const { setShellSidebarMode } = useSidebarSlot();
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
   const navigate = useNavigate();
   const editorRef = useRef<EmailTemplateEditorHandle>(null);
 

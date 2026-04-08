@@ -17,16 +17,6 @@ interface ThreadViewProps {
   onReply: (emailId: string) => void;
 }
 
-/**
- * Strips HTML tags for safe text rendering.
- * Used as a fallback when bodyText is not available.
- */
-function stripHtml(html: string): string {
-  const div = document.createElement("div");
-  div.textContent = html;
-  return div.textContent ?? "";
-}
-
 export function ThreadView({
   organizationId,
   threadId,
@@ -164,15 +154,27 @@ export function ThreadView({
                   </div>
                 </div>
 
-                {/* Message body - render plain text from bodyText or strip HTML as fallback */}
+                {/* Message body */}
                 <div className="pl-11">
-                  <pre className="whitespace-pre-wrap text-sm font-sans">
-                    {msg.bodyText
-                      ? msg.bodyText
-                      : msg.bodyHtml
-                        ? stripHtml(msg.bodyHtml)
-                        : ""}
-                  </pre>
+                  {msg.bodyHtml ? (
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: msg.bodyHtml }}
+                    />
+                  ) : msg.bodyText && /<[a-z][\s\S]*>/i.test(msg.bodyText) ? (
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: msg.bodyText }}
+                    />
+                  ) : msg.bodyText ? (
+                    <pre className="whitespace-pre-wrap text-sm font-sans">
+                      {msg.bodyText}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      {t("inbox.thread.noContent", "(brak treści)")}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

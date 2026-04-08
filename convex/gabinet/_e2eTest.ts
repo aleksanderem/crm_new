@@ -1,6 +1,6 @@
 /**
  * Internal E2E test for Gabinet module - R2 Worker
- * Tests: patients, appointments, documents, packages CRUD + status workflows
+ * Tests: patients, appointments, packages CRUD + status workflows
  * Run: npx convex run gabinet/_e2eTest:runAll '{"organizationId":"...","userId":"..."}'
  */
 import { internalMutation } from "../_generated/server";
@@ -392,109 +392,6 @@ export const runAll = internalMutation({
     }
 
     // ============================================================
-    // TEST 11: Document CREATE
-    // ============================================================
-    let testDocId: Id<"gabinetDocuments"> | null = null;
-    try {
-      if (!testPatientId) throw new Error("No patient for document test");
-
-      testDocId = await ctx.db.insert("gabinetDocuments", {
-        organizationId: orgId,
-        patientId: testPatientId,
-        title: "E2E Consent Form",
-        type: "consent",
-        content: "I, E2E_Test Patient_R2, consent to the E2E test procedure.",
-        status: "draft",
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const doc = await ctx.db.get(testDocId);
-      if (!doc) throw new Error("Document not found");
-      if (doc.title !== "E2E Consent Form") throw new Error("Title mismatch");
-      if (doc.status !== "draft") throw new Error("Status should be draft");
-      if (doc.type !== "consent") throw new Error("Type mismatch");
-
-      results.push({
-        test: "document_create",
-        pass: true,
-        detail: `Created document: "${doc.title}", type=${doc.type}, status=${doc.status}`,
-        ids: { documentId: testDocId },
-      });
-    } catch (e: any) {
-      results.push({ test: "document_create", pass: false, detail: e.message });
-    }
-
-    // ============================================================
-    // TEST 12: Document STATUS WORKFLOW (draft → pending_signature → signed)
-    // ============================================================
-    try {
-      if (!testDocId) throw new Error("No document for status test");
-
-      // draft → pending_signature
-      await ctx.db.patch(testDocId, { status: "pending_signature", updatedAt: Date.now() });
-      let doc = await ctx.db.get(testDocId);
-      if (doc?.status !== "pending_signature") throw new Error(`Expected pending_signature, got ${doc?.status}`);
-
-      // pending_signature → signed
-      await ctx.db.patch(testDocId, {
-        status: "signed",
-        signatureData: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNjN9GQAAAABJRke5CYII=",
-        signedAt: Date.now(),
-        signedByPatient: true,
-        updatedAt: Date.now(),
-      });
-      doc = await ctx.db.get(testDocId);
-      if (doc?.status !== "signed") throw new Error(`Expected signed, got ${doc?.status}`);
-      if (!doc.signedAt) throw new Error("signedAt not set");
-      if (!doc.signatureData) throw new Error("signatureData not saved");
-      if (doc.signedByPatient !== true) throw new Error("signedByPatient not set");
-
-      results.push({
-        test: "document_status_workflow",
-        pass: true,
-        detail: `Document workflow: draft→pending_signature→signed. Signature data + signedAt persisted.`,
-        ids: { documentId: testDocId },
-      });
-    } catch (e: any) {
-      results.push({ test: "document_status_workflow", pass: false, detail: e.message });
-    }
-
-    // ============================================================
-    // TEST 13: Document ARCHIVE
-    // ============================================================
-    try {
-      if (!testDocId) throw new Error("No document for archive test");
-
-      // Create a separate doc for archiving
-      const archiveDocId = await ctx.db.insert("gabinetDocuments", {
-        organizationId: orgId,
-        patientId: testPatientId!,
-        title: "E2E Archive Test",
-        type: "medical_record",
-        content: "Test content for archiving",
-        status: "draft",
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      await ctx.db.patch(archiveDocId, { status: "archived", updatedAt: Date.now() });
-      const archived = await ctx.db.get(archiveDocId);
-      if (archived?.status !== "archived") throw new Error(`Expected archived, got ${archived?.status}`);
-
-      results.push({
-        test: "document_archive",
-        pass: true,
-        detail: `Archived document successfully`,
-        ids: { documentId: archiveDocId },
-      });
-    } catch (e: any) {
-      results.push({ test: "document_archive", pass: false, detail: e.message });
-    }
-
-    // ============================================================
     // TEST 14: Package CREATE
     // ============================================================
     let testPackageId: Id<"gabinetTreatmentPackages"> | null = null;
@@ -725,10 +622,6 @@ export const runAll = internalMutation({
         .query("gabinetTreatmentPackages")
         .withIndex("by_org", (q) => q.eq("organizationId", orgId))
         .collect();
-      const documents = await ctx.db
-        .query("gabinetDocuments")
-        .withIndex("by_org", (q) => q.eq("organizationId", orgId))
-        .collect();
       const employees = await ctx.db
         .query("gabinetEmployees")
         .withIndex("by_org", (q) => q.eq("organizationId", orgId))
@@ -744,7 +637,7 @@ export const runAll = internalMutation({
       results.push({
         test: "seeded_data_integrity",
         pass: ok,
-        detail: `patients=${patients.length}(active=${activePatients.length}), treatments=${treatments.length}, appointments=${appointments.length}(sched=${scheduledAppts.length},completed=${completedAppts.length},cancelled=${cancelledAppts.length}), packages=${packages.length}, documents=${documents.length}, employees=${employees.length}`,
+        detail: `patients=${patients.length}(active=${activePatients.length}), treatments=${treatments.length}, appointments=${appointments.length}(sched=${scheduledAppts.length},completed=${completedAppts.length},cancelled=${cancelledAppts.length}), packages=${packages.length}, employees=${employees.length}`,
       });
     } catch (e: any) {
       results.push({ test: "seeded_data_integrity", pass: false, detail: e.message });
@@ -781,37 +674,6 @@ export const runAll = internalMutation({
     }
 
     // ============================================================
-    // TEST 20: Document template rendering
-    // ============================================================
-    try {
-      const templates = await ctx.db
-        .query("gabinetDocumentTemplates")
-        .withIndex("by_org", (q) => q.eq("organizationId", orgId))
-        .collect();
-
-      if (templates.length < 4) throw new Error(`Expected 4 templates, got ${templates.length}`);
-
-      // Test template rendering logic
-      const consentTemplate = templates.find((t) => t.type === "consent");
-      if (!consentTemplate) throw new Error("Consent template not found");
-
-      const content = consentTemplate.content
-        .replace("{{patient.firstName}}", "E2E_Test")
-        .replace("{{patient.lastName}}", "Patient_R2");
-
-      if (!content.includes("E2E_Test")) throw new Error("Template rendering failed");
-      if (!content.includes("Patient_R2")) throw new Error("Template rendering failed for lastName");
-
-      results.push({
-        test: "document_template_rendering",
-        pass: true,
-        detail: `${templates.length} templates found. Consent template renders correctly.`,
-      });
-    } catch (e: any) {
-      results.push({ test: "document_template_rendering", pass: false, detail: e.message });
-    }
-
-    // ============================================================
     // SUMMARY
     // ============================================================
     const passed = results.filter((r) => r.pass).length;
@@ -826,7 +688,6 @@ export const runAll = internalMutation({
         appointmentId: testAppointmentId,
         cancelledAppointmentId: cancelApptId,
         rescheduledAppointmentId: rescheduleApptId,
-        documentId: testDocId,
         packageId: testPackageId,
         usageId: testUsageId,
       },

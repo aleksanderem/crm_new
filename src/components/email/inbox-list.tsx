@@ -92,7 +92,7 @@ export function InboxList({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Search */}
       <div className="shrink-0 border-b p-3">
         <div className="flex items-center rounded-md border bg-transparent">
@@ -108,7 +108,7 @@ export function InboxList({
       </div>
 
       {/* Email list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 w-full [&_[data-radix-scroll-area-viewport]>div]:!display-block [&_[data-radix-scroll-area-viewport]>div]:!block">
         {threads.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-sm text-muted-foreground">
@@ -118,7 +118,7 @@ export function InboxList({
             </p>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y w-full">
             {threads.map((email) => {
               const threadId = email.threadId ?? email._id;
               const isSelected = selectedThreadId === threadId;
@@ -130,18 +130,19 @@ export function InboxList({
               const displayName = rawName.includes("@") && !rawName.includes("<")
                 ? rawName.split("@")[0]
                 : rawName;
-              const snippet =
+              const rawSnippet =
                 email.snippet ??
                 (email.bodyText
-                  ? email.bodyText.slice(0, 100)
+                  ? email.bodyText.slice(0, 200)
                   : "");
+              const snippet = rawSnippet.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 
               return (
                 <button
                   key={email._id}
                   type="button"
                   className={cn(
-                    "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 border-l-2 border-transparent",
+                    "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 border-l-2 border-transparent overflow-hidden",
                     isSelected && "bg-accent border-l-primary"
                   )}
                   onClick={() => onSelectThread(threadId, email._id)}
@@ -179,7 +180,7 @@ export function InboxList({
                     >
                       {email.subject || "(no subject)"}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="line-clamp-1 text-xs text-muted-foreground break-all">
                       {snippet}
                     </p>
                   </div>

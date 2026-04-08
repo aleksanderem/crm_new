@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -22,12 +22,7 @@ import {
 import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
-
-const SurveyCreatorEditor = lazy(() =>
-  import("@/components/documents/survey-creator-editor").then((m) => ({
-    default: m.SurveyCreatorEditor,
-  })),
-);
+import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/$id",
@@ -124,7 +119,7 @@ function EditFormTemplatePage() {
   const [signatureMethod, setSignatureMethod] =
     useState<SignatureMethod>("click");
   const [signerRole, setSignerRole] = useState<SignerRole>("client");
-  const [formJson, setFormJson] = useState("{}");
+  const [contentJson, setContentJson] = useState("{}");
 
   // Initialize form from loaded template
   useEffect(() => {
@@ -141,7 +136,7 @@ function EditFormTemplatePage() {
         );
         setSignerRole(template.signatureConfig.signerRole as SignerRole);
       }
-      setFormJson(template.formJson ?? "{}");
+      setContentJson(template.contentJson ?? "{}");
       setInitialized(true);
     }
   }, [template, initialized]);
@@ -158,21 +153,21 @@ function EditFormTemplatePage() {
     );
   };
 
-  const isFormJsonValid = useMemo(() => {
+  const isContentJsonValid = useMemo(() => {
     try {
-      JSON.parse(formJson);
+      JSON.parse(contentJson);
       return true;
     } catch {
       return false;
     }
-  }, [formJson]);
+  }, [contentJson]);
 
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error(t("settings.formTemplates.nameRequired"));
       return;
     }
-    if (!isFormJsonValid) {
+    if (!isContentJsonValid) {
       toast.error(t("settings.formTemplates.invalidJson"));
       return;
     }
@@ -185,7 +180,7 @@ function EditFormTemplatePage() {
         name: name.trim(),
         description: description.trim() || undefined,
         category,
-        formJson,
+        contentJson,
         modules,
         entityTypes,
         requiresSignature,
@@ -430,20 +425,13 @@ function EditFormTemplatePage() {
         )}
       </Card>
 
-      {/* Survey Creator editor — takes remaining viewport height */}
+      {/* Document editor — takes remaining viewport height */}
       <div className="min-h-0 flex-1">
-        <Suspense
-          fallback={
-            <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-              {t("common.loading")}
-            </div>
-          }
-        >
-          <SurveyCreatorEditor
-            initialTemplate={template.formJson}
-            onChange={(json) => setFormJson(json)}
-          />
-        </Suspense>
+        <DocumentTemplateEditor
+          value={contentJson}
+          onChange={setContentJson}
+          entityTypes={entityTypes}
+        />
       </div>
     </div>
   );

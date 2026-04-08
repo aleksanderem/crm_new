@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Trash2 } from "@/lib/ez-icons";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { EmailTemplateEditor } from "@/components/email/template-editor";
 import type { EmailTemplateEditorHandle } from "@/components/email/template-editor";
 import { toast } from "sonner";
@@ -66,6 +67,13 @@ function EditEmailTemplatePage() {
   const navigate = useNavigate();
   const templateId = templateIdParam as Id<"emailTemplates">;
   const editorRef = useRef<EmailTemplateEditorHandle>(null);
+
+  // Collapse sidebar to icon-only like other detail views
+  const { setShellSidebarMode } = useSidebarSlot();
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");

@@ -96,7 +96,7 @@ interface FormTemplateRecord {
   description?: string;
   category: string;
   folderPath?: string;
-  templateType?: "pdfme" | "document";
+  templateType?: "document";
   modules: string[];
   entityTypes: string[];
   version: number;
@@ -429,11 +429,6 @@ function TemplateTree({
                 <Badge variant="outline" className="text-[10px] shrink-0">
                   {t(`settings.formTemplates.categories.${tpl.category}`)}
                 </Badge>
-                {tpl.templateType === "document" && (
-                  <Badge variant="secondary" className="text-[10px] shrink-0">
-                    WYSIWYG
-                  </Badge>
-                )}
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>
@@ -779,29 +774,12 @@ function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("settings.formTemplates.newTemplate")}
-                  <ChevronDown className="ml-1 h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard/form-editor/new">
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t("settings.formTemplates.newPdfmeTemplate")}
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard/document-editor/new">
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t("settings.formTemplates.newDocumentTemplate")}
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/dashboard/document-editor/new">
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("settings.formTemplates.newTemplate")}
+              </Link>
+            </Button>
           </SectionHeader.Actions>
         </SectionHeader.Group>
         <UntitledAlert>{t("settings.formTemplates.description")}</UntitledAlert>
@@ -832,7 +810,7 @@ function FormTemplatesListPage() {
           description={t("settings.formTemplates.emptyDescription")}
           action={
             <Button asChild>
-              <Link to="/dashboard/form-editor/new">
+              <Link to="/dashboard/document-editor/new">
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("settings.formTemplates.newTemplate")}
               </Link>
@@ -846,12 +824,7 @@ function FormTemplatesListPage() {
               templates={allTemplates}
               search={search}
               onEditTemplate={(id) => {
-                const tpl = allTemplates.find((t) => t._id === id);
-                const route =
-                  tpl?.templateType === "document"
-                    ? "/dashboard/document-editor/$id"
-                    : "/dashboard/form-editor/$id";
-                navigate({ to: route, params: { id } });
+                navigate({ to: "/dashboard/document-editor/$id", params: { id } });
               }}
               onDeleteTemplate={setDeletingTemplate}
               onDuplicateTemplate={handleDuplicate}

@@ -181,7 +181,7 @@ export const cleanupTagReferences = internalMutation({
 
     const gabinetTables = [
       "gabinetPatients", "gabinetTreatments", "gabinetAppointments",
-      "gabinetEmployees", "gabinetDocuments",
+      "gabinetEmployees",
     ] as const;
 
     for (const table of gabinetTables) {

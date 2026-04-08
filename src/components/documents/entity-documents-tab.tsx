@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
-import { SurveyFormViewer } from "./survey-form-viewer";
-import { SurveyPdfExportButton } from "./survey-pdf-export-button";
 import { DocumentViewer } from "./document-viewer";
 import { renderDocument } from "./document-renderer";
 
@@ -320,26 +318,18 @@ export function EntityDocumentsTab({
                           />
                         );
                       } catch {
-                        // contentJson invalid — fall through to survey viewer
+                        // contentJson invalid — fall through to empty state
                       }
                     }
 
-                    // Fallback: PDFme / SurveyJS viewer
+                    // Fallback: no viewable content
                     return (
-                      <>
-                        <SurveyFormViewer
-                          formJson={viewingTemplate.formJson}
-                          responseData={mergedResponseData}
-                          signatureData={viewingDoc.signatureData}
-                          signedAt={viewingDoc.signedAt}
-                        />
-
-                        <SurveyPdfExportButton
-                          formJson={viewingTemplate.formJson}
-                          responseData={mergedResponseData}
-                          title={viewingDoc.title}
-                        />
-                      </>
+                      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                        <FileText className="h-7 w-7" />
+                        <p className="text-sm">
+                          {t("documents.noContentAvailable", "Brak tresci dokumentu do wyswietlenia.")}
+                        </p>
+                      </div>
                     );
                   })()}
               </div>

@@ -95,18 +95,6 @@ export {
 } from "./overtime";
 
 export {
-  mapGabinetDocumentTemplateFromSupabase,
-  mapGabinetDocumentTemplateToSupabase,
-  type MappedGabinetDocumentTemplate,
-} from "./document-templates";
-
-export {
-  mapGabinetDocumentFromSupabase,
-  mapGabinetDocumentToSupabase,
-  type MappedGabinetDocument,
-} from "./documents";
-
-export {
   mapGabinetTreatmentPackageFromSupabase,
   mapGabinetTreatmentPackageToSupabase,
   type MappedGabinetTreatmentPackage,

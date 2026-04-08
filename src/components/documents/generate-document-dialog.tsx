@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import {
+  AlertTriangle,
   ArrowLeft,
   FileText,
   Loader2,
@@ -38,18 +40,20 @@ import {
 } from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { SurveyFormRenderer } from "./survey-form-renderer";
 import { DocumentFormFiller } from "./document-form-filler";
 import {
   extractFormFields,
+  extractVariablePaths,
   renderDocument,
 } from "./document-renderer";
+import { VARIABLE_REGISTRY } from "@/lib/document-variables";
+import type { VariableField } from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Step = "pick_template" | "fill_form";
+type Step = "pick_template" | "complete_data" | "fill_form";
 
 interface GenerateDocumentDialogProps {
   open: boolean;
@@ -136,10 +140,13 @@ function DocumentTemplateFormStep({
   onCancel: () => void;
 }) {
   const json = JSON.parse(contentJson);
-  const formFields = extractFormFields(json);
+  const allFormFields = extractFormFields(json);
+  const employeeFields = allFormFields.filter((f) => (f.filledBy || "employee") === "employee");
+  const clientFields = allFormFields.filter((f) => f.filledBy === "client");
+  const hasClientFields = clientFields.length > 0;
 
-  if (formFields.length === 0) {
-    // No form fields — auto-resolve variables and generate directly
+  if (employeeFields.length === 0) {
+    // No employee form fields — auto-resolve variables and generate directly
     const resolvedHtml = renderDocument(contentJson, prefilledData);
     return (
       <div className="space-y-4">
@@ -151,7 +158,7 @@ function DocumentTemplateFormStep({
           <Button
             className="flex-1"
             onClick={() =>
-              onComplete({ html: resolvedHtml, formFieldValues: {} })
+              onComplete({ html: resolvedHtml, formFieldValues: {}, hasClientFields })
             }
           >
             Generuj dokument
@@ -166,14 +173,15 @@ function DocumentTemplateFormStep({
 
   return (
     <DocumentFormFiller
-      formFields={formFields}
+      formFields={allFormFields}
+      filledByFilter="employee"
       onComplete={(fieldValues) => {
         const resolvedHtml = renderDocument(
           contentJson,
           prefilledData,
           fieldValues,
         );
-        onComplete({ html: resolvedHtml, formFieldValues: fieldValues });
+        onComplete({ html: resolvedHtml, formFieldValues: fieldValues, hasClientFields });
       }}
       onCancel={onCancel}
     />
@@ -470,6 +478,149 @@ function TemplateFolderTree({
 }
 
 // ---------------------------------------------------------------------------
+// Missing data helpers
+// ---------------------------------------------------------------------------
+
+/** Build a flat lookup from VARIABLE_REGISTRY for label resolution. */
+function buildVariableLabelMap(): Map<string, VariableField> {
+  const map = new Map<string, VariableField>();
+  for (const fields of Object.values(VARIABLE_REGISTRY)) {
+    for (const f of fields) {
+      map.set(f.path, f);
+    }
+  }
+  return map;
+}
+
+const VARIABLE_LABEL_MAP = buildVariableLabelMap();
+
+/**
+ * Detect which template variables are missing from the prefilled scope data.
+ * Excludes system.* and organization.* which are always auto-populated.
+ */
+function detectMissingVariables(
+  contentJson: string,
+  prefilledData: Record<string, string>,
+): string[] {
+  let json: unknown;
+  try {
+    json = JSON.parse(contentJson);
+  } catch {
+    return [];
+  }
+  const paths = extractVariablePaths(json as Parameters<typeof extractVariablePaths>[0]);
+  return paths.filter((path) => {
+    // system.* and organization.* are always available
+    if (path.startsWith("system.") || path.startsWith("organization.")) return false;
+    const value = prefilledData[path];
+    return !value || value.trim() === "";
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Missing data form step
+// ---------------------------------------------------------------------------
+
+function MissingDataFormStep({
+  missingVars,
+  onComplete,
+  onCancel,
+  saving,
+}: {
+  missingVars: string[];
+  onComplete: (data: Record<string, string>) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === "en";
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const path of missingVars) init[path] = "";
+    return init;
+  });
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      // Only submit non-empty values
+      const filled: Record<string, string> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v.trim()) filled[k] = v.trim();
+      }
+      onComplete(filled);
+    },
+    [values, onComplete],
+  );
+
+  // Group by entity prefix for display
+  const grouped = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    for (const path of missingVars) {
+      const dotIdx = path.indexOf(".");
+      const prefix = dotIdx > -1 ? path.substring(0, dotIdx) : "other";
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(path);
+    }
+    return groups;
+  }, [missingVars]);
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {Object.entries(grouped).map(([prefix, paths]) => (
+        <div key={prefix} className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground capitalize">
+            {prefix}
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {paths.map((path) => {
+              const varInfo = VARIABLE_LABEL_MAP.get(path);
+              const label = varInfo
+                ? isEn
+                  ? varInfo.labelEn
+                  : varInfo.label
+                : path;
+              return (
+                <div key={path} className="space-y-1.5">
+                  <Label htmlFor={`missing-${path}`} className="text-sm">
+                    {label}
+                  </Label>
+                  <Input
+                    id={`missing-${path}`}
+                    value={values[path] ?? ""}
+                    onChange={(e) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        [path]: e.target.value,
+                      }))
+                    }
+                    placeholder={label}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" className="flex-1" disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {t("documents.saveAndContinue", "Zapisz i kontynuuj")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          {t("common.back", "Powrot")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -483,13 +634,17 @@ export function GenerateDocumentDialog({
 }: GenerateDocumentDialogProps) {
   const { t } = useTranslation();
 
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("pick_template");
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<Id<"formTemplates"> | null>(null);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingMissingData, setSavingMissingData] = useState(false);
+  const [missingDataHandled, setMissingDataHandled] = useState(false);
 
   const generateDocument = useMutation(api.documents.generate.generateDocument);
+  const completeMissingDataMutation = useMutation(api.documents.completeMissingData.completeMissingData);
 
   // --- Reset state on close ---
 
@@ -500,6 +655,8 @@ export function GenerateDocumentDialog({
         setSelectedTemplateId(null);
         setSearch("");
         setSubmitting(false);
+        setSavingMissingData(false);
+        setMissingDataHandled(false);
       }
       onOpenChange(value);
     },
@@ -534,20 +691,67 @@ export function GenerateDocumentDialog({
     [],
   );
 
-  // --- Step 2: Preview + fill data ---
+  // --- Step 2/3: Preview + fill data (also needed for complete_data step) ---
+
+  const previewQueryKey = convexQuery(api.documents.generate.previewDocumentData, {
+    organizationId,
+    templateId: selectedTemplateId!,
+    entityType,
+    entityId,
+  });
 
   const { data: previewData, isLoading: previewLoading } = useQuery({
-    ...convexQuery(api.documents.generate.previewDocumentData, {
-      organizationId,
-      templateId: selectedTemplateId!,
-      entityType,
-      entityId,
-    }),
-    enabled: !!selectedTemplateId && step === "fill_form",
+    ...previewQueryKey,
+    enabled: !!selectedTemplateId && (step === "fill_form" || step === "complete_data"),
   });
 
   const selectedTemplate = templates?.find(
     (t) => t._id === selectedTemplateId,
+  );
+
+  // Detect missing variables once previewData arrives
+  const missingVars = useMemo(() => {
+    if (!previewData?.contentJson || !previewData?.prefilledData) return [];
+    return detectMissingVariables(previewData.contentJson, previewData.prefilledData);
+  }, [previewData?.contentJson, previewData?.prefilledData]);
+
+  // Auto-redirect to complete_data if missing vars detected on first load
+  // (only once per template selection — after the user fills in missing data we skip)
+  useEffect(() => {
+    if (step === "fill_form" && !previewLoading && missingVars.length > 0 && !missingDataHandled) {
+      setStep("complete_data");
+    }
+  }, [step, previewLoading, missingVars.length, missingDataHandled]);
+
+  // Handler for completing missing data
+  const handleMissingDataComplete = useCallback(
+    async (data: Record<string, string>) => {
+      if (Object.keys(data).length === 0) {
+        // Nothing filled, just proceed
+        setMissingDataHandled(true);
+        setStep("fill_form");
+        return;
+      }
+      setSavingMissingData(true);
+      try {
+        await completeMissingDataMutation({
+          organizationId,
+          entityType,
+          entityId,
+          data,
+        });
+        // Invalidate the preview query so it re-fetches with the updated entity data
+        await queryClient.invalidateQueries({ queryKey: previewQueryKey.queryKey });
+        setMissingDataHandled(true);
+        setStep("fill_form");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Error saving data";
+        toast.error(message);
+      } finally {
+        setSavingMissingData(false);
+      }
+    },
+    [completeMissingDataMutation, organizationId, entityType, entityId, queryClient, previewQueryKey.queryKey],
   );
 
   const handleComplete = useCallback(
@@ -555,6 +759,7 @@ export function GenerateDocumentDialog({
       if (!selectedTemplateId) return;
       setSubmitting(true);
       try {
+        const hasClientFields = data.hasClientFields === true;
         const docId = await generateDocument({
           organizationId,
           templateId: selectedTemplateId,
@@ -562,6 +767,7 @@ export function GenerateDocumentDialog({
           entityId,
           responseData: JSON.stringify(data),
           title: selectedTemplate?.name,
+          hasClientFields,
         });
         toast.success(
           t("documents.generated", "Dokument zostal wygenerowany"),
@@ -592,13 +798,14 @@ export function GenerateDocumentDialog({
   const handleBack = useCallback(() => {
     setStep("pick_template");
     setSelectedTemplateId(null);
+    setMissingDataHandled(false);
   }, []);
 
   // --- Render ---
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={`${step === "fill_form" ? "max-w-4xl" : "max-w-2xl"} max-h-[90vh] flex flex-col gap-0 p-0`}>
+      <DialogContent className={`${step === "fill_form" ? "max-w-4xl" : "max-w-2xl"} max-h-[90vh] flex flex-col gap-0 p-0`} aria-describedby={undefined}>
         {/* --- Step 1: Template picker --- */}
         {step === "pick_template" && (
           <>
@@ -675,7 +882,66 @@ export function GenerateDocumentDialog({
           </>
         )}
 
-        {/* --- Step 2: Form fill --- */}
+        {/* --- Step 2: Complete missing data --- */}
+        {step === "complete_data" && (
+          <>
+            <div className="flex items-center gap-2 px-6 pt-6 pb-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={handleBack}
+                disabled={savingMissingData}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">
+                  {t("common.back", "Powrot")}
+                </span>
+              </Button>
+              <div className="flex-1 min-w-0">
+                <DialogHeader className="space-y-1 text-left">
+                  <DialogTitle>
+                    {t("documents.completeMissingData", "Uzupełnij brakujące dane")}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {t(
+                      "documents.completeMissingDataDesc",
+                      "Poniższe dane są wymagane do wygenerowania dokumentu. Po uzupełnieniu zostaną zapisane w profilu.",
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+            </div>
+
+            <div className="px-6 pt-2 pb-4 flex-1 min-h-0 overflow-y-auto">
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 mb-4 dark:border-amber-800 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-500 shrink-0" />
+                <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed">
+                  {t(
+                    "documents.missingDataWarning",
+                    "Szablon wymaga danych, które nie są jeszcze uzupełnione w profilu. Uzupełnij je poniżej — zostaną zapisane automatycznie.",
+                  )}
+                </p>
+              </div>
+
+              {previewLoading ? (
+                <div className="flex items-center justify-center py-24 text-sm text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("common.loading", "Ladowanie...")}
+                </div>
+              ) : (
+                <MissingDataFormStep
+                  missingVars={missingVars}
+                  onComplete={handleMissingDataComplete}
+                  onCancel={handleBack}
+                  saving={savingMissingData}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* --- Step 3: Form fill --- */}
         {step === "fill_form" && (
           <>
             <div className="flex items-center gap-2 px-6 pt-6 pb-2">
@@ -735,8 +1001,7 @@ export function GenerateDocumentDialog({
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   )}
-                  {previewData?.templateType === "document" &&
-                  previewData.contentJson ? (
+                  {previewData?.contentJson ? (
                     <DocumentTemplateFormStep
                       contentJson={previewData.contentJson}
                       prefilledData={previewData.prefilledData}
@@ -744,21 +1009,19 @@ export function GenerateDocumentDialog({
                       onCancel={handleBack}
                     />
                   ) : (
-                    <SurveyFormRenderer
-                      formJson={selectedTemplate.formJson}
-                      prefilledData={
-                        previewData?.prefilledData as
-                          | Record<string, unknown>
-                          | undefined
-                      }
-                      onComplete={handleComplete}
-                    />
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                      <FileText className="h-7 w-7" />
+                      <p className="text-sm">
+                        {t("documents.noContentAvailable", "Brak tresci szablonu do wyswietlenia.")}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           </>
         )}
+
       </DialogContent>
     </Dialog>
   );

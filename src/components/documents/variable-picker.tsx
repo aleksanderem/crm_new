@@ -10,7 +10,7 @@ import {
   groupVariablesByCategory,
   CATEGORY_LABELS,
   type VariableField,
-} from "@/lib/pdfme/variables";
+} from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
 // Types

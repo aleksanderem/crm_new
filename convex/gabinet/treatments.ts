@@ -663,32 +663,6 @@ export const getTreatmentEmployees = query({
   },
 });
 
-export const getTreatmentDocumentTemplates = query({
-  args: {
-    organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
-      throw new Error("Treatment not found");
-    }
-
-    const templateIds = treatment.requiredDocumentTemplateIds ?? [];
-    const templates = await Promise.all(
-      templateIds.map(async (id) => ctx.db.get(id))
-    );
-
-    return templates.filter(
-      (t): t is NonNullable<typeof t> => t !== null
-    );
-  },
-});
-
 export const getRequiredFormTemplates = query({
   args: {
     organizationId: v.id("organizations"),
@@ -766,48 +740,6 @@ export const setRequiredFormTemplates = mutation({
         ...t,
         templateId: t.templateId as string,
       })),
-      updatedAt: Date.now(),
-    });
-
-    return args.treatmentId;
-  },
-});
-
-export const setRequiredDocumentTemplates = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
-    templateIds: v.array(v.id("gabinetDocumentTemplates")),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
-      throw new Error("Treatment not found");
-    }
-
-    await ctx.db.patch(args.treatmentId, {
-      requiredDocumentTemplateIds: args.templateIds,
-      updatedAt: Date.now(),
-    });
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: args.treatmentId,
-      action: "updated",
-      description: `Updated required documents for treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate document template IDs to Supabase
-    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
-      treatmentId: args.treatmentId as string,
-      organizationId: args.organizationId as string,
-      requiredDocumentTemplateIds: args.templateIds.map((id) => id as string),
       updatedAt: Date.now(),
     });
 

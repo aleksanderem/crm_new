@@ -53,9 +53,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionHeader } from "@untitled/app/section-headers/section-headers";
-import { Tabs as UntitledTabs, TabList, TabPanel } from "@untitled/app/tabs/tabs";
-import { ScrollShadow } from "@/components/ui/scroll-shadow";
+import {
+  EntityDetailLayout,
+  type DetailField,
+} from "@/components/crm/entity-detail-layout";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
@@ -95,7 +97,6 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
@@ -455,45 +456,53 @@ function AppointmentDetail() {
     }
   }, [detail?.appointment._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push patient & appointment info into sidebar slot
-  const { setContent: setSidebarContent } = useSidebarSlot();
+  // Collapse app sidebar to icon-only so EntityDetailLayout sidebar has room
+  const { setShellSidebarMode } = useSidebarSlot();
   useEffect(() => {
-    if (!detail) return;
-    const {
-      appointment: appt,
-      patient: pat,
-      treatment: treat,
-      employee: emp,
-      patientPackageUsage: pkgUsage,
-      loyaltyBalance: loyBal,
-      loyaltyTier: _loyTier,
-    } = detail;
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
-    // Filter packages to only those containing this appointment's treatment
+  // Build fields for EntityDetailLayout sidebar
+  const detailFields: DetailField[] = (() => {
+    if (!detail) return [];
+    const { appointment: appt, treatment: treat } = detail;
+    const fields: DetailField[] = [
+      { label: t("gabinet.treatments.treatment"), value: treat?.name ?? "-", fieldKey: "treatment" },
+      { label: t("common.date"), value: new Date(appt.date).toLocaleDateString(i18n.language), fieldKey: "date" },
+      { label: t("common.time"), value: `${appt.startTime?.substring(0, 5) ?? ""} - ${appt.endTime?.substring(0, 5) ?? ""}`, fieldKey: "time" },
+    ];
+    if (treat?.price !== undefined) {
+      fields.push({ label: t("common.price"), value: `${treat.price.toFixed(2)} ${treat.currency ?? "PLN"}`, fieldKey: "price" });
+    }
+    if ((appt.status === "completed" || appt.status === "cancelled") && appt.updatedAt) {
+      fields.push({
+        label: appt.status === "completed" ? t("gabinet.appointments.completedAt", "Zakończono") : t("gabinet.appointments.cancelledAt", "Anulowano"),
+        value: new Date(appt.updatedAt).toLocaleString(i18n.language),
+        fieldKey: "statusDate",
+      });
+    }
+    return fields;
+  })();
+
+  // Sidebar extra: patient card, employee card, packages
+  const sidebarExtra = (() => {
+    if (!detail) return null;
+    const { appointment: appt, patient: pat, treatment: treat, employee: emp, patientPackageUsage: pkgUsage, loyaltyBalance: loyBal } = detail;
+    const empName = emp ? (emp.name ?? emp.email ?? "-") : "-";
     const relevantPkgs = (pkgUsage ?? []).filter((pkg: Record<string, unknown>) => {
       const treatments = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
-      return treatments.some(
-        (tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId,
-      );
+      return treatments.some((tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId);
     });
-    const getInitials = () => {
-      if (pat?.firstName && pat?.lastName)
-        return `${pat.firstName[0]}${pat.lastName[0]}`;
-      return "?";
-    };
-    const fmtDate = (d: string) => new Date(d).toLocaleDateString(i18n.language);
-    const fmtTime = (t: string) => t?.substring(0, 5) ?? "";
-    const empName = emp
-      ? (emp.name ?? emp.email ?? "-")
-      : "-";
 
-    setSidebarContent(
+    return (
       <div className="space-y-3">
+        {/* Patient card */}
         <Item variant="outline" size="sm" className="relative">
           <ItemMedia>
             <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
               <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                {getInitials()}
+                {pat?.firstName && pat?.lastName ? `${pat.firstName[0]}${pat.lastName[0]}` : "?"}
               </AvatarFallback>
             </Avatar>
           </ItemMedia>
@@ -513,120 +522,37 @@ function AppointmentDetail() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
                 <MoreVerticalCircle02 size={16} variant="stroke" />
-                <span className="sr-only">{t("gabinet.patients.actions", "Akcje klienta")}</span>
               </Button>
             </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }}>
+                  <Eye size={14} variant="stroke" className="mr-2" />
+                  {t("gabinet.patients.viewProfile", "Profil klienta")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }} search={{ tab: "history" }}>
+                  <History size={14} variant="stroke" className="mr-2" />
+                  {t("gabinet.patients.history", "Historia wizyt")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {pat?.phone && (
                 <DropdownMenuItem asChild>
-                  <Link
-                    to="/dashboard/gabinet/patients/$patientId"
-                    params={{ patientId: pat?._id ?? "" }}
-                  >
-                    <Eye size={14} variant="stroke" className="mr-2" />
-                    {t("gabinet.patients.viewProfile", "Profil klienta")}
-                  </Link>
+                  <a href={`tel:${pat.phone}`}><Phone size={14} variant="stroke" className="mr-2" />{t("common.call", "Zadzwoń")}</a>
                 </DropdownMenuItem>
+              )}
+              {pat?.email && (
                 <DropdownMenuItem asChild>
-                  <Link
-                    to="/dashboard/gabinet/patients/$patientId"
-                    params={{ patientId: pat?._id ?? "" }}
-                    search={{ tab: "history" }}
-                  >
-                    <History size={14} variant="stroke" className="mr-2" />
-                    {t("gabinet.patients.history", "Historia wizyt")}
-                  </Link>
+                  <a href={`mailto:${pat.email}`}><Mail size={14} variant="stroke" className="mr-2" />{t("common.sendEmail", "Wyślij e-mail")}</a>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {pat?.phone && (
-                  <DropdownMenuItem asChild>
-                    <a href={`tel:${pat.phone}`}>
-                      <Phone size={14} variant="stroke" className="mr-2" />
-                      {t("common.call", "Zadzwoń")}
-                    </a>
-                  </DropdownMenuItem>
-                )}
-                {pat?.email && (
-                  <DropdownMenuItem asChild>
-                    <a href={`mailto:${pat.email}`}>
-                      <Mail size={14} variant="stroke" className="mr-2" />
-                      {t("common.sendEmail", "Wyślij e-mail")}
-                    </a>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </Item>
 
-        <div className="rounded-md border">
-          <div className="flex items-center gap-2 px-3 py-2.5 text-xs font-semibold">
-            <Calendar size={14} variant="stroke" className="text-muted-foreground" />
-            {t("gabinet.appointments.details")}
-          </div>
-          <div className="space-y-0">
-            <Item variant="default" size="sm" className="py-2">
-              <ItemContent>
-                <ItemDescription className="text-xs">{t("gabinet.treatments.treatment")}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span className="text-xs font-medium">{treat?.name ?? "-"}</span>
-              </ItemActions>
-            </Item>
-            <ItemSeparator />
-            <Item variant="default" size="sm" className="py-2">
-              <ItemContent>
-                <ItemDescription className="text-xs flex items-center gap-1">
-                  <Clock size={10} variant="stroke" />
-                  {t("common.date")}
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span className="text-xs font-medium">{fmtDate(appt.date)}</span>
-              </ItemActions>
-            </Item>
-            <Item variant="default" size="sm" className="py-2">
-              <ItemContent>
-                <ItemDescription className="text-xs">{t("common.time")}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span className="text-xs font-medium">{fmtTime(appt.startTime)} - {fmtTime(appt.endTime)}</span>
-              </ItemActions>
-            </Item>
-            {treat?.price !== undefined && (
-              <>
-                <ItemSeparator />
-                <Item variant="default" size="sm" className="py-2">
-                  <ItemContent>
-                    <ItemDescription className="text-xs">{t("common.price")}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <span className="text-xs font-medium">{treat.price.toFixed(2)} {treat.currency ?? "PLN"}</span>
-                  </ItemActions>
-                </Item>
-              </>
-            )}
-            {(appt.status === "completed" || appt.status === "cancelled") &&
-              appt.updatedAt && (
-                <>
-                  <ItemSeparator />
-                  <Item variant="default" size="sm" className="py-2">
-                    <ItemContent>
-                      <ItemDescription className="text-xs">
-                        {appt.status === "completed"
-                          ? t("gabinet.appointments.completedAt", "Zakończono")
-                          : t("gabinet.appointments.cancelledAt", "Anulowano")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <span className="text-xs font-medium">
-                        {new Date(appt.updatedAt).toLocaleString(i18n.language)}
-                      </span>
-                    </ItemActions>
-                  </Item>
-                </>
-              )}
-          </div>
-        </div>
-
+        {/* Employee card */}
         {emp && (
           <Item variant="outline" size="sm" className="relative">
             <ItemMedia>
@@ -639,24 +565,18 @@ function AppointmentDetail() {
             </ItemMedia>
             <ItemContent>
               <ItemTitle>{empName}</ItemTitle>
-              <ItemDescription className="text-xs">
-                {emp.email ?? t("gabinet.employees.employee")}
-              </ItemDescription>
+              <ItemDescription className="text-xs">{emp.email ?? t("gabinet.employees.employee")}</ItemDescription>
             </ItemContent>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
                   <MoreVerticalCircle02 size={16} variant="stroke" />
-                  <span className="sr-only">{t("gabinet.employees.actions", "Akcje")}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {emp.email && (
                   <DropdownMenuItem asChild>
-                    <a href={`mailto:${emp.email}`}>
-                      <Mail size={14} variant="stroke" className="mr-2" />
-                      {t("common.sendEmail", "Wyślij e-mail")}
-                    </a>
+                    <a href={`mailto:${emp.email}`}><Mail size={14} variant="stroke" className="mr-2" />{t("common.sendEmail", "Wyślij e-mail")}</a>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -669,16 +589,15 @@ function AppointmentDetail() {
           </Item>
         )}
 
+        {/* Packages */}
         {relevantPkgs.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               {t("gabinet.packages.activePackages", "Aktywne pakiety")}
             </p>
             {relevantPkgs.map((pkg: Record<string, unknown>) => {
               const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
-              const relevantTreatment = treatmentsUsed.find(
-                (tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId,
-              ) as Record<string, unknown> | undefined;
+              const relevantTreatment = treatmentsUsed.find((tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId) as Record<string, unknown> | undefined;
               const used = Number(relevantTreatment?.usedCount ?? 0);
               const total = Number(relevantTreatment?.totalCount ?? 0);
               const remaining = Math.max(total - used, 0);
@@ -686,7 +605,6 @@ function AppointmentDetail() {
               let barColor = "bg-emerald-500";
               if (remaining <= 0) barColor = "bg-red-500";
               else if (remaining / total < 0.3) barColor = "bg-amber-500";
-
               return (
                 <div key={pkg._id as string} className="rounded-md border p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
@@ -707,10 +625,9 @@ function AppointmentDetail() {
             })}
           </div>
         )}
-      </div>,
+      </div>
     );
-    return () => setSidebarContent(null);
-  }, [detail, t, setSidebarContent, setChangeEmployeeOpen, organizationId]);
+  })();
 
   if (!detail && !isLoading) {
     return (
@@ -1165,25 +1082,6 @@ function AppointmentDetail() {
     </span>
   );
 
-  // Breadcrumbs
-  const breadcrumbsContent = (
-    <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Link to="/dashboard" className="hover:text-foreground">
-        {t("nav.home")}
-      </Link>
-      <span>/</span>
-      <Link
-        to="/dashboard/gabinet/calendar"
-        className="hover:text-foreground"
-      >
-        {t("nav.gabinet")} / {t("nav.calendar")}
-      </Link>
-      <span>/</span>
-      <span className="text-foreground">
-        {t("gabinet.appointments.appointment")} #{appointment._id.slice(-6)}
-      </span>
-    </nav>
-  );
 
   // Build tabs array
   const tabs = [
@@ -2331,43 +2229,19 @@ function AppointmentDetail() {
 
   return (
     <>
-      <UntitledTabs defaultSelectedKey={t("gabinet.appointments.tabs.details")} className="flex h-full flex-col">
-        {/* Section Header */}
-        <div className="shrink-0 space-y-4 px-4 pt-5 pb-1">
-          {breadcrumbsContent}
-          <SectionHeader.Root className="gap-2 border-b-0 pb-0">
-            <SectionHeader.Group>
-              <div className="flex-1 space-y-0.5">
-                <SectionHeader.Heading className="text-foreground">
-                  {headerTitle}
-                </SectionHeader.Heading>
-                <SectionHeader.Subheading className="text-muted-foreground">
-                  {headerSubtitle}
-                </SectionHeader.Subheading>
-              </div>
-              <SectionHeader.Actions>
-                {statusAction}
-              </SectionHeader.Actions>
-            </SectionHeader.Group>
-          </SectionHeader.Root>
-
-          {/* Tabs bar */}
-          <TabList
-            type="button-border"
-            size="sm"
-            items={tabs.map((tab, _i) => ({ id: tab.label, label: tab.label, children: tab.label }))}
-          />
-        </div>
-
-        {/* Tab content */}
-        <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
-          {tabs.map((tab) => (
-            <TabPanel key={tab.label} id={tab.label} className="p-4">
-              {tab.content}
-            </TabPanel>
-          ))}
-        </ScrollShadow>
-      </UntitledTabs>
+      <EntityDetailLayout
+        isLoading={isLoading}
+        notFound={!detail && !isLoading}
+        onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+        title={headerTitle}
+        subtitle={headerSubtitle}
+        avatarFallback={patient ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase() : "?"}
+        actionsMenu={statusAction}
+        fields={detailFields}
+        expandedFieldCount={5}
+        sidebarExtra={sidebarExtra}
+        tabs={tabs}
+      />
 
       {/* Change Employee Modal */}
       {detail && (

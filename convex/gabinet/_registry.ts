@@ -13,7 +13,6 @@ export const GABINET_ENTITY_TYPES = [
   "gabinetTreatment",
   "gabinetAppointment",
   "gabinetPackage",
-  "gabinetDocument",
   "gabinetEmployee",
 ] as const;
 

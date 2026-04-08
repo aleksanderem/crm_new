@@ -27,8 +27,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
-import { SurveyFormViewer } from "./survey-form-viewer";
-import { SurveyPdfExportButton } from "./survey-pdf-export-button";
 import { DocumentViewer } from "./document-viewer";
 import { renderDocument } from "./document-renderer";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
@@ -335,24 +333,18 @@ export function AppointmentDocumentChecklist({
                         />
                       );
                     } catch {
-                      // fall through to survey viewer
+                      // fall through to empty state
                     }
                   }
 
-                  // PDFme / SurveyJS viewer
-                  const rd = JSON.parse(viewingDoc.responseData) as Record<string, unknown>;
+                  // Fallback: no viewable content
                   return (
-                    <>
-                      <SurveyFormViewer
-                        formJson={viewingTemplate.formJson}
-                        responseData={rd}
-                      />
-                      <SurveyPdfExportButton
-                        formJson={viewingTemplate.formJson}
-                        responseData={rd}
-                        title={viewingDoc.title}
-                      />
-                    </>
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                      <FileText className="h-7 w-7" />
+                      <p className="text-sm">
+                        Brak tresci dokumentu do wyswietlenia.
+                      </p>
+                    </div>
                   );
                 })()}
             </div>

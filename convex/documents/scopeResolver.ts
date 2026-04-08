@@ -74,20 +74,7 @@ async function fetchAppointment(
     ),
   };
 
-  // Organization
-  const org = await ctx.db.get(orgId);
-  if (org) {
-    scope.organization = flattenEntity(org as unknown as Record<string, unknown>);
-  }
-
-  // System fields (date, etc.)
-  const now = new Date();
-  scope.system = {
-    date: now.toISOString().split("T")[0],
-    date_pl: now.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }),
-    time: now.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }),
-    year: String(now.getFullYear()),
-  };
+  // Organization + system added by addCommonScope()
 
   // Patient
   const patient = await ctx.db.get(appointment.patientId);
@@ -298,34 +285,77 @@ async function fetchLead(
  * Walk the entity graph from a given root entity and collect all related
  * data into a flat scope map suitable for template variable resolution.
  */
+/**
+ * Common scope fields added to EVERY entity resolution:
+ * - organization (name, slug, etc.)
+ * - system (date, time, year)
+ */
+async function addCommonScope(
+  ctx: QueryCtx,
+  orgId: Id<"organizations">,
+  scope: ScopeData,
+): Promise<ScopeData> {
+  // Organization
+  if (!scope.organization) {
+    const org = await ctx.db.get(orgId);
+    if (org) {
+      scope.organization = flattenEntity(org as unknown as Record<string, unknown>);
+    }
+  }
+  // System fields
+  if (!scope.system) {
+    const now = new Date();
+    scope.system = {
+      date: now.toISOString().split("T")[0],
+      date_pl: now.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }),
+      time: now.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }),
+      year: String(now.getFullYear()),
+    };
+  }
+  return scope;
+}
+
+/**
+ * Walk the entity graph from a given root entity and collect all related
+ * data into a flat scope map suitable for template variable resolution.
+ */
 export async function resolveScope(
   ctx: QueryCtx,
   orgId: Id<"organizations">,
   entityType: EntityType,
   entityId: string,
 ): Promise<ScopeData> {
+  let scope: ScopeData;
   switch (entityType) {
     case "appointment":
-      return fetchAppointment(
+      scope = await fetchAppointment(
         ctx,
         orgId,
         entityId as Id<"gabinetAppointments">,
       );
+      break;
     case "patient":
-      return fetchPatient(ctx, orgId, entityId as Id<"gabinetPatients">);
+      scope = await fetchPatient(ctx, orgId, entityId as Id<"gabinetPatients">);
+      break;
     case "employee":
-      return fetchEmployee(ctx, orgId, entityId as Id<"gabinetEmployees">);
+      scope = await fetchEmployee(ctx, orgId, entityId as Id<"gabinetEmployees">);
+      break;
     case "treatment":
-      return fetchTreatment(ctx, orgId, entityId as Id<"gabinetTreatments">);
+      scope = await fetchTreatment(ctx, orgId, entityId as Id<"gabinetTreatments">);
+      break;
     case "contact":
-      return fetchContact(ctx, orgId, entityId as Id<"contacts">);
+      scope = await fetchContact(ctx, orgId, entityId as Id<"contacts">);
+      break;
     case "company":
-      return fetchCompany(ctx, orgId, entityId as Id<"companies">);
+      scope = await fetchCompany(ctx, orgId, entityId as Id<"companies">);
+      break;
     case "lead":
-      return fetchLead(ctx, orgId, entityId as Id<"leads">);
+      scope = await fetchLead(ctx, orgId, entityId as Id<"leads">);
+      break;
     default:
-      return {};
+      scope = {};
   }
+  return addCommonScope(ctx, orgId, scope);
 }
 
 /**

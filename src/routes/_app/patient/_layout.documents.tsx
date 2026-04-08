@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SignaturePad } from "@/components/documents/signature-pad";
-import { SurveyFormViewer } from "@/components/documents/survey-form-viewer";
+import { DocumentViewer } from "@/components/documents/document-viewer";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { Eye, PenTool, FileText } from "@/lib/ez-icons";
 import { useState } from "react";
@@ -130,17 +130,31 @@ function PatientDocuments() {
                   </span>
                 </div>
               </DialogHeader>
-              <SurveyFormViewer
-                formJson={viewDoc.formJson}
-                responseData={
-                  JSON.parse(viewDoc.responseData || "{}") as Record<
-                    string,
-                    unknown
-                  >
+              {(() => {
+                // Try to extract rendered HTML from responseData
+                try {
+                  const parsed = JSON.parse(viewDoc.responseData || "{}") as { html?: string };
+                  if (parsed.html) {
+                    return (
+                      <DocumentViewer
+                        title={viewDoc.title}
+                        html={parsed.html}
+                        signatureData={viewDoc.signatureData}
+                        signedAt={viewDoc.signedAt}
+                      />
+                    );
+                  }
+                } catch {
+                  // Not JSON with html — fall through
                 }
-                signatureData={viewDoc.signatureData}
-                signedAt={viewDoc.signedAt}
-              />
+
+                // Fallback: no viewable content
+                return (
+                  <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                    {t("documents.noContentAvailable", "Brak treści dokumentu do wyświetlenia.")}
+                  </div>
+                );
+              })()}
             </>
           )}
         </DialogContent>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -107,15 +107,53 @@ function InboxPage() {
     if (!open) setReplyTo(null);
   }, []);
 
-  // --- Push inbox list into the sidebar slot ---
-  const { setContent: setSidebarContent } = useSidebarSlot();
+  // Collapse app sidebar to icon-only so inbox has its own panel
+  const { setShellSidebarMode } = useSidebarSlot();
   useEffect(() => {
-    const receiveProviders = mailProviders?.filter((p: any) => p.capabilities.canReceive) ?? [];
-    setSidebarContent(
-      <div className="flex flex-col gap-3 -mx-3">
-        {/* Mailbox switcher */}
-        {receiveProviders.length > 0 && (
-          <div className="px-1">
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
+
+  const receiveProviders = mailProviders?.filter((p: any) => p.capabilities.canReceive) ?? [];
+
+  // --- Resizable split ---
+  const [listWidth, setListWidth] = useState(380);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startX = e.clientX;
+    const startWidth = listWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX;
+      const containerWidth = containerRef.current?.offsetWidth ?? 1200;
+      const next = Math.max(260, Math.min(startWidth + delta, containerWidth - 300));
+      setListWidth(next);
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [listWidth]);
+
+  // --- 2-panel layout: inbox list (left) + thread view (right) ---
+  return (
+    <div ref={containerRef} className="flex flex-1 min-h-0 flex-row -mx-4 sm:-mx-6 -mt-2 -mb-6">
+      {/* Left panel: inbox list */}
+      <div className="flex shrink-0 flex-col bg-[#F9F9F9] dark:bg-muted/30 overflow-hidden" style={{ width: listWidth }}>
+        <div className="flex flex-col gap-3 p-4">
+          {/* Mailbox switcher */}
+          {receiveProviders.length > 0 && (
             <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder={t("inbox.allMailboxes")} />
@@ -129,53 +167,30 @@ function InboxPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        )}
-
-        {/* Filter tabs */}
-        <div className="px-1">
-          <Tabs
-            value={filter}
-            onValueChange={(v) => setFilter(v as FilterTab)}
-          >
-            <TabsList className="h-8 w-full">
-              <TabsTrigger value="all" className="h-7 text-xs flex-1">
-                {t("inbox.filters.all")}
-              </TabsTrigger>
-              <TabsTrigger value="unread" className="h-7 text-xs flex-1">
-                {t("inbox.filters.unread")}
-              </TabsTrigger>
-              <TabsTrigger value="sent" className="h-7 text-xs flex-1">
-                {t("inbox.filters.sent")}
-              </TabsTrigger>
-              <TabsTrigger value="starred" className="h-7 text-xs flex-1">
-                {t("inbox.filters.starred")}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-2 px-1">
-          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => setComposeOpen(true)}>
-            <Pencil className="mr-1 h-3 w-3" variant="stroke" />
-            {t("inbox.compose")}
-          </Button>
-          {googleConnection && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={handleSyncGmail}
-              disabled={isSyncing}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} variant="stroke" />
-            </Button>
           )}
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => setComposeOpen(true)}>
+              <Pencil className="mr-1 h-3 w-3" variant="stroke" />
+              {t("inbox.compose")}
+            </Button>
+            {googleConnection && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={handleSyncGmail}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} variant="stroke" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Email list */}
-        <div className="flex-1 min-h-0 -mb-4">
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <InboxList
             organizationId={organizationId}
             selectedThreadId={selectedThreadId}
@@ -185,40 +200,55 @@ function InboxPage() {
           />
         </div>
       </div>
-    );
 
-    return () => setSidebarContent(null);
-  }, [
-    organizationId,
-    selectedThreadId,
-    filter,
-    googleConnection,
-    isSyncing,
-    mailProviders,
-    selectedMailbox,
-    t,
-    setSidebarContent,
-    handleSelectThread,
-    handleSyncGmail,
-  ]);
+      {/* Resize handle */}
+      <div
+        className="group relative z-10 w-1 shrink-0 cursor-col-resize select-none"
+        onMouseDown={handleResizeStart}
+      >
+        <div className="absolute inset-y-0 -left-px w-[3px] bg-border transition-colors group-hover:bg-primary/40 group-active:bg-primary" />
+      </div>
 
-  // --- Main content: thread view only ---
-  return (
-    <div className="flex h-full flex-col">
-      {selectedThreadId ? (
-        <div className="min-h-0 flex-1">
-          <ThreadView
-            organizationId={organizationId}
-            threadId={selectedThreadId}
-            onReply={handleReply}
-          />
+      {/* Right panel: thread view */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        {/* Filter tabs */}
+        <div className="shrink-0 border-b px-4 py-2">
+          <Tabs
+            value={filter}
+            onValueChange={(v) => setFilter(v as FilterTab)}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="all" className="h-7 text-xs px-3">
+                {t("inbox.filters.all")}
+              </TabsTrigger>
+              <TabsTrigger value="unread" className="h-7 text-xs px-3">
+                {t("inbox.filters.unread")}
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="h-7 text-xs px-3">
+                {t("inbox.filters.sent")}
+              </TabsTrigger>
+              <TabsTrigger value="starred" className="h-7 text-xs px-3">
+                {t("inbox.filters.starred")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-          <Mail className="mb-3 h-12 w-12 opacity-20" />
-          <p className="text-sm">{t("inbox.empty")}</p>
-        </div>
-      )}
+
+        {selectedThreadId ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ThreadView
+              organizationId={organizationId}
+              threadId={selectedThreadId}
+              onReply={handleReply}
+            />
+          </div>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Mail className="mb-3 h-12 w-12 opacity-20" />
+            <p className="text-sm">{t("inbox.empty")}</p>
+          </div>
+        )}
+      </div>
 
       {/* Compose dialog */}
       <ComposeDialog

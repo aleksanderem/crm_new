@@ -6,7 +6,7 @@ import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Settings, PanelLeft } from "@/lib/ez-icons";
+import { ArrowLeft, Settings, PanelLeft, Eye } from "@/lib/ez-icons";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,8 @@ import {
   DocumentTemplateEditor,
   type DocumentTemplateEditorHandle,
 } from "@/components/documents/document-template-editor";
-import type { VariableField } from "@/lib/pdfme/variables";
+import { TemplatePreviewSheet } from "@/components/documents/template-preview-sheet";
+import type { VariableField } from "@/lib/document-variables";
 import { Menu } from "lucide-react";
 
 export const Route = createFileRoute(
@@ -50,9 +51,11 @@ function NewDocumentEditorPage() {
 
   const [saving, setSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
   const [contentJson, setContentJson] = useState("");
+  const [previewContentJson, setPreviewContentJson] = useState("");
 
   const [settings, setSettings] = useState<TemplateSettings>({
     name: "",
@@ -181,6 +184,24 @@ function NewDocumentEditorPage() {
           variant="ghost"
           size="sm"
           className="gap-1.5 text-muted-foreground"
+          onClick={() => {
+            const latestJson = editorRef.current
+              ? JSON.stringify(editorRef.current.getJSON())
+              : contentJson;
+            setPreviewContentJson(latestJson);
+            setPreviewOpen(true);
+          }}
+          title={t("formEditor.preview", "Podgląd")}
+        >
+          <Eye className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {t("formEditor.preview", "Podgląd")}
+          </span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
           onClick={() => setSettingsOpen(true)}
         >
           <Settings className="h-4 w-4" />
@@ -289,6 +310,14 @@ function NewDocumentEditorPage() {
           </nav>
         </SheetContent>
       </Sheet>
+
+      <TemplatePreviewSheet
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        organizationId={organizationId}
+        contentJson={previewContentJson}
+        entityTypes={settings.entityTypes}
+      />
     </div>
   );
 }

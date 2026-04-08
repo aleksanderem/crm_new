@@ -5,7 +5,7 @@ import {
   VARIABLE_REGISTRY,
   CATEGORY_LABELS,
   getVariablesForEntityTypes,
-} from "@/lib/pdfme/variables";
+} from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
 // Types

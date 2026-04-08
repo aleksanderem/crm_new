@@ -627,7 +627,13 @@
     "colStatus": "Status",
     "colTitle": "Title",
     "emptyTitle": "No documents",
-    "manageTemplates": "Manage Templates"
+    "manageTemplates": "Manage Templates",
+    "clientWillFill": "Document will be sent to the client",
+    "clientWillFillDescription": "The client will receive a link to fill the form and sign the document.",
+    "completeMissingData": "Complete missing data",
+    "completeMissingDataDesc": "The following data is required to generate the document. After filling in, it will be saved to the profile.",
+    "missingDataWarning": "The template requires data that has not been filled in yet. Complete the fields below — they will be saved automatically.",
+    "saveAndContinue": "Save and continue"
   },
   "products": {
     "title": "Products",
@@ -1248,10 +1254,8 @@
         "employee": "Employee",
         "external": "External"
       },
-      "newPdfmeTemplate": "PDF Template (PDFme)",
-      "newDocumentTemplate": "Document Template (WYSIWYG)",
+      "newDocumentTemplate": "Document Template",
       "templateTypes": {
-        "pdfme": "PDF Form",
         "document": "Document"
       },
       "newFolder": "New folder",
@@ -1923,6 +1927,8 @@
         "inactive": "Inactive"
       },
       "contact": "Client",
+      "contactInfo": "Contact",
+      "medicalInfo": "Medical Information",
       "firstName": "First Name",
       "lastName": "Last Name",
       "pesel": "PESEL",
@@ -1960,7 +1966,8 @@
       "noHistory": "No history",
       "noHistoryDesc": "Client has no previous appointments",
       "patient": "Client",
-      "lastAppointments": "Client's recent appointments"
+      "lastAppointments": "Client's recent appointments",
+      "totalAppointments": "Total Appointments"
     },
     "treatments": {
       "title": "Treatments",
@@ -3287,7 +3294,25 @@
       "alreadyAdded": "Already added",
       "addToTemplate": "Add to template",
       "hint": "Click + to add a variable to the PDF template. Field names correspond to variable paths."
-    }
+    },
+    "filledBy": {
+      "label": "Filled by",
+      "employee": "Employee",
+      "client": "Client"
+    },
+    "preview": "Preview",
+    "previewTitle": "Template preview",
+    "previewDescription": "Select an entity to see the document preview with resolved variables",
+    "previewEntityType": "Entity type",
+    "previewEntityId": "Entity ID",
+    "previewLoad": "Load preview",
+    "previewTabs": {
+      "document": "Document",
+      "employeeForm": "Employee form",
+      "clientForm": "Client form"
+    },
+    "previewNoFields": "No form fields for this view",
+    "previewSelectEntity": "Select entity type and provide ID to see preview"
   },
   "documentEditor": {
     "fillFields": "Fill in the form fields before generating the document.",

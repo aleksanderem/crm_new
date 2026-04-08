@@ -196,7 +196,6 @@ export const cleanupCategoryReferences = internalMutation({
       gabinetTreatment: "gabinetTreatments",
       gabinetAppointment: "gabinetAppointments",
       gabinetEmployee: "gabinetEmployees",
-      gabinetDocument: "gabinetDocuments",
     };
 
     const tableName = tableMap[args.entityType];

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, Plus } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -258,6 +258,34 @@ export function EntityDetailLayout({
 }: EntityDetailLayoutProps) {
   const [showAllFields, setShowAllFields] = useState(false);
 
+  // Resizable sidebar width (hooks must be before early returns)
+  const [sidebarWidth, setSidebarWidth] = useState(420);
+  const isResizing = useRef(false);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isResizing.current) return;
+      const newWidth = Math.min(Math.max(startWidth + (ev.clientX - startX), 280), 600);
+      setSidebarWidth(newWidth);
+    };
+    const onMouseUp = () => {
+      isResizing.current = false;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [sidebarWidth]);
+
   if (isLoading) {
     return <EntityDetailSkeleton />;
   }
@@ -358,10 +386,10 @@ export function EntityDetailLayout({
 
   // default variant: sidebar + content area
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col md:flex-row -mx-4 sm:-mx-6 -mt-2 -mb-6">
       {/* Left sidebar */}
-      <ScrollShadow className="w-full shrink-0 border-b md:w-[420px] md:border-b-0 md:border-r overflow-y-auto">
-        <div className="p-4 space-y-4">
+      <ScrollShadow className="shrink-0 border-b md:border-b-0 overflow-y-auto max-md:!w-full bg-[#F9F9F9] dark:bg-muted/30 md:border-r md:border-[#E4E9EC] dark:md:border-border" style={{ width: sidebarWidth }}>
+        <div className="p-6 space-y-4">
           {/* Entity header */}
           <EntityDetailHeader {...headerProps} />
 
@@ -470,6 +498,14 @@ export function EntityDetailLayout({
           )}
         </div>
       </ScrollShadow>
+
+      {/* Resize handle (desktop only) */}
+      <div
+        className="hidden md:flex w-1 shrink-0 cursor-col-resize items-center justify-center hover:bg-primary/10 active:bg-primary/20 transition-colors group"
+        onMouseDown={handleResizeStart}
+      >
+        <div className="h-8 w-0.5 rounded-full bg-border group-hover:bg-primary/40 group-active:bg-primary transition-colors" />
+      </div>
 
       {/* Right content area */}
       <div className="flex flex-1 flex-col overflow-hidden">

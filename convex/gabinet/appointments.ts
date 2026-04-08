@@ -1743,11 +1743,11 @@ export const getFullDetail = query({
       appointment.treatmentId ? ctx.db.get(appointment.treatmentId) : Promise.resolve(null),
       // Employee + User
       ctx.db.get(appointment.employeeId),
-      // Documents
+      // Documents (modern form system)
       ctx.db
-        .query("gabinetDocuments")
-        .withIndex("by_appointment", (q) =>
-          q.eq("appointmentId", args.appointmentId),
+        .query("formDocuments")
+        .withIndex("by_entity", (q) =>
+          q.eq("entityType", "gabinetAppointment").eq("entityId", args.appointmentId),
         )
         .collect(),
       // Payments

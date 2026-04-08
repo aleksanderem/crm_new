@@ -126,7 +126,7 @@ export function createGabinetTables({
     requiredDocumentTemplateIds: v.optional(
       v.array(v.id("gabinetDocumentTemplates")),
     ),
-    // Treatment detail: required form templates with timing (new PDFme system)
+    // Treatment detail: required form templates with timing
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.id("formTemplates"),
       timing: v.union(v.literal("before_start"), v.literal("after_completion")),
@@ -492,6 +492,7 @@ export function createGabinetTables({
 
   // --- Gabinet: Documents & Signatures (Phase 5) ---
 
+  // TODO: Drop after confirming no data needs preserving — all code migrated to formTemplates/formDocuments
   gabinetDocumentTemplates: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -507,6 +508,7 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndType", ["organizationId", "type"]),
 
+  // TODO: Drop after confirming no data needs preserving — all code migrated to formTemplates/formDocuments
   gabinetDocuments: defineTable({
     organizationId: v.id("organizations"),
     patientId: v.id("gabinetPatients"),

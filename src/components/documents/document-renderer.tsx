@@ -36,6 +36,7 @@ export interface ExtractedFormField {
   options: string;
   required: boolean;
   placeholder: string;
+  filledBy: string; // "employee" | "client"
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +93,7 @@ export function extractFormFields(json: TipTapNode): ExtractedFormField[] {
         options: (node.attrs.options as string) || "",
         required: (node.attrs.required as boolean) || false,
         placeholder: (node.attrs.placeholder as string) || "",
+        filledBy: (node.attrs.filledBy as string) || "employee",
       });
     }
     if (node.content) node.content.forEach(walk);

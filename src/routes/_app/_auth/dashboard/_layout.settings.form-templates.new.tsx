@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -20,12 +20,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
-
-const SurveyCreatorEditor = lazy(() =>
-  import("@/components/documents/survey-creator-editor").then((m) => ({
-    default: m.SurveyCreatorEditor,
-  })),
-);
+import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/new",
@@ -112,7 +107,7 @@ function NewFormTemplatePage() {
   const [signatureMethod, setSignatureMethod] =
     useState<SignatureMethod>("click");
   const [signerRole, setSignerRole] = useState<SignerRole>("client");
-  const [formJson, setFormJson] = useState("{}");
+  const [contentJson, setContentJson] = useState("{}");
 
   const createTemplate = useMutation(api.documents.templates.create);
 
@@ -128,21 +123,21 @@ function NewFormTemplatePage() {
     );
   };
 
-  const isFormJsonValid = useMemo(() => {
+  const isContentJsonValid = useMemo(() => {
     try {
-      JSON.parse(formJson);
+      JSON.parse(contentJson);
       return true;
     } catch {
       return false;
     }
-  }, [formJson]);
+  }, [contentJson]);
 
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error(t("settings.formTemplates.nameRequired"));
       return;
     }
-    if (!isFormJsonValid) {
+    if (!isContentJsonValid) {
       toast.error(t("settings.formTemplates.invalidJson"));
       return;
     }
@@ -154,7 +149,7 @@ function NewFormTemplatePage() {
         name: name.trim(),
         description: description.trim() || undefined,
         category,
-        formJson,
+        contentJson,
         modules,
         entityTypes,
         requiresSignature,
@@ -391,19 +386,13 @@ function NewFormTemplatePage() {
         )}
       </Card>
 
-      {/* Survey Creator editor — takes remaining viewport height */}
+      {/* Document editor — takes remaining viewport height */}
       <div className="min-h-0 flex-1">
-        <Suspense
-          fallback={
-            <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-              {t("common.loading")}
-            </div>
-          }
-        >
-          <SurveyCreatorEditor
-            onChange={(json) => setFormJson(json)}
-          />
-        </Suspense>
+        <DocumentTemplateEditor
+          value={contentJson}
+          onChange={setContentJson}
+          entityTypes={entityTypes}
+        />
       </div>
     </div>
   );

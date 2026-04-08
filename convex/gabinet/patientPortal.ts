@@ -1,5 +1,4 @@
 import { query, mutation } from "../_generated/server";
-import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -9,9 +8,6 @@ import {
 } from "./_availability";
 import { createNotificationDirect } from "../notifications";
 import { validatePortalSession } from "../_helpers/portalSession";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateDocRef = internal.supabase.gabinet.documents.updateDocumentInSupabase;
 
 export const getMyProfile = query({
   args: { tokenHash: v.string() },
@@ -89,23 +85,6 @@ export const getMyAppointments = query({
   },
 });
 
-export const getMyDocuments = query({
-  args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
-      args.tokenHash,
-    );
-
-    return await ctx.db
-      .query("gabinetDocuments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
-      .collect();
-  },
-});
-
 export const getMyPackages = query({
   args: { tokenHash: v.string() },
   handler: async (ctx, args) => {
@@ -164,51 +143,6 @@ export const getMyLoyaltyTransactions = query({
       .collect();
 
     return transactions.sort((a, b) => b.createdAt - a.createdAt);
-  },
-});
-
-export const signDocument = mutation({
-  args: {
-    tokenHash: v.string(),
-    documentId: v.id("gabinetDocuments"),
-    signatureData: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
-      args.tokenHash,
-    );
-
-    const doc = await ctx.db.get(args.documentId);
-    if (
-      !doc ||
-      doc.organizationId !== organizationId ||
-      doc.patientId !== patientId
-    ) {
-      throw new Error("Document not found");
-    }
-    if (doc.status !== "pending_signature") {
-      throw new Error("Document is not pending signature");
-    }
-
-    await ctx.db.patch(args.documentId, {
-      status: "signed",
-      signatureData: args.signatureData,
-      signedAt: Date.now(),
-      signedByPatient: true,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate patient signature to Supabase
-    await ctx.scheduler.runAfter(0, updateDocRef, {
-      documentId: args.documentId,
-      organizationId,
-      status: "signed",
-      signatureData: args.signatureData,
-      signedAt: Date.now(),
-      signedByPatient: true,
-      updatedAt: Date.now(),
-    });
   },
 });
 

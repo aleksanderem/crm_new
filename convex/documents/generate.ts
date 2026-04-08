@@ -53,7 +53,7 @@ export const previewDocumentData = query({
       args.entityId,
     );
 
-    // Flatten scope data to dot-notation for direct use as PDFme inputs.
+    // Flatten scope data to dot-notation for template variable resolution.
     // Field names in templates ARE the variable paths (e.g. "patient.firstName"),
     // so no binding transformation is needed.
     const prefilledData: Record<string, string> = {};
@@ -71,7 +71,7 @@ export const previewDocumentData = query({
     return {
       prefilledData,
       scopeData,
-      templateType: (template.templateType ?? "pdfme") as "pdfme" | "document",
+      templateType: (template.templateType ?? "document") as "document",
       contentJson: template.contentJson,
     };
   },
@@ -90,6 +90,7 @@ export const generateDocument = mutation({
     entityId: v.string(),
     responseData: v.string(), // JSON stringified survey results
     title: v.optional(v.string()),
+    hasClientFields: v.optional(v.boolean()), // true if template has FormFieldNodes with filledBy:"client"
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
@@ -101,13 +102,25 @@ export const generateDocument = mutation({
     const now = Date.now();
     const title = args.title ?? template.name;
 
-    // Determine initial status based on signature requirement
-    const status = template.requiresSignature ? "pending_signature" as const : "completed" as const;
+    // Determine initial status based on per-field filledBy attributes:
+    // - hasClientFields=true → client still needs to fill their fields → "draft"
+    // - hasClientFields=false + requiresSignature → "pending_signature"
+    // - hasClientFields=false + !requiresSignature → "completed"
+    const hasClient = args.hasClientFields === true;
 
-    // Generate signing token if signature is needed
+    let status: "draft" | "pending_signature" | "completed";
+    if (hasClient) {
+      status = "draft";
+    } else if (template.requiresSignature) {
+      status = "pending_signature";
+    } else {
+      status = "completed";
+    }
+
+    // Generate signing token if client needs to interact (fill fields or sign)
     let signingToken: string | undefined;
     let signingTokenExpiresAt: number | undefined;
-    if (template.requiresSignature) {
+    if (hasClient || template.requiresSignature) {
       signingToken = crypto.randomUUID();
       signingTokenExpiresAt = now + 48 * 60 * 60 * 1000; // 48 hours
     }
@@ -127,8 +140,8 @@ export const generateDocument = mutation({
       updatedAt: now,
     });
 
-    // If signature required, try to send signing email to the relevant entity
-    if (template.requiresSignature && signingToken) {
+    // Send signing/filling email to client if token was generated
+    if (signingToken) {
       const scopeData = await resolveScope(
         ctx,
         args.organizationId,

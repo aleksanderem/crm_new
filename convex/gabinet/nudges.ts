@@ -116,35 +116,6 @@ export const getPackageNudges = query({
   },
 });
 
-// --- Document nudges ---
-export const getDocumentNudges = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args): Promise<NudgeData[]> => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const pending = await ctx.db
-      .query("gabinetDocuments")
-      .withIndex("by_orgAndStatus", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("status", "pending_signature"),
-      )
-      .collect();
-
-    const count = pending.length;
-
-    if (count === 0) return [];
-
-    return [
-      {
-        message: "sidebar.nudges.gabinet.documents.pendingSignature",
-        messageValues: { count },
-        severity: "yellow",
-      },
-    ];
-  },
-});
-
 // --- Patient nudges ---
 export const getPatientNudges = query({
   args: { organizationId: v.id("organizations") },

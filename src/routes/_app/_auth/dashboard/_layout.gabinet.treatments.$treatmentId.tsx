@@ -10,6 +10,10 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
+import {
+  EntityDetailLayout,
+  type DetailField,
+} from "@/components/crm/entity-detail-layout";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { TreatmentRequiredDocuments } from "@/components/documents/treatment-required-documents";
@@ -27,13 +31,6 @@ import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Item,
-  ItemContent,
-  ItemActions,
-  ItemDescription,
-  ItemSeparator,
-} from "@/components/ui/item";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -42,31 +39,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionHeader } from "@untitled/app/section-headers/section-headers";
-import { Tabs as UntitledTabs, TabList, TabPanel } from "@untitled/app/tabs/tabs";
-import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import {
-  ChevronDown,
-  Pencil,
   Calendar,
   Clock,
   DollarSign,
+  Pencil,
   Plus,
+  Settings2,
   Trash2,
   X,
-  Settings2,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -244,136 +231,38 @@ function TreatmentDetail() {
     }
   }, [treatment?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push treatment info into sidebar slot
-  const { setContent: setSidebarContent } = useSidebarSlot();
+  // Collapse app sidebar to icon-only so EntityDetailLayout sidebar has room
+  const { setShellSidebarMode } = useSidebarSlot();
   useEffect(() => {
-    if (!treatment) return;
-    setSidebarContent(
-      <div className="space-y-3">
-        <div className="rounded-md border">
-          <div className="flex items-center gap-2 px-3 py-2.5 text-xs font-semibold">
-            <Settings2 size={14} variant="stroke" className="text-muted-foreground" />
-            {t("gabinet.treatments.treatment")}
-          </div>
-          <div className="space-y-0">
-            <Item variant="default" size="sm" className="py-2">
-              <ItemContent>
-                <ItemDescription className="text-xs">{t("gabinet.treatments.price")}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span className="text-xs font-medium">
-                  {formatCurrency(treatment.price, treatment.currency ?? undefined)}
-                </span>
-              </ItemActions>
-            </Item>
-            <ItemSeparator />
-            <Item variant="default" size="sm" className="py-2">
-              <ItemContent>
-                <ItemDescription className="text-xs flex items-center gap-1">
-                  <Clock size={10} variant="stroke" />
-                  {t("gabinet.treatments.duration")}
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span className="text-xs font-medium">{treatment.duration} min</span>
-              </ItemActions>
-            </Item>
-            {treatment.taxRate != null && (
-              <>
-                <ItemSeparator />
-                <Item variant="default" size="sm" className="py-2">
-                  <ItemContent>
-                    <ItemDescription className="text-xs">{t("gabinet.treatments.taxRate")}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <span className="text-xs font-medium">{treatment.taxRate}%</span>
-                  </ItemActions>
-                </Item>
-              </>
-            )}
-            {(treatment.requiredEquipmentIds?.length || treatment.requiredEquipment?.length) ? (
-              <>
-                <ItemSeparator />
-                <Item variant="default" size="sm" className="py-2">
-                  <ItemContent>
-                    <ItemDescription className="text-xs">{t("gabinet.treatments.requiredEquipment")}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <span className="text-xs font-medium truncate max-w-[120px]">
-                      {treatment.requiredEquipmentIds?.length
-                        ? treatment.requiredEquipmentIds.map((id) => getEquipmentName(id as Id<"gabinetEquipment">)).join(", ")
-                        : (treatment.requiredEquipment ?? []).join(", ")}
-                    </span>
-                  </ItemActions>
-                </Item>
-              </>
-            ) : null}
-            {treatment.requiresApproval && (
-              <>
-                <ItemSeparator />
-                <Item variant="default" size="sm" className="py-2">
-                  <ItemContent>
-                    <ItemDescription className="text-xs">{t("gabinet.treatments.requiresApproval")}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <Badge variant="outline" className="text-[10px]">{t("common.yes")}</Badge>
-                  </ItemActions>
-                </Item>
-              </>
-            )}
-            {treatment.treatmentCount && treatment.treatmentCount > 1 && (
-              <>
-                <ItemSeparator />
-                <Item variant="default" size="sm" className="py-2">
-                  <ItemContent>
-                    <ItemDescription className="text-xs">
-                      {t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}
-                    </ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>
-                  </ItemActions>
-                </Item>
-              </>
-            )}
-          </div>
-        </div>
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
-        {/* Statistics section */}
-        <div className="space-y-2">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
-            {t("gabinet.treatmentDetail.statistics")}
-          </p>
-          <div className="rounded-md border p-2.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar size={12} variant="stroke" />
-                {t("gabinet.treatmentDetail.totalAppointments")}
-              </span>
-              <span className="text-xs font-semibold tabular-nums">{detailedStats?.total ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock size={12} variant="stroke" />
-                {t("gabinet.treatmentDetail.thisMonth")}
-              </span>
-              <span className="text-xs font-semibold tabular-nums">{detailedStats?.thisMonth ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <DollarSign size={12} variant="stroke" />
-                {t("gabinet.treatmentDetail.revenue")}
-              </span>
-              <span className="text-xs font-semibold tabular-nums">
-                {formatCurrency(detailedStats?.revenue ?? 0, treatment.currency ?? undefined)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>,
-    );
-    return () => setSidebarContent(null);
-  }, [treatment, detailedStats, t, setSidebarContent]);
+  // Build fields for EntityDetailLayout sidebar
+  const detailFields: DetailField[] = useMemo(() => {
+    if (!treatment) return [];
+    const fields: DetailField[] = [
+      { label: t("gabinet.treatments.price"), value: formatCurrency(treatment.price, treatment.currency ?? undefined), fieldKey: "price" },
+      { label: t("gabinet.treatments.duration"), value: `${treatment.duration} min`, fieldKey: "duration" },
+      { label: t("gabinet.treatments.category"), value: treatment.category ?? "—", fieldKey: "category" },
+    ];
+    if (treatment.taxRate != null) {
+      fields.push({ label: t("gabinet.treatments.taxRate"), value: `${treatment.taxRate}%`, fieldKey: "taxRate" });
+    }
+    if (treatment.requiredEquipmentIds?.length || treatment.requiredEquipment?.length) {
+      const equipmentNames = treatment.requiredEquipmentIds?.length
+        ? treatment.requiredEquipmentIds.map((id: string) => getEquipmentName(id as Id<"gabinetEquipment">)).join(", ")
+        : (treatment.requiredEquipment ?? []).join(", ");
+      fields.push({ label: t("gabinet.treatments.requiredEquipment"), value: equipmentNames, fieldKey: "equipment" });
+    }
+    if (treatment.requiresApproval) {
+      fields.push({ label: t("gabinet.treatments.requiresApproval"), value: <Badge variant="outline" className="text-[10px]">{t("common.yes")}</Badge>, fieldKey: "approval" });
+    }
+    if (treatment.treatmentCount && treatment.treatmentCount > 1) {
+      fields.push({ label: t("gabinet.treatments.treatmentCount", "Liczba zabiegów"), value: <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>, fieldKey: "count" });
+    }
+    return fields;
+  }, [treatment, equipmentList, t]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
@@ -1206,94 +1095,69 @@ function TreatmentDetail() {
     aptDateFrom, aptDateTo, navigate, t, treatmentId, organizationId,
   ]);
 
+  // Sidebar extra: statistics
+  const sidebarExtra = useMemo(() => {
+    if (!treatment) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {t("gabinet.treatmentDetail.statistics")}
+        </p>
+        <div className="rounded-md border p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar size={12} variant="stroke" />
+              {t("gabinet.treatmentDetail.totalAppointments")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">{detailedStats?.total ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock size={12} variant="stroke" />
+              {t("gabinet.treatmentDetail.thisMonth")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">{detailedStats?.thisMonth ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <DollarSign size={12} variant="stroke" />
+              {t("gabinet.treatmentDetail.revenue")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">
+              {formatCurrency(detailedStats?.revenue ?? 0, treatment.currency ?? undefined)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }, [treatment, detailedStats, t]);
+
   // --- Render ---
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-md px-4">
-          <div className="h-5 w-40 rounded bg-muted" />
-          <div className="h-4 w-28 rounded bg-muted" />
-          <div className="h-9 w-full rounded bg-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!treatment && !isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center space-y-3">
-          <h2 className="text-lg font-semibold">{t("common.notFound")}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t("common.notFoundDescription")}
-          </p>
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/dashboard/gabinet/treatments" })}>
-            &larr; {t("common.goBack")}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
-      <UntitledTabs defaultSelectedKey={t("gabinet.treatmentDetail.tabs.overview")} className="flex h-full flex-col">
-        <div className="shrink-0 space-y-4 px-4 pt-5 pb-1">
-          <SectionHeader.Root className="gap-2 border-b-0 pb-0">
-            <SectionHeader.Group>
-              <div className="flex-1 space-y-0.5">
-                <SectionHeader.Heading className="text-foreground">
-                  {treatment?.name}
-                </SectionHeader.Heading>
-                <SectionHeader.Subheading className="text-muted-foreground">
-                  {treatment?.category ?? t("gabinet.treatments.treatment")}
-                </SectionHeader.Subheading>
-              </div>
-              <SectionHeader.Actions>
-                <Button variant="outline" size="sm" onClick={() => setEditPanelOpen(true)}>
-                  <Pencil className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
-                  {t("common.edit")}
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {t("detail.actions.actions")}
-                      <ChevronDown className="ml-1 h-3.5 w-3.5" variant="stroke" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={handleDeactivate}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      {treatment?.isActive
-                        ? t("gabinet.treatmentDetail.deactivate")
-                        : t("common.delete")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SectionHeader.Actions>
-            </SectionHeader.Group>
-          </SectionHeader.Root>
-
-          {/* Tabs bar */}
-          <TabList
-            type="button-border"
-            size="sm"
-            items={tabs.map((tab) => ({ id: tab.label, label: tab.label, children: tab.label }))}
-          />
-        </div>
-
-        {/* Tab content */}
-        <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
-          {tabs.map((tab) => (
-            <TabPanel key={tab.label} id={tab.label} className="p-4">
-              {tab.content}
-            </TabPanel>
-          ))}
-        </ScrollShadow>
-      </UntitledTabs>
+      <EntityDetailLayout
+        isLoading={isLoading}
+        notFound={!treatment && !isLoading}
+        onBack={() => navigate({ to: "/dashboard/gabinet/treatments" })}
+        title={treatment?.name ?? ""}
+        subtitle={treatment?.category ?? t("gabinet.treatments.treatment")}
+        avatarFallback={treatment?.name?.slice(0, 2).toUpperCase()}
+        onEdit={() => setEditPanelOpen(true)}
+        secondaryActions={[
+          {
+            label: treatment?.isActive
+              ? t("gabinet.treatmentDetail.deactivate")
+              : t("common.delete"),
+            onClick: handleDeactivate,
+            variant: "destructive" as const,
+          },
+        ]}
+        fields={detailFields}
+        expandedFieldCount={5}
+        sidebarExtra={sidebarExtra}
+        tabs={tabs}
+      />
 
       {/* Edit side panel */}
       {treatment && (

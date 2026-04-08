@@ -229,43 +229,6 @@ export const getPackagesKpis = query({
   },
 });
 
-// --- Documents KPIs ---
-export const getDocumentsKpis = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const templates = await ctx.db
-      .query("gabinetDocumentTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const documents = await ctx.db
-      .query("gabinetDocuments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const startOfMonthMs = startOfMonth.getTime();
-
-    const newDocumentsThisMonth = documents.filter(
-      (d) => d.createdAt >= startOfMonthMs,
-    ).length;
-
-    const pendingSignature = documents.filter(
-      (d) => d.status === "pending_signature",
-    ).length;
-
-    return {
-      totalTemplates: templates.length,
-      newDocumentsThisMonth,
-      pendingSignature,
-    };
-  },
-});
-
 // --- Staff Load (Gabinet Calendar) ---
 export const getStaffLoad = query({
   args: { organizationId: v.id("organizations") },

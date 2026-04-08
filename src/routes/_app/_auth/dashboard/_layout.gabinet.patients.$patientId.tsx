@@ -7,29 +7,22 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { SidePanel } from "@/components/crm/side-panel";
+import { PatientForm } from "@/components/forms/patient-form";
 import {
   EntityDetailLayout,
   type DetailField,
 } from "@/components/crm/entity-detail-layout";
-import { SidePanel } from "@/components/crm/side-panel";
-import { PatientForm } from "@/components/forms/patient-form";
+import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  ChevronDown,
-  Pencil,
-  Heart,
   Calendar,
+  Heart,
   Star,
   Trophy,
   Plus,
@@ -40,7 +33,6 @@ import {
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
-import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -59,7 +51,6 @@ function PatientDetail() {
   const removePatient = useMutation(api.gabinet.patients.remove);
   const trackView = useMutation(api.recentlyViewed.track);
   const queryClient = useQueryClient();
-  const { setShellSidebarMode } = useSidebarSlot();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,16 +64,18 @@ function PatientDetail() {
   const { data: patient, isLoading } = useQuery(patientDetailQuery);
 
   useEffect(() => {
-    setShellSidebarMode("icon-only");
-    return () => setShellSidebarMode("default");
-  }, [setShellSidebarMode]);
-
-  useEffect(() => {
     if (patient && organizationId) {
       const label = `${patient.firstName} ${patient.lastName}`.trim();
       trackView({ organizationId, entityType: "gabinetPatients", entityId: patient._id, entityLabel: label });
     }
   }, [patient?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Collapse app sidebar to icon-only so EntityDetailLayout sidebar has room
+  const { setShellSidebarMode } = useSidebarSlot();
+  useEffect(() => {
+    setShellSidebarMode("icon-only");
+    return () => setShellSidebarMode("default");
+  }, [setShellSidebarMode]);
 
   const { data: activitiesData } = useQuery(
     convexQuery(api.activities.getForEntity, {
@@ -119,11 +112,70 @@ function PatientDetail() {
     convexQuery(api.gabinet.treatments.listActive, { organizationId }),
   );
 
+  // Build fields for EntityDetailLayout sidebar
+  const detailFields: DetailField[] = (() => {
+    if (!patient) return [];
+    const fields: DetailField[] = [];
+    if (patient.email) fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
+    if (patient.phone) fields.push({ label: t("common.phone"), value: patient.phone, fieldKey: "phone" });
+    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: patient.dateOfBirth, fieldKey: "dob" });
+    if (patient.gender) fields.push({ label: t("gabinet.patients.gender"), value: t(`gabinet.patients.genderOptions.${patient.gender}`), fieldKey: "gender" });
+    if (patient.pesel) fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });
+    if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
+    if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
+    if (patient.address) {
+      const addr = [patient.address.street, patient.address.postalCode, patient.address.city].filter(Boolean).join(", ");
+      if (addr) fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
+    }
+    if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: patient.referralSource, fieldKey: "referral" });
+    return fields;
+  })();
+
+  // Sidebar extra: statistics + medical notes + packages
+  const sidebarExtra = patient ? (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {t("gabinet.treatmentDetail.statistics")}
+        </p>
+        <div className="rounded-md border p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar size={12} variant="stroke" />
+              {t("gabinet.patients.totalAppointments")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">{patientAppointments?.length ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Trophy size={12} variant="stroke" />
+              {t("gabinet.loyalty.balance")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">{loyaltyBalance?.balance ?? 0}</span>
+          </div>
+        </div>
+      </div>
+      {patient.medicalNotes && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            {t("gabinet.patients.medicalNotes")}
+          </p>
+          <div className="rounded-md border p-2.5">
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+              {patient.medicalNotes}
+            </p>
+          </div>
+        </div>
+      )}
+      <PatientPackagesCard
+        patientId={patientId}
+        organizationId={organizationId}
+      />
+    </div>
+  ) : null;
+
   const fullName = patient
     ? `${patient.firstName} ${patient.lastName}`.trim()
-    : "";
-  const avatarInitials = patient
-    ? `${patient.firstName[0]}${patient.lastName[0]}`
     : "";
 
   const handleEditSubmit = async (formData: {
@@ -168,128 +220,6 @@ function PatientDetail() {
       navigate({ to: "/dashboard/gabinet/patients" });
     }
   };
-
-  // --- Build fields for EntityDetailLayout ---
-  const fields: DetailField[] = patient
-    ? [
-        { label: t("common.email"), value: patient.email, fieldKey: "email" },
-        { label: t("common.phone"), value: patient.phone, fieldKey: "phone" },
-        {
-          label: t("gabinet.patients.pesel"),
-          value: patient.pesel,
-          fieldKey: "pesel",
-        },
-        {
-          label: t("gabinet.patients.dateOfBirth"),
-          value: patient.dateOfBirth,
-          fieldKey: "dateOfBirth",
-        },
-        {
-          label: t("gabinet.patients.gender"),
-          value: patient.gender
-            ? t(`gabinet.patients.genderOptions.${patient.gender}`)
-            : undefined,
-          fieldKey: "gender",
-        },
-        {
-          label: t("gabinet.patients.bloodType"),
-          value: patient.bloodType,
-          fieldKey: "bloodType",
-        },
-        {
-          label: t("gabinet.patients.allergies"),
-          value: patient.allergies,
-          fieldKey: "allergies",
-        },
-        {
-          label: t("gabinet.patients.referralSource"),
-          value: patient.referralSource,
-          fieldKey: "referralSource",
-        },
-        {
-          label: t("gabinet.patients.emergencyContactName"),
-          value: patient.emergencyContactName,
-          fieldKey: "emergencyContactName",
-        },
-        {
-          label: t("gabinet.patients.emergencyContactPhone"),
-          value: patient.emergencyContactPhone,
-          fieldKey: "emergencyContactPhone",
-        },
-        {
-          label: t("gabinet.patients.address"),
-          value: (() => {
-            const addr = patient.address as { street?: string; postalCode?: string; city?: string } | undefined;
-            return [addr?.street, addr?.postalCode, addr?.city].filter(Boolean).join(", ") || undefined;
-          })(),
-          fieldKey: "address",
-        },
-        {
-          label: t("common.created"),
-          value: new Date(patient.createdAt).toLocaleDateString("pl-PL", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          fieldKey: "createdAt",
-        },
-      ]
-    : [];
-
-  // --- Actions menu ---
-  const actionsMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          {t("detail.actions.actions")}
-          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-          {t("detail.actions.edit")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={handleDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          {t("common.delete")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  // --- Subtitle (inactive badge) ---
-  const subtitle = patient && !patient.isActive ? (
-    <Badge variant="outline" className="text-muted-foreground">
-      {t("common.inactive")}
-    </Badge>
-  ) : undefined;
-
-  // --- Sidebar extra: medical notes + packages ---
-  const sidebarExtra = patient ? (
-    <>
-      {patient.medicalNotes && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {t("gabinet.patients.medicalNotes")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {patient.medicalNotes}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      <PatientPackagesCard
-        patientId={patientId}
-        organizationId={organizationId}
-      />
-    </>
-  ) : undefined;
 
   // --- Tabs ---
   const tabs = [
@@ -633,20 +563,27 @@ function PatientDetail() {
   return (
     <>
       <EntityDetailLayout
-        variant="default"
         isLoading={isLoading}
         notFound={!patient && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/patients" })}
         title={fullName}
-        subtitle={subtitle}
-        avatarFallback={avatarInitials}
-        actionsMenu={actionsMenu}
+        subtitle={
+          <span className="flex items-center gap-2">
+            {t("gabinet.patients.patient")}
+            {patient && !patient.isActive && (
+              <Badge variant="outline" className="text-xs">{t("common.inactive")}</Badge>
+            )}
+          </span>
+        }
+        avatarFallback={patient ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase() : "?"}
         onEdit={() => setEditDrawerOpen(true)}
-        fields={fields}
-        expandedFieldCount={4}
+        secondaryActions={[
+          { label: t("common.delete"), onClick: handleDelete, variant: "destructive" as const },
+        ]}
+        fields={detailFields}
+        expandedFieldCount={5}
         sidebarExtra={sidebarExtra}
         tabs={tabs}
-        defaultTab={t("gabinet.patients.tabs.overview")}
       />
 
       {/* Edit patient drawer */}

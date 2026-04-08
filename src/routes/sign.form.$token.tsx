@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/documents/signature-pad";
-import { SurveyFormViewer } from "@/components/documents/survey-form-viewer";
 import { DocumentFormFiller } from "@/components/documents/document-form-filler";
 import {
   extractFormFields,
@@ -68,24 +67,9 @@ function FormSigningPage() {
     );
   }
 
-  const isDocumentType =
-    data.template.templateType === "document" && !!data.template.contentJson;
-
-  if (isDocumentType) {
-    return (
-      <PageShell>
-        <DocumentSigningFlow
-          token={token}
-          document={data.document}
-          template={data.template}
-        />
-      </PageShell>
-    );
-  }
-
   return (
     <PageShell>
-      <PdfmeSigningFlow
+      <DocumentSigningFlow
         token={token}
         document={data.document}
         template={data.template}
@@ -284,7 +268,7 @@ function SignatureSection({
 }
 
 // ---------------------------------------------------------------------------
-// PDFme signing flow (existing behavior)
+// Types
 // ---------------------------------------------------------------------------
 
 interface FlowProps {
@@ -309,58 +293,8 @@ interface FlowProps {
   };
 }
 
-function PdfmeSigningFlow({ token, document, template }: FlowProps) {
-  const { t } = useTranslation();
-  const [done, setDone] = useState(false);
-
-  let responseData: Record<string, unknown> = {};
-  try {
-    responseData = JSON.parse(document.responseData);
-  } catch {
-    // empty
-  }
-
-  if (done) return <SuccessState />;
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="space-y-1">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <FileSignature className="h-5 w-5" />
-              {document.title}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {t(
-                "documents.signing.reviewPrompt",
-                "Zapoznaj się z dokumentem, a następnie złóż podpis.",
-              )}
-            </p>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <SurveyFormViewer
-            formJson={template.formJson}
-            responseData={responseData}
-          />
-        </CardContent>
-      </Card>
-
-      <SignatureSection
-        token={token}
-        signingMethod={template.signatureConfig?.method ?? "click"}
-        onDone={() => setDone(true)}
-      />
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Document-type (TipTap) signing flow — two-step: fill form → sign
+// Document signing flow — two-step: fill form → sign
 // ---------------------------------------------------------------------------
 
 function DocumentSigningFlow({ token, document, template }: FlowProps) {
@@ -430,11 +364,12 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
     }
   }, [document.responseData, template.contentJson]);
 
-  // Extract form fields from template contentJson
+  // Extract form fields from template contentJson — only client fields for the signing page
   const formFields = useMemo(() => {
     if (!template.contentJson) return [];
     try {
-      return extractFormFields(JSON.parse(template.contentJson));
+      const all = extractFormFields(JSON.parse(template.contentJson));
+      return all.filter((f) => f.filledBy === "client");
     } catch {
       return [];
     }
@@ -545,6 +480,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
             {!submitting && (
               <DocumentFormFiller
                 formFields={formFields}
+                filledByFilter="client"
                 onComplete={handleFormComplete}
                 onCancel={() => {
                   // No cancel action on public page — just a no-op

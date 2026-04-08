@@ -22,12 +22,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import {
   Type,
   AlignLeft,
   List,
   Calendar,
   CheckSquare,
+  Users,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,7 @@ import {
 // ---------------------------------------------------------------------------
 
 export type FormFieldType = "text" | "textarea" | "select" | "date" | "checkbox";
+export type FilledBy = "employee" | "client";
 
 export interface FormFieldAttrs {
   fieldId: string;
@@ -43,6 +46,7 @@ export interface FormFieldAttrs {
   options: string; // comma-separated for select type
   required: boolean;
   placeholder: string;
+  filledBy: FilledBy;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +79,7 @@ function FormFieldConfig({
   onChange: (updated: Partial<FormFieldAttrs>) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid gap-3">
       <div className="space-y-1">
@@ -138,6 +143,28 @@ function FormFieldConfig({
         />
       </div>
 
+      <div className="space-y-1">
+        <Label className="text-xs">
+          {t("formEditor.filledBy.label", "Wypełnia")}
+        </Label>
+        <Select
+          value={attrs.filledBy ?? "employee"}
+          onValueChange={(v) => onChange({ filledBy: v as FilledBy })}
+        >
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="employee">
+              {t("formEditor.filledBy.employee", "Pracownik")}
+            </SelectItem>
+            <SelectItem value="client">
+              {t("formEditor.filledBy.client", "Klient")}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center justify-between">
         <Label className="text-xs">Required</Label>
         <Switch
@@ -160,6 +187,7 @@ function FormFieldConfig({
 function FormFieldNodeView({ node, updateAttributes, selected }: ReactNodeViewProps) {
   const [configOpen, setConfigOpen] = useState(false);
   const attrs = node.attrs as FormFieldAttrs;
+  const isClient = attrs.filledBy === "client";
 
   return (
     <NodeViewWrapper as="span" className="inline">
@@ -168,14 +196,16 @@ function FormFieldNodeView({ node, updateAttributes, selected }: ReactNodeViewPr
           <span
             className={cn(
               "inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-0.5 text-xs transition-colors",
-              "border-orange-300 bg-orange-50 text-orange-700",
-              "dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
+              isClient
+                ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950 dark:text-blue-300"
+                : "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
               selected && "ring-2 ring-primary",
             )}
           >
             <FormFieldIcon type={attrs.fieldType} />
             {attrs.label || attrs.fieldId || "Field"}
             {attrs.required && <span className="text-red-500">*</span>}
+            {isClient && <Users className="h-3 w-3 ml-0.5 opacity-60" />}
           </span>
         </PopoverTrigger>
         <PopoverContent className="w-72" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -208,21 +238,33 @@ export const FormFieldNode = Node.create({
       options: { default: "" },
       required: { default: false },
       placeholder: { default: "" },
+      filledBy: { default: "employee" as FilledBy },
     };
   },
 
   parseHTML() {
-    return [{ tag: "span[data-form-field]" }];
+    return [{
+      tag: "span[data-form-field]",
+      getAttrs: (el) => {
+        const dom = el as HTMLElement;
+        return {
+          filledBy: dom.getAttribute("data-filled-by") || "employee",
+        };
+      },
+    }];
   },
 
   renderHTML({ HTMLAttributes }) {
+    const isClient = HTMLAttributes.filledBy === "client";
     return [
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-form-field": HTMLAttributes.fieldId,
         "data-field-type": HTMLAttributes.fieldType,
-        class:
-          "inline-flex items-center rounded border border-dashed border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700 dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
+        "data-filled-by": HTMLAttributes.filledBy || "employee",
+        class: isClient
+          ? "inline-flex items-center rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:border-blue-600 dark:bg-blue-950 dark:text-blue-300"
+          : "inline-flex items-center rounded border border-dashed border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700 dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
         contenteditable: "false",
       }),
       `[${HTMLAttributes.label || HTMLAttributes.fieldId || "Field"}]`,
@@ -249,7 +291,7 @@ export function insertFormField(
     .focus()
     .insertContent({
       type: "formField",
-      attrs: { fieldId, fieldType: "text", label: "New field", ...attrs },
+      attrs: { fieldId, fieldType: "text", label: "New field", filledBy: "employee", ...attrs },
     })
     .run();
 }

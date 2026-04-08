@@ -6,7 +6,8 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import type { FormDocumentStatus } from "@/components/documents/document-status-badge";
-import { SurveyFormViewer } from "@/components/documents/survey-form-viewer";
+import { DocumentViewer } from "@/components/documents/document-viewer";
+import { renderDocument } from "@/components/documents/document-renderer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -417,21 +418,61 @@ function GabinetDocumentsPage() {
             </SheetDescription>
           </SheetHeader>
 
-          {selectedDoc && selectedTemplate && (
-            <div className="mt-6">
-              <SurveyFormViewer
-                formJson={selectedTemplate.formJson}
-                responseData={
-                  JSON.parse(selectedDoc.responseData) as Record<
-                    string,
-                    unknown
-                  >
+          {selectedDoc && selectedTemplate &&
+            (() => {
+              // Try to extract rendered HTML from responseData
+              try {
+                const parsed = JSON.parse(selectedDoc.responseData) as { html?: string };
+                if (parsed.html) {
+                  return (
+                    <div className="mt-6">
+                      <DocumentViewer
+                        title={selectedDoc.title}
+                        html={parsed.html}
+                        signatureData={selectedDoc.signatureData}
+                        signedAt={selectedDoc.signedAt}
+                      />
+                    </div>
+                  );
                 }
-                signatureData={selectedDoc.signatureData}
-                signedAt={selectedDoc.signedAt}
-              />
-            </div>
-          )}
+              } catch {
+                // Not JSON with html — fall through
+              }
+
+              // Fallback: re-render from contentJson + scope data
+              if (selectedTemplate.contentJson) {
+                try {
+                  const scopeFlat: Record<string, string> = {};
+                  const parsed = JSON.parse(selectedDoc.responseData) as Record<string, unknown>;
+                  for (const [k, v] of Object.entries(parsed)) {
+                    if (v != null) scopeFlat[k] = String(v);
+                  }
+                  const html = renderDocument(selectedTemplate.contentJson, scopeFlat);
+                  return (
+                    <div className="mt-6">
+                      <DocumentViewer
+                        title={selectedDoc.title}
+                        html={html}
+                        signatureData={selectedDoc.signatureData}
+                        signedAt={selectedDoc.signedAt}
+                      />
+                    </div>
+                  );
+                } catch {
+                  // contentJson invalid — fall through
+                }
+              }
+
+              // Fallback: no viewable content
+              return (
+                <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
+                  {t(
+                    "gabinet.formDocuments.templateNotFound",
+                    "Szablon dokumentu nie jest dostępny.",
+                  )}
+                </div>
+              );
+            })()}
 
           {selectedDoc && !selectedTemplate && (
             <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">

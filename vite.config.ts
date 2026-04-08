@@ -22,9 +22,6 @@ export default defineConfig({
       "@untitled/foundations": path.resolve(__dirname, "./src/components/foundations"),
     },
   },
-  optimizeDeps: {
-    include: ["@pdfme/ui", "@pdfme/schemas", "@pdfme/common", "@pdfme/generator"],
-  },
   build: {
     rollupOptions: {
       output: {

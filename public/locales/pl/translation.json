@@ -627,7 +627,13 @@
     "colStatus": "Status",
     "colTitle": "Tytuł",
     "emptyTitle": "Brak dokumentów",
-    "manageTemplates": "Zarządzaj szablonami"
+    "manageTemplates": "Zarządzaj szablonami",
+    "clientWillFill": "Dokument zostanie wysłany do klienta",
+    "clientWillFillDescription": "Klient otrzyma link do wypełnienia formularza i podpisania dokumentu.",
+    "completeMissingData": "Uzupełnij brakujące dane",
+    "completeMissingDataDesc": "Poniższe dane są wymagane do wygenerowania dokumentu. Po uzupełnieniu zostaną zapisane w profilu.",
+    "missingDataWarning": "Szablon wymaga danych, które nie są jeszcze uzupełnione w profilu. Uzupełnij je poniżej — zostaną zapisane automatycznie.",
+    "saveAndContinue": "Zapisz i kontynuuj"
   },
   "products": {
     "title": "Produkty",
@@ -1250,10 +1256,8 @@
         "employee": "Pracownik",
         "external": "Zewnętrzny"
       },
-      "newPdfmeTemplate": "Szablon PDF (PDFme)",
-      "newDocumentTemplate": "Szablon dokumentu (WYSIWYG)",
+      "newDocumentTemplate": "Szablon dokumentu",
       "templateTypes": {
-        "pdfme": "Formularz PDF",
         "document": "Dokument"
       },
       "newFolder": "Nowy folder",
@@ -1931,6 +1935,8 @@
         "inactive": "Nieaktywni"
       },
       "contact": "Klient",
+      "contactInfo": "Kontakt",
+      "medicalInfo": "Informacje medyczne",
       "firstName": "Imię",
       "lastName": "Nazwisko",
       "pesel": "PESEL",
@@ -1968,7 +1974,8 @@
       "noHistory": "Brak historii",
       "noHistoryDesc": "Klient nie ma wcześniejszych wizyt",
       "patient": "Klient",
-      "lastAppointments": "Ostatnie wizyty klienta"
+      "lastAppointments": "Ostatnie wizyty klienta",
+      "totalAppointments": "Łącznie wizyt"
     },
     "treatments": {
       "title": "Zabiegi",
@@ -3298,7 +3305,25 @@
       "alreadyAdded": "Już dodano",
       "addToTemplate": "Dodaj do szablonu",
       "hint": "Kliknij + aby dodać zmienną do szablonu PDF. Nazwy pól odpowiadają ścieżkom zmiennych."
-    }
+    },
+    "filledBy": {
+      "label": "Wypełnia",
+      "employee": "Pracownik",
+      "client": "Klient"
+    },
+    "preview": "Podgląd",
+    "previewTitle": "Podgląd szablonu",
+    "previewDescription": "Wybierz encję, aby zobaczyć podgląd dokumentu z wypełnionymi zmiennymi",
+    "previewEntityType": "Typ encji",
+    "previewEntityId": "ID encji",
+    "previewLoad": "Załaduj podgląd",
+    "previewTabs": {
+      "document": "Dokument",
+      "employeeForm": "Formularz pracownika",
+      "clientForm": "Formularz klienta"
+    },
+    "previewNoFields": "Brak pól formularza dla tego widoku",
+    "previewSelectEntity": "Wybierz typ encji i podaj ID, aby zobaczyć podgląd"
   },
   "documentEditor": {
     "fillFields": "Uzupełnij pola formularza przed wygenerowaniem dokumentu.",

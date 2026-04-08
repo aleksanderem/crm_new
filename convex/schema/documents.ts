@@ -43,13 +43,13 @@ export const documentTables = {
     description: v.optional(v.string()),
     category: formCategoryValidator,
     folderPath: v.optional(v.string()),
-    // Template type: "pdfme" for PDF form templates, "document" for TipTap WYSIWYG templates
+    // Template type — always "document" (TipTap WYSIWYG). Legacy "pdfme" kept for schema compat.
     templateType: v.optional(v.union(v.literal("pdfme"), v.literal("document"))),
-    // PDFme JSON schema — the entire form definition (used by pdfme-type templates)
+    // JSON form definition (legacy field kept for schema compat, defaults to "{}")
     formJson: v.string(),
     // TipTap JSON content for document-type templates (editor.getJSON() output)
     contentJson: v.optional(v.string()),
-    // Theme/styling JSON
+    // Theme/styling JSON (legacy, unused — kept for schema compat)
     themeJson: v.optional(v.string()),
     // Which modules can use this template
     modules: v.array(v.string()),
@@ -58,6 +58,7 @@ export const documentTables = {
     // Variable bindings: map SurveyJS question names → entity field paths
     // JSON stringified Record<string, string>
     variableBindings: v.optional(v.string()),
+    // NOTE: formMode removed — filledBy is now a per-field attribute on FormFieldNode in contentJson
     // Signature config
     requiresSignature: v.boolean(),
     signatureConfig: v.optional(v.object({

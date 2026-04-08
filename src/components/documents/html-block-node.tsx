@@ -29,7 +29,7 @@ import { html } from "@codemirror/lang-html";
 import { EditorState } from "@codemirror/state";
 import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import { variableListRef } from "@/components/gabinet/variable-mention";
-import { CATEGORY_LABELS } from "@/lib/pdfme/variables";
+import { CATEGORY_LABELS } from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
 // CodeMirror completion — triggers on {{ like the TipTap editor

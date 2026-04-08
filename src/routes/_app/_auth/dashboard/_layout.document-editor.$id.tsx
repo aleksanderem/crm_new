@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, PanelLeft, CopyIcon } from "@/lib/ez-icons";
+import { ArrowLeft, Settings, PanelLeft, CopyIcon, Eye } from "@/lib/ez-icons";
 import {
   Sheet,
   SheetContent,
@@ -30,7 +30,8 @@ import {
   DocumentTemplateEditor,
   type DocumentTemplateEditorHandle,
 } from "@/components/documents/document-template-editor";
-import type { VariableField } from "@/lib/pdfme/variables";
+import { TemplatePreviewSheet } from "@/components/documents/template-preview-sheet";
+import type { VariableField } from "@/lib/document-variables";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Menu } from "lucide-react";
 
@@ -64,9 +65,11 @@ function EditDocumentEditorPage() {
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
   const [contentJson, setContentJson] = useState("");
+  const [previewContentJson, setPreviewContentJson] = useState("");
 
   const [settings, setSettings] = useState<TemplateSettings>({
     name: "",
@@ -268,6 +271,24 @@ function EditDocumentEditorPage() {
           variant="ghost"
           size="sm"
           className="gap-1.5 text-muted-foreground"
+          onClick={() => {
+            const latestJson = editorRef.current
+              ? JSON.stringify(editorRef.current.getJSON())
+              : contentJson;
+            setPreviewContentJson(latestJson);
+            setPreviewOpen(true);
+          }}
+          title={t("formEditor.preview", "Podgląd")}
+        >
+          <Eye className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {t("formEditor.preview", "Podgląd")}
+          </span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
           onClick={() => setSettingsOpen(true)}
         >
           <Settings className="h-4 w-4" />
@@ -372,6 +393,14 @@ function EditDocumentEditorPage() {
           </nav>
         </SheetContent>
       </Sheet>
+
+      <TemplatePreviewSheet
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        organizationId={organizationId}
+        contentJson={previewContentJson}
+        entityTypes={settings.entityTypes}
+      />
     </div>
   );
 }

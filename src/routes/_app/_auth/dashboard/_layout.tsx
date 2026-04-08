@@ -56,8 +56,10 @@ import {
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { MiniCalendarProvider } from "@/components/layout/mini-calendar-context";
-import { SidebarSlotProvider } from "@/components/layout/sidebar-slot-context";
+import { SidebarSlotProvider, useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { HeaderSlotProvider, HeaderBackButton } from "@/components/layout/header-slot-context";
+import { moduleRegistry, getVisibleModules } from "@/modules/registry";
+import { useMatchRoute } from "@tanstack/react-router";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -82,6 +84,56 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
   ),
   component: DashboardLayout,
 });
+
+// Sort modules by workspace root length (longest first) for accurate route matching
+const routeAwareModules = [...moduleRegistry].sort(
+  (left, right) => right.workspaceRoot.length - left.workspaceRoot.length,
+);
+
+/**
+ * Compact module switcher shown in the header when the app sidebar is collapsed
+ * to icon-only mode (entity detail views).
+ */
+function HeaderModuleSwitcher() {
+  const { shellSidebarMode } = useSidebarSlot();
+  const matchRoute = useMatchRoute();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  if (shellSidebarMode !== "icon-only") return null;
+
+  const matchedModule = routeAwareModules.find((m) =>
+    matchRoute({ to: m.workspaceRoot, fuzzy: true }),
+  );
+  const activeId = matchedModule?.id ?? "crm";
+  const allWorkspaces = moduleRegistry.map((m) => m.workspace);
+  const current = allWorkspaces.find((w) => w.id === activeId) ?? allWorkspaces[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-2 px-2">
+          <div className="flex size-6 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground">
+            <current.icon className="size-3.5" />
+          </div>
+          <span className="hidden text-sm font-medium sm:inline">{t(current.nameKey)}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {allWorkspaces.map((ws) => (
+          <DropdownMenuItem key={ws.id} onClick={() => navigate({ to: ws.href })}>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+                <ws.icon className="size-3.5" />
+              </div>
+              <span className="text-sm font-medium">{t(ws.nameKey)}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 const typeIcons: Record<string, React.ReactNode> = {
   contact: <Users className="h-4 w-4" variant="stroke" />,
@@ -546,11 +598,12 @@ function DashboardLayout() {
             <AppSidebar />
 
             {/* Column 3: Main content */}
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col h-dvh overflow-x-hidden">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <HeaderBackButton />
                   <SidebarTrigger className="[&_svg]:!size-4 [&_easier-icon]:!size-4" />
+                  <HeaderModuleSwitcher />
                   <Separator orientation="vertical" className="hidden !h-4 sm:block" />
                   <Button
                     variant="ghost"
@@ -625,7 +678,7 @@ function DashboardLayout() {
               </header>
 
               {/* Main content */}
-              <main className="min-w-0 size-full flex-1 overflow-hidden px-4 pt-2 pb-6 sm:px-6">
+              <main className="flex flex-col min-w-0 w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-2 pb-6 sm:px-6">
                 <Outlet />
               </main>
 

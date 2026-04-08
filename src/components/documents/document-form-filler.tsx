@@ -20,6 +20,7 @@ import type { ExtractedFormField } from "@/components/documents/document-rendere
 
 interface DocumentFormFillerProps {
   formFields: ExtractedFormField[];
+  filledByFilter?: "employee" | "client";
   onComplete: (fieldValues: Record<string, string>) => void;
   onCancel: () => void;
 }
@@ -30,13 +31,20 @@ interface DocumentFormFillerProps {
 
 export function DocumentFormFiller({
   formFields,
+  filledByFilter,
   onComplete,
   onCancel,
 }: DocumentFormFillerProps) {
   const { t } = useTranslation();
+
+  // Filter fields by filledBy if a filter is specified
+  const visibleFields = filledByFilter
+    ? formFields.filter((f) => (f.filledBy || "employee") === filledByFilter)
+    : formFields;
+
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
-    for (const field of formFields) {
+    for (const field of visibleFields) {
       init[field.fieldId] = field.fieldType === "checkbox" ? "false" : "";
     }
     return init;
@@ -48,8 +56,8 @@ export function DocumentFormFiller({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate required fields
-    for (const field of formFields) {
+    // Validate required visible fields
+    for (const field of visibleFields) {
       if (field.required && !values[field.fieldId]?.trim()) {
         return;
       }
@@ -66,7 +74,7 @@ export function DocumentFormFiller({
         )}
       </p>
 
-      {formFields.map((field) => (
+      {visibleFields.map((field) => (
         <div key={field.fieldId} className="space-y-1.5">
           <Label className="text-sm">
             {field.label || field.fieldId}

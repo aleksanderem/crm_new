@@ -1,17 +1,18 @@
 {
-  "session_id": "S0092",
-  "started_at": "2026-04-03T00:00:00Z",
-  "last_updated": "2026-04-03T11:20:00Z",
-  "status": "active",
-  "focus": "Close CRM sidebar verification and continue remaining Gabinet direct-slot migrations",
+  "session_id": "S0093",
+  "started_at": "2026-04-07T10:00:00Z",
+  "last_updated": "2026-04-07T18:30:00Z",
+  "status": "paused",
+  "focus": "Document template system cleanup + formMode/filledBy implementation + preview feature",
   "tasks_snapshot": {
-    "total": 20,
-    "not_started": 1,
-    "in_progress": 6,
-    "passing": 13,
+    "total": 4,
+    "not_started": 0,
+    "in_progress": 2,
+    "passing": 2,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [42, 32],
-  "blockers": [],
-  "notes": "S0092: Gabinet patient verification is green, and the CRM contact/company route-owned sidebar slice is also now fully green. Fresh focused Playwright checks passed for contacts (4/4) and companies (3/3), plus app typecheck is clean. The remaining open sidebar rollout work is the Gabinet direct-slot routes, where icon-only cannot be enabled safely until the routes own their sidebar content."}
+  "active_task_ids": ["DOC-PREVIEW", "DOC-MISSING-DATA"],
+  "blockers": ["Preview variable resolution not working - need to debug renderDocument + flattenScopeData pipeline"],
+  "notes": "S0093: Major document template system overhaul. Cleaned up legacy gabinet + PDFme systems (19 files deleted, 30+ modified). Added filledBy per-field attribute on FormFieldNode. Added preview sheet with entity picker. Fixed scope resolver to add org+system to all entity types. Missing data gate mutation created. OPEN BUG: preview renderDocument not substituting variables despite correct scope data flow."
+}

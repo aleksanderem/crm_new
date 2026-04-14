@@ -234,7 +234,7 @@ function SigningFlow({
       <Card>
         <CardContent className="pt-6">
           <div
-            className="prose prose-sm max-w-none rounded-lg border bg-white p-6 leading-relaxed dark:bg-muted/30"
+            className="prose prose-sm max-w-none rounded-lg border bg-white p-6 leading-relaxed text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
             dangerouslySetInnerHTML={{ __html: document.renderedContent ?? "" }}
           />
         </CardContent>

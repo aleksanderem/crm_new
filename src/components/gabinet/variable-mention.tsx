@@ -232,7 +232,7 @@ const commonConfig = {
     "span",
     {
       class:
-        "inline-flex items-center rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-accent-foreground",
+        "inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-700 border border-gray-200",
       "data-variable": node.attrs.id,
       contenteditable: "false",
     },
@@ -250,7 +250,7 @@ export const VariableMentionAt = Mention.extend({
   name: "variableMentionAt",
 }).configure({
   ...commonConfig,
-  HTMLAttributes: { class: "template-variable-chip" },
+  HTMLAttributes: { class: "template-variable-chip inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-700 border border-gray-200" },
   suggestion: {
     char: "@",
     items: ({ query }: { query: string }) => findVariables(query, variableListRef.current),
@@ -262,7 +262,7 @@ export const VariableMentionCurly = Mention.extend({
   name: "variableMentionCurly",
 }).configure({
   ...commonConfig,
-  HTMLAttributes: { class: "template-variable-chip" },
+  HTMLAttributes: { class: "template-variable-chip inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-700 border border-gray-200" },
   suggestion: {
     char: "{{",
     items: ({ query }: { query: string }) => findVariables(query, variableListRef.current),

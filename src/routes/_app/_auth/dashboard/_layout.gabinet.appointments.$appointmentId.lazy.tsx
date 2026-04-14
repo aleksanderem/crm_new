@@ -18,11 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Item,
-  ItemActions,
   ItemContent,
   ItemDescription,
   ItemMedia,
-  ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
 import {
@@ -64,11 +62,11 @@ import { mergeTimelineSources } from "@/components/activity-timeline/merge-timel
 import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
 import { AppointmentDocumentChecklist, useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
+import { AfterCompletionDocumentsDialog } from "@/components/documents/after-completion-documents-dialog";
 import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
   Calendar,
-  Clock,
   Mail,
   Phone,
   CreditCard,
@@ -365,6 +363,9 @@ function AppointmentDetail() {
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [gateTiming, setGateTiming] = useState<"before_start" | "after_completion">("before_start");
   const [gateTargetStatus, setGateTargetStatus] = useState<string>("");
+
+  // After-completion documents dialog (shown after appointment is completed)
+  const [afterCompletionDialogOpen, setAfterCompletionDialogOpen] = useState(false);
 
   // Document counts for gate checks and status badges (must be before early returns)
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
@@ -723,6 +724,13 @@ function AppointmentDetail() {
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
       refetch();
+
+      // When completing: the backend auto-generates after_completion docs.
+      // Open dialog so the employee can fill them before they're sent to client.
+      if (newStatus === "completed") {
+        // Small delay so Convex reactive query picks up the new documents
+        setTimeout(() => setAfterCompletionDialogOpen(true), 500);
+      }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
@@ -737,19 +745,15 @@ function AppointmentDetail() {
       return;
     }
 
-    // Document gate: check before transitioning to in_progress or completed
+    // Document gate: check before transitioning to in_progress
     if (newStatus === "in_progress" && docCounts.missingBefore > 0) {
       setGateTiming("before_start");
       setGateTargetStatus(newStatus);
       setGateDialogOpen(true);
       return;
     }
-    if (newStatus === "completed" && docCounts.missingAfter > 0) {
-      setGateTiming("after_completion");
-      setGateTargetStatus(newStatus);
-      setGateDialogOpen(true);
-      return;
-    }
+    // Note: no gate for "completed" — after_completion docs are generated
+    // on completion, then the employee fills them post-completion.
 
     await performStatusChange(newStatus);
   };
@@ -1022,7 +1026,7 @@ function AppointmentDetail() {
   // Helper: document badge count for status transitions
   const getDocBadgeCount = (status: string): number => {
     if (status === "in_progress") return docCounts.missingBefore;
-    if (status === "completed") return docCounts.missingAfter;
+    // No badge for "completed" — after_completion docs are generated post-completion
     return 0;
   };
 
@@ -2310,6 +2314,14 @@ function AppointmentDetail() {
           // For now, we just close the dialog so they can use the documents tab
           setGateDialogOpen(false);
         }}
+      />
+
+      {/* After-Completion Documents Dialog */}
+      <AfterCompletionDocumentsDialog
+        open={afterCompletionDialogOpen}
+        onOpenChange={setAfterCompletionDialogOpen}
+        appointmentId={appointmentId}
+        organizationId={organizationId}
       />
 
       {/* Payment Dialog */}

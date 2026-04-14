@@ -151,14 +151,14 @@ function DocumentTemplateFormStep({
     return (
       <div className="space-y-4">
         <div
-          className="prose prose-sm max-w-none rounded-lg border bg-white p-6 dark:bg-card [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+          className="prose prose-sm max-w-none rounded-lg border bg-white p-6 text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
           dangerouslySetInnerHTML={{ __html: resolvedHtml }}
         />
         <div className="flex gap-2">
           <Button
             className="flex-1"
             onClick={() =>
-              onComplete({ html: resolvedHtml, formFieldValues: {}, hasClientFields })
+              onComplete({ html: resolvedHtml, formFieldValues: {}, hasClientFields, scopeData: prefilledData })
             }
           >
             Generuj dokument
@@ -181,7 +181,7 @@ function DocumentTemplateFormStep({
           prefilledData,
           fieldValues,
         );
-        onComplete({ html: resolvedHtml, formFieldValues: fieldValues, hasClientFields });
+        onComplete({ html: resolvedHtml, formFieldValues: fieldValues, hasClientFields, scopeData: prefilledData });
       }}
       onCancel={onCancel}
     />

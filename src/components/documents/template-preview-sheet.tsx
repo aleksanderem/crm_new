@@ -19,16 +19,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, User, Calendar, Building2, TrendingUp, Users, Stethoscope, Briefcase } from "@/lib/ez-icons";
+import { AlertTriangle, Loader2, Search, User, Calendar, Building2, TrendingUp, Users, Stethoscope, Briefcase } from "@/lib/ez-icons";
 import {
   extractFormFields,
+  extractVariablePaths,
   renderDocument,
   type ExtractedFormField,
 } from "@/components/documents/document-renderer";
-import { flattenScopeData } from "@/lib/document-variables";
+import { flattenScopeData, VARIABLE_REGISTRY } from "@/lib/document-variables";
+import type { VariableField } from "@/lib/document-variables";
 import type { EntityType } from "@/components/documents/template-settings-sheet";
 
 // ---------------------------------------------------------------------------
@@ -115,6 +116,60 @@ const ENTITY_CONFIG: Record<string, EntityTypeConfig> = {
     },
   },
 };
+
+// ---------------------------------------------------------------------------
+// Variable label map (for friendly names)
+// ---------------------------------------------------------------------------
+
+function buildVariableLabelMap(): Map<string, VariableField> {
+  const map = new Map<string, VariableField>();
+  for (const fields of Object.values(VARIABLE_REGISTRY)) {
+    for (const f of fields) {
+      map.set(f.path, f);
+    }
+  }
+  return map;
+}
+
+const VAR_LABEL_MAP = buildVariableLabelMap();
+
+// ---------------------------------------------------------------------------
+// Missing variable item
+// ---------------------------------------------------------------------------
+
+function MissingVariableItem({
+  path,
+  lang,
+}: {
+  path: string;
+  lang: "pl" | "en";
+}) {
+  const varInfo = VAR_LABEL_MAP.get(path);
+  const label = varInfo
+    ? lang === "en"
+      ? varInfo.labelEn
+      : varInfo.label
+    : path;
+  const dotIdx = path.indexOf(".");
+  const prefix = dotIdx > -1 ? path.substring(0, dotIdx) : "";
+
+  return (
+    <div className="rounded-md border border-dashed border-orange-300 bg-orange-50 p-3 space-y-1 dark:border-orange-700 dark:bg-orange-950/30">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        <span className="rounded bg-muted px-1.5 py-0.5">{path}</span>
+        {prefix && (
+          <span className="ml-2 text-orange-600 dark:text-orange-400">
+            {lang === "pl" ? "Brak danych" : "No data"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Form field preview (read-only)
@@ -320,10 +375,28 @@ export function TemplatePreviewSheet({
     return flattenScopeData(scopeData as Record<string, Record<string, unknown>>);
   }, [scopeData]);
 
+  // Detect missing variables
+  const missingVars = useMemo(() => {
+    if (!contentJson || !flatScope) return [];
+    try {
+      const json = JSON.parse(contentJson);
+      const paths = extractVariablePaths(json);
+      return paths.filter((path) => {
+        if (path.startsWith("system.") || path.startsWith("organization.")) return false;
+        const value = flatScope[path];
+        return !value || value.trim() === "";
+      });
+    } catch {
+      return [];
+    }
+  }, [contentJson, flatScope]);
+
   const renderedHtml = useMemo(() => {
     if (!flatScope || !contentJson) return null;
     try {
-      return renderDocument(contentJson, flatScope);
+      return renderDocument(contentJson, flatScope, undefined, {
+        highlightMissing: true,
+      });
     } catch {
       return null;
     }
@@ -343,8 +416,21 @@ export function TemplatePreviewSheet({
     }
   }, [contentJson]);
 
+  // Group missing vars by entity prefix for display
+  const groupedMissingVars = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    for (const path of missingVars) {
+      const dotIdx = path.indexOf(".");
+      const prefix = dotIdx > -1 ? path.substring(0, dotIdx) : "other";
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(path);
+    }
+    return groups;
+  }, [missingVars]);
+
   const hasPreview = !!selectedEntityId && !!flatScope;
   const config = entityType ? ENTITY_CONFIG[entityType] : null;
+  const totalClientItems = clientFields.length + missingVars.length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -434,7 +520,7 @@ export function TemplatePreviewSheet({
           </div>
 
           {/* Right: preview */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {!selectedEntityId && (
               <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
                 {t("formEditor.previewSelectRecord", "Wybierz rekord z listy po lewej")}
@@ -449,10 +535,15 @@ export function TemplatePreviewSheet({
             )}
 
             {hasPreview && (
-              <Tabs defaultValue="document" className="flex flex-1 flex-col">
+              <Tabs defaultValue="document" className="flex min-h-0 flex-1 flex-col">
                 <TabsList className="mx-4 mt-3 shrink-0">
                   <TabsTrigger value="document" className="flex-1 text-xs">
                     {t("formEditor.previewTabs.document", "Dokument")}
+                    {missingVars.length > 0 && (
+                      <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-100 px-1 text-[10px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        {missingVars.length}
+                      </span>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger value="employee" className="flex-1 text-xs">
                     {t("formEditor.previewTabs.employeeForm", "Pracownik")}
@@ -464,18 +555,30 @@ export function TemplatePreviewSheet({
                   </TabsTrigger>
                   <TabsTrigger value="client" className="flex-1 text-xs">
                     {t("formEditor.previewTabs.clientForm", "Klient")}
-                    {clientFields.length > 0 && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">
-                        ({clientFields.length})
+                    {totalClientItems > 0 && (
+                      <span className={`ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+                        missingVars.length > 0
+                          ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {totalClientItems}
                       </span>
                     )}
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="document" className="flex-1 overflow-y-auto px-4 pb-4">
+                <TabsContent value="document" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                  {missingVars.length > 0 && (
+                    <div className="mb-3 flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {lang === "pl"
+                        ? `${missingVars.length} ${missingVars.length === 1 ? "zmienna wymaga" : "zmiennych wymaga"} uzupełnienia danych`
+                        : `${missingVars.length} variable${missingVars.length === 1 ? " requires" : "s require"} data completion`}
+                    </div>
+                  )}
                   {renderedHtml ? (
                     <div
-                      className="prose prose-sm dark:prose-invert max-w-none rounded-lg border bg-white p-6 dark:bg-card [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+                      className="prose prose-sm max-w-none rounded-lg border bg-white p-6 text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
                       dangerouslySetInnerHTML={{ __html: renderedHtml }}
                     />
                   ) : (
@@ -485,7 +588,7 @@ export function TemplatePreviewSheet({
                   )}
                 </TabsContent>
 
-                <TabsContent value="employee" className="flex-1 overflow-y-auto px-4 pb-4">
+                <TabsContent value="employee" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
                   {employeeFields.length > 0 ? (
                     <div className="space-y-2">
                       {employeeFields.map((field) => (
@@ -499,12 +602,51 @@ export function TemplatePreviewSheet({
                   )}
                 </TabsContent>
 
-                <TabsContent value="client" className="flex-1 overflow-y-auto px-4 pb-4">
-                  {clientFields.length > 0 ? (
-                    <div className="space-y-2">
-                      {clientFields.map((field) => (
-                        <FormFieldPreview key={field.fieldId} field={field} />
-                      ))}
+                <TabsContent value="client" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                  {totalClientItems > 0 ? (
+                    <div className="space-y-4">
+                      {/* Missing entity data that client needs to provide */}
+                      {missingVars.length > 0 && (
+                        <div className="space-y-2">
+                          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {lang === "pl" ? "Brakujące dane" : "Missing data"}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {lang === "pl"
+                              ? "Poniższe dane nie są uzupełnione w profilu. Klient będzie musiał je podać przy wypełnianiu dokumentu."
+                              : "The following data is missing from the profile. The client will need to provide it when filling the document."}
+                          </p>
+                          {Object.entries(groupedMissingVars).map(([prefix, paths]) => (
+                            <div key={prefix} className="space-y-1.5">
+                              <span className="text-xs font-medium text-muted-foreground capitalize">
+                                {VAR_LABEL_MAP.get(`${prefix}.firstName`)?.category
+                                  ? (lang === "pl"
+                                    ? { patient: "Pacjent", contact: "Kontakt", company: "Firma", employee: "Pracownik", lead: "Lead", treatment: "Zabieg", appointment: "Wizyta" }[prefix] ?? prefix
+                                    : prefix)
+                                  : prefix}
+                              </span>
+                              {paths.map((path) => (
+                                <MissingVariableItem key={path} path={path} lang={lang} />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Explicit form fields marked for client */}
+                      {clientFields.length > 0 && (
+                        <div className="space-y-2">
+                          {missingVars.length > 0 && (
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              {lang === "pl" ? "Pola formularza" : "Form fields"}
+                            </h3>
+                          )}
+                          {clientFields.map((field) => (
+                            <FormFieldPreview key={field.fieldId} field={field} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">

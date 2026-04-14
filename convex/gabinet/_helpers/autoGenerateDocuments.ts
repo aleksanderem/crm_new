@@ -39,13 +39,25 @@ export async function autoGenerateAppointmentDocuments(
     treatmentId: Id<"gabinetTreatments">;
     patientId: Id<"gabinetPatients">;
     createdBy: Id<"users">;
+    /** When set, only generate documents matching this timing. */
+    timing?: "before_start" | "after_completion";
+    /** When true, skip sending signing emails (employee fills first). */
+    deferEmails?: boolean;
   },
 ): Promise<Id<"formDocuments">[]> {
   const treatment = await ctx.db.get(args.treatmentId);
   if (!treatment) return [];
 
-  const requiredTemplates = treatment.requiredFormTemplates ?? [];
+  let requiredTemplates = treatment.requiredFormTemplates ?? [];
   if (requiredTemplates.length === 0) return [];
+
+  // Filter by timing if requested
+  if (args.timing) {
+    requiredTemplates = requiredTemplates.filter(
+      (t) => t.timing === args.timing,
+    );
+    if (requiredTemplates.length === 0) return [];
+  }
 
   // Resolve scope data once for all templates (appointment context)
   const scopeData = await resolveScope(
@@ -84,7 +96,11 @@ export async function autoGenerateAppointmentDocuments(
       isDocumentType && hasFormFields(JSON.parse(template.contentJson!));
 
     let status: "draft" | "pending_signature";
-    if (isDocumentType && documentHasFormFields) {
+    if (args.deferEmails) {
+      // When deferring emails (after_completion flow), always start as "draft"
+      // so the employee dialog can process the document and trigger the email.
+      status = "draft";
+    } else if (isDocumentType && documentHasFormFields) {
       // Two-step: patient fills form fields → then signs
       status = "draft";
     } else if (template.requiresSignature) {
@@ -126,7 +142,8 @@ export async function autoGenerateAppointmentDocuments(
     createdDocIds.push(docId);
 
     // Send signing email to patient if document requires signature
-    if (template.requiresSignature && signingToken) {
+    // (skip when deferEmails is set — employee fills first, email sent after)
+    if (template.requiresSignature && signingToken && !args.deferEmails) {
       const patient = await ctx.db.get(args.patientId);
       if (patient?.email) {
         const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;

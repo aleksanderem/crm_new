@@ -36,7 +36,47 @@ export const signerRoleValidator = v.union(
   v.literal("external"),
 );
 
+export const componentScopeValidator = v.union(
+  v.literal("system"),
+  v.literal("org"),
+  v.literal("user"),
+);
+
+export const componentCategoryValidator = v.union(
+  v.literal("header"),
+  v.literal("footer"),
+  v.literal("patient_data"),
+  v.literal("treatment_data"),
+  v.literal("signature"),
+  v.literal("table"),
+  v.literal("legal"),
+  v.literal("custom"),
+);
+
 export const documentTables = {
+  documentComponents: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    scope: componentScopeValidator,
+    createdBy: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: componentCategoryValidator,
+    contentJson: v.string(),
+    protected: v.boolean(),
+    positionConstraint: v.optional(v.union(v.literal("start"), v.literal("end"))),
+    version: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_scope", ["scope"])
+    .index("by_orgAndCategory", ["organizationId", "category"])
+    .searchIndex("search_components", {
+      searchField: "name",
+      filterFields: ["organizationId", "scope"],
+    }),
+
   formTemplates: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),

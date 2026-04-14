@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { resolveScope, EntityType } from "./scopeResolver";
+import { resolveComponentsInContent } from "./resolveComponents";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -68,11 +69,17 @@ export const previewDocumentData = query({
       }
     }
 
+    // Resolve component blocks in the template content for preview
+    const resolvedContentJson = await resolveComponentsInContent(
+      ctx,
+      template.contentJson,
+    );
+
     return {
       prefilledData,
       scopeData,
       templateType: (template.templateType ?? "document") as "document",
-      contentJson: template.contentJson,
+      contentJson: resolvedContentJson,
     };
   },
 });

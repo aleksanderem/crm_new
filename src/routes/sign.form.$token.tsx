@@ -304,9 +304,19 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
   );
 
   // Parse responseData — extract scope data, stored form field values, and HTML
-  const { prefilledData, existingHtml } = useMemo(() => {
+  const { prefilledData, existingHtml, existingFormFieldValues } = useMemo(() => {
     try {
       const parsed = JSON.parse(document.responseData);
+
+      // Extract saved form field values (employee-filled) for merging later
+      const savedFieldVals: Record<string, string> = {};
+      if (parsed.formFieldValues && typeof parsed.formFieldValues === "object") {
+        for (const [k, v] of Object.entries(
+          parsed.formFieldValues as Record<string, unknown>,
+        )) {
+          if (v != null) savedFieldVals[k] = String(v);
+        }
+      }
 
       // If form was already filled, re-render from template + stored values
       // (uses latest renderDocument logic for proper checkbox/select rendering).
@@ -321,24 +331,19 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
             if (v != null) scopeData[k] = String(v);
           }
         }
-        const fieldVals: Record<string, string> = {};
-        for (const [k, v] of Object.entries(
-          parsed.formFieldValues as Record<string, unknown>,
-        )) {
-          if (v != null) fieldVals[k] = String(v);
-        }
         try {
           const html = renderDocument(
             template.contentJson,
             scopeData,
-            fieldVals,
+            savedFieldVals,
           );
-          return { prefilledData: scopeData, existingHtml: html };
+          return { prefilledData: scopeData, existingHtml: html, existingFormFieldValues: savedFieldVals };
         } catch {
           // Fallback to stored HTML if re-render fails
           return {
             prefilledData: {} as Record<string, string>,
             existingHtml: parsed.html as string | undefined,
+            existingFormFieldValues: savedFieldVals,
           };
         }
       }
@@ -347,6 +352,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
         return {
           prefilledData: {} as Record<string, string>,
           existingHtml: parsed.html as string | undefined,
+          existingFormFieldValues: savedFieldVals,
         };
       }
 
@@ -355,11 +361,12 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
       for (const [k, v] of Object.entries(parsed)) {
         if (v != null) flat[k] = String(v);
       }
-      return { prefilledData: flat, existingHtml: undefined };
+      return { prefilledData: flat, existingHtml: undefined, existingFormFieldValues: savedFieldVals };
     } catch {
       return {
         prefilledData: {} as Record<string, string>,
         existingHtml: undefined,
+        existingFormFieldValues: {} as Record<string, string>,
       };
     }
   }, [document.responseData, template.contentJson]);
@@ -375,7 +382,16 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
     }
   }, [template.contentJson]);
 
-  const needsFormFill = formFields.length > 0 && !existingHtml;
+  // Check if client form fields need filling — not just whether HTML exists.
+  // Employee fields may already be in existingFormFieldValues, but client
+  // fields won't be until the client fills them on this page.
+  const needsFormFill =
+    formFields.length > 0 &&
+    formFields.some(
+      (f) =>
+        !existingFormFieldValues[f.fieldId] ||
+        existingFormFieldValues[f.fieldId].trim() === "",
+    );
 
   const [step, setStep] = useState<"fill" | "sign" | "done">(
     needsFormFill ? "fill" : "sign",
@@ -405,15 +421,17 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
       setSubmitting(true);
       setError(null);
       try {
+        // Merge employee-filled values with new client-filled values
+        const allFieldValues = { ...existingFormFieldValues, ...fieldValues };
         const html = renderDocument(
           template.contentJson,
           prefilledData,
-          fieldValues,
+          allFieldValues,
         );
         await submitFormFields({
           token,
           renderedHtml: html,
-          formFieldValues: JSON.stringify(fieldValues),
+          formFieldValues: JSON.stringify(allFieldValues),
           scopeData: JSON.stringify(prefilledData),
         });
         setRenderedHtml(html);
@@ -426,7 +444,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
         setSubmitting(false);
       }
     },
-    [template.contentJson, prefilledData, submitFormFields, token],
+    [template.contentJson, prefilledData, existingFormFieldValues, submitFormFields, token],
   );
 
   if (step === "done") return <SuccessState />;
@@ -498,7 +516,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
           <Card>
             <CardContent className="pt-6">
               <div
-                className="prose prose-sm max-w-none rounded-lg border bg-white p-6 dark:bg-card [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-muted [&_th]:p-2"
+                className="prose prose-sm max-w-none rounded-lg border bg-white p-6 text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
                 dangerouslySetInnerHTML={{ __html: displayHtml }}
               />
             </CardContent>

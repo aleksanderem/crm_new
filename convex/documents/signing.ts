@@ -8,7 +8,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getValidAccessToken } from "../google/_helpers";
 import { Resend } from "resend";
-import { RESEND_API_KEY, RESEND_FROM, SITE_URL } from "@cvx/env";
+import { RESEND_API_KEY, RESEND_FROM, SITE_URL, DEV_INTERCEPT_EMAILS } from "@cvx/env";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -126,7 +126,7 @@ export const sendSigningEmailInternal = internalAction({
   },
   handler: async (ctx, args) => {
     const data = await ctx.runQuery(
-      internal.documents.signing.getDocumentForEmail,
+      internal.documents.signing.getDocumentForEmail as any,
       { documentId: args.documentId },
     );
 
@@ -189,6 +189,34 @@ export const sendSigningEmailInternal = internalAction({
         </p>
       </div>
     `;
+
+    // --- Dev email interception ---
+    if (DEV_INTERCEPT_EMAILS === "true") {
+      const fromAddress = data.senderEmail
+        ? (data.senderName ? `${data.senderName} <${data.senderEmail}>` : data.senderEmail)
+        : "noreply@dev.local";
+      await ctx.runMutation(internal.dev.emails.store, {
+        from: fromAddress,
+        to: args.recipientEmail,
+        subject,
+        html,
+        source: "signing",
+        metadata: JSON.stringify({
+          documentId: args.documentId,
+          recipientName: args.recipientName,
+          signingUrl,
+          organizationName: data.organizationName,
+          treatmentName: data.treatmentName,
+          appointmentDate: data.appointmentDate,
+          needsFormFill: data.needsFormFill,
+        }),
+      });
+      console.log("[signing] DEV_INTERCEPT: Email stored to devEmails instead of sending →", args.recipientEmail);
+      await ctx.runMutation(internal.documents.signing.markSigningEmailSent, {
+        documentId: args.documentId,
+      });
+      return;
+    }
 
     try {
       // Try sending via Gmail OAuth (tenant's configured connection)

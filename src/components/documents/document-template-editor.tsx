@@ -33,6 +33,12 @@ import {
   type FormFieldAttrs,
 } from "@/components/documents/form-field-node";
 import { HtmlBlockNode } from "@/components/documents/html-block-node";
+import { ComponentBlockNode } from "@/components/documents/component-block-node";
+import { ComponentPicker } from "@/components/documents/component-picker";
+import {
+  ColumnLayoutNode,
+  ColumnNode,
+} from "@/components/documents/column-layout-node";
 import {
   Bold,
   Italic,
@@ -51,6 +57,10 @@ import {
   ImageIcon,
   ScissorsLineDashed,
   Code,
+  Columns2,
+  Columns3,
+  Columns4,
+  RectangleVertical,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -104,6 +114,9 @@ export const DocumentTemplateEditor = forwardRef<
       PageBreakNode,
       FormFieldNode,
       HtmlBlockNode,
+      ComponentBlockNode,
+      ColumnLayoutNode,
+      ColumnNode,
       VariableMentionAt,
       VariableMentionCurly,
     ],
@@ -113,7 +126,7 @@ export const DocumentTemplateEditor = forwardRef<
     },
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none px-4 py-3 focus:outline-none",
+        class: "prose prose-sm max-w-none px-4 py-3 focus:outline-none text-gray-900",
       },
     },
   });
@@ -378,6 +391,47 @@ export const DocumentTemplateEditor = forwardRef<
           <Code className="mr-1 h-4 w-4" />
           HTML
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().insertColumnLayout(1).run()}
+          title="Wstaw sekcję 1-kolumnową"
+        >
+          <RectangleVertical className="mr-1 h-4 w-4" />
+          1 kol.
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().insertColumnLayout(2).run()}
+          title="Wstaw układ 2-kolumnowy"
+        >
+          <Columns2 className="mr-1 h-4 w-4" />
+          2 kol.
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().insertColumnLayout(3).run()}
+          title="Wstaw układ 3-kolumnowy"
+        >
+          <Columns3 className="mr-1 h-4 w-4" />
+          3 kol.
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 px-2 text-xs text-muted-foreground"
+          onClick={() => editor.chain().focus().insertColumnLayout(4).run()}
+          title="Wstaw układ 4-kolumnowy"
+        >
+          <Columns4 className="mr-1 h-4 w-4" />
+          4 kol.
+        </Button>
+        <ComponentPicker editor={editor} />
       </div>
 
       {/* Table bubble menu */}
@@ -387,12 +441,12 @@ export const DocumentTemplateEditor = forwardRef<
       <EditorContent
         editor={editor}
         className={cn(
-          "min-h-0 flex-1 overflow-auto bg-background",
+          "min-h-0 flex-1 overflow-auto bg-white",
           "[&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:outline-none",
-          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--table-border-color,var(--color-border))] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--table-border-color,var(--color-border))] [&_th]:bg-muted [&_th]:p-2",
+          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2",
           "[&_table[data-border-style=none]_td]:border-transparent [&_table[data-border-style=none]_th]:border-transparent",
           "[&_table[data-border-style=horizontal]_td]:border-x-transparent [&_table[data-border-style=horizontal]_th]:border-x-transparent",
-          "[&_table[data-border-style=outer]_td]:border-transparent [&_table[data-border-style=outer]_th]:border-transparent [&_table[data-border-style=outer]]:border [&_table[data-border-style=outer]]:border-[var(--table-border-color,var(--color-border))]",
+          "[&_table[data-border-style=outer]_td]:border-transparent [&_table[data-border-style=outer]_th]:border-transparent [&_table[data-border-style=outer]]:border [&_table[data-border-style=outer]]:border-gray-300",
           "[&_img]:max-w-full [&_img]:rounded [&_img]:my-2",
         )}
       />

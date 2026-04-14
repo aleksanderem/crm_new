@@ -83,7 +83,7 @@ function LogoHeader() {
   return (
     <div className="flex items-center gap-3">
       <Logo className="size-8.5 [&_rect]:fill-card [&_rect:first-child]:fill-primary [&_path]:stroke-primary-foreground [&_line]:stroke-primary-foreground" />
-      <span className="text-xl font-semibold">Kolabo</span>
+      <span className="text-xl font-semibold">Quera</span>
     </div>
   );
 }

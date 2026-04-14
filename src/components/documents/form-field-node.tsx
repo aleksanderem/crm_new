@@ -197,8 +197,8 @@ function FormFieldNodeView({ node, updateAttributes, selected }: ReactNodeViewPr
             className={cn(
               "inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-0.5 text-xs transition-colors",
               isClient
-                ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950 dark:text-blue-300"
-                : "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
+                ? "border-blue-300 bg-blue-50 text-blue-700"
+                : "border-orange-300 bg-orange-50 text-orange-700",
               selected && "ring-2 ring-primary",
             )}
           >

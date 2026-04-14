@@ -59,9 +59,9 @@ export function DocumentViewer({
       <div
         className={cn(
           "mx-auto w-full max-w-[210mm] rounded-lg border bg-white p-8 shadow-sm",
-          "prose prose-sm max-w-none",
-          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:bg-gray-50 [&_th]:p-2",
-          "dark:bg-card",
+          "prose prose-sm max-w-none text-gray-900",
+          "[&_*]:!text-gray-900 [&_a]:!text-blue-700",
+          "[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2",
         )}
         dangerouslySetInnerHTML={{ __html: html }}
       />

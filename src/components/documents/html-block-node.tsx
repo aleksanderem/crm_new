@@ -145,14 +145,14 @@ function HtmlBlockNodeView({
       <div
         className={cn(
           "overflow-hidden rounded-md border",
-          "border-violet-300 dark:border-violet-600",
+          "border-violet-300",
           selected && "ring-2 ring-primary",
         )}
       >
         {/* Header bar */}
-        <div className="flex items-center gap-1.5 border-b bg-violet-50 px-3 py-1.5 dark:bg-violet-950">
-          <Code className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-          <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+        <div className="flex items-center gap-1.5 border-b bg-violet-50 px-3 py-1.5">
+          <Code className="h-3.5 w-3.5 text-violet-600" />
+          <span className="text-xs font-medium text-violet-700">
             HTML / CSS
           </span>
 
@@ -361,7 +361,7 @@ function HtmlBlockNodeView({
         {/* Content */}
         {preview ? (
           <div
-            className="prose prose-sm max-w-none p-3"
+            className="prose prose-sm max-w-none p-3 bg-white text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700"
             dangerouslySetInnerHTML={{
               __html: `<style>
 [data-variable]{display:inline-flex;align-items:center;border-radius:4px;background:hsl(var(--accent));padding:2px 6px;font-family:ui-monospace,monospace;font-size:12px;color:hsl(var(--accent-foreground))}

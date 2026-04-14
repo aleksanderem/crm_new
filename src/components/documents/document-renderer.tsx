@@ -114,6 +114,7 @@ export function renderDocument(
   contentJson: string,
   scopeData: Record<string, string>,
   formFieldValues?: Record<string, string>,
+  options?: { highlightMissing?: boolean },
 ): string {
   const json = JSON.parse(contentJson);
   const html = generateHTML(json, renderExtensions);
@@ -122,13 +123,24 @@ export function renderDocument(
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
+  const highlightMissing = options?.highlightMissing ?? false;
+
   // Resolve variable mentions
   doc.querySelectorAll("[data-variable]").forEach((el) => {
     const path = el.getAttribute("data-variable");
-    if (path && scopeData[path] !== undefined) {
+    if (path && scopeData[path] !== undefined && scopeData[path].trim() !== "") {
       el.replaceWith(document.createTextNode(scopeData[path]));
     } else if (path) {
-      el.replaceWith(document.createTextNode(`[${path}]`));
+      if (highlightMissing) {
+        const span = doc.createElement("span");
+        span.style.cssText =
+          "background:#fef2f2;color:#dc2626;padding:1px 4px;border-radius:3px;border:1px dashed #fca5a5;font-size:0.85em;";
+        span.textContent = path;
+        span.setAttribute("data-missing-var", path);
+        el.replaceWith(span);
+      } else {
+        el.replaceWith(document.createTextNode(`[${path}]`));
+      }
     }
   });
 

@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
+import { resolveComponentsInContent } from "./resolveComponents";
 
 export const listAll = query({
   args: {
@@ -73,13 +74,15 @@ export const getBySigningToken = query({
     if (!doc) throw new Error("Document not found");
     if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
       throw new Error("Signing link expired");
-    // Allow both "draft" (document-type with form fields to fill)
-    // and "pending_signature" (ready for signing)
-    if (doc.status !== "pending_signature" && doc.status !== "draft")
-      throw new Error("Document is not awaiting action");
+    // Return document data for any active status — the frontend decides
+    // what to render based on status (fill form, sign, or show success).
 
-    // Also fetch template for rendering
+    // Also fetch template for rendering, with components resolved
     const template = await ctx.db.get(doc.templateId);
+    if (template?.contentJson) {
+      const resolved = await resolveComponentsInContent(ctx, template.contentJson);
+      return { document: doc, template: { ...template, contentJson: resolved } };
+    }
     return { document: doc, template };
   },
 });
@@ -242,6 +245,118 @@ export const submitDocumentFormFields = mutation({
       updatedAt: Date.now(),
     });
     return doc._id;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Employee fills form fields internally (authenticated).
+// Stores rendered HTML + form field values, transitions draft → pending_signature,
+// and sends signing email to the patient. Used for after_completion documents
+// where the employee fills first, then the client signs.
+// ---------------------------------------------------------------------------
+
+export const submitEmployeeFormFields = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.id("formDocuments"),
+    renderedHtml: v.string(),
+    formFieldValues: v.string(), // JSON map of field values
+    scopeData: v.optional(v.string()), // JSON map of scope data
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.organizationId !== args.organizationId)
+      throw new Error("Document not found");
+    if (doc.status !== "draft")
+      throw new Error("Document is not in draft status");
+
+    // Build response data preserving scope
+    let scopeData: Record<string, unknown> | undefined;
+    if (args.scopeData) {
+      scopeData = JSON.parse(args.scopeData);
+    } else {
+      try {
+        const existing = JSON.parse(doc.responseData);
+        if (!existing.html) {
+          scopeData = existing;
+        } else if (existing.scopeData) {
+          scopeData = existing.scopeData as Record<string, unknown>;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const responseObj: Record<string, unknown> = {
+      html: args.renderedHtml,
+      formFieldValues: JSON.parse(args.formFieldValues),
+    };
+    if (scopeData) {
+      responseObj.scopeData = scopeData;
+    }
+
+    await ctx.db.patch(args.documentId, {
+      responseData: JSON.stringify(responseObj),
+      status: "pending_signature",
+      updatedAt: Date.now(),
+    });
+
+    // Send signing email to patient now that employee has filled the form.
+    // Look up patient from the linked entity (appointment or patient).
+    if (doc.signingToken) {
+      let recipientEmail: string | undefined;
+      let recipientName: string | undefined;
+
+      if (doc.entityType === "appointment" && doc.entityId) {
+        const appointment = await ctx.db.get(doc.entityId as any);
+        if (appointment && typeof appointment === "object") {
+          const appt = appointment as { patientId?: any };
+          if (appt.patientId) {
+            const patient = await ctx.db.get(appt.patientId);
+            if (patient && typeof patient === "object") {
+              const p = patient as {
+                email?: string;
+                firstName?: string;
+                lastName?: string;
+              };
+              recipientEmail = p.email;
+              recipientName = [p.firstName, p.lastName]
+                .filter(Boolean)
+                .join(" ") || undefined;
+            }
+          }
+        }
+      } else if (doc.entityType === "patient" && doc.entityId) {
+        const patient = await ctx.db.get(doc.entityId as any);
+        if (patient && typeof patient === "object") {
+          const p = patient as {
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+          };
+          recipientEmail = p.email;
+          recipientName = [p.firstName, p.lastName]
+            .filter(Boolean)
+            .join(" ") || undefined;
+        }
+      }
+
+      if (recipientEmail) {
+        await ctx.scheduler.runAfter(
+          0,
+          // @ts-ignore — deep type instantiation under app tsconfig
+          internal.documents.signing.sendSigningEmailInternal,
+          {
+            documentId: args.documentId,
+            recipientEmail,
+            recipientName,
+          },
+        );
+      }
+    }
+
+    return args.documentId;
   },
 });
 

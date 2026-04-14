@@ -15,3 +15,4 @@ export const MICROSOFT_REDIRECT_URI = process.env.MICROSOFT_REDIRECT_URI;
 export const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
 export const SUPABASE_URL = process.env.SUPABASE_URL;
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const DEV_INTERCEPT_EMAILS = process.env.DEV_INTERCEPT_EMAILS;

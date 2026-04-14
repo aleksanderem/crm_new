@@ -855,12 +855,15 @@ export const create = mutation({
     });
 
     // Auto-generate required documents from treatment's form templates
+    // Only generate "before_start" docs now; "after_completion" docs are
+    // generated when the appointment is completed.
     await autoGenerateAppointmentDocuments(ctx, {
       organizationId: args.organizationId,
       appointmentId: firstId,
       treatmentId: args.treatmentId,
       patientId: args.patientId,
       createdBy: user._id,
+      timing: "before_start",
     });
 
     // Generate recurring series
@@ -1232,15 +1235,8 @@ export const updateStatus = mutation({
           );
         }
       }
-      if (args.status === "completed") {
-        const gate = await checkDocumentGate(ctx, args.appointmentId, "after_completion");
-        if (!gate.canProceed) {
-          const missingNames = gate.missing.map((d) => d.title).join(", ");
-          throw new Error(
-            `DOCUMENT_GATE:after_completion:${JSON.stringify(gate)}|Nie można zakończyć wizyty — brakuje wymaganych dokumentów: ${missingNames}`,
-          );
-        }
-      }
+      // Note: no gate check for "completed" — after_completion docs are
+      // generated below and the employee fills them post-completion.
     }
 
     await applyAppointmentStatusChange(ctx, {
@@ -1257,6 +1253,21 @@ export const updateStatus = mutation({
       notificationTitle: "Appointment status changed",
       notificationMessage: `Appointment status changed to "${args.status}"`,
     });
+
+    // After completing: auto-generate "after_completion" documents.
+    // Emails are deferred — the employee fills form fields first, then
+    // the system sends to the client for signing.
+    if (args.status === "completed" && appt.treatmentId) {
+      await autoGenerateAppointmentDocuments(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: args.appointmentId,
+        treatmentId: appt.treatmentId as Id<"gabinetTreatments">,
+        patientId: appt.patientId as Id<"gabinetPatients">,
+        createdBy: user._id,
+        timing: "after_completion",
+        deferEmails: true,
+      });
+    }
 
     return args.appointmentId;
   },

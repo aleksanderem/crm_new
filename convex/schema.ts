@@ -597,6 +597,22 @@ const tagAndCategoryTables = {
     .index("by_parent", ["parentId"]),
 };
 
+// ---------------------------------------------------------------------------
+// Dev utilities — email interceptor for development testing
+// ---------------------------------------------------------------------------
+
+const devTables = {
+  devEmails: defineTable({
+    from: v.string(),
+    to: v.string(),
+    subject: v.string(),
+    html: v.string(),
+    source: v.string(), // e.g. "signing", "template", "reminder"
+    metadata: v.optional(v.string()), // JSON with extra context
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
+};
+
 const schema = defineSchema({
   ...authTables,
   ...platformTables,
@@ -605,6 +621,7 @@ const schema = defineSchema({
   ...automationTables,
   ...documentTables,
   ...tagAndCategoryTables,
+  ...devTables,
 });
 
 export default schema;

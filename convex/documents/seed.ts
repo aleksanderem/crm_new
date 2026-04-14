@@ -1,6 +1,7 @@
 import { mutation, internalMutation, type MutationCtx } from "../_generated/server";
 import { v, type GenericId } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { buildSystemComponents } from "./components";
 
 // ---------------------------------------------------------------------------
 // Seed form templates (formTemplates table)
@@ -78,93 +79,25 @@ export const migrateFolderPaths = mutation({
   },
 });
 
-/** Authenticated version — callable from frontend */
+/** Authenticated version — callable from frontend (legacy, no-op) */
 export const seedFormTemplates = mutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    return await seedHandler(ctx, args.organizationId, user._id);
+    await verifyOrgAccess(ctx, args.organizationId);
+    return { skipped: true, count: 0, message: "Use seedBeautyDocumentTemplates instead" };
   },
 });
 
-/** Internal version — callable from CLI via `convex run` */
+/** Internal version (legacy, no-op) */
 export const seedFormTemplatesInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
-    return await seedHandler(ctx, args.organizationId, args.userId);
+  handler: async () => {
+    return { skipped: true, count: 0, message: "Use seedBeautyDocumentTemplatesInternal instead" };
   },
 });
-
-// ---------------------------------------------------------------------------
-// Shared handler
-// ---------------------------------------------------------------------------
-
-async function seedHandler(
-  ctx: MutationCtx,
-  orgId: GenericId<"organizations">,
-  userId: GenericId<"users">,
-) {
-  // Get existing template names to avoid duplicates
-  const existingTemplates = await ctx.db
-    .query("formTemplates")
-    .withIndex("by_org", (q) => q.eq("organizationId", orgId))
-    .collect();
-  const existingNames = new Set(existingTemplates.map((t) => t.name));
-
-  const now = Date.now();
-  const templates = buildTemplates();
-
-  let count = 0;
-  for (const tmpl of templates) {
-    // Skip if template with same name already exists
-    if (existingNames.has(tmpl.name)) continue;
-    await ctx.db.insert("formTemplates", {
-      organizationId: orgId,
-      ...tmpl,
-      version: 1,
-      isActive: true,
-      createdBy: userId,
-      createdAt: now,
-      updatedAt: now,
-    });
-    count++;
-  }
-
-  return { skipped: false, count, message: `Seeded ${count} form templates` };
-}
-
-// ---------------------------------------------------------------------------
-// Template definitions
-// ---------------------------------------------------------------------------
-
-/**
- * Returns seed templates (placeholder — all templates now live in
- * buildBeautyDocumentTemplates below as TipTap document-type).
- */
-function buildTemplates() {
-  return [] as Array<{
-    name: string;
-    description: string;
-    category: "consent" | "medical_record" | "prescription" | "referral" | "custom" | "contract" | "invoice" | "protocol" | "intake";
-    folderPath: string;
-    formJson: string;
-    modules: string[];
-    entityTypes: string[];
-    requiresSignature: boolean;
-    signatureConfig?: {
-      method: "draw" | "click" | "sms" | "email_otp";
-      signerRole: "patient" | "client" | "employee" | "external";
-    };
-  }>;
-}
-
-
-// ===========================================================================
-// TipTap WYSIWYG-based beauty salon document templates (templateType: "document")
-// ===========================================================================
 
 // ---------------------------------------------------------------------------
 // TipTap JSON node helpers
@@ -240,81 +173,24 @@ const tableRow = (...cells: { header?: boolean; content: any[] }[]): any => ({
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ---------------------------------------------------------------------------
-// Shared document fragments
+// Component block helper + map type
 // ---------------------------------------------------------------------------
 
-function docHeader(title: string): any[] {
-  return [
-    pCenter(mention("organization.name")),
-    pCenter(italic("Salon kosmetyczny")),
-    hr(),
-    p(),
-    h2(title, true),
-    p(),
-  ];
-}
+type ComponentMap = Record<string, { id: string; version: number }>;
 
-function patientDataSection(): any[] {
-  return [
-    h3("Dane klienta"),
-    p(bold("Imię i nazwisko: "), mention("patient.firstName"), txt(" "), mention("patient.lastName")),
-    p(bold("PESEL: "), mention("patient.pesel")),
-    p(bold("Data urodzenia: "), mention("patient.dateOfBirth")),
-    p(bold("Telefon: "), mention("patient.phone")),
-    p(
-      bold("Adres: "),
-      mention("patient.address.street"),
-      txt(", "),
-      mention("patient.address.postalCode"),
-      txt(" "),
-      mention("patient.address.city"),
-    ),
-    p(),
-  ];
-}
-
-function treatmentDataSection(): any[] {
-  return [
-    h3("Dane zabiegu"),
-    p(bold("Nazwa zabiegu: "), mention("treatment.name")),
-    p(bold("Opis: "), mention("treatment.description")),
-    p(bold("Czas trwania: "), mention("treatment.duration"), txt(" min")),
-    p(bold("Cena: "), mention("treatment.price"), txt(" PLN")),
-    p(bold("Data wizyty: "), mention("appointment.date"), txt(", godz. "), mention("appointment.startTime")),
-    p(
-      bold("Specjalista: "),
-      mention("employee.firstName"),
-      txt(" "),
-      mention("employee.lastName"),
-      txt(" — "),
-      mention("employee.specialization"),
-    ),
-    p(),
-  ];
-}
-
-function signatureFooter(): any[] {
-  return [
-    p(),
-    hr(),
-    p(bold("Miejscowość i data: "), mention("patient.address.city"), txt(", "), mention("system.date_pl")),
-    p(),
-    p(),
-    p(txt("........................................          ........................................")),
-    p(txt("         Podpis klienta                                    Podpis osoby wykonującej")),
-  ];
-}
-
-function signatureFooterClientOnly(): any[] {
-  return [
-    p(),
-    hr(),
-    p(bold("Miejscowość i data: "), mention("patient.address.city"), txt(", "), mention("system.date_pl")),
-    p(),
-    p(),
-    p(txt("........................................")),
-    p(txt("         Podpis klienta")),
-  ];
+/** Create a componentBlock node referencing a system component by name */
+function cb(components: ComponentMap, name: string, state: "linked" | "protected" = "linked"): any {
+  const comp = components[name];
+  if (!comp) throw new Error(`System component "${name}" not found`);
+  return {
+    type: "componentBlock",
+    attrs: {
+      componentId: comp.id,
+      componentVersion: comp.version,
+      state,
+      positionConstraint: null,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -343,14 +219,15 @@ interface BeautyTemplate {
 // 1. Zgoda na przetwarzanie danych osobowych (RODO)
 // ---------------------------------------------------------------------------
 
-function buildRodoConsentTemplate(): BeautyTemplate {
+function buildRodoConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA PRZETWARZANIE DANYCH OSOBOWYCH"),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA PRZETWARZANIE DANYCH OSOBOWYCH", true),
       pCenter(italic("(zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 — RODO)")),
       p(),
-      ...patientDataSection(),
+      cb(c, "Dane pacjenta"),
       hr(),
       h3("Klauzula informacyjna"),
       p(
@@ -393,7 +270,7 @@ function buildRodoConsentTemplate(): BeautyTemplate {
           "Podanie danych osobowych jest dobrowolne, jednak niezbędne do realizacji usług kosmetycznych. Brak zgody na przetwarzanie danych w celach podstawowych uniemożliwia świadczenie usług.",
         ),
       ),
-      ...signatureFooterClientOnly(),
+      cb(c, "Podpis — klient"),
     ],
   };
 
@@ -416,12 +293,14 @@ function buildRodoConsentTemplate(): BeautyTemplate {
 // 2. Wywiad kosmetyczny
 // ---------------------------------------------------------------------------
 
-function buildCosmeticIntakeTemplate(): BeautyTemplate {
+function buildCosmeticIntakeTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("WYWIAD KOSMETYCZNY"),
-      ...patientDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("WYWIAD KOSMETYCZNY", true),
+      p(),
+      cb(c, "Dane pacjenta"),
       hr(),
       h3("I. Typ skóry"),
       p(formField("skin_type", "select", "Typ skóry", { options: "sucha,normalna,mieszana,tłusta,wrażliwa", required: true })),
@@ -470,7 +349,7 @@ function buildCosmeticIntakeTemplate(): BeautyTemplate {
       p(formField("expectations", "textarea", "Oczekiwania dotyczące zabiegów i pielęgnacji", { required: true, placeholder: "Czego oczekujesz od wizyt w naszym salonie? Jakie efekty chciałabyś/chciałbyś osiągnąć?" })),
       p(),
       p(italic("Oświadczam, że powyższe informacje są zgodne z prawdą i zostały podane dobrowolnie. Zobowiązuję się do niezwłocznego informowania o wszelkich zmianach w stanie zdrowia.")),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -493,13 +372,15 @@ function buildCosmeticIntakeTemplate(): BeautyTemplate {
 // 3. Zgoda na zabieg kosmetyczny — ogólna
 // ---------------------------------------------------------------------------
 
-function buildGeneralCosmeticConsentTemplate(): BeautyTemplate {
+function buildGeneralCosmeticConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA ZABIEG KOSMETYCZNY"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA ZABIEG KOSMETYCZNY", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -530,7 +411,7 @@ function buildGeneralCosmeticConsentTemplate(): BeautyTemplate {
       p(formField("consent_voluntary", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie powyższego zabiegu.", { required: true })),
       p(),
       p(formField("consent_notes", "textarea", "Uwagi dodatkowe", { placeholder: "Dodatkowe uwagi lub pytania..." })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -553,13 +434,15 @@ function buildGeneralCosmeticConsentTemplate(): BeautyTemplate {
 // 4. Zgoda na zabiegi laserowe
 // ---------------------------------------------------------------------------
 
-function buildLaserConsentTemplate(): BeautyTemplate {
+function buildLaserConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA ZABIEGI LASEROWE"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA ZABIEGI LASEROWE", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu laserowym"),
       p(
@@ -604,7 +487,7 @@ function buildLaserConsentTemplate(): BeautyTemplate {
       p(formField("laser_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie zabiegu laserowego.", { required: true })),
       p(),
       p(formField("laser_notes", "textarea", "Uwagi dodatkowe", { placeholder: "Dodatkowe informacje lub pytania..." })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -627,13 +510,15 @@ function buildLaserConsentTemplate(): BeautyTemplate {
 // 5. Zgoda na mezoterapię igłową
 // ---------------------------------------------------------------------------
 
-function buildMesotherapyConsentTemplate(): BeautyTemplate {
+function buildMesotherapyConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA MEZOTERAPIĘ IGŁOWĄ"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA MEZOTERAPIĘ IGŁOWĄ", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -677,7 +562,7 @@ function buildMesotherapyConsentTemplate(): BeautyTemplate {
       p(formField("meso_allergy_check", "checkbox", "Oświadczam, że poinformowałam/em o wszystkich znanych mi alergiach.", { required: true })),
       p(),
       p(formField("meso_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie mezoterapii igłowej z użyciem wskazanego preparatu.", { required: true })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -700,13 +585,15 @@ function buildMesotherapyConsentTemplate(): BeautyTemplate {
 // 6. Zgoda na wypełniacze (kwas hialuronowy)
 // ---------------------------------------------------------------------------
 
-function buildFillerConsentTemplate(): BeautyTemplate {
+function buildFillerConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA ZABIEG WYPEŁNIACZEM NA BAZIE KWASU HIALURONOWEGO"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA ZABIEG WYPEŁNIACZEM NA BAZIE KWASU HIALURONOWEGO", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -755,7 +642,7 @@ function buildFillerConsentTemplate(): BeautyTemplate {
       p(formField("filler_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie zabiegu iniekcji kwasu hialuronowego.", { required: true })),
       p(),
       p(formField("filler_notes", "textarea", "Uwagi dodatkowe", { placeholder: "Dodatkowe informacje, oczekiwania co do efektu..." })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -778,13 +665,15 @@ function buildFillerConsentTemplate(): BeautyTemplate {
 // 7. Zgoda na toksynę botulinową
 // ---------------------------------------------------------------------------
 
-function buildBotoxConsentTemplate(): BeautyTemplate {
+function buildBotoxConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA ZABIEG TOKSYNĄ BOTULINOWĄ"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA ZABIEG TOKSYNĄ BOTULINOWĄ", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -837,7 +726,7 @@ function buildBotoxConsentTemplate(): BeautyTemplate {
       p(formField("botox_no_contraindications", "checkbox", "Oświadczam, że nie dotyczą mnie wymienione przeciwwskazania lub zostały one omówione ze specjalistą.", { required: true })),
       p(),
       p(formField("botox_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie zabiegu toksyną botulinową.", { required: true })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -860,13 +749,15 @@ function buildBotoxConsentTemplate(): BeautyTemplate {
 // 8. Zgoda na peeling chemiczny
 // ---------------------------------------------------------------------------
 
-function buildChemicalPeelConsentTemplate(): BeautyTemplate {
+function buildChemicalPeelConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA PEELING CHEMICZNY"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA PEELING CHEMICZNY", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -922,7 +813,7 @@ function buildChemicalPeelConsentTemplate(): BeautyTemplate {
       p(formField("peel_spf_commitment", "checkbox", "Zobowiązuję się do stosowania ochrony przeciwsłonecznej SPF 50+ przez minimum 4 tygodnie po zabiegu.", { required: true })),
       p(),
       p(formField("peel_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie peelingu chemicznego.", { required: true })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -945,13 +836,15 @@ function buildChemicalPeelConsentTemplate(): BeautyTemplate {
 // 9. Zgoda na depilację laserową
 // ---------------------------------------------------------------------------
 
-function buildLaserHairRemovalConsentTemplate(): BeautyTemplate {
+function buildLaserHairRemovalConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA DEPILACJĘ LASEROWĄ"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA DEPILACJĘ LASEROWĄ", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -1005,7 +898,7 @@ function buildLaserHairRemovalConsentTemplate(): BeautyTemplate {
       p(formField("hair_no_contraindications", "checkbox", "Oświadczam, że nie dotyczą mnie wymienione przeciwwskazania.", { required: true })),
       p(),
       p(formField("hair_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie depilacji laserowej.", { required: true })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -1028,13 +921,15 @@ function buildLaserHairRemovalConsentTemplate(): BeautyTemplate {
 // 10. Zgoda na makijaż permanentny
 // ---------------------------------------------------------------------------
 
-function buildPermanentMakeupConsentTemplate(): BeautyTemplate {
+function buildPermanentMakeupConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA MAKIJAŻ PERMANENTNY"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA MAKIJAŻ PERMANENTNY", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Informacja o zabiegu"),
       p(
@@ -1086,7 +981,7 @@ function buildPermanentMakeupConsentTemplate(): BeautyTemplate {
       p(formField("pmu_correction", "checkbox", "Zostałam/em poinformowana/y, że wizyta korekcyjna po 4–6 tygodniach jest integralną częścią zabiegu i jest niezbędna do osiągnięcia optymalnego efektu.", { required: true })),
       p(),
       p(formField("pmu_consent", "checkbox", "Wyrażam świadomą i dobrowolną zgodę na wykonanie makijażu permanentnego.", { required: true })),
-      ...signatureFooter(),
+      cb(c, "Podpis — klient i specjalista"),
     ],
   };
 
@@ -1109,12 +1004,14 @@ function buildPermanentMakeupConsentTemplate(): BeautyTemplate {
 // 11. Zgoda na dokumentację fotograficzną
 // ---------------------------------------------------------------------------
 
-function buildPhotographyConsentTemplate(): BeautyTemplate {
+function buildPhotographyConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA NA DOKUMENTACJĘ FOTOGRAFICZNĄ"),
-      ...patientDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA DOKUMENTACJĘ FOTOGRAFICZNĄ", true),
+      p(),
+      cb(c, "Dane pacjenta"),
       hr(),
       h3("Przedmiot zgody"),
       p(
@@ -1148,7 +1045,7 @@ function buildPhotographyConsentTemplate(): BeautyTemplate {
       ),
       p(),
       p(italic("Niniejsza zgoda jest dobrowolna. Jej brak nie wpływa na jakość świadczonych usług kosmetycznych.")),
-      ...signatureFooterClientOnly(),
+      cb(c, "Podpis — klient"),
     ],
   };
 
@@ -1171,12 +1068,14 @@ function buildPhotographyConsentTemplate(): BeautyTemplate {
 // 12. Karta zabiegu (Treatment Protocol Card)
 // ---------------------------------------------------------------------------
 
-function buildTreatmentProtocolTemplate(): BeautyTemplate {
+function buildTreatmentProtocolTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("KARTA ZABIEGU"),
-      ...patientDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("KARTA ZABIEGU", true),
+      p(),
+      cb(c, "Dane pacjenta"),
       hr(),
       h3("Dane zabiegu"),
       {
@@ -1263,12 +1162,14 @@ function buildTreatmentProtocolTemplate(): BeautyTemplate {
 // 13. Oświadczenie o stanie zdrowia
 // ---------------------------------------------------------------------------
 
-function buildHealthDeclarationTemplate(): BeautyTemplate {
+function buildHealthDeclarationTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("OŚWIADCZENIE O STANIE ZDROWIA"),
-      ...patientDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("OŚWIADCZENIE O STANIE ZDROWIA", true),
+      p(),
+      cb(c, "Dane pacjenta"),
       hr(),
       h3("Choroby i schorzenia"),
       p(txt("Proszę zaznaczyć, jeśli obecnie choruje Pani/Pan lub chorowała/ł w przeszłości na poniższe schorzenia:")),
@@ -1318,7 +1219,7 @@ function buildHealthDeclarationTemplate(): BeautyTemplate {
           "Oświadczam, że powyższe informacje są zgodne z prawdą i zostały podane w sposób pełny i rzetelny. Przyjmuję do wiadomości, że zatajenie istotnych informacji o stanie zdrowia może mieć wpływ na bezpieczeństwo i skuteczność zabiegów. Zobowiązuję się do niezwłocznego informowania personelu salonu o wszelkich zmianach w stanie zdrowia.",
         ),
       ),
-      ...signatureFooterClientOnly(),
+      cb(c, "Podpis — klient"),
     ],
   };
 
@@ -1341,13 +1242,15 @@ function buildHealthDeclarationTemplate(): BeautyTemplate {
 // 14. Zgoda opiekuna osoby niepełnoletniej
 // ---------------------------------------------------------------------------
 
-function buildGuardianConsentTemplate(): BeautyTemplate {
+function buildGuardianConsentTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
-      ...docHeader("ZGODA OPIEKUNA PRAWNEGO OSOBY NIEPEŁNOLETNIEJ"),
-      ...patientDataSection(),
-      ...treatmentDataSection(),
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA OPIEKUNA PRAWNEGO OSOBY NIEPEŁNOLETNIEJ", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
       hr(),
       h3("Dane opiekuna prawnego"),
       p(formField("guardian_name", "text", "Imię i nazwisko opiekuna prawnego", { required: true, placeholder: "Jan Kowalski" })),
@@ -1430,22 +1333,22 @@ function buildGuardianConsentTemplate(): BeautyTemplate {
 // Build all beauty document templates
 // ---------------------------------------------------------------------------
 
-function buildBeautyDocumentTemplates(): BeautyTemplate[] {
+function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
   return [
-    buildRodoConsentTemplate(),
-    buildCosmeticIntakeTemplate(),
-    buildGeneralCosmeticConsentTemplate(),
-    buildLaserConsentTemplate(),
-    buildMesotherapyConsentTemplate(),
-    buildFillerConsentTemplate(),
-    buildBotoxConsentTemplate(),
-    buildChemicalPeelConsentTemplate(),
-    buildLaserHairRemovalConsentTemplate(),
-    buildPermanentMakeupConsentTemplate(),
-    buildPhotographyConsentTemplate(),
-    buildTreatmentProtocolTemplate(),
-    buildHealthDeclarationTemplate(),
-    buildGuardianConsentTemplate(),
+    buildRodoConsentTemplate(c),
+    buildCosmeticIntakeTemplate(c),
+    buildGeneralCosmeticConsentTemplate(c),
+    buildLaserConsentTemplate(c),
+    buildMesotherapyConsentTemplate(c),
+    buildFillerConsentTemplate(c),
+    buildBotoxConsentTemplate(c),
+    buildChemicalPeelConsentTemplate(c),
+    buildLaserHairRemovalConsentTemplate(c),
+    buildPermanentMakeupConsentTemplate(c),
+    buildPhotographyConsentTemplate(c),
+    buildTreatmentProtocolTemplate(c),
+    buildHealthDeclarationTemplate(c),
+    buildGuardianConsentTemplate(c),
   ];
 }
 
@@ -1457,15 +1360,61 @@ async function seedBeautyHandler(
   ctx: MutationCtx,
   orgId: GenericId<"organizations">,
   userId: GenericId<"users">,
+  force = false,
 ) {
+  // 1. Ensure system components exist
+  let systemComps = await ctx.db
+    .query("documentComponents")
+    .withIndex("by_scope", (q) => q.eq("scope", "system"))
+    .collect();
+
+  const activeSystemComps = systemComps.filter((c) => c.isActive);
+
+  if (activeSystemComps.length === 0) {
+    const now = Date.now();
+    const defs = buildSystemComponents();
+    for (const def of defs) {
+      await ctx.db.insert("documentComponents", {
+        ...def,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    // Re-query to get the newly created IDs
+    systemComps = await ctx.db
+      .query("documentComponents")
+      .withIndex("by_scope", (q) => q.eq("scope", "system"))
+      .collect();
+  }
+
+  // 2. Build component name → ID map
+  const componentMap: ComponentMap = {};
+  for (const comp of systemComps.filter((c) => c.isActive)) {
+    componentMap[comp.name] = { id: comp._id, version: comp.version };
+  }
+
+  // 3. If force=true, delete ALL existing templates for this org
   const existingTemplates = await ctx.db
     .query("formTemplates")
     .withIndex("by_org", (q) => q.eq("organizationId", orgId))
     .collect();
-  const existingNames = new Set(existingTemplates.map((t) => t.name));
 
+  let deleted = 0;
+  if (force) {
+    for (const t of existingTemplates) {
+      await ctx.db.delete(t._id);
+      deleted++;
+    }
+  }
+
+  const existingNames = force
+    ? new Set<string>()
+    : new Set(existingTemplates.map((t) => t.name));
+
+  // 4. Create templates with component references
   const now = Date.now();
-  const templates = buildBeautyDocumentTemplates();
+  const templates = buildBeautyDocumentTemplates(componentMap);
 
   let count = 0;
   for (const tmpl of templates) {
@@ -1493,7 +1442,14 @@ async function seedBeautyHandler(
     count++;
   }
 
-  return { skipped: false, count, message: `Seeded ${count} beauty document templates` };
+  return {
+    skipped: false,
+    count,
+    deleted,
+    message: force
+      ? `Deleted ${deleted} old templates, seeded ${count} new templates (with component references)`
+      : `Seeded ${count} beauty document templates (with component references)`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1502,10 +1458,13 @@ async function seedBeautyHandler(
 
 /** Authenticated version — callable from frontend */
 export const seedBeautyDocumentTemplates = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: {
+    organizationId: v.id("organizations"),
+    force: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    return await seedBeautyHandler(ctx, args.organizationId, user._id);
+    return await seedBeautyHandler(ctx, args.organizationId, user._id, args.force ?? false);
   },
 });
 
@@ -1514,8 +1473,9 @@ export const seedBeautyDocumentTemplatesInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     userId: v.id("users"),
+    force: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    return await seedBeautyHandler(ctx, args.organizationId, args.userId);
+    return await seedBeautyHandler(ctx, args.organizationId, args.userId, args.force ?? false);
   },
 });

@@ -7,6 +7,7 @@ import path from "path";
 export default defineConfig({
   plugins: [tailwindcss(), TanStackRouterVite(), viteReact()],
   server: {
+    host: true,
     watch: {
       ignored: ["**/.bg-shell/**", "**/.gsd/**"],
     },

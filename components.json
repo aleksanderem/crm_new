@@ -41,6 +41,13 @@
       }
     },
     "@reui": "https://reui.io/r/{style}/{name}.json",
-    "@plate": "https://platejs.org/r/{name}.json"
+    "@plate": "https://platejs.org/r/{name}.json",
+    "@shadcn-space": {
+      "url": "https://shadcnspace.com/r/{name}.json",
+      "params": {
+        "email": "${EMAIL}",
+        "license_key": "${LICENSE_KEY}"
+      }
+    }
   }
 }

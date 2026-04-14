@@ -2,13 +2,11 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { SmartAgenda } from "../smart-agenda";
 import { BarRanking } from "../bar-ranking";
 import { useTranslation } from "react-i18next";
 
 export function GabinetPackagesWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.gabinet.sidebarWidgets.getPackagesKpis, { organizationId });
   const topTreatments = useQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId });
 
@@ -32,9 +30,6 @@ export function GabinetPackagesWidgets({ organizationId }: { organizationId: Id<
           },
         ]}
       />
-
-      {/* Smart Agenda */}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
 
       {/* Top treatments for context */}
       {topTreatments && topTreatments.length > 0 && <BarRanking items={topTreatments} />}

@@ -3,7 +3,6 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { NudgeCard } from "../nudge-card";
-import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 
 export function InboxWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
@@ -20,6 +19,7 @@ export function InboxWidgets({ organizationId }: { organizationId: Id<"organizat
   return (
     <>
       <KpiRow
+        size="hero"
         items={[
           {
             label: t("sidebar.unread"),
@@ -38,7 +38,6 @@ export function InboxWidgets({ organizationId }: { organizationId: Id<"organizat
           icon={n.icon}
         />
       ))}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
     </>
   );
 }

@@ -1602,6 +1602,7 @@
     "integrations": "Integrations",
     "organization": "Organization",
     "documentTemplates": "Document Templates",
+    "documentComponents": "Component Library",
     "pipelines": "Pipelines",
     "googleCalendar": "Google Calendar"
   },

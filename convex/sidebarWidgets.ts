@@ -83,6 +83,47 @@ export const getDealsKpis = query({
   },
 });
 
+// --- Weekly CRM trend (contacts + deals created per day, last 7 days) ---
+export const getWeeklyCrmTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; contacts: number; deals: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      const end = start + 24 * 60 * 60 * 1000;
+      days.push({ day: dayNames[d.getDay()], contacts: 0, deals: 0, _start: start, _end: end } as any);
+    }
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const weekStart = days[0] as any;
+    const recentContacts = contacts.filter((c) => c.createdAt >= weekStart._start);
+    const recentLeads = leads.filter((l) => l.createdAt >= weekStart._start);
+
+    for (const day of days as any[]) {
+      day.contacts = recentContacts.filter((c) => c.createdAt >= day._start && c.createdAt < day._end).length;
+      day.deals = recentLeads.filter((l) => l.createdAt >= day._start && l.createdAt < day._end).length;
+    }
+
+    return days.map(({ day, contacts, deals }) => ({ day, contacts, deals }));
+  },
+});
+
 // --- Contacts ---
 export const getContactsKpis = query({
   args: { organizationId: v.id("organizations") },
@@ -343,28 +384,18 @@ export const getUpcomingEvents = query({
     const owners = await Promise.all(ownerIds.map((id) => ctx.db.get(id)));
     const ownerMap = new Map(owners.filter(Boolean).map((u) => [u!._id, u!]));
 
-    // Build link for each event
-    function buildLink(a: (typeof filtered)[0]) {
-      if (a.linkedEntityType && a.linkedEntityId) {
-        const typeToRoute: Record<string, string> = {
-          contacts: "/dashboard/contacts/",
-          companies: "/dashboard/companies/",
-          leads: "/dashboard/leads/",
-        };
-        const route = typeToRoute[a.linkedEntityType];
-        if (route) return `${route}${a.linkedEntityId}`;
-      }
-      return null;
-    }
-
     return filtered.map((a) => {
       const owner = ownerMap.get(a.ownerId);
+      const isAppointment = a.moduleRef?.moduleId === "gabinet" && a.moduleRef.entityType === "appointment";
       return {
         id: a._id,
         title: a.title,
         startTime: a.dueDate!,
         type: a.activityType,
-        link: buildLink(a),
+        // For gabinet appointments: navigate to detail page; for CRM activities: open drawer
+        appointmentLink: isAppointment
+          ? `/dashboard/gabinet/appointments/${a.moduleRef!.entityId}`
+          : null,
         ownerId: a.ownerId,
         ownerName: owner?.name ?? owner?.email ?? "?",
         ownerImage: owner?.image ?? null,
@@ -551,6 +582,168 @@ export const getTopCompanies = query({
     return companyValues
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
+  },
+});
+
+// --- Weekly Contacts trend (new contacts per day, last 7 days) ---
+export const getWeeklyContactsTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; value: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], value: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const recent = contacts.filter((c) => c.createdAt >= days[0]._start);
+    for (const day of days) {
+      day.value = recent.filter((c) => c.createdAt >= day._start && c.createdAt < day._end).length;
+    }
+
+    return days.map(({ day, value }) => ({ day, value }));
+  },
+});
+
+// --- Weekly Companies trend (new companies per day, last 7 days) ---
+export const getWeeklyCompaniesTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; value: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], value: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const companies = await ctx.db
+      .query("companies")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const recent = companies.filter((c) => c.createdAt >= days[0]._start);
+    for (const day of days) {
+      day.value = recent.filter((c) => c.createdAt >= day._start && c.createdAt < day._end).length;
+    }
+
+    return days.map(({ day, value }) => ({ day, value }));
+  },
+});
+
+// --- Weekly Deals trend (new + won per day, last 7 days) ---
+export const getWeeklyDealsTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; created: number; won: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], created: 0, won: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const recent = leads.filter((l) => l.createdAt >= days[0]._start);
+    const recentWon = leads.filter((l) => l.status === "won" && (l.wonAt ?? l.updatedAt) >= days[0]._start);
+
+    for (const day of days) {
+      day.created = recent.filter((l) => l.createdAt >= day._start && l.createdAt < day._end).length;
+      day.won = recentWon.filter((l) => (l.wonAt ?? l.updatedAt) >= day._start && (l.wonAt ?? l.updatedAt) < day._end).length;
+    }
+
+    return days.map(({ day, created, won }) => ({ day, created, won }));
+  },
+});
+
+// --- Weekly Activities trend (completed vs created per day, last 7 days) ---
+export const getWeeklyActivitiesTrend = query({
+  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; created: number; completed: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], created: 0, completed: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const activities = await ctx.db
+      .query("scheduledActivities")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const userActivities = activities.filter((a) => a.ownerId === args.userId);
+    const recentCreated = userActivities.filter((a) => a._creationTime >= days[0]._start);
+    const recentCompleted = userActivities.filter((a) => a.isCompleted && a.completedAt && a.completedAt >= days[0]._start);
+
+    for (const day of days) {
+      day.created = recentCreated.filter((a) => a._creationTime >= day._start && a._creationTime < day._end).length;
+      day.completed = recentCompleted.filter((a) => a.completedAt! >= day._start && a.completedAt! < day._end).length;
+    }
+
+    return days.map(({ day, created, completed }) => ({ day, created, completed }));
+  },
+});
+
+// --- Weekly Calls trend (calls per day, last 7 days) ---
+export const getWeeklyCallsTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; value: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], value: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const calls = await ctx.db
+      .query("calls")
+      .withIndex("by_orgAndDate", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const recent = calls.filter((c) => c.callDate >= days[0]._start);
+    for (const day of days) {
+      day.value = recent.filter((c) => c.callDate >= day._start && c.callDate < day._end).length;
+    }
+
+    return days.map(({ day, value }) => ({ day, value }));
   },
 });
 

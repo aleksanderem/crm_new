@@ -86,6 +86,7 @@ export const crmManifest: ModuleManifest = {
     { labelKey: "settingsNav.googleCalendar", to: "/dashboard/settings/google-calendar" },
     { labelKey: "settingsNav.organization", to: "/dashboard/settings/organization" },
     { labelKey: "settingsNav.documentTemplates", to: "/dashboard/settings/form-templates" },
+    { labelKey: "settingsNav.documentComponents", to: "/dashboard/settings/document-components" },
   ],
   pageContexts: [
     {

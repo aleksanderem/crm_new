@@ -3,13 +3,11 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { BarRanking } from "../bar-ranking";
-import { SmartAgenda } from "../smart-agenda";
 import { RecentItems } from "../recent-items";
 import { useTranslation } from "react-i18next";
 
 export function GabinetTreatmentsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.gabinet.sidebarWidgets.getTreatmentsKpis, { organizationId });
   const topTreatments = useQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId });
 
@@ -32,9 +30,6 @@ export function GabinetTreatmentsWidgets({ organizationId }: { organizationId: I
           },
         ]}
       />
-
-      {/* Smart Agenda */}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
 
       {/* Top treatments ranking */}
       {topTreatments && topTreatments.length > 0 && <BarRanking items={topTreatments} />}

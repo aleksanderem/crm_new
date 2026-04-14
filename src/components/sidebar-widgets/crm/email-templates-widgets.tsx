@@ -77,6 +77,7 @@ export function EmailTemplatesWidgets({ organizationId }: { organizationId: Id<"
   return (
     <>
       <KpiRow
+        size="hero"
         items={[
           { label: t("sidebar.templates"), value: kpis.totalTemplates },
           { label: t("sidebar.usagesThisMonth"), value: kpis.usagesThisMonth },

@@ -25,7 +25,6 @@ interface FooterAction {
 
 const routeActions: Record<string, FooterAction[]> = {
   leads: [
-    { labelKey: "nav.actions.addDeal", icon: PlusCircle, quickCreate: "lead" },
     { labelKey: "nav.actions.viewKanban", icon: Kanban, href: "/dashboard/pipelines" },
     { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/leads" },
     { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },

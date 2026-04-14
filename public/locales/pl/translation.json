@@ -1604,6 +1604,7 @@
     "integrations": "Integracje",
     "organization": "Organizacja",
     "documentTemplates": "Szablony dokumentów",
+    "documentComponents": "Biblioteka komponentów",
     "pipelines": "Pipeline",
     "googleCalendar": "Kalendarz Google"
   },

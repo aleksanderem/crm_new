@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { SmartAgenda } from "../smart-agenda";
 import { StaffLoad } from "../staff-load";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -19,7 +18,6 @@ const gaugeConfig = {
 
 export function GabinetReportsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.gabinet.sidebarWidgets.getReportsKpis, { organizationId });
   const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
 
@@ -106,9 +104,6 @@ export function GabinetReportsWidgets({ organizationId }: { organizationId: Id<"
           </ChartContainer>
         </CardContent>
       </Card>
-
-      {/* Smart Agenda */}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
 
       {/* Staff load bars */}
       {staffLoad && staffLoad.length > 0 && <StaffLoad staff={staffLoad} />}

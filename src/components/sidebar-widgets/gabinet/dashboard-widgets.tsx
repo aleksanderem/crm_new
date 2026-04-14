@@ -4,7 +4,6 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { StaffLoad } from "../staff-load";
 import { StaffSchedule } from "../staff-schedule";
-import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -24,7 +23,6 @@ const weeklyChartConfig = {
 
 export function GabinetDashboardWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.gabinet.sidebarWidgets.getDashboardKpis, { organizationId });
   const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
   const todaySchedule = useQuery(api.gabinet.sidebarWidgets.getTodaySchedule, { organizationId });
@@ -61,9 +59,6 @@ export function GabinetDashboardWidgets({ organizationId }: { organizationId: Id
           { label: t("sidebar.gabinet.activeEmployees"), value: kpis.activeEmployees },
         ]}
       />
-
-      {/* Smart Agenda */}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
 
       {/* Weekly Appointments Chart */}
       {weeklyChartData.length > 0 && (

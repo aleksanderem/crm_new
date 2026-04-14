@@ -328,6 +328,12 @@
   }
 }
 
+html,
+body {
+  overflow: hidden;
+  height: 100dvh;
+}
+
 body {
   font-size: 14px;
   font-weight: 400;

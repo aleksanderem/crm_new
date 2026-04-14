@@ -214,9 +214,9 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
                       return (
                         <div key={String(event.id)}>
                           {idx > 0 && <Separator className="ml-4" />}
-                          {event.link ? (
+                          {event.appointmentLink ? (
                             <Link
-                              to={event.link}
+                              to={event.appointmentLink}
                               className="hover:bg-muted/40 block rounded-md transition-colors"
                             >
                               {content}

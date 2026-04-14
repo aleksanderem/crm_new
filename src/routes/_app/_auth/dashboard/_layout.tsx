@@ -14,6 +14,14 @@ import { SupabaseProvider } from "@/components/supabase-provider";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -39,7 +47,7 @@ import {
   BarChart3,
 } from "@/lib/ez-icons";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GlobalSearch,
@@ -69,6 +77,7 @@ import { AppointmentForm } from "@/components/gabinet/appointment-form";
 import { PackageForm } from "@/components/forms/package-form";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { ActivityForm } from "@/components/crm/activity-form";
+import { ActivityDetailDrawer } from "@/components/crm/activity-detail-drawer";
 import { LeaveForm } from "@/components/forms/leave-form";
 import { UserInvitationForm } from "@/components/forms/user-invitation-form";
 import { ProductForm } from "@/components/forms/product-form";
@@ -76,6 +85,7 @@ import { CallForm } from "@/components/forms/call-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
+import { AgendaStrip } from "@/components/layout/agenda-strip";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
@@ -135,6 +145,34 @@ function HeaderModuleSwitcher() {
   );
 }
 
+const DEV_BANNER_KEY = "quera-dev-banner-dismissed";
+
+function DevInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Quera jest w fazie aktywnego rozwoju</DialogTitle>
+          <DialogDescription className="space-y-3 pt-2 text-sm leading-relaxed">
+            <span className="block">
+              Miganie ekranu, błędy, odświeżenia strony czy wylogowania są na tym etapie normalne.
+            </span>
+            <span className="block">
+              Okazjonalnie mogą pojawić się instrukcje dotyczące aktualnie wykonywanej operacji — prosimy o stosowanie się do nich.
+            </span>
+            <span className="block">
+              Czas i miejsce na zgłaszanie błędów przed nami.
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Rozumiem</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const typeIcons: Record<string, React.ReactNode> = {
   contact: <Users className="h-4 w-4" variant="stroke" />,
   company: <Building2 className="h-4 w-4" variant="stroke" />,
@@ -171,6 +209,14 @@ function DashboardLayout() {
   const createProduct = useMutation(api.products.create);
   const createCall = useMutation(api.calls.create);
   const createInvitation = useMutation(api.invitations.create);
+  const updateActivity = useMutation(api.scheduledActivities.update);
+  const removeActivity = useMutation(api.scheduledActivities.remove);
+  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
+
+  // Global activity detail drawer
+  const [activityDetailId, setActivityDetailId] = useState<string | null>(null);
+  const [activityDetailSubmitting, setActivityDetailSubmitting] = useState(false);
 
   const firstOrg = orgs?.[0];
 
@@ -187,6 +233,21 @@ function DashboardLayout() {
       entityType: "gabinetAppointment" as const,
     }),
     enabled: !!firstOrg,
+  });
+
+  // Global activity detail drawer data
+  const { data: activityDetailData } = useQuery({
+    ...convexQuery(api.scheduledActivities.getById, {
+      organizationId: firstOrg?._id as Id<"organizations">,
+      activityId: activityDetailId as Id<"scheduledActivities">,
+    }),
+    enabled: !!firstOrg && !!activityDetailId,
+  });
+  const { data: activityTypeDefs } = useQuery({
+    ...convexQuery(api.activityTypes.list, {
+      organizationId: firstOrg?._id as Id<"organizations">,
+    }),
+    enabled: !!firstOrg && !!activityDetailId,
   });
 
   const handleSearch = useCallback(
@@ -558,6 +619,15 @@ function DashboardLayout() {
   const [lastDispatch, setLastDispatch] = useState<{ id: string; seq: number } | null>(null);
   const dispatchSeqRef = useRef(0);
 
+  const [devInfoOpen, setDevInfoOpen] = useState(false);
+  useEffect(() => {
+    if (!localStorage.getItem(DEV_BANNER_KEY)) setDevInfoOpen(true);
+  }, []);
+  const handleDevInfoClose = useCallback((v: boolean) => {
+    if (!v) localStorage.setItem(DEV_BANNER_KEY, "1");
+    setDevInfoOpen(v);
+  }, []);
+
   const sidebarActionsValue = useMemo(
     () => ({
       openQuickCreate: (type: string) => {
@@ -569,6 +639,7 @@ function DashboardLayout() {
         setLastDispatch({ id: actionId, seq: dispatchSeqRef.current });
       },
       lastDispatch,
+      openActivityDetail: (id: string) => setActivityDetailId(id),
     }),
     [navigate, lastDispatch]
   );
@@ -588,7 +659,25 @@ function DashboardLayout() {
       <MiniCalendarProvider>
       <SidebarSlotProvider>
       <HeaderSlotProvider>
-      <div className="flex min-h-dvh w-full">
+      <div className="flex h-dvh w-full flex-col overflow-hidden">
+        {/* Beta strip */}
+        <div
+          className="relative z-40 flex h-[30px] shrink-0 items-center overflow-hidden px-4 text-xs font-medium text-white"
+          style={{
+            background: "repeating-linear-gradient(-45deg, #7c3aed, #7c3aed 10px, #6d28d9 10px, #6d28d9 20px)",
+          }}
+        >
+          <span className="drop-shadow-sm">
+            Quera — v. active beta{" "}
+            <span className="mx-1.5 opacity-50">|</span>{" "}
+            <button onClick={() => setDevInfoOpen(true)} className="underline underline-offset-2 opacity-80 hover:opacity-100">
+              co to znaczy?
+            </button>
+          </span>
+        </div>
+        <DevInfoDialog open={devInfoOpen} onOpenChange={handleDevInfoClose} />
+
+        <div className="flex min-w-0 flex-1">
         <SidebarActionsContext.Provider value={sidebarActionsValue}>
           <SidebarProvider
             defaultOpen={false}
@@ -598,7 +687,7 @@ function DashboardLayout() {
             <AppSidebar />
 
             {/* Column 3: Main content */}
-            <div className="flex min-w-0 flex-1 flex-col h-dvh overflow-x-hidden">
+            <div className="flex min-w-0 flex-1 flex-col h-[calc(100dvh-30px)] overflow-hidden">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <HeaderBackButton />
@@ -610,9 +699,12 @@ function DashboardLayout() {
                     className="hidden !bg-transparent px-1 py-0 font-normal sm:block"
                     onClick={() => setSearchOpen(true)}
                   >
-                    <div className="text-muted-foreground hidden items-center gap-1.5 text-sm sm:flex">
+                    <div className="text-muted-foreground hidden items-center gap-2 text-sm sm:flex">
                       <SearchIcon className="size-4" variant="stroke" />
                       <span>{t("layout.search")}</span>
+                      <kbd className="ml-1 pointer-events-none inline-flex h-5 items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                        <span className="text-xs">⌘</span>K
+                      </kbd>
                     </div>
                   </Button>
                   <Button
@@ -677,6 +769,10 @@ function DashboardLayout() {
                 </div>
               </header>
 
+              {firstOrg && user && (
+                <AgendaStrip organizationId={firstOrg._id} userId={user._id} />
+              )}
+
               {/* Main content */}
               <main className="flex flex-col min-w-0 w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-2 pb-6 sm:px-6">
                 <Outlet />
@@ -687,6 +783,7 @@ function DashboardLayout() {
             </div>
           </SidebarProvider>
         </SidebarActionsContext.Provider>
+        </div>
       </div>
 
       {/* Global search dialog */}
@@ -697,6 +794,61 @@ function DashboardLayout() {
         onQuickAction={handleQuickAction}
         isOpen={searchOpen}
         onOpenChange={setSearchOpen}
+      />
+
+      {/* Global activity detail drawer */}
+      <ActivityDetailDrawer
+        open={!!activityDetailId}
+        onOpenChange={(open) => { if (!open) setActivityDetailId(null); }}
+        activity={activityDetailData ?? null}
+        activityTypeDefs={activityTypeDefs?.map((td) => ({
+          key: td.key,
+          name: td.name,
+          icon: td.icon ?? "",
+          color: td.color,
+        }))}
+        onUpdate={async (data) => {
+          setActivityDetailSubmitting(true);
+          try {
+            await updateActivity({
+              organizationId: firstOrg!._id,
+              activityId: data.activityId as Id<"scheduledActivities">,
+              title: data.title,
+              activityType: data.activityType,
+              dueDate: data.dueDate,
+              endDate: data.endDate,
+              description: data.description,
+            });
+          } finally {
+            setActivityDetailSubmitting(false);
+          }
+        }}
+        onDelete={async (id) => {
+          setActivityDetailSubmitting(true);
+          try {
+            await removeActivity({
+              organizationId: firstOrg!._id,
+              activityId: id as Id<"scheduledActivities">,
+            });
+            setActivityDetailId(null);
+          } finally {
+            setActivityDetailSubmitting(false);
+          }
+        }}
+        onToggleComplete={async (id, isCompleted) => {
+          if (isCompleted) {
+            await markActivityComplete({
+              organizationId: firstOrg!._id,
+              activityId: id as Id<"scheduledActivities">,
+            });
+          } else {
+            await markActivityIncomplete({
+              organizationId: firstOrg!._id,
+              activityId: id as Id<"scheduledActivities">,
+            });
+          }
+        }}
+        isSubmitting={activityDetailSubmitting}
       />
 
     </HeaderSlotProvider>

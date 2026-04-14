@@ -82,7 +82,7 @@ export function AppSidebar() {
         collapsible="icon"
         className="[&_[data-slot=sidebar-inner]]:bg-card"
       >
-        <SidebarHeader className="min-h-20 flex justify-center">
+        <SidebarHeader className="min-h-20 mt-[30px] flex justify-center">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -185,49 +185,45 @@ export function AppSidebar() {
                   <DayTimeline organizationId={organizationId} date={dayAgendaDate} />
                 </div>
               ) : (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  {/* Fixed top section */}
-                  <div className="shrink-0">
-                    {pageContext && (
-                      <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
-                    )}
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {pageContext && (
+                    <div className="px-4 pb-1 text-lg font-semibold">{t(pageContext.titleKey)}</div>
+                  )}
 
-                    {pageContext && (
-                      <div className="flex flex-col px-4">
-                        <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
-                        <div className="mb-3 grid grid-cols-2 gap-4">
-                          {pageContext.actions
-                            .filter((action) => {
-                              if (!action.permissionFeature) return true;
-                              return canCreate(action.permissionFeature);
-                            })
-                            .map((action) => (
-                              <button
-                                key={action.labelKey}
-                                type="button"
-                                className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
-                                onClick={() => {
-                                  if (action.quickCreate) {
-                                    openQuickCreate(action.quickCreate);
-                                  } else if (action.dispatch) {
-                                    dispatch(action.dispatch);
-                                  } else if (action.href) {
-                                    navigateTo(action.href);
-                                  }
-                                }}
-                              >
-                                <action.icon className="size-4" variant="stroke" />
-                                <span className="text-center leading-tight">{t(action.labelKey)}</span>
-                              </button>
-                            ))}
-                        </div>
+                  {pageContext && (
+                    <div className="flex flex-col px-4">
+                      <p className="text-foreground/70 mb-2 text-sm">{t("nav.sections.actions")}</p>
+                      <div className="mb-3 grid grid-cols-2 gap-4">
+                        {pageContext.actions
+                          .filter((action) => {
+                            if (!action.permissionFeature) return true;
+                            return canCreate(action.permissionFeature);
+                          })
+                          .map((action) => (
+                            <button
+                              key={action.labelKey}
+                              type="button"
+                              className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
+                              onClick={() => {
+                                if (action.quickCreate) {
+                                  openQuickCreate(action.quickCreate);
+                                } else if (action.dispatch) {
+                                  dispatch(action.dispatch);
+                                } else if (action.href) {
+                                  navigateTo(action.href);
+                                }
+                              }}
+                            >
+                              <action.icon className="size-4" variant="stroke" />
+                              <span className="text-center leading-tight">{t(action.labelKey)}</span>
+                            </button>
+                          ))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Widgets fill remaining space */}
                   {pageContext?.widgets && organizationId && (
-                    <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2">
+                    <div className="flex flex-col gap-2 px-3 pb-2">
                       <pageContext.widgets organizationId={organizationId} />
                     </div>
                   )}

@@ -10,6 +10,7 @@ interface SidebarActionsContextValue {
   navigateTo: (href: string) => void;
   dispatch: (actionId: string) => void;
   lastDispatch: SidebarDispatch | null;
+  openActivityDetail: (activityId: string) => void;
 }
 
 export const SidebarActionsContext = createContext<SidebarActionsContextValue>({
@@ -17,6 +18,7 @@ export const SidebarActionsContext = createContext<SidebarActionsContextValue>({
   navigateTo: () => {},
   dispatch: () => {},
   lastDispatch: null,
+  openActivityDetail: () => {},
 });
 
 export function useSidebarActions() {

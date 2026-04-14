@@ -4,14 +4,12 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { StaffLoad } from "../staff-load";
 import { StaffSchedule } from "../staff-schedule";
-import { SmartAgenda } from "../smart-agenda";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 export function GabinetCalendarWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(api.gabinet.sidebarWidgets.getCalendarKpis, { organizationId });
   const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
   const todaySchedule = useQuery(api.gabinet.sidebarWidgets.getTodaySchedule, { organizationId });
@@ -36,9 +34,6 @@ export function GabinetCalendarWidgets({ organizationId }: { organizationId: Id<
           },
         ]}
       />
-
-      {/* Smart Agenda */}
-      {user?._id && <SmartAgenda organizationId={organizationId} userId={user._id} />}
 
       {/* Today's staff schedule */}
       {todaySchedule && todaySchedule.length > 0 && (

@@ -377,6 +377,7 @@ export function EntityDetailLayout({
         attachments={attachments}
         sidebarExtra={sidebarExtra}
         allActions={allActions}
+        actionsMenu={actionsMenu}
         header={<EntityDetailHeader {...headerProps} />}
       >
         {tabsContent}
@@ -392,6 +393,9 @@ export function EntityDetailLayout({
         <div className="p-6 space-y-4">
           {/* Entity header */}
           <EntityDetailHeader {...headerProps} />
+
+          {/* Custom actions menu (e.g. status dropdown) */}
+          {actionsMenu && <div>{actionsMenu}</div>}
 
           {allActions.length > 0 && (
             <DropdownMenu>
@@ -529,6 +533,7 @@ function SidebarSlotEntityDetail({
   attachments,
   sidebarExtra,
   allActions,
+  actionsMenu,
   header,
   children,
 }: {
@@ -541,6 +546,7 @@ function SidebarSlotEntityDetail({
   attachments?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
   allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[];
+  actionsMenu?: React.ReactNode;
   header: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -558,6 +564,9 @@ function SidebarSlotEntityDetail({
   useEffect(() => {
     setContent(
       <div className="space-y-4">
+        {/* Custom actions menu (e.g. status dropdown) */}
+        {actionsMenu && <div>{actionsMenu}</div>}
+
         {/* Actions dropdown */}
         {allActions.length > 0 && (
           <DropdownMenu>
@@ -657,7 +666,7 @@ function SidebarSlotEntityDetail({
     );
 
     return () => setContent(null);
-  }, [setContent, allActions, fields, hiddenCount, showAllFields, onToggleFields, associations, attachments, sidebarExtra]);
+  }, [setContent, allActions, actionsMenu, fields, hiddenCount, showAllFields, onToggleFields, associations, attachments, sidebarExtra]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

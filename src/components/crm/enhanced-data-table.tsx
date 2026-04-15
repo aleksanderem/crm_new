@@ -208,7 +208,6 @@ export function CrmDataTable<TData>({
         <Table
           aria-label="Data table"
           selectionMode={enableBulkSelect ? "multiple" : undefined}
-          selectionBehavior={enableBulkSelect ? "toggle" : undefined}
           sortDescriptor={sort}
           onSortChange={handleSortChange}
           selectedKeys={enableBulkSelect ? selectedKeys : undefined}

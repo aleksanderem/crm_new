@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { renderDocument } from "@/components/documents/document-renderer";
-import { CrmDataTable, type CrmColumn } from "@/components/crm/enhanced-data-table";
+import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,6 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
-import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { useSavedViews } from "@/hooks/use-saved-views";
 
 // ---------------------------------------------------------------------------

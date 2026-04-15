@@ -1,7 +1,7 @@
 {
-  "session_id": "S0092",
-  "session_uuid": "a7c2e4f1-8b3d-4a9e-b5c6-2d1f0e3a4b5c",
-  "date": "2026-04-03",
+  "session_id": "S0101",
+  "session_uuid": "d8e3f5g2-9c4e-5b0f-c6d7-3e2f1g4b5c6d",
+  "date": "2026-04-15",
   "tasks": [
     {
       "id": "SMS-01",
@@ -166,10 +166,10 @@
     {
       "id": "ACT-01",
       "name": "design_activity_format_and_automation_rbac_followup",
-      "status": "in_progress",
+      "status": "blocked",
       "created_session": "S0072",
-      "last_updated_session": "S0072",
-      "description": "Design the requested follow-up after the automation RBAC review: align shared activity records and timeline presentation across touched modules, clarify scope for package assignment, notes, and client email events, and define the RBAC remediation path before implementation.",
+      "last_updated_session": "S0100",
+      "description": "Design the requested follow-up after the automation RBAC review: align shared activity records and timeline presentation across touched modules, clarify scope for package assignment, notes, and client email events, and define the RBAC remediation path before implementation. [STALE - Design completed in S0072 but never implemented. Blocked since March 2026. Re-evaluate priority before implementation.]",
       "files": ["convex/automation.ts", "convex/activities.ts", "convex/_helpers/activities.ts", "src/components/activity-timeline/activity-item.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.leads.$leadId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.contacts.$contactId.lazy.tsx", "src/routes/_app/_auth/dashboard/_layout.companies.$companyId.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId.tsx", "src/routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId.tsx", "session_state.json", "tasks_progress.json", "tasks_progress_verbose.txt"],
       "depends_on": []
     },
@@ -234,8 +234,8 @@
       "depends_on": [33]
     }
   ],
-  "reason": "S0092: Finish Gabinet patient verification after the route-owned sidebar migration by fixing the real patient detail data-path bug, then rerun focused verification and record exact evidence.",
-  "thinking_process": "The patient failure turned out not to be a row-click routing bug. Root cause was a split data path: the list and IDs came from Convex, but the detail route still read from Supabase, so valid Convex patient IDs could render Not found until replication caught up. That route is now fixed and verified green. Fresh focused CRM verification then showed that contact and company detail routes were already correctly on the route-owned sidebar pattern: contacts focused checks passed 4/4 and companies passed 3/3, with app typecheck also green. The remaining sidebar rollout work is no longer CRM route migration; it is the Gabinet direct-slot routes, which still need route-owned sidebar parity before icon-only shell mode can be applied safely.",  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19, "VAR-01", "ACT-01", 30, 31, 33, 34, 35, 36],
+  "reason": "S0101: User correctly identified ACT-01 as stale task from March 2026. Updated task tracking to reflect actual project state: all major features completed (SMS confirmation, automation system, sidebar widgets, route-owned sidebar migration), repository is clean, no active development work. ACT-01 marked as blocked/stale for re-evaluation.",
+  "thinking_process": "Project is in stable, production-ready state. All major feature tracks completed and verified. ACT-01 (activity format unification + RBAC follow-up) was designed in March 2026 (S0072) but never implemented. After 6+ months of other work (sidebar overhaul, document components, entity detail improvements), this task is stale and should be re-evaluated for relevance before any implementation. The codebase may have evolved beyond the original design assumptions.",  "connected_tasks": ["SIDEBAR-01", "SIDEBAR-02", "SIDEBAR-03", "SMS-01", "SMS-02", "SMS-03", "SMS-04", "SMS-05", "SMS-06", "SMS-07", "AUT-01", "AUT-02", "AUT-03", "AUT-04", "AUT-05", "AUT-06", "AUT-07", 17, 18, 19, "VAR-01", "ACT-01", 30, 31, 33, 34, 35, 36],
   "how_to_test": [
     {"id": 1, "name": "Outbound confirmation send persists correlation/event record for appointment SMS", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers queueConfirmationRequest persistence", "Outbound event assertions include normalized phone, provider, correlation key, and reply contract copy"], "session_id": "S0061"},
     {"id": 2, "name": "Inbound TAK reply confirms appointment exactly once under duplicate webhook retries", "status": "done", "is_ok": true, "data_for_next_step": ["convex/tests/appointmentSms.test.ts covers duplicate idempotency key handling", "Test now also verifies exactly one sms_received activity row on appointment, patient, and linked contact"], "session_id": "S0061"},

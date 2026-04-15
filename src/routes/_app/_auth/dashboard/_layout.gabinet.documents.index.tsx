@@ -131,10 +131,6 @@ function GabinetDocumentsPage() {
     defaultColumnVisibility: {},
   });
 
-  // --- Column visibility ---
-  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
-
   // --- Mutations ---
   const resendSigningEmail = useMutation(api.documents.documents.resendSigningEmail);
   const removeDocument = useMutation(api.documents.documents.remove);
@@ -379,6 +375,10 @@ function GabinetDocumentsPage() {
     ];
     return result;
   }, [t, getCategoryLabel, getEntityTypeLabel, getUserName, formatDate]);
+
+  // --- Column visibility ---
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
 
   // --- Handlers ---
   const handleResendSigningEmail = (docId: string) => {

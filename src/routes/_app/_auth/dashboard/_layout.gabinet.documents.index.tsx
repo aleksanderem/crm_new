@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Send, Download, MoreHorizontal, Trash2 } from "@/lib/ez-icons";
+import { FileText, Send, Download, MoreHorizontal, Trash2, Calendar, User, Tag, FileSignature } from "@/lib/ez-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -589,69 +589,130 @@ function GabinetDocumentsPage() {
           )
         }
       >
-        {selectedDoc && selectedTemplate &&
-          (() => {
-            // Try to extract rendered HTML from responseData
-            try {
-              const parsed = JSON.parse(selectedDoc.responseData) as {
-                html?: string;
-              };
-              if (parsed.html) {
-                return (
-                  <div className="mt-6">
-                    <DocumentViewer
-                      title={selectedDoc.title}
-                      html={parsed.html}
-                      signatureData={selectedDoc.signatureData}
-                      signedAt={selectedDoc.signedAt}
-                    />
+        {selectedDoc && (
+          <>
+            {/* Statistics section */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                {t("gabinet.treatmentDetail.statistics", "Statystyki")}
+              </p>
+              <div className="rounded-md border p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar size={12} variant="stroke" />
+                    {t("gabinet.formDocuments.createdAt", "Data utworzenia")}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {formatDate(selectedDoc.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <User size={12} variant="stroke" />
+                    {t("gabinet.formDocuments.createdBy", "Utworzony przez")}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {getUserName(selectedDoc.createdBy)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Tag size={12} variant="stroke" />
+                    {t("gabinet.formDocuments.category", "Kategoria")}
+                  </span>
+                  <span className="text-xs font-semibold">
+                    {getCategoryLabel(selectedDoc.templateId)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <FileText size={12} variant="stroke" />
+                    {t("gabinet.formDocuments.entityType", "Typ")}
+                  </span>
+                  <span className="text-xs font-semibold">
+                    {getEntityTypeLabel(selectedDoc.entityType)}
+                  </span>
+                </div>
+                {selectedDoc.status === "signed" && selectedDoc.signedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <FileSignature size={12} variant="stroke" />
+                      {t("gabinet.formDocuments.signedAt", "Podpisano")}
+                    </span>
+                    <span className="text-xs font-semibold tabular-nums">
+                      {formatDate(selectedDoc.signedAt)}
+                    </span>
                   </div>
-                );
-              }
-            } catch {
-              // Not JSON with html — fall through
-            }
-
-            // Fallback: re-render from contentJson + scope data
-            if (selectedTemplate.contentJson) {
-              try {
-                const scopeFlat: Record<string, string> = {};
-                const parsed = JSON.parse(selectedDoc.responseData) as Record<
-                  string,
-                  unknown
-                >;
-                for (const [k, v] of Object.entries(parsed)) {
-                  if (v != null) scopeFlat[k] = String(v);
-                }
-                const html = renderDocument(
-                  selectedTemplate.contentJson,
-                  scopeFlat,
-                );
-                return (
-                  <div className="mt-6">
-                    <DocumentViewer
-                      title={selectedDoc.title}
-                      html={html}
-                      signatureData={selectedDoc.signatureData}
-                      signedAt={selectedDoc.signedAt}
-                    />
-                  </div>
-                );
-              } catch {
-                // contentJson invalid — fall through
-              }
-            }
-
-            // Fallback: no viewable content
-            return (
-              <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
-                {t(
-                  "gabinet.formDocuments.templateNotFound",
-                  "Szablon dokumentu nie jest dostępny.",
                 )}
               </div>
-            );
-          })()}
+            </div>
+
+            {/* Document content */}
+            {selectedTemplate &&
+              (() => {
+                // Try to extract rendered HTML from responseData
+                try {
+                  const parsed = JSON.parse(selectedDoc.responseData) as {
+                    html?: string;
+                  };
+                  if (parsed.html) {
+                    return (
+                      <div className="mt-6">
+                        <DocumentViewer
+                          title={selectedDoc.title}
+                          html={parsed.html}
+                          signatureData={selectedDoc.signatureData}
+                          signedAt={selectedDoc.signedAt}
+                        />
+                      </div>
+                    );
+                  }
+                } catch {
+                  // Not JSON with html — fall through
+                }
+
+                // Fallback: re-render from contentJson + scope data
+                if (selectedTemplate.contentJson) {
+                  try {
+                    const scopeFlat: Record<string, string> = {};
+                    const parsed = JSON.parse(selectedDoc.responseData) as Record<
+                      string,
+                      unknown
+                    >;
+                    for (const [k, v] of Object.entries(parsed)) {
+                      if (v != null) scopeFlat[k] = String(v);
+                    }
+                    const html = renderDocument(
+                      selectedTemplate.contentJson,
+                      scopeFlat,
+                    );
+                    return (
+                      <div className="mt-6">
+                        <DocumentViewer
+                          title={selectedDoc.title}
+                          html={html}
+                          signatureData={selectedDoc.signatureData}
+                          signedAt={selectedDoc.signedAt}
+                        />
+                      </div>
+                    );
+                  } catch {
+                    // contentJson invalid — fall through
+                  }
+                }
+
+                // Fallback: no viewable content
+                return (
+                  <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
+                    {t(
+                      "gabinet.formDocuments.templateNotFound",
+                      "Szablon dokumentu nie jest dostępny.",
+                    )}
+                  </div>
+                );
+              })()}
+          </>
+        )}
 
         {selectedDoc && !selectedTemplate && (
           <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">

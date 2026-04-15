@@ -33,24 +33,20 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch CRM nudges
-  const { data: crmNudges, isLoading: crmLoading } = useQuery(
-    convexQuery(api.nudges.getAll, {
+  const { data: crmNudges, isLoading: crmLoading } = useQuery({
+    ...convexQuery(api.nudges.getAll, {
       organizationId,
     }),
-    {
-      enabled: !!organizationId && !isGabinetRoute,
-    }
-  );
+    enabled: !!organizationId && !isGabinetRoute,
+  });
 
   // Fetch Gabinet nudges
-  const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery(
-    convexQuery(api.gabinet.nudges.getAll, {
+  const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery({
+    ...convexQuery(api.gabinet.nudges.getAll, {
       organizationId,
     }),
-    {
-      enabled: !!organizationId && isGabinetRoute,
-    }
-  );
+    enabled: !!organizationId && isGabinetRoute,
+  });
 
   // Aggregate nudges based on current route
   useEffect(() => {

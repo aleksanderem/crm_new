@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Selection, SortDescriptor } from "react-aria-components";
 import { SearchLg } from "@untitledui/icons";
@@ -146,6 +146,34 @@ export function CrmDataTable<TData>({
   // --- Selection ---
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
 
+  // Track if last click was on a checkbox
+  const lastClickTargetRef = useRef({ isCheckbox: false });
+
+  // Global click handler to detect checkbox clicks
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isCheckbox =
+        target.closest('[slot="selection"]') !== null ||
+        target.getAttribute('role') === 'checkbox' ||
+        target.querySelector('[slot="selection"]') !== null;
+
+      lastClickTargetRef.current.isCheckbox = isCheckbox;
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
+
+  // Handle selection changes - only allow checkbox clicks to change selection
+  const handleSelectionChange = (keys: Selection) => {
+    if (lastClickTargetRef.current.isCheckbox) {
+      setSelectedKeys(keys);
+    }
+    // Reset the flag
+    lastClickTargetRef.current.isCheckbox = false;
+  };
+
   // --- Derived data ---
   const sorted = useMemo(() => sortItems(data, sort, columns), [data, sort, columns]);
   const totalPages = Math.max(Math.ceil(sorted.length / pageSize), 1);
@@ -211,7 +239,7 @@ export function CrmDataTable<TData>({
           sortDescriptor={sort}
           onSortChange={handleSortChange}
           selectedKeys={enableBulkSelect ? selectedKeys : undefined}
-          onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
+          onSelectionChange={enableBulkSelect ? handleSelectionChange : undefined}
           onRowAction={onRowAction ? (key) => onRowAction(String(key)) : undefined}
         >
           <Table.Header>

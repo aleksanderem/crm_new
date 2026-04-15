@@ -1,11 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Selection, SortDescriptor } from "react-aria-components";
-import { SearchLg } from "@untitledui/icons";
+import { SearchLg, Menu01 } from "@untitledui/icons";
 import { Table, TableCard } from "@untitled/app/table/table";
 import { PaginationCardMinimal } from "@untitled/app/pagination/pagination";
 import { EmptyState } from "@untitled/app/empty-state/empty-state";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
+import { Button } from "@untitled/base/buttons/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BadgeWithDot } from "@untitled/base/badges/badges";
 import { BulkActionsBar } from "@/components/crm/bulk-actions";
@@ -285,7 +286,18 @@ export function CrmDataTable<TData>({
                     <Table.Cell className="px-4">
                       <div className="flex justify-end">
                         <Dropdown.Root>
-                          <Dropdown.DotsButton />
+                          <Button
+                            size="sm"
+                            color="tertiary"
+                            iconLeading={<Menu01 className="size-5" />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onPointerDown={(e) => {
+                              // Prevent React Aria from starting selection on pointer down
+                              e.stopPropagation();
+                            }}
+                          />
                           <Dropdown.Popover className="w-min">
                             <Dropdown.Menu>
                               {rowActions!(item).map((a) => (

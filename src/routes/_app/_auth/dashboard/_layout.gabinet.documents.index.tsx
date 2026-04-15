@@ -11,15 +11,9 @@ import { renderDocument } from "@/components/documents/document-renderer";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow, type MiniChartData } from "@/components/crm/mini-charts";
+import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -574,104 +568,99 @@ function GabinetDocumentsPage() {
         />
       )}
 
-      {/* Document viewer sheet */}
-      <Sheet
+      {/* Document viewer side panel */}
+      <SidePanel
         open={!!selectedDocId}
         onOpenChange={(open) => {
           if (!open) setSelectedDocId(null);
         }}
+        title={selectedDoc?.title ?? "—"}
+        description={
+          selectedDoc && (
+            <span className="flex items-center gap-2">
+              <DocumentStatusBadge
+                status={selectedDoc.status as any}
+              />
+              <span className="text-xs">
+                {formatDate(selectedDoc.createdAt)}
+              </span>
+            </span>
+          )
+        }
       >
-        <SheetContent className="sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{selectedDoc?.title ?? "—"}</SheetTitle>
-            <SheetDescription>
-              {selectedDoc && (
-                <span className="flex items-center gap-2">
-                  <DocumentStatusBadge
-                    status={selectedDoc.status as any}
-                  />
-                  <span className="text-xs">
-                    {formatDate(selectedDoc.createdAt)}
-                  </span>
-                </span>
-              )}
-            </SheetDescription>
-          </SheetHeader>
+        {selectedDoc && selectedTemplate &&
+          (() => {
+            // Try to extract rendered HTML from responseData
+            try {
+              const parsed = JSON.parse(selectedDoc.responseData) as {
+                html?: string;
+              };
+              if (parsed.html) {
+                return (
+                  <div className="mt-6">
+                    <DocumentViewer
+                      title={selectedDoc.title}
+                      html={parsed.html}
+                      signatureData={selectedDoc.signatureData}
+                      signedAt={selectedDoc.signedAt}
+                    />
+                  </div>
+                );
+              }
+            } catch {
+              // Not JSON with html — fall through
+            }
 
-          {selectedDoc && selectedTemplate &&
-            (() => {
-              // Try to extract rendered HTML from responseData
+            // Fallback: re-render from contentJson + scope data
+            if (selectedTemplate.contentJson) {
               try {
-                const parsed = JSON.parse(selectedDoc.responseData) as {
-                  html?: string;
-                };
-                if (parsed.html) {
-                  return (
-                    <div className="mt-6">
-                      <DocumentViewer
-                        title={selectedDoc.title}
-                        html={parsed.html}
-                        signatureData={selectedDoc.signatureData}
-                        signedAt={selectedDoc.signedAt}
-                      />
-                    </div>
-                  );
+                const scopeFlat: Record<string, string> = {};
+                const parsed = JSON.parse(selectedDoc.responseData) as Record<
+                  string,
+                  unknown
+                >;
+                for (const [k, v] of Object.entries(parsed)) {
+                  if (v != null) scopeFlat[k] = String(v);
                 }
+                const html = renderDocument(
+                  selectedTemplate.contentJson,
+                  scopeFlat,
+                );
+                return (
+                  <div className="mt-6">
+                    <DocumentViewer
+                      title={selectedDoc.title}
+                      html={html}
+                      signatureData={selectedDoc.signatureData}
+                      signedAt={selectedDoc.signedAt}
+                    />
+                  </div>
+                );
               } catch {
-                // Not JSON with html — fall through
+                // contentJson invalid — fall through
               }
+            }
 
-              // Fallback: re-render from contentJson + scope data
-              if (selectedTemplate.contentJson) {
-                try {
-                  const scopeFlat: Record<string, string> = {};
-                  const parsed = JSON.parse(selectedDoc.responseData) as Record<
-                    string,
-                    unknown
-                  >;
-                  for (const [k, v] of Object.entries(parsed)) {
-                    if (v != null) scopeFlat[k] = String(v);
-                  }
-                  const html = renderDocument(
-                    selectedTemplate.contentJson,
-                    scopeFlat,
-                  );
-                  return (
-                    <div className="mt-6">
-                      <DocumentViewer
-                        title={selectedDoc.title}
-                        html={html}
-                        signatureData={selectedDoc.signatureData}
-                        signedAt={selectedDoc.signedAt}
-                      />
-                    </div>
-                  );
-                } catch {
-                  // contentJson invalid — fall through
-                }
-              }
+            // Fallback: no viewable content
+            return (
+              <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
+                {t(
+                  "gabinet.formDocuments.templateNotFound",
+                  "Szablon dokumentu nie jest dostępny.",
+                )}
+              </div>
+            );
+          })()}
 
-              // Fallback: no viewable content
-              return (
-                <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
-                  {t(
-                    "gabinet.formDocuments.templateNotFound",
-                    "Szablon dokumentu nie jest dostępny.",
-                  )}
-                </div>
-              );
-            })()}
-
-          {selectedDoc && !selectedTemplate && (
-            <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
-              {t(
-                "gabinet.formDocuments.templateNotFound",
-                "Szablon dokumentu nie jest dostępny.",
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+        {selectedDoc && !selectedTemplate && (
+          <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t(
+              "gabinet.formDocuments.templateNotFound",
+              "Szablon dokumentu nie jest dostępny.",
+            )}
+          </div>
+        )}
+      </SidePanel>
 
       <TagsManagerSlideout
         isOpen={tagsSlideoutOpen}

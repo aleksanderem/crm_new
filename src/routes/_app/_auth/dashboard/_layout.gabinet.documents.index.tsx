@@ -97,7 +97,6 @@ function GabinetDocumentsPage() {
 
   // --- State ---
   const [searchValue, setSearchValue] = useState("");
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
@@ -118,6 +117,8 @@ function GabinetDocumentsPage() {
     onViewChange,
     onCreateView,
     onDeleteView,
+    selectedId,
+    setSelectedId,
     applyFilters,
   } = useSavedViews({
     organizationId,
@@ -253,9 +254,9 @@ function GabinetDocumentsPage() {
 
   // --- Selected document for viewer ---
   const selectedDoc = useMemo(() => {
-    if (!selectedDocId || !documents) return null;
-    return documents.find((d) => d._id === selectedDocId) ?? null;
-  }, [selectedDocId, documents]);
+    if (!selectedId || !documents) return null;
+    return documents.find((d) => d._id === selectedId) ?? null;
+  }, [selectedId, documents]);
 
   const selectedTemplate = useMemo(() => {
     if (!selectedDoc) return null;
@@ -364,7 +365,7 @@ function GabinetDocumentsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setSelectedDocId(item._id)}>
+              <DropdownMenuItem onClick={() => setSelectedId(item._id)}>
                 <FileText className="mr-2 h-4 w-4" />
                 {t("common.view", "Podgląd")}
               </DropdownMenuItem>
@@ -379,7 +380,7 @@ function GabinetDocumentsPage() {
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => setSelectedDocId(item._id)}
+                onClick={() => setSelectedId(item._id)}
               >
                 <Download className="mr-2 h-4 w-4" />
                 {t("common.download", "Pobierz")}
@@ -539,7 +540,7 @@ function GabinetDocumentsPage() {
           onBulkAction={(action, items) => {
             if (action === "view") {
               if (items.length === 1) {
-                setSelectedDocId(items[0]._id);
+                setSelectedId(items[0]._id);
               }
             } else if (action === "resend") {
               items.forEach((item) => handleResendSigningEmail(item._id));
@@ -570,9 +571,9 @@ function GabinetDocumentsPage() {
 
       {/* Document viewer side panel */}
       <SidePanel
-        open={!!selectedDocId}
+        open={!!selectedId}
         onOpenChange={(open) => {
-          if (!open) setSelectedDocId(null);
+          if (!open) setSelectedId(undefined);
         }}
         title={selectedDoc?.title ?? "—"}
         description={

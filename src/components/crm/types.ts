@@ -54,6 +54,8 @@ export interface SavedView {
   columns?: string[];
   sortField?: string;
   sortDirection?: "asc" | "desc";
+  /** ID of the currently selected item shown in sidebar (e.g., document ID) */
+  selectedId?: string;
 }
 
 export interface BulkAction {

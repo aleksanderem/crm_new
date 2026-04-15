@@ -94,6 +94,7 @@ export function useSavedViews({
   const [activeViewId, setActiveViewId] = useState<string>(defaultViewId);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(defaultColumnVisibility);
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit; runtime works fine
   const createViewMut = useMutation(api.savedViews.create);
@@ -147,6 +148,9 @@ export function useSavedViews({
       } else {
         setColumnVisibility(defaultColumnVisibility);
       }
+
+      // Restore selected item for sidebar
+      setSelectedId(view?.selectedId);
     },
     [views, allColumnIds, defaultColumnVisibility]
   );
@@ -166,12 +170,13 @@ export function useSavedViews({
         columns: visibleCols,
         sortField: sorting[0]?.id,
         sortDirection: sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined,
+        selectedId: selectedId,
         isSystem: false,
       });
       setActiveViewId(viewId as string);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.savedViews.list(organizationId as string) });
     },
-    [createViewMut, organizationId, entityType, allColumnIds, columnVisibility, sorting, queryClient]
+    [createViewMut, organizationId, entityType, allColumnIds, columnVisibility, sorting, selectedId, queryClient]
   );
 
   const onUpdateView = useCallback(
@@ -185,6 +190,7 @@ export function useSavedViews({
         columns: updates.columns,
         sortField: updates.sortField,
         sortDirection: updates.sortDirection,
+        selectedId: updates.selectedId,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.savedViews.list(organizationId as string) });
     },
@@ -228,6 +234,8 @@ export function useSavedViews({
     sorting,
     setColumnVisibility,
     setSorting,
+    selectedId,
+    setSelectedId,
     applyFilters,
   };
 }

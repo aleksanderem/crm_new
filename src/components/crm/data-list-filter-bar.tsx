@@ -7,6 +7,8 @@ import {
   ChevronDown,
   FilterLines,
   Columns03,
+  Tag03,
+  Folder,
 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { CloseButton } from "@untitled/base/buttons/close-button";
@@ -452,6 +454,33 @@ export function DataListFilterBar({
               })}
             </PopoverContent>
           </Popover>
+        )}
+        {(_onTagsManage || _onCategoriesManage) && (
+          <Dropdown.Root>
+            <Button
+              size="sm"
+              color="tertiary"
+              iconLeading={_onTagsManage && _onCategoriesManage ? Folder : (_onTagsManage ? Tag03 : Folder)}
+            />
+            <Dropdown.Popover>
+              <Dropdown.Menu>
+                {_onTagsManage && (
+                  <Dropdown.Item
+                    label={t("common.tags", { defaultValue: "Tagi" })}
+                    icon={Tag03}
+                    onAction={_onTagsManage}
+                  />
+                )}
+                {_onCategoriesManage && (
+                  <Dropdown.Item
+                    label={t("common.category", { defaultValue: "Kategorie" })}
+                    icon={Folder}
+                    onAction={_onCategoriesManage}
+                  />
+                )}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
         )}
         {renderMoreActions()}
       </div>

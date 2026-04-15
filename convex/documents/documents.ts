@@ -482,6 +482,34 @@ export const resendSigningEmail = mutation({
   },
 });
 
+export const remove = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.id("formDocuments"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const perm = await checkPermission(
+      ctx,
+      args.organizationId,
+      "documents",
+      "delete",
+    );
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.organizationId !== args.organizationId) {
+      throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && doc.createdBy !== user._id) {
+      throw new Error("Permission denied: you can only delete your own records");
+    }
+
+    await ctx.db.delete(args.documentId);
+    return args.documentId;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Patient-portal query (token-based auth, no org context)
 // ---------------------------------------------------------------------------

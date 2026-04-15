@@ -1,24 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
-import type { FormDocumentStatus } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { renderDocument } from "@/components/documents/document-renderer";
+import { CrmDataTable, type CrmColumn } from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -27,22 +20,35 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { FileText, Send, Download, MoreHorizontal, Trash2 } from "@/lib/ez-icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
-import { ClipboardList, Search, FileText } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { Id } from "@cvx/_generated/dataModel";
+import type { FieldDef, FilterCondition, SavedView } from "@/components/crm/types";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
+import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import { useSavedViews } from "@/hooks/use-saved-views";
 
 // ---------------------------------------------------------------------------
 // Route
@@ -80,15 +86,6 @@ const ENTITY_TYPE_LABELS: Record<string, { pl: string; en: string }> = {
   lead: { pl: "Lead", en: "Lead" },
 };
 
-const STATUS_OPTIONS: FormDocumentStatus[] = [
-  "draft",
-  "pending_signature",
-  "signed",
-  "completed",
-  "expired",
-  "voided",
-];
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -105,18 +102,49 @@ function GabinetDocumentsPage() {
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
   // --- State ---
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [selectedDocId, setSelectedDocId] =
-    useState<Id<"formDocuments"> | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+
+  // --- System views ---
+  const systemViews = useMemo((): SavedView[] => [
+    { id: "all", name: t("gabinet.formDocuments.views.all", "Wszystkie"), isSystem: true, isDefault: true },
+    { id: "draft", name: t("gabinet.formDocuments.views.draft", "Wersje robocze"), isSystem: true },
+    { id: "pending_signature", name: t("gabinet.formDocuments.views.pendingSignature", "Oczekujące podpisu"), isSystem: true },
+    { id: "signed", name: t("gabinet.formDocuments.views.signed", "Podpisane"), isSystem: true },
+  ], [t]);
+
+  // --- Saved views ---
+  const {
+    views,
+    activeViewId,
+    onViewChange,
+    onCreateView,
+    onDeleteView,
+    applyFilters,
+  } = useSavedViews({
+    organizationId,
+    entityType: "gabinetDocument",
+    systemViews: systemViews,
+    defaultColumnVisibility: {},
+  });
+
+  // --- Column visibility ---
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
+
+  // --- Mutations ---
+  const resendSigningEmail = useMutation(api.documents.documents.resendSigningEmail);
+  const removeDocument = useMutation(api.documents.documents.remove);
 
   // --- Data ---
-  const { data: documents, isLoading: docsLoading } = useQuery({
-    ...convexQuery(api.documents.documents.listAll, {
-      organizationId,
-    }),
-  });
+  const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(
+    organizationId,
+    { limit: 200 },
+  );
 
   const { data: templates } = useQuery({
     ...convexQuery(api.documents.templates.list, {
@@ -133,23 +161,17 @@ function GabinetDocumentsPage() {
   // Build template lookup
   type TemplateDoc = NonNullable<typeof templates>[number];
   const templateMap = useMemo(() => {
-    if (!templates) return new Map<Id<"formTemplates">, TemplateDoc>();
-    return new Map(templates.map((tpl) => [tpl._id, tpl]));
+    if (!templates) return new Map<string, TemplateDoc>();
+    return new Map(templates.map((tpl) => [tpl._id as string, tpl]));
   }, [templates]);
 
   // Build user lookup from org members
   const userMap = useMemo(() => {
     if (!members)
-      return new Map<
-        Id<"users">,
-        { name?: string; email?: string }
-      >();
-    const map = new Map<
-      Id<"users">,
-      { name?: string; email?: string }
-    >();
+      return new Map<string, { name?: string; email?: string }>();
+    const map = new Map<string, { name?: string; email?: string }>();
     for (const m of members) {
-      if (m.user) map.set(m.user._id, m.user);
+      if (m.user) map.set(m.user._id as string, m.user);
     }
     return map;
   }, [members]);
@@ -161,25 +183,54 @@ function GabinetDocumentsPage() {
     return Array.from(cats).sort();
   }, [templates]);
 
+  // --- Filter definitions ---
+  const filterableFields = useMemo((): FieldDef[] => [
+    { id: "title", label: t("common.title", "Tytuł"), type: "text" },
+    { id: "status", label: t("common.status", "Status"), type: "select", options: [
+      { label: t("gabinet.formDocuments.status.draft", "Wersja robocza"), value: "draft" },
+      { label: t("gabinet.formDocuments.status.pending_signature", "Oczekuje podpis"), value: "pending_signature" },
+      { label: t("gabinet.formDocuments.status.signed", "Podpisany"), value: "signed" },
+      { label: t("gabinet.formDocuments.status.completed", "Zakończony"), value: "completed" },
+      { label: t("gabinet.formDocuments.status.expired", "Wygasły"), value: "expired" },
+      { label: t("gabinet.formDocuments.status.voided", "Unieważniony"), value: "voided" },
+    ]},
+    { id: "entityType", label: t("common.type", "Typ"), type: "select", options: [
+      { label: t("gabinet.formDocuments.entityType.patient", "Pacjent"), value: "patient" },
+      { label: t("gabinet.formDocuments.entityType.appointment", "Wizyta"), value: "appointment" },
+      { label: t("gabinet.formDocuments.entityType.employee", "Pracownik"), value: "employee" },
+      { label: t("gabinet.formDocuments.entityType.treatment", "Zabieg"), value: "treatment" },
+    ]},
+    { id: "category", label: t("common.category", "Kategoria"), type: "select", options: availableCategories.map(cat => {
+      const labels = FORM_CATEGORY_LABELS[cat];
+      return { label: labels ? labels[lang] : cat, value: cat };
+    })},
+    { id: "createdAt", label: t("common.created", "Utworzono"), type: "date" },
+  ], [t, lang, availableCategories]);
+
   // --- Filtered data ---
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
-    return documents.filter((doc) => {
-      // Status filter
-      if (statusFilter !== "all" && doc.status !== statusFilter) return false;
-      // Category filter (look up template)
-      if (categoryFilter !== "all") {
-        const tpl = templateMap.get(doc.templateId);
-        if (!tpl || tpl.category !== categoryFilter) return false;
-      }
-      // Search by title
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        if (!doc.title.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [documents, statusFilter, categoryFilter, search, templateMap]);
+
+    // Apply view-based filtering
+    let viewFiltered = documents;
+    switch (activeViewId) {
+      case "draft":
+        viewFiltered = documents.filter((d) => d.status === "draft");
+        break;
+      case "pending_signature":
+        viewFiltered = documents.filter((d) => d.status === "pending_signature");
+        break;
+      case "signed":
+        viewFiltered = documents.filter((d) => d.status === "signed");
+        break;
+      default:
+        // "all" - no filtering
+        break;
+    }
+
+    // Apply filters from saved views or manual filters
+    return applyFilters(viewFiltered);
+  }, [documents, activeViewId, applyFilters]);
 
   // --- Selected document for viewer ---
   const selectedDoc = useMemo(() => {
@@ -194,7 +245,7 @@ function GabinetDocumentsPage() {
 
   // --- Helpers ---
   const getCategoryLabel = useCallback(
-    (templateId: Id<"formTemplates">) => {
+    (templateId: string) => {
       const tpl = templateMap.get(templateId);
       if (!tpl) return "—";
       const labels = FORM_CATEGORY_LABELS[tpl.category];
@@ -212,7 +263,7 @@ function GabinetDocumentsPage() {
   );
 
   const getUserName = useCallback(
-    (userId: Id<"users">) => {
+    (userId: string) => {
       const u = userMap.get(userId);
       if (!u) return "—";
       return u.name ?? u.email ?? "—";
@@ -229,6 +280,147 @@ function GabinetDocumentsPage() {
     },
     [lang],
   );
+
+  // --- Column definitions ---
+  const columns = useMemo(() => {
+    const result: CrmColumn<any>[] = [
+      {
+        id: "title",
+        label: t("gabinet.formDocuments.colTitle", "Tytuł"),
+        render: (item) => (
+          <div className="font-medium">{item.title}</div>
+        ),
+      },
+      {
+        id: "category",
+        label: t("gabinet.formDocuments.colCategory", "Kategoria"),
+        render: (item) => (
+          <Badge variant="secondary" className="text-xs">
+            {getCategoryLabel(item.templateId)}
+          </Badge>
+        ),
+      },
+      {
+        id: "entityType",
+        label: t("gabinet.formDocuments.colEntityType", "Typ"),
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {getEntityTypeLabel(item.entityType)}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        label: t("gabinet.formDocuments.colStatus", "Status"),
+        render: (item) => (
+          <DocumentStatusBadge status={item.status as any} />
+        ),
+      },
+      {
+        id: "createdAt",
+        label: t("gabinet.formDocuments.colCreatedAt", "Data utworzenia"),
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDate(item.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: "createdBy",
+        label: t("gabinet.formDocuments.colCreatedBy", "Utworzony przez"),
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {getUserName(item.createdBy)}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        render: (item) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <span className="sr-only">Otwórz menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSelectedDocId(item._id)}>
+                <FileText className="mr-2 h-4 w-4" />
+                {t("common.view", "Podgląd")}
+              </DropdownMenuItem>
+              {item.status === "draft" ||
+              item.status === "pending_signature" ? (
+                <DropdownMenuItem
+                  onClick={() => handleResendSigningEmail(item._id)}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {t("gabinet.formDocuments.resendSigningEmail", "Wyślij e-mail podpisu")}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setSelectedDocId(item._id)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {t("common.download", "Pobierz")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeleteClick(item._id)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t("common.delete", "Usuń")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ];
+    return result;
+  }, [t, getCategoryLabel, getEntityTypeLabel, getUserName, formatDate]);
+
+  // --- Handlers ---
+  const handleResendSigningEmail = (docId: string) => {
+    resendSigningEmail({
+      organizationId,
+      documentId: docId as any,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!docToDelete) return;
+    try {
+      removeDocument({
+        organizationId,
+        documentId: docToDelete as any,
+      });
+      setDeleteDialogOpen(false);
+      setDocToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+    }
+  };
+
+  const handleDeleteClick = (docId: string) => {
+    setDocToDelete(docId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleBulkDelete = (items: any[]) => {
+    if (!items.length) return;
+    items.forEach((item) => {
+      try {
+        removeDocument({
+          organizationId,
+          documentId: item._id as any,
+        });
+      } catch (error) {
+        console.error("Failed to delete document:", error);
+      }
+    });
+  };
 
   // --- Render ---
 
@@ -253,63 +445,30 @@ function GabinetDocumentsPage() {
         }
       />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t(
-              "gabinet.formDocuments.searchPlaceholder",
-              "Szukaj po tytule...",
-            )}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue
-              placeholder={t("gabinet.formDocuments.allStatuses", "Wszystkie statusy")}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("gabinet.formDocuments.allStatuses", "Wszystkie statusy")}
-            </SelectItem>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                <DocumentStatusBadge status={status} />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue
-              placeholder={t(
-                "gabinet.formDocuments.allCategories",
-                "Wszystkie kategorie",
-              )}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("gabinet.formDocuments.allCategories", "Wszystkie kategorie")}
-            </SelectItem>
-            {availableCategories.map((cat) => {
-              const labels = FORM_CATEGORY_LABELS[cat];
-              return (
-                <SelectItem key={cat} value={cat}>
-                  {labels ? labels[lang] : cat}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Filter bar */}
+      <DataListFilterBar
+        views={views}
+        activeViewId={activeViewId ?? undefined}
+        onViewChange={onViewChange}
+        onCreateView={onCreateView}
+        onDeleteView={async (id) => { onDeleteView(id); }}
+        filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t(
+          "gabinet.formDocuments.searchPlaceholder",
+          "Szukaj po tytule...",
+        )}
+        onFiltersChange={setActiveFilters}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
+        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        onSetHiddenColumns={setHiddenColumns}
+      />
 
       {/* Loading state */}
       {docsLoading && (
@@ -323,7 +482,7 @@ function GabinetDocumentsPage() {
       {/* Empty state */}
       {!docsLoading && filteredDocuments.length === 0 && (
         <EmptyState
-          icon={ClipboardList}
+          icon={FileText}
           title={t("gabinet.formDocuments.emptyTitle", "Brak dokumentów")}
           description={t(
             "gabinet.formDocuments.emptyDescription",
@@ -332,66 +491,44 @@ function GabinetDocumentsPage() {
         />
       )}
 
-      {/* Table */}
+      {/* Data Table */}
       {!docsLoading && filteredDocuments.length > 0 && (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  {t("gabinet.formDocuments.colTitle", "Tytuł")}
-                </TableHead>
-                <TableHead>
-                  {t("gabinet.formDocuments.colCategory", "Kategoria")}
-                </TableHead>
-                <TableHead>
-                  {t("gabinet.formDocuments.colEntityType", "Typ")}
-                </TableHead>
-                <TableHead>
-                  {t("gabinet.formDocuments.colStatus", "Status")}
-                </TableHead>
-                <TableHead>
-                  {t("gabinet.formDocuments.colCreatedAt", "Data utworzenia")}
-                </TableHead>
-                <TableHead>
-                  {t("gabinet.formDocuments.colCreatedBy", "Utworzony przez")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDocuments.map((doc) => (
-                <TableRow
-                  key={doc._id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedDocId(doc._id)}
-                >
-                  <TableCell className="font-medium">{doc.title}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {getCategoryLabel(doc.templateId)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {getEntityTypeLabel(doc.entityType)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <DocumentStatusBadge
-                      status={doc.status as FormDocumentStatus}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(doc.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {getUserName(doc.createdBy)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <CrmDataTable
+          data={filteredDocuments}
+          columns={allColumns}
+          hiddenColumnIds={hiddenColumnIds}
+          enableBulkSelect={true}
+          getRowId={(item, index) => item._id ?? String(index)}
+          onBulkAction={(action, items) => {
+            if (action === "view") {
+              if (items.length === 1) {
+                setSelectedDocId(items[0]._id);
+              }
+            } else if (action === "resend") {
+              items.forEach((item) => handleResendSigningEmail(item._id));
+            } else if (action === "delete") {
+              handleBulkDelete(items);
+            }
+          }}
+          bulkActions={[
+            {
+              value: "view",
+              label: t("common.view", "Podgląd"),
+              icon: <FileText className="h-4 w-4" />,
+            },
+            {
+              value: "resend",
+              label: t("gabinet.formDocuments.resendSigningEmail", "Wyślij e-mail podpisu"),
+              icon: <Send className="h-4 w-4" />,
+            },
+            {
+              value: "delete",
+              label: t("common.delete", "Usuń"),
+              variant: "destructive",
+              icon: <Trash2 className="h-4 w-4" />,
+            },
+          ]}
+        />
       )}
 
       {/* Document viewer sheet */}
@@ -408,7 +545,7 @@ function GabinetDocumentsPage() {
               {selectedDoc && (
                 <span className="flex items-center gap-2">
                   <DocumentStatusBadge
-                    status={selectedDoc.status as FormDocumentStatus}
+                    status={selectedDoc.status as any}
                   />
                   <span className="text-xs">
                     {formatDate(selectedDoc.createdAt)}
@@ -422,7 +559,9 @@ function GabinetDocumentsPage() {
             (() => {
               // Try to extract rendered HTML from responseData
               try {
-                const parsed = JSON.parse(selectedDoc.responseData) as { html?: string };
+                const parsed = JSON.parse(selectedDoc.responseData) as {
+                  html?: string;
+                };
                 if (parsed.html) {
                   return (
                     <div className="mt-6">
@@ -443,11 +582,17 @@ function GabinetDocumentsPage() {
               if (selectedTemplate.contentJson) {
                 try {
                   const scopeFlat: Record<string, string> = {};
-                  const parsed = JSON.parse(selectedDoc.responseData) as Record<string, unknown>;
+                  const parsed = JSON.parse(selectedDoc.responseData) as Record<
+                    string,
+                    unknown
+                  >;
                   for (const [k, v] of Object.entries(parsed)) {
                     if (v != null) scopeFlat[k] = String(v);
                   }
-                  const html = renderDocument(selectedTemplate.contentJson, scopeFlat);
+                  const html = renderDocument(
+                    selectedTemplate.contentJson,
+                    scopeFlat,
+                  );
                   return (
                     <div className="mt-6">
                       <DocumentViewer
@@ -498,6 +643,34 @@ function GabinetDocumentsPage() {
         entityType="gabinetDocument"
         categories={categories}
       />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("gabinet.formDocuments.deleteDialogTitle", "Usuń dokument")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "gabinet.formDocuments.deleteDialogDescription",
+                "Czy na pewno chcesz usunąć ten dokument? Tej operacji nie można cofnąć.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("common.cancel", "Anuluj")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete", "Usuń")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

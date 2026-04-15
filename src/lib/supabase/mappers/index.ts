@@ -59,6 +59,12 @@ export {
 } from "./documents";
 
 export {
+  mapFormDocumentFromSupabase,
+  mapFormDocumentToSupabase,
+  type MappedFormDocument,
+} from "./form-documents";
+
+export {
   mapSourceFromSupabase,
   mapSourceToSupabase,
   type MappedSource,

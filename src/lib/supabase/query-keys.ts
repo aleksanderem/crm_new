@@ -46,6 +46,7 @@ export const supabaseKeys = {
   pipelineStageActions: entityKeys("pipelineStageActions"),
   dealProducts: entityKeys("dealProducts"),
   scheduledActivities: entityKeys("scheduledActivities"),
+  formDocuments: entityKeys("formDocuments"),
 
   // ── Email System ──────────────────────────────────────────────────────────
   emails: entityKeys("emails"),

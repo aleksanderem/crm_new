@@ -1,5 +1,5 @@
 // convex/nudges.ts
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
@@ -353,5 +353,53 @@ export const getProductsNudges = query({
       }];
     }
     return [];
+  },
+});
+
+// --- Get all CRM nudges ---
+export const getAll = query({
+  args: { organizationId: v.id("organizations"), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args): Promise<NudgeData[]> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const nudges: NudgeData[] = [];
+
+    // Fetch nudges from all sources in parallel
+    const [insights, deals, contacts, inbox, documents, companies, calls, products] = await Promise.all([
+      ctx.runQuery(api.nudges.getInsightsNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getDealsNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getContactsNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getInboxNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getDocumentsNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getCompaniesNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getCallsNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.nudges.getProductsNudges, { organizationId: args.organizationId }),
+    ]);
+
+    // User-specific nudges
+    if (args.userId) {
+      const [activities, calendar] = await Promise.all([
+        ctx.runQuery(api.nudges.getActivitiesNudges, { organizationId: args.organizationId, userId: args.userId }),
+        ctx.runQuery(api.nudges.getCalendarNudges, { organizationId: args.organizationId, userId: args.userId }),
+      ]);
+      nudges.push(...activities, ...calendar);
+    }
+
+    // Add all other nudges (limit to avoid overwhelming)
+    nudges.push(
+      ...insights,
+      ...deals,
+      ...contacts,
+      ...inbox,
+      ...documents,
+      ...companies,
+      ...calls,
+      ...products,
+    );
+
+    // Sort by severity (red > yellow > green) and limit to 10
+    const severityOrder = { red: 0, yellow: 1, green: 2 };
+    nudges.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return nudges.slice(0, 10);
   },
 });

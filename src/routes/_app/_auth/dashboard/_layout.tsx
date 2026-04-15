@@ -87,6 +87,7 @@ import { DateRangeProvider } from "@/components/crm/date-range-context";
 import { DateRangePicker } from "@/components/crm/date-range-picker";
 import { AgendaStrip } from "@/components/layout/agenda-strip";
 import type { Id } from "@cvx/_generated/dataModel";
+import { NudgesProvider } from "@/contexts/nudges-context";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
   errorComponent: ({ error, reset }) => (
@@ -656,6 +657,7 @@ function DashboardLayout() {
     <DateRangeProvider>
     <OrgProvider initialOrgId={firstOrg?._id}>
       <SupabaseProvider>
+      <NudgesProvider>
       <MiniCalendarProvider>
       <SidebarSlotProvider>
       <HeaderSlotProvider>
@@ -854,6 +856,7 @@ function DashboardLayout() {
     </HeaderSlotProvider>
     </SidebarSlotProvider>
     </MiniCalendarProvider>
+    </NudgesProvider>
     </SupabaseProvider>
     </OrgProvider>
     </DateRangeProvider>

@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -36,7 +35,6 @@ const answerRateConfig = {
 export function CallsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
   const kpis = useQuery(api.sidebarWidgets.getCallsKpis, { organizationId });
-  const nudges = useQuery(api.nudges.getCallsNudges, { organizationId });
   const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyCallsTrend, { organizationId });
 
   if (!kpis) return null;
@@ -155,16 +153,6 @@ export function CallsWidgets({ organizationId }: { organizationId: Id<"organizat
           </ChartContainer>
         </CardContent>
       </Card>
-
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
     </>
   );
 }

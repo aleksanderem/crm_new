@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -20,7 +19,6 @@ const PRODUCT_COLORS = [
 export function ProductsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
   const kpis = useQuery(api.sidebarWidgets.getProductsKpis, { organizationId });
-  const nudges = useQuery(api.nudges.getProductsNudges, { organizationId });
   const topProducts = useQuery(api.sidebarWidgets.getTopProducts, { organizationId });
 
   if (!kpis) return null;
@@ -86,16 +84,6 @@ export function ProductsWidgets({ organizationId }: { organizationId: Id<"organi
           </CardContent>
         </Card>
       )}
-
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
     </>
   );
 }

@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { MiniFunnel } from "../mini-funnel";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -41,7 +40,6 @@ const winRateConfig = {
 export function InsightsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
   const kpis = useQuery(api.sidebarWidgets.getInsightsKpis, { organizationId });
-  const nudges = useQuery(api.nudges.getInsightsNudges, { organizationId });
   const stages = useQuery(api.sidebarWidgets.getLeadsByStage, { organizationId });
   const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyCrmTrend, { organizationId });
 
@@ -216,17 +214,6 @@ export function InsightsWidgets({ organizationId }: { organizationId: Id<"organi
           </ChartContainer>
         </CardContent>
       </Card>
-
-      {/* Nudges */}
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
 
       {/* Mini funnel */}
       {stages && stages.length > 0 && <MiniFunnel stages={stages} />}

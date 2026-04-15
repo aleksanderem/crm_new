@@ -11,9 +11,6 @@ import {
   useSupabaseGabinetMonthlyAppointments,
   useSupabaseGabinetAppointmentStatusDistribution,
   useSupabaseGabinetTopTreatments,
-  useSupabaseGabinetAppointmentNudges,
-  useSupabaseGabinetLeaveNudges,
-  useSupabaseGabinetPatientNudges,
 } from "@/hooks/use-supabase-gabinet-dashboard";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -33,11 +30,6 @@ import {
   XCircle,
   AlertCircle,
 } from "@/lib/ez-icons";
-import {
-  CircleAlert as CircleAlertIcon,
-  TriangleAlert as TriangleAlertIcon,
-  CircleCheck as CircleCheckIcon,
-} from "lucide-react";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -93,17 +85,6 @@ function GabinetDashboard() {
   );
 
   const { data: leavesData } = useSupabaseGabinetLeavesList(organizationId);
-
-  // --- Nudges (Supabase-backed) ---
-  const { data: appointmentNudges } = useSupabaseGabinetAppointmentNudges(organizationId);
-  const { data: leaveNudges } = useSupabaseGabinetLeaveNudges(organizationId);
-  const { data: patientNudges } = useSupabaseGabinetPatientNudges(organizationId);
-
-  const allNudges = useMemo(() => [
-    ...(appointmentNudges ?? []),
-    ...(leaveNudges ?? []),
-    ...(patientNudges ?? []),
-  ], [appointmentNudges, leaveNudges, patientNudges]);
 
   // --- Sparkline data (Supabase-backed) ---
   const { data: weeklyAppointments } = useSupabaseGabinetWeeklyAppointments(organizationId);
@@ -473,45 +454,6 @@ function GabinetDashboard() {
             )}
           </CardContent>
         </Card>
-
-        {/* Nudges widget */}
-        {allNudges.length > 0 && (
-          <Card className="gap-0 py-0">
-            <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold">{t("gabinet.dashboard.actionItems", "Wymagają uwagi")}</span>
-                <span className="text-muted-foreground text-xs">
-                  {allNudges.length} {t("gabinet.dashboard.notifications", "powiadomień")}
-                </span>
-              </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {allNudges.map((nudge, idx) => {
-                  const severityConfig = {
-                    red: { Icon: CircleAlertIcon, bgClass: "bg-red-500/10", iconClass: "text-red-500" },
-                    yellow: { Icon: TriangleAlertIcon, bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
-                    green: { Icon: CircleCheckIcon, bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
-                  }[nudge.severity];
-                  return (
-                    <div key={`${nudge.message}-${idx}`} className="flex items-start gap-3 px-4 py-3">
-                      <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${severityConfig.bgClass}`}>
-                        <severityConfig.Icon className={`h-4 w-4 ${severityConfig.iconClass}`} />
-                      </div>
-                      <p className="text-sm leading-snug">
-                        {t(nudge.message, {
-                          defaultValue: nudge.message,
-                          ...(nudge.messageValues ?? {}),
-                        })}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Quick links */}

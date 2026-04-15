@@ -213,3 +213,36 @@ export const getTreatmentNudges = query({
     return [];
   },
 });
+
+// --- Get all Gabinet nudges ---
+export const getAll = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<NudgeData[]> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const nudges: NudgeData[] = [];
+
+    // Fetch nudges from all sources in parallel
+    const [appointments, leaves, packages, patients, treatments] = await Promise.all([
+      ctx.runQuery(api.gabinet.nudges.getAppointmentNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.gabinet.nudges.getLeaveNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.gabinet.nudges.getPackageNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.gabinet.nudges.getPatientNudges, { organizationId: args.organizationId }),
+      ctx.runQuery(api.gabinet.nudges.getTreatmentNudges, { organizationId: args.organizationId }),
+    ]);
+
+    // Add all nudges (limit to avoid overwhelming)
+    nudges.push(
+      ...appointments,
+      ...leaves,
+      ...packages,
+      ...patients,
+      ...treatments,
+    );
+
+    // Sort by severity (red > yellow > green) and limit to 10
+    const severityOrder = { red: 0, yellow: 1, green: 2 };
+    nudges.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return nudges.slice(0, 10);
+  },
+});

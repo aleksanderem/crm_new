@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -25,10 +24,6 @@ export function CalendarWidgets({ organizationId }: { organizationId: Id<"organi
   const user = useQuery(api.app.getCurrentUser);
   const kpis = useQuery(
     api.sidebarWidgets.getCalendarKpis,
-    user?._id ? { organizationId, userId: user._id } : "skip"
-  );
-  const nudges = useQuery(
-    api.nudges.getCalendarNudges,
     user?._id ? { organizationId, userId: user._id } : "skip"
   );
   const weeklyTrend = useQuery(
@@ -102,16 +97,6 @@ export function CalendarWidgets({ organizationId }: { organizationId: Id<"organi
           </CardContent>
         </Card>
       )}
-
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
     </>
   );
 }

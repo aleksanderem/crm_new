@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { MiniFunnel } from "../mini-funnel";
 import { RecentItems } from "../recent-items";
 import { useTranslation } from "react-i18next";
@@ -42,7 +41,6 @@ const winRateConfig = {
 export function DealsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
   const kpis = useQuery(api.sidebarWidgets.getDealsKpis, { organizationId });
-  const nudges = useQuery(api.nudges.getDealsNudges, { organizationId });
   const stages = useQuery(api.sidebarWidgets.getLeadsByStage, { organizationId });
   const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyDealsTrend, { organizationId });
 
@@ -169,15 +167,6 @@ export function DealsWidgets({ organizationId }: { organizationId: Id<"organizat
         </CardContent>
       </Card>
 
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
       {stages && stages.length > 0 && <MiniFunnel stages={stages} />}
       <RecentItems organizationId={organizationId} entityType="leads" linkPrefix="/dashboard/leads/" />
     </>

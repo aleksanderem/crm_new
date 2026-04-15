@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
-import { NudgeCard } from "../nudge-card";
 import { useTranslation } from "react-i18next";
 
 export function InboxWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
@@ -12,7 +11,6 @@ export function InboxWidgets({ organizationId }: { organizationId: Id<"organizat
     api.sidebarWidgets.getInboxKpis,
     user?._id ? { organizationId, userId: user._id } : "skip"
   );
-  const nudges = useQuery(api.nudges.getInboxNudges, { organizationId });
 
   if (!kpis) return null;
 
@@ -29,15 +27,6 @@ export function InboxWidgets({ organizationId }: { organizationId: Id<"organizat
           { label: t("sidebar.todayReceived"), value: kpis.todayReceived },
         ]}
       />
-      {nudges?.map((n, index) => (
-        <NudgeCard
-          key={`${n.message}-${index}`}
-          message={n.message}
-          messageValues={n.messageValues}
-          severity={n.severity}
-          icon={n.icon}
-        />
-      ))}
     </>
   );
 }

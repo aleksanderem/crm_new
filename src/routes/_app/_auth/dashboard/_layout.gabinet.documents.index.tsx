@@ -10,6 +10,7 @@ import { DocumentViewer } from "@/components/documents/document-viewer";
 import { renderDocument } from "@/components/documents/document-renderer";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
+import { MiniChartsRow, type MiniChartData } from "@/components/crm/mini-charts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -177,6 +178,35 @@ function GabinetDocumentsPage() {
     const cats = new Set(templates.map((tpl) => tpl.category));
     return Array.from(cats).sort();
   }, [templates]);
+
+  // --- Mini charts data ---
+  const documentsByDay = useMemo<MiniChartData[]>(() => {
+    if (!documents) return [];
+    const dayMap = new Map<string, number>();
+    for (const doc of documents) {
+      const day = new Date(doc.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
+    }
+    return Array.from(dayMap.entries())
+      .map(([label, value]) => ({ label, value }))
+      .slice(-14); // Last 14 days
+  }, [documents]);
+
+  const documentsByStatus = useMemo<MiniChartData[]>(() => {
+    if (!documents) return [];
+    const statusMap = new Map<string, number>();
+    for (const doc of documents) {
+      const statusLabel = t(`gabinet.formDocuments.status.${doc.status}`, doc.status);
+      statusMap.set(statusLabel, (statusMap.get(statusLabel) ?? 0) + 1);
+    }
+    return Array.from(statusMap.entries()).map(([label, value]) => ({
+      label,
+      value,
+    }));
+  }, [documents, t]);
 
   // --- Filter definitions ---
   const filterableFields = useMemo((): FieldDef[] => [
@@ -476,6 +506,20 @@ function GabinetDocumentsPage() {
             <Skeleton key={i} className="h-12 w-full rounded-lg" />
           ))}
         </div>
+      )}
+
+      {/* Mini charts */}
+      {!docsLoading && documents && documents.length > 0 && (
+        <MiniChartsRow
+          leftChart={{
+            title: t("gabinet.formDocuments.byDay", "Dokumenty w czasie"),
+            data: documentsByDay,
+          }}
+          rightChart={{
+            title: t("gabinet.formDocuments.byStatus", "Dokumenty według statusu"),
+            data: documentsByStatus,
+          }}
+        />
       )}
 
       {/* Empty state */}

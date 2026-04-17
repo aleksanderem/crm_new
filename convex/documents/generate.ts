@@ -147,6 +147,27 @@ export const generateDocument = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate new form document to Supabase
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.formDocuments.writeFormDocumentToSupabase,
+      {
+        documentId: docId as string,
+        organizationId: args.organizationId as string,
+        templateId: args.templateId as string,
+        title,
+        responseData: args.responseData,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        status,
+        signingToken,
+        signingTokenExpiresAt,
+        createdBy: user._id as string,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
     // Send signing/filling email to client if token was generated
     if (signingToken) {
       const scopeData = await resolveScope(

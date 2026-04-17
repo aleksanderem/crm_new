@@ -783,3 +783,140 @@ export const getTopTemplates = query({
       .slice(0, 5);
   },
 });
+
+// --- Form Documents (CRM Documents page) ---
+export const getFormDocumentsKpis = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const docs = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const signedCount = docs.filter(
+      (d) => d.status === "signed" || d.status === "completed",
+    ).length;
+
+    return {
+      total: docs.length,
+      newThisMonth: docs.filter((d) => d.createdAt >= monthStart.getTime()).length,
+      pendingSignature: docs.filter((d) => d.status === "pending_signature").length,
+      signed: signedCount,
+      signRate: docs.length > 0 ? Math.round((signedCount / docs.length) * 100) : 0,
+    };
+  },
+});
+
+export const getFormDocumentsByStatus = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const docs = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const STATUS_META: Record<string, { label: string; color: string; order: number }> = {
+      draft: { label: "Szkic", color: "bg-slate-400", order: 0 },
+      pending_signature: { label: "Do podpisu", color: "bg-amber-500", order: 1 },
+      signed: { label: "Podpisane", color: "bg-emerald-500", order: 2 },
+      completed: { label: "Zakończone", color: "bg-sky-500", order: 3 },
+      expired: { label: "Wygasłe", color: "bg-rose-500", order: 4 },
+      voided: { label: "Unieważnione", color: "bg-neutral-500", order: 5 },
+    };
+
+    const counts = new Map<string, number>();
+    for (const d of docs) {
+      counts.set(d.status, (counts.get(d.status) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([status, count]) => {
+        const meta = STATUS_META[status] ?? { label: status, color: "bg-muted", order: 99 };
+        return { label: meta.label, count, color: meta.color, order: meta.order };
+      })
+      .sort((a, b) => a.order - b.order)
+      .map(({ label, count, color }) => ({ label, count, color }));
+  },
+});
+
+export const getWeeklyFormDocumentsTrend = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
+    const now = new Date();
+    const days: { day: string; value: number; _start: number; _end: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      days.push({ day: dayNames[d.getDay()], value: 0, _start: start, _end: start + 86400000 });
+    }
+
+    const docs = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const recent = docs.filter((d) => d.createdAt >= days[0]._start);
+    for (const day of days) {
+      day.value = recent.filter((d) => d.createdAt >= day._start && d.createdAt < day._end).length;
+    }
+
+    return days.map(({ day, value }) => ({ day, value }));
+  },
+});
+
+export const getTopDocumentCategories = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const CATEGORY_LABELS: Record<string, string> = {
+      consent: "Zgoda",
+      medical_record: "Karta medyczna",
+      prescription: "Recepta",
+      referral: "Skierowanie",
+      contract: "Umowa",
+      invoice: "Faktura",
+      protocol: "Protokół",
+      intake: "Ankieta",
+      custom: "Inne",
+    };
+
+    const docs = await ctx.db
+      .query("formDocuments")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    const templateCounts = new Map<Id<"formTemplates">, number>();
+    for (const d of docs) {
+      templateCounts.set(d.templateId, (templateCounts.get(d.templateId) ?? 0) + 1);
+    }
+
+    const categoryCounts = new Map<string, number>();
+    for (const [templateId, count] of templateCounts) {
+      const template = await ctx.db.get(templateId);
+      if (!template) continue;
+      const cat = template.category;
+      categoryCounts.set(cat, (categoryCounts.get(cat) ?? 0) + count);
+    }
+
+    return Array.from(categoryCounts.entries())
+      .map(([category, count]) => ({
+        label: CATEGORY_LABELS[category] ?? category,
+        value: count,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  },
+});

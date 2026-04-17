@@ -5,6 +5,13 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import {
+  useSupabaseScheduledActivitiesList,
+  useSupabaseScheduledActivitiesDueToday,
+  useSupabaseScheduledActivitiesDueThisWeek,
+  useSupabaseScheduledActivitiesOverdue,
+} from "@/hooks/use-supabase-scheduled-activities";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -71,9 +78,7 @@ function ActivitiesPage() {
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "activity");
 
-  const { data: activityTypeDefs } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
 
   const typeFilterOptions: { label: string; value: string }[] = useMemo(
     () => (activityTypeDefs ?? []).map((td) => ({ label: td.name, value: td.key })),
@@ -122,33 +127,22 @@ function ActivitiesPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  // Queries based on active view
-  const { data: allData, isLoading: allLoading } = useQuery(
-    convexQuery(api.scheduledActivities.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
+  // Queries based on active view — Supabase hooks
+  const { data: allActivities, isLoading: allLoading } = useSupabaseScheduledActivitiesList(
+    organizationId,
+    { limit: 100 },
   );
 
-  const { data: openData } = useQuery(
-    convexQuery(api.scheduledActivities.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-      isCompleted: false,
-    })
+  const { data: openActivities } = useSupabaseScheduledActivitiesList(
+    organizationId,
+    { isCompleted: false, limit: 100 },
   );
 
-  const { data: dueTodayData } = useQuery(
-    convexQuery(api.scheduledActivities.listDueToday, { organizationId })
-  );
+  const { data: dueTodayData } = useSupabaseScheduledActivitiesDueToday(organizationId);
 
-  const { data: dueThisWeekData } = useQuery(
-    convexQuery(api.scheduledActivities.listDueThisWeek, { organizationId })
-  );
+  const { data: dueThisWeekData } = useSupabaseScheduledActivitiesDueThisWeek(organizationId);
 
-  const { data: overdueData } = useQuery(
-    convexQuery(api.scheduledActivities.listOverdue, { organizationId })
-  );
+  const { data: overdueData } = useSupabaseScheduledActivitiesOverdue(organizationId);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -165,19 +159,19 @@ function ActivitiesPage() {
     let data: ScheduledActivity[];
     switch (activeViewId) {
       case "open":
-        data = openData?.page ?? [];
+        data = (openActivities ?? []) as unknown as ScheduledActivity[];
         break;
       case "due-today":
-        data = dueTodayData ?? [];
+        data = (dueTodayData ?? []) as unknown as ScheduledActivity[];
         break;
       case "due-this-week":
-        data = dueThisWeekData ?? [];
+        data = (dueThisWeekData ?? []) as unknown as ScheduledActivity[];
         break;
       case "overdue":
-        data = overdueData ?? [];
+        data = (overdueData ?? []) as unknown as ScheduledActivity[];
         break;
       default:
-        data = allData?.page ?? [];
+        data = (allActivities ?? []) as unknown as ScheduledActivity[];
     }
     let filtered = applyFilters(data);
     filtered = applyFilterConditions(filtered, activeFilters);
@@ -186,7 +180,7 @@ function ActivitiesPage() {
       filtered = filtered.filter((a) => a.title.toLowerCase().includes(q));
     }
     return filtered;
-  }, [activeViewId, allData, openData, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue]);
+  }, [activeViewId, allActivities, openActivities, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id as string),

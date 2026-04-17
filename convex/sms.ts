@@ -3,6 +3,9 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeOrgSmsConfigRef = internal.supabase.orgSmsConfig.writeOrgSmsConfigToSupabase;
+
 // ---------------------------------------------------------------------------
 // SMS Config (authenticated, org-scoped)
 // ---------------------------------------------------------------------------
@@ -56,7 +59,7 @@ export const saveConfig = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("orgSmsConfig", {
+    const configId = await ctx.db.insert("orgSmsConfig", {
       organizationId: args.organizationId,
       provider: args.provider,
       apiToken: args.apiToken,
@@ -67,6 +70,22 @@ export const saveConfig = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeOrgSmsConfigRef, {
+      orgSmsConfigId: configId as string,
+      organizationId: args.organizationId as string,
+      provider: args.provider,
+      apiToken: args.apiToken,
+      apiSecret: args.apiSecret,
+      senderId: args.senderId,
+      fromNumber: args.fromNumber,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return configId;
   },
 });
 

@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLeaveTypesList } from "@/hooks/use-supabase-gabinet-leave-types";
 import { useSupabaseGabinetLeaveBalancesList } from "@/hooks/use-supabase-gabinet-leave-balances";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,9 +29,7 @@ function LeaveBalancesPage() {
 
   const { data: balances } = useSupabaseGabinetLeaveBalancesList(organizationId, { year });
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const userMap = useMemo(() => {
     const map = new Map<string, string>();

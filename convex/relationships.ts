@@ -9,6 +9,80 @@ const writeRelRef = internal.supabase.relationships.writeRelationshipToSupabase;
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const deleteRelRef = internal.supabase.relationships.deleteRelationshipFromSupabase;
 
+export const getForSources = query({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceType: v.string(),
+    sourceIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const result: Record<
+      string,
+      Array<{
+        targetType: string;
+        targetId: string;
+        targetName: string;
+        targetSublabel?: string;
+      }>
+    > = {};
+
+    for (const sourceId of args.sourceIds) {
+      const rels = await ctx.db
+        .query("objectRelationships")
+        .withIndex("by_source", (q) =>
+          q.eq("sourceType", args.sourceType).eq("sourceId", sourceId)
+        )
+        .collect();
+
+      const resolved = await Promise.all(
+        rels.map(async (rel) => {
+          let targetName = rel.targetId;
+          let targetSublabel: string | undefined;
+
+          try {
+            if (rel.targetType === "contact") {
+              const contact = await ctx.db.get(rel.targetId as any);
+              if (contact) {
+                targetName = `${(contact as any).firstName}${(contact as any).lastName ? ` ${(contact as any).lastName}` : ""}`;
+                targetSublabel = (contact as any).email;
+              }
+            } else if (rel.targetType === "company") {
+              const company = await ctx.db.get(rel.targetId as any);
+              if (company) {
+                targetName = (company as any).name;
+                targetSublabel = (company as any).domain;
+              }
+            } else if (rel.targetType === "lead" || rel.targetType === "deal") {
+              const lead = await ctx.db.get(rel.targetId as any);
+              if (lead) {
+                targetName = (lead as any).title;
+                targetSublabel = (lead as any).value
+                  ? `$${(lead as any).value.toLocaleString()}`
+                  : undefined;
+              }
+            }
+          } catch {
+            // Entity may have been deleted — keep the raw ID
+          }
+
+          return {
+            targetType: rel.targetType,
+            targetId: rel.targetId,
+            targetName,
+            targetSublabel,
+          };
+        })
+      );
+
+      result[sourceId] = resolved;
+    }
+
+    return result;
+  },
+});
+
 export const getForEntity = query({
   args: {
     organizationId: v.id("organizations"),

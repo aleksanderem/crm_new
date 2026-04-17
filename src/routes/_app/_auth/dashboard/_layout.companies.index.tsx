@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -93,14 +92,7 @@ function CompaniesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const companies = data?.page ?? [];
+  const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
 
   const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
 

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -43,9 +43,7 @@ function LostReasonsSettings() {
 
   const { data: reasons } = useSupabaseLostReasonsList(organizationId);
 
-  const { data: orgSettings } = useQuery(
-    convexQuery(api.orgSettings.get, { organizationId })
-  );
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
 
   const sortedReasons = reasons
     ? [...reasons].sort((a, b) => a.order - b.order)

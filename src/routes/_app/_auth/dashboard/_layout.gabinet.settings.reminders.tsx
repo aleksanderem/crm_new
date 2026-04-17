@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -26,9 +25,7 @@ function ReminderSettings() {
   const upsertSettings = useMutation(api.orgSettings.upsert);
   const [saving, setSaving] = useState(false);
 
-  const { data: orgSettings } = useQuery(
-    convexQuery(api.orgSettings.get, { organizationId })
-  );
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
 
   const [enabled, setEnabled] = useState(false);
   const [hoursBefore, setHoursBefore] = useState(24);

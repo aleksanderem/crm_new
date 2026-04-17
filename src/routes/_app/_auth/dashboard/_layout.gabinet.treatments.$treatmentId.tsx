@@ -6,6 +6,9 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatment, useSupabaseGabinetTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
@@ -199,27 +202,19 @@ function TreatmentDetail() {
   }, [rawVariants, treatment?.price, treatment?.duration, treatment?.shortDescription]);
 
   // Activities for the new Activity tab
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "gabinetTreatment",
-      entityId: treatmentId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
+  const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetTreatment",
+    treatmentId,
   );
-  const activities = activitiesData?.page;
 
   // All org employees for the assign picker
-  const { data: allGabinetEmployees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId }),
-  );
+  const { data: allGabinetEmployees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const allEmps = allGabinetEmployees ?? [];
 
   // Equipment list for resolving IDs to names
-  const { data: equipmentList } = useQuery(
-    convexQuery(api.gabinet.equipment.listEquipment, { organizationId }),
-  );
+  const { data: equipmentList } = useSupabaseGabinetEquipmentList(organizationId);
 
   const getEquipmentName = (id: Id<"gabinetEquipment">) =>
     equipmentList?.find((e) => e._id === id)?.name ?? id;

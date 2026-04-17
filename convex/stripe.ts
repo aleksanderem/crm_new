@@ -13,6 +13,9 @@ import { api, internal } from "~/convex/_generated/api";
 import { SITE_URL, STRIPE_SECRET_KEY } from "@cvx/env";
 import { asyncMap } from "convex-helpers";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeSubscriptionRef = internal.supabase.subscriptions.writeSubscriptionToSupabase;
+
 if (!STRIPE_SECRET_KEY) {
   throw new Error(`Stripe - ${ERRORS.ENVS_NOT_INITIALIZED}`);
 }
@@ -143,9 +146,24 @@ export const PREAUTH_createSubscription = internalMutation({
     if (subscription) {
       throw new Error("Subscription already exists");
     }
-    await ctx.db.insert("subscriptions", {
+    const subId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: args.planId,
+      priceStripeId: args.priceStripeId,
+      stripeId: args.stripeSubscriptionId,
+      currency: args.currency,
+      interval: args.interval,
+      status: args.status,
+      currentPeriodStart: args.currentPeriodStart,
+      currentPeriodEnd: args.currentPeriodEnd,
+      cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+    });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeSubscriptionRef, {
+      subscriptionId: subId as string,
+      userId: args.userId as string,
+      planId: args.planId as string,
       priceStripeId: args.priceStripeId,
       stripeId: args.stripeSubscriptionId,
       currency: args.currency,
@@ -189,7 +207,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
     if (!plan) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
-    await ctx.db.insert("subscriptions", {
+    const newSubId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: plan._id,
       stripeId: args.subscriptionStripeId,
@@ -197,6 +215,21 @@ export const PREAUTH_replaceSubscription = internalMutation({
       interval: args.input.interval,
       status: args.input.status,
       currency: args.input.currency,
+      currentPeriodStart: args.input.currentPeriodStart,
+      currentPeriodEnd: args.input.currentPeriodEnd,
+      cancelAtPeriodEnd: args.input.cancelAtPeriodEnd,
+    });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeSubscriptionRef, {
+      subscriptionId: newSubId as string,
+      userId: args.userId as string,
+      planId: plan._id as string,
+      priceStripeId: args.input.priceStripeId,
+      stripeId: args.subscriptionStripeId,
+      currency: args.input.currency,
+      interval: args.input.interval,
+      status: args.input.status,
       currentPeriodStart: args.input.currentPeriodStart,
       currentPeriodEnd: args.input.currentPeriodEnd,
       cancelAtPeriodEnd: args.input.cancelAtPeriodEnd,

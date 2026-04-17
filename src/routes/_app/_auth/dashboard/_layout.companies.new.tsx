@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CompanyForm } from "@/components/forms/company-form";
@@ -24,11 +24,9 @@ function NewCompany() {
   const createCompany = useMutation(api.companies.create);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: customFieldDefs } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "company",
-    })
+  const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "company",
   );
 
   return (

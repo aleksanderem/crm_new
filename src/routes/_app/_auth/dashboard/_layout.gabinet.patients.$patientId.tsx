@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseGabinetAppointmentsByPatient } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
@@ -55,13 +58,10 @@ function PatientDetail() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const patientDetailQuery = convexQuery(api.gabinet.patients.getById, {
+  const { data: patient, isLoading } = useSupabaseGabinetPatient(
     organizationId,
-    patientId: patientId as Id<"gabinetPatients">,
-  });
-
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this query shape
-  const { data: patient, isLoading } = useQuery(patientDetailQuery);
+    patientId,
+  );
 
   useEffect(() => {
     if (patient && organizationId) {
@@ -77,40 +77,28 @@ function PatientDetail() {
     return () => setShellSidebarMode("default");
   }, [setShellSidebarMode]);
 
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "gabinetPatient",
-      entityId: patientId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
-  );
-  const activities = activitiesData?.page;
-
-  const { data: patientAppointments } = useQuery(
-    convexQuery(api.gabinet.appointments.listByPatient, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    }),
+  const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetPatient",
+    patientId,
   );
 
-  const { data: loyaltyBalance } = useQuery(
-    convexQuery(api.gabinet.loyalty.getBalance, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    }),
+  const { data: patientAppointments } = useSupabaseGabinetAppointmentsByPatient(
+    organizationId,
+    patientId,
   );
 
-  const { data: loyaltyTransactions } = useQuery(
-    convexQuery(api.gabinet.loyalty.getTransactions, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    }),
+  const { data: loyaltyBalance } = useSupabaseGabinetLoyaltyBalance(
+    organizationId,
+    patientId,
   );
 
-  const { data: treatmentsData } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId }),
+  const { data: loyaltyTransactions } = useSupabaseGabinetLoyaltyTransactions(
+    organizationId,
+    patientId,
   );
+
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
 
   // Build fields for EntityDetailLayout sidebar
   const detailFields: DetailField[] = (() => {
@@ -124,7 +112,8 @@ function PatientDetail() {
     if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
     if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
     if (patient.address) {
-      const addr = [patient.address.street, patient.address.postalCode, patient.address.city].filter(Boolean).join(", ");
+      const patientAddr = patient.address as { street?: string; postalCode?: string; city?: string };
+      const addr = [patientAddr.street, patientAddr.postalCode, patientAddr.city].filter(Boolean).join(", ");
       if (addr) fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
     }
     if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: patient.referralSource, fieldKey: "referral" });
@@ -201,7 +190,6 @@ function PatientDetail() {
         patientId: patientId as Id<"gabinetPatients">,
         ...formData,
       });
-      void queryClient.invalidateQueries({ queryKey: patientDetailQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       setEditDrawerOpen(false);

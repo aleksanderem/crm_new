@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -413,15 +414,11 @@ function AppointmentDetail() {
     }),
   );
 
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "gabinetAppointment",
-      entityId: appointmentId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
+  const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetAppointment",
+    appointmentId,
   );
-  const activities = activitiesData?.page;
 
   const { data: automationRuns = [] } = useQuery(
     convexQuery(api.automation.listEntityRuns, {
@@ -990,7 +987,7 @@ function AppointmentDetail() {
 
   // Build merged timeline using mergeTimelineSources
   const mergedTimeline = mergeTimelineSources({
-    activities: (activities ?? []).map((a: Record<string, unknown>) => ({
+    activities: (activities ?? []).map((a: any) => ({
       _id: a._id as string,
       action: a.action as string,
       description: a.description as string,

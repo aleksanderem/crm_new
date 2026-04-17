@@ -8,7 +8,95 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
+import { internal } from "@cvx/_generated/api";
 import { createServiceRoleClient } from "../client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { GenericActionCtx } from "convex/server";
+import type { DataModel } from "@cvx/_generated/dataModel";
+
+type ActionCtx = GenericActionCtx<DataModel>;
+
+async function ensureRowExists(
+  client: SupabaseClient,
+  table: string,
+  id: string,
+): Promise<boolean> {
+  const { data } = await client
+    .from(table)
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  return !!data;
+}
+
+async function ensureFkDeps(
+  ctx: ActionCtx,
+  client: SupabaseClient,
+  args: {
+    patientId: string;
+    employeeId: string;
+    treatmentId?: string;
+    createdBy: string;
+    organizationId: string;
+    cancelledBy?: string;
+    bookedByPatientId?: string;
+  },
+) {
+  const userIds = new Set([args.employeeId, args.createdBy]);
+  if (args.cancelledBy) userIds.add(args.cancelledBy);
+
+  for (const userId of userIds) {
+    if (!(await ensureRowExists(client, "users", userId))) {
+      const user = await ctx.runQuery(internal.supabase.backfill._getUser, {
+        userId,
+      });
+      if (user) {
+        await client.from("users").upsert(
+          {
+            id: user._id,
+            name: user.name ?? null,
+            username: (user as any).username ?? null,
+            image_storage_id: (user as any).imageStorageId ?? null,
+            image: user.image ?? null,
+            email: user.email ?? null,
+            email_verification_time: (user as any).emailVerificationTime ?? null,
+            phone: user.phone ?? null,
+            phone_verification_time: (user as any).phoneVerificationTime ?? null,
+            is_anonymous: (user as any).isAnonymous ?? false,
+            customer_id: (user as any).customerId ?? null,
+            language: (user as any).language ?? null,
+            theme: (user as any).theme ?? null,
+            timezone: (user as any).timezone ?? null,
+            created_at: Math.floor(user._creationTime),
+            updated_at: Math.floor(user._creationTime),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+  }
+
+  const patientIds = [args.patientId];
+  if (args.bookedByPatientId) patientIds.push(args.bookedByPatientId);
+
+  for (const patientId of patientIds) {
+    if (!(await ensureRowExists(client, "gabinet_patients", patientId))) {
+      await ctx.runAction(internal.supabase.backfill.backfillSinglePatient, {
+        patientId,
+      });
+    }
+  }
+
+  if (args.treatmentId) {
+    if (
+      !(await ensureRowExists(client, "gabinet_treatments", args.treatmentId))
+    ) {
+      await ctx.runAction(internal.supabase.backfill.backfillSingleTreatment, {
+        treatmentId: args.treatmentId,
+      });
+    }
+  }
+}
 
 export const writeAppointmentToSupabase = internalAction({
   args: {
@@ -56,8 +144,11 @@ export const writeAppointmentToSupabase = internalAction({
     updatedAt: v.number(),
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args): Promise<{ success: boolean; id: string }> => {
+  handler: async (ctx, args): Promise<{ success: boolean; id: string }> => {
     const client = createServiceRoleClient();
+
+    // Self-healing: ensure FK dependencies exist in Supabase before insert
+    await ensureFkDeps(ctx, client, args);
 
     const row = {
       id: args.appointmentId,

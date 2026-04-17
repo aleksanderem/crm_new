@@ -5,6 +5,8 @@ import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseCallsList } from "@/hooks/use-supabase-calls";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -35,6 +37,7 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
@@ -98,14 +101,27 @@ function CallsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.calls.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
+  const { data: allCalls = [], isLoading } = useSupabaseCallsList(organizationId);
 
-  const allCalls = data?.page ?? [];
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
+
+  const userMap = useMemo(() => {
+    const map = new Map<Id<"users">, { name?: string; email?: string }>();
+    if (!members) return map;
+    for (const m of members) if (m.user) map.set(m.user._id, m.user);
+    return map;
+  }, [members]);
+
+  const callIds = useMemo(() => allCalls.map((c) => c._id as string), [allCalls]);
+
+  const { data: relMap } = useQuery({
+    ...convexQuery(api.relationships.getForSources, {
+      organizationId,
+      sourceType: "call",
+      sourceIds: callIds,
+    }),
+    enabled: callIds.length > 0,
+  });
   const calls = useMemo(() => {
     const withConditions = applyFilterConditions(allCalls, activeFilters);
     const filtered = applyFilters(withConditions) as typeof allCalls;
@@ -175,6 +191,35 @@ function CallsPage() {
     }
   };
 
+  const AVATAR_IMAGES = [
+    "/images/avatars/blue.jpg",
+    "/images/avatars/purple.jpg",
+    "/images/avatars/red.jpg",
+  ];
+
+  const renderUserAvatar = (userId: Id<"users">) => {
+    const u = userMap.get(userId);
+    if (!u) return <span className="text-sm text-muted-foreground">—</span>;
+    const name = u.name ?? u.email ?? "—";
+    const parts = (u.name ?? "").trim().split(/\s+/).filter(Boolean);
+    const initials =
+      parts.length >= 2
+        ? `${parts[0][0]}${parts[1][0]}`
+        : (name[0] ?? "?").toUpperCase();
+    const src = AVATAR_IMAGES[userId.charCodeAt(userId.length - 1) % AVATAR_IMAGES.length];
+    return (
+      <AvatarLabelGroup
+        size="sm"
+        src={src}
+        initials={initials.toUpperCase()}
+        title={name}
+        subtitle={u.email ?? ""}
+      />
+    );
+  };
+
+  const getRelated = (callId: string) => relMap?.[callId] ?? [];
+
   const columns: CrmColumn<Call>[] = [
     {
       id: "outcome",
@@ -183,10 +228,47 @@ function CallsPage() {
         const config = OUTCOME_CONFIG[item.outcome as CallOutcome];
         if (!config) return item.outcome;
         return (
-          <Badge variant="secondary" className={config.color}>
+          <Badge variant="secondary" className={`${config.color} whitespace-nowrap`}>
             {t(config.labelKey)}
           </Badge>
         );
+      },
+    },
+    {
+      id: "relatedTo",
+      label: t('calls.relatedTo', "Do"),
+      render: (item) => {
+        const rels = getRelated(item._id);
+        if (rels.length === 0)
+          return <span className="text-sm text-muted-foreground">—</span>;
+        const first = rels[0];
+        const extra = rels.length - 1;
+        const initials = (first.targetName ?? "?").trim().slice(0, 2).toUpperCase();
+        return (
+          <div className="flex items-center gap-2">
+            <AvatarLabelGroup
+              size="sm"
+              initials={initials || "?"}
+              title={first.targetName}
+              subtitle={first.targetSublabel ?? first.targetType}
+            />
+            {extra > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                +{extra}
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "createdBy",
+      label: t('calls.performedBy', "Wykonał"),
+      sortable: true,
+      render: (item) => renderUserAvatar(item.createdBy),
+      getSortValue: (item) => {
+        const u = userMap.get(item.createdBy);
+        return u?.name ?? u?.email ?? "";
       },
     },
     {

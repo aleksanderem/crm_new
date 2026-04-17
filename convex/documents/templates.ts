@@ -1,7 +1,11 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import { formCategoryValidator } from "../schema/documents";
+
+const writeFormTemplateRef = internal.supabase.formTemplates.writeFormTemplateToSupabase;
+const updateFormTemplateRef = internal.supabase.formTemplates.updateFormTemplateInSupabase;
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
@@ -114,7 +118,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
     const now = Date.now();
-    return await ctx.db.insert("formTemplates", {
+    const templateId = await ctx.db.insert("formTemplates", {
       ...args,
       formJson: args.formJson ?? "{}",
       templateType: args.templateType ?? "document",
@@ -124,6 +128,32 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new form template to Supabase
+    await ctx.scheduler.runAfter(0, writeFormTemplateRef, {
+      templateId: templateId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      folderPath: args.folderPath,
+      templateType: args.templateType ?? "document",
+      formJson: args.formJson ?? "{}",
+      contentJson: args.contentJson,
+      modules: args.modules,
+      entityTypes: args.entityTypes,
+      variableBindings: args.variableBindings,
+      requiresSignature: args.requiresSignature,
+      signatureConfig: args.signatureConfig ? JSON.stringify(args.signatureConfig) : undefined,
+      accessRoles: args.accessRoles,
+      version: 1,
+      isActive: true,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return templateId;
   },
 });
 
@@ -149,7 +179,7 @@ export const duplicate = mutation({
       isActive: _ia,
       ...rest
     } = source;
-    return await ctx.db.insert("formTemplates", {
+    const dupId = await ctx.db.insert("formTemplates", {
       ...rest,
       name: `${source.name} (Kopia)`,
       version: 1,
@@ -158,6 +188,35 @@ export const duplicate = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate duplicated form template to Supabase
+    const dup = await ctx.db.get(dupId);
+    if (dup) {
+      await ctx.scheduler.runAfter(0, writeFormTemplateRef, {
+        templateId: dupId as string,
+        organizationId: dup.organizationId as string,
+        name: dup.name,
+        description: dup.description,
+        category: dup.category,
+        folderPath: dup.folderPath,
+        templateType: dup.templateType,
+        formJson: dup.formJson,
+        contentJson: dup.contentJson,
+        modules: dup.modules,
+        entityTypes: dup.entityTypes,
+        variableBindings: dup.variableBindings,
+        requiresSignature: dup.requiresSignature,
+        signatureConfig: dup.signatureConfig ? JSON.stringify(dup.signatureConfig) : undefined,
+        accessRoles: dup.accessRoles,
+        version: dup.version,
+        isActive: dup.isActive,
+        createdBy: dup.createdBy as string,
+        createdAt: dup.createdAt,
+        updatedAt: dup.updatedAt,
+      });
+    }
+
+    return dupId;
   },
 });
 
@@ -210,11 +269,35 @@ export const update = mutation({
       (updates.contentJson && updates.contentJson !== tmpl.contentJson);
     const newVersion = contentChanged ? tmpl.version + 1 : tmpl.version;
 
+    const updatedAt = Date.now();
     await ctx.db.patch(templateId, {
       ...updates,
       version: newVersion,
-      updatedAt: Date.now(),
+      updatedAt,
     });
+
+    // Dual-write: replicate form template update to Supabase
+    await ctx.scheduler.runAfter(0, updateFormTemplateRef, {
+      templateId: templateId as string,
+      organizationId: args.organizationId as string,
+      name: updates.name,
+      description: updates.description,
+      category: updates.category,
+      folderPath: updates.folderPath,
+      templateType: updates.templateType,
+      formJson: updates.formJson,
+      contentJson: updates.contentJson,
+      modules: updates.modules,
+      entityTypes: updates.entityTypes,
+      variableBindings: updates.variableBindings,
+      requiresSignature: updates.requiresSignature,
+      signatureConfig: updates.signatureConfig ? JSON.stringify(updates.signatureConfig) : undefined,
+      accessRoles: updates.accessRoles,
+      isActive: updates.isActive,
+      version: newVersion,
+      updatedAt,
+    });
+
     return templateId;
   },
 });
@@ -230,9 +313,18 @@ export const remove = mutation({
     if (!tmpl || tmpl.organizationId !== args.organizationId)
       throw new Error("Template not found");
     // Soft delete
+    const removedAt = Date.now();
     await ctx.db.patch(args.templateId, {
       isActive: false,
-      updatedAt: Date.now(),
+      updatedAt: removedAt,
+    });
+
+    // Dual-write: replicate soft delete to Supabase
+    await ctx.scheduler.runAfter(0, updateFormTemplateRef, {
+      templateId: args.templateId as string,
+      organizationId: args.organizationId as string,
+      isActive: false,
+      updatedAt: removedAt,
     });
   },
 });

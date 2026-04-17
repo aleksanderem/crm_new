@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -110,14 +109,7 @@ function ProductsPage() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.products.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const allProducts = data?.page ?? [];
+  const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
 
   const products = useMemo(() => {
     let data = allProducts;

@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -72,9 +72,7 @@ function LeavesPage() {
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
-  const { data: teamMembers } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const { data: teamMembers } = useSupabaseOrganizationMembers(organizationId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");

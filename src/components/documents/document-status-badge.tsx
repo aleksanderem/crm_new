@@ -86,7 +86,7 @@ export function DocumentStatusBadge({
   return (
     <Badge
       variant={config.variant}
-      className={cn(config.extraClass, className)}
+      className={cn("whitespace-nowrap", config.extraClass, className)}
     >
       {t(config.labelKey, config.fallback)}
     </Badge>

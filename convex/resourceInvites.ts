@@ -1,8 +1,12 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireUser } from "./_helpers/auth";
 import { createNotificationDirect } from "./notifications";
 import { logAudit } from "./auditLog";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeResourceInviteRef = internal.supabase.resourceInvites.writeResourceInviteToSupabase;
 
 export const listByResource = query({
   args: {
@@ -52,6 +56,21 @@ export const create = mutation({
       resourceId: args.resourceId,
       accessLevel: args.accessLevel,
       invitedBy: user._id,
+      token,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeResourceInviteRef, {
+      resourceInviteId: inviteId as string,
+      organizationId: args.organizationId as string,
+      email: args.email,
+      resourceType: args.resourceType,
+      resourceId: args.resourceId,
+      accessLevel: args.accessLevel,
+      invitedBy: user._id as string,
       token,
       status: "pending",
       createdAt: now,

@@ -1,8 +1,13 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { resolveSource } from "./documentDataSources";
 import { escapeHtml } from "./_helpers/html";
+
+const writeInstanceRef = internal.supabase.documentInstances.writeDocumentInstanceToSupabase;
+const updateInstanceRef = internal.supabase.documentInstances.updateDocumentInstanceInSupabase;
+const deleteInstanceRef = internal.supabase.documentInstances.deleteDocumentInstanceFromSupabase;
 
 const statusValidator = v.union(
   v.literal("draft"),
@@ -171,7 +176,7 @@ export const create = mutation({
       signerType: slot.signerType,
     }));
 
-    return await ctx.db.insert("documentInstances", {
+    const instanceId = await ctx.db.insert("documentInstances", {
       organizationId: args.organizationId,
       type: "template",
       templateId: args.templateId,
@@ -187,6 +192,27 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new document instance to Supabase
+    await ctx.scheduler.runAfter(0, writeInstanceRef, {
+      instanceId: instanceId as string,
+      organizationId: args.organizationId as string,
+      type: "template",
+      templateId: args.templateId as string,
+      templateVersion: template.version,
+      title: args.title,
+      renderedContent,
+      fieldValues: JSON.stringify(fieldValues),
+      resolvedSources: JSON.stringify(sources),
+      status: "draft",
+      module: template.module,
+      signatures: JSON.stringify(signatures),
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return instanceId;
   },
 });
 
@@ -226,6 +252,22 @@ export const updateDraft = mutation({
     if (args.fileSize !== undefined) patch.fileSize = args.fileSize;
 
     await ctx.db.patch(args.id, patch);
+
+    // Dual-write: replicate draft update to Supabase
+    await ctx.scheduler.runAfter(0, updateInstanceRef, {
+      instanceId: args.id as string,
+      organizationId: instance.organizationId as string,
+      title: args.title,
+      renderedContent: args.renderedContent,
+      fieldValues: args.fieldValues !== undefined ? JSON.stringify(args.fieldValues) : undefined,
+      category: args.category,
+      fileId: args.fileId as string | undefined,
+      fileUrl: patch.fileUrl as string | undefined,
+      fileName: args.fileName,
+      mimeType: args.mimeType,
+      fileSize: args.fileSize,
+      updatedAt: patch.updatedAt as number,
+    });
   },
 });
 
@@ -273,6 +315,20 @@ export const updateStatus = mutation({
     }
 
     await ctx.db.patch(args.id, patch);
+
+    // Dual-write: replicate status update to Supabase
+    await ctx.scheduler.runAfter(0, updateInstanceRef, {
+      instanceId: args.id as string,
+      organizationId: instance.organizationId as string,
+      status: args.status,
+      assignedReviewerId: patch.assignedReviewerId as string | undefined,
+      assignedReviewerName: patch.assignedReviewerName as string | undefined,
+      reviewedBy: patch.reviewedBy as string | undefined,
+      reviewedAt: patch.reviewedAt as number | undefined,
+      approvedBy: patch.approvedBy as string | undefined,
+      approvedAt: patch.approvedAt as number | undefined,
+      updatedAt: now,
+    });
   },
 });
 
@@ -312,6 +368,15 @@ export const sign = mutation({
       status: allSigned ? "signed" : instance.status,
       updatedAt: now,
     });
+
+    // Dual-write: replicate signature to Supabase
+    await ctx.scheduler.runAfter(0, updateInstanceRef, {
+      instanceId: args.id as string,
+      organizationId: instance.organizationId as string,
+      signatures: JSON.stringify(signatures),
+      status: allSigned ? "signed" : instance.status,
+      updatedAt: now,
+    });
   },
 });
 
@@ -332,7 +397,7 @@ export const createFromFile = mutation({
 
     const fileUrl = await ctx.storage.getUrl(args.fileId);
 
-    return await ctx.db.insert("documentInstances", {
+    const instanceId = await ctx.db.insert("documentInstances", {
       organizationId: args.organizationId,
       type: "file",
       title: args.title,
@@ -349,6 +414,28 @@ export const createFromFile = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate file-based document instance to Supabase
+    await ctx.scheduler.runAfter(0, writeInstanceRef, {
+      instanceId: instanceId as string,
+      organizationId: args.organizationId as string,
+      type: "file",
+      title: args.title,
+      fileId: args.fileId as string,
+      fileUrl: fileUrl ?? undefined,
+      fileName: args.fileName,
+      mimeType: args.mimeType,
+      fileSize: args.fileSize,
+      category: args.category,
+      module: args.module,
+      status: "draft",
+      signatures: JSON.stringify([]),
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return instanceId;
   },
 });
 
@@ -369,6 +456,12 @@ export const remove = mutation({
       throw new Error("Podpisanych i zarchiwizowanych dokumentów nie można usunąć");
     }
     await verifyOrgAccess(ctx, instance.organizationId);
+
+    // Dual-write: delete document instance from Supabase
+    await ctx.scheduler.runAfter(0, deleteInstanceRef, {
+      instanceId: args.id as string,
+      organizationId: instance.organizationId as string,
+    });
 
     await ctx.db.delete(args.id);
   },

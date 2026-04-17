@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -15,7 +14,7 @@ import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Doc } from "@cvx/_generated/dataModel";
+import type { Doc } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
@@ -83,14 +82,7 @@ function ContactsIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    })
-  );
-
-  const contacts = data?.page ?? [];
+  const { data: contacts = [], isLoading } = useSupabaseContactsList(organizationId);
 
   const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
 

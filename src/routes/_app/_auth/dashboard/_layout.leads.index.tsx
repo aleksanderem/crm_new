@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabasePipelinesList, useSupabaseAllPipelineStages } from "@/hooks/use-supabase-pipelines";
+import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -185,9 +187,7 @@ function LeadsIndex() {
     systemViews: systemViews,
   });
 
-  const { data: pipelines } = useQuery(
-    convexQuery(api.pipelines.list, { organizationId }),
-  );
+  const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(
     null,
@@ -197,31 +197,18 @@ function LeadsIndex() {
     pipelines?.find((p) => p.isDefault) ??
     pipelines?.[0];
 
-  const firstPipelineId = pipelines?.[0]?._id;
-  const { data: stages } = useQuery({
-    ...convexQuery(api.pipelines.getStages, {
-      organizationId,
-      pipelineId: firstPipelineId ?? ("" as Id<"pipelines">),
-    }),
-    enabled: !!firstPipelineId,
-  });
+  const { data: stages } = useSupabaseAllPipelineStages(organizationId);
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.leads.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
+  const { data: leadsData, isLoading } = useSupabaseLeadsList(
+    organizationId,
+    { limit: 100 },
   );
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId }),
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
-  const { data: companiesData } = useQuery(
-    convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 500, cursor: null },
-    }),
+  const { data: companiesRaw } = useSupabaseCompaniesList(
+    organizationId,
+    { limit: 500 },
   );
 
   const userLookup = useMemo(() => {
@@ -237,15 +224,15 @@ function LeadsIndex() {
 
   const companyLookup = useMemo(() => {
     const map = new Map<string, string>();
-    if (companiesData?.page) {
-      for (const c of companiesData.page) {
+    if (companiesRaw) {
+      for (const c of companiesRaw) {
         map.set(c._id, c.name);
       }
     }
     return map;
-  }, [companiesData]);
+  }, [companiesRaw]);
 
-  const leads = data?.page ?? [];
+  const leads = (leadsData?.page ?? []) as Lead[];
 
   const filteredLeads = useMemo(() => {
     let data = applyFilterConditions(leads, activeFilters);

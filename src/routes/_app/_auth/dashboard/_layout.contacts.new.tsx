@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,11 +24,9 @@ function NewContact() {
   const createContact = useMutation(api.contacts.create);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: customFieldDefs } = useQuery(
-    convexQuery(api.customFields.getDefinitions, {
-      organizationId,
-      entityType: "contact",
-    })
+  const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "contact",
   );
 
   return (

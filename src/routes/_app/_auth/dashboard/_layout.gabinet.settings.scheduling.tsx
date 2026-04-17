@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
@@ -46,9 +45,7 @@ function SchedulingSettings() {
   const bulkSet = useMutation(api.gabinet.scheduling.bulkSetWorkingHours);
   const [saving, setSaving] = useState(false);
 
-  const { data: existing } = useQuery(
-    convexQuery(api.gabinet.scheduling.getWorkingHours, { organizationId })
-  );
+  const { data: existing } = useSupabaseGabinetWorkingHoursList(organizationId);
 
   const [hours, setHours] = useState<DayHours[]>(DEFAULT_HOURS);
 

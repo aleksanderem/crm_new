@@ -5,6 +5,11 @@ import { entityTypeValidator } from "./schema";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { checkPermission } from "./_helpers/permissions";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeCategoryDefRef = internal.supabase.categoryDefinitions.writeCategoryDefinitionToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateCategoryDefRef = internal.supabase.categoryDefinitions.updateCategoryDefinitionInSupabase;
+
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
@@ -58,7 +63,7 @@ export const create = mutation({
     const maxOrder = sameLevelSiblings.reduce((max, c) => Math.max(max, c.sortOrder), -1);
 
     const now = Date.now();
-    return await ctx.db.insert("categoryDefinitions", {
+    const catId = await ctx.db.insert("categoryDefinitions", {
       organizationId: args.organizationId,
       entityType: args.entityType,
       name: args.name.trim(),
@@ -68,6 +73,21 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeCategoryDefRef, {
+      categoryDefinitionId: catId as string,
+      organizationId: args.organizationId as string,
+      entityType: args.entityType,
+      name: args.name.trim(),
+      parentId: args.parentId as string | undefined,
+      color: args.color,
+      sortOrder: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return catId;
   },
 });
 
@@ -106,11 +126,21 @@ export const update = mutation({
       }
     }
 
+    const updatedAt = Date.now();
     await ctx.db.patch(args.categoryId, {
       ...(args.name !== undefined && { name: args.name.trim() }),
       ...(args.color !== undefined && { color: args.color }),
       ...(args.parentId !== undefined && { parentId: args.parentId }),
-      updatedAt: Date.now(),
+      updatedAt,
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateCategoryDefRef, {
+      categoryDefinitionId: args.categoryId as string,
+      name: args.name !== undefined ? args.name.trim() : undefined,
+      color: args.color,
+      parentId: args.parentId as string | undefined,
+      updatedAt,
     });
   },
 });
@@ -135,6 +165,13 @@ export const remove = mutation({
     // Soft-delete this category
     await ctx.db.patch(args.categoryId, { isDeleted: true, updatedAt: now });
 
+    // Dual-write: replicate soft-delete to Supabase
+    await ctx.scheduler.runAfter(0, updateCategoryDefRef, {
+      categoryDefinitionId: args.categoryId as string,
+      isDeleted: true,
+      updatedAt: now,
+    });
+
     // Cascade soft-delete children
     const children = await ctx.db
       .query("categoryDefinitions")
@@ -143,6 +180,12 @@ export const remove = mutation({
     for (const child of children) {
       if (!child.isDeleted) {
         await ctx.db.patch(child._id, { isDeleted: true, updatedAt: now });
+        // Dual-write: replicate child soft-delete to Supabase
+        await ctx.scheduler.runAfter(0, updateCategoryDefRef, {
+          categoryDefinitionId: child._id as string,
+          isDeleted: true,
+          updatedAt: now,
+        });
       }
     }
 

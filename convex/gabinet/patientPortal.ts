@@ -1,5 +1,6 @@
 import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
 import {
   getAvailableSlots,
@@ -364,6 +365,30 @@ export const bookFromPortal = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new appointment to Supabase
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.gabinet.appointments.writeAppointmentToSupabase,
+      {
+        appointmentId: appointmentId as string,
+        organizationId: organizationId as string,
+        patientId: patientId as string,
+        treatmentId: args.treatmentId as string,
+        employeeId: employeeId as string,
+        date: args.preferredDate,
+        startTime: args.preferredTime,
+        endTime,
+        status: "pending_confirmation",
+        notes: `Rezerwacja online — ${patientName}`,
+        isRecurring: false,
+        bookedFromPortal: true,
+        bookedByPatientId: patientId as string,
+        createdBy: ownerMembership.userId as string,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
 
     // Notify all admins and owners about the new booking request
     const staffMemberships = await ctx.db

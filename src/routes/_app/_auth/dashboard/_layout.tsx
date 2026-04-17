@@ -6,6 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -244,12 +245,10 @@ function DashboardLayout() {
     }),
     enabled: !!firstOrg && !!activityDetailId,
   });
-  const { data: activityTypeDefs } = useQuery({
-    ...convexQuery(api.activityTypes.list, {
-      organizationId: firstOrg?._id as Id<"organizations">,
-    }),
-    enabled: !!firstOrg && !!activityDetailId,
-  });
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(
+    firstOrg?._id ?? "",
+    { enabled: !!firstOrg && !!activityDetailId },
+  );
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {

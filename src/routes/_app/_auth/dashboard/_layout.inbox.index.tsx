@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseMailProvidersList } from "@/hooks/use-supabase-mail-providers";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { useOrganization } from "@/components/org-context";
@@ -45,9 +46,7 @@ function InboxPage() {
   const syncGmail = useAction(api.google.gmail.syncInbox);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const { data: mailProviders } = useQuery(
-    convexQuery(api.mailProviders.list, { organizationId })
-  );
+  const { data: mailProviders } = useSupabaseMailProvidersList(organizationId);
   const [selectedMailbox, setSelectedMailbox] = useState<string>("all");
 
   const handleSyncGmail = async () => {

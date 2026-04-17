@@ -1,6 +1,11 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+
+const writeTemplateRef = internal.supabase.documentTemplates.writeDocumentTemplateToSupabase;
+const updateTemplateRef = internal.supabase.documentTemplates.updateDocumentTemplateInSupabase;
+const writeFieldRef = internal.supabase.documentTemplateFields.writeDocumentTemplateFieldToSupabase;
 
 const categoryValidator = v.union(
   v.literal("contract"),
@@ -158,7 +163,7 @@ export const create = mutation({
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const now = Date.now();
 
-    return await ctx.db.insert("documentTemplates", {
+    const templateId = await ctx.db.insert("documentTemplates", {
       ...args,
       version: 1,
       status: "draft",
@@ -166,6 +171,28 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new document template to Supabase
+    await ctx.scheduler.runAfter(0, writeTemplateRef, {
+      templateId: templateId as string,
+      organizationId: args.organizationId as string,
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      content: args.content,
+      module: args.module,
+      requiredSources: args.requiredSources,
+      requiresSignature: args.requiresSignature,
+      signatureSlots: JSON.stringify(args.signatureSlots),
+      accessControl: JSON.stringify(args.accessControl),
+      version: 1,
+      status: "draft",
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return templateId;
   },
 });
 
@@ -192,9 +219,26 @@ export const update = mutation({
     for (const [k, val] of Object.entries(patch)) {
       if (val !== undefined) cleaned[k] = val;
     }
-    cleaned.updatedAt = Date.now();
+    const updatedAt = Date.now();
+    cleaned.updatedAt = updatedAt;
 
     await ctx.db.patch(args.id, cleaned);
+
+    // Dual-write: replicate template update to Supabase
+    await ctx.scheduler.runAfter(0, updateTemplateRef, {
+      templateId: args.id as string,
+      organizationId: template.organizationId as string,
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      content: args.content,
+      module: args.module,
+      requiredSources: args.requiredSources,
+      requiresSignature: args.requiresSignature,
+      signatureSlots: args.signatureSlots ? JSON.stringify(args.signatureSlots) : undefined,
+      accessControl: args.accessControl ? JSON.stringify(args.accessControl) : undefined,
+      updatedAt,
+    });
   },
 });
 
@@ -217,9 +261,18 @@ export const publish = mutation({
       });
     }
 
+    const publishedAt = Date.now();
     await ctx.db.patch(args.id, {
       status: "active",
-      updatedAt: Date.now(),
+      updatedAt: publishedAt,
+    });
+
+    // Dual-write: replicate publish to Supabase
+    await ctx.scheduler.runAfter(0, updateTemplateRef, {
+      templateId: args.id as string,
+      organizationId: template.organizationId as string,
+      status: "active",
+      updatedAt: publishedAt,
     });
   },
 });
@@ -231,9 +284,18 @@ export const archive = mutation({
     if (!template) throw new Error("Template not found");
     await verifyOrgAccess(ctx, template.organizationId);
 
+    const archivedAt = Date.now();
     await ctx.db.patch(args.id, {
       status: "archived",
-      updatedAt: Date.now(),
+      updatedAt: archivedAt,
+    });
+
+    // Dual-write: replicate archive to Supabase
+    await ctx.scheduler.runAfter(0, updateTemplateRef, {
+      templateId: args.id as string,
+      organizationId: template.organizationId as string,
+      status: "archived",
+      updatedAt: archivedAt,
     });
   },
 });
@@ -265,6 +327,26 @@ export const duplicate = mutation({
       updatedAt: now,
     });
 
+    // Dual-write: replicate duplicated template to Supabase
+    await ctx.scheduler.runAfter(0, writeTemplateRef, {
+      templateId: newId as string,
+      organizationId: template.organizationId as string,
+      name: `${template.name} — kopia`,
+      description: template.description,
+      category: template.category,
+      content: template.content,
+      module: template.module,
+      requiredSources: template.requiredSources,
+      requiresSignature: template.requiresSignature,
+      signatureSlots: JSON.stringify(template.signatureSlots),
+      accessControl: JSON.stringify(template.accessControl),
+      version: 1,
+      status: "draft",
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     // Copy fields
     const fields = await ctx.db
       .query("documentTemplateFields")
@@ -272,7 +354,7 @@ export const duplicate = mutation({
       .collect();
 
     for (const field of fields) {
-      await ctx.db.insert("documentTemplateFields", {
+      const fieldId = await ctx.db.insert("documentTemplateFields", {
         templateId: newId,
         fieldKey: field.fieldKey,
         label: field.label,
@@ -283,6 +365,24 @@ export const duplicate = mutation({
         defaultValue: field.defaultValue,
         binding: field.binding,
         validation: field.validation,
+        placeholder: field.placeholder,
+        helpText: field.helpText,
+        width: field.width,
+      });
+
+      // Dual-write: replicate duplicated field to Supabase
+      await ctx.scheduler.runAfter(0, writeFieldRef, {
+        fieldId: fieldId as string,
+        templateId: newId as string,
+        fieldKey: field.fieldKey,
+        label: field.label,
+        type: field.type,
+        sortOrder: field.sortOrder,
+        group: field.group,
+        options: field.options ? JSON.stringify(field.options) : undefined,
+        defaultValue: field.defaultValue,
+        binding: field.binding ? JSON.stringify(field.binding) : undefined,
+        validation: field.validation ? JSON.stringify(field.validation) : undefined,
         placeholder: field.placeholder,
         helpText: field.helpText,
         width: field.width,
@@ -303,6 +403,7 @@ export const createNewVersion = mutation({
     const now = Date.now();
 
     // Create draft copy with version bump and parent reference
+    const newVersion = template.version + 1;
     const newId = await ctx.db.insert("documentTemplates", {
       organizationId: template.organizationId,
       name: template.name,
@@ -314,10 +415,31 @@ export const createNewVersion = mutation({
       requiresSignature: template.requiresSignature,
       signatureSlots: template.signatureSlots,
       accessControl: template.accessControl,
-      version: template.version + 1,
+      version: newVersion,
       parentTemplateId: template._id,
       status: "draft",
       createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Dual-write: replicate new version to Supabase
+    await ctx.scheduler.runAfter(0, writeTemplateRef, {
+      templateId: newId as string,
+      organizationId: template.organizationId as string,
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      content: template.content,
+      module: template.module,
+      requiredSources: template.requiredSources,
+      requiresSignature: template.requiresSignature,
+      signatureSlots: JSON.stringify(template.signatureSlots),
+      accessControl: JSON.stringify(template.accessControl),
+      version: newVersion,
+      parentTemplateId: template._id as string,
+      status: "draft",
+      createdBy: user._id as string,
       createdAt: now,
       updatedAt: now,
     });
@@ -329,7 +451,7 @@ export const createNewVersion = mutation({
       .collect();
 
     for (const field of fields) {
-      await ctx.db.insert("documentTemplateFields", {
+      const fieldId = await ctx.db.insert("documentTemplateFields", {
         templateId: newId,
         fieldKey: field.fieldKey,
         label: field.label,
@@ -340,6 +462,24 @@ export const createNewVersion = mutation({
         defaultValue: field.defaultValue,
         binding: field.binding,
         validation: field.validation,
+        placeholder: field.placeholder,
+        helpText: field.helpText,
+        width: field.width,
+      });
+
+      // Dual-write: replicate copied field to Supabase
+      await ctx.scheduler.runAfter(0, writeFieldRef, {
+        fieldId: fieldId as string,
+        templateId: newId as string,
+        fieldKey: field.fieldKey,
+        label: field.label,
+        type: field.type,
+        sortOrder: field.sortOrder,
+        group: field.group,
+        options: field.options ? JSON.stringify(field.options) : undefined,
+        defaultValue: field.defaultValue,
+        binding: field.binding ? JSON.stringify(field.binding) : undefined,
+        validation: field.validation ? JSON.stringify(field.validation) : undefined,
         placeholder: field.placeholder,
         helpText: field.helpText,
         width: field.width,

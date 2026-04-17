@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { useWideContent } from "@/hooks/use-wide-content";
 import { Button } from "@/components/ui/button";
@@ -197,9 +198,7 @@ function GabinetCalendarPage() {
   );
 
   // Fetch members for name resolution
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId }),
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   // Fetch patients from Supabase (flat list, replaces paginated Convex query)
   const { data: patients } = useSupabaseGabinetPatientsList(

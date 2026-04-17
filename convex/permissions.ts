@@ -1,8 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { getEffectivePermissions } from "./_helpers/permissions";
 import { logAudit } from "./auditLog";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeOrgSettingsRef = internal.supabase.orgSettings.writeOrgSettingsToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeOrgPermissionRef = internal.supabase.orgPermissions.writeOrgPermissionToSupabase;
 
 export const getMyPermissions = query({
   args: { organizationId: v.id("organizations") },
@@ -62,21 +68,34 @@ export const updateOrgPermissions = mutation({
       )
       .unique();
 
+    let permId: string;
     if (existing) {
       await ctx.db.patch(existing._id, {
         permissions: args.permissions,
         updatedBy: user._id,
         updatedAt: now,
       });
+      permId = existing._id as string;
     } else {
-      await ctx.db.insert("orgPermissions", {
+      const newId = await ctx.db.insert("orgPermissions", {
         organizationId: args.organizationId,
         role: args.role,
         permissions: args.permissions,
         updatedBy: user._id,
         updatedAt: now,
       });
+      permId = newId as string;
     }
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeOrgPermissionRef, {
+      orgPermissionId: permId,
+      organizationId: args.organizationId as string,
+      role: args.role,
+      permissions: JSON.stringify(args.permissions),
+      updatedBy: user._id as string,
+      updatedAt: now,
+    });
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
@@ -120,9 +139,29 @@ export const setResourceSharingEnabled = mutation({
         resourceSharingEnabled: args.enabled,
         updatedAt: now,
       });
+      // Dual-write: upsert updated settings to Supabase
+      await ctx.scheduler.runAfter(0, writeOrgSettingsRef, {
+        orgSettingsId: settings._id as any,
+        organizationId: args.organizationId as any,
+        allowCustomLostReason: settings.allowCustomLostReason,
+        lostReasonRequired: settings.lostReasonRequired,
+        resourceSharingEnabled: args.enabled,
+        createdAt: settings.createdAt,
+        updatedAt: now,
+      });
     } else {
-      await ctx.db.insert("orgSettings", {
+      const settingsId = await ctx.db.insert("orgSettings", {
         organizationId: args.organizationId,
+        allowCustomLostReason: false,
+        lostReasonRequired: false,
+        resourceSharingEnabled: args.enabled,
+        createdAt: now,
+        updatedAt: now,
+      });
+      // Dual-write: insert new settings to Supabase
+      await ctx.scheduler.runAfter(0, writeOrgSettingsRef, {
+        orgSettingsId: settingsId as any,
+        organizationId: args.organizationId as any,
         allowCustomLostReason: false,
         lostReasonRequired: false,
         resourceSharingEnabled: args.enabled,

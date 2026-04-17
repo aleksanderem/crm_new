@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -138,14 +139,7 @@ function TreatmentsIndex() {
     [t, tags, categories],
   );
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.gabinet.treatments.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
-  );
-
-  const allTreatments = data?.page ?? [];
+  const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
 
   const {
     views,

@@ -1,6 +1,10 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+
+const writeFieldRef = internal.supabase.documentTemplateFields.writeDocumentTemplateFieldToSupabase;
+const deleteFieldRef = internal.supabase.documentTemplateFields.deleteDocumentTemplateFieldFromSupabase;
 
 const fieldTypeValidator = v.union(
   v.literal("text"),
@@ -84,7 +88,27 @@ export const create = mutation({
       .unique();
     if (existing) throw new Error(`Field key "${args.fieldKey}" already exists in this template`);
 
-    return await ctx.db.insert("documentTemplateFields", args);
+    const fieldId = await ctx.db.insert("documentTemplateFields", args);
+
+    // Dual-write: replicate new template field to Supabase
+    await ctx.scheduler.runAfter(0, writeFieldRef, {
+      fieldId: fieldId as string,
+      templateId: args.templateId as string,
+      fieldKey: args.fieldKey,
+      label: args.label,
+      type: args.type,
+      sortOrder: args.sortOrder,
+      group: args.group,
+      options: args.options ? JSON.stringify(args.options) : undefined,
+      defaultValue: args.defaultValue,
+      binding: args.binding ? JSON.stringify(args.binding) : undefined,
+      validation: args.validation ? JSON.stringify(args.validation) : undefined,
+      placeholder: args.placeholder,
+      helpText: args.helpText,
+      width: args.width,
+    });
+
+    return fieldId;
   },
 });
 
@@ -129,6 +153,27 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.id, cleaned);
+
+    // Dual-write: replicate field update to Supabase via upsert
+    const updated = await ctx.db.get(args.id);
+    if (updated) {
+      await ctx.scheduler.runAfter(0, writeFieldRef, {
+        fieldId: args.id as string,
+        templateId: updated.templateId as string,
+        fieldKey: updated.fieldKey,
+        label: updated.label,
+        type: updated.type,
+        sortOrder: updated.sortOrder,
+        group: updated.group,
+        options: updated.options ? JSON.stringify(updated.options) : undefined,
+        defaultValue: updated.defaultValue,
+        binding: updated.binding ? JSON.stringify(updated.binding) : undefined,
+        validation: updated.validation ? JSON.stringify(updated.validation) : undefined,
+        placeholder: updated.placeholder,
+        helpText: updated.helpText,
+        width: updated.width,
+      });
+    }
   },
 });
 
@@ -140,6 +185,11 @@ export const remove = mutation({
     const template = await ctx.db.get(field.templateId);
     if (!template) throw new Error("Template not found");
     await verifyOrgAccess(ctx, template.organizationId);
+
+    // Dual-write: delete field from Supabase
+    await ctx.scheduler.runAfter(0, deleteFieldRef, {
+      fieldId: args.id as string,
+    });
 
     await ctx.db.delete(args.id);
   },

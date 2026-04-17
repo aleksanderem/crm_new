@@ -202,14 +202,13 @@ export function DocumentationTab({
   const afterPhotos = photos.filter((p) => p.type === "after");
 
   const storageIds = photos.map((p) => p.storageId);
-  const { data: photoUrls } = useQuery(
-    convexQuery(
-      api.gabinet.appointments.getPhotoUrls,
-      (storageIds.length > 0
-        ? { organizationId, storageIds }
-        : "skip") as any,
-    ),
-  );
+  const { data: photoUrls } = useQuery({
+    ...convexQuery(api.gabinet.appointments.getPhotoUrls, {
+      organizationId,
+      storageIds,
+    }),
+    enabled: storageIds.length > 0,
+  });
 
   const urlMap = new Map<string, string | null>();
   if (photoUrls) {

@@ -4,6 +4,9 @@ import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeOauthConnectionRef = internal.supabase.oauthConnections.writeOauthConnectionToSupabase;
+
 /** Strip sensitive tokens from an OAuth connection before returning to the client. */
 function stripTokens(c: Doc<"oauthConnections">) {
   return {
@@ -212,7 +215,7 @@ export const createOrUpdate = internalMutation({
       }
     }
 
-    return await ctx.db.insert("oauthConnections", {
+    const connectionId = await ctx.db.insert("oauthConnections", {
       organizationId: args.organizationId,
       provider: "google",
       providerAccountId: args.providerAccountId,
@@ -227,6 +230,26 @@ export const createOrUpdate = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeOauthConnectionRef, {
+      oauthConnectionId: connectionId as string,
+      organizationId: args.organizationId as string,
+      provider: "google",
+      providerAccountId: args.providerAccountId,
+      userId: args.userId as string | undefined,
+      accessToken: args.accessToken,
+      refreshToken: args.refreshToken,
+      expiresAt: args.expiresAt,
+      scope: args.scope,
+      tokenType: args.tokenType,
+      isActive: true,
+      connectedBy: args.connectedBy as string,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return connectionId;
   },
 });
 

@@ -139,12 +139,36 @@ export const create = mutation({
       throw new Error("Template not found");
 
     const now = Date.now();
-    return await ctx.db.insert("formDocuments", {
+    const docId = await ctx.db.insert("formDocuments", {
       ...args,
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate new form document to Supabase
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.formDocuments.writeFormDocumentToSupabase,
+      {
+        documentId: docId as string,
+        organizationId: args.organizationId as string,
+        templateId: args.templateId as string,
+        title: args.title,
+        responseData: args.responseData,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        scopeEntities: args.scopeEntities,
+        status: args.status,
+        signingToken: args.signingToken,
+        signingTokenExpiresAt: args.signingTokenExpiresAt,
+        createdBy: user._id as string,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
+    return docId;
   },
 });
 

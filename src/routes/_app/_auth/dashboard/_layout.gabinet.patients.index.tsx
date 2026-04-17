@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -145,14 +144,7 @@ function PatientsIndex() {
     [t, tags, categories],
   );
 
-  const { data, isLoading } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
-      organizationId,
-      paginationOpts: { numItems: 100, cursor: null },
-    }),
-  );
-
-  const patients = data?.page ?? [];
+  const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
 
   const {
     views,

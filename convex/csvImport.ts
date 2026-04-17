@@ -1,6 +1,16 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { requireOrgAdmin } from "./_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeContactRef = internal.supabase.contacts.writeContactToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeCompanyRef = internal.supabase.companies.writeCompanyToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeLeadRef = internal.supabase.leads.writeLeadToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeProductRef = internal.supabase.products.writeProductToSupabase;
 
 export const batchCreateContacts = mutation({
   args: {
@@ -31,7 +41,7 @@ export const batchCreateContacts = mutation({
           errors.push({ row: i, error: "firstName is required" });
           continue;
         }
-        await ctx.db.insert("contacts", {
+        const contactId = await ctx.db.insert("contacts", {
           organizationId: args.organizationId,
           firstName: record.firstName.trim(),
           lastName: record.lastName?.trim(),
@@ -45,6 +55,23 @@ export const batchCreateContacts = mutation({
           createdAt: now,
           updatedAt: now,
         });
+
+        // Dual-write: replicate to Supabase
+        await ctx.scheduler.runAfter(0, writeContactRef, {
+          contactId: contactId as string,
+          organizationId: args.organizationId as string,
+          firstName: record.firstName.trim(),
+          lastName: record.lastName?.trim(),
+          email: record.email?.trim(),
+          phone: record.phone?.trim(),
+          title: record.title?.trim(),
+          notes: record.notes?.trim(),
+          tags: record.tags,
+          createdBy: user._id as string,
+          createdAt: now,
+          updatedAt: now,
+        });
+
         created++;
       } catch (e: any) {
         errors.push({ row: i, error: e.message ?? "Unknown error" });
@@ -90,7 +117,16 @@ export const batchCreateCompanies = mutation({
         }
         const hasAddress =
           record.street || record.city || record.state || record.zip || record.country;
-        await ctx.db.insert("companies", {
+        const address = hasAddress
+          ? {
+              street: record.street?.trim(),
+              city: record.city?.trim(),
+              state: record.state?.trim(),
+              zip: record.zip?.trim(),
+              country: record.country?.trim(),
+            }
+          : undefined;
+        const companyId = await ctx.db.insert("companies", {
           organizationId: args.organizationId,
           name: record.name.trim(),
           domain: record.domain?.trim(),
@@ -98,20 +134,30 @@ export const batchCreateCompanies = mutation({
           size: record.size?.trim(),
           website: record.website?.trim(),
           phone: record.phone?.trim(),
-          address: hasAddress
-            ? {
-                street: record.street?.trim(),
-                city: record.city?.trim(),
-                state: record.state?.trim(),
-                zip: record.zip?.trim(),
-                country: record.country?.trim(),
-              }
-            : undefined,
+          address,
           notes: record.notes?.trim(),
           createdBy: user._id,
           createdAt: now,
           updatedAt: now,
         });
+
+        // Dual-write: replicate to Supabase
+        await ctx.scheduler.runAfter(0, writeCompanyRef, {
+          companyId: companyId as string,
+          organizationId: args.organizationId as string,
+          name: record.name.trim(),
+          domain: record.domain?.trim(),
+          industry: record.industry?.trim(),
+          size: record.size?.trim(),
+          website: record.website?.trim(),
+          phone: record.phone?.trim(),
+          address,
+          notes: record.notes?.trim(),
+          createdBy: user._id as string,
+          createdAt: now,
+          updatedAt: now,
+        });
+
         created++;
       } catch (e: any) {
         errors.push({ row: i, error: e.message ?? "Unknown error" });
@@ -161,7 +207,7 @@ export const batchCreateLeads = mutation({
           ? (record.priority as (typeof validPriorities)[number])
           : undefined;
 
-        await ctx.db.insert("leads", {
+        const leadId = await ctx.db.insert("leads", {
           organizationId: args.organizationId,
           title: record.title.trim(),
           value: record.value,
@@ -175,6 +221,24 @@ export const batchCreateLeads = mutation({
           createdAt: now,
           updatedAt: now,
         });
+
+        // Dual-write: replicate to Supabase
+        await ctx.scheduler.runAfter(0, writeLeadRef, {
+          leadId: leadId as string,
+          organizationId: args.organizationId as string,
+          title: record.title.trim(),
+          value: record.value,
+          currency: record.currency?.trim(),
+          status,
+          priority,
+          source: record.source?.trim(),
+          notes: record.notes?.trim(),
+          tags: record.tags,
+          createdBy: user._id as string,
+          createdAt: now,
+          updatedAt: now,
+        });
+
         created++;
       } catch (e: any) {
         errors.push({ row: i, error: e.message ?? "Unknown error" });
@@ -212,7 +276,7 @@ export const batchCreateProducts = mutation({
           errors.push({ row: i, error: "name and sku are required" });
           continue;
         }
-        await ctx.db.insert("products", {
+        const productId = await ctx.db.insert("products", {
           organizationId: args.organizationId,
           name: record.name.trim(),
           sku: record.sku.trim(),
@@ -224,6 +288,22 @@ export const batchCreateProducts = mutation({
           createdAt: now,
           updatedAt: now,
         });
+
+        // Dual-write: replicate to Supabase
+        await ctx.scheduler.runAfter(0, writeProductRef, {
+          productId: productId as string,
+          organizationId: args.organizationId as string,
+          name: record.name.trim(),
+          sku: record.sku.trim(),
+          unitPrice: record.unitPrice,
+          taxRate: record.taxRate ?? 0,
+          isActive: record.isActive ?? true,
+          description: record.description?.trim(),
+          createdBy: user._id as string,
+          createdAt: now,
+          updatedAt: now,
+        });
+
         created++;
       } catch (e: any) {
         errors.push({ row: i, error: e.message ?? "Unknown error" });

@@ -8,6 +8,14 @@ import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployee } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
+import { useSupabaseGabinetAppointmentsByEmployee } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   EntityDetailLayout,
@@ -138,52 +146,36 @@ function EmployeeDetail() {
     employeeId,
   );
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
+
+  const { data: treatments } = useSupabaseGabinetTreatmentsList(organizationId);
+
+  const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
+
+  const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetEmployee",
+    employeeId,
   );
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
+  const { data: scheduledActivitiesData } = useSupabaseScheduledActivitiesByEntity(
+    organizationId,
+    "gabinetEmployee",
+    employeeId,
   );
 
-  const { data: activityTypeDefs } = useQuery(
-    convexQuery(api.activityTypes.list, { organizationId })
-  );
-
-  const { data: activitiesData } = useQuery(
-    convexQuery(api.activities.getForEntity, {
-      organizationId,
-      entityType: "gabinetEmployee",
-      entityId: employeeId,
-      paginationOpts: { numItems: 50, cursor: null },
-    })
-  );
-  const activities = activitiesData?.page;
-
-  const { data: scheduledActivitiesData } = useQuery(
-    convexQuery(api.scheduledActivities.listByEntity, {
-      organizationId,
-      linkedEntityType: "gabinetEmployee",
-      linkedEntityId: employeeId,
-    })
-  );
-
-  const { data: notesData } = useQuery(
-    convexQuery(api.notes.listByEntity, {
-      organizationId,
-      entityType: "gabinetEmployee",
-      entityId: employeeId,
-    })
+  const { data: notesData } = useSupabaseNotesByEntity(
+    organizationId,
+    "gabinetEmployee",
+    employeeId,
   );
 
   // Appointments for this employee (by userId)
-  const { data: employeeAppointments } = useQuery({
-    ...convexQuery(api.gabinet.appointments.listByEmployee, {
-      organizationId,
-      employeeId: (employee?.userId ?? "") as Id<"users">,
-    }),
-    enabled: !!employee,
-  });
+  const { data: employeeAppointments } = useSupabaseGabinetAppointmentsByEmployee(
+    organizationId,
+    employee?.userId ?? undefined,
+    { enabled: !!employee },
+  );
 
   // Unique patients this employee has seen (with visit stats for filtering)
   const { data: employeePatients } = useQuery({
@@ -1499,9 +1491,7 @@ function FlexibleScheduleEditor({
   onSaveLegacy: any;
 }) {
   const { t, i18n } = useTranslation();
-  const { data: locations } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, { organizationId })
-  );
+  const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
   const [saving, setSaving] = useState(false);
   const [editingPeriodKey, setEditingPeriodKey] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);

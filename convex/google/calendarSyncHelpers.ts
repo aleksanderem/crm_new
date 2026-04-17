@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 
 export const findPatientByEmail = internalQuery({
   args: {
@@ -26,7 +27,7 @@ export const createSkeletonPatient = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    return await ctx.db.insert("gabinetPatients", {
+    const patientId = await ctx.db.insert("gabinetPatients", {
       organizationId: args.organizationId,
       firstName: args.firstName,
       lastName: args.lastName,
@@ -36,6 +37,24 @@ export const createSkeletonPatient = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.gabinet.patients.writePatientToSupabase,
+      {
+        patientId: String(patientId),
+        organizationId: String(args.organizationId),
+        firstName: args.firstName,
+        lastName: args.lastName,
+        email: args.email,
+        isActive: true,
+        createdBy: String(args.createdBy),
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
+    return patientId;
   },
 });
 
@@ -169,6 +188,39 @@ export const createAppointmentFromSync = internalMutation({
       updatedAt: now,
     });
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.scheduledActivities.writeScheduledActivityToSupabase,
+      {
+        scheduledActivityId: String(activityId),
+        organizationId: String(args.organizationId),
+        title: args.title,
+        activityType: "appointment",
+        dueDate: args.dueDate,
+        endDate: args.endDateTs,
+        isCompleted: false,
+        ownerId: String(args.ownerId),
+        description: args.description,
+        location: args.location,
+        meetingUrl: args.meetingUrl,
+        googleEventId: args.googleEventId,
+        googleCalendarId: args.googleCalendarId,
+        lastGoogleSyncAt: now,
+        sourceType: "google",
+        syncConfigId: String(args.syncConfigId),
+        requiresCompletion: args.requiresCompletion,
+        visibilityOverride: args.visibilityOverride,
+        moduleRef: {
+          moduleId: "gabinet",
+          entityType: "gabinetAppointment",
+          entityId: "",
+        },
+        createdBy: String(args.ownerId),
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
     // Create gabinetAppointment
     const appointmentId = await ctx.db.insert("gabinetAppointments", {
       organizationId: args.organizationId,
@@ -186,6 +238,28 @@ export const createAppointmentFromSync = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.gabinet.appointments.writeAppointmentToSupabase,
+      {
+        appointmentId: String(appointmentId),
+        organizationId: String(args.organizationId),
+        patientId: String(args.patientId),
+        treatmentId: args.treatmentId ? String(args.treatmentId) : undefined,
+        employeeId: String(args.employeeUserId),
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        status: "scheduled",
+        isRecurring: false,
+        scheduledActivityId: String(activityId),
+        requiresCompletion: args.requiresCompletion,
+        createdBy: String(args.ownerId),
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
 
     // Patch moduleRef with real appointmentId
     await ctx.db.patch(activityId, {

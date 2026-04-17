@@ -1,7 +1,11 @@
 import { query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY } from "@cvx/env";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writePortalSessionRef = internal.supabase.gabinet.portalSessions.writePortalSessionToSupabase;
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -87,9 +91,25 @@ export const sendPortalOtp = mutation({
         otpSendWindowStart: windowExpired ? now : windowStart,
       });
     } else {
-      await ctx.db.insert("gabinetPortalSessions", {
+      const sessionId = await ctx.db.insert("gabinetPortalSessions", {
         patientId: patient._id,
         organizationId: args.organizationId,
+        tokenHash: token,
+        otpHash,
+        otpExpiresAt: now + 10 * 60 * 1000,
+        isActive: false,
+        lastAccessedAt: now,
+        createdAt: now,
+        expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+        otpSendCount: 1,
+        otpSendWindowStart: now,
+      });
+
+      // Dual-write: replicate to Supabase
+      await ctx.scheduler.runAfter(0, writePortalSessionRef, {
+        portalSessionId: sessionId as string,
+        patientId: patient._id as string,
+        organizationId: args.organizationId as string,
         tokenHash: token,
         otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
@@ -143,11 +144,7 @@ function GabinetDocumentsPage() {
     }),
   });
 
-  const { data: members } = useQuery({
-    ...convexQuery(api.organizations.getMembers, {
-      organizationId,
-    }),
-  });
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   // Build template lookup
   type TemplateDoc = NonNullable<typeof templates>[number];

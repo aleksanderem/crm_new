@@ -1,7 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { useMemo, useState } from "react";
@@ -803,31 +804,17 @@ function GabinetReports() {
     return labels[dateRange];
   }, [dateRange, t]);
 
-  const { data: appointments, isLoading: loadingAppointments } = useQuery(
-    convexQuery(api.gabinet.appointments.listByDateRange, {
-      organizationId,
-      startDate,
-      endDate,
-    })
-  );
+  const { data: appointments, isLoading: loadingAppointments } =
+    useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate);
 
-  const { data: treatments, isLoading: loadingTreatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
-  );
+  const { data: treatments, isLoading: loadingTreatments } =
+    useSupabaseGabinetTreatmentsList(organizationId);
 
-  const { data: patients, isLoading: loadingPatients } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
-      organizationId,
-      paginationOpts: { numItems: 500, cursor: null },
-    })
-  );
+  const { data: patients, isLoading: loadingPatients } =
+    useSupabaseGabinetPatientsList(organizationId, { limit: 500 });
 
-  const { data: employees, isLoading: loadingEmployees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId,
-      activeOnly: true,
-    })
-  );
+  const { data: employees, isLoading: loadingEmployees } =
+    useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
   const isLoading =
     loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees;
@@ -979,7 +966,7 @@ function GabinetReports() {
     totalAppointments > 0
       ? Math.round((completedCount / totalAppointments) * 100)
       : 0;
-  const totalPatients = patients?.page?.length ?? 0;
+  const totalPatients = patients?.length ?? 0;
 
   const dailyChartPoints = useMemo(
     () => bucketizePairs(dailyStats.map((d) => [d.date, d.count])),

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -82,19 +83,17 @@ function EmailTemplatesSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<Id<"emailTemplates"> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"emailTemplates">; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const editorRef = useRef<EmailTemplateEditorHandle>(null);
 
   const createTemplate = useMutation(api.emailTemplates.create);
   const updateTemplate = useMutation(api.emailTemplates.update);
   const removeTemplate = useMutation(api.emailTemplates.remove);
 
-  const { data: templates } = useQuery(
-    convexQuery(api.emailTemplates.list, { organizationId }),
-  );
+  const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
 
   const { data: variableSources } = useQuery(
     convexQuery(api.emailTemplates.listVariableSources, {
@@ -109,7 +108,7 @@ function EmailTemplatesSettings() {
   };
 
   const openEditDialog = (template: {
-    _id: Id<"emailTemplates">;
+    _id: string;
     name: string;
     subject: string;
     body: string;
@@ -139,7 +138,7 @@ function EmailTemplatesSettings() {
       if (editingId) {
         await updateTemplate({
           organizationId,
-          templateId: editingId,
+          templateId: editingId as Id<"emailTemplates">,
           name: form.name.trim(),
           subject: form.subject.trim(),
           body: bodyPayload,
@@ -167,23 +166,23 @@ function EmailTemplatesSettings() {
   };
 
   const handleToggleActive = async (
-    templateId: Id<"emailTemplates">,
+    templateId: string,
     isActive: boolean,
   ) => {
     await updateTemplate({
       organizationId,
-      templateId,
+      templateId: templateId as Id<"emailTemplates">,
       isActive,
     });
   };
 
-  const handleDelete = (templateId: Id<"emailTemplates">, templateName: string) => {
+  const handleDelete = (templateId: string, templateName: string) => {
     setDeleteTarget({ id: templateId, name: templateName });
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await removeTemplate({ organizationId, templateId: deleteTarget.id });
+    await removeTemplate({ organizationId, templateId: deleteTarget.id as Id<"emailTemplates"> });
     setDeleteTarget(null);
   };
 
@@ -282,7 +281,7 @@ function EmailTemplatesSettings() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => openEditDialog(template)}
+                  onClick={() => openEditDialog(template as any)}
                 >
                   <Pencil className="h-4 w-4" variant="stroke" />
                 </Button>

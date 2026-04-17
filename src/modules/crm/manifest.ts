@@ -34,6 +34,7 @@ import { CallsWidgets } from "@/components/sidebar-widgets/crm/calls-widgets";
 import { CompaniesWidgets } from "@/components/sidebar-widgets/crm/companies-widgets";
 import { ContactsWidgets } from "@/components/sidebar-widgets/crm/contacts-widgets";
 import { DealsWidgets } from "@/components/sidebar-widgets/crm/deals-widgets";
+import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-widgets";
 import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-templates-widgets";
 import { InboxWidgets } from "@/components/sidebar-widgets/crm/inbox-widgets";
 import { InsightsWidgets } from "@/components/sidebar-widgets/crm/insights-widgets";
@@ -196,6 +197,7 @@ export const crmManifest: ModuleManifest = {
     {
       key: "documents",
       titleKey: "nav.documents",
+      widgets: DocumentsWidgets,
       matches: [{ to: "/dashboard/documents", fuzzy: true }],
       actions: [
         { labelKey: "nav.actions.createFromTemplate", icon: FileText, href: "/dashboard/settings/form-templates" },

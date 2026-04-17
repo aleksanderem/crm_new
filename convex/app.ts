@@ -86,12 +86,38 @@ export const completeOnboarding = mutation({
         createdAt: now,
         updatedAt: now,
       });
-      await ctx.db.insert("teamMemberships", {
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.supabase.organizations.writeOrganizationToSupabase,
+        {
+          organizationId: String(orgId),
+          name: `${args.username}'s Workspace`,
+          slug: args.username.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+          ownerId: String(userId),
+          createdAt: now,
+          updatedAt: now,
+        },
+      );
+
+      const membershipId = await ctx.db.insert("teamMemberships", {
         userId,
         organizationId: orgId,
         role: "owner",
         joinedAt: now,
       });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.supabase.organizations.writeTeamMembershipToSupabase,
+        {
+          membershipId: String(membershipId),
+          userId: String(userId),
+          organizationId: String(orgId),
+          role: "owner",
+          joinedAt: now,
+        },
+      );
 
       // Seed default reference data (sources, pipelines, lost reasons, etc.)
       await ctx.scheduler.runAfter(

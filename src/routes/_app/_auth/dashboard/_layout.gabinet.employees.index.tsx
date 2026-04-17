@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -87,16 +90,14 @@ function EmployeesIndex() {
   const createEmployee = useMutation(api.gabinet.employees.create);
   const removeEmployee = useMutation(api.gabinet.employees.remove);
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId })
-  );
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
+  const { data: allTreatmentsRaw } = useSupabaseGabinetTreatmentsList(organizationId);
+  const treatments = useMemo(
+    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive),
+    [allTreatmentsRaw],
   );
 
   const { data: kpis } = useQuery(
@@ -118,11 +119,11 @@ function EmployeesIndex() {
 
   // Users not yet registered as employees
   const availableUsers = useMemo(() => {
-    if (!members || !employees) return [];
+    if (!members || !employees) return [] as Array<{ _id: Id<"users">; name?: string | null; email?: string | null }>;
     const empUserIds = new Set(employees.map((e) => e.userId));
     return members
       .filter((m) => m.user && !empUserIds.has(m.userId))
-      .map((m) => m.user!);
+      .map((m) => ({ _id: m.user!._id as Id<"users">, name: m.user!.name, email: m.user!.email }));
   }, [members, employees]);
 
   const userMap = useMemo(() => {

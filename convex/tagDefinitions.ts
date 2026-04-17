@@ -4,6 +4,11 @@ import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { checkPermission } from "./_helpers/permissions";
 
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeTagDefRef = internal.supabase.tagDefinitions.writeTagDefinitionToSupabase;
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const updateTagDefRef = internal.supabase.tagDefinitions.updateTagDefinitionInSupabase;
+
 export const list = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
@@ -48,7 +53,7 @@ export const create = mutation({
     const maxOrder = allTags.reduce((max, t) => Math.max(max, t.sortOrder), -1);
 
     const now = Date.now();
-    return await ctx.db.insert("tagDefinitions", {
+    const tagId = await ctx.db.insert("tagDefinitions", {
       organizationId: args.organizationId,
       name: args.name.trim(),
       color: args.color,
@@ -56,6 +61,19 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeTagDefRef, {
+      tagDefinitionId: tagId as string,
+      organizationId: args.organizationId as string,
+      name: args.name.trim(),
+      color: args.color,
+      sortOrder: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return tagId;
   },
 });
 
@@ -88,10 +106,19 @@ export const update = mutation({
       }
     }
 
+    const updatedAt = Date.now();
     await ctx.db.patch(args.tagId, {
       ...(args.name !== undefined && { name: args.name.trim() }),
       ...(args.color !== undefined && { color: args.color }),
-      updatedAt: Date.now(),
+      updatedAt,
+    });
+
+    // Dual-write: replicate update to Supabase
+    await ctx.scheduler.runAfter(0, updateTagDefRef, {
+      tagDefinitionId: args.tagId as string,
+      name: args.name !== undefined ? args.name.trim() : undefined,
+      color: args.color,
+      updatedAt,
     });
   },
 });
@@ -112,7 +139,15 @@ export const remove = mutation({
     }
 
     // Soft-delete
-    await ctx.db.patch(args.tagId, { isDeleted: true, updatedAt: Date.now() });
+    const deletedAt = Date.now();
+    await ctx.db.patch(args.tagId, { isDeleted: true, updatedAt: deletedAt });
+
+    // Dual-write: replicate soft-delete to Supabase
+    await ctx.scheduler.runAfter(0, updateTagDefRef, {
+      tagDefinitionId: args.tagId as string,
+      isDeleted: true,
+      updatedAt: deletedAt,
+    });
 
     // Schedule background cleanup of entity references
     await ctx.scheduler.runAfter(0, internal.tagDefinitions.cleanupTagReferences, {

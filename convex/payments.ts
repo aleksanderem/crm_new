@@ -1,9 +1,13 @@
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { logAudit } from "./auditLog";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writePaymentRef = internal.supabase.payments.writePaymentToSupabase;
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -98,6 +102,24 @@ export const create = mutation({
       entityType: "payment",
       entityId: paymentId,
       details: JSON.stringify({ amount: args.amount, currency: args.currency }),
+    });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writePaymentRef, {
+      paymentId: paymentId as string,
+      organizationId: args.organizationId as string,
+      patientId: args.patientId as string | undefined,
+      appointmentId: args.appointmentId as string | undefined,
+      packageUsageId: args.packageUsageId as string | undefined,
+      amount: args.amount,
+      currency: args.currency,
+      paymentMethod: args.paymentMethod,
+      status: "completed",
+      paidAt: now,
+      notes: args.notes,
+      createdBy: user._id as string,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return paymentId;

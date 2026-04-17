@@ -1,4 +1,5 @@
 import { internalQuery, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 export const getById = internalQuery({
@@ -145,7 +146,7 @@ export const upsertFromGoogleImport = internalMutation({
         updated++;
       } else {
         // Create new event
-        await ctx.db.insert("scheduledActivities", {
+        const newId = await ctx.db.insert("scheduledActivities", {
           organizationId: args.organizationId,
           title: ev.title,
           description: ev.description,
@@ -167,6 +168,35 @@ export const upsertFromGoogleImport = internalMutation({
           createdAt: now,
           updatedAt: now,
         });
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.supabase.scheduledActivities.writeScheduledActivityToSupabase,
+          {
+            scheduledActivityId: String(newId),
+            organizationId: String(args.organizationId),
+            title: ev.title,
+            activityType: ev.activityType,
+            dueDate: ev.dueDate,
+            endDate: ev.endDate,
+            isCompleted: false,
+            ownerId: String(args.ownerId),
+            description: ev.description,
+            location: ev.location,
+            meetingUrl: ev.meetingUrl,
+            googleEventId: ev.googleEventId,
+            googleCalendarId: ev.googleCalendarId,
+            lastGoogleSyncAt: now,
+            sourceType: ev.sourceType,
+            syncConfigId: ev.syncConfigId ? String(ev.syncConfigId) : undefined,
+            requiresCompletion: ev.requiresCompletion,
+            visibilityOverride: ev.visibilityOverride,
+            createdBy: String(args.ownerId),
+            createdAt: now,
+            updatedAt: now,
+          },
+        );
+
         imported++;
       }
     }

@@ -167,19 +167,15 @@ export function ChangeEmployeeModal({
 
   // For the selected employee, check availability at current slot
   const { data: availabilityCheck, isLoading: isCheckingAvailability } =
-    useQuery(
-      convexQuery(
-        api.gabinet.appointments.getAvailableSlotsQuery,
-        (selectedId
-          ? {
-              organizationId,
-              userId: selectedId,
-              date: appointmentDate,
-              duration: durationMinutes,
-            }
-          : "skip") as any,
-      ),
-    );
+    useQuery({
+      ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
+        organizationId,
+        userId: selectedId!,
+        date: appointmentDate,
+        duration: durationMinutes,
+      }),
+      enabled: !!selectedId,
+    });
 
   // Check if the current slot specifically is available for the selected employee
   const isSlotAvailable = useMemo(() => {
@@ -193,19 +189,15 @@ export function ChangeEmployeeModal({
   // Find next available slot if current is not available
   const shouldSearchSlot =
     !!selectedId && !isCheckingAvailability && !isSlotAvailable;
-  const { data: nextSlot, isLoading: isSearchingSlot } = useQuery(
-    convexQuery(
-      api.gabinet.scheduling.findNextAvailableSlot,
-      (shouldSearchSlot
-        ? {
-            organizationId,
-            employeeId: selectedId,
-            durationMinutes,
-            fromDate: appointmentDate,
-          }
-        : "skip") as any,
-    ),
-  );
+  const { data: nextSlot, isLoading: isSearchingSlot } = useQuery({
+    ...convexQuery(api.gabinet.scheduling.findNextAvailableSlot, {
+      organizationId,
+      employeeId: selectedId!,
+      durationMinutes,
+      fromDate: appointmentDate,
+    }),
+    enabled: shouldSearchSlot,
+  });
 
   // Check qualification for selected employee
   const selectedRow = employees.find((e) => e.employeeDoc.userId === selectedId);

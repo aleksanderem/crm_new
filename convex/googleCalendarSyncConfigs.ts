@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
+
+// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+const writeGcSyncConfigRef = internal.supabase.googleCalendarSyncConfigs.writeGoogleCalendarSyncConfigToSupabase;
 
 // List all sync configs for the current user in an org
 export const listMine = query({
@@ -74,7 +78,7 @@ export const create = mutation({
       }
     }
 
-    return await ctx.db.insert("googleCalendarSyncConfigs", {
+    const configId = await ctx.db.insert("googleCalendarSyncConfigs", {
       organizationId: args.organizationId,
       userId: user._id,
       connectionId: args.connectionId,
@@ -87,6 +91,24 @@ export const create = mutation({
       syncEnabled: true,
       syncStatus: "idle",
     });
+
+    // Dual-write: replicate to Supabase
+    await ctx.scheduler.runAfter(0, writeGcSyncConfigRef, {
+      configId: configId as string,
+      organizationId: args.organizationId as string,
+      userId: user._id as string,
+      connectionId: args.connectionId as string,
+      googleCalendarId: args.googleCalendarId,
+      googleCalendarName: args.googleCalendarName,
+      isOrgDefault,
+      targetModule: args.targetModule,
+      targetActivityType: args.targetActivityType,
+      visibility: args.visibility,
+      syncEnabled: true,
+      syncStatus: "idle",
+    });
+
+    return configId;
   },
 });
 

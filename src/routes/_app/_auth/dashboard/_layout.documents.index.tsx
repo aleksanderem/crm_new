@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
@@ -10,15 +13,6 @@ import { DocumentViewer } from "@/components/documents/document-viewer";
 import { renderDocument } from "@/components/documents/document-renderer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -26,23 +20,25 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/layout/empty-state";
-import { ClipboardList, Search, FileText } from "@/lib/ez-icons";
+import { FileText, Eye, Trash2 } from "@/lib/ez-icons";
+import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { Id } from "@cvx/_generated/dataModel";
+import type { Doc, Id } from "@cvx/_generated/dataModel";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import {
+  CrmDataTable,
+  useColumnVisibility,
+  useAllColumns,
+  type CrmColumn,
+} from "@/components/crm/enhanced-data-table";
+import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
+import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // ---------------------------------------------------------------------------
 // Route
@@ -89,6 +85,8 @@ const STATUS_OPTIONS: FormDocumentStatus[] = [
   "voided",
 ];
 
+type FormDocument = Doc<"formDocuments">;
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -105,19 +103,39 @@ function DocumentsPage() {
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
 
-  // --- State ---
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // --- Saved views (status-based system views) ---
+  const systemViews: SavedView[] = useMemo(
+    () => [
+      { id: "all", name: t("documents.views.all", "Wszystkie"), isSystem: true, isDefault: true },
+      { id: "draft", name: t("documents.views.draft", "Szkice"), isSystem: true, isDefault: false },
+      { id: "pending_signature", name: t("documents.views.pending", "Do podpisu"), isSystem: true, isDefault: false },
+      { id: "signed", name: t("documents.views.signed", "Podpisane"), isSystem: true, isDefault: false },
+      { id: "completed", name: t("documents.views.completed", "Zakończone"), isSystem: true, isDefault: false },
+    ],
+    [t],
+  );
+
+  const {
+    views,
+    activeViewId,
+    onViewChange,
+    onCreateView,
+    onDeleteView,
+    applyFilters,
+  } = useSavedViews({ organizationId, entityType: "document", systemViews });
+
+  // --- Filter / search state ---
+  const [searchValue, setSearchValue] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] =
     useState<Id<"formDocuments"> | null>(null);
 
   // --- Data ---
-  const { data: documents, isLoading: docsLoading } = useQuery({
-    ...convexQuery(api.documents.documents.listAll, {
-      organizationId,
-    }),
-  });
+  const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(
+    organizationId,
+    { limit: 200 },
+  );
 
   const { data: templates } = useQuery({
     ...convexQuery(api.documents.templates.list, {
@@ -125,11 +143,14 @@ function DocumentsPage() {
     }),
   });
 
-  const { data: members } = useQuery({
-    ...convexQuery(api.organizations.getMembers, {
-      organizationId,
-    }),
-  });
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
+
+  const removeDocument = useMutation(api.documents.documents.remove);
+
+  // --- Sidebar dispatches ---
+  useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
   // Build template lookup
   type TemplateDoc = NonNullable<typeof templates>[number];
@@ -141,67 +162,38 @@ function DocumentsPage() {
   // Build user lookup from org members
   const userMap = useMemo(() => {
     if (!members)
-      return new Map<
-        Id<"users">,
-        { name?: string; email?: string }
-      >();
-    const map = new Map<
-      Id<"users">,
-      { name?: string; email?: string }
-    >();
+      return new Map<string, { name?: string | null; email?: string | null }>();
+    const map = new Map<string, { name?: string | null; email?: string | null }>();
     for (const m of members) {
-      if (m.user) map.set(m.user._id, m.user);
+      if (m.user) map.set(m.user._id as string, m.user);
     }
     return map;
   }, [members]);
 
-  // Extract unique categories from loaded templates
-  const availableCategories = useMemo(() => {
+  // Extract unique categories from loaded templates (built-in template categories)
+  const availableTemplateCategories = useMemo(() => {
     if (!templates) return [] as string[];
     const cats = new Set(templates.map((tpl) => tpl.category));
     return Array.from(cats).sort();
   }, [templates]);
 
-  // --- Filtered data ---
-  const filteredDocuments = useMemo(() => {
-    if (!documents) return [];
-    return documents.filter((doc) => {
-      // Status filter
-      if (statusFilter !== "all" && doc.status !== statusFilter) return false;
-      // Category filter (look up template)
-      if (categoryFilter !== "all") {
-        const tpl = templateMap.get(doc.templateId);
-        if (!tpl || tpl.category !== categoryFilter) return false;
-      }
-      // Search by title
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        if (!doc.title.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [documents, statusFilter, categoryFilter, search, templateMap]);
-
-  // --- Selected document for viewer ---
-  const selectedDoc = useMemo(() => {
-    if (!selectedDocId || !documents) return null;
-    return documents.find((d) => d._id === selectedDocId) ?? null;
-  }, [selectedDocId, documents]);
-
-  const selectedTemplate = useMemo(() => {
-    if (!selectedDoc) return null;
-    return templateMap.get(selectedDoc.templateId) ?? null;
-  }, [selectedDoc, templateMap]);
-
   // --- Helpers ---
-  const getCategoryLabel = useCallback(
-    (templateId: Id<"formTemplates">) => {
-      const tpl = templateMap.get(templateId);
-      if (!tpl) return "\u2014";
-      const labels = FORM_CATEGORY_LABELS[tpl.category];
-      return labels ? labels[lang] : tpl.category;
+  const getCategoryKey = useCallback(
+    (templateId: string) => {
+      const tpl = templateMap.get(templateId as Id<"formTemplates">);
+      return tpl?.category ?? null;
     },
-    [templateMap, lang],
+    [templateMap],
+  );
+
+  const getCategoryLabel = useCallback(
+    (templateId: string) => {
+      const cat = getCategoryKey(templateId);
+      if (!cat) return "\u2014";
+      const labels = FORM_CATEGORY_LABELS[cat];
+      return labels ? labels[lang] : cat;
+    },
+    [getCategoryKey, lang],
   );
 
   const getEntityTypeLabel = useCallback(
@@ -213,10 +205,40 @@ function DocumentsPage() {
   );
 
   const getUserName = useCallback(
-    (userId: Id<"users">) => {
+    (userId: string) => {
       const u = userMap.get(userId);
       if (!u) return "\u2014";
       return u.name ?? u.email ?? "\u2014";
+    },
+    [userMap],
+  );
+
+  const AVATAR_IMAGES = [
+    "/images/avatars/blue.jpg",
+    "/images/avatars/purple.jpg",
+    "/images/avatars/red.jpg",
+  ];
+
+  const renderUserAvatar = useCallback(
+    (userId: string) => {
+      const u = userMap.get(userId);
+      if (!u) return <span className="text-sm text-muted-foreground">—</span>;
+      const name = u.name ?? u.email ?? "—";
+      const parts = (u.name ?? "").trim().split(/\s+/).filter(Boolean);
+      const initials =
+        parts.length >= 2
+          ? `${parts[0][0]}${parts[1][0]}`
+          : (name[0] ?? "?").toUpperCase();
+      const src = AVATAR_IMAGES[userId.charCodeAt(userId.length - 1) % AVATAR_IMAGES.length];
+      return (
+        <AvatarLabelGroup
+          size="sm"
+          src={src}
+          initials={initials.toUpperCase()}
+          title={name}
+          subtitle={u.email ?? ""}
+        />
+      );
     },
     [userMap],
   );
@@ -231,15 +253,197 @@ function DocumentsPage() {
     [lang],
   );
 
-  // --- Render ---
+  // --- Filter fields for DataListFilterBar ---
+  const filterableFields = useMemo((): FieldDef[] => [
+    { id: "title", label: t("documents.colTitle", "Tytuł"), type: "text" },
+    {
+      id: "status",
+      label: t("documents.colStatus", "Status"),
+      type: "select",
+      options: STATUS_OPTIONS.map((s) => ({ label: s, value: s })),
+    },
+    {
+      id: "entityType",
+      label: t("documents.colEntityType", "Typ"),
+      type: "select",
+      options: Object.entries(ENTITY_TYPE_LABELS).map(([key, labels]) => ({
+        label: labels[lang],
+        value: key,
+      })),
+    },
+    {
+      id: "category",
+      label: t("documents.colCategory", "Kategoria"),
+      type: "select",
+      options: availableTemplateCategories.map((c) => {
+        const labels = FORM_CATEGORY_LABELS[c];
+        return { label: labels ? labels[lang] : c, value: c };
+      }),
+    },
+    { id: "createdAt", label: t("common.created", "Data utworzenia"), type: "date" },
+  ], [t, lang, availableTemplateCategories]);
 
+  // --- Filtered data ---
+  const filteredDocuments = useMemo(() => {
+    if (!documents) return [];
+
+    let data = (documents as unknown as FormDocument[]).map(
+      (doc) => ({ ...doc, category: getCategoryKey(doc.templateId as string) }),
+    );
+
+    // System view filter (status-based)
+    if (activeViewId && activeViewId !== "all") {
+      if (STATUS_OPTIONS.includes(activeViewId as FormDocumentStatus)) {
+        data = data.filter((d) => d.status === activeViewId);
+      }
+    }
+
+    data = applyFilters(data) as typeof data;
+    data = applyFilterConditions(data, activeFilters) as typeof data;
+
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter((doc) => doc.title.toLowerCase().includes(q));
+    }
+
+    return data;
+  }, [documents, activeViewId, applyFilters, activeFilters, searchValue, getCategoryKey]);
+
+  // --- Selected document for viewer ---
+  const selectedDoc = useMemo(() => {
+    if (!selectedDocId || !documents) return null;
+    return documents.find((d) => d._id === selectedDocId) ?? null;
+  }, [selectedDocId, documents]);
+
+  const selectedTemplate = useMemo(() => {
+    if (!selectedDoc) return null;
+    return templateMap.get(selectedDoc.templateId) ?? null;
+  }, [selectedDoc, templateMap]);
+
+  // --- Columns ---
+  const columns: CrmColumn<FormDocument>[] = useMemo(
+    () => [
+      {
+        id: "title",
+        label: t("documents.colTitle", "Tytuł"),
+        sortable: true,
+        isRowHeader: true,
+        render: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedDocId(item._id);
+            }}
+          >
+            {item.title}
+          </button>
+        ),
+        getSortValue: (item) => item.title,
+      },
+      {
+        id: "category",
+        label: t("documents.colCategory", "Kategoria"),
+        sortable: true,
+        render: (item) => (
+          <Badge variant="secondary" className="text-xs">
+            {getCategoryLabel(item.templateId)}
+          </Badge>
+        ),
+        getSortValue: (item) => getCategoryLabel(item.templateId),
+      },
+      {
+        id: "entityType",
+        label: t("documents.colEntityType", "Typ"),
+        sortable: true,
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {getEntityTypeLabel(item.entityType)}
+          </span>
+        ),
+        getSortValue: (item) => item.entityType,
+      },
+      {
+        id: "status",
+        label: t("documents.colStatus", "Status"),
+        sortable: true,
+        render: (item) => (
+          <DocumentStatusBadge status={item.status as FormDocumentStatus} />
+        ),
+        getSortValue: (item) => item.status,
+      },
+      {
+        id: "createdAt",
+        label: t("documents.colCreatedAt", "Data utworzenia"),
+        sortable: true,
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDate(item.createdAt)}
+          </span>
+        ),
+        getSortValue: (item) => item.createdAt,
+      },
+      {
+        id: "createdBy",
+        label: t("documents.colCreatedBy", "Utworzony przez"),
+        sortable: true,
+        render: (item) => renderUserAvatar(item.createdBy),
+        getSortValue: (item) => getUserName(item.createdBy),
+      },
+    ],
+    [t, getCategoryLabel, getEntityTypeLabel, formatDate, getUserName],
+  );
+
+  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(
+    defaultHidden,
+    "documents",
+  );
+
+  const handleBulkAction = useCallback(
+    async (action: string, selectedRows: FormDocument[]) => {
+      if (action === "delete") {
+        if (
+          !window.confirm(
+            t(
+              "documents.confirmBulkDelete",
+              `Usunąć zaznaczone dokumenty (${selectedRows.length})? Tej operacji nie można cofnąć.`,
+            ),
+          )
+        ) {
+          return;
+        }
+        for (const row of selectedRows) {
+          await removeDocument({ organizationId, documentId: row._id });
+        }
+      }
+    },
+    [removeDocument, organizationId, t],
+  );
+
+  const rowActions = (row: FormDocument) => [
+    {
+      label: t("common.view", "Podgląd"),
+      icon: <Eye className="h-4 w-4" variant="stroke" />,
+      onClick: () => setSelectedDocId(row._id),
+    },
+    {
+      label: t("common.delete", "Usuń"),
+      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+      onClick: () =>
+        removeDocument({ organizationId, documentId: row._id }),
+    },
+  ];
+
+  // --- Render ---
   return (
-    <div className="flex flex-col gap-6">
+    <div className="space-y-4">
       <PageHeader
         title={t("documents.title", "Dokumenty")}
         description={t(
           "documents.description",
-          "Dokumenty formularzy kontakt\u00F3w, firm i lead\u00F3w",
+          "Dokumenty formularzy kontaktów, firm i leadów",
         )}
         actions={
           <Button
@@ -254,146 +458,39 @@ function DocumentsPage() {
         }
       />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t(
-              "documents.searchPlaceholder",
-              "Szukaj po tytule...",
-            )}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <DataListFilterBar
+        views={views}
+        activeViewId={activeViewId}
+        onViewChange={onViewChange}
+        onCreateView={onCreateView}
+        onDeleteView={onDeleteView}
+        filterableFields={filterableFields}
+        createDialogOpen={savedViewsDialogOpen}
+        onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder={t("documents.searchPlaceholder", "Szukaj po tytule...")}
+        onTagsManage={() => setTagsSlideoutOpen(true)}
+        onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
+        columnDefs={allColumns.map((c) => ({ id: c.id, label: c.label ?? c.id }))}
+        hiddenColumnIds={hiddenColumnIds}
+        onToggleColumn={toggleColumn}
+        onSetHiddenColumns={setHiddenColumns}
+        onFiltersChange={setActiveFilters}
+      />
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue
-              placeholder={t("documents.allStatuses", "Wszystkie statusy")}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("documents.allStatuses", "Wszystkie statusy")}
-            </SelectItem>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                <DocumentStatusBadge status={status} />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue
-              placeholder={t(
-                "documents.allCategories",
-                "Wszystkie kategorie",
-              )}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("documents.allCategories", "Wszystkie kategorie")}
-            </SelectItem>
-            {availableCategories.map((cat) => {
-              const labels = FORM_CATEGORY_LABELS[cat];
-              return (
-                <SelectItem key={cat} value={cat}>
-                  {labels ? labels[lang] : cat}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Loading state */}
-      {docsLoading && (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-lg" />
-          ))}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!docsLoading && filteredDocuments.length === 0 && (
-        <EmptyState
-          icon={ClipboardList}
-          title={t("documents.emptyTitle", "Brak dokument\u00F3w")}
-          description={t(
-            "documents.emptyDescription",
-            "Dokumenty formularzy pojawi\u0105 si\u0119 tutaj po ich wygenerowaniu z poziomu kontaktu, firmy lub leada.",
-          )}
-        />
-      )}
-
-      {/* Table */}
-      {!docsLoading && filteredDocuments.length > 0 && (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  {t("documents.colTitle", "Tytu\u0142")}
-                </TableHead>
-                <TableHead>
-                  {t("documents.colCategory", "Kategoria")}
-                </TableHead>
-                <TableHead>
-                  {t("documents.colEntityType", "Typ")}
-                </TableHead>
-                <TableHead>
-                  {t("documents.colStatus", "Status")}
-                </TableHead>
-                <TableHead>
-                  {t("documents.colCreatedAt", "Data utworzenia")}
-                </TableHead>
-                <TableHead>
-                  {t("documents.colCreatedBy", "Utworzony przez")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDocuments.map((doc) => (
-                <TableRow
-                  key={doc._id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedDocId(doc._id)}
-                >
-                  <TableCell className="font-medium">{doc.title}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {getCategoryLabel(doc.templateId)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {getEntityTypeLabel(doc.entityType)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <DocumentStatusBadge
-                      status={doc.status as FormDocumentStatus}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(doc.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {getUserName(doc.createdBy)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <CrmDataTable
+        columns={allColumns}
+        hiddenColumnIds={hiddenColumnIds}
+        data={filteredDocuments}
+        rowActions={rowActions}
+        isLoading={docsLoading}
+        enableBulkSelect
+        bulkActions={[
+          { label: t("common.delete", "Usuń"), value: "delete", variant: "destructive" },
+        ]}
+        onBulkAction={handleBulkAction}
+      />
 
       {/* Document viewer sheet */}
       <Sheet
@@ -421,7 +518,6 @@ function DocumentsPage() {
 
           {selectedDoc && selectedTemplate &&
             (() => {
-              // Try to extract rendered HTML from responseData
               try {
                 const parsed = JSON.parse(selectedDoc.responseData) as { html?: string };
                 if (parsed.html) {
@@ -440,7 +536,6 @@ function DocumentsPage() {
                 // Not JSON with html — fall through
               }
 
-              // Fallback: re-render from contentJson + scope data
               if (selectedTemplate.contentJson) {
                 try {
                   const scopeFlat: Record<string, string> = {};
@@ -464,12 +559,11 @@ function DocumentsPage() {
                 }
               }
 
-              // Fallback: no viewable content
               return (
                 <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
                   {t(
                     "documents.templateNotFound",
-                    "Szablon dokumentu nie jest dost\u0119pny.",
+                    "Szablon dokumentu nie jest dostępny.",
                   )}
                 </div>
               );
@@ -479,7 +573,7 @@ function DocumentsPage() {
             <div className="mt-6 flex items-center justify-center py-12 text-sm text-muted-foreground">
               {t(
                 "documents.templateNotFound",
-                "Szablon dokumentu nie jest dost\u0119pny.",
+                "Szablon dokumentu nie jest dostępny.",
               )}
             </div>
           )}

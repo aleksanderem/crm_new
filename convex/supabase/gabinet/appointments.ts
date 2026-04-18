@@ -45,56 +45,60 @@ async function ensureFkDeps(
   const userIds = new Set([args.employeeId, args.createdBy]);
   if (args.cancelledBy) userIds.add(args.cancelledBy);
 
-  for (const userId of userIds) {
-    if (!(await ensureRowExists(client, "users", userId))) {
-      const user = await ctx.runQuery(internal.supabase.backfill._getUser, {
-        userId,
-      });
-      if (user) {
-        await client.from("users").upsert(
-          {
-            id: user._id,
-            name: user.name ?? null,
-            username: (user as any).username ?? null,
-            image_storage_id: (user as any).imageStorageId ?? null,
-            image: user.image ?? null,
-            email: user.email ?? null,
-            email_verification_time: (user as any).emailVerificationTime ?? null,
-            phone: user.phone ?? null,
-            phone_verification_time: (user as any).phoneVerificationTime ?? null,
-            is_anonymous: (user as any).isAnonymous ?? false,
-            customer_id: (user as any).customerId ?? null,
-            language: (user as any).language ?? null,
-            theme: (user as any).theme ?? null,
-            timezone: (user as any).timezone ?? null,
-            created_at: Math.floor(user._creationTime),
-            updated_at: Math.floor(user._creationTime),
-          },
-          { onConflict: "id" },
-        );
+  try {
+    for (const userId of userIds) {
+      if (!(await ensureRowExists(client, "users", userId))) {
+        const user = await ctx.runQuery(internal.supabase.backfill._getUser, {
+          userId,
+        });
+        if (user) {
+          await client.from("users").upsert(
+            {
+              id: user._id,
+              name: user.name ?? null,
+              username: (user as any).username ?? null,
+              image_storage_id: (user as any).imageStorageId ?? null,
+              image: user.image ?? null,
+              email: user.email ?? null,
+              email_verification_time: (user as any).emailVerificationTime ?? null,
+              phone: user.phone ?? null,
+              phone_verification_time: (user as any).phoneVerificationTime ?? null,
+              is_anonymous: (user as any).isAnonymous ?? false,
+              customer_id: (user as any).customerId ?? null,
+              language: (user as any).language ?? null,
+              theme: (user as any).theme ?? null,
+              timezone: (user as any).timezone ?? null,
+              created_at: Math.floor(user._creationTime),
+              updated_at: Math.floor(user._creationTime),
+            },
+            { onConflict: "id" },
+          );
+        }
       }
     }
-  }
 
-  const patientIds = [args.patientId];
-  if (args.bookedByPatientId) patientIds.push(args.bookedByPatientId);
+    const patientIds = [args.patientId];
+    if (args.bookedByPatientId) patientIds.push(args.bookedByPatientId);
 
-  for (const patientId of patientIds) {
-    if (!(await ensureRowExists(client, "gabinet_patients", patientId))) {
-      await ctx.runAction(internal.supabase.backfill.backfillSinglePatient, {
-        patientId,
-      });
+    for (const patientId of patientIds) {
+      if (!(await ensureRowExists(client, "gabinet_patients", patientId))) {
+        await ctx.runAction(internal.supabase.backfill.backfillSinglePatient, {
+          patientId,
+        });
+      }
     }
-  }
 
-  if (args.treatmentId) {
-    if (
-      !(await ensureRowExists(client, "gabinet_treatments", args.treatmentId))
-    ) {
-      await ctx.runAction(internal.supabase.backfill.backfillSingleTreatment, {
-        treatmentId: args.treatmentId,
-      });
+    if (args.treatmentId) {
+      if (
+        !(await ensureRowExists(client, "gabinet_treatments", args.treatmentId))
+      ) {
+        await ctx.runAction(internal.supabase.backfill.backfillSingleTreatment, {
+          treatmentId: args.treatmentId,
+        });
+      }
     }
+  } catch (e) {
+    console.warn("ensureFkDeps failed (non-fatal, proceeding with write):", e);
   }
 }
 
@@ -195,14 +199,37 @@ export const writeAppointmentToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("gabinet_appointments")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    let lastError: { message: string; code: string } | null = null;
+    let data: { id: string } | null = null;
 
-    if (error) {
-      const msg = `Supabase write failed for appointment: ${error.message} (code=${error.code})`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await client
+        .from("gabinet_appointments")
+        .upsert(row, { onConflict: "id" })
+        .select("id")
+        .single();
+
+      if (!result.error) {
+        data = result.data as { id: string } | null;
+        lastError = null;
+        break;
+      }
+
+      lastError = result.error;
+
+      if (result.error.code === "23503" && attempt < 2) {
+        console.warn(
+          `FK constraint error on attempt ${attempt + 1}, retrying in 3s: ${result.error.message}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        continue;
+      }
+
+      break;
+    }
+
+    if (lastError) {
+      const msg = `Supabase write failed for appointment: ${lastError.message} (code=${lastError.code})`;
       console.error(msg);
       throw new Error(msg);
     }

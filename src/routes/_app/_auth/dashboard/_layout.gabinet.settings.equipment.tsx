@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
@@ -172,8 +172,8 @@ function EquipmentCard({
   const [transferNotes, setTransferNotes] = useState("");
   const [transferring, setTransferring] = useState(false);
 
-  const updateEquipment = useMutation(api.gabinet.equipment.updateEquipment);
-  const transferEquipment = useMutation(api.gabinet.equipment.transferEquipment);
+  const updateEquipment = useAction(api.gabinet.equipment.updateEquipment);
+  const transferEquipment = useAction(api.gabinet.equipment.transferEquipment);
 
   const selectedLocationData = useConvexQuery(
     api.gabinet.locations.getLocation,
@@ -222,10 +222,8 @@ function EquipmentCard({
       await transferEquipment({
         organizationId,
         equipmentId: item._id,
-        toLocationId: transferLocationId as Id<"gabinetLocations">,
-        toRoomId: transferRoomId
-          ? (transferRoomId as Id<"gabinetRooms">)
-          : undefined,
+        toLocationId: transferLocationId,
+        toRoomId: transferRoomId || undefined,
         notes: transferNotes.trim() || undefined,
       });
       toast.success(t("common.saved"));
@@ -501,7 +499,7 @@ function EquipmentSettingsPage() {
 
   const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
 
-  const createEquipment = useMutation(api.gabinet.equipment.createEquipment);
+  const createEquipment = useAction(api.gabinet.equipment.createEquipment);
 
   const locationList: LocationItem[] = (locations ?? []).map((loc) => ({
     _id: loc._id,
@@ -528,9 +526,7 @@ function EquipmentSettingsPage() {
         description: newDescription.trim() || undefined,
         serialNumber: newSerial.trim() || undefined,
         status: newStatus,
-        currentLocationId: newLocationId
-          ? (newLocationId as Id<"gabinetLocations">)
-          : undefined,
+        currentLocationId: newLocationId || undefined,
       });
       toast.success(t("gabinet.equipment.addEquipment"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });

@@ -1,18 +1,11 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
-import { verifyProductAccess } from "../_helpers/products";
-import { GABINET_PRODUCT_ID } from "./_registry";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEquipmentRef = internal.supabase.gabinet.equipment.writeEquipmentToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEquipmentRef = internal.supabase.gabinet.equipment.updateEquipmentInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTransferRef = internal.supabase.gabinet.equipment.writeEquipmentTransferToSupabase;
+// Dual-write refs removed — Supabase is now primary for equipment writes
 
 export const listEquipment = query({
   args: {
@@ -63,40 +56,39 @@ const equipmentStatusValidator = v.union(
   v.literal("retired"),
 );
 
-export const createEquipment = mutation({
+export const createEquipment = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
-    currentLocationId: v.optional(v.id("gabinetLocations")),
-    currentRoomId: v.optional(v.id("gabinetRooms")),
+    currentLocationId: v.optional(v.string()),
+    currentRoomId: v.optional(v.string()),
     status: v.optional(equipmentStatusValidator),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-    const equipmentId = await ctx.db.insert("gabinetEquipment", {
-      ...args,
-      status: args.status ?? "available",
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
 
-    await ctx.scheduler.runAfter(0, writeEquipmentRef, {
-      equipmentId,
-      organizationId: args.organizationId,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const equipmentId = await db.insert("gabinetEquipment", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
-      serialNumber: args.serialNumber,
-      currentLocationId: args.currentLocationId,
-      currentRoomId: args.currentRoomId,
+      description: args.description ?? null,
+      serialNumber: args.serialNumber ?? null,
+      currentLocationId: args.currentLocationId ?? null,
+      currentRoomId: args.currentRoomId ?? null,
       status: args.status ?? "available",
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -105,102 +97,90 @@ export const createEquipment = mutation({
   },
 });
 
-export const updateEquipment = mutation({
+export const updateEquipment = action({
   args: {
     organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
+    equipmentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
     status: v.optional(equipmentStatusValidator),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const equipment = await ctx.db.get(args.equipmentId);
-    if (!equipment || equipment.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const equipment = await db.get("gabinetEquipment", args.equipmentId);
+    if (!equipment || String(equipment.organizationId) !== String(args.organizationId)) {
       throw new Error("Equipment not found");
     }
+
     const { organizationId, equipmentId, ...updates } = args;
     const now = Date.now();
-    await ctx.db.patch(equipmentId, { ...updates, updatedAt: now });
-
-    await ctx.scheduler.runAfter(0, updateEquipmentRef, {
-      equipmentId,
-      organizationId: args.organizationId,
-      name: args.name,
-      description: args.description,
-      serialNumber: args.serialNumber,
-      status: args.status,
-      updatedAt: now,
-    });
+    await db.patch("gabinetEquipment", equipmentId, { ...updates, updatedAt: now });
 
     return equipmentId;
   },
 });
 
-export const transferEquipment = mutation({
+export const transferEquipment = action({
   args: {
     organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
-    toLocationId: v.id("gabinetLocations"),
-    toRoomId: v.optional(v.id("gabinetRooms")),
+    equipmentId: v.string(),
+    toLocationId: v.string(),
+    toRoomId: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const equipment = await ctx.db.get(args.equipmentId);
-    if (!equipment || equipment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const equipment = await db.get("gabinetEquipment", args.equipmentId);
+    if (!equipment || String(equipment.organizationId) !== String(args.organizationId)) {
       throw new Error("Equipment not found");
     }
 
-    const toLocation = await ctx.db.get(args.toLocationId);
-    if (!toLocation || toLocation.organizationId !== args.organizationId) {
+    const toLocation = await db.get("gabinetLocations", args.toLocationId);
+    if (!toLocation || String(toLocation.organizationId) !== String(args.organizationId)) {
       throw new Error("Target location not found");
     }
 
     const now = Date.now();
 
-    const transferId = await ctx.db.insert("gabinetEquipmentTransfers", {
-      organizationId: args.organizationId,
+    // Insert transfer record
+    await db.insert("gabinetEquipmentTransfers", {
+      organizationId: String(args.organizationId),
       equipmentId: args.equipmentId,
-      fromLocationId: equipment.currentLocationId ?? undefined,
+      fromLocationId: equipment.currentLocationId ? String(equipment.currentLocationId) : null,
       toLocationId: args.toLocationId,
-      toRoomId: args.toRoomId,
-      transferredBy: user._id,
+      toRoomId: args.toRoomId ?? null,
+      transferredBy: String(authResult.userId),
       transferredAt: now,
-      notes: args.notes,
+      notes: args.notes ?? null,
     });
 
-    await ctx.db.patch(args.equipmentId, {
+    // Update equipment location
+    await db.patch("gabinetEquipment", args.equipmentId, {
       currentLocationId: args.toLocationId,
-      currentRoomId: args.toRoomId,
-      updatedAt: now,
-    });
-
-    await ctx.scheduler.runAfter(0, writeTransferRef, {
-      transferId,
-      organizationId: args.organizationId,
-      equipmentId: args.equipmentId,
-      fromLocationId: equipment.currentLocationId,
-      toLocationId: args.toLocationId,
-      toRoomId: args.toRoomId,
-      transferredBy: user._id,
-      transferredAt: now,
-      notes: args.notes,
-    });
-
-    await ctx.scheduler.runAfter(0, updateEquipmentRef, {
-      equipmentId: args.equipmentId,
-      organizationId: args.organizationId,
-      currentLocationId: args.toLocationId,
-      currentRoomId: args.toRoomId,
+      currentRoomId: args.toRoomId ?? null,
       updatedAt: now,
     });
 
@@ -225,10 +205,14 @@ export const listTransfers = query({
   },
 });
 
-export const migrateEquipmentStrings = mutation({
+export const migrateEquipmentStrings = internalMutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const user = await ctx.db
+      .query("users")
+      .first();
+    if (!user) throw new Error("No users found");
+
     const treatments = await ctx.db
       .query("gabinetTreatments")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))

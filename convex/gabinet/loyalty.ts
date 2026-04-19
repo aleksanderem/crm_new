@@ -1,14 +1,10 @@
-import { query, mutation } from "../_generated/server";
+import { query, action } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLoyaltyRef = internal.supabase.gabinet.loyalty.updateLoyaltyPointsInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLoyaltyRef = internal.supabase.gabinet.loyalty.writeLoyaltyPointsToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTxnRef = internal.supabase.gabinet.loyalty.writeLoyaltyTransactionToSupabase;
+// Dual-write refs removed — Supabase is now primary for loyalty writes
 
 export const getBalance = query({
   args: {
@@ -43,21 +39,20 @@ export const getTransactions = query({
 });
 
 async function getOrCreateLoyalty(
-  ctx: any,
-  organizationId: any,
-  patientId: any
+  db: ReturnType<typeof createSupabaseDb>,
+  organizationId: string,
+  patientId: string
 ) {
-  const existing = await ctx.db
+  const existing = await db
     .query("gabinetLoyaltyPoints")
-    .withIndex("by_orgAndPatient", (q: any) =>
-      q.eq("organizationId", organizationId).eq("patientId", patientId)
-    )
+    .eq("organizationId", organizationId)
+    .eq("patientId", patientId)
     .first();
 
   if (existing) return existing;
 
   const now = Date.now();
-  const id = await ctx.db.insert("gabinetLoyaltyPoints", {
+  const id = await db.insert("gabinetLoyaltyPoints", {
     organizationId,
     patientId,
     balance: 0,
@@ -66,68 +61,46 @@ async function getOrCreateLoyalty(
     createdAt: now,
     updatedAt: now,
   });
-  return await ctx.db.get(id);
+  return await db.get("gabinetLoyaltyPoints", id);
 }
 
-export const earnPoints = mutation({
+export const earnPoints = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
     points: v.number(),
     reason: v.string(),
     referenceType: v.optional(v.string()),
     referenceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const loyalty = await getOrCreateLoyalty(ctx, args.organizationId, args.patientId);
-    const newBalance = loyalty.balance + args.points;
+    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    const newBalance = (loyalty!.balance as number) + args.points;
+    const newLifetimeEarned = (loyalty!.lifetimeEarned as number) + args.points;
 
-    await ctx.db.patch(loyalty._id, {
+    await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
-      lifetimeEarned: loyalty.lifetimeEarned + args.points,
+      lifetimeEarned: newLifetimeEarned,
       updatedAt: now,
     });
 
-    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
-      organizationId: args.organizationId,
+    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+      organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "earn",
       points: args.points,
       reason: args.reason,
-      referenceType: args.referenceType,
-      referenceId: args.referenceId,
+      referenceType: args.referenceType ?? null,
+      referenceId: args.referenceId ?? null,
       balanceAfter: newBalance,
-      createdBy: user._id,
-      createdAt: now,
-    });
-
-    // Dual-write: replicate loyalty points update to Supabase
-    await ctx.scheduler.runAfter(0, writeLoyaltyRef, {
-      loyaltyId: loyalty._id,
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      balance: newBalance,
-      lifetimeEarned: loyalty.lifetimeEarned + args.points,
-      lifetimeSpent: loyalty.lifetimeSpent,
-      createdAt: loyalty.createdAt,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate transaction to Supabase
-    await ctx.scheduler.runAfter(0, writeTxnRef, {
-      transactionId: txnId,
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      type: "earn",
-      points: args.points,
-      reason: args.reason,
-      referenceType: args.referenceType,
-      referenceId: args.referenceId,
-      balanceAfter: newBalance,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
     });
 
@@ -135,58 +108,41 @@ export const earnPoints = mutation({
   },
 });
 
-export const spendPoints = mutation({
+export const spendPoints = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
     points: v.number(),
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const loyalty = await getOrCreateLoyalty(ctx, args.organizationId, args.patientId);
-    if (loyalty.balance < args.points) throw new Error("Insufficient loyalty points");
+    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    if ((loyalty!.balance as number) < args.points) throw new Error("Insufficient loyalty points");
 
-    const newBalance = loyalty.balance - args.points;
+    const newBalance = (loyalty!.balance as number) - args.points;
+    const newLifetimeSpent = (loyalty!.lifetimeSpent as number) + args.points;
 
-    await ctx.db.patch(loyalty._id, {
+    await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
-      lifetimeSpent: loyalty.lifetimeSpent + args.points,
+      lifetimeSpent: newLifetimeSpent,
       updatedAt: now,
     });
 
-    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
-      organizationId: args.organizationId,
+    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+      organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "spend",
       points: args.points,
       reason: args.reason,
       balanceAfter: newBalance,
-      createdBy: user._id,
-      createdAt: now,
-    });
-
-    // Dual-write: replicate loyalty points update to Supabase
-    await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
-      loyaltyId: loyalty._id,
-      organizationId: args.organizationId,
-      balance: newBalance,
-      lifetimeSpent: loyalty.lifetimeSpent + args.points,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate transaction to Supabase
-    await ctx.scheduler.runAfter(0, writeTxnRef, {
-      transactionId: txnId,
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      type: "spend",
-      points: args.points,
-      reason: args.reason,
-      balanceAfter: newBalance,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
     });
 
@@ -194,58 +150,45 @@ export const spendPoints = mutation({
   },
 });
 
-export const adjustPoints = mutation({
+export const adjustPoints = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
     points: v.number(),
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const loyalty = await getOrCreateLoyalty(ctx, args.organizationId, args.patientId);
-    const newBalance = loyalty.balance + args.points;
+    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    const newBalance = (loyalty!.balance as number) + args.points;
+    const newLifetimeEarned = args.points > 0
+      ? (loyalty!.lifetimeEarned as number) + args.points
+      : (loyalty!.lifetimeEarned as number);
+    const newLifetimeSpent = args.points < 0
+      ? (loyalty!.lifetimeSpent as number) + Math.abs(args.points)
+      : (loyalty!.lifetimeSpent as number);
 
-    await ctx.db.patch(loyalty._id, {
+    await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
-      lifetimeEarned: args.points > 0 ? loyalty.lifetimeEarned + args.points : loyalty.lifetimeEarned,
-      lifetimeSpent: args.points < 0 ? loyalty.lifetimeSpent + Math.abs(args.points) : loyalty.lifetimeSpent,
+      lifetimeEarned: newLifetimeEarned,
+      lifetimeSpent: newLifetimeSpent,
       updatedAt: now,
     });
 
-    const txnId = await ctx.db.insert("gabinetLoyaltyTransactions", {
-      organizationId: args.organizationId,
+    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+      organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "adjust",
       points: args.points,
       reason: args.reason,
       balanceAfter: newBalance,
-      createdBy: user._id,
-      createdAt: now,
-    });
-
-    // Dual-write: replicate loyalty points update to Supabase
-    await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
-      loyaltyId: loyalty._id,
-      organizationId: args.organizationId,
-      balance: newBalance,
-      lifetimeEarned: args.points > 0 ? loyalty.lifetimeEarned + args.points : loyalty.lifetimeEarned,
-      lifetimeSpent: args.points < 0 ? loyalty.lifetimeSpent + Math.abs(args.points) : loyalty.lifetimeSpent,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate transaction to Supabase
-    await ctx.scheduler.runAfter(0, writeTxnRef, {
-      transactionId: txnId,
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      type: "adjust",
-      points: args.points,
-      reason: args.reason,
-      balanceAfter: newBalance,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
     });
 

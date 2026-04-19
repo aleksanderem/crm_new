@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
+
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export interface PackageFormData {
   validityDays?: number;
   discountPercent?: number;
   loyaltyPointsAwarded?: number;
-  treatments: Array<{ treatmentId: Id<"gabinetTreatments">; quantity: number }>;
+  treatments: Array<{ treatmentId: string; quantity: number }>;
 }
 
 interface PackageFormProps {
@@ -108,7 +108,7 @@ export function PackageForm({
       discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
       loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : undefined,
       treatments: selectedTreatments.map((t) => ({
-        treatmentId: t.treatmentId as Id<"gabinetTreatments">,
+        treatmentId: t.treatmentId,
         quantity: t.quantity,
       })),
     });

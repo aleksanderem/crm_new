@@ -387,7 +387,7 @@ function AppointmentDetail() {
   const togglePinNote = useMutation(api.notes.togglePin);
 
   // Package usage mutation
-  const usePackageTreatmentsBatch = useMutation(api.gabinet.packages.usePackageTreatmentsBatch);
+  const usePackageTreatmentsBatch = useAction(api.gabinet.packages.usePackageTreatmentsBatch);
 
   // Note state
   const [newNoteContent, setNewNoteContent] = useState("");
@@ -2455,7 +2455,7 @@ function AppointmentDetail() {
                 const items = usageDialogItems
                   .filter((it) => it.qty > 0)
                   .map((it) => ({
-                    treatmentId: it.treatmentId as Id<"gabinetTreatments">,
+                    treatmentId: it.treatmentId,
                     quantity: it.qty,
                   }));
                 if (items.length === 0) return;
@@ -2463,9 +2463,9 @@ function AppointmentDetail() {
                 try {
                   await usePackageTreatmentsBatch({
                     organizationId,
-                    usageId: usageDialogPkgId as Id<"gabinetPackageUsage">,
+                    usageId: usageDialogPkgId,
                     items,
-                    appointmentId: appointmentId as Id<"gabinetAppointments">,
+                    appointmentId,
                   });
                   toast.success(t("gabinet.packages.usageRecorded"));
                   setUsageDialogOpen(false);

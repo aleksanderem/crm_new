@@ -203,7 +203,7 @@ function DashboardLayout() {
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
   const createAppointment = useAction(api.gabinet.appointments.create);
-  const createPackage = useMutation(api.gabinet.packages.create);
+  const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
   const createActivity = useMutation(api.scheduledActivities.create);
   const createLeave = useAction(api.gabinet.scheduling.createLeave);

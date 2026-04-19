@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeSubscriptionToSupabase = internalAction({
   args: {
@@ -38,19 +38,9 @@ export const writeSubscriptionToSupabase = internalAction({
       cancel_at_period_end: args.cancelAtPeriodEnd,
     };
 
-    const { data, error } = await client
-      .from("subscriptions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "subscriptions", row);
 
-    if (error) {
-      const msg = `Supabase write failed for subscription: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`Subscription written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`Subscription written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

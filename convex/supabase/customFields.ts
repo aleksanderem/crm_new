@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 // ── Custom Field Definitions ─────────────────────────────────────────────────
 
@@ -44,20 +44,7 @@ export const writeDefinitionToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("custom_field_definitions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for custom field definition: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
+    const data = await upsertWithFkRetry(client, "custom_field_definitions", row);
     }
 
     console.info(`Custom field definition written to Supabase id=${data.id}`);
@@ -163,21 +150,7 @@ export const writeValueToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("custom_field_values")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for custom field value: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "custom_field_values", row);
 
     console.info(`Custom field value written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

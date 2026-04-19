@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "../client";
+import { createServiceRoleClient, upsertWithFkRetry } from "../client";
 
 export const writePortalSessionToSupabase = internalAction({
   args: {
@@ -44,19 +44,9 @@ export const writePortalSessionToSupabase = internalAction({
       locked_until: args.lockedUntil ?? null,
     };
 
-    const { data, error } = await client
-      .from("gabinet_portal_sessions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "gabinet_portal_sessions", row);
 
-    if (error) {
-      const msg = `Supabase write failed for gabinetPortalSession: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`GabinetPortalSession written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`GabinetPortalSession written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

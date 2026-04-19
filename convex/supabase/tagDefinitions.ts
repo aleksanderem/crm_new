@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeTagDefinitionToSupabase = internalAction({
   args: {
@@ -32,20 +32,10 @@ export const writeTagDefinitionToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("tag_definitions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "tag_definitions", row);
 
-    if (error) {
-      const msg = `Supabase write failed for tagDefinition: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`TagDefinition written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`TagDefinition written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 

@@ -9,7 +9,7 @@
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
 import { internal } from "@cvx/_generated/api";
-import { createServiceRoleClient } from "../client";
+import { createServiceRoleClient, upsertWithFkRetry } from "../client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GenericActionCtx } from "convex/server";
 import type { DataModel } from "@cvx/_generated/dataModel";
@@ -199,44 +199,7 @@ export const writeAppointmentToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    let lastError: { message: string; code: string } | null = null;
-    let data: { id: string } | null = null;
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const result = await client
-        .from("gabinet_appointments")
-        .upsert(row, { onConflict: "id" })
-        .select("id")
-        .single();
-
-      if (!result.error) {
-        data = result.data as { id: string } | null;
-        lastError = null;
-        break;
-      }
-
-      lastError = result.error;
-
-      if (result.error.code === "23503" && attempt < 2) {
-        console.warn(
-          `FK constraint error on attempt ${attempt + 1}, retrying in 3s: ${result.error.message}`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        continue;
-      }
-
-      break;
-    }
-
-    if (lastError) {
-      const msg = `Supabase write failed for appointment: ${lastError.message} (code=${lastError.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "gabinet_appointments", row);
 
     console.info(`Appointment written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

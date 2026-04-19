@@ -8,7 +8,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "../client";
+import { createServiceRoleClient, upsertWithFkRetry } from "../client";
 
 // ── Equipment ──────────────────────────────────────────────────────────
 
@@ -44,21 +44,7 @@ export const writeEquipmentToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("gabinet_equipment")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for equipment: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "gabinet_equipment", row);
 
     console.info(`Equipment written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };
@@ -141,21 +127,7 @@ export const writeEquipmentTransferToSupabase = internalAction({
       notes: args.notes ?? null,
     };
 
-    const { data, error } = await client
-      .from("gabinet_equipment_transfers")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for equipment transfer: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "gabinet_equipment_transfers", row);
 
     console.info(`Equipment transfer written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

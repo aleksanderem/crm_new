@@ -8,7 +8,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeDocumentTemplateFieldToSupabase = internalAction({
   args: {
@@ -48,21 +48,7 @@ export const writeDocumentTemplateFieldToSupabase = internalAction({
       width: args.width,
     };
 
-    const { data, error } = await client
-      .from("document_template_fields")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for document_template_field: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "document_template_fields", row);
 
     console.info(`Document template field written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

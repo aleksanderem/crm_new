@@ -7,7 +7,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeStageActionToSupabase = internalAction({
   args: {
@@ -33,21 +33,7 @@ export const writeStageActionToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("pipeline_stage_actions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for pipeline stage action: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "pipeline_stage_actions", row);
 
     console.info(`Pipeline stage action written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

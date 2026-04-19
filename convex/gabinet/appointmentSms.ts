@@ -546,9 +546,9 @@ export const processIncomingMessage = internalMutation({
       reason?: string;
     } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
       organizationId: config.organizationId,
-      appointmentId: matchingOutbound.appointmentId,
+      appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
-      smsEventId: eventId,
+      smsEventId: String(eventId),
     });
 
     await ctx.db.patch(eventId, {

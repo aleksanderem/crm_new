@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -371,8 +371,8 @@ function AppointmentDetail() {
   // Document counts for gate checks and status badges (must be before early returns)
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
-  const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const updateStatus = useAction(api.gabinet.appointments.updateStatus);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
   const trackView = useMutation(api.recentlyViewed.track);
 
   // Payment mutations

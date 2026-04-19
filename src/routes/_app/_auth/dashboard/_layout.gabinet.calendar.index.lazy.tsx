@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
@@ -116,7 +116,7 @@ function GabinetCalendarPage() {
   } | null>(null);
 
   // Mutations
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
   const queryClient = useQueryClient();
 
   // DnD sensors

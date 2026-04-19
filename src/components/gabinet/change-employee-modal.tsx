@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -132,7 +132,7 @@ export function ChangeEmployeeModal({
   const [useNewSlot, setUseNewSlot] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
 
   // Fetch all active employees
   const { data: employeesList } = useQuery(

@@ -181,7 +181,7 @@ export const writeAppointmentToSupabase = internalAction({
       prepayment_status: args.prepaymentStatus ?? null,
       prepayment_paid_at: args.prepaymentPaidAt ?? null,
       package_usage_id: args.packageUsageId ?? null,
-      scheduled_activity_id: args.scheduledActivityId ?? null,
+      scheduled_activity_id: null,
       reminder_sent_at: args.reminderSentAt ?? null,
       send_reminder: args.sendReminder ?? null,
       cancelled_at: args.cancelledAt ?? null,

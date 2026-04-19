@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -87,8 +87,8 @@ function EmployeesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const createEmployee = useMutation(api.gabinet.employees.create);
-  const removeEmployee = useMutation(api.gabinet.employees.remove);
+  const createEmployee = useAction(api.gabinet.employees.create);
+  const removeEmployee = useAction(api.gabinet.employees.remove);
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 

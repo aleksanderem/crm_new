@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetLeaveTypesList } from "@/hooks/use-supabase-gabinet-leave-types";
@@ -34,10 +34,10 @@ function LeaveTypesSettings() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const createLeaveType = useMutation(api.gabinet.leaveTypes.create);
-  const updateLeaveType = useMutation(api.gabinet.leaveTypes.update);
-  const removeLeaveType = useMutation(api.gabinet.leaveTypes.remove);
-  const initAllBalances = useMutation(api.gabinet.leaveTypes.initializeAllBalances);
+  const createLeaveType = useAction(api.gabinet.leaveTypes.create);
+  const updateLeaveType = useAction(api.gabinet.leaveTypes.update);
+  const removeLeaveType = useAction(api.gabinet.leaveTypes.remove);
+  const initAllBalances = useAction(api.gabinet.leaveTypes.initializeAllBalances);
 
   const queryClient = useQueryClient();
 

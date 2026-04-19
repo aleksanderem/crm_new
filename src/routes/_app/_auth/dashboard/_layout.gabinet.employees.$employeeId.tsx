@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -89,17 +89,17 @@ function EmployeeDetail() {
   const { t, i18n } = useTranslation();
 
   // Mutations
-  const updateEmployee = useMutation(api.gabinet.employees.update);
-  const removeEmployee = useMutation(api.gabinet.employees.remove);
-  const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
+  const updateEmployee = useAction(api.gabinet.employees.update);
+  const removeEmployee = useAction(api.gabinet.employees.remove);
+  const setQualifiedTreatments = useAction(api.gabinet.employees.setQualifiedTreatments);
   const createNote = useMutation(api.notes.create);
   const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useMutation(api.scheduledActivities.update);
   const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
-  const bulkSetEmployeeSchedule = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
-  const saveSchedulePeriod = useMutation(api.gabinet.scheduling.saveSchedulePeriod);
-  const removeSchedulePeriod = useMutation(api.gabinet.scheduling.removeSchedulePeriod);
+  const bulkSetEmployeeSchedule = useAction(api.gabinet.scheduling.bulkSetEmployeeSchedule);
+  const saveSchedulePeriod = useAction(api.gabinet.scheduling.saveSchedulePeriod);
+  const removeSchedulePeriod = useAction(api.gabinet.scheduling.removeSchedulePeriod);
   const trackView = useMutation(api.recentlyViewed.track);
 
   // Supabase cache invalidation helpers

@@ -1,18 +1,15 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
+import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { gabinetEmployeeRoleValidator } from "../schema";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { Id } from "../_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEmployeeRef = internal.supabase.gabinet.employees.writeEmployeeToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEmployeeRef = internal.supabase.gabinet.employees.updateEmployeeInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteEmployeeRef = internal.supabase.gabinet.employees.deleteEmployeeFromSupabase;
+// Dual-write refs removed — Supabase is now primary for employee writes
 
 export const list = query({
   args: {
@@ -139,101 +136,117 @@ export const getByUserId = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: gabinetEmployeeRoleValidator,
     specialization: v.optional(v.string()),
-    qualifiedTreatmentIds: v.optional(v.array(v.id("gabinetTreatments"))),
+    qualifiedTreatmentIds: v.optional(v.array(v.string())),
     licenseNumber: v.optional(v.string()),
     hireDate: v.optional(v.string()),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "create");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Require admin role (mirrors requireOrgAdmin)
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    // Check if employee already exists for this user
-    const existing = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
-      )
-      .first();
-    if (existing) {
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    // --- Check if employee already exists (via Supabase) ---
+    const existing = await db.query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", args.userId)
+      .collect();
+    if (existing.length > 0) {
       throw new Error("Employee profile already exists for this user");
     }
 
-    const id = await ctx.db.insert("gabinetEmployees", {
-      organizationId: args.organizationId,
+    // --- INSERT employee directly to Supabase ---
+    const employeeId = await db.insert("gabinetEmployees", {
+      organizationId: String(args.organizationId),
       userId: args.userId,
-      firstName: args.firstName,
-      lastName: args.lastName,
+      firstName: args.firstName ?? null,
+      lastName: args.lastName ?? null,
       role: args.role,
-      specialization: args.specialization,
+      specialization: args.specialization ?? null,
       qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
-      licenseNumber: args.licenseNumber,
-      hireDate: args.hireDate,
+      licenseNumber: args.licenseNumber ?? null,
+      hireDate: args.hireDate ?? null,
       isActive: true,
-      color: args.color,
-      notes: args.notes,
-      createdBy: user._id,
+      color: args.color ?? null,
+      notes: args.notes ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
+
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.employees._createSideEffects, {
+        employeeId,
+        organizationId: args.organizationId,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[employees.create] Side effects FAILED for employee", employeeId, ":", e);
+    }
+
+    return employeeId;
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    employeeId: v.string(),
+    organizationId: v.id("organizations"),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const createdByUserId = args.createdBy as Id<"users">;
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
-      entityId: id,
+      entityId: args.employeeId as Id<"gabinetEmployees">,
       action: "created",
       description: `Created employee profile`,
-      performedBy: user._id,
+      performedBy: createdByUserId,
     });
-
-    // Dual-write: replicate new employee to Supabase
-    await ctx.scheduler.runAfter(0, writeEmployeeRef, {
-      employeeId: id as string,
-      organizationId: args.organizationId as string,
-      userId: args.userId as string,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      role: args.role,
-      specialization: args.specialization,
-      qualifiedTreatmentIds: (args.qualifiedTreatmentIds ?? []).map((id) => id as string),
-      licenseNumber: args.licenseNumber,
-      hireDate: args.hireDate,
-      isActive: true,
-      color: args.color,
-      notes: args.notes,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return id;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("gabinetEmployees"),
+    employeeId: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: v.optional(gabinetEmployeeRoleValidator),
     specialization: v.optional(v.string()),
-    qualifiedTreatmentIds: v.optional(v.array(v.id("gabinetTreatments"))),
+    qualifiedTreatmentIds: v.optional(v.array(v.string())),
     licenseNumber: v.optional(v.string()),
     hireDate: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
@@ -276,89 +289,150 @@ export const update = mutation({
     baseSalary: v.optional(v.number()),
     commissionPercent: v.optional(v.number()),
     bankAccount: v.optional(v.string()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "edit");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Require admin role (mirrors requireOrgAdmin)
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_employees",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const emp = await ctx.db.get(args.employeeId);
-    if (!emp || emp.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read employee from Supabase ---
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
       throw new Error("Employee not found");
     }
-    if (perm.scope === "own" && emp.createdBy !== user._id) {
+    if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    // --- Build updates and PATCH to Supabase ---
     const { organizationId, employeeId, ...updates } = args;
-    await ctx.db.patch(employeeId, { ...updates, updatedAt: Date.now() });
+    await db.patch("gabinetEmployees", employeeId, { ...updates, updatedAt: Date.now() });
 
-    await logActivity(ctx, {
-      organizationId,
-      entityType: "gabinetEmployee",
-      entityId: employeeId,
-      action: "updated",
-      description: `Updated employee profile`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateEmployeeRef, {
-      employeeId: employeeId as string,
-      organizationId: organizationId as string,
-      ...Object.fromEntries(
-        Object.entries(updates)
-          .filter(([k]) => k !== "updatedAt")
-          .map(([k, val]) => {
-            if (k === "qualifiedTreatmentIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-            if (k === "categoryId" && val) return [k, val as string];
-            return [k, val];
-          })
-      ),
-      updatedAt: Date.now(),
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.employees._updateSideEffects, {
+        employeeId,
+        organizationId,
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[employees.update] Side effects FAILED for employee", employeeId, ":", e);
+    }
 
     return employeeId;
   },
 });
 
-export const remove = mutation({
+export const _updateSideEffects = internalMutation({
   args: {
+    employeeId: v.string(),
     organizationId: v.id("organizations"),
-    employeeId: v.id("gabinetEmployees"),
+    updatedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const emp = await ctx.db.get(args.employeeId);
-    if (!emp || emp.organizationId !== args.organizationId) {
-      throw new Error("Employee not found");
-    }
-    if (perm.scope === "own" && emp.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
-    }
-
-    // Soft-delete: deactivate
-    await ctx.db.patch(args.employeeId, { isActive: false, updatedAt: Date.now() });
+    const updatedByUserId = args.updatedBy as Id<"users">;
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
-      entityId: args.employeeId,
-      action: "deleted",
-      description: `Deactivated employee profile`,
-      performedBy: user._id,
+      entityId: args.employeeId as Id<"gabinetEmployees">,
+      action: "updated",
+      description: `Updated employee profile`,
+      performedBy: updatedByUserId,
+    });
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Require admin role (mirrors requireOrgAdmin)
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_employees",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    // --- Read employee from Supabase ---
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
+      throw new Error("Employee not found");
+    }
+    if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
+      throw new Error("Permission denied: you can only delete your own records");
+    }
+
+    // --- Soft-delete: PATCH isActive=false in Supabase ---
+    await db.patch("gabinetEmployees", args.employeeId, {
+      isActive: false,
+      updatedAt: Date.now(),
     });
 
-    // Dual-write: replicate soft-delete to Supabase
-    await ctx.scheduler.runAfter(0, deleteEmployeeRef, {
-      employeeId: args.employeeId as string,
-      organizationId: args.organizationId as string,
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.employees._removeSideEffects, {
+        employeeId: args.employeeId,
+        organizationId: args.organizationId,
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[employees.remove] Side effects FAILED for employee", args.employeeId, ":", e);
+    }
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    employeeId: v.string(),
+    organizationId: v.id("organizations"),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const deletedByUserId = args.deletedBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId as Id<"gabinetEmployees">,
+      action: "deleted",
+      description: `Deactivated employee profile`,
+      performedBy: deletedByUserId,
     });
   },
 });
@@ -388,45 +462,75 @@ export const getQualifiedForTreatment = query({
 });
 
 /** Update treatment qualifications for an employee */
-export const setQualifiedTreatments = mutation({
+export const setQualifiedTreatments = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("gabinetEmployees"),
-    treatmentIds: v.array(v.id("gabinetTreatments")),
+    employeeId: v.string(),
+    treatmentIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Require admin role (mirrors requireOrgAdmin)
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const emp = await ctx.db.get(args.employeeId);
-    if (!emp || emp.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read employee from Supabase ---
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
       throw new Error("Employee not found");
     }
-    if (perm.scope === "own" && emp.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only edit your own records");
-    }
 
-    await ctx.db.patch(args.employeeId, {
+    // --- PATCH to Supabase ---
+    await db.patch("gabinetEmployees", args.employeeId, {
       qualifiedTreatmentIds: args.treatmentIds,
       updatedAt: Date.now(),
     });
 
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.employees._setQualifiedSideEffects, {
+        employeeId: args.employeeId,
+        organizationId: args.organizationId,
+        treatmentCount: args.treatmentIds.length,
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[employees.setQualifiedTreatments] Side effects FAILED:", e);
+    }
+  },
+});
+
+export const _setQualifiedSideEffects = internalMutation({
+  args: {
+    employeeId: v.string(),
+    organizationId: v.id("organizations"),
+    treatmentCount: v.number(),
+    updatedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const updatedByUserId = args.updatedBy as Id<"users">;
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
-      entityId: args.employeeId,
+      entityId: args.employeeId as Id<"gabinetEmployees">,
       action: "updated",
-      description: `Updated treatment qualifications (${args.treatmentIds.length} treatments)`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate qualified treatment IDs to Supabase
-    await ctx.scheduler.runAfter(0, updateEmployeeRef, {
-      employeeId: args.employeeId as string,
-      organizationId: args.organizationId as string,
-      qualifiedTreatmentIds: args.treatmentIds.map((id) => id as string),
-      updatedAt: Date.now(),
+      description: `Updated treatment qualifications (${args.treatmentCount} treatments)`,
+      performedBy: updatedByUserId,
     });
   },
 });

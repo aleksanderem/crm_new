@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
@@ -42,7 +42,7 @@ const DEFAULT_HOURS: DayHours[] = Array.from({ length: 7 }, (_, i) => ({
 function SchedulingSettings() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
-  const bulkSet = useMutation(api.gabinet.scheduling.bulkSetWorkingHours);
+  const bulkSet = useAction(api.gabinet.scheduling.bulkSetWorkingHours);
   const [saving, setSaving] = useState(false);
 
   const { data: existing } = useSupabaseGabinetWorkingHoursList(organizationId);

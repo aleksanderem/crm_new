@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -57,10 +57,10 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const setSchedule = useMutation(api.gabinet.scheduling.setEmployeeSchedule);
+  const setSchedule = useAction(api.gabinet.scheduling.setEmployeeSchedule);
   // fallback bulk setter if needed
-  const bulkSet = useMutation(api.gabinet.scheduling.bulkSetEmployeeSchedule);
-  const removeSchedule = useMutation(api.gabinet.scheduling.removeEmployeeSchedule);
+  const bulkSet = useAction(api.gabinet.scheduling.bulkSetEmployeeSchedule);
+  const removeSchedule = useAction(api.gabinet.scheduling.removeEmployeeSchedule);
 
   const { data: schedules } = useQuery(
     convexQuery(api.gabinet.scheduling.getEmployeeSchedule, { organizationId, userId: employeeId as any })

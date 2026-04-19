@@ -201,12 +201,12 @@ function DashboardLayout() {
   const createCompany = useMutation(api.companies.create);
   const createLead = useMutation(api.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
-  const createTreatment = useMutation(api.gabinet.treatments.create);
+  const createTreatment = useAction(api.gabinet.treatments.create);
   const createAppointment = useAction(api.gabinet.appointments.create);
   const createPackage = useMutation(api.gabinet.packages.create);
-  const createEmployee = useMutation(api.gabinet.employees.create);
+  const createEmployee = useAction(api.gabinet.employees.create);
   const createActivity = useMutation(api.scheduledActivities.create);
-  const createLeave = useMutation(api.gabinet.scheduling.createLeave);
+  const createLeave = useAction(api.gabinet.scheduling.createLeave);
   const createProduct = useMutation(api.products.create);
   const createCall = useMutation(api.calls.create);
   const createInvitation = useMutation(api.invitations.create);

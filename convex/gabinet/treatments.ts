@@ -1,4 +1,4 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Id } from "../_generated/dataModel";
@@ -6,19 +6,9 @@ import { internal } from "../_generated/api";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTreatmentRef = internal.supabase.gabinet.treatments.writeTreatmentToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateTreatmentRef = internal.supabase.gabinet.treatments.updateTreatmentInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteTreatmentRef = internal.supabase.gabinet.treatments.deleteTreatmentFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeVariantRef = internal.supabase.gabinet.treatments.writeVariantToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateVariantRef = internal.supabase.gabinet.treatments.updateVariantInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteVariantRef = internal.supabase.gabinet.treatments.deleteVariantFromSupabase;
+// Dual-write refs removed — Supabase is now primary for treatment writes
 
 export const list = query({
   args: {
@@ -79,7 +69,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -90,7 +80,7 @@ export const create = mutation({
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
     requiredEquipment: v.optional(v.array(v.string())),
-    requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
+    requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
     preparationInstructions: v.optional(v.string()),
     aftercareInstructions: v.optional(v.string()),
@@ -98,68 +88,94 @@ export const create = mutation({
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
     treatmentCount: v.optional(v.number()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "create");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-
-    const treatmentId = await ctx.db.insert("gabinetTreatments", {
-      ...args,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await logActivity(ctx, {
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: treatmentId,
-      action: "created",
-      description: `Created treatment "${args.name}"`,
-      performedBy: user._id,
+      feature: "gabinet_treatments",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
     });
 
-    // Dual-write: replicate new treatment to Supabase
-    await ctx.scheduler.runAfter(0, writeTreatmentRef, {
-      treatmentId: treatmentId as string,
-      organizationId: args.organizationId as string,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    // --- INSERT treatment directly to Supabase ---
+    const treatmentId = await db.insert("gabinetTreatments", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
-      category: args.category,
+      description: args.description ?? null,
+      category: args.category ?? null,
       duration: args.duration,
       price: args.price,
-      currency: args.currency,
-      taxRate: args.taxRate,
-      requiredEquipment: args.requiredEquipment,
-      requiredEquipmentIds: args.requiredEquipmentIds?.map((id) => id as string),
-      contraindications: args.contraindications,
-      preparationInstructions: args.preparationInstructions,
-      aftercareInstructions: args.aftercareInstructions,
+      currency: args.currency ?? null,
+      taxRate: args.taxRate ?? null,
+      requiredEquipment: args.requiredEquipment ?? null,
+      requiredEquipmentIds: args.requiredEquipmentIds ?? null,
+      contraindications: args.contraindications ?? null,
+      preparationInstructions: args.preparationInstructions ?? null,
+      aftercareInstructions: args.aftercareInstructions ?? null,
       isActive: true,
-      requiresApproval: args.requiresApproval,
-      color: args.color,
-      sortOrder: args.sortOrder,
-      treatmentCount: args.treatmentCount,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
-      createdBy: user._id as string,
+      requiresApproval: args.requiresApproval ?? null,
+      color: args.color ?? null,
+      sortOrder: args.sortOrder ?? null,
+      treatmentCount: args.treatmentCount ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
+
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
+        treatmentId,
+        organizationId: args.organizationId,
+        name: args.name,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.create] Side effects FAILED for treatment", treatmentId, ":", e);
+    }
 
     return treatmentId;
   },
 });
 
-export const update = mutation({
+export const _createSideEffects = internalMutation({
+  args: {
+    treatmentId: v.string(),
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const createdByUserId = args.createdBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId as Id<"gabinetTreatments">,
+      action: "created",
+      description: `Created treatment "${args.name}"`,
+      performedBy: createdByUserId,
+    });
+  },
+});
+
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
@@ -168,7 +184,7 @@ export const update = mutation({
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
     requiredEquipment: v.optional(v.array(v.string())),
-    requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
+    requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
     preparationInstructions: v.optional(v.string()),
     aftercareInstructions: v.optional(v.string()),
@@ -177,100 +193,152 @@ export const update = mutation({
     sortOrder: v.optional(v.number()),
     treatmentCount: v.optional(v.number()),
     requiredFormTemplates: v.optional(v.array(v.object({
-      templateId: v.id("formTemplates"),
+      templateId: v.string(),
       timing: v.union(v.literal("before_start"), v.literal("after_completion")),
     }))),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_treatments",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read treatment from Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
-    if (perm.scope === "own" && treatment.createdBy !== user._id) {
+    if (perm.scope === "own" && String(treatment.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    // --- Build updates and PATCH to Supabase ---
     const { organizationId, treatmentId, ...updates } = args;
-    await ctx.db.patch(treatmentId, { ...updates, updatedAt: Date.now() });
+    await db.patch("gabinetTreatments", treatmentId, { ...updates, updatedAt: Date.now() });
 
-    await logActivity(ctx, {
-      organizationId,
-      entityType: "gabinetTreatment",
-      entityId: treatmentId,
-      action: "updated",
-      description: `Updated treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
-      treatmentId: treatmentId as string,
-      organizationId: organizationId as string,
-      ...Object.fromEntries(
-        Object.entries(updates)
-          .filter(([k]) => k !== "updatedAt")
-          .map(([k, val]) => {
-            if (k === "requiredEquipmentIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-            if (k === "categoryId" && val) return [k, val as string];
-            if (k === "requiredFormTemplates" && Array.isArray(val)) {
-              return [k, val.map((t: any) => ({ ...t, templateId: t.templateId as string }))];
-            }
-            return [k, val];
-          })
-      ),
-      updatedAt: Date.now(),
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+        treatmentId,
+        organizationId,
+        treatmentName: (treatment.name as string) ?? "",
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.update] Side effects FAILED for treatment", treatmentId, ":", e);
+    }
 
     return treatmentId;
   },
 });
 
-export const remove = mutation({
+export const _updateSideEffects = internalMutation({
   args: {
+    treatmentId: v.string(),
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentName: v.string(),
+    updatedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
-      throw new Error("Treatment not found");
-    }
-    if (perm.scope === "own" && treatment.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
-    }
-
-    await ctx.db.patch(args.treatmentId, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
+    const updatedByUserId = args.updatedBy as Id<"users">;
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetTreatment",
-      entityId: args.treatmentId,
-      action: "deleted",
-      description: `Deleted treatment "${treatment.name}"`,
-      performedBy: user._id,
+      entityId: args.treatmentId as Id<"gabinetTreatments">,
+      action: "updated",
+      description: `Updated treatment "${args.treatmentName}"`,
+      performedBy: updatedByUserId,
+    });
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_treatments",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    // --- Read treatment from Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
+      throw new Error("Treatment not found");
+    }
+    if (perm.scope === "own" && String(treatment.createdBy) !== String(authResult.userId)) {
+      throw new Error("Permission denied: you can only delete your own records");
+    }
+
+    // --- Soft-delete: PATCH isActive=false in Supabase ---
+    await db.patch("gabinetTreatments", args.treatmentId, {
+      isActive: false,
+      updatedAt: Date.now(),
     });
 
-    // Dual-write: replicate soft-delete to Supabase
-    await ctx.scheduler.runAfter(0, deleteTreatmentRef, {
-      treatmentId: args.treatmentId as string,
-      organizationId: args.organizationId as string,
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._removeSideEffects, {
+        treatmentId: args.treatmentId,
+        organizationId: args.organizationId,
+        treatmentName: (treatment.name as string) ?? "",
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.remove] Side effects FAILED for treatment", args.treatmentId, ":", e);
+    }
 
     return args.treatmentId;
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    treatmentId: v.string(),
+    organizationId: v.id("organizations"),
+    treatmentName: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const deletedByUserId = args.deletedBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId as Id<"gabinetTreatments">,
+      action: "deleted",
+      description: `Deleted treatment "${args.treatmentName}"`,
+      performedBy: deletedByUserId,
+    });
   },
 });
 
@@ -699,58 +767,63 @@ export const getRequiredFormTemplates = query({
   },
 });
 
-export const setRequiredFormTemplates = mutation({
+export const setRequiredFormTemplates = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
     requiredFormTemplates: v.array(v.object({
-      templateId: v.id("formTemplates"),
+      templateId: v.string(),
       timing: v.union(v.literal("before_start"), v.literal("after_completion")),
     })),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read treatment from Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
 
-    await ctx.db.patch(args.treatmentId, {
+    // --- PATCH to Supabase ---
+    await db.patch("gabinetTreatments", args.treatmentId, {
       requiredFormTemplates: args.requiredFormTemplates,
       updatedAt: Date.now(),
     });
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: args.treatmentId,
-      action: "updated",
-      description: `Updated required form templates for treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate form templates update to Supabase
-    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
-      treatmentId: args.treatmentId as string,
-      organizationId: args.organizationId as string,
-      requiredFormTemplates: args.requiredFormTemplates.map((t) => ({
-        ...t,
-        templateId: t.templateId as string,
-      })),
-      updatedAt: Date.now(),
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+        treatmentId: args.treatmentId,
+        organizationId: args.organizationId,
+        treatmentName: (treatment.name as string) ?? "",
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.setRequiredFormTemplates] Side effects FAILED:", e);
+    }
 
     return args.treatmentId;
   },
 });
 
-export const saveTreatmentParameters = mutation({
+export const saveTreatmentParameters = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
     parameters: v.array(
       v.object({
         name: v.string(),
@@ -769,36 +842,44 @@ export const saveTreatmentParameters = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read treatment from Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
 
-    await ctx.db.patch(args.treatmentId, {
+    // --- PATCH to Supabase ---
+    await db.patch("gabinetTreatments", args.treatmentId, {
       parameters: args.parameters,
       updatedAt: Date.now(),
     });
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: args.treatmentId,
-      action: "updated",
-      description: `Updated parameters for treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate parameters to Supabase
-    await ctx.scheduler.runAfter(0, updateTreatmentRef, {
-      treatmentId: args.treatmentId as string,
-      organizationId: args.organizationId as string,
-      parameters: args.parameters,
-      updatedAt: Date.now(),
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+        treatmentId: args.treatmentId,
+        organizationId: args.organizationId,
+        treatmentName: (treatment.name as string) ?? "",
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.saveTreatmentParameters] Side effects FAILED:", e);
+    }
 
     return args.treatmentId;
   },
@@ -806,28 +887,37 @@ export const saveTreatmentParameters = mutation({
 
 // --- Migration: convert old parameters to typed format ---
 
-export const migrateParametersToTyped = mutation({
+export const migrateParametersToTyped = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const treatments = await ctx.db
-      .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+
+    const treatments = await db.query("gabinetTreatments")
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     let count = 0;
     for (const t of treatments) {
-      if (!t.parameters?.length) continue;
-      const first = t.parameters[0] as any;
+      const params = t.parameters as any[] | null;
+      if (!params?.length) continue;
+      const first = params[0] as any;
       if (first.type) continue; // already migrated
 
-      const migrated = t.parameters.map((p: any) => ({
+      const migrated = params.map((p: any) => ({
         name: p.name,
         type: "text" as const,
         description: p.value || undefined,
         unit: p.unit || undefined,
       }));
-      await ctx.db.patch(t._id, { parameters: migrated, updatedAt: Date.now() });
+      await db.patch("gabinetTreatments", t._id as string, {
+        parameters: migrated,
+        updatedAt: Date.now(),
+      });
       count++;
     }
     return { migratedCount: count };
@@ -910,80 +1000,81 @@ export const getVariant = query({
   },
 });
 
-export const createVariant = mutation({
+export const createVariant = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
     name: v.string(),
     price: v.optional(v.number()),
     duration: v.optional(v.number()),
     description: v.optional(v.string()),
     shortDescription: v.optional(v.string()),
-    image: v.optional(v.id("_storage")),
+    image: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Verify parent treatment exists in Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
 
-    const variantId = await ctx.db.insert("gabinetTreatmentVariants", {
-      organizationId: args.organizationId,
+    // --- INSERT variant directly to Supabase ---
+    const variantId = await db.insert("gabinetTreatmentVariants", {
+      organizationId: String(args.organizationId),
       treatmentId: args.treatmentId,
       name: args.name,
-      price: args.price,
-      duration: args.duration,
-      description: args.description,
-      shortDescription: args.shortDescription,
-      image: args.image,
+      price: args.price ?? null,
+      duration: args.duration ?? null,
+      description: args.description ?? null,
+      shortDescription: args.shortDescription ?? null,
+      image: args.image ?? null,
       isActive: args.isActive ?? true,
-      sortOrder: args.sortOrder,
+      sortOrder: args.sortOrder ?? null,
     });
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: args.treatmentId,
-      action: "updated",
-      description: `Added variant "${args.name}" to treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate new variant to Supabase
-    await ctx.scheduler.runAfter(0, writeVariantRef, {
-      variantId: variantId as string,
-      organizationId: args.organizationId as string,
-      treatmentId: args.treatmentId as string,
-      name: args.name,
-      price: args.price,
-      duration: args.duration,
-      description: args.description,
-      shortDescription: args.shortDescription,
-      image: args.image ? (args.image as string) : undefined,
-      isActive: args.isActive ?? true,
-      sortOrder: args.sortOrder,
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
+        treatmentId: args.treatmentId,
+        organizationId: args.organizationId,
+        name: `Added variant "${args.name}" to treatment "${(treatment.name as string) ?? ""}"`,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.createVariant] Side effects FAILED:", e);
+    }
 
     return variantId;
   },
 });
 
-export const updateVariant = mutation({
+export const updateVariant = action({
   args: {
     organizationId: v.id("organizations"),
-    variantId: v.id("gabinetTreatmentVariants"),
+    variantId: v.string(),
     name: v.optional(v.string()),
     price: v.optional(v.number()),
     duration: v.optional(v.number()),
     description: v.optional(v.string()),
     shortDescription: v.optional(v.string()),
-    image: v.optional(v.id("_storage")),
+    image: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
     // Allow explicitly clearing overrides back to inherited
@@ -994,106 +1085,109 @@ export const updateVariant = mutation({
     clearImage: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const variant = await ctx.db.get(args.variantId);
-    if (!variant || variant.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read variant from Supabase ---
+    const variant = await db.get("gabinetTreatmentVariants", args.variantId);
+    if (!variant || String(variant.organizationId) !== String(args.organizationId)) {
       throw new Error("Variant not found");
     }
 
-    const treatment = await ctx.db.get(variant.treatmentId);
-    if (!treatment) throw new Error("Parent treatment not found");
-
+    // --- Build updates ---
     const updates: Record<string, unknown> = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
     if (args.sortOrder !== undefined) updates.sortOrder = args.sortOrder;
 
     // Handle overridable fields — set or clear
-    if (args.clearPrice) updates.price = undefined;
+    if (args.clearPrice) updates.price = null;
     else if (args.price !== undefined) updates.price = args.price;
 
-    if (args.clearDuration) updates.duration = undefined;
+    if (args.clearDuration) updates.duration = null;
     else if (args.duration !== undefined) updates.duration = args.duration;
 
-    if (args.clearDescription) updates.description = undefined;
+    if (args.clearDescription) updates.description = null;
     else if (args.description !== undefined) updates.description = args.description;
 
-    if (args.clearShortDescription) updates.shortDescription = undefined;
+    if (args.clearShortDescription) updates.shortDescription = null;
     else if (args.shortDescription !== undefined) updates.shortDescription = args.shortDescription;
 
-    if (args.clearImage) updates.image = undefined;
+    if (args.clearImage) updates.image = null;
     else if (args.image !== undefined) updates.image = args.image;
 
-    await ctx.db.patch(args.variantId, updates);
+    // --- PATCH to Supabase ---
+    await db.patch("gabinetTreatmentVariants", args.variantId, updates);
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: variant.treatmentId,
-      action: "updated",
-      description: `Updated variant "${variant.name}" of treatment "${treatment.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate variant update to Supabase
-    await ctx.scheduler.runAfter(0, updateVariantRef, {
-      variantId: args.variantId as string,
-      organizationId: args.organizationId as string,
-      name: args.name,
-      price: args.price,
-      duration: args.duration,
-      description: args.description,
-      shortDescription: args.shortDescription,
-      image: args.image ? (args.image as string) : undefined,
-      isActive: args.isActive,
-      sortOrder: args.sortOrder,
-      clearPrice: args.clearPrice,
-      clearDuration: args.clearDuration,
-      clearDescription: args.clearDescription,
-      clearShortDescription: args.clearShortDescription,
-      clearImage: args.clearImage,
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+        treatmentId: variant.treatmentId as string,
+        organizationId: args.organizationId,
+        treatmentName: `Updated variant "${(variant.name as string) ?? ""}"`,
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.updateVariant] Side effects FAILED:", e);
+    }
 
     return args.variantId;
   },
 });
 
-export const deleteVariant = mutation({
+export const deleteVariant = action({
   args: {
     organizationId: v.id("organizations"),
-    variantId: v.id("gabinetTreatmentVariants"),
+    variantId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "delete",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const variant = await ctx.db.get(args.variantId);
-    if (!variant || variant.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read variant from Supabase ---
+    const variant = await db.get("gabinetTreatmentVariants", args.variantId);
+    if (!variant || String(variant.organizationId) !== String(args.organizationId)) {
       throw new Error("Variant not found");
     }
 
-    const treatment = await ctx.db.get(variant.treatmentId);
+    // --- DELETE from Supabase ---
+    await db.delete("gabinetTreatmentVariants", args.variantId);
 
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteVariantRef, {
-      variantId: args.variantId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.variantId);
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetTreatment",
-      entityId: variant.treatmentId,
-      action: "updated",
-      description: `Deleted variant "${variant.name}" from treatment "${treatment?.name ?? "unknown"}"`,
-      performedBy: user._id,
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+        treatmentId: variant.treatmentId as string,
+        organizationId: args.organizationId,
+        treatmentName: `Deleted variant "${(variant.name as string) ?? ""}"`,
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[treatments.deleteVariant] Side effects FAILED:", e);
+    }
 
     return args.variantId;
   },

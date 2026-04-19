@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -81,7 +81,7 @@ export function TreatmentRequiredDocuments({
     "before_start" | "after_completion"
   >("before_start");
 
-  const updateTreatment = useMutation(api.gabinet.treatments.update);
+  const updateTreatment = useAction(api.gabinet.treatments.update);
 
   // Fetch all form templates to resolve names and for the picker
   const { data: allTemplates, isLoading: templatesLoading } = useQuery(

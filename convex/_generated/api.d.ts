@@ -101,6 +101,7 @@ import type * as google__helpers from "../google/_helpers.js";
 import type * as google_calendar from "../google/calendar.js";
 import type * as google_calendarSync from "../google/calendarSync.js";
 import type * as google_calendarSyncHelpers from "../google/calendarSyncHelpers.js";
+import type * as google_calendarSyncHelpers_supabase from "../google/calendarSyncHelpers_supabase.js";
 import type * as google_gmail from "../google/gmail.js";
 import type * as google_oauth from "../google/oauth.js";
 import type * as googleCalendarSyncConfigs from "../googleCalendarSyncConfigs.js";
@@ -328,6 +329,7 @@ declare const fullApi: ApiFromModules<{
   "google/calendar": typeof google_calendar;
   "google/calendarSync": typeof google_calendarSync;
   "google/calendarSyncHelpers": typeof google_calendarSyncHelpers;
+  "google/calendarSyncHelpers_supabase": typeof google_calendarSyncHelpers_supabase;
   "google/gmail": typeof google_gmail;
   "google/oauth": typeof google_oauth;
   googleCalendarSyncConfigs: typeof googleCalendarSyncConfigs;

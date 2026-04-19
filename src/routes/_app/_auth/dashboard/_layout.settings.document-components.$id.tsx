@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -52,7 +52,7 @@ function EditDocumentComponentPage() {
     ),
   );
 
-  const updateMutation = useMutation(api.documents.components.update);
+  const updateMutation = useAction(api.documents.components.update);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseEmailSequencesList, useSupabaseEmailSequence, useSupabaseEmailSequenceSteps } from "@/hooks/use-supabase-email-sequences";
@@ -118,8 +118,8 @@ function EmailSequencesSettings() {
   const { data: sequences, isLoading } = useSupabaseEmailSequencesList(organizationId);
 
   // Mutations
-  const updateSequence = useMutation(api.emailSequences.updateSequence);
-  const deleteSequence = useMutation(api.emailSequences.deleteSequence);
+  const updateSequence = useAction(api.emailSequences.updateSequence);
+  const deleteSequence = useAction(api.emailSequences.deleteSequence);
 
   // Toggle active
   const handleToggleActive = async (seq: Sequence) => {
@@ -310,7 +310,7 @@ function CreateSequenceDialog({
   const [triggerEventType, setTriggerEventType] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const createSequence = useMutation(api.emailSequences.createSequence);
+  const createSequence = useAction(api.emailSequences.createSequence);
   const queryClient = useQueryClient();
 
   const { data: eventTypes } = useSupabaseEmailEventTypes(organizationId as string);
@@ -431,9 +431,9 @@ function SequenceEditorDialog({
     organizationId as string, { activeOnly: true },
   );
 
-  const updateSequence = useMutation(api.emailSequences.updateSequence);
-  const upsertStep = useMutation(api.emailSequences.upsertStep);
-  const deleteStep = useMutation(api.emailSequences.deleteStep);
+  const updateSequence = useAction(api.emailSequences.updateSequence);
+  const upsertStep = useAction(api.emailSequences.upsertStep);
+  const deleteStep = useAction(api.emailSequences.deleteStep);
 
   // Local editable fields
   const [name, setName] = useState<string | null>(null);

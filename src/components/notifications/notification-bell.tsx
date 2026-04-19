@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -64,8 +64,8 @@ export function NotificationBell() {
     enabled: !!organizationId,
   });
 
-  const markAsRead = useMutation(api.notifications.markAsRead);
-  const markAllRead = useMutation(api.notifications.markAllRead);
+  const markAsRead = useAction(api.notifications.markAsRead);
+  const markAllRead = useAction(api.notifications.markAllRead);
 
   const handleNotificationClick = async (notification: {
     _id: Id<"notifications">;

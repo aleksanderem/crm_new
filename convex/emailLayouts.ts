@@ -1,10 +1,10 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { internal } from "./_generated/api";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLayoutRef = internal.supabase.emailLayouts.writeEmailLayoutToSupabase;
+// Dual-write refs removed — Supabase is now primary for email layout writes
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -25,10 +25,10 @@ export const get = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-export const upsert = mutation({
+export const upsert = action({
   args: {
     organizationId: v.id("organizations"),
     headerBlocks: v.string(),
@@ -41,67 +41,38 @@ export const upsert = mutation({
     footerText: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const existing = await ctx.db
-      .query("emailLayouts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const existing = await db.query("emailLayouts")
+      .eq("organizationId", String(args.organizationId))
       .first();
 
-    const data = {
-      organizationId: args.organizationId,
+    const data: Record<string, unknown> = {
+      organizationId: String(args.organizationId),
       headerBlocks: args.headerBlocks,
       footerBlocks: args.footerBlocks,
       backgroundColor: args.backgroundColor,
       contentBackgroundColor: args.contentBackgroundColor,
       primaryColor: args.primaryColor,
-      logoUrl: args.logoUrl,
-      companyName: args.companyName,
-      footerText: args.footerText,
-      updatedBy: user._id,
-      updatedAt: Date.now(),
+      logoUrl: args.logoUrl ?? null,
+      companyName: args.companyName ?? null,
+      footerText: args.footerText ?? null,
+      updatedBy: String(authResult.userId),
+      updatedAt: now,
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, data);
-
-      // Dual-write: replicate update to Supabase
-      await ctx.scheduler.runAfter(0, writeLayoutRef, {
-        layoutId: existing._id as string,
-        organizationId: args.organizationId as string,
-        headerBlocks: args.headerBlocks,
-        footerBlocks: args.footerBlocks,
-        backgroundColor: args.backgroundColor,
-        contentBackgroundColor: args.contentBackgroundColor,
-        primaryColor: args.primaryColor,
-        logoUrl: args.logoUrl,
-        companyName: args.companyName,
-        footerText: args.footerText,
-        updatedBy: user._id as string,
-        updatedAt: data.updatedAt,
-      });
-
-      return existing._id;
+      await db.patch("emailLayouts", existing._id as string, data);
+      return existing._id as string;
     }
 
-    const layoutId = await ctx.db.insert("emailLayouts", data);
-
-    // Dual-write: replicate new layout to Supabase
-    await ctx.scheduler.runAfter(0, writeLayoutRef, {
-      layoutId: layoutId as string,
-      organizationId: args.organizationId as string,
-      headerBlocks: args.headerBlocks,
-      footerBlocks: args.footerBlocks,
-      backgroundColor: args.backgroundColor,
-      contentBackgroundColor: args.contentBackgroundColor,
-      primaryColor: args.primaryColor,
-      logoUrl: args.logoUrl,
-      companyName: args.companyName,
-      footerText: args.footerText,
-      updatedBy: user._id as string,
-      updatedAt: data.updatedAt,
-    });
-
+    const layoutId = await db.insert("emailLayouts", data);
     return layoutId;
   },
 });

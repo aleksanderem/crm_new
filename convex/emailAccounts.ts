@@ -1,12 +1,10 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+import { query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { v } from "convex/values";
+import { verifyOrgAccess } from "./_helpers/auth";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeAccountRef = internal.supabase.emailAccounts.writeEmailAccountToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteAccountRef = internal.supabase.emailAccounts.deleteEmailAccountFromSupabase;
+// Dual-write refs removed — Supabase is now primary for email account writes
 
 export const list = query({
   args: {
@@ -22,7 +20,7 @@ export const list = query({
   },
 });
 
-export const upsert = mutation({
+export const upsert = action({
   args: {
     organizationId: v.id("organizations"),
     fromName: v.string(),
@@ -30,64 +28,51 @@ export const upsert = mutation({
     isDefault: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    // --- Auth: require admin ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
     // If setting as default, clear existing defaults
     if (args.isDefault) {
-      const existing = await ctx.db
-        .query("emailAccounts")
-        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      const existing = await db.query("emailAccounts")
+        .eq("organizationId", String(args.organizationId))
         .collect();
 
       for (const account of existing) {
         if (account.isDefault) {
-          await ctx.db.patch(account._id, { isDefault: false, updatedAt: now });
+          await db.patch("emailAccounts", account._id as string, {
+            isDefault: false,
+            updatedAt: now,
+          });
         }
       }
     }
 
     // Check if account with same fromEmail already exists for this org
-    const accounts = await ctx.db
-      .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+    const accounts = await db.query("emailAccounts")
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const existingAccount = accounts.find((a) => a.fromEmail === args.fromEmail);
+    const existingAccount = accounts.find((a: any) => a.fromEmail === args.fromEmail);
 
     if (existingAccount) {
-      await ctx.db.patch(existingAccount._id, {
+      await db.patch("emailAccounts", existingAccount._id as string, {
         fromName: args.fromName,
         isDefault: args.isDefault,
         updatedAt: now,
       });
-
-      // Dual-write: replicate update to Supabase
-      await ctx.scheduler.runAfter(0, writeAccountRef, {
-        accountId: existingAccount._id as string,
-        organizationId: args.organizationId as string,
-        fromName: args.fromName,
-        fromEmail: args.fromEmail,
-        isDefault: args.isDefault,
-        createdAt: existingAccount.createdAt,
-        updatedAt: now,
-      });
-
-      return existingAccount._id;
+      return existingAccount._id as string;
     }
 
-    const accountId = await ctx.db.insert("emailAccounts", {
-      organizationId: args.organizationId,
-      fromName: args.fromName,
-      fromEmail: args.fromEmail,
-      isDefault: args.isDefault,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new account to Supabase
-    await ctx.scheduler.runAfter(0, writeAccountRef, {
-      accountId: accountId as string,
-      organizationId: args.organizationId as string,
+    const accountId = await db.insert("emailAccounts", {
+      organizationId: String(args.organizationId),
       fromName: args.fromName,
       fromEmail: args.fromEmail,
       isDefault: args.isDefault,
@@ -99,26 +84,30 @@ export const upsert = mutation({
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    accountId: v.id("emailAccounts"),
+    accountId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    // --- Auth: require admin ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
 
-    const account = await ctx.db.get(args.accountId);
-    if (!account || account.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const account = await db.get("emailAccounts", args.accountId);
+    if (!account || String(account.organizationId) !== String(args.organizationId)) {
       throw new Error("Email account not found");
     }
 
-    // Dual-write: schedule delete BEFORE Convex delete (Knowledge Pattern #4)
-    await ctx.scheduler.runAfter(0, deleteAccountRef, {
-      accountId: args.accountId as string,
-      organizationId: args.organizationId as string,
-    });
+    await db.delete("emailAccounts", args.accountId);
 
-    await ctx.db.delete(args.accountId);
     return args.accountId;
   },
 });

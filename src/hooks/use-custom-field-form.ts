@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import {
@@ -40,7 +40,7 @@ export function useCustomFieldForm({
 
   // Mutations still go through Convex (dual-write handles Supabase sync)
   // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit
-  const setCustomFields = useMutation(api.customFields.setValues);
+  const setCustomFields = useAction(api.customFields.setValues);
 
   const onChange = useCallback((fieldKey: string, value: unknown) => {
     setValues((prev) => ({ ...prev, [fieldKey]: value }));

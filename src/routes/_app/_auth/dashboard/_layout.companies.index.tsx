@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useOrganization } from "@/components/org-context";
@@ -46,7 +46,7 @@ function CompaniesIndex() {
   const navigate = useNavigate();
   const createCompany = useAction(api.companies.create);
   const removeCompany = useAction(api.companies.remove);
-  const setCustomFieldValues = useMutation(api.customFields.setValues);
+  const setCustomFieldValues = useAction(api.customFields.setValues);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

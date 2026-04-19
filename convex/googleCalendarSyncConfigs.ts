@@ -1,10 +1,8 @@
 import { v } from "convex/values";
-import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
+import { query, action, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeGcSyncConfigRef = internal.supabase.googleCalendarSyncConfigs.writeGoogleCalendarSyncConfigToSupabase;
 
 // List all sync configs for the current user in an org
 export const listMine = query({
@@ -51,10 +49,10 @@ export const getOrgDefault = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    connectionId: v.id("oauthConnections"),
+    connectionId: v.string(),
     googleCalendarId: v.string(),
     googleCalendarName: v.string(),
     isOrgDefault: v.optional(v.boolean()),
@@ -63,46 +61,35 @@ export const create = mutation({
     visibility: v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden")),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const isOrgDefault = args.isOrgDefault ?? false;
 
     if (isOrgDefault) {
-      const existing = await ctx.db
+      // Unset existing org default
+      const existing = await db
         .query("googleCalendarSyncConfigs")
-        .withIndex("by_orgDefault", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isOrgDefault", true)
-        )
+        .eq("organizationId", String(args.organizationId))
+        .eq("isOrgDefault", true)
         .first();
       if (existing) {
-        await ctx.db.patch(existing._id, { isOrgDefault: false });
+        await db.patch("googleCalendarSyncConfigs", existing._id as string, { isOrgDefault: false });
       }
     }
 
-    const configId = await ctx.db.insert("googleCalendarSyncConfigs", {
-      organizationId: args.organizationId,
-      userId: user._id,
+    const configId = await db.insert("googleCalendarSyncConfigs", {
+      organizationId: String(args.organizationId),
+      userId: String(authResult.userId),
       connectionId: args.connectionId,
       googleCalendarId: args.googleCalendarId,
       googleCalendarName: args.googleCalendarName,
       isOrgDefault,
       targetModule: args.targetModule,
-      targetActivityType: args.targetActivityType,
-      visibility: args.visibility,
-      syncEnabled: true,
-      syncStatus: "idle",
-    });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writeGcSyncConfigRef, {
-      configId: configId as string,
-      organizationId: args.organizationId as string,
-      userId: user._id as string,
-      connectionId: args.connectionId as string,
-      googleCalendarId: args.googleCalendarId,
-      googleCalendarName: args.googleCalendarName,
-      isOrgDefault,
-      targetModule: args.targetModule,
-      targetActivityType: args.targetActivityType,
+      targetActivityType: args.targetActivityType ?? null,
       visibility: args.visibility,
       syncEnabled: true,
       syncStatus: "idle",
@@ -112,9 +99,9 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
-    configId: v.id("googleCalendarSyncConfigs"),
+    configId: v.string(),
     targetModule: v.optional(v.union(v.literal("crm"), v.literal("gabinet"))),
     targetActivityType: v.optional(v.string()),
     visibility: v.optional(v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden"))),
@@ -122,28 +109,32 @@ export const update = mutation({
     isOrgDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const config = await ctx.db.get(args.configId);
+    const db = createSupabaseDb();
+    const config = await db.get("googleCalendarSyncConfigs", args.configId);
     if (!config) throw new Error("Config not found");
-    const { user, membership } = await verifyOrgAccess(ctx, config.organizationId);
-    const isOwner = config.userId === user._id;
-    const isAdmin = membership.role === "owner" || membership.role === "admin";
+
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: config.organizationId as any },
+    );
+
+    const isOwner = config.userId === String(authResult.userId);
+    const isAdmin = authResult.role === "owner" || authResult.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new Error("You can only modify your own calendar configs");
     }
-    // Only the config owner can change their visibility (privacy control)
     if (args.visibility !== undefined && !isOwner) {
       throw new Error("Only the calendar owner can change visibility settings");
     }
 
     if (args.isOrgDefault === true) {
-      const existing = await ctx.db
+      const existing = await db
         .query("googleCalendarSyncConfigs")
-        .withIndex("by_orgDefault", (q) =>
-          q.eq("organizationId", config.organizationId).eq("isOrgDefault", true)
-        )
+        .eq("organizationId", config.organizationId as string)
+        .eq("isOrgDefault", true)
         .first();
       if (existing && existing._id !== args.configId) {
-        await ctx.db.patch(existing._id, { isOrgDefault: false });
+        await db.patch("googleCalendarSyncConfigs", existing._id as string, { isOrgDefault: false });
       }
     }
 
@@ -154,22 +145,29 @@ export const update = mutation({
     if (args.syncEnabled !== undefined) patch.syncEnabled = args.syncEnabled;
     if (args.isOrgDefault !== undefined) patch.isOrgDefault = args.isOrgDefault;
 
-    await ctx.db.patch(args.configId, patch);
+    await db.patch("googleCalendarSyncConfigs", args.configId, patch);
   },
 });
 
-export const remove = mutation({
-  args: { configId: v.id("googleCalendarSyncConfigs") },
+export const remove = action({
+  args: { configId: v.string() },
   handler: async (ctx, args) => {
-    const config = await ctx.db.get(args.configId);
+    const db = createSupabaseDb();
+    const config = await db.get("googleCalendarSyncConfigs", args.configId);
     if (!config) throw new Error("Config not found");
-    const { user, membership } = await verifyOrgAccess(ctx, config.organizationId);
-    const isOwner = config.userId === user._id;
-    const isAdmin = membership.role === "owner" || membership.role === "admin";
+
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: config.organizationId as any },
+    );
+
+    const isOwner = config.userId === String(authResult.userId);
+    const isAdmin = authResult.role === "owner" || authResult.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new Error("You can only remove your own calendar configs");
     }
-    await ctx.db.delete(args.configId);
+
+    await db.delete("googleCalendarSyncConfigs", args.configId);
   },
 });
 
@@ -223,7 +221,6 @@ export const updateSyncState = internalMutation({
     if (updates.syncError !== undefined) {
       patch.syncError = updates.syncError;
     } else if (updates.syncStatus === "idle") {
-      // Clear error when transitioning to idle (successful sync)
       patch.syncError = undefined;
     }
     if (updates.lastSyncToken !== undefined) patch.lastSyncToken = updates.lastSyncToken;

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -82,8 +82,8 @@ function CompanyDetail() {
   const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useAction(api.scheduledActivities.update);
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
-  const setCustomFields = useMutation(api.customFields.setValues);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const setCustomFields = useAction(api.customFields.setValues);
+  const trackView = useAction(api.recentlyViewed.track);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})

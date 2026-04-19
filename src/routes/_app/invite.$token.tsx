@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery, useConvexAuth } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,8 @@ function InviteAcceptPage() {
     enabled: isAuthenticated,
   });
 
-  const acceptInvitation = useMutation(api.invitations.accept);
-  const declineInvitation = useMutation(api.invitations.decline);
+  const acceptInvitation = useAction(api.invitations.accept);
+  const declineInvitation = useAction(api.invitations.decline);
 
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -103,7 +103,7 @@ function EditFormTemplatePage() {
     templateId,
   });
 
-  const updateTemplate = useMutation(api.documents.templates.update);
+  const updateTemplate = useAction(api.documents.templates.update);
 
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);

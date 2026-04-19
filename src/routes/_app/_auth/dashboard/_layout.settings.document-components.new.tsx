@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -44,7 +44,7 @@ function NewDocumentComponentPage() {
   const navigate = useNavigate();
   const { organizationId } = useOrganization();
 
-  const createMutation = useMutation(api.documents.components.create);
+  const createMutation = useAction(api.documents.components.create);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

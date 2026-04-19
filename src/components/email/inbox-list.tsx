@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -31,7 +31,7 @@ export function InboxList({
 
   // @ts-ignore — TS2589: Convex mutation type instantiation depth exceeded
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const toggleStar: any = useMutation(api.emails.toggleStar);
+  const toggleStar: any = useAction(api.emails.toggleStar);
 
   const { data: emailsData } = useSupabaseEmailsList(organizationId, {
     search: search.trim() || undefined,

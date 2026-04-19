@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import {
@@ -62,7 +62,7 @@ export function AfterCompletionDocumentsDialog({
   organizationId,
 }: AfterCompletionDocumentsDialogProps) {
   const { t } = useTranslation();
-  const submitEmployeeFormFields = useMutation(
+  const submitEmployeeFormFields = useAction(
     api.documents.documents.submitEmployeeFormFields,
   );
 

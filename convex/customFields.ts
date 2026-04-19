@@ -1,21 +1,9 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { verifyOrgAccess } from "./_helpers/auth";
 import { entityTypeValidator, customFieldTypeValidator } from "@cvx/schema";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeDefRef = internal.supabase.customFields.writeDefinitionToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateDefRef = internal.supabase.customFields.updateDefinitionInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteDefRef = internal.supabase.customFields.deleteDefinitionFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeValueRef = internal.supabase.customFields.writeValueToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateValueRef = internal.supabase.customFields.updateValueInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteValueRef = internal.supabase.customFields.deleteValueFromSupabase;
 
 export const getDefinitions = query({
   args: {
@@ -47,7 +35,7 @@ export const getDefinitions = query({
   },
 });
 
-export const createDefinition = mutation({
+export const createDefinition = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,
@@ -61,40 +49,33 @@ export const createDefinition = mutation({
     activityTypeKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
     // Check for duplicate fieldKey
-    const existing = await ctx.db
+    const existing = await db
       .query("customFieldDefinitions")
-      .withIndex("by_orgAndKey", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("entityType", args.entityType)
-          .eq("fieldKey", args.fieldKey)
-      )
-      .unique();
-    if (existing) throw new Error(`Field key "${args.fieldKey}" already exists`);
+      .eq("organizationId", String(args.organizationId))
+      .eq("entityType", args.entityType)
+      .collect();
+    const dup = existing.find((e: any) => e.fieldKey === args.fieldKey);
+    if (dup) throw new Error(`Field key "${args.fieldKey}" already exists`);
 
-    const defId = await ctx.db.insert("customFieldDefinitions", {
-      ...args,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new definition to Supabase
-    await ctx.scheduler.runAfter(0, writeDefRef, {
-      definitionId: defId as string,
-      organizationId: args.organizationId as string,
+    const defId = await db.insert("customFieldDefinitions", {
+      organizationId: String(args.organizationId),
       entityType: args.entityType,
       name: args.name,
       fieldKey: args.fieldKey,
       fieldType: args.fieldType,
-      options: args.options,
-      isRequired: args.isRequired,
+      options: args.options ?? null,
+      isRequired: args.isRequired ?? null,
       order: args.order,
-      group: args.group,
-      activityTypeKey: args.activityTypeKey,
+      group: args.group ?? null,
+      activityTypeKey: args.activityTypeKey ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -103,10 +84,10 @@ export const createDefinition = mutation({
   },
 });
 
-export const updateDefinition = mutation({
+export const updateDefinition = action({
   args: {
     organizationId: v.id("organizations"),
-    definitionId: v.id("customFieldDefinitions"),
+    definitionId: v.string(),
     name: v.optional(v.string()),
     options: v.optional(v.array(v.string())),
     isRequired: v.optional(v.boolean()),
@@ -114,82 +95,77 @@ export const updateDefinition = mutation({
     group: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const def = await ctx.db.get(args.definitionId);
-    if (!def || def.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const def = await db.get("customFieldDefinitions", args.definitionId);
+    if (!def || def.organizationId !== String(args.organizationId)) {
       throw new Error("Field definition not found");
     }
 
-    const { organizationId, definitionId, ...updates } = args;
-    const now = Date.now();
-    await ctx.db.patch(definitionId, { ...updates, updatedAt: now });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.options !== undefined) updates.options = args.options;
+    if (args.isRequired !== undefined) updates.isRequired = args.isRequired;
+    if (args.order !== undefined) updates.order = args.order;
+    if (args.group !== undefined) updates.group = args.group;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateDefRef, {
-      definitionId: definitionId as string,
-      organizationId: organizationId as string,
-      ...updates,
-      updatedAt: now,
-    });
-
-    return definitionId;
-  },
-});
-
-export const deleteDefinition = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    definitionId: v.id("customFieldDefinitions"),
-  },
-  handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-
-    const def = await ctx.db.get(args.definitionId);
-    if (!def || def.organizationId !== args.organizationId) {
-      throw new Error("Field definition not found");
-    }
-
-    // Delete all values for this field definition
-    const values = await ctx.db
-      .query("customFieldValues")
-      .withIndex("by_fieldDef", (q) => q.eq("fieldDefinitionId", args.definitionId))
-      .collect();
-    for (const val of values) {
-      // Dual-write: delete each value from Supabase
-      await ctx.scheduler.runAfter(0, deleteValueRef, {
-        valueId: val._id as string,
-        organizationId: args.organizationId as string,
-      });
-      await ctx.db.delete(val._id);
-    }
-
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteDefRef, {
-      definitionId: args.definitionId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.definitionId);
+    await db.patch("customFieldDefinitions", args.definitionId, updates);
     return args.definitionId;
   },
 });
 
-export const reorderDefinitions = mutation({
+export const deleteDefinition = action({
   args: {
     organizationId: v.id("organizations"),
-    definitionIds: v.array(v.id("customFieldDefinitions")),
+    definitionId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const def = await db.get("customFieldDefinitions", args.definitionId);
+    if (!def || def.organizationId !== String(args.organizationId)) {
+      throw new Error("Field definition not found");
+    }
+
+    // Delete all values for this field definition
+    const values = await db
+      .query("customFieldValues")
+      .eq("fieldDefinitionId", args.definitionId)
+      .collect();
+    for (const val of values) {
+      await db.delete("customFieldValues", val._id as string);
+    }
+
+    await db.delete("customFieldDefinitions", args.definitionId);
+    return args.definitionId;
+  },
+});
+
+export const reorderDefinitions = action({
+  args: {
+    organizationId: v.id("organizations"),
+    definitionIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
     for (let i = 0; i < args.definitionIds.length; i++) {
-      const def = await ctx.db.get(args.definitionIds[i]);
-      if (!def || def.organizationId !== args.organizationId) {
+      const def = await db.get("customFieldDefinitions", args.definitionIds[i]);
+      if (!def || def.organizationId !== String(args.organizationId)) {
         throw new Error("Field definition not found");
       }
-      await ctx.db.patch(args.definitionIds[i], { order: i, updatedAt: now });
+      await db.patch("customFieldDefinitions", args.definitionIds[i], { order: i, updatedAt: now });
     }
   },
 });
@@ -241,56 +217,43 @@ export const getValuesBulk = query({
   },
 });
 
-export const setValues = mutation({
+export const setValues = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,
     entityId: v.string(),
     fields: v.array(v.object({
-      fieldDefinitionId: v.id("customFieldDefinitions"),
+      fieldDefinitionId: v.string(),
       value: v.any(),
     })),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
     for (const field of args.fields) {
-      const existing = await ctx.db
+      // Check for existing value
+      const allValues = await db
         .query("customFieldValues")
-        .withIndex("by_orgEntityField", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("entityType", args.entityType)
-            .eq("entityId", args.entityId)
-            .eq("fieldDefinitionId", field.fieldDefinitionId)
-        )
-        .unique();
+        .eq("organizationId", String(args.organizationId))
+        .eq("entityType", args.entityType)
+        .eq("entityId", args.entityId)
+        .collect();
+      const existing = allValues.find((v: any) => v.fieldDefinitionId === field.fieldDefinitionId);
 
       if (existing) {
-        await ctx.db.patch(existing._id, { value: field.value, updatedAt: now });
-        // Dual-write: replicate value update to Supabase
-        await ctx.scheduler.runAfter(0, updateValueRef, {
-          valueId: existing._id as string,
-          organizationId: args.organizationId as string,
+        await db.patch("customFieldValues", existing._id as string, {
           value: field.value,
           updatedAt: now,
         });
       } else {
-        const valueId = await ctx.db.insert("customFieldValues", {
-          organizationId: args.organizationId,
+        await db.insert("customFieldValues", {
+          organizationId: String(args.organizationId),
           fieldDefinitionId: field.fieldDefinitionId,
-          entityType: args.entityType,
-          entityId: args.entityId,
-          value: field.value,
-          createdAt: now,
-          updatedAt: now,
-        });
-        // Dual-write: replicate new value to Supabase
-        await ctx.scheduler.runAfter(0, writeValueRef, {
-          valueId: valueId as string,
-          organizationId: args.organizationId as string,
-          fieldDefinitionId: field.fieldDefinitionId as string,
           entityType: args.entityType,
           entityId: args.entityId,
           value: field.value,

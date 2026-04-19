@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { Tag01, Plus, Pencil01, Trash01 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
@@ -37,9 +37,9 @@ export function TagsManagerSlideout({
   canDelete = true,
 }: TagsManagerSlideoutProps) {
   const { t } = useTranslation();
-  const createTag = useMutation(api.tagDefinitions.create);
-  const updateTag = useMutation(api.tagDefinitions.update);
-  const removeTag = useMutation(api.tagDefinitions.remove);
+  const createTag = useAction(api.tagDefinitions.create);
+  const updateTag = useAction(api.tagDefinitions.update);
+  const removeTag = useAction(api.tagDefinitions.remove);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdding, setIsAdding] = useState(false);

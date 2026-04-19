@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -148,7 +148,7 @@ function TreatmentDetail() {
   const createVariantMut = useAction(api.gabinet.treatments.createVariant);
   const updateVariantMut = useAction(api.gabinet.treatments.updateVariant);
   const deleteVariantMut = useAction(api.gabinet.treatments.deleteVariant);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const trackView = useAction(api.recentlyViewed.track);
   const queryClient = useQueryClient();
 
   // Queries — treatment detail + variants from Supabase

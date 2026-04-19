@@ -1,22 +1,16 @@
 import {
   query,
-  mutation,
+  action,
   internalAction,
   internalMutation,
   internalQuery,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEventTypeRef = internal.supabase.emailEventTypes.writeEmailEventTypeToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEventTypeRef = internal.supabase.emailEventTypes.updateEmailEventTypeInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEventLogRef = internal.supabase.emailEventLog.updateEmailEventLogInSupabase;
+// Dual-write refs removed — Supabase is now primary for event writes
 
 const moduleValidator = v.union(
   v.literal("crm"),
@@ -94,10 +88,10 @@ export const getEventLog = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-export const registerEventType = mutation({
+export const registerEventType = action({
   args: {
     organizationId: v.id("organizations"),
     eventType: v.string(),
@@ -107,57 +101,37 @@ export const registerEventType = mutation({
     payloadSchema: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    // Idempotent: update displayName/description if event type already exists for this org
-    const existing = await ctx.db
-      .query("emailEventTypes")
-      .withIndex("by_orgAndType", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("eventType", args.eventType),
-      )
-      .first();
-
+    const db = createSupabaseDb();
     const now = Date.now();
 
+    // Idempotent: update displayName/description if event type already exists for this org
+    const existing = await db.query("emailEventTypes")
+      .eq("organizationId", String(args.organizationId))
+      .eq("eventType", args.eventType)
+      .first();
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await db.patch("emailEventTypes", existing._id as string, {
         displayName: args.displayName,
-        description: args.description,
-        payloadSchema: args.payloadSchema,
+        description: args.description ?? null,
+        payloadSchema: args.payloadSchema ?? null,
         updatedAt: now,
       });
-      await ctx.scheduler.runAfter(0, updateEventTypeRef, {
-        emailEventTypeId: existing._id,
-        organizationId: args.organizationId as string,
-        displayName: args.displayName,
-        description: args.description,
-        payloadSchema: args.payloadSchema,
-        updatedAt: now,
-      });
-      return existing._id;
+      return existing._id as string;
     }
 
-    const newId = await ctx.db.insert("emailEventTypes", {
-      organizationId: args.organizationId,
+    const newId = await db.insert("emailEventTypes", {
+      organizationId: String(args.organizationId),
       eventType: args.eventType,
       module: args.module,
       displayName: args.displayName,
-      description: args.description,
-      payloadSchema: args.payloadSchema,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-    await ctx.scheduler.runAfter(0, writeEventTypeRef, {
-      emailEventTypeId: newId as string,
-      organizationId: args.organizationId as string,
-      eventType: args.eventType,
-      module: args.module,
-      displayName: args.displayName,
-      description: args.description,
-      payloadSchema: args.payloadSchema,
+      description: args.description ?? null,
+      payloadSchema: args.payloadSchema ?? null,
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -170,48 +144,87 @@ export const registerEventType = mutation({
  * Emit an email event. Creates a log entry and schedules async processing.
  * Callers (CRM mutations, Gabinet mutations) call this without knowing about email.
  */
-export const emitEvent = mutation({
+export const emitEvent = action({
   args: {
     organizationId: v.id("organizations"),
     eventType: v.string(),
     payload: v.optional(v.string()), // JSON string
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
+    triggeredBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const logId = await ctx.db.insert("emailEventLog", {
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const logId = await db.insert("emailEventLog", {
+      organizationId: String(args.organizationId),
+      eventType: args.eventType,
+      status: "pending",
+      payload: args.payload ?? null,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName ?? null,
+      triggeredBy: args.triggeredBy ?? null,
+      createdAt: now,
+    });
+
+    // Schedule async processing via internalMutation to bridge back to Convex
+    try {
+      await ctx.runMutation(internal.emailEvents._scheduleProcessing, {
+        logId,
+        organizationId: args.organizationId,
+        eventType: args.eventType,
+        payload: args.payload,
+        recipientEmail: args.recipientEmail,
+        recipientName: args.recipientName,
+        triggeredBy: args.triggeredBy,
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[emailEvents.emitEvent] Schedule processing FAILED:", e);
+    }
+
+    return logId;
+  },
+});
+
+/**
+ * Internal mutation to insert the log entry into Convex and schedule processing.
+ * This bridges the action-based emitEvent back to Convex's scheduler.
+ */
+export const _scheduleProcessing = internalMutation({
+  args: {
+    logId: v.string(),
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    payload: v.optional(v.string()),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    triggeredBy: v.optional(v.string()),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Insert a Convex-side log entry so processEvent can read it
+    const convexLogId = await ctx.db.insert("emailEventLog", {
       organizationId: args.organizationId,
       eventType: args.eventType,
       status: "pending",
       payload: args.payload,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
-      triggeredBy: args.triggeredBy,
-      createdAt: Date.now(),
-    });
-
-    // Sync to Supabase
-    await ctx.scheduler.runAfter(0, writeEventLogRef, {
-      emailEventLogId: logId as string,
-      organizationId: args.organizationId as string,
-      eventType: args.eventType,
-      status: "pending",
-      payload: args.payload,
-      recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      triggeredBy: args.triggeredBy as string | undefined,
-      createdAt: Date.now(),
+      triggeredBy: args.triggeredBy ? args.triggeredBy as any : undefined,
+      createdAt: args.createdAt,
     });
 
     // Schedule async processing — non-blocking
     await ctx.scheduler.runAfter(0, internal.emailEvents.processEvent, {
-      logId,
+      logId: convexLogId,
     });
-
-    return logId;
   },
 });
 
@@ -251,21 +264,7 @@ export const updateLogStatus = internalMutation({
       processedAt,
     });
 
-    // Sync to Supabase
     const entry = await ctx.db.get(args.logId);
-    if (entry) {
-      await ctx.scheduler.runAfter(0, updateEventLogRef, {
-        emailEventLogId: args.logId as string,
-        organizationId: entry.organizationId as string,
-        status: args.status,
-        bindingId: args.bindingId as string | undefined,
-        templateId: args.templateId as string | undefined,
-        renderedSubject: args.renderedSubject,
-        renderedBody: args.renderedBody,
-        errorMessage: args.errorMessage,
-        processedAt,
-      });
-    }
 
     if (!entry?.idempotencyKey) return;
 
@@ -346,4 +345,3 @@ export const processEvent = internalAction({
     });
   },
 });
-

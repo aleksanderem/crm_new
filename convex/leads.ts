@@ -684,42 +684,43 @@ export const getByPipeline = query({
   },
 });
 
-// moveToStage stays as a mutation — it reads pipeline stages and creates
-// scheduledActivities in Convex DB, which are not yet migrated to Supabase.
-// It also writes to the leads table in Convex. This will be migrated in a
-// follow-up phase once scheduledActivities and pipelineStageActions are on Supabase.
-export const moveToStage = mutation({
+// moveToStage — Supabase-primary for lead patch, side effects via internalMutation
+export const moveToStage = action({
   args: {
     organizationId: v.id("organizations"),
-    leadId: v.id("leads"),
-    pipelineStageId: v.id("pipelineStages"),
+    leadId: v.string(),
+    pipelineStageId: v.string(),
     stageOrder: v.number(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "edit",
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "leads",
+      action: "edit",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const lead = await ctx.db.get(args.leadId);
-    if (!lead || lead.organizationId !== args.organizationId) {
+    const lead = await db.get("leads", args.leadId);
+    if (!lead || lead.organizationId !== String(args.organizationId)) {
       throw new Error("Lead not found");
     }
     if (
       perm.scope === "own" &&
-      lead.createdBy !== user._id &&
-      lead.assignedTo !== user._id
+      lead.createdBy !== String(authResult.userId) &&
+      lead.assignedTo !== String(authResult.userId)
     ) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
-    const stage = await ctx.db.get(args.pipelineStageId);
-    if (!stage || stage.organizationId !== args.organizationId) {
+    const stage = await db.get("pipelineStages", args.pipelineStageId);
+    if (!stage || stage.organizationId !== String(args.organizationId)) {
       throw new Error("Stage not found");
     }
 
@@ -737,26 +738,65 @@ export const moveToStage = mutation({
       updateData.status = "lost";
       updateData.lostAt = now;
     } else if (lead.status === "won" || lead.status === "lost") {
-      // Moving from a won/lost stage back to a regular stage reopens the lead
       updateData.status = "open";
     }
 
-    await ctx.db.patch(args.leadId, updateData);
+    await db.patch("leads", args.leadId, updateData);
 
+    // Side effects via internalMutation (activity log, stage actions, audit, notifications)
+    try {
+      await ctx.runMutation(internal.leads._moveToStageSideEffects, {
+        organizationId: args.organizationId,
+        leadId: args.leadId as any,
+        pipelineStageId: args.pipelineStageId as any,
+        userId: authResult.userId,
+        leadTitle: (lead.title as string) ?? "",
+        stageName: (stage.name as string) ?? "",
+        oldStatus: (lead.status as string) ?? "",
+        newStatus: updateData.status ?? null,
+        oldStageId: lead.pipelineStageId ? String(lead.pipelineStageId) : null,
+        leadCreatedBy: String(lead.createdBy ?? ""),
+        leadAssignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
+        now,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return args.leadId;
+  },
+});
+
+export const _moveToStageSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leadId: v.id("leads"),
+    pipelineStageId: v.id("pipelineStages"),
+    userId: v.id("users"),
+    leadTitle: v.string(),
+    stageName: v.string(),
+    oldStatus: v.string(),
+    newStatus: v.union(v.string(), v.null()),
+    oldStageId: v.union(v.string(), v.null()),
+    leadCreatedBy: v.string(),
+    leadAssignedTo: v.union(v.string(), v.null()),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "lead",
       entityId: args.leadId,
       action: "stage_changed",
-      description: `Moved lead "${lead.title}" to stage "${stage.name}"`,
+      description: `Moved lead "${args.leadTitle}" to stage "${args.stageName}"`,
       metadata: {
-        fromStageId: lead.pipelineStageId,
-        toStageId: args.pipelineStageId,
+        fromStageId: args.oldStageId,
+        toStageId: String(args.pipelineStageId),
       },
-      performedBy: user._id,
+      performedBy: args.userId,
     });
 
-    // Execute pipeline stage auto-actions for the new stage
+    // Execute pipeline stage auto-actions
     const stageActions = await ctx.db
       .query("pipelineStageActions")
       .withIndex("by_stage", (q) => q.eq("stageId", args.pipelineStageId))
@@ -765,10 +805,12 @@ export const moveToStage = mutation({
     for (const stageAction of stageActions) {
       if (stageAction.actionType === "create_activity") {
         const { config } = stageAction;
-        const dueDate = now + config.dueInDays * 24 * 60 * 60 * 1000;
+        const dueDate = args.now + config.dueInDays * 24 * 60 * 60 * 1000;
+        const assignedTo = args.leadAssignedTo as Id<"users"> | null;
+        const createdBy = args.leadCreatedBy as unknown as Id<"users">;
         const ownerId = config.assignToOwner
-          ? (lead.assignedTo ?? lead.createdBy)
-          : user._id;
+          ? (assignedTo ?? createdBy)
+          : args.userId;
 
         await ctx.db.insert("scheduledActivities", {
           organizationId: args.organizationId,
@@ -780,57 +822,57 @@ export const moveToStage = mutation({
           description: config.description,
           linkedEntityType: "lead",
           linkedEntityId: args.leadId,
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
+          createdBy: args.userId,
+          createdAt: args.now,
+          updatedAt: args.now,
         });
 
-        if (ownerId !== user._id) {
+        if (ownerId !== args.userId) {
           await createNotificationDirect(ctx, {
             organizationId: args.organizationId,
             userId: ownerId,
             type: "assigned",
             title: "New task from pipeline",
-            message: `Task "${config.title}" created for lead "${lead.title}"`,
+            message: `Task "${config.title}" created for lead "${args.leadTitle}"`,
             link: `/leads/${args.leadId}`,
           });
         }
       }
     }
 
-    // Audit + notify on auto-status changes from stage moves
-    if (updateData.status && updateData.status !== lead.status) {
-      if (updateData.status === "won" || updateData.status === "lost") {
+    // Audit + notify on auto-status changes
+    if (args.newStatus && args.newStatus !== args.oldStatus) {
+      if (args.newStatus === "won" || args.newStatus === "lost") {
         await logAudit(ctx, {
           organizationId: args.organizationId,
-          userId: user._id,
+          userId: args.userId,
           action: "status_changed",
           entityType: "lead",
           entityId: args.leadId,
           details: JSON.stringify({
-            oldStatus: lead.status,
-            newStatus: updateData.status,
+            oldStatus: args.oldStatus,
+            newStatus: args.newStatus,
           }),
         });
 
-        const leadOwner = lead.assignedTo ?? lead.createdBy;
-        if (updateData.status === "won" && leadOwner !== user._id) {
+        const leadOwner = (args.leadAssignedTo ?? args.leadCreatedBy) as unknown as Id<"users">;
+        if (args.newStatus === "won" && leadOwner !== args.userId) {
           await createNotificationDirect(ctx, {
             organizationId: args.organizationId,
             userId: leadOwner,
             type: "deal_won",
             title: "Deal won!",
-            message: `Lead "${lead.title}" has been marked as won`,
+            message: `Lead "${args.leadTitle}" has been marked as won`,
             link: `/leads/${args.leadId}`,
           });
         }
-        if (updateData.status === "lost" && leadOwner !== user._id) {
+        if (args.newStatus === "lost" && leadOwner !== args.userId) {
           await createNotificationDirect(ctx, {
             organizationId: args.organizationId,
             userId: leadOwner,
             type: "deal_lost",
             title: "Deal lost",
-            message: `Lead "${lead.title}" has been marked as lost`,
+            message: `Lead "${args.leadTitle}" has been marked as lost`,
             link: `/leads/${args.leadId}`,
           });
         }
@@ -842,24 +884,22 @@ export const moveToStage = mutation({
         eventType: "crm.lead.stage_changed",
         entityType: "lead",
         entityId: String(args.leadId),
-        actorUserId: user._id,
+        actorUserId: args.userId,
         correlationKey: `lead:${args.leadId}`,
-        eventIdempotencyKey: `automation-event:${args.organizationId}:${args.leadId}:${now}:stage:${args.pipelineStageId}`,
+        eventIdempotencyKey: `automation-event:${args.organizationId}:${args.leadId}:${args.now}:stage:${args.pipelineStageId}`,
         payload: JSON.stringify({
           organizationId: String(args.organizationId),
           leadId: String(args.leadId),
-          title: lead.title,
-          fromStageId: lead.pipelineStageId ? String(lead.pipelineStageId) : null,
+          title: args.leadTitle,
+          fromStageId: args.oldStageId,
           toStageId: String(args.pipelineStageId),
-          oldStatus: lead.status,
-          newStatus: updateData.status,
-          ownerId: String(lead.assignedTo ?? lead.createdBy),
-          createdBy: String(lead.createdBy),
+          oldStatus: args.oldStatus,
+          newStatus: args.newStatus,
+          ownerId: args.leadAssignedTo ?? args.leadCreatedBy,
+          createdBy: args.leadCreatedBy,
         }),
-        occurredAt: now,
+        occurredAt: args.now,
       });
     }
-
-    return args.leadId;
   },
 });

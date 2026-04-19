@@ -1,13 +1,8 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { action, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { checkPermission } from "./_helpers/permissions";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTagDefRef = internal.supabase.tagDefinitions.writeTagDefinitionToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateTagDefRef = internal.supabase.tagDefinitions.updateTagDefinitionInSupabase;
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
@@ -23,49 +18,42 @@ export const list = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
     color: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "tagDefinitions", "create");
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "tagDefinitions",
+      action: "create",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    const db = createSupabaseDb();
+
     // Enforce unique name per org
-    const existing = await ctx.db
+    const allTags = await db
       .query("tagDefinitions")
-      .withIndex("by_orgAndName", (q) =>
-        q.eq("organizationId", args.organizationId).eq("name", args.name.trim())
-      )
-      .first();
-    if (existing && !existing.isDeleted) {
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+    const existing = allTags.find(
+      (t: any) => t.name === args.name.trim() && !t.isDeleted
+    );
+    if (existing) {
       throw new Error(`Tag "${args.name}" already exists`);
     }
 
-    // Get next sortOrder
-    const allTags = await ctx.db
-      .query("tagDefinitions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-    const maxOrder = allTags.reduce((max, t) => Math.max(max, t.sortOrder), -1);
+    const maxOrder = allTags.reduce((max: number, t: any) => Math.max(max, t.sortOrder ?? 0), -1);
 
     const now = Date.now();
-    const tagId = await ctx.db.insert("tagDefinitions", {
-      organizationId: args.organizationId,
-      name: args.name.trim(),
-      color: args.color,
-      sortOrder: maxOrder + 1,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writeTagDefRef, {
-      tagDefinitionId: tagId as string,
-      organizationId: args.organizationId as string,
+    const tagId = await db.insert("tagDefinitions", {
+      organizationId: String(args.organizationId),
       name: args.name.trim(),
       color: args.color,
       sortOrder: maxOrder + 1,
@@ -77,99 +65,110 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    tagId: v.id("tagDefinitions"),
+    tagId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "tagDefinitions", "edit");
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "tagDefinitions",
+      action: "edit",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const tag = await ctx.db.get(args.tagId);
-    if (!tag || tag.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const tag = await db.get("tagDefinitions", args.tagId);
+    if (!tag || tag.organizationId !== String(args.organizationId)) {
       throw new Error("Tag not found");
     }
 
     if (args.name && args.name !== tag.name) {
-      const existing = await ctx.db
+      const allTags = await db
         .query("tagDefinitions")
-        .withIndex("by_orgAndName", (q) =>
-          q.eq("organizationId", args.organizationId).eq("name", args.name!.trim())
-        )
-        .first();
-      if (existing && !existing.isDeleted && existing._id !== args.tagId) {
+        .eq("organizationId", String(args.organizationId))
+        .collect();
+      const dup = allTags.find(
+        (t: any) => t.name === args.name!.trim() && !t.isDeleted && t._id !== args.tagId
+      );
+      if (dup) {
         throw new Error(`Tag "${args.name}" already exists`);
       }
     }
 
-    const updatedAt = Date.now();
-    await ctx.db.patch(args.tagId, {
-      ...(args.name !== undefined && { name: args.name.trim() }),
-      ...(args.color !== undefined && { color: args.color }),
-      updatedAt,
-    });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name.trim();
+    if (args.color !== undefined) updates.color = args.color;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateTagDefRef, {
-      tagDefinitionId: args.tagId as string,
-      name: args.name !== undefined ? args.name.trim() : undefined,
-      color: args.color,
-      updatedAt,
-    });
+    await db.patch("tagDefinitions", args.tagId, updates);
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    tagId: v.id("tagDefinitions"),
+    tagId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "tagDefinitions", "delete");
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "tagDefinitions",
+      action: "delete",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const tag = await ctx.db.get(args.tagId);
-    if (!tag || tag.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const tag = await db.get("tagDefinitions", args.tagId);
+    if (!tag || tag.organizationId !== String(args.organizationId)) {
       throw new Error("Tag not found");
     }
 
-    // Soft-delete
+    // Soft-delete in Supabase
     const deletedAt = Date.now();
-    await ctx.db.patch(args.tagId, { isDeleted: true, updatedAt: deletedAt });
+    await db.patch("tagDefinitions", args.tagId, { isDeleted: true, updatedAt: deletedAt });
 
-    // Dual-write: replicate soft-delete to Supabase
-    await ctx.scheduler.runAfter(0, updateTagDefRef, {
-      tagDefinitionId: args.tagId as string,
-      isDeleted: true,
-      updatedAt: deletedAt,
-    });
-
-    // Schedule background cleanup of entity references
-    await ctx.scheduler.runAfter(0, internal.tagDefinitions.cleanupTagReferences, {
-      organizationId: args.organizationId,
-      tagId: args.tagId,
-    });
+    // Schedule background cleanup of entity references (still uses Convex DB)
+    try {
+      await ctx.runMutation(internal.tagDefinitions.cleanupTagReferences, {
+        organizationId: args.organizationId,
+        tagId: args.tagId as any,
+      });
+    } catch {
+      // cleanup is best-effort
+    }
   },
 });
 
-export const reorder = mutation({
+export const reorder = action({
   args: {
     organizationId: v.id("organizations"),
-    tagIds: v.array(v.id("tagDefinitions")),
+    tagIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "tagDefinitions", "edit");
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "tagDefinitions",
+      action: "edit",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    const db = createSupabaseDb();
     const now = Date.now();
+
     for (let i = 0; i < args.tagIds.length; i++) {
-      await ctx.db.patch(args.tagIds[i], { sortOrder: i, updatedAt: now });
+      await db.patch("tagDefinitions", args.tagIds[i], { sortOrder: i, updatedAt: now });
     }
   },
 });

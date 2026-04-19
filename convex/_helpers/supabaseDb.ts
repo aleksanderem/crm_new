@@ -69,6 +69,19 @@ const TABLE_MAP: Record<string, string> = {
   appointmentReminders: "appointment_reminders",
   appointmentSmsEvents: "appointment_sms_events",
   appointmentWorkflowHistory: "appointment_workflow_history",
+  activityTypeDefinitions: "activity_type_definitions",
+  orgSmsConfig: "org_sms_config",
+  orgSettings: "org_settings",
+  orgPermissions: "org_permissions",
+  invitations: "invitations",
+  payments: "payments",
+  googleCalendarSyncConfigs: "google_calendar_sync_configs",
+  resourceInvites: "resource_invites",
+  automationRules: "automation_rules",
+  automationRuns: "automation_runs",
+  automationRunSteps: "automation_run_steps",
+  organizations: "organizations",
+  teamMemberships: "team_memberships",
 };
 
 function toSnakeCase(str: string): string {

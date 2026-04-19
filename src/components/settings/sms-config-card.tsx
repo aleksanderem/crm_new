@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import {
@@ -30,7 +30,7 @@ interface SmsConfigCardProps {
 
 export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
   const config = useQuery(api.sms.getConfig, { organizationId });
-  const saveConfig = useMutation(api.sms.saveConfig);
+  const saveConfig = useAction(api.sms.saveConfig);
 
   const [provider, setProvider] = useState<"smsapi" | "twilio">("smsapi");
   const [apiToken, setApiToken] = useState("");

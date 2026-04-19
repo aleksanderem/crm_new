@@ -8,7 +8,7 @@
 
 import {
   query,
-  mutation,
+  action,
   internalMutation,
   internalAction,
   internalQuery,
@@ -16,26 +16,9 @@ import {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { checkPermission } from "./_helpers/permissions";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeSequenceRef = internal.supabase.emailSequences.writeEmailSequenceToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateSequenceRef = internal.supabase.emailSequences.updateEmailSequenceInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteSequenceRef = internal.supabase.emailSequences.deleteEmailSequenceFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeStepRef = internal.supabase.emailSequenceSteps.writeEmailSequenceStepToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteStepRef = internal.supabase.emailSequenceSteps.deleteEmailSequenceStepFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEnrollmentRef = internal.supabase.emailSequenceEnrollments.writeEmailSequenceEnrollmentToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEnrollmentRef = internal.supabase.emailSequenceEnrollments.updateEmailSequenceEnrollmentInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteEnrollmentRef = internal.supabase.emailSequenceEnrollments.deleteEmailSequenceEnrollmentFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
+// Dual-write refs removed — Supabase is now primary for sequence writes
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -84,13 +67,13 @@ export const getSequence = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations — admin-gated CRUD
+// Actions — admin-gated CRUD (Supabase-primary)
 // ---------------------------------------------------------------------------
 
 /**
  * Create a new email sequence.
  */
-export const createSequence = mutation({
+export const createSequence = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -98,48 +81,50 @@ export const createSequence = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!authResult.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
-    const newId = await ctx.db.insert("emailSequences", {
-      organizationId: args.organizationId,
+    const db = createSupabaseDb();
+
+    const sequenceId = await db.insert("emailSequences", {
+      organizationId: String(args.organizationId),
       name: args.name,
       triggerEventType: args.triggerEventType,
       isActive: args.isActive ?? false,
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.scheduler.runAfter(0, writeSequenceRef, {
-      emailSequenceId: newId as string,
-      organizationId: args.organizationId as string,
-      name: args.name,
-      triggerEventType: args.triggerEventType,
-      isActive: args.isActive ?? false,
-      createdAt: now,
-      updatedAt: now,
-    });
-    return newId;
+
+    return sequenceId;
   },
 });
 
 /**
  * Update an existing sequence.
  */
-export const updateSequence = mutation({
+export const updateSequence = action({
   args: {
     organizationId: v.id("organizations"),
-    sequenceId: v.id("emailSequences"),
+    sequenceId: v.string(),
     name: v.optional(v.string()),
     triggerEventType: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!authResult.allowed) throw new Error("Permission denied");
 
-    const sequence = await ctx.db.get(args.sequenceId);
-    if (!sequence || sequence.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const sequence = await db.get("emailSequences", args.sequenceId);
+    if (!sequence || String(sequence.organizationId) !== String(args.organizationId)) {
       throw new Error("Sequence not found");
     }
 
@@ -148,15 +133,7 @@ export const updateSequence = mutation({
     if (args.triggerEventType !== undefined) patch.triggerEventType = args.triggerEventType;
     if (args.isActive !== undefined) patch.isActive = args.isActive;
 
-    await ctx.db.patch(args.sequenceId, patch);
-    await ctx.scheduler.runAfter(0, updateSequenceRef, {
-      emailSequenceId: args.sequenceId as string,
-      organizationId: args.organizationId as string,
-      name: args.name,
-      triggerEventType: args.triggerEventType,
-      isActive: args.isActive,
-      updatedAt: patch.updatedAt as number,
-    });
+    await db.patch("emailSequences", args.sequenceId, patch);
   },
 });
 
@@ -164,62 +141,49 @@ export const updateSequence = mutation({
  * Delete a sequence and all its steps.
  * Active enrollments are cancelled automatically.
  */
-export const deleteSequence = mutation({
+export const deleteSequence = action({
   args: {
     organizationId: v.id("organizations"),
-    sequenceId: v.id("emailSequences"),
+    sequenceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!authResult.allowed) throw new Error("Permission denied");
 
-    const sequence = await ctx.db.get(args.sequenceId);
-    if (!sequence || sequence.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const sequence = await db.get("emailSequences", args.sequenceId);
+    if (!sequence || String(sequence.organizationId) !== String(args.organizationId)) {
       throw new Error("Sequence not found");
     }
 
-    // Delete all steps — schedule Supabase deletes BEFORE Convex deletes
-    const steps = await ctx.db
-      .query("emailSequenceSteps")
-      .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
+    // Delete all steps from Supabase
+    const steps = await db.query("emailSequenceSteps")
+      .eq("sequenceId", args.sequenceId)
       .collect();
     for (const step of steps) {
-      await ctx.scheduler.runAfter(0, deleteStepRef, {
-        emailSequenceStepId: step._id as string,
-        organizationId: args.organizationId as string,
-      });
-    }
-    for (const step of steps) {
-      await ctx.db.delete(step._id);
+      await db.delete("emailSequenceSteps", step._id as string);
     }
 
-    // Cancel active enrollments + sync to Supabase
-    const enrollments = await ctx.db
-      .query("emailSequenceEnrollments")
-      .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
+    // Cancel active enrollments
+    const enrollments = await db.query("emailSequenceEnrollments")
+      .eq("sequenceId", args.sequenceId)
       .collect();
     const now = Date.now();
     for (const enrollment of enrollments) {
       if (enrollment.status === "active") {
-        await ctx.db.patch(enrollment._id, {
-          status: "cancelled",
-          cancelledAt: now,
-        });
-        await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
-          emailSequenceEnrollmentId: enrollment._id as string,
-          organizationId: args.organizationId as string,
+        await db.patch("emailSequenceEnrollments", enrollment._id as string, {
           status: "cancelled",
           cancelledAt: now,
         });
       }
     }
 
-    // Schedule Supabase delete for the sequence BEFORE Convex delete
-    await ctx.scheduler.runAfter(0, deleteSequenceRef, {
-      emailSequenceId: args.sequenceId as string,
-      organizationId: args.organizationId as string,
-    });
-    await ctx.db.delete(args.sequenceId);
+    // Delete the sequence
+    await db.delete("emailSequences", args.sequenceId);
   },
 });
 
@@ -227,68 +191,53 @@ export const deleteSequence = mutation({
  * Upsert a step in a sequence.
  * If stepId provided, update; otherwise insert.
  */
-export const upsertStep = mutation({
+export const upsertStep = action({
   args: {
     organizationId: v.id("organizations"),
-    sequenceId: v.id("emailSequences"),
-    stepId: v.optional(v.id("emailSequenceSteps")),
+    sequenceId: v.string(),
+    stepId: v.optional(v.string()),
     order: v.number(),
     delayMs: v.number(),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     conditionJson: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!authResult.allowed) throw new Error("Permission denied");
 
-    const sequence = await ctx.db.get(args.sequenceId);
-    if (!sequence || sequence.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const sequence = await db.get("emailSequences", args.sequenceId);
+    if (!sequence || String(sequence.organizationId) !== String(args.organizationId)) {
       throw new Error("Sequence not found");
     }
 
     const now = Date.now();
 
     if (args.stepId) {
-      const existing = await ctx.db.get(args.stepId);
-      if (!existing || existing.sequenceId !== args.sequenceId) {
+      const existing = await db.get("emailSequenceSteps", args.stepId);
+      if (!existing || String(existing.sequenceId) !== args.sequenceId) {
         throw new Error("Step not found");
       }
-      await ctx.db.patch(args.stepId, {
+      await db.patch("emailSequenceSteps", args.stepId, {
         order: args.order,
         delayMs: args.delayMs,
         templateId: args.templateId,
-        conditionJson: args.conditionJson,
-      });
-      await ctx.scheduler.runAfter(0, writeStepRef, {
-        emailSequenceStepId: args.stepId as string,
-        sequenceId: args.sequenceId as string,
-        organizationId: args.organizationId as string,
-        order: args.order,
-        delayMs: args.delayMs,
-        templateId: args.templateId as string,
-        conditionJson: args.conditionJson,
-        createdAt: existing.createdAt,
+        conditionJson: args.conditionJson ?? null,
       });
       return args.stepId;
     }
 
-    const newId = await ctx.db.insert("emailSequenceSteps", {
+    const newId = await db.insert("emailSequenceSteps", {
       sequenceId: args.sequenceId,
-      organizationId: args.organizationId,
+      organizationId: String(args.organizationId),
       order: args.order,
       delayMs: args.delayMs,
       templateId: args.templateId,
-      conditionJson: args.conditionJson,
-      createdAt: now,
-    });
-    await ctx.scheduler.runAfter(0, writeStepRef, {
-      emailSequenceStepId: newId as string,
-      sequenceId: args.sequenceId as string,
-      organizationId: args.organizationId as string,
-      order: args.order,
-      delayMs: args.delayMs,
-      templateId: args.templateId as string,
-      conditionJson: args.conditionJson,
+      conditionJson: args.conditionJson ?? null,
       createdAt: now,
     });
     return newId;
@@ -298,54 +247,54 @@ export const upsertStep = mutation({
 /**
  * Delete a step from a sequence.
  */
-export const deleteStep = mutation({
+export const deleteStep = action({
   args: {
     organizationId: v.id("organizations"),
-    stepId: v.id("emailSequenceSteps"),
+    stepId: v.string(),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!authResult.allowed) throw new Error("Permission denied");
 
-    const step = await ctx.db.get(args.stepId);
-    if (!step || step.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const step = await db.get("emailSequenceSteps", args.stepId);
+    if (!step || String(step.organizationId) !== String(args.organizationId)) {
       throw new Error("Step not found");
     }
 
-    await ctx.scheduler.runAfter(0, deleteStepRef, {
-      emailSequenceStepId: args.stepId as string,
-      organizationId: args.organizationId as string,
-    });
-    await ctx.db.delete(args.stepId);
+    await db.delete("emailSequenceSteps", args.stepId);
   },
 });
 
 /**
  * Cancel a recipient's active enrollment in a sequence.
  */
-export const cancelEnrollment = mutation({
+export const cancelEnrollment = action({
   args: {
     organizationId: v.id("organizations"),
-    enrollmentId: v.id("emailSequenceEnrollments"),
+    enrollmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const enrollment = await ctx.db.get(args.enrollmentId);
-    if (!enrollment || enrollment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const enrollment = await db.get("emailSequenceEnrollments", args.enrollmentId);
+    if (!enrollment || String(enrollment.organizationId) !== String(args.organizationId)) {
       throw new Error("Enrollment not found");
     }
     if (enrollment.status !== "active") {
       return; // Already cancelled or completed — idempotent
     }
 
-    await ctx.db.patch(args.enrollmentId, {
-      status: "cancelled",
-      cancelledAt: Date.now(),
-    });
-    await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
-      emailSequenceEnrollmentId: args.enrollmentId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emailSequenceEnrollments", args.enrollmentId, {
       status: "cancelled",
       cancelledAt: Date.now(),
     });
@@ -385,19 +334,6 @@ export const enrollRecipient = internalMutation({
     const enrollmentId = await ctx.db.insert("emailSequenceEnrollments", {
       sequenceId: args.sequenceId,
       organizationId: args.organizationId,
-      recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      payload: args.payload,
-      currentStep: 0,
-      status: "active",
-      enrolledAt: now,
-    });
-
-    // Sync to Supabase
-    await ctx.scheduler.runAfter(0, writeEnrollmentRef, {
-      emailSequenceEnrollmentId: enrollmentId as string,
-      sequenceId: args.sequenceId as string,
-      organizationId: args.organizationId as string,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       payload: args.payload,
@@ -528,17 +464,6 @@ export const markEnrollmentCompleted = internalMutation({
       status: "completed",
       completedAt: now,
     });
-
-    // Sync to Supabase
-    const enrollment = await ctx.db.get(args.enrollmentId);
-    if (enrollment) {
-      await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
-        emailSequenceEnrollmentId: args.enrollmentId as string,
-        organizationId: enrollment.organizationId as string,
-        status: "completed",
-        completedAt: now,
-      });
-    }
   },
 });
 
@@ -551,16 +476,6 @@ export const advanceEnrollmentStep = internalMutation({
     await ctx.db.patch(args.enrollmentId, {
       currentStep: args.nextStep,
     });
-
-    // Sync to Supabase
-    const enrollment = await ctx.db.get(args.enrollmentId);
-    if (enrollment) {
-      await ctx.scheduler.runAfter(0, updateEnrollmentRef, {
-        emailSequenceEnrollmentId: args.enrollmentId as string,
-        organizationId: enrollment.organizationId as string,
-        currentStep: args.nextStep,
-      });
-    }
   },
 });
 
@@ -579,19 +494,6 @@ export const insertSequenceLog = internalMutation({
       organizationId: args.organizationId,
       eventType: `sequence.step`,
       templateId: args.templateId,
-      recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      payload: args.payload,
-      status: "pending",
-      createdAt: now,
-    });
-
-    // Sync to Supabase
-    await ctx.scheduler.runAfter(0, writeEventLogRef, {
-      emailEventLogId: logId as string,
-      organizationId: args.organizationId as string,
-      eventType: "sequence.step",
-      templateId: args.templateId as string,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
       payload: args.payload,

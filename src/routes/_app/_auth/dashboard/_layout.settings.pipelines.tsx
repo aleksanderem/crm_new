@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabasePipelinesList, useSupabasePipelineStages, useSupabasePipelineStageActions } from "@/hooks/use-supabase-pipelines";
@@ -291,8 +291,8 @@ function StageActions({
   const [assignToOwner, setAssignToOwner] = useState(true);
   const [description, setDescription] = useState("");
 
-  const createAction = useMutation(api.pipelineStageActions.create);
-  const removeAction = useMutation(api.pipelineStageActions.remove);
+  const createAction = useAction(api.pipelineStageActions.create);
+  const removeAction = useAction(api.pipelineStageActions.remove);
 
   const { data: actions } = useSupabasePipelineStageActions(
     organizationId,

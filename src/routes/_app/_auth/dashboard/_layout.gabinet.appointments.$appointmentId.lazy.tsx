@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -373,12 +373,12 @@ function AppointmentDetail() {
 
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updateAppointment = useAction(api.gabinet.appointments.update);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const trackView = useAction(api.recentlyViewed.track);
 
-  // Payment mutations
-  const createPayment = useMutation(api.payments.create);
-  const markPaymentPaid = useMutation(api.payments.markPaid);
-  const refundPayment = useMutation(api.payments.refund);
+  // Payment actions (Supabase-primary)
+  const createPayment = useAction(api.payments.create);
+  const markPaymentPaid = useAction(api.payments.markPaid);
+  const refundPayment = useAction(api.payments.refund);
 
   // Note actions (Supabase-primary)
   const createNote = useAction(api.notes.create);

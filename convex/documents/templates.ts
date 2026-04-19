@@ -1,15 +1,15 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { formCategoryValidator } from "../schema/documents";
 
-const writeFormTemplateRef = internal.supabase.formTemplates.writeFormTemplateToSupabase;
-const updateFormTemplateRef = internal.supabase.formTemplates.updateFormTemplateInSupabase;
+// Dual-write refs removed — Supabase is now primary for template writes
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     return await ctx.db
       .query("formTemplates")
@@ -24,6 +24,7 @@ export const getById = query({
     templateId: v.id("formTemplates"),
   },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const tmpl = await ctx.db.get(args.templateId);
     if (!tmpl || tmpl.organizationId !== args.organizationId)
@@ -38,6 +39,7 @@ export const listByCategory = query({
     category: formCategoryValidator,
   },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     return await ctx.db
       .query("formTemplates")
@@ -56,6 +58,7 @@ export const listByEntityType = query({
     entityType: v.string(),
   },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const all = await ctx.db
       .query("formTemplates")
@@ -72,6 +75,7 @@ export const listDocumentTemplates = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const all = await ctx.db
       .query("formTemplates")
@@ -81,7 +85,7 @@ export const listDocumentTemplates = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -116,39 +120,36 @@ export const create = mutation({
     accessRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const now = Date.now();
-    const templateId = await ctx.db.insert("formTemplates", {
-      ...args,
-      formJson: args.formJson ?? "{}",
-      templateType: args.templateType ?? "document",
-      version: 1,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // requireOrgAdmin via authAction
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
 
-    // Dual-write: replicate new form template to Supabase
-    await ctx.scheduler.runAfter(0, writeFormTemplateRef, {
-      templateId: templateId as string,
-      organizationId: args.organizationId as string,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const templateId = await db.insert("formTemplates", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
+      description: args.description ?? null,
       category: args.category,
-      folderPath: args.folderPath,
+      folderPath: args.folderPath ?? null,
       templateType: args.templateType ?? "document",
       formJson: args.formJson ?? "{}",
-      contentJson: args.contentJson,
+      contentJson: args.contentJson ?? null,
       modules: args.modules,
       entityTypes: args.entityTypes,
-      variableBindings: args.variableBindings,
+      variableBindings: args.variableBindings ?? null,
       requiresSignature: args.requiresSignature,
-      signatureConfig: args.signatureConfig ? JSON.stringify(args.signatureConfig) : undefined,
-      accessRoles: args.accessRoles,
+      signatureConfig: args.signatureConfig ? JSON.stringify(args.signatureConfig) : null,
+      accessRoles: args.accessRoles ?? null,
       version: 1,
       isActive: true,
-      createdBy: user._id as string,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -157,73 +158,57 @@ export const create = mutation({
   },
 });
 
-export const duplicate = mutation({
+export const duplicate = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
-    const source = await ctx.db.get(args.templateId);
-    if (!source || source.organizationId !== args.organizationId) {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
+    const source = await db.get("formTemplates", args.templateId);
+    if (!source || String(source.organizationId) !== String(args.organizationId)) {
       throw new Error("Template not found");
     }
+
     const now = Date.now();
-    const {
-      _id,
-      _creationTime,
-      createdBy: _cb,
-      createdAt: _ca,
-      updatedAt: _ua,
-      version: _v,
-      isActive: _ia,
-      ...rest
-    } = source;
-    const dupId = await ctx.db.insert("formTemplates", {
-      ...rest,
+    const dupId = await db.insert("formTemplates", {
+      organizationId: String(args.organizationId),
       name: `${source.name} (Kopia)`,
+      description: source.description ?? null,
+      category: source.category,
+      folderPath: source.folderPath ?? null,
+      templateType: source.templateType ?? "document",
+      formJson: source.formJson ?? "{}",
+      contentJson: source.contentJson ?? null,
+      modules: source.modules,
+      entityTypes: source.entityTypes,
+      variableBindings: source.variableBindings ?? null,
+      requiresSignature: source.requiresSignature ?? false,
+      signatureConfig: source.signatureConfig ? (typeof source.signatureConfig === "string" ? source.signatureConfig : JSON.stringify(source.signatureConfig)) : null,
+      accessRoles: source.accessRoles ?? null,
       version: 1,
       isActive: true,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
-
-    // Dual-write: replicate duplicated form template to Supabase
-    const dup = await ctx.db.get(dupId);
-    if (dup) {
-      await ctx.scheduler.runAfter(0, writeFormTemplateRef, {
-        templateId: dupId as string,
-        organizationId: dup.organizationId as string,
-        name: dup.name,
-        description: dup.description,
-        category: dup.category,
-        folderPath: dup.folderPath,
-        templateType: dup.templateType,
-        formJson: dup.formJson,
-        contentJson: dup.contentJson,
-        modules: dup.modules,
-        entityTypes: dup.entityTypes,
-        variableBindings: dup.variableBindings,
-        requiresSignature: dup.requiresSignature,
-        signatureConfig: dup.signatureConfig ? JSON.stringify(dup.signatureConfig) : undefined,
-        accessRoles: dup.accessRoles,
-        version: dup.version,
-        isActive: dup.isActive,
-        createdBy: dup.createdBy as string,
-        createdAt: dup.createdAt,
-        updatedAt: dup.updatedAt,
-      });
-    }
 
     return dupId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(formCategoryValidator),
@@ -257,9 +242,17 @@ export const update = mutation({
     accessRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-    const tmpl = await ctx.db.get(args.templateId);
-    if (!tmpl || tmpl.organizationId !== args.organizationId)
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
+    const tmpl = await db.get("formTemplates", args.templateId);
+    if (!tmpl || String(tmpl.organizationId) !== String(args.organizationId))
       throw new Error("Template not found");
 
     const { organizationId: _orgId, templateId, ...updates } = args;
@@ -267,64 +260,43 @@ export const update = mutation({
     const contentChanged =
       (updates.formJson && updates.formJson !== tmpl.formJson) ||
       (updates.contentJson && updates.contentJson !== tmpl.contentJson);
-    const newVersion = contentChanged ? tmpl.version + 1 : tmpl.version;
+    const newVersion = contentChanged ? (tmpl.version as number ?? 1) + 1 : (tmpl.version as number ?? 1);
 
-    const updatedAt = Date.now();
-    await ctx.db.patch(templateId, {
-      ...updates,
-      version: newVersion,
-      updatedAt,
-    });
+    const patchData: Record<string, unknown> = { ...updates, version: newVersion, updatedAt: Date.now() };
+    // Serialize signatureConfig for Supabase
+    if (patchData.signatureConfig && typeof patchData.signatureConfig !== "string") {
+      patchData.signatureConfig = JSON.stringify(patchData.signatureConfig);
+    }
 
-    // Dual-write: replicate form template update to Supabase
-    await ctx.scheduler.runAfter(0, updateFormTemplateRef, {
-      templateId: templateId as string,
-      organizationId: args.organizationId as string,
-      name: updates.name,
-      description: updates.description,
-      category: updates.category,
-      folderPath: updates.folderPath,
-      templateType: updates.templateType,
-      formJson: updates.formJson,
-      contentJson: updates.contentJson,
-      modules: updates.modules,
-      entityTypes: updates.entityTypes,
-      variableBindings: updates.variableBindings,
-      requiresSignature: updates.requiresSignature,
-      signatureConfig: updates.signatureConfig ? JSON.stringify(updates.signatureConfig) : undefined,
-      accessRoles: updates.accessRoles,
-      isActive: updates.isActive,
-      version: newVersion,
-      updatedAt,
-    });
+    await db.patch("formTemplates", templateId, patchData);
 
     return templateId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-    const tmpl = await ctx.db.get(args.templateId);
-    if (!tmpl || tmpl.organizationId !== args.organizationId)
-      throw new Error("Template not found");
-    // Soft delete
-    const removedAt = Date.now();
-    await ctx.db.patch(args.templateId, {
-      isActive: false,
-      updatedAt: removedAt,
-    });
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Admin access required");
+    }
 
-    // Dual-write: replicate soft delete to Supabase
-    await ctx.scheduler.runAfter(0, updateFormTemplateRef, {
-      templateId: args.templateId as string,
-      organizationId: args.organizationId as string,
+    const db = createSupabaseDb();
+    const tmpl = await db.get("formTemplates", args.templateId);
+    if (!tmpl || String(tmpl.organizationId) !== String(args.organizationId))
+      throw new Error("Template not found");
+
+    // Soft delete
+    await db.patch("formTemplates", args.templateId, {
       isActive: false,
-      updatedAt: removedAt,
+      updatedAt: Date.now(),
     });
   },
 });

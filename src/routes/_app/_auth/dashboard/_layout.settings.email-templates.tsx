@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
@@ -89,9 +89,9 @@ function EmailTemplatesSettings() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const editorRef = useRef<EmailTemplateEditorHandle>(null);
 
-  const createTemplate = useMutation(api.emailTemplates.create);
-  const updateTemplate = useMutation(api.emailTemplates.update);
-  const removeTemplate = useMutation(api.emailTemplates.remove);
+  const createTemplate = useAction(api.emailTemplates.create);
+  const updateTemplate = useAction(api.emailTemplates.update);
+  const removeTemplate = useAction(api.emailTemplates.remove);
 
   const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
 

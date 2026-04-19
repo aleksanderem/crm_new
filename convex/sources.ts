@@ -1,14 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeSourceRef = internal.supabase.sources.writeSourceToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateSourceRef = internal.supabase.sources.updateSourceInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteSourceRef = internal.supabase.sources.deleteSourceFromSupabase;
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { verifyOrgAccess } from "./_helpers/auth";
 
 export const list = query({
   args: {
@@ -27,39 +21,32 @@ export const list = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const existing = await ctx.db
+    const existing = await db
       .query("sources")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const maxOrder = existing.length > 0 ? Math.max(...existing.map((s) => s.order)) : -1;
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((s: any) => s.order ?? 0)) : -1;
 
-    const sourceId = await ctx.db.insert("sources", {
-      organizationId: args.organizationId,
+    const sourceId = await db.insert("sources", {
+      organizationId: String(args.organizationId),
       name: args.name,
       order: maxOrder + 1,
       isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new source to Supabase
-    await ctx.scheduler.runAfter(0, writeSourceRef, {
-      sourceId: sourceId as string,
-      organizationId: args.organizationId as string,
-      name: args.name,
-      order: maxOrder + 1,
-      isActive: true,
-      createdBy: user._id as string,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -68,92 +55,94 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    sourceId: v.id("sources"),
+    sourceId: v.string(),
     name: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const source = await ctx.db.get(args.sourceId);
-    if (!source || source.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const source = await db.get("sources", args.sourceId);
+    if (!source || source.organizationId !== String(args.organizationId)) {
       throw new Error("Source not found");
     }
 
-    const { organizationId, sourceId, ...updates } = args;
-    const now = Date.now();
-    await ctx.db.patch(sourceId, { ...updates, updatedAt: now });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.isActive !== undefined) updates.isActive = args.isActive;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateSourceRef, {
-      sourceId: sourceId as string,
-      organizationId: organizationId as string,
-      ...updates,
-      updatedAt: now,
-    });
-
-    return sourceId;
-  },
-});
-
-export const remove = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    sourceId: v.id("sources"),
-  },
-  handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-
-    const source = await ctx.db.get(args.sourceId);
-    if (!source || source.organizationId !== args.organizationId) {
-      throw new Error("Source not found");
-    }
-
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteSourceRef, {
-      sourceId: args.sourceId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.sourceId);
+    await db.patch("sources", args.sourceId, updates);
     return args.sourceId;
   },
 });
 
-export const reorder = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    sourceIds: v.array(v.id("sources")),
+    sourceId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const source = await db.get("sources", args.sourceId);
+    if (!source || source.organizationId !== String(args.organizationId)) {
+      throw new Error("Source not found");
+    }
+
+    await db.delete("sources", args.sourceId);
+    return args.sourceId;
+  },
+});
+
+export const reorder = action({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
 
     for (let i = 0; i < args.sourceIds.length; i++) {
-      const source = await ctx.db.get(args.sourceIds[i]);
-      if (!source || source.organizationId !== args.organizationId) {
+      const source = await db.get("sources", args.sourceIds[i]);
+      if (!source || source.organizationId !== String(args.organizationId)) {
         throw new Error("Source not found");
       }
-      await ctx.db.patch(args.sourceIds[i], { order: i, updatedAt: Date.now() });
+      await db.patch("sources", args.sourceIds[i], { order: i, updatedAt: Date.now() });
     }
 
     return true;
   },
 });
 
-export const seed = mutation({
+export const seed = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const existing = await ctx.db
+    const existing = await db
       .query("sources")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     if (existing.length > 0) {
@@ -164,12 +153,12 @@ export const seed = mutation({
     const ids = [];
 
     for (let i = 0; i < defaults.length; i++) {
-      const id = await ctx.db.insert("sources", {
-        organizationId: args.organizationId,
+      const id = await db.insert("sources", {
+        organizationId: String(args.organizationId),
         name: defaults[i],
         order: i,
         isActive: true,
-        createdBy: user._id,
+        createdBy: String(authResult.userId),
         createdAt: now,
         updatedAt: now,
       });

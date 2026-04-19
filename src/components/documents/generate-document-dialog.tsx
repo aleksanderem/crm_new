@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -643,7 +643,7 @@ export function GenerateDocumentDialog({
   const [savingMissingData, setSavingMissingData] = useState(false);
   const [missingDataHandled, setMissingDataHandled] = useState(false);
 
-  const generateDocument = useMutation(api.documents.generate.generateDocument);
+  const generateDocument = useAction(api.documents.generate.generateDocument);
   const completeMissingDataMutation = useMutation(api.documents.completeMissingData.completeMissingData);
 
   // --- Reset state on close ---

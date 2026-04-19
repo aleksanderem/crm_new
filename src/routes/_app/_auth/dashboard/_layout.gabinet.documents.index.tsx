@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
@@ -129,8 +129,8 @@ function GabinetDocumentsPage() {
   });
 
   // --- Mutations ---
-  const resendSigningEmail = useMutation(api.documents.documents.resendSigningEmail);
-  const removeDocument = useMutation(api.documents.documents.remove);
+  const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
+  const removeDocument = useAction(api.documents.documents.remove);
 
   // --- Data ---
   const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(

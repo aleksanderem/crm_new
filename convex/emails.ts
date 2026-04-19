@@ -1,4 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
@@ -6,14 +8,8 @@ import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
 import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateEmailRef = internal.supabase.emails.updateEmailInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteEmailRef = internal.supabase.emails.deleteEmailFromSupabase;
+// Dual-write refs removed — Supabase is now primary for email writes
 
 export const listInbox = query({
   args: {
@@ -177,7 +173,7 @@ export const getUnreadCount = query({
   },
 });
 
-export const send = mutation({
+export const send = action({
   args: {
     organizationId: v.id("organizations"),
     to: v.array(v.string()),
@@ -186,23 +182,28 @@ export const send = mutation({
     subject: v.string(),
     bodyHtml: v.optional(v.string()),
     bodyText: v.optional(v.string()),
-    contactId: v.optional(v.id("contacts")),
-    companyId: v.optional(v.id("companies")),
-    leadId: v.optional(v.id("leads")),
-    mailProviderId: v.optional(v.id("mailProviders")),
+    contactId: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    leadId: v.optional(v.string()),
+    mailProviderId: v.optional(v.string()),
     inReplyTo: v.optional(v.string()),
     threadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    // --- Auth (via internal query) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
     // Get default email account for org
-    const emailAccounts = await ctx.db
-      .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+    const accounts = await db.query("emailAccounts")
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const defaultAccount = emailAccounts.find((a) => a.isDefault);
+    const defaultAccount = accounts.find((a: any) => a.isDefault);
     if (!defaultAccount) {
       throw new Error("No default email account configured");
     }
@@ -225,113 +226,110 @@ export const send = mutation({
       html: args.bodyHtml ?? args.bodyText ?? "",
     });
 
-    // Insert email record
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    // --- INSERT email directly to Supabase ---
+    const emailId = await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId,
       messageId,
-      inReplyTo: args.inReplyTo,
+      inReplyTo: args.inReplyTo ?? null,
       direction: "outbound",
-      from: defaultAccount.fromEmail,
+      from: defaultAccount.fromEmail as string,
       to: args.to,
-      cc: args.cc,
-      bcc: args.bcc,
+      cc: args.cc ?? null,
+      bcc: args.bcc ?? null,
       subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet,
+      bodyHtml: args.bodyHtml ?? null,
+      bodyText: args.bodyText ?? null,
+      snippet: snippet ?? null,
       isRead: true,
       isStarred: false,
-      contactId: args.contactId,
-      companyId: args.companyId,
-      leadId: args.leadId,
-      mailProviderId: args.mailProviderId,
-      sentBy: user._id,
+      contactId: args.contactId ?? null,
+      companyId: args.companyId ?? null,
+      leadId: args.leadId ?? null,
+      mailProviderId: args.mailProviderId ?? null,
+      sentBy: String(authResult.userId),
       sentAt: now,
       createdAt: now,
       updatedAt: now,
     });
 
-    // Dual-write: replicate new email to Supabase
-    await ctx.scheduler.runAfter(0, writeEmailRef, {
-      emailId: emailId as string,
-      organizationId: args.organizationId as string,
-      threadId,
-      messageId,
-      inReplyTo: args.inReplyTo,
-      direction: "outbound",
-      from: defaultAccount.fromEmail,
-      to: args.to,
-      cc: args.cc,
-      bcc: args.bcc,
-      subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet,
-      isRead: true,
-      isStarred: false,
-      contactId: args.contactId as string | undefined,
-      companyId: args.companyId as string | undefined,
-      leadId: args.leadId as string | undefined,
-      mailProviderId: args.mailProviderId as string | undefined,
-      sentBy: user._id as string,
-      sentAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await publishActivityEnvelope(ctx, {
-      organizationId: args.organizationId,
-      action: "email_sent",
-      performedBy: user._id,
-      module: "crm",
-      summary: `Sent email "${args.subject}" to ${args.to.join(", ")}`,
-      occurredAt: now,
-      actor: {
-        type: "user",
-        userId: user._id,
-      },
-      payload: {
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.emails._sendSideEffects, {
         emailId,
-        direction: "outbound",
+        organizationId: args.organizationId,
         to: args.to,
         subject: args.subject,
-      },
-      eventKey: `crm:email:${emailId}:email_sent`,
-      targets: [
-        {
-          entityType: "email",
-          entityId: emailId,
-        },
-      ],
-    });
+        sentBy: String(authResult.userId),
+        sentAt: now,
+      });
+    } catch (e) {
+      console.error("[emails.send] Side effects FAILED for email", emailId, ":", e);
+    }
 
     return emailId;
   },
 });
 
-export const markRead = mutation({
+export const _sendSideEffects = internalMutation({
   args: {
+    emailId: v.string(),
     organizationId: v.id("organizations"),
-    emailId: v.id("emails"),
+    to: v.array(v.string()),
+    subject: v.string(),
+    sentBy: v.string(),
+    sentAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    const sentByUserId = args.sentBy as Id<"users">;
 
-    const email = await ctx.db.get(args.emailId);
-    if (!email || email.organizationId !== args.organizationId) {
+    await publishActivityEnvelope(ctx, {
+      organizationId: args.organizationId,
+      action: "email_sent",
+      performedBy: sentByUserId,
+      module: "crm",
+      summary: `Sent email "${args.subject}" to ${args.to.join(", ")}`,
+      occurredAt: args.sentAt,
+      actor: {
+        type: "user",
+        userId: sentByUserId,
+      },
+      payload: {
+        emailId: args.emailId,
+        direction: "outbound",
+        to: args.to,
+        subject: args.subject,
+      },
+      eventKey: `crm:email:${args.emailId}:email_sent`,
+      targets: [
+        {
+          entityType: "email",
+          entityId: args.emailId,
+        },
+      ],
+    });
+  },
+});
+
+export const markRead = action({
+  args: {
+    organizationId: v.id("organizations"),
+    emailId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+
+    const email = await db.get("emails", args.emailId);
+    if (!email || String(email.organizationId) !== String(args.organizationId)) {
       throw new Error("Email not found");
     }
 
-    await ctx.db.patch(args.emailId, {
-      isRead: true,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateEmailRef, {
-      emailId: args.emailId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emails", args.emailId, {
       isRead: true,
       updatedAt: Date.now(),
     });
@@ -340,28 +338,25 @@ export const markRead = mutation({
   },
 });
 
-export const markUnread = mutation({
+export const markUnread = action({
   args: {
     organizationId: v.id("organizations"),
-    emailId: v.id("emails"),
+    emailId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const email = await ctx.db.get(args.emailId);
-    if (!email || email.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const email = await db.get("emails", args.emailId);
+    if (!email || String(email.organizationId) !== String(args.organizationId)) {
       throw new Error("Email not found");
     }
 
-    await ctx.db.patch(args.emailId, {
-      isRead: false,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateEmailRef, {
-      emailId: args.emailId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emails", args.emailId, {
       isRead: false,
       updatedAt: Date.now(),
     });
@@ -370,28 +365,25 @@ export const markUnread = mutation({
   },
 });
 
-export const toggleStar = mutation({
+export const toggleStar = action({
   args: {
     organizationId: v.id("organizations"),
-    emailId: v.id("emails"),
+    emailId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const email = await ctx.db.get(args.emailId);
-    if (!email || email.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const email = await db.get("emails", args.emailId);
+    if (!email || String(email.organizationId) !== String(args.organizationId)) {
       throw new Error("Email not found");
     }
 
-    await ctx.db.patch(args.emailId, {
-      isStarred: !email.isStarred,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateEmailRef, {
-      emailId: args.emailId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emails", args.emailId, {
       isStarred: !email.isStarred,
       updatedAt: Date.now(),
     });
@@ -445,36 +437,31 @@ export const listByEmployee = query({
   },
 });
 
-export const linkToEntity = mutation({
+export const linkToEntity = action({
   args: {
     organizationId: v.id("organizations"),
-    emailId: v.id("emails"),
-    contactId: v.optional(v.id("contacts")),
-    companyId: v.optional(v.id("companies")),
-    leadId: v.optional(v.id("leads")),
+    emailId: v.string(),
+    contactId: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    leadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const email = await ctx.db.get(args.emailId);
-    if (!email || email.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const email = await db.get("emails", args.emailId);
+    if (!email || String(email.organizationId) !== String(args.organizationId)) {
       throw new Error("Email not found");
     }
 
-    await ctx.db.patch(args.emailId, {
-      contactId: args.contactId,
-      companyId: args.companyId,
-      leadId: args.leadId,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateEmailRef, {
-      emailId: args.emailId as string,
-      organizationId: args.organizationId as string,
-      contactId: args.contactId as string | undefined,
-      companyId: args.companyId as string | undefined,
-      leadId: args.leadId as string | undefined,
+    await db.patch("emails", args.emailId, {
+      contactId: args.contactId ?? null,
+      companyId: args.companyId ?? null,
+      leadId: args.leadId ?? null,
       updatedAt: Date.now(),
     });
 

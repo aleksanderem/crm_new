@@ -1,14 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeReasonRef = internal.supabase.lostReasons.writeLostReasonToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateReasonRef = internal.supabase.lostReasons.updateLostReasonInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteReasonRef = internal.supabase.lostReasons.deleteLostReasonFromSupabase;
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { verifyOrgAccess } from "./_helpers/auth";
 
 export const list = query({
   args: {
@@ -27,39 +21,32 @@ export const list = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     label: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const existing = await ctx.db
+    const existing = await db
       .query("lostReasons")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const maxOrder = existing.length > 0 ? Math.max(...existing.map((r) => r.order)) : -1;
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((r: any) => r.order ?? 0)) : -1;
 
-    const reasonId = await ctx.db.insert("lostReasons", {
-      organizationId: args.organizationId,
+    const reasonId = await db.insert("lostReasons", {
+      organizationId: String(args.organizationId),
       label: args.label,
       order: maxOrder + 1,
       isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new lost reason to Supabase
-    await ctx.scheduler.runAfter(0, writeReasonRef, {
-      reasonId: reasonId as string,
-      organizationId: args.organizationId as string,
-      label: args.label,
-      order: maxOrder + 1,
-      isActive: true,
-      createdBy: user._id as string,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -68,72 +55,70 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    reasonId: v.id("lostReasons"),
+    reasonId: v.string(),
     label: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const reason = await ctx.db.get(args.reasonId);
-    if (!reason || reason.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const reason = await db.get("lostReasons", args.reasonId);
+    if (!reason || reason.organizationId !== String(args.organizationId)) {
       throw new Error("Lost reason not found");
     }
 
-    const { organizationId, reasonId, ...updates } = args;
-    const now = Date.now();
-    await ctx.db.patch(reasonId, { ...updates, updatedAt: now });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.label !== undefined) updates.label = args.label;
+    if (args.isActive !== undefined) updates.isActive = args.isActive;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateReasonRef, {
-      reasonId: reasonId as string,
-      organizationId: organizationId as string,
-      ...updates,
-      updatedAt: now,
-    });
-
-    return reasonId;
-  },
-});
-
-export const remove = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    reasonId: v.id("lostReasons"),
-  },
-  handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-
-    const reason = await ctx.db.get(args.reasonId);
-    if (!reason || reason.organizationId !== args.organizationId) {
-      throw new Error("Lost reason not found");
-    }
-
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteReasonRef, {
-      reasonId: args.reasonId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.reasonId);
+    await db.patch("lostReasons", args.reasonId, updates);
     return args.reasonId;
   },
 });
 
-export const seed = mutation({
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    reasonId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const reason = await db.get("lostReasons", args.reasonId);
+    if (!reason || reason.organizationId !== String(args.organizationId)) {
+      throw new Error("Lost reason not found");
+    }
+
+    await db.delete("lostReasons", args.reasonId);
+    return args.reasonId;
+  },
+});
+
+export const seed = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const existing = await ctx.db
+    const existing = await db
       .query("lostReasons")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     if (existing.length > 0) return [];
@@ -150,12 +135,12 @@ export const seed = mutation({
     const ids = [];
 
     for (let i = 0; i < defaults.length; i++) {
-      const id = await ctx.db.insert("lostReasons", {
-        organizationId: args.organizationId,
+      const id = await db.insert("lostReasons", {
+        organizationId: String(args.organizationId),
         label: defaults[i],
         order: i,
         isActive: true,
-        createdBy: user._id,
+        createdBy: String(authResult.userId),
         createdAt: now,
         updatedAt: now,
       });
@@ -166,20 +151,24 @@ export const seed = mutation({
   },
 });
 
-export const reorder = mutation({
+export const reorder = action({
   args: {
     organizationId: v.id("organizations"),
-    reasonIds: v.array(v.id("lostReasons")),
+    reasonIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
 
     for (let i = 0; i < args.reasonIds.length; i++) {
-      const reason = await ctx.db.get(args.reasonIds[i]);
-      if (!reason || reason.organizationId !== args.organizationId) {
+      const reason = await db.get("lostReasons", args.reasonIds[i]);
+      if (!reason || reason.organizationId !== String(args.organizationId)) {
         throw new Error("Lost reason not found");
       }
-      await ctx.db.patch(args.reasonIds[i], { order: i, updatedAt: Date.now() });
+      await db.patch("lostReasons", args.reasonIds[i], { order: i, updatedAt: Date.now() });
     }
 
     return true;

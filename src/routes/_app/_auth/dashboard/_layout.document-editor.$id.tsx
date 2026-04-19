@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -59,8 +59,8 @@ function EditDocumentEditorPage() {
     templateId,
   });
 
-  const updateTemplate = useMutation(api.documents.templates.update);
-  const duplicateTemplate = useMutation(api.documents.templates.duplicate);
+  const updateTemplate = useAction(api.documents.templates.update);
+  const duplicateTemplate = useAction(api.documents.templates.duplicate);
 
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);

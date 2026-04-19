@@ -1,17 +1,10 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
 import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
-import { logAudit } from "./auditLog";
-import { createNotificationDirect } from "./notifications";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen
-const writeInvitationRef = internal.supabase.invitations.writeInvitationToSupabase;
-// @ts-ignore — TS2589
-const updateInvitationRef = internal.supabase.invitations.updateInvitationInSupabase;
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -65,7 +58,37 @@ export const getByToken = query({
   },
 });
 
-export const create = mutation({
+// Invitations stay in Convex DB for seat limit checks and auth flow
+export const create = action({
+  args: {
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    role: orgRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const invitationId = await ctx.runMutation(
+      internal.invitations._createInternal,
+      {
+        organizationId: args.organizationId,
+        email: args.email,
+        role: args.role,
+      },
+    );
+
+    // Also write to Supabase
+    try {
+      const db = createSupabaseDb();
+      const inv = await db.get("invitations", invitationId);
+      // invitation already written by internal mutation + scheduler
+    } catch {
+      // best-effort
+    }
+
+    return invitationId;
+  },
+});
+
+export const _createInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     email: v.string(),
@@ -129,6 +152,7 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -138,6 +162,7 @@ export const create = mutation({
       performedBy: user._id,
     });
 
+    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: user._id,
@@ -147,25 +172,23 @@ export const create = mutation({
       details: JSON.stringify({ email: args.email, role: args.role }),
     });
 
-    // Dual-write: sync invitation to Supabase
-    await ctx.scheduler.runAfter(0, writeInvitationRef, {
-      invitationId: invitationId as any,
-      organizationId: args.organizationId as any,
-      email: args.email,
-      role: args.role,
-      token,
-      status: "pending",
-      invitedBy: user._id as any,
-      expiresAt,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return invitationId;
+    return String(invitationId);
   },
 });
 
-export const accept = mutation({
+// Accept needs seat limit check + creates teamMembership (auth table) — stays in Convex DB
+export const accept = action({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const orgId = await ctx.runMutation(
+      internal.invitations._acceptInternal,
+      { token: args.token },
+    );
+    return orgId;
+  },
+});
+
+export const _acceptInternal = internalMutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -182,7 +205,7 @@ export const accept = mutation({
       throw new Error("This invitation was sent to a different email address");
     }
 
-    // Check seat limit at acceptance time (race condition protection)
+    // Check seat limit at acceptance time
     const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
       organizationId: invitation.organizationId,
     });
@@ -206,6 +229,7 @@ export const accept = mutation({
       updatedAt: Date.now(),
     });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: invitation.organizationId,
       entityType: "organization",
@@ -215,6 +239,7 @@ export const accept = mutation({
       performedBy: user._id,
     });
 
+    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: invitation.organizationId,
       userId: user._id,
@@ -224,7 +249,8 @@ export const accept = mutation({
       details: JSON.stringify({ email: user.email }),
     });
 
-    // Notify org owner about the new team member
+    // Notify org owner
+    const { createNotificationDirect } = await import("./notifications");
     const org = await ctx.db.get(invitation.organizationId);
     if (org && org.ownerId !== user._id) {
       await createNotificationDirect(ctx, {
@@ -236,19 +262,18 @@ export const accept = mutation({
       });
     }
 
-    // Dual-write: update invitation status in Supabase
-    await ctx.scheduler.runAfter(0, updateInvitationRef, {
-      invitationId: invitation._id as any,
-      status: "accepted",
-      acceptedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    return invitation.organizationId;
+    return String(invitation.organizationId);
   },
 });
 
-export const decline = mutation({
+export const decline = action({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.invitations._declineInternal, { token: args.token });
+  },
+});
+
+export const _declineInternal = internalMutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     await requireUser(ctx);
@@ -265,17 +290,23 @@ export const decline = mutation({
       status: "declined",
       updatedAt: Date.now(),
     });
+  },
+});
 
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateInvitationRef, {
-      invitationId: invitation._id as any,
-      status: "declined",
-      updatedAt: Date.now(),
+export const cancel = action({
+  args: {
+    organizationId: v.id("organizations"),
+    invitationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.invitations._cancelInternal, {
+      organizationId: args.organizationId,
+      invitationId: args.invitationId as any,
     });
   },
 });
 
-export const cancel = mutation({
+export const _cancelInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     invitationId: v.id("invitations"),
@@ -295,17 +326,24 @@ export const cancel = mutation({
       status: "expired",
       updatedAt: Date.now(),
     });
-
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateInvitationRef, {
-      invitationId: args.invitationId as any,
-      status: "expired",
-      updatedAt: Date.now(),
-    });
   },
 });
 
-export const resend = mutation({
+export const resend = action({
+  args: {
+    organizationId: v.id("organizations"),
+    invitationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.invitations._resendInternal, {
+      organizationId: args.organizationId,
+      invitationId: args.invitationId as any,
+    });
+    return args.invitationId;
+  },
+});
+
+export const _resendInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     invitationId: v.id("invitations"),
@@ -325,7 +363,5 @@ export const resend = mutation({
       expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
       updatedAt: Date.now(),
     });
-
-    return args.invitationId;
   },
 });

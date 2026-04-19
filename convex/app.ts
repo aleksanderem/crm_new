@@ -1,5 +1,5 @@
 import { internal } from "@cvx/_generated/api";
-import { mutation, query } from "@cvx/_generated/server";
+import { mutation, query, action, internalMutation } from "@cvx/_generated/server";
 import { auth } from "@cvx/auth";
 import { currencyValidator, PLANS } from "@cvx/schema";
 import { asyncMap } from "convex-helpers";
@@ -43,6 +43,7 @@ export const getCurrentUser = query({
   },
 });
 
+// users table is auth — stays as mutation
 export const updateUsername = mutation({
   args: {
     username: v.string(),
@@ -56,7 +57,22 @@ export const updateUsername = mutation({
   },
 });
 
-export const completeOnboarding = mutation({
+// organizations and teamMemberships are AUTH tables — stay in Convex DB
+// Convert to action for consistency, delegate auth writes to internalMutation
+export const completeOnboarding = action({
+  args: {
+    username: v.string(),
+    currency: currencyValidator,
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.app._completeOnboardingInternal, {
+      username: args.username,
+      currency: args.currency,
+    });
+  },
+});
+
+export const _completeOnboardingInternal = internalMutation({
   args: {
     username: v.string(),
     currency: currencyValidator,
@@ -87,6 +103,7 @@ export const completeOnboarding = mutation({
         updatedAt: now,
       });
 
+      // Also write org to Supabase (best-effort via scheduler)
       await ctx.scheduler.runAfter(
         0,
         internal.supabase.organizations.writeOrganizationToSupabase,
@@ -142,6 +159,7 @@ export const completeOnboarding = mutation({
   },
 });
 
+// users table is auth — stays as mutation
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -153,6 +171,7 @@ export const generateUploadUrl = mutation({
   },
 });
 
+// users table is auth — stays as mutation
 export const updateUserImage = mutation({
   args: {
     imageId: v.id("_storage"),
@@ -170,6 +189,7 @@ export const updateUserImage = mutation({
   },
 });
 
+// users table is auth — stays as mutation
 export const removeUserImage = mutation({
   args: {},
   handler: async (ctx) => {
@@ -203,6 +223,7 @@ export const getActivePlans = query({
   },
 });
 
+// users table is auth — stays as mutation
 export const updateProfile = mutation({
   args: {
     name: v.optional(v.string()),
@@ -233,6 +254,7 @@ export const updateProfile = mutation({
   },
 });
 
+// users table is auth — stays as mutation
 export const deleteCurrentUserAccount = mutation({
   args: {},
   handler: async (ctx) => {

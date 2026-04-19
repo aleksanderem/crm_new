@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -235,13 +235,13 @@ function LeadDetail() {
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
   const updateLead = useAction(api.leads.update);
   const removeLead = useAction(api.leads.remove);
-  const moveToStage = useMutation(api.leads.moveToStage);
+  const moveToStage = useAction(api.leads.moveToStage);
   const createRelationship = useAction(api.relationships.create);
   const removeRelationship = useAction(api.relationships.remove);
   const createContactMutation = useAction(api.contacts.create);
   const createCompanyMutation = useAction(api.companies.create);
-  const setCustomFields = useMutation(api.customFields.setValues);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const setCustomFields = useAction(api.customFields.setValues);
+  const trackView = useAction(api.recentlyViewed.track);
   const createNote = useAction(api.notes.create);
   const createScheduledActivity = useAction(api.scheduledActivities.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);

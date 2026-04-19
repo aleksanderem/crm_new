@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
@@ -38,13 +38,13 @@ function ActivityTypesSettings() {
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; type: "activityType" | "field" } | null>(null);
 
-  const seedDefaults = useMutation(api.activityTypes.seedDefaults);
-  const createType = useMutation(api.activityTypes.create);
-  const updateType = useMutation(api.activityTypes.update);
-  const removeType = useMutation(api.activityTypes.remove);
-  const createFieldDefinition = useMutation(api.customFields.createDefinition);
-  const updateFieldDefinition = useMutation(api.customFields.updateDefinition);
-  const deleteFieldDefinition = useMutation(api.customFields.deleteDefinition);
+  const seedDefaults = useAction(api.activityTypes.seedDefaults);
+  const createType = useAction(api.activityTypes.create);
+  const updateType = useAction(api.activityTypes.update);
+  const removeType = useAction(api.activityTypes.remove);
+  const createFieldDefinition = useAction(api.customFields.createDefinition);
+  const updateFieldDefinition = useAction(api.customFields.updateDefinition);
+  const deleteFieldDefinition = useAction(api.customFields.deleteDefinition);
 
   const seededRef = useRef(false);
   useEffect(() => {

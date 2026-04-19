@@ -1,14 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-
-// @ts-ignore — TS2589
-const writeActivityTypeRef = internal.supabase.activityTypes.writeActivityTypeToSupabase;
-// @ts-ignore — TS2589
-const updateActivityTypeRef = internal.supabase.activityTypes.updateActivityTypeInSupabase;
-// @ts-ignore — TS2589
-const deleteActivityTypeRef = internal.supabase.activityTypes.deleteActivityTypeFromSupabase;
+import { verifyOrgAccess } from "./_helpers/auth";
 
 export const DEFAULT_ACTIVITY_TYPES = [
   { key: "call", name: "Połączenie", icon: "phone", color: "#3b82f6" },
@@ -30,24 +24,27 @@ export const list = query({
   },
 });
 
-export const seedDefaults = mutation({
+export const seedDefaults = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const existing = await ctx.db
+    const db = createSupabaseDb();
+    const existing = await db
       .query("activityTypeDefinitions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .first();
     if (existing) return;
 
     const now = Date.now();
     for (let i = 0; i < DEFAULT_ACTIVITY_TYPES.length; i++) {
       const def = DEFAULT_ACTIVITY_TYPES[i];
-      await ctx.db.insert("activityTypeDefinitions", {
-        organizationId: args.organizationId,
+      await db.insert("activityTypeDefinitions", {
+        organizationId: String(args.organizationId),
         key: def.key,
         name: def.name,
         icon: def.icon,
@@ -61,7 +58,7 @@ export const seedDefaults = mutation({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     key: v.string(),
@@ -70,43 +67,33 @@ export const create = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
-
-    const existing = await ctx.db
-      .query("activityTypeDefinitions")
-      .withIndex("by_orgAndKey", (q) =>
-        q.eq("organizationId", args.organizationId).eq("key", args.key)
-      )
-      .unique();
-    if (existing) throw new Error(`Activity type key "${args.key}" already exists`);
-
-    const all = await ctx.db
-      .query("activityTypeDefinitions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-    const maxOrder = all.length > 0 ? Math.max(...all.map((a) => a.order)) + 1 : 0;
-
-    const now = Date.now();
-    const actTypeId = await ctx.db.insert("activityTypeDefinitions", {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
-      key: args.key,
-      name: args.name,
-      icon: args.icon,
-      color: args.color,
-      isSystem: false,
-      order: maxOrder,
-      createdAt: now,
-      updatedAt: now,
     });
 
-    // Dual-write
-    await ctx.scheduler.runAfter(0, writeActivityTypeRef, {
-      activityTypeId: actTypeId as any,
-      organizationId: args.organizationId as any,
+    const db = createSupabaseDb();
+
+    // Check for duplicate key
+    const existing = await db
+      .query("activityTypeDefinitions")
+      .eq("organizationId", String(args.organizationId))
+      .eq("key", args.key)
+      .first();
+    if (existing) throw new Error(`Activity type key "${args.key}" already exists`);
+
+    const all = await db
+      .query("activityTypeDefinitions")
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+    const maxOrder = all.length > 0 ? Math.max(...all.map((a: any) => a.order ?? 0)) + 1 : 0;
+
+    const now = Date.now();
+    const actTypeId = await db.insert("activityTypeDefinitions", {
+      organizationId: String(args.organizationId),
       key: args.key,
       name: args.name,
       icon: args.icon,
-      color: args.color,
+      color: args.color ?? null,
       isSystem: false,
       order: maxOrder,
       createdAt: now,
@@ -117,85 +104,78 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    activityTypeId: v.id("activityTypeDefinitions"),
+    activityTypeId: v.string(),
     name: v.optional(v.string()),
     icon: v.optional(v.string()),
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const def = await ctx.db.get(args.activityTypeId);
-    if (!def || def.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const def = await db.get("activityTypeDefinitions", args.activityTypeId);
+    if (!def || def.organizationId !== String(args.organizationId)) {
       throw new Error("Activity type not found");
     }
 
-    const { organizationId, activityTypeId, ...updates } = args;
-    await ctx.db.patch(activityTypeId, { ...updates, updatedAt: Date.now() });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.icon !== undefined) updates.icon = args.icon;
+    if (args.color !== undefined) updates.color = args.color;
 
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateActivityTypeRef, {
-      activityTypeId: activityTypeId as any,
-      ...updates,
-      updatedAt: Date.now(),
-    });
-
-    return activityTypeId;
+    await db.patch("activityTypeDefinitions", args.activityTypeId, updates);
+    return args.activityTypeId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    activityTypeId: v.id("activityTypeDefinitions"),
+    activityTypeId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const def = await ctx.db.get(args.activityTypeId);
-    if (!def || def.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const def = await db.get("activityTypeDefinitions", args.activityTypeId);
+    if (!def || def.organizationId !== String(args.organizationId)) {
       throw new Error("Activity type not found");
     }
     if (def.isSystem) {
       throw new Error("Cannot delete system activity types");
     }
 
-    // Dual-write: schedule delete BEFORE ctx.db.delete (Pattern #4)
-    await ctx.scheduler.runAfter(0, deleteActivityTypeRef, {
-      activityTypeId: args.activityTypeId as any,
-      organizationId: args.organizationId as any,
-    });
-
-    await ctx.db.delete(args.activityTypeId);
+    await db.delete("activityTypeDefinitions", args.activityTypeId);
     return args.activityTypeId;
   },
 });
 
-export const reorder = mutation({
+export const reorder = action({
   args: {
     organizationId: v.id("organizations"),
-    activityTypeIds: v.array(v.id("activityTypeDefinitions")),
+    activityTypeIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
     for (let i = 0; i < args.activityTypeIds.length; i++) {
-      const def = await ctx.db.get(args.activityTypeIds[i]);
-      if (!def || def.organizationId !== args.organizationId) {
+      const def = await db.get("activityTypeDefinitions", args.activityTypeIds[i]);
+      if (!def || def.organizationId !== String(args.organizationId)) {
         throw new Error("Activity type not found");
       }
-      await ctx.db.patch(args.activityTypeIds[i], { order: i, updatedAt: now });
-
-      // Dual-write
-      await ctx.scheduler.runAfter(0, updateActivityTypeRef, {
-        activityTypeId: args.activityTypeIds[i] as any,
-        order: i,
-        updatedAt: now,
-      });
+      await db.patch("activityTypeDefinitions", args.activityTypeIds[i], { order: i, updatedAt: now });
     }
   },
 });

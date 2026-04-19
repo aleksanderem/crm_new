@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -100,7 +100,7 @@ function EmployeeDetail() {
   const bulkSetEmployeeSchedule = useAction(api.gabinet.scheduling.bulkSetEmployeeSchedule);
   const saveSchedulePeriod = useAction(api.gabinet.scheduling.saveSchedulePeriod);
   const removeSchedulePeriod = useAction(api.gabinet.scheduling.removeSchedulePeriod);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const trackView = useAction(api.recentlyViewed.track);
 
   // Supabase cache invalidation helpers
   const invalidateEmployeeCache = () => {

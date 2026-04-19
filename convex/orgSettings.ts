@@ -1,10 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-
-// @ts-ignore — TS2589
-const writeOrgSettingsRef = internal.supabase.orgSettings.writeOrgSettingsToSupabase;
 
 export const get = query({
   args: {
@@ -22,7 +20,7 @@ export const get = query({
   },
 });
 
-export const upsert = mutation({
+export const upsert = action({
   args: {
     organizationId: v.id("organizations"),
     allowCustomLostReason: v.optional(v.boolean()),
@@ -34,58 +32,41 @@ export const upsert = mutation({
     appointmentWorkflowConfig: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
-
-    const existing = await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
-
-    if (existing) {
-      const { organizationId, ...updates } = args;
-      await ctx.db.patch(existing._id, { ...updates, updatedAt: now });
-      // Dual-write: upsert with existing ID
-      await ctx.scheduler.runAfter(0, writeOrgSettingsRef, {
-        orgSettingsId: existing._id as any,
-        organizationId: args.organizationId as any,
-        allowCustomLostReason: args.allowCustomLostReason ?? existing.allowCustomLostReason,
-        lostReasonRequired: args.lostReasonRequired ?? existing.lostReasonRequired,
-        defaultCurrency: args.defaultCurrency ?? existing.defaultCurrency,
-        timezone: args.timezone ?? existing.timezone,
-        reminderEnabled: args.reminderEnabled ?? existing.reminderEnabled,
-        reminderHoursBefore: args.reminderHoursBefore ?? existing.reminderHoursBefore,
-        appointmentWorkflowConfig: args.appointmentWorkflowConfig ?? existing.appointmentWorkflowConfig,
-        createdAt: existing.createdAt,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    const settingsId = await ctx.db.insert("orgSettings", {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
-      allowCustomLostReason: args.allowCustomLostReason ?? false,
-      lostReasonRequired: args.lostReasonRequired ?? false,
-      defaultCurrency: args.defaultCurrency,
-      timezone: args.timezone,
-      reminderEnabled: args.reminderEnabled,
-      reminderHoursBefore: args.reminderHoursBefore,
-      appointmentWorkflowConfig: args.appointmentWorkflowConfig,
-      createdAt: now,
-      updatedAt: now,
     });
 
-    // Dual-write: insert new settings
-    await ctx.scheduler.runAfter(0, writeOrgSettingsRef, {
-      orgSettingsId: settingsId as any,
-      organizationId: args.organizationId as any,
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const existing = await db
+      .query("orgSettings")
+      .eq("organizationId", String(args.organizationId))
+      .first();
+
+    if (existing) {
+      const updates: Record<string, unknown> = { updatedAt: now };
+      if (args.allowCustomLostReason !== undefined) updates.allowCustomLostReason = args.allowCustomLostReason;
+      if (args.lostReasonRequired !== undefined) updates.lostReasonRequired = args.lostReasonRequired;
+      if (args.defaultCurrency !== undefined) updates.defaultCurrency = args.defaultCurrency;
+      if (args.timezone !== undefined) updates.timezone = args.timezone;
+      if (args.reminderEnabled !== undefined) updates.reminderEnabled = args.reminderEnabled;
+      if (args.reminderHoursBefore !== undefined) updates.reminderHoursBefore = args.reminderHoursBefore;
+      if (args.appointmentWorkflowConfig !== undefined) updates.appointmentWorkflowConfig = args.appointmentWorkflowConfig;
+
+      await db.patch("orgSettings", existing._id as string, updates);
+      return existing._id as string;
+    }
+
+    const settingsId = await db.insert("orgSettings", {
+      organizationId: String(args.organizationId),
       allowCustomLostReason: args.allowCustomLostReason ?? false,
       lostReasonRequired: args.lostReasonRequired ?? false,
-      defaultCurrency: args.defaultCurrency,
-      timezone: args.timezone,
-      reminderEnabled: args.reminderEnabled,
-      reminderHoursBefore: args.reminderHoursBefore,
-      appointmentWorkflowConfig: args.appointmentWorkflowConfig,
+      defaultCurrency: args.defaultCurrency ?? null,
+      timezone: args.timezone ?? null,
+      reminderEnabled: args.reminderEnabled ?? null,
+      reminderHoursBefore: args.reminderHoursBefore ?? null,
+      appointmentWorkflowConfig: args.appointmentWorkflowConfig ?? null,
       createdAt: now,
       updatedAt: now,
     });

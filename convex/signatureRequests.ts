@@ -1,7 +1,10 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal, api } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
+
+// Dual-write refs removed — Supabase is now primary for signature request writes
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -51,11 +54,9 @@ export const getByToken = query({
     if (request.status !== "pending") return { expired: true };
     if (Date.now() > request.expiresAt) return { expired: true };
 
-    // Load the document instance (read-only data for the signing page)
     const instance = await ctx.db.get(request.instanceId);
     if (!instance) return null;
 
-    // Load organization name
     const org = await ctx.db.get(request.organizationId);
 
     return {
@@ -98,20 +99,16 @@ export const listByInstance = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-/**
- * Send a document for signing. Creates signature requests for each slot,
- * updates instance signatures with signer info, and transitions to pending_signature.
- */
-export const sendForSigning = mutation({
+export const sendForSigning = action({
   args: {
-    instanceId: v.id("documentInstances"),
+    instanceId: v.string(),
     signers: v.array(v.object({
       slotId: v.string(),
       signerType: v.union(v.literal("internal"), v.literal("external")),
-      signerUserId: v.optional(v.id("users")),
+      signerUserId: v.optional(v.string()),
       signerEmail: v.optional(v.string()),
       signerName: v.optional(v.string()),
       signerPhone: v.optional(v.string()),
@@ -123,22 +120,30 @@ export const sendForSigning = mutation({
     })),
   },
   handler: async (ctx, args) => {
-    const instance = await ctx.db.get(args.instanceId);
+    const db = createSupabaseDb();
+    const instance = await db.get("documentInstances", args.instanceId);
     if (!instance) throw new Error("Document not found");
     if (instance.status !== "approved" && instance.status !== "draft") {
       throw new Error("Document must be approved or draft to send for signing");
     }
-    await verifyOrgAccess(ctx, instance.organizationId);
+
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: instance.organizationId as string },
+    );
 
     const now = Date.now();
     const expiresAt = now + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
     const createdTokens: Array<{ slotId: string; token: string; requestId: string }> = [];
 
-    // Update signatures array with signer info
-    const updatedSignatures = [...instance.signatures];
+    let updatedSignatures: any[];
+    if (typeof instance.signatures === "string") {
+      updatedSignatures = JSON.parse(instance.signatures);
+    } else {
+      updatedSignatures = [...(instance.signatures as any[])];
+    }
 
     for (const signer of args.signers) {
-      // Validate signer data
       if (signer.signerType === "external" && !signer.signerEmail) {
         throw new Error(`Email required for external signer on slot ${signer.slotId}`);
       }
@@ -149,40 +154,41 @@ export const sendForSigning = mutation({
         throw new Error(`User ID required for internal signer on slot ${signer.slotId}`);
       }
 
-      // Generate unique token
       const token = generateToken();
 
-      // Resolve signer name for internal users
+      // Resolve internal signer names via side effect
       let signerName = signer.signerName;
       let signerEmail = signer.signerEmail;
       if (signer.signerType === "internal" && signer.signerUserId) {
-        const user = await ctx.db.get(signer.signerUserId);
-        if (user) {
-          signerName = signerName || user.name || "";
-          signerEmail = signerEmail || user.email || "";
+        try {
+          const userData = await ctx.runMutation(internal.signatureRequests._resolveUser, {
+            userId: signer.signerUserId,
+          });
+          signerName = signerName || userData.name || "";
+          signerEmail = signerEmail || userData.email || "";
+        } catch (e) {
+          console.error("[signatureRequests.sendForSigning] User resolution FAILED:", e);
         }
       }
 
-      // Create signature request
-      const requestId = await ctx.db.insert("signatureRequests", {
-        organizationId: instance.organizationId,
+      const requestId = await db.insert("signatureRequests", {
+        organizationId: String(instance.organizationId),
         instanceId: args.instanceId,
         slotId: signer.slotId,
         token,
-        signerEmail,
-        signerName,
-        signerPhone: signer.signerPhone,
-        signerUserId: signer.signerUserId,
+        signerEmail: signerEmail ?? null,
+        signerName: signerName ?? null,
+        signerPhone: signer.signerPhone ?? null,
+        signerUserId: signer.signerUserId ?? null,
         verificationMethod: signer.verificationMethod,
         status: "pending",
         expiresAt,
         createdAt: now,
       });
 
-      createdTokens.push({ slotId: signer.slotId, token, requestId: requestId as string });
+      createdTokens.push({ slotId: signer.slotId, token, requestId });
 
-      // Update the corresponding signature slot, or add a new one
-      const slotIndex = updatedSignatures.findIndex((s) => s.slotId === signer.slotId);
+      const slotIndex = updatedSignatures.findIndex((s: any) => s.slotId === signer.slotId);
       if (slotIndex !== -1) {
         updatedSignatures[slotIndex] = {
           ...updatedSignatures[slotIndex],
@@ -194,7 +200,6 @@ export const sendForSigning = mutation({
           verificationMethod: signer.verificationMethod,
         };
       } else {
-        // Dynamically-added signer — create a new signature slot
         updatedSignatures.push({
           slotId: signer.slotId,
           slotLabel: signerName || signerEmail || "Sygnatariusz",
@@ -209,141 +214,195 @@ export const sendForSigning = mutation({
     }
 
     // Update instance
-    await ctx.db.patch(args.instanceId, {
-      signatures: updatedSignatures,
+    await db.patch("documentInstances", args.instanceId, {
+      signatures: JSON.stringify(updatedSignatures),
       status: "pending_signature",
       updatedAt: now,
     });
 
-    // Schedule email notifications for each signer
-    const org = await ctx.db.get(instance.organizationId);
-    const orgName = org?.name ?? "Organizacja";
-
-    for (const ct of createdTokens) {
-      const sig = updatedSignatures.find((s) => s.slotId === ct.slotId);
-      if (sig?.signerEmail) {
-        await ctx.scheduler.runAfter(0, api.signingEmails.sendSigningRequestEmail, {
-          signerName: sig.signerName ?? sig.signerEmail,
-          signerEmail: sig.signerEmail,
-          documentTitle: instance.title,
-          organizationName: orgName,
-          token: ct.token,
-          expiresAt: expiresAt,
-        });
-      }
+    // Schedule email notifications via side effects
+    try {
+      await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
+        organizationId: instance.organizationId as string,
+        instanceTitle: instance.title as string,
+        createdTokens: JSON.stringify(createdTokens),
+        signatures: JSON.stringify(updatedSignatures),
+        expiresAt,
+      });
+    } catch (e) {
+      console.error("[signatureRequests.sendForSigning] Email side effects FAILED:", e);
     }
 
     return createdTokens;
   },
 });
 
-/**
- * Sign a document externally via token (no auth required).
- * For click verification: just provide signatureData.
- * For SMS/email OTP: must verify OTP first, then sign.
- */
-export const signExternal = mutation({
+export const _resolveUser = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId as any);
+    return {
+      name: user?.name ?? "",
+      email: user?.email ?? "",
+    };
+  },
+});
+
+export const _sendSigningEmails = internalMutation({
   args: {
-    token: v.string(),
-    signatureData: v.string(), // "acknowledged" or base64 PNG
+    organizationId: v.string(),
+    instanceTitle: v.string(),
+    createdTokens: v.string(),
+    signatures: v.string(),
+    expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const request = await ctx.db
-      .query("signatureRequests")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
+    const org = await ctx.db.get(args.organizationId as any);
+    const orgName = org?.name ?? "Organizacja";
+    const tokens = JSON.parse(args.createdTokens) as Array<{ slotId: string; token: string; requestId: string }>;
+    const sigs = JSON.parse(args.signatures) as any[];
+
+    for (const ct of tokens) {
+      const sig = sigs.find((s: any) => s.slotId === ct.slotId);
+      if (sig?.signerEmail) {
+        await ctx.scheduler.runAfter(0, api.signingEmails.sendSigningRequestEmail, {
+          signerName: sig.signerName ?? sig.signerEmail,
+          signerEmail: sig.signerEmail,
+          documentTitle: args.instanceTitle,
+          organizationName: orgName,
+          token: ct.token,
+          expiresAt: args.expiresAt,
+        });
+      }
+    }
+  },
+});
+
+export const signExternal = action({
+  args: {
+    token: v.string(),
+    signatureData: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+
+    const request = await db.query("signatureRequests")
+      .eq("token", args.token)
+      .first();
 
     if (!request) throw new Error("Invalid signing link");
     if (request.status !== "pending") throw new Error("This signing request has already been used");
-    if (Date.now() > request.expiresAt) throw new Error("This signing link has expired");
+    if (Date.now() > (request.expiresAt as number)) throw new Error("This signing link has expired");
 
-    // For SMS/email_otp verification, OTP must be verified first
     if (request.verificationMethod === "sms" || request.verificationMethod === "email_otp") {
       if (!request.otpHash) throw new Error("OTP verification required before signing");
-      // Check that OTP was verified (we set otpAttempts to -1 on successful verification)
       if (request.otpAttempts !== -1) throw new Error("OTP not yet verified");
     }
 
     const now = Date.now();
 
     // Mark request as signed
-    await ctx.db.patch(request._id, {
+    await db.patch("signatureRequests", request._id as string, {
       status: "signed",
       signedAt: now,
     });
 
-    // Update the document instance signature
-    const instance = await ctx.db.get(request.instanceId);
+    // Update document instance signature
+    const instance = await db.get("documentInstances", request.instanceId as string);
     if (!instance) throw new Error("Document not found");
 
-    const signatures = [...instance.signatures];
-    const slotIndex = signatures.findIndex((s) => s.slotId === request.slotId);
+    let signatures: any[];
+    if (typeof instance.signatures === "string") {
+      signatures = JSON.parse(instance.signatures);
+    } else {
+      signatures = [...(instance.signatures as any[])];
+    }
+
+    const slotIndex = signatures.findIndex((s: any) => s.slotId === request.slotId);
     if (slotIndex === -1) throw new Error("Signature slot not found");
 
     signatures[slotIndex] = {
       ...signatures[slotIndex],
       signatureData: args.signatureData,
-      signedByName: request.signerName ?? "",
+      signedByName: (request.signerName as string) ?? "",
       signedAt: now,
     };
 
-    // Check if all slots are signed
-    const allSigned = signatures.every((s) => s.signatureData);
+    const allSigned = signatures.every((s: any) => s.signatureData);
 
-    await ctx.db.patch(instance._id, {
-      signatures,
+    await db.patch("documentInstances", request.instanceId as string, {
+      signatures: JSON.stringify(signatures),
       status: allSigned ? "signed" : "pending_signature",
       updatedAt: now,
     });
 
-    // Notify document author
-    const author = await ctx.db.get(instance.createdBy);
-    if (author?.email) {
-      await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
-        authorEmail: author.email,
-        authorName: author.name ?? author.email,
-        documentTitle: instance.title,
-        signerName: request.signerName ?? request.signerEmail ?? "Sygnatariusz",
-        slotLabel: signatures[slotIndex].slotLabel,
+    // Notify document author via side effects
+    try {
+      await ctx.runMutation(internal.signatureRequests._notifyAuthor, {
+        instanceId: request.instanceId as string,
+        signerName: (request.signerName as string) ?? (request.signerEmail as string) ?? "Sygnatariusz",
+        slotLabel: signatures[slotIndex].slotLabel ?? "",
         allSigned,
       });
+    } catch (e) {
+      console.error("[signatureRequests.signExternal] Author notification FAILED:", e);
     }
 
     return { success: true, allSigned };
   },
 });
 
-/**
- * Request an OTP code to be sent. Returns the plain code for the action layer
- * to send via SMS/email. Stores hash in the request.
- */
-export const createOtp = mutation({
+export const _notifyAuthor = internalMutation({
+  args: {
+    instanceId: v.string(),
+    signerName: v.string(),
+    slotLabel: v.string(),
+    allSigned: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const instance = await ctx.db.get(args.instanceId as any);
+    if (!instance) return;
+
+    const author = await ctx.db.get(instance.createdBy);
+    if (author?.email) {
+      await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
+        authorEmail: author.email,
+        authorName: author.name ?? author.email,
+        documentTitle: instance.title,
+        signerName: args.signerName,
+        slotLabel: args.slotLabel,
+        allSigned: args.allSigned,
+      });
+    }
+  },
+});
+
+export const createOtp = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const request = await ctx.db
-      .query("signatureRequests")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
+    const db = createSupabaseDb();
+
+    const request = await db.query("signatureRequests")
+      .eq("token", args.token)
+      .first();
 
     if (!request) throw new Error("Invalid signing link");
     if (request.status !== "pending") throw new Error("Request already used");
-    if (Date.now() > request.expiresAt) throw new Error("Link expired");
+    if (Date.now() > (request.expiresAt as number)) throw new Error("Link expired");
 
-    // Rate limit: don't allow new OTP if one was sent less than 60 seconds ago
-    if (request.otpSentAt && Date.now() - request.otpSentAt < 60_000) {
+    if (request.otpSentAt && Date.now() - (request.otpSentAt as number) < 60_000) {
       throw new Error("Please wait before requesting a new code");
     }
 
     const code = generateOtpCode();
     const otpHash = await hashString(code);
 
-    await ctx.db.patch(request._id, {
+    await db.patch("signatureRequests", request._id as string, {
       otpHash,
       otpSentAt: Date.now(),
       otpAttempts: 0,
     });
 
-    // Return code + delivery info so the action layer can send it
     return {
       code,
       verificationMethod: request.verificationMethod,
@@ -354,72 +413,73 @@ export const createOtp = mutation({
   },
 });
 
-/** Verify an OTP code. */
-export const verifyOtp = mutation({
+export const verifyOtp = action({
   args: {
     token: v.string(),
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const request = await ctx.db
-      .query("signatureRequests")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
+    const db = createSupabaseDb();
+
+    const request = await db.query("signatureRequests")
+      .eq("token", args.token)
+      .first();
 
     if (!request) throw new Error("Invalid signing link");
     if (request.status !== "pending") throw new Error("Request already used");
     if (!request.otpHash || !request.otpSentAt) throw new Error("No OTP was sent");
 
-    // Check expiry
-    if (Date.now() - request.otpSentAt > OTP_EXPIRY_MS) {
+    if (Date.now() - (request.otpSentAt as number) > OTP_EXPIRY_MS) {
       throw new Error("Code expired. Please request a new one.");
     }
 
-    // Check attempts
-    const attempts = request.otpAttempts ?? 0;
+    const attempts = (request.otpAttempts as number) ?? 0;
     if (attempts >= MAX_OTP_ATTEMPTS) {
       throw new Error("Too many attempts. Please request a new code.");
     }
 
-    // Verify hash
     const inputHash = await hashString(args.code);
     if (inputHash !== request.otpHash) {
-      await ctx.db.patch(request._id, { otpAttempts: attempts + 1 });
+      await db.patch("signatureRequests", request._id as string, { otpAttempts: attempts + 1 });
       throw new Error("Invalid code. Please try again.");
     }
 
     // Mark as verified (otpAttempts = -1 signals verified)
-    await ctx.db.patch(request._id, { otpAttempts: -1 });
+    await db.patch("signatureRequests", request._id as string, { otpAttempts: -1 });
 
     return { verified: true };
   },
 });
 
-/** Resend signing request (generate new token, expire old one). */
-export const resend = mutation({
-  args: { requestId: v.id("signatureRequests") },
+export const resend = action({
+  args: { requestId: v.string() },
   handler: async (ctx, args) => {
-    const request = await ctx.db.get(args.requestId);
+    const db = createSupabaseDb();
+    const request = await db.get("signatureRequests", args.requestId);
     if (!request) throw new Error("Request not found");
-    await verifyOrgAccess(ctx, request.organizationId);
+
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: request.organizationId as string },
+    );
 
     const now = Date.now();
     const expiresAt = now + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
     // Expire old request
-    await ctx.db.patch(request._id, { status: "expired" });
+    await db.patch("signatureRequests", args.requestId, { status: "expired" });
 
     // Create new one
     const token = generateToken();
-    const newId = await ctx.db.insert("signatureRequests", {
-      organizationId: request.organizationId,
-      instanceId: request.instanceId,
+    const newId = await db.insert("signatureRequests", {
+      organizationId: String(request.organizationId),
+      instanceId: String(request.instanceId),
       slotId: request.slotId,
       token,
-      signerEmail: request.signerEmail,
-      signerName: request.signerName,
-      signerPhone: request.signerPhone,
-      signerUserId: request.signerUserId,
+      signerEmail: request.signerEmail ?? null,
+      signerName: request.signerName ?? null,
+      signerPhone: request.signerPhone ?? null,
+      signerUserId: request.signerUserId ?? null,
       verificationMethod: request.verificationMethod,
       status: "pending",
       expiresAt,

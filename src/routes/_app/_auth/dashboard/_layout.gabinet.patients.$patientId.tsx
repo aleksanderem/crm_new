@@ -52,7 +52,7 @@ function PatientDetail() {
   const updatePatient = useAction(api.gabinet.patients.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const trackView = useAction(api.recentlyViewed.track);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);

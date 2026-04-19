@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { useQuery as useTanstackQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -74,9 +74,9 @@ export function GoogleCalendarSyncSettings({
     convexQuery(api.app.getCurrentUser, {})
   );
 
-  const createConfig = useMutation(api.googleCalendarSyncConfigs.create);
-  const updateConfig = useMutation(api.googleCalendarSyncConfigs.update);
-  const removeConfig = useMutation(api.googleCalendarSyncConfigs.remove);
+  const createConfig = useAction(api.googleCalendarSyncConfigs.create);
+  const updateConfig = useAction(api.googleCalendarSyncConfigs.update);
+  const removeConfig = useAction(api.googleCalendarSyncConfigs.remove);
   const syncMy = useAction(api.google.calendarSync.syncMyCalendars);
   const listCalendars = useAction(api.google.calendar.listUserCalendars);
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -38,7 +38,7 @@ export function PackagePurchaseDrawer({
 }: PackagePurchaseDrawerProps) {
   const { t } = useTranslation();
   const purchasePackage = useAction(api.gabinet.packages.purchasePackage);
-  const createPayment = useMutation(api.payments.create);
+  const createPayment = useAction(api.payments.create);
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");

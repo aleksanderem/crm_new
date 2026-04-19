@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrganization, useSupabaseOrgSettings, useSupabaseOrgUsageStats } from "@/hooks/use-supabase-organizations";
@@ -73,8 +73,8 @@ function OrganizationSettings() {
   const { data: settings } = useSupabaseOrgSettings(organizationId);
   const { data: usage } = useSupabaseOrgUsageStats(organizationId);
 
-  const updateOrg = useMutation(api.organizations.update);
-  const upsertSettings = useMutation(api.orgSettings.upsert);
+  const updateOrg = useAction(api.organizations.update);
+  const upsertSettings = useAction(api.orgSettings.upsert);
 
   const [orgName, setOrgName] = useState("");
   const [website, setWebsite] = useState("");

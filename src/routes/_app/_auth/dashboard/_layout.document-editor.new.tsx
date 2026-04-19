@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -69,7 +69,7 @@ function NewDocumentEditorPage() {
     signerRole: "client" as SignerRole,
   });
 
-  const createTemplate = useMutation(api.documents.templates.create);
+  const createTemplate = useAction(api.documents.templates.create);
 
   const handleSave = async () => {
     if (!settings.name.trim()) {

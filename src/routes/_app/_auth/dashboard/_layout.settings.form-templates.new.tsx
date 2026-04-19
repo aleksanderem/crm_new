@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -109,7 +109,7 @@ function NewFormTemplatePage() {
   const [signerRole, setSignerRole] = useState<SignerRole>("client");
   const [contentJson, setContentJson] = useState("{}");
 
-  const createTemplate = useMutation(api.documents.templates.create);
+  const createTemplate = useAction(api.documents.templates.create);
 
   const toggleModule = (mod: Module) => {
     setModules((prev) =>

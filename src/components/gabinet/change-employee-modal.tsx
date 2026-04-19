@@ -165,15 +165,24 @@ export function ChangeEmployeeModal({
       });
   }, [employeesList, currentEmployeeId, treatmentId]);
 
-  // For the selected employee, check availability at current slot
+  // For the selected employee, check availability at current slot (action → Supabase)
+  const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const { data: availabilityCheck, isLoading: isCheckingAvailability } =
     useQuery({
-      ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
+      queryKey: [
+        "gabinet.availableSlots",
         organizationId,
-        userId: selectedId!,
-        date: appointmentDate,
-        duration: durationMinutes,
-      }),
+        selectedId,
+        appointmentDate,
+        durationMinutes,
+      ],
+      queryFn: () =>
+        getAvailableSlots({
+          organizationId,
+          userId: selectedId!,
+          date: appointmentDate,
+          duration: durationMinutes,
+        }),
       enabled: !!selectedId,
     });
 
@@ -189,13 +198,22 @@ export function ChangeEmployeeModal({
   // Find next available slot if current is not available
   const shouldSearchSlot =
     !!selectedId && !isCheckingAvailability && !isSlotAvailable;
+  const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
   const { data: nextSlot, isLoading: isSearchingSlot } = useQuery({
-    ...convexQuery(api.gabinet.scheduling.findNextAvailableSlot, {
+    queryKey: [
+      "gabinet.findNextAvailableSlot",
       organizationId,
-      employeeId: selectedId!,
+      selectedId,
       durationMinutes,
-      fromDate: appointmentDate,
-    }),
+      appointmentDate,
+    ],
+    queryFn: () =>
+      findNextSlotAction({
+        organizationId,
+        employeeId: selectedId!,
+        durationMinutes,
+        fromDate: appointmentDate,
+      }),
     enabled: shouldSearchSlot,
   });
 

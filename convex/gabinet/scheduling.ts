@@ -6,7 +6,6 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
-import { getAvailableSlots } from "./_availability";
 
 // Dual-write refs removed — Supabase is now primary for scheduling writes
 
@@ -611,16 +610,21 @@ export const removeEmployeeSchedule = action({
 
 // --- Find Next Available Slot ---
 
-export const findNextAvailableSlot = query({
+export const findNextAvailableSlot = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("users"),
+    employeeId: v.string(),
     durationMinutes: v.number(),
     fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
     maxDaysToSearch: v.optional(v.number()), // defaults to 30
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const { getAvailableSlotsSupabase } = await import("./_availability_supabase");
 
     const maxDays = args.maxDaysToSearch ?? 30;
 
@@ -637,8 +641,8 @@ export const findNextAvailableSlot = query({
       checkDate.setDate(startDate.getDate() + dayOffset);
       const dateStr = toDateStr(checkDate);
 
-      const slots = await getAvailableSlots(ctx, {
-        organizationId: args.organizationId,
+      const slots = await getAvailableSlotsSupabase(db, {
+        organizationId: String(args.organizationId),
         userId: args.employeeId,
         date: dateStr,
         duration: args.durationMinutes,

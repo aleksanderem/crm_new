@@ -71,13 +71,22 @@ function PatientBooking() {
     selectedDate &&
     selectedTreatment
   );
+  const getPublicSlots = useAction(api.gabinet.patientPortal.getPublicAvailableSlots);
   const { data: slots } = useQuery({
-    ...convexQuery(api.gabinet.patientPortal.getPublicAvailableSlots, {
+    queryKey: [
+      "gabinet.publicAvailableSlots",
       tokenHash,
-      employeeId: selectedEmployee?.userId ?? ("" as Id<"users">),
-      date: dateStr || "1970-01-01",
-      duration: selectedTreatment?.duration ?? 0,
-    }),
+      selectedEmployee?.userId,
+      dateStr,
+      selectedTreatment?.duration,
+    ],
+    queryFn: () =>
+      getPublicSlots({
+        tokenHash,
+        employeeId: (selectedEmployee?.userId as string) ?? "",
+        date: dateStr || "1970-01-01",
+        duration: selectedTreatment?.duration ?? 0,
+      }),
     enabled: slotsEnabled,
   });
 

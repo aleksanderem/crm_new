@@ -164,6 +164,7 @@ export function AppointmentForm({
   const isCrmSearching = contactsLoading || isDebouncing;
 
   const createPatientFromContact = useAction(api.gabinet.patients.create);
+  const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
 
   // Locations query
   const { data: locations } = useQuery(
@@ -255,15 +256,24 @@ export function AppointmentForm({
     }
   }, [qualifiedEmployees, employeeId]);
 
-  // Available slots query — runs only when employee + date + treatment are selected
+  // Available slots — backend is now an action reading from Supabase
+  const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const { data: availableSlots, isLoading: slotsLoading } = useQuery({
-    ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
-      organizationId: organizationId!,
-      userId: employeeId as Id<"users">,
-      date: dateStr,
-      duration: selectedTreatment?.duration ?? 30,
-    }),
-    enabled: !!employeeId && !!dateStr && !!selectedTreatment,
+    queryKey: [
+      "gabinet.availableSlots",
+      organizationId,
+      employeeId,
+      dateStr,
+      selectedTreatment?.duration ?? 30,
+    ],
+    queryFn: () =>
+      getAvailableSlots({
+        organizationId: organizationId!,
+        userId: employeeId as string,
+        date: dateStr,
+        duration: selectedTreatment?.duration ?? 30,
+      }),
+    enabled: !!employeeId && !!dateStr && !!selectedTreatment && !!organizationId,
   });
 
   const locale = i18n.resolvedLanguage === "pl" ? pl : undefined;
@@ -275,9 +285,9 @@ export function AppointmentForm({
       const fromDate = date
         ? format(date, "yyyy-MM-dd")
         : new Date().toISOString().split("T")[0];
-      const result = await convex.query(api.gabinet.scheduling.findNextAvailableSlot, {
+      const result = await findNextSlotAction({
         organizationId,
-        employeeId: employeeId as Id<"users">,
+        employeeId: employeeId as string,
         durationMinutes: selectedTreatment.duration,
         fromDate,
       });

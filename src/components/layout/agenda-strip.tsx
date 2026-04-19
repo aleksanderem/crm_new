@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import { useSupabaseUpcomingEvents } from "@/hooks/use-supabase-scheduled-activities";
 import {
   ChevronUp,
   ChevronDown,
@@ -54,10 +53,7 @@ const AUTOPLAY_INTERVAL = 30_000;
 export function AgendaStrip({ organizationId, userId }: AgendaStripProps) {
   const navigate = useNavigate();
   const { openActivityDetail } = useSidebarActions();
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen
-  const events = useQuery(api.sidebarWidgets.getUpcomingEvents, {
-    organizationId,
-    userId,
+  const { data: events } = useSupabaseUpcomingEvents(organizationId, userId, {
     onlyMine: true,
     limit: 20,
   });

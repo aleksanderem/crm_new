@@ -242,18 +242,28 @@ export const getQualifiedEmployees = query({
 });
 
 /** Get available time slots for portal booking. */
-export const getPublicAvailableSlots = query({
+export const getPublicAvailableSlots = action({
   args: {
     tokenHash: v.string(),
-    employeeId: v.id("users"),
+    employeeId: v.string(),
     date: v.string(),
     duration: v.number(),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await validatePortalSession(ctx, args.tokenHash);
+    const db = createSupabaseDb();
 
-    const { getAvailableSlots } = await import("./_availability");
-    return await getAvailableSlots(ctx, {
+    // Validate portal session (read-only — via Supabase)
+    const session = await db
+      .query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
+      throw new Error("Invalid or expired session");
+    }
+    const organizationId = String(session.organizationId);
+
+    const { getAvailableSlotsSupabase } = await import("./_availability_supabase");
+    return await getAvailableSlotsSupabase(db, {
       organizationId,
       userId: args.employeeId,
       date: args.date,
@@ -321,17 +331,18 @@ export const bookFromPortal = action({
         },
       );
 
+      const {
+        getAvailableSlotsSupabase: _slotsFn,
+      } = await import("./_availability_supabase");
+
       let foundEmployee: string | null = null;
       for (const emp of qualifiedEmployees) {
-        const slots = await ctx.runQuery(
-          internal.gabinet.appointments._getAvailableSlotsQuery,
-          {
-            organizationId,
-            userId: String(emp.userId),
-            date: args.preferredDate,
-            duration: treatment.duration as number,
-          },
-        ) as Array<{ start: string; end: string }>;
+        const slots = await _slotsFn(db, {
+          organizationId: String(organizationId),
+          userId: String(emp.userId),
+          date: args.preferredDate,
+          duration: treatment.duration as number,
+        });
         if (slots.some((s) => s.start === args.preferredTime)) {
           foundEmployee = String(emp.userId);
           break;
@@ -344,15 +355,16 @@ export const bookFromPortal = action({
       employeeId = foundEmployee;
     }
 
-    // Verify qualification via internalQuery
-    const qualification = await ctx.runQuery(
-      internal.gabinet.appointments._checkQualificationQuery,
-      {
-        organizationId,
-        userId: employeeId,
-        treatmentId: args.treatmentId,
-      },
-    ) as { qualified: boolean; reason?: string };
+    // Verify qualification via Supabase
+    const {
+      checkEmployeeQualificationSupabase,
+      checkConflictSupabase,
+    } = await import("./_availability_supabase");
+    const qualification = await checkEmployeeQualificationSupabase(db, {
+      organizationId: String(organizationId),
+      userId: employeeId,
+      treatmentId: args.treatmentId,
+    });
     if (!qualification.qualified) {
       throw new Error(qualification.reason ?? "Employee not qualified");
     }
@@ -362,17 +374,14 @@ export const bookFromPortal = action({
     const endMinutes = h * 60 + m + (treatment.duration as number);
     const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
 
-    // Check conflict via internalQuery
-    const conflict = await ctx.runQuery(
-      internal.gabinet.appointments._checkConflictQuery,
-      {
-        organizationId,
-        userId: employeeId,
-        date: args.preferredDate,
-        startTime: args.preferredTime,
-        endTime,
-      },
-    ) as { hasConflict: boolean; reason?: string };
+    // Check conflict via Supabase
+    const conflict = await checkConflictSupabase(db, {
+      organizationId: String(organizationId),
+      userId: employeeId,
+      date: args.preferredDate,
+      startTime: args.preferredTime,
+      endTime,
+    });
     if (conflict.hasConflict) {
       throw new Error(conflict.reason ?? "Time slot is no longer available");
     }

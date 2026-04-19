@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import {
+  useSupabaseUpcomingEvents,
+  type UpcomingEvent,
+} from "@/hooks/use-supabase-scheduled-activities";
 import { cn } from "@/utils/misc";
 import { CalendarCheck, Phone, Mail, Users } from "lucide-react";
 import { ChevronDown } from "@/lib/ez-icons";
@@ -53,7 +55,7 @@ function getDayLabel(
 
 interface GroupedEvents {
   label: string;
-  events: NonNullable<ReturnType<typeof useQuery<typeof api.sidebarWidgets.getUpcomingEvents>>>;
+  events: UpcomingEvent[];
 }
 
 export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
@@ -75,11 +77,11 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
     tomorrow: t("sidebar.agendaTomorrow", "Tomorrow"),
   };
 
-  const events = useQuery(api.sidebarWidgets.getUpcomingEvents, {
+  const { data: events } = useSupabaseUpcomingEvents(
     organizationId,
     userId,
-    onlyMine: tab === "mine",
-  });
+    { onlyMine: tab === "mine" },
+  );
 
   const grouped = useMemo(() => {
     if (!events?.length) return [];

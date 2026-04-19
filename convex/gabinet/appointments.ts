@@ -1,6 +1,12 @@
 import { query, action, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import {
+  checkConflictSupabase,
+  checkEmployeeQualificationSupabase,
+  getAvailableSlotsSupabase,
+  resolveAppointmentLocationSupabase,
+} from "./_availability_supabase";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
@@ -578,45 +584,59 @@ export const listPatientsWithStatsForEmployee = query({
   },
 });
 
-export const getAvailableSlotsQuery = query({
+export const getAvailableSlotsQuery = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.string(),
     date: v.string(),
     duration: v.number(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
-    );
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    return await getAvailableSlots(ctx, args);
+    const db = createSupabaseDb();
+    return await getAvailableSlotsSupabase(db, {
+      organizationId: String(args.organizationId),
+      userId: args.userId,
+      date: args.date,
+      duration: args.duration,
+      locationId: args.locationId,
+    });
   },
 });
 
-export const checkQualification = query({
+export const checkQualification = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
-    treatmentId: v.id("gabinetTreatments"),
+    userId: v.string(),
+    treatmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
-    );
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    return await checkEmployeeQualification(ctx, args);
+    const db = createSupabaseDb();
+    return await checkEmployeeQualificationSupabase(db, {
+      organizationId: String(args.organizationId),
+      userId: args.userId,
+      treatmentId: args.treatmentId,
+    });
   },
 });
 
@@ -952,33 +972,27 @@ export const create = action({
     const shouldSendReminder =
       args.sendReminder ?? (orgSettings as any)?.reminderEnabled ?? false;
 
-    // --- Employee qualification check ---
-    const qualification = await ctx.runQuery(
-      internal.gabinet.appointments._checkQualificationQuery,
-      {
-        organizationId: args.organizationId,
-        userId: args.employeeId as Id<"users">,
-        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
-      },
-    );
-    if (!(qualification as any).qualified) {
-      throw new Error((qualification as any).reason ?? "Employee not qualified");
+    // --- Employee qualification check (Supabase-primary) ---
+    const qualification = await checkEmployeeQualificationSupabase(db, {
+      organizationId: String(args.organizationId),
+      userId: args.employeeId,
+      treatmentId: args.treatmentId,
+    });
+    if (!qualification.qualified) {
+      throw new Error(qualification.reason ?? "Employee not qualified");
     }
 
-    // --- Conflict check ---
-    const conflict = await ctx.runQuery(
-      internal.gabinet.appointments._checkConflictQuery,
-      {
-        organizationId: args.organizationId,
-        userId: args.employeeId as Id<"users">,
-        date: args.date,
-        startTime: args.startTime,
-        endTime: args.endTime,
-        roomId: args.roomId ? args.roomId as Id<"gabinetRooms"> : undefined,
-      },
-    );
-    if ((conflict as any).hasConflict) {
-      throw new Error((conflict as any).reason ?? "Time slot conflict");
+    // --- Conflict check (Supabase-primary) ---
+    const conflict = await checkConflictSupabase(db, {
+      organizationId: String(args.organizationId),
+      userId: args.employeeId,
+      date: args.date,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      roomId: args.roomId ?? undefined,
+    });
+    if (conflict.hasConflict) {
+      throw new Error(conflict.reason ?? "Time slot conflict");
     }
 
     // --- Resolve treatment + patient from Supabase ---
@@ -1002,17 +1016,14 @@ export const create = action({
       ) as string | null;
     }
 
-    // --- Resolve location ---
+    // --- Resolve location (Supabase-primary) ---
     let resolvedLocationId = args.locationId ?? null;
     if (!resolvedLocationId) {
-      resolvedLocationId = await ctx.runQuery(
-        internal.gabinet.appointments._resolveLocationQuery,
-        {
-          organizationId: args.organizationId,
-          userId: args.employeeId as Id<"users">,
-          date: args.date,
-        },
-      ) as string | null;
+      resolvedLocationId = await resolveAppointmentLocationSupabase(db, {
+        organizationId: String(args.organizationId),
+        userId: args.employeeId,
+        date: args.date,
+      });
     }
 
     const patientName = patient
@@ -1246,20 +1257,17 @@ export const update = action({
     const newEmployee = args.employeeId ?? (appt.employeeId as string);
 
     if (args.date || args.startTime || args.endTime || args.employeeId) {
-      const conflict = await ctx.runQuery(
-        internal.gabinet.appointments._checkConflictWithExcludeQuery,
-        {
-          organizationId: args.organizationId,
-          userId: newEmployee,
-          date: newDate,
-          startTime: newStart,
-          endTime: newEnd,
-          excludeAppointmentId: args.appointmentId,
-          roomId: args.roomId ?? (appt.roomId as string | undefined),
-        },
-      );
-      if ((conflict as any).hasConflict) {
-        throw new Error((conflict as any).reason ?? "Time slot conflict");
+      const conflict = await checkConflictSupabase(db, {
+        organizationId: String(args.organizationId),
+        userId: newEmployee,
+        date: newDate,
+        startTime: newStart,
+        endTime: newEnd,
+        excludeAppointmentId: args.appointmentId,
+        roomId: args.roomId ?? (appt.roomId as string | undefined),
+      });
+      if (conflict.hasConflict) {
+        throw new Error(conflict.reason ?? "Time slot conflict");
       }
     }
 

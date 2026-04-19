@@ -112,6 +112,7 @@ export function AppointmentDialog({
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
   const createAppointment = useAction(api.gabinet.appointments.create);
+  const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
   const convex = useConvex();
 
   // -------------------------------------------------------------------------
@@ -259,14 +260,23 @@ export function AppointmentDialog({
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : "";
 
-  // Available slots query
+  // Available slots — action reading from Supabase
+  const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const { data: availableSlots, isLoading: slotsLoading } = useQuery({
-    ...convexQuery(api.gabinet.appointments.getAvailableSlotsQuery, {
+    queryKey: [
+      "gabinet.availableSlots",
       organizationId,
-      userId: employeeId as Id<"users">,
-      date: dateStr,
-      duration: selectedTreatment?.duration ?? 30,
-    }),
+      employeeId,
+      dateStr,
+      selectedTreatment?.duration ?? 30,
+    ],
+    queryFn: () =>
+      getAvailableSlots({
+        organizationId,
+        userId: employeeId as string,
+        date: dateStr,
+        duration: selectedTreatment?.duration ?? 30,
+      }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment,
   });
 
@@ -363,16 +373,13 @@ export function AppointmentDialog({
     if (!employeeId || !selectedTreatment) return;
     setSearchingSlot(true);
     try {
-      const result = await convex.query(
-        api.gabinet.scheduling.findNextAvailableSlot,
-        {
-          organizationId,
-          employeeId: employeeId as Id<"users">,
-          durationMinutes: selectedTreatment.duration,
-          fromDate:
-            dateStr || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
-        },
-      );
+      const result = await findNextSlotAction({
+        organizationId,
+        employeeId: employeeId as string,
+        durationMinutes: selectedTreatment.duration,
+        fromDate:
+          dateStr || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
+      });
       if (result) {
         const d = new Date(result.date + "T00:00:00");
         setSelectedDate(d);

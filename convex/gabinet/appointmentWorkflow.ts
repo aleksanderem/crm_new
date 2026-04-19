@@ -161,7 +161,7 @@ export const getWorkflowConfigInternal = internalQuery({
 export const dispatchAppointmentCreated = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     patientId: v.id("gabinetPatients"),
     treatmentId: v.id("gabinetTreatments"),
     employeeId: v.id("users"),

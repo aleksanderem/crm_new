@@ -751,11 +751,11 @@ export const _createSideEffects = internalMutation({
       ownerId: args.createdBy,
       description: args.notes,
       linkedEntityType: "gabinetAppointment",
-      linkedEntityId: args.appointmentId as Id<"gabinetAppointments">,
+      linkedEntityId: args.appointmentId,
       moduleRef: {
         moduleId: "gabinet",
         entityType: "gabinetAppointment",
-        entityId: args.appointmentId as Id<"gabinetAppointments">,
+        entityId: args.appointmentId,
       },
       resourceId: args.employeeId,
       createdBy: args.createdBy,
@@ -795,7 +795,7 @@ export const _createSideEffects = internalMutation({
     // --- 3. Auto-generate appointment documents ---
     await autoGenerateAppointmentDocuments(ctx, {
       organizationId: args.organizationId,
-      appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+      appointmentId: args.appointmentId,
       treatmentId: args.treatmentId,
       patientId: args.patientId,
       createdBy: args.createdBy,
@@ -819,11 +819,11 @@ export const _createSideEffects = internalMutation({
         ownerId: args.createdBy,
         description: args.notes,
         linkedEntityType: "gabinetAppointment",
-        linkedEntityId: recur.appointmentId as Id<"gabinetAppointments">,
+        linkedEntityId: recur.appointmentId,
         moduleRef: {
           moduleId: "gabinet",
           entityType: "gabinetAppointment",
-          entityId: recur.appointmentId as Id<"gabinetAppointments">,
+          entityId: recur.appointmentId,
         },
         resourceId: args.employeeId,
         createdBy: args.createdBy,
@@ -838,32 +838,46 @@ export const _createSideEffects = internalMutation({
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
-      entityId: args.appointmentId as Id<"gabinetAppointments">,
+      entityId: args.appointmentId,
       action: "created",
       description: `Created appointment for ${args.date} at ${args.startTime}`,
       performedBy: args.createdBy,
     });
 
-    // --- 6. Schedule reminders ---
+    // --- 6. Schedule reminders (inline — avoid DB read since appointment is in Supabase) ---
     if (args.sendReminder) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.gabinet.appointmentReminders.scheduleReminderInternal,
-        {
-          organizationId: args.organizationId,
-          appointmentId: args.appointmentId as Id<"gabinetAppointments">,
-        },
-      );
+      try {
+        const orgSettings = await ctx.db
+          .query("orgSettings")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .unique();
+        const reminderHours = (orgSettings as any)?.reminderHoursBefore ?? 24;
 
-      for (const recur of recurringAppointments) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.gabinet.appointmentReminders.scheduleReminderInternal,
-          {
+        const scheduleReminderFor = async (apptId: string, apptDate: string) => {
+          const appointmentMs = new Date(`${apptDate}T${args.startTime}:00`).getTime();
+          const reminderMs = appointmentMs - reminderHours * 60 * 60 * 1000;
+          if (reminderMs <= Date.now()) return;
+          const reminderId = await ctx.db.insert("appointmentReminders", {
             organizationId: args.organizationId,
-            appointmentId: recur.appointmentId as Id<"gabinetAppointments">,
-          },
-        );
+            appointmentId: apptId as any,
+            type: "notification",
+            scheduledFor: reminderMs,
+            status: "pending",
+            createdAt: now,
+          });
+          await ctx.scheduler.runAfter(
+            reminderMs - Date.now(),
+            internal.gabinet.appointmentReminders.sendReminder,
+            { reminderId },
+          );
+        };
+
+        await scheduleReminderFor(args.appointmentId, args.date);
+        for (const recur of recurringAppointments) {
+          await scheduleReminderFor(recur.appointmentId, recur.date);
+        }
+      } catch (e) {
+        console.warn("Reminder scheduling failed (non-fatal):", e);
       }
     }
 
@@ -1029,11 +1043,13 @@ export const create = action({
       updatedAt: now,
     };
 
+    console.info("[create] inserting appointment to Supabase...");
     const firstId = await db.insert("gabinetAppointments", {
       ...baseRow,
       date: args.date,
       recurringIndex: isRecurring ? 0 : null,
     });
+    console.info("[create] appointment inserted:", firstId);
 
     // --- INSERT recurring appointments to Supabase ---
     const recurringAppointments: Array<{ appointmentId: string; date: string; recurringIndex: number }> = [];
@@ -1054,47 +1070,50 @@ export const create = action({
     }
 
     // --- Delegate Convex-only side effects ---
-    const sideEffectResult = await ctx.runMutation(
-      internal.gabinet.appointments._createSideEffects,
-      {
-        appointmentId: firstId,
-        organizationId: args.organizationId,
-        patientId: args.patientId as Id<"gabinetPatients">,
-        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
-        employeeId: args.employeeId as Id<"users">,
-        date: args.date,
-        startTime: args.startTime,
-        endTime: args.endTime,
-        notes: args.notes,
-        status: "scheduled",
-        isRecurring,
-        recurringGroupId,
-        sendReminder: shouldSendReminder,
-        createdBy: authResult.userId,
-        createdAt: now,
-        patientName,
-        treatmentName,
-        patientEmail: (patient?.email as string) ?? undefined,
-        patientPhone: (patient?.phone as string) ?? undefined,
-        recurringAppointments: recurringAppointments.length > 0 ? recurringAppointments : undefined,
-        packageUsageId: resolvedPackageUsageId ?? undefined,
-      },
-    );
+    try {
+      const sideEffectResult = await ctx.runMutation(
+        internal.gabinet.appointments._createSideEffects,
+        {
+          appointmentId: firstId,
+          organizationId: args.organizationId,
+          patientId: args.patientId,
+          treatmentId: args.treatmentId,
+          employeeId: args.employeeId,
+          date: args.date,
+          startTime: args.startTime,
+          endTime: args.endTime,
+          notes: args.notes,
+          status: "scheduled",
+          isRecurring,
+          recurringGroupId,
+          sendReminder: shouldSendReminder,
+          createdBy: String(authResult.userId),
+          createdAt: now,
+          patientName,
+          treatmentName,
+          patientEmail: (patient?.email as string) ?? undefined,
+          patientPhone: (patient?.phone as string) ?? undefined,
+          recurringAppointments: recurringAppointments.length > 0 ? recurringAppointments : undefined,
+          packageUsageId: resolvedPackageUsageId ?? undefined,
+        },
+      );
 
-    // --- Patch scheduledActivityId back into Supabase appointment ---
-    if (sideEffectResult) {
-      const result = sideEffectResult as {
-        scheduledActivityId: string;
-        recurActivityIds: Array<{ appointmentId: string; activityId: string }>;
-      };
-      await db.patch("gabinetAppointments", firstId, {
-        scheduledActivityId: result.scheduledActivityId,
-      });
-      for (const r of result.recurActivityIds) {
-        await db.patch("gabinetAppointments", r.appointmentId, {
-          scheduledActivityId: r.activityId,
+      if (sideEffectResult) {
+        const result = sideEffectResult as {
+          scheduledActivityId: string;
+          recurActivityIds: Array<{ appointmentId: string; activityId: string }>;
+        };
+        await db.patch("gabinetAppointments", firstId, {
+          scheduledActivityId: result.scheduledActivityId,
         });
+        for (const r of result.recurActivityIds) {
+          await db.patch("gabinetAppointments", r.appointmentId, {
+            scheduledActivityId: r.activityId,
+          });
+        }
       }
+    } catch (e) {
+      console.error("[create] Side effects FAILED for appointment", firstId, ":", e);
     }
 
     return firstId;

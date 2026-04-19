@@ -18,7 +18,7 @@ const DEFAULT_REMINDER_HOURS = 24;
 export const scheduleReminder = mutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -213,7 +213,7 @@ export const sendReminder = internalMutation({
 export const cancelReminders = mutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -254,7 +254,7 @@ export const cancelReminders = mutation({
 export const scheduleReminderInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     const appointment = await ctx.db.get(args.appointmentId);
@@ -308,7 +308,7 @@ export const scheduleReminderInternal = internalMutation({
  */
 export const cancelRemindersInternal = internalMutation({
   args: {
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     const reminders = await ctx.db
@@ -341,7 +341,7 @@ export const cancelRemindersInternal = internalMutation({
 export const listByAppointment = query({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

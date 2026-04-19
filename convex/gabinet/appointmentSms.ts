@@ -134,7 +134,7 @@ async function logSmsSharedActivities(
 export const listByAppointment = query({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -157,7 +157,7 @@ export const listByAppointment = query({
 export const queueAutomationSms = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     phone: v.string(),
     message: v.string(),
     eventType: v.string(),
@@ -236,7 +236,7 @@ export const queueAutomationSms = internalMutation({
 export const queueConfirmationRequest = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     reminderId: v.optional(v.id("appointmentReminders")),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
   },
@@ -570,7 +570,7 @@ export const processIncomingMessage = internalMutation({
 
 export const getLatestByAppointmentInternal = internalQuery({
   args: {
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.db

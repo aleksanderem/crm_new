@@ -1,11 +1,9 @@
-import { query, mutation, internalMutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
-import { verifyProductAccess } from "../_helpers/products";
 import { createNotificationDirect } from "../notifications";
-import { GABINET_PRODUCT_ID } from "./_registry";
 import { Id } from "../_generated/dataModel";
 
 const DEFAULT_REMINDER_HOURS = 24;
@@ -13,29 +11,35 @@ const DEFAULT_REMINDER_HOURS = 24;
 /**
  * Schedule a reminder for an appointment.
  * Calculates when to send based on appointment time minus configured hours.
- * Uses ctx.scheduler.runAfter() to fire the sendReminder at the right time.
+ * Side effects (ctx.scheduler, ctx.db writes) delegated to _scheduleReminderSideEffects.
  */
-export const scheduleReminder = mutation({
+export const scheduleReminder = action({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    // Auth via internal query
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const appointment = await ctx.db.get(args.appointmentId);
-    if (!appointment || appointment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // Read appointment from Supabase
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appointment || String(appointment.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
 
     // Get org settings for reminder config
-    const orgSettings = await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+    const orgSettings = await ctx.runQuery(
+      internal.gabinet.appointments._getOrgSettings,
+      { organizationId: args.organizationId },
+    ) as Record<string, unknown> | null;
 
-    const reminderHours = orgSettings?.reminderHoursBefore ?? DEFAULT_REMINDER_HOURS;
+    const reminderHours = (orgSettings?.reminderHoursBefore as number) ?? DEFAULT_REMINDER_HOURS;
 
     // Calculate when the reminder should fire
     const appointmentMs = new Date(
@@ -51,9 +55,9 @@ export const scheduleReminder = mutation({
 
     const delayMs = reminderMs - now;
 
-    // Create reminder record
-    const reminderId = await ctx.db.insert("appointmentReminders", {
-      organizationId: args.organizationId,
+    // Create reminder record in Supabase
+    const reminderId = await db.insert("appointmentReminders", {
+      organizationId: String(args.organizationId),
       appointmentId: args.appointmentId,
       type: "notification",
       scheduledFor: reminderMs,
@@ -61,40 +65,75 @@ export const scheduleReminder = mutation({
       createdAt: now,
     });
 
-    // Schedule the actual send
-    const scheduledId = await ctx.scheduler.runAfter(
-      delayMs,
-      internal.gabinet.appointmentReminders.sendReminder,
-      { reminderId }
-    );
-
-    // Store scheduled function ID so we can cancel if needed
-    await ctx.db.patch(reminderId, {
-      scheduledFunctionId: scheduledId as unknown as string,
-    });
+    // Delegate scheduler call to internalMutation
+    try {
+      await ctx.runMutation(
+        internal.gabinet.appointmentReminders._scheduleReminderSideEffects,
+        {
+          reminderId,
+          organizationId: args.organizationId,
+          appointmentId: args.appointmentId,
+          delayMs,
+        },
+      );
+    } catch (e) {
+      console.error("[scheduleReminder] Side effects FAILED for reminder", reminderId, ":", e);
+    }
 
     return reminderId;
   },
 });
 
 /**
+ * Internal: schedule the actual reminder via ctx.scheduler and store the scheduledFunctionId.
+ * Also creates a Convex-side reminder record so sendReminder can find it.
+ */
+export const _scheduleReminderSideEffects = internalMutation({
+  args: {
+    reminderId: v.string(),
+    organizationId: v.id("organizations"),
+    appointmentId: v.string(),
+    delayMs: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Schedule the actual send
+    const scheduledId = await ctx.scheduler.runAfter(
+      args.delayMs,
+      internal.gabinet.appointmentReminders.sendReminder,
+      { reminderId: args.reminderId },
+    );
+
+    // Store scheduled function ID in Supabase so we can cancel if needed
+    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
+    const db = createDb();
+    await db.patch("appointmentReminders", args.reminderId, {
+      scheduledFunctionId: scheduledId as unknown as string,
+    });
+  },
+});
+
+/**
  * Internal mutation that actually sends the reminder notification.
  * Called by the scheduler at the configured time before the appointment.
+ * Reads from Supabase but uses ctx.db for notifications / side effects.
  */
 export const sendReminder = internalMutation({
   args: {
-    reminderId: v.id("appointmentReminders"),
+    reminderId: v.string(),
   },
   handler: async (ctx, args) => {
-    const reminder = await ctx.db.get(args.reminderId);
+    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
+    const db = createDb();
+
+    const reminder = await db.get("appointmentReminders", args.reminderId);
     if (!reminder) return;
 
     // Skip if already sent or cancelled
     if (reminder.status !== "pending") return;
 
-    const appointment = await ctx.db.get(reminder.appointmentId);
+    const appointment = await db.get("gabinetAppointments", String(reminder.appointmentId));
     if (!appointment) {
-      await ctx.db.patch(args.reminderId, { status: "cancelled" });
+      await db.patch("appointmentReminders", args.reminderId, { status: "cancelled" });
       return;
     }
 
@@ -104,21 +143,23 @@ export const sendReminder = internalMutation({
       appointment.status === "completed" ||
       appointment.status === "no_show"
     ) {
-      await ctx.db.patch(args.reminderId, { status: "cancelled" });
+      await db.patch("appointmentReminders", args.reminderId, { status: "cancelled" });
       return;
     }
 
-    const patient = await ctx.db.get(appointment.patientId);
-    const treatment = appointment.treatmentId ? await ctx.db.get(appointment.treatmentId) : null;
+    const patient = await db.get("gabinetPatients", String(appointment.patientId));
+    const treatment = appointment.treatmentId
+      ? await db.get("gabinetTreatments", String(appointment.treatmentId))
+      : null;
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName ?? ""}`.trim()
       : "Klient";
-    const treatmentName = treatment?.name ?? "Wizyta";
+    const treatmentName = (treatment?.name as string) ?? "Wizyta";
 
     // Send in-app notification to the employee assigned to the appointment
     await createNotificationDirect(ctx, {
-      organizationId: reminder.organizationId,
-      userId: appointment.employeeId,
+      organizationId: reminder.organizationId as Id<"organizations">,
+      userId: appointment.employeeId as Id<"users">,
       type: "appointment_reminder",
       title: "Przypomnienie o wizycie",
       message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,
@@ -128,8 +169,8 @@ export const sendReminder = internalMutation({
     // Also notify the appointment creator if different from employee
     if (appointment.createdBy !== appointment.employeeId) {
       await createNotificationDirect(ctx, {
-        organizationId: reminder.organizationId,
-        userId: appointment.createdBy,
+        organizationId: reminder.organizationId as Id<"organizations">,
+        userId: appointment.createdBy as Id<"users">,
         type: "appointment_reminder",
         title: "Przypomnienie o wizycie",
         message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,
@@ -139,12 +180,12 @@ export const sendReminder = internalMutation({
 
     // Send appointment.reminder email if patient has email
     if (patient?.email) {
-      const employee = await ctx.db.get(appointment.employeeId);
-      const employeeName = employee?.name ?? "Specjalista";
+      const employee = await db.get("gabinetEmployees", String(appointment.employeeId));
+      const employeeName = (employee?.name as string) ?? "Specjalista";
       await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
-        organizationId: reminder.organizationId,
+        organizationId: reminder.organizationId as Id<"organizations">,
         eventType: "appointment.reminder",
-        recipientEmail: patient.email,
+        recipientEmail: patient.email as string,
         recipientName: patientName,
         payload: JSON.stringify({
           patientName,
@@ -162,23 +203,23 @@ export const sendReminder = internalMutation({
       patientId: String(appointment.patientId),
       treatmentId: String(appointment.treatmentId),
       employeeId: String(appointment.employeeId),
-      date: appointment.date,
-      startTime: appointment.startTime,
-      patientEmail: patient?.email,
-      patientPhone: patient?.phone,
+      date: appointment.date as string,
+      startTime: appointment.startTime as string,
+      patientEmail: patient?.email as string | undefined,
+      patientPhone: patient?.phone as string | undefined,
       patientName,
       treatmentName,
     };
 
     await ctx.runMutation(internal.automation.emitEvent, {
-      organizationId: reminder.organizationId,
+      organizationId: reminder.organizationId as Id<"organizations">,
       module: "gabinet",
       eventType: "gabinet.appointment.reminder_due",
       entityType: "gabinetAppointment",
       entityId: String(appointment._id),
-      actorUserId: appointment.createdBy,
+      actorUserId: appointment.createdBy as Id<"users">,
       correlationKey: `appointment:${appointment._id}`,
-      eventIdempotencyKey: `automation-event:${reminder.organizationId}:${appointment._id}:reminder:${reminder._id}`,
+      eventIdempotencyKey: `automation-event:${reminder.organizationId}:${appointment._id}:reminder:${args.reminderId}`,
       payload: JSON.stringify(reminderPayload),
       occurredAt: Date.now(),
     });
@@ -186,21 +227,21 @@ export const sendReminder = internalMutation({
     // Queue appointment confirmation SMS if patient has phone
     if (patient?.phone) {
       await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
-        organizationId: reminder.organizationId,
-        appointmentId: appointment._id,
-        reminderId: reminder._id,
+        organizationId: reminder.organizationId as Id<"organizations">,
+        appointmentId: appointment._id as Id<"gabinetAppointments">,
+        reminderId: args.reminderId as Id<"appointmentReminders">,
         trigger: "reminder",
       });
     }
 
     const now = Date.now();
-    await ctx.db.patch(args.reminderId, {
+    await db.patch("appointmentReminders", args.reminderId, {
       status: "sent",
       sentAt: now,
     });
 
     // Mark on the appointment that reminder was sent
-    await ctx.db.patch(appointment._id, {
+    await db.patch("gabinetAppointments", String(appointment._id), {
       reminderSentAt: now,
     });
   },
@@ -210,40 +251,59 @@ export const sendReminder = internalMutation({
  * Cancel all pending reminders for an appointment.
  * Called when an appointment is cancelled.
  */
-export const cancelReminders = mutation({
+export const cancelReminders = action({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    // Auth via internal query
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const reminders = await ctx.db
-      .query("appointmentReminders")
-      .withIndex("by_appointment", (q) =>
-        q.eq("appointmentId", args.appointmentId)
-      )
+    const db = createSupabaseDb();
+
+    // Query pending reminders from Supabase
+    const reminders = await db.query("appointmentReminders")
+      .eq("appointmentId", args.appointmentId)
       .collect();
 
     let cancelledCount = 0;
     for (const reminder of reminders) {
       if (reminder.status === "pending") {
-        // Cancel the scheduled function if we have its ID
+        // Cancel the scheduled function via internalMutation
         if (reminder.scheduledFunctionId) {
           try {
-            await ctx.scheduler.cancel(
-              reminder.scheduledFunctionId as unknown as Id<"_scheduled_functions">
+            await ctx.runMutation(
+              internal.gabinet.appointmentReminders._cancelScheduledFunction,
+              { scheduledFunctionId: String(reminder.scheduledFunctionId) },
             );
           } catch {
             // Scheduled function may have already fired or been cancelled
           }
         }
-        await ctx.db.patch(reminder._id, { status: "cancelled" });
+        await db.patch("appointmentReminders", String(reminder._id), { status: "cancelled" });
         cancelledCount++;
       }
     }
 
     return { cancelled: cancelledCount };
+  },
+});
+
+/**
+ * Internal: cancel a scheduled function by ID.
+ */
+export const _cancelScheduledFunction = internalMutation({
+  args: {
+    scheduledFunctionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.cancel(
+      args.scheduledFunctionId as unknown as Id<"_scheduled_functions">,
+    );
   },
 });
 
@@ -257,7 +317,10 @@ export const scheduleReminderInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(args.appointmentId);
+    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
+    const db = createDb();
+
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
     if (!appointment) return null;
 
     // Get org settings for reminder config
@@ -279,8 +342,8 @@ export const scheduleReminderInternal = internalMutation({
 
     const delayMs = reminderMs - now;
 
-    const reminderId = await ctx.db.insert("appointmentReminders", {
-      organizationId: args.organizationId,
+    const reminderId = await db.insert("appointmentReminders", {
+      organizationId: String(args.organizationId),
       appointmentId: args.appointmentId,
       type: "notification",
       scheduledFor: reminderMs,
@@ -291,10 +354,10 @@ export const scheduleReminderInternal = internalMutation({
     const scheduledId = await ctx.scheduler.runAfter(
       delayMs,
       internal.gabinet.appointmentReminders.sendReminder,
-      { reminderId }
+      { reminderId },
     );
 
-    await ctx.db.patch(reminderId, {
+    await db.patch("appointmentReminders", reminderId, {
       scheduledFunctionId: scheduledId as unknown as string,
     });
 
@@ -311,11 +374,11 @@ export const cancelRemindersInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const reminders = await ctx.db
-      .query("appointmentReminders")
-      .withIndex("by_appointment", (q) =>
-        q.eq("appointmentId", args.appointmentId)
-      )
+    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
+    const db = createDb();
+
+    const reminders = await db.query("appointmentReminders")
+      .eq("appointmentId", args.appointmentId)
       .collect();
 
     for (const reminder of reminders) {
@@ -323,13 +386,13 @@ export const cancelRemindersInternal = internalMutation({
         if (reminder.scheduledFunctionId) {
           try {
             await ctx.scheduler.cancel(
-              reminder.scheduledFunctionId as unknown as Id<"_scheduled_functions">
+              reminder.scheduledFunctionId as unknown as Id<"_scheduled_functions">,
             );
           } catch {
             // Already fired or cancelled
           }
         }
-        await ctx.db.patch(reminder._id, { status: "cancelled" });
+        await db.patch("appointmentReminders", String(reminder._id), { status: "cancelled" });
       }
     }
   },
@@ -344,6 +407,7 @@ export const listByAppointment = query({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
+    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(
       ctx,

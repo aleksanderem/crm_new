@@ -713,6 +713,23 @@ export const _resolveLocationQuery = internalQuery({
   },
 });
 
+export const _getAvailableSlotsQuery = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    date: v.string(),
+    duration: v.number(),
+    locationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await getAvailableSlots(ctx, {
+      ...args,
+      userId: args.userId as Id<"users">,
+      locationId: args.locationId as Id<"gabinetLocations"> | undefined,
+    });
+  },
+});
+
 export const _checkDocumentGateQuery = internalQuery({
   args: {
     appointmentId: v.string(),

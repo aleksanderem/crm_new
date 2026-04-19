@@ -1,14 +1,25 @@
-import { query, mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { query, action, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import {
-  getAvailableSlots,
-  checkEmployeeQualification,
-  checkConflict,
-} from "./_availability";
-import { createNotificationDirect } from "../notifications";
 import { validatePortalSession } from "../_helpers/portalSession";
+import { createNotificationDirect } from "../notifications";
+
+// ---------------------------------------------------------------------------
+// Internal query: validate portal session via Supabase
+// ---------------------------------------------------------------------------
+
+export const _validatePortalSessionQuery = internalQuery({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => {
+    return await validatePortalSession(ctx, args.tokenHash);
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Queries (unchanged — still read from Convex ctx.db)
+// ---------------------------------------------------------------------------
 
 export const getMyProfile = query({
   args: { tokenHash: v.string() },
@@ -30,7 +41,7 @@ export const getMyProfile = query({
   },
 });
 
-export const updateMyProfile = mutation({
+export const updateMyProfile = action({
   args: {
     tokenHash: v.string(),
     phone: v.optional(v.string()),
@@ -45,9 +56,21 @@ export const updateMyProfile = mutation({
     emergencyContactPhone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { patientId } = await validatePortalSession(ctx, args.tokenHash);
+    // Validate session via Supabase
+    const db = createSupabaseDb();
+    const session = await db.query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+
+    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
+      throw new Error("Invalid or expired session");
+    }
+
+    const patientId = String(session.patientId);
+
+    // Patch patient in Supabase
     const { tokenHash, ...updates } = args;
-    await ctx.db.patch(patientId, { ...updates, updatedAt: Date.now() });
+    await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
   },
 });
 
@@ -229,6 +252,7 @@ export const getPublicAvailableSlots = query({
   handler: async (ctx, args) => {
     const { organizationId } = await validatePortalSession(ctx, args.tokenHash);
 
+    const { getAvailableSlots } = await import("./_availability");
     return await getAvailableSlots(ctx, {
       organizationId,
       userId: args.employeeId,
@@ -240,63 +264,76 @@ export const getPublicAvailableSlots = query({
 });
 
 /** Book an appointment from the patient portal. */
-export const bookFromPortal = mutation({
+export const bookFromPortal = action({
   args: {
     tokenHash: v.string(),
-    treatmentId: v.id("gabinetTreatments"),
-    employeeId: v.optional(v.id("users")),
+    treatmentId: v.string(),
+    employeeId: v.optional(v.string()),
     preferredDate: v.string(),
     preferredTime: v.string(),
   },
   handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
-      args.tokenHash,
-    );
+    const db = createSupabaseDb();
 
-    const treatment = await ctx.db.get(args.treatmentId);
+    // Validate session via Supabase
+    const session = await db.query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+
+    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
+      throw new Error("Invalid or expired session");
+    }
+
+    const patientId = String(session.patientId);
+    const organizationId = String(session.organizationId) as Id<"organizations">;
+
+    // Read treatment from Supabase
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
     if (
       !treatment ||
-      treatment.organizationId !== organizationId ||
+      String(treatment.organizationId) !== String(organizationId) ||
       !treatment.isActive
     ) {
       throw new Error("Treatment not found or inactive");
     }
 
-    const patient = await ctx.db.get(patientId);
+    // Read patient from Supabase
+    const patient = await db.get("gabinetPatients", patientId);
     if (!patient) throw new Error("Patient not found");
 
     // Resolve employee — if not specified, find any qualified available employee
-    let employeeId: Id<"users">;
+    let employeeId: string;
 
     if (args.employeeId) {
       employeeId = args.employeeId;
     } else {
       // Find any qualified active employee with an available slot
-      const employees = await ctx.db
-        .query("gabinetEmployees")
-        .withIndex("by_orgAndActive", (q) =>
-          q.eq("organizationId", organizationId).eq("isActive", true),
-        )
+      const employees = await db.query("gabinetEmployees")
+        .eq("organizationId", String(organizationId))
+        .eq("isActive", true)
         .collect();
 
       const qualifiedEmployees = employees.filter(
-        (e) =>
-          e.qualifiedTreatmentIds.length === 0 ||
-          e.qualifiedTreatmentIds.includes(args.treatmentId),
+        (e) => {
+          const qualifiedIds = e.qualifiedTreatmentIds as string[] | undefined;
+          return !qualifiedIds || qualifiedIds.length === 0 ||
+            qualifiedIds.includes(args.treatmentId);
+        },
       );
 
-      let foundEmployee: Id<"users"> | null = null;
+      let foundEmployee: string | null = null;
       for (const emp of qualifiedEmployees) {
-        const slots = await getAvailableSlots(ctx, {
-          organizationId,
-          userId: emp.userId,
-          date: args.preferredDate,
-          duration: treatment.duration,
-          locationId: undefined,
-        });
+        const slots = await ctx.runQuery(
+          internal.gabinet.appointments._getAvailableSlotsQuery,
+          {
+            organizationId,
+            userId: String(emp.userId),
+            date: args.preferredDate,
+            duration: treatment.duration as number,
+          },
+        ) as Array<{ start: string; end: string }>;
         if (slots.some((s) => s.start === args.preferredTime)) {
-          foundEmployee = emp.userId;
+          foundEmployee = String(emp.userId);
           break;
         }
       }
@@ -307,49 +344,51 @@ export const bookFromPortal = mutation({
       employeeId = foundEmployee;
     }
 
-    // Verify qualification
-    const qualification = await checkEmployeeQualification(ctx, {
-      organizationId,
-      userId: employeeId,
-      treatmentId: args.treatmentId,
-    });
+    // Verify qualification via internalQuery
+    const qualification = await ctx.runQuery(
+      internal.gabinet.appointments._checkQualificationQuery,
+      {
+        organizationId,
+        userId: employeeId,
+        treatmentId: args.treatmentId,
+      },
+    ) as { qualified: boolean; reason?: string };
     if (!qualification.qualified) {
       throw new Error(qualification.reason ?? "Employee not qualified");
     }
 
     // Calculate end time
     const [h, m] = args.preferredTime.split(":").map(Number);
-    const endMinutes = h * 60 + m + treatment.duration;
+    const endMinutes = h * 60 + m + (treatment.duration as number);
     const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
 
-    // Check conflict
-    const conflict = await checkConflict(ctx, {
-      organizationId,
-      userId: employeeId,
-      date: args.preferredDate,
-      startTime: args.preferredTime,
-      endTime,
-    });
+    // Check conflict via internalQuery
+    const conflict = await ctx.runQuery(
+      internal.gabinet.appointments._checkConflictQuery,
+      {
+        organizationId,
+        userId: employeeId,
+        date: args.preferredDate,
+        startTime: args.preferredTime,
+        endTime,
+      },
+    ) as { hasConflict: boolean; reason?: string };
     if (conflict.hasConflict) {
       throw new Error(conflict.reason ?? "Time slot is no longer available");
     }
 
-    // Find org owner to use as createdBy (portal patients aren't org members)
-    const ownerMembership = await ctx.db
-      .query("teamMemberships")
-      .withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.eq(q.field("role"), "owner"))
-      .first();
-
-    if (!ownerMembership) {
-      throw new Error("Organization configuration error");
-    }
+    // Find org owner via internalQuery
+    const ownerUserId = await ctx.runQuery(
+      internal.gabinet.patientPortal._findOrgOwner,
+      { organizationId },
+    ) as string;
 
     const now = Date.now();
     const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;
 
-    const appointmentId = await ctx.db.insert("gabinetAppointments", {
-      organizationId,
+    // Write appointment directly to Supabase
+    const appointmentId = await db.insert("gabinetAppointments", {
+      organizationId: String(organizationId),
       patientId,
       treatmentId: args.treatmentId,
       employeeId,
@@ -361,67 +400,97 @@ export const bookFromPortal = mutation({
       isRecurring: false,
       bookedFromPortal: true,
       bookedByPatientId: patientId,
-      createdBy: ownerMembership.userId,
+      createdBy: ownerUserId,
       createdAt: now,
       updatedAt: now,
     });
 
-    // Dual-write: replicate new appointment to Supabase
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.gabinet.appointments.writeAppointmentToSupabase,
-      {
-        appointmentId: appointmentId as string,
-        organizationId: organizationId as string,
-        patientId: patientId as string,
-        treatmentId: args.treatmentId as string,
-        employeeId: employeeId as string,
-        date: args.preferredDate,
-        startTime: args.preferredTime,
-        endTime,
-        status: "pending_confirmation",
-        notes: `Rezerwacja online — ${patientName}`,
-        isRecurring: false,
-        bookedFromPortal: true,
-        bookedByPatientId: patientId as string,
-        createdBy: ownerMembership.userId as string,
-        createdAt: now,
-        updatedAt: now,
-      },
-    );
+    // Delegate notifications to internalMutation
+    try {
+      await ctx.runMutation(
+        internal.gabinet.patientPortal._bookingNotifications,
+        {
+          organizationId,
+          employeeId,
+          patientName,
+          treatmentName: treatment.name as string,
+          date: args.preferredDate,
+          time: args.preferredTime,
+        },
+      );
+    } catch (e) {
+      console.error("[bookFromPortal] Notifications FAILED:", e);
+    }
 
-    // Notify all admins and owners about the new booking request
+    return appointmentId;
+  },
+});
+
+/**
+ * Internal: find org owner user ID.
+ */
+export const _findOrgOwner = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const ownerMembership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .first();
+
+    if (!ownerMembership) {
+      throw new Error("Organization configuration error");
+    }
+
+    return String(ownerMembership.userId);
+  },
+});
+
+/**
+ * Internal: send booking notifications to staff and assigned employee.
+ */
+export const _bookingNotifications = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+    patientName: v.string(),
+    treatmentName: v.string(),
+    date: v.string(),
+    time: v.string(),
+  },
+  handler: async (ctx, args) => {
     const staffMemberships = await ctx.db
       .query("teamMemberships")
-      .withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId))
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
     const staffToNotify = staffMemberships.filter(
       (m) => m.role === "owner" || m.role === "admin",
     );
 
+    const message = `${args.patientName} prosi o wizytę: ${args.treatmentName} dnia ${args.date} o ${args.time}`;
+
     for (const staff of staffToNotify) {
       await createNotificationDirect(ctx, {
-        organizationId,
+        organizationId: args.organizationId,
         userId: staff.userId,
         type: "portal_booking_request",
         title: "Nowa rezerwacja online",
-        message: `${patientName} prosi o wizytę: ${treatment.name} dnia ${args.preferredDate} o ${args.preferredTime}`,
+        message,
       });
     }
 
-    // Also notify the assigned employee
-    if (!staffToNotify.some((s) => s.userId === employeeId)) {
+    // Also notify the assigned employee if not already notified
+    const employeeUserId = args.employeeId as Id<"users">;
+    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
       await createNotificationDirect(ctx, {
-        organizationId,
-        userId: employeeId,
+        organizationId: args.organizationId,
+        userId: employeeUserId,
         type: "portal_booking_request",
         title: "Nowa rezerwacja online",
-        message: `${patientName} prosi o wizytę: ${treatment.name} dnia ${args.preferredDate} o ${args.preferredTime}`,
+        message,
       });
     }
-
-    return appointmentId;
   },
 });
 
@@ -429,40 +498,53 @@ export const bookFromPortal = mutation({
 // Reschedule Request
 // ---------------------------------------------------------------------------
 
-export const requestReschedule = mutation({
+export const requestReschedule = action({
   args: {
     tokenHash: v.string(),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     requestedDate: v.string(), // YYYY-MM-DD
     requestedTime: v.string(), // HH:MM
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
-      args.tokenHash,
-    );
+    const db = createSupabaseDb();
 
-    const appt = await ctx.db.get(args.appointmentId);
+    // Validate session via Supabase
+    const session = await db.query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+
+    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
+      throw new Error("Invalid or expired session");
+    }
+
+    const patientId = String(session.patientId);
+    const organizationId = String(session.organizationId) as Id<"organizations">;
+
+    // Read appointment from Supabase
+    const appt = await db.get("gabinetAppointments", args.appointmentId);
     if (
       !appt ||
-      appt.organizationId !== organizationId ||
-      appt.patientId !== patientId
+      String(appt.organizationId) !== String(organizationId) ||
+      String(appt.patientId) !== patientId
     ) {
       throw new Error("Appointment not found");
     }
 
-    if (!["scheduled", "confirmed"].includes(appt.status)) {
+    if (!["scheduled", "confirmed"].includes(appt.status as string)) {
       throw new Error("Only upcoming appointments can be rescheduled");
     }
 
-    const patient = await ctx.db.get(patientId);
+    // Read patient name from Supabase
+    const patient = await db.get("gabinetPatients", patientId);
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName}`
       : "Patient";
 
-    const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
-    const treatmentName = treatment?.name ?? "appointment";
+    const treatment = appt.treatmentId
+      ? await db.get("gabinetTreatments", String(appt.treatmentId))
+      : null;
+    const treatmentName = (treatment?.name as string) ?? "appointment";
 
     // Add reschedule request to internal notes
     const requestNote = [
@@ -471,21 +553,55 @@ export const requestReschedule = mutation({
       ...(args.reason ? [`Reason: ${args.reason}`] : []),
     ].join("\n");
 
-    const existingNotes = appt.internalNotes ?? "";
+    const existingNotes = (appt.internalNotes as string) ?? "";
     const updatedNotes = existingNotes
       ? `${existingNotes}\n\n${requestNote}`
       : requestNote;
 
-    await ctx.db.patch(args.appointmentId, {
+    // Patch appointment in Supabase
+    await db.patch("gabinetAppointments", args.appointmentId, {
       internalNotes: updatedNotes,
       updatedAt: Date.now(),
     });
 
-    // Notify admins and owners about the reschedule request
+    // Delegate notifications to internalMutation
+    try {
+      await ctx.runMutation(
+        internal.gabinet.patientPortal._rescheduleNotifications,
+        {
+          organizationId,
+          employeeId: String(appt.employeeId),
+          patientName,
+          treatmentName,
+          requestedDate: args.requestedDate,
+          requestedTime: args.requestedTime,
+        },
+      );
+    } catch (e) {
+      console.error("[requestReschedule] Notifications FAILED:", e);
+    }
+
+    return { success: true };
+  },
+});
+
+/**
+ * Internal: send reschedule notifications to staff and assigned employee.
+ */
+export const _rescheduleNotifications = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+    patientName: v.string(),
+    treatmentName: v.string(),
+    requestedDate: v.string(),
+    requestedTime: v.string(),
+  },
+  handler: async (ctx, args) => {
     const staffMemberships = await ctx.db
       .query("teamMemberships")
       .withIndex("by_organizationId", (q) =>
-        q.eq("organizationId", organizationId),
+        q.eq("organizationId", args.organizationId),
       )
       .collect();
 
@@ -493,11 +609,11 @@ export const requestReschedule = mutation({
       (m) => m.role === "owner" || m.role === "admin",
     );
 
-    const notifyMessage = `${patientName} requests to reschedule ${treatmentName} to ${args.requestedDate} at ${args.requestedTime}`;
+    const notifyMessage = `${args.patientName} requests to reschedule ${args.treatmentName} to ${args.requestedDate} at ${args.requestedTime}`;
 
     for (const staff of staffToNotify) {
       await createNotificationDirect(ctx, {
-        organizationId,
+        organizationId: args.organizationId,
         userId: staff.userId,
         type: "portal_booking_request",
         title: "Reschedule Request",
@@ -506,16 +622,15 @@ export const requestReschedule = mutation({
     }
 
     // Also notify the appointment's employee if not already notified
-    if (!staffToNotify.some((s) => s.userId === appt.employeeId)) {
+    const employeeUserId = args.employeeId as Id<"users">;
+    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
       await createNotificationDirect(ctx, {
-        organizationId,
-        userId: appt.employeeId,
+        organizationId: args.organizationId,
+        userId: employeeUserId,
         type: "portal_booking_request",
         title: "Reschedule Request",
         message: notifyMessage,
       });
     }
-
-    return { success: true };
   },
 });

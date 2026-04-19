@@ -2,10 +2,10 @@
  * Gabinet onboarding: setup status and completion tracking.
  */
 
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 
 /**
  * Get onboarding setup status for an organization.
@@ -51,15 +51,39 @@ export const getSetupStatus = query({
 
 /**
  * Mark onboarding as completed for an organization.
+ * Organizations table is an auth table that stays in Convex.
  */
-export const completeSetup = mutation({
+export const completeSetup = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const perm = await checkPermission(ctx, args.organizationId, "settings", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    // Auth + permissions via internal query
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "settings",
+      action: "edit",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
+    // Delegate Convex-only org patch to internalMutation
+    await ctx.runMutation(
+      internal.gabinet.onboarding._completeSetupSideEffects,
+      { organizationId: args.organizationId },
+    );
+  },
+});
+
+/**
+ * Internal: patch organization record to mark onboarding completed.
+ * Organizations table stays in Convex (auth table).
+ */
+export const _completeSetupSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
     await ctx.db.patch(args.organizationId, {
       onboardingCompleted: true,
       updatedAt: Date.now(),

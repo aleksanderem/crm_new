@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, FileText, Heart, LogOut, Package, Star, User } from "@/lib/ez-icons";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/patient/_layout")({
 function PatientLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const logout = useMutation(api.gabinet.patientAuth.logoutPortal);
+  const logout = useAction(api.gabinet.patientAuth.logoutPortal);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") : null;
 

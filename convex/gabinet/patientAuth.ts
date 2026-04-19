@@ -1,11 +1,8 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { sendEmail } from "@cvx/email";
-import { AUTH_RESEND_KEY } from "@cvx/env";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writePortalSessionRef = internal.supabase.gabinet.portalSessions.writePortalSessionToSupabase;
+import { Id } from "../_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -39,39 +36,41 @@ const VERIFY_ATTEMPT_LIMIT = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 min
 
 // ---------------------------------------------------------------------------
-// Mutations / Queries
+// Actions / Queries
 // ---------------------------------------------------------------------------
 
-export const sendPortalOtp = mutation({
+export const sendPortalOtp = action({
   args: {
     email: v.string(),
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const patient = await ctx.db
-      .query("gabinetPatients")
-      .withIndex("by_orgAndEmail", (q) =>
-        q.eq("organizationId", args.organizationId).eq("email", args.email)
-      )
+    const db = createSupabaseDb();
+
+    // Look up patient by org + email in Supabase
+    const patient = await db.query("gabinetPatients")
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.email)
       .first();
 
     if (!patient) {
       return { success: true };
     }
 
+    const patientId = String(patient._id);
     const now = Date.now();
     const otp = generateOtp();
     const token = generateToken();
     const otpHash = await sha256(otp);
 
-    const existingSession = await ctx.db
-      .query("gabinetPortalSessions")
-      .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
+    // Check for existing session in Supabase
+    const existingSession = await db.query("gabinetPortalSessions")
+      .eq("patientId", patientId)
       .first();
 
     if (existingSession) {
-      const windowStart = existingSession.otpSendWindowStart ?? 0;
-      const sendCount = existingSession.otpSendCount ?? 0;
+      const windowStart = (existingSession.otpSendWindowStart as number) ?? 0;
+      const sendCount = (existingSession.otpSendCount as number) ?? 0;
 
       if (now - windowStart < OTP_SEND_WINDOW_MS && sendCount >= OTP_SEND_LIMIT) {
         throw new Error("Too many OTP requests. Please try again later.");
@@ -79,37 +78,21 @@ export const sendPortalOtp = mutation({
 
       const windowExpired = now - windowStart >= OTP_SEND_WINDOW_MS;
 
-      await ctx.db.patch(existingSession._id, {
+      await db.patch("gabinetPortalSessions", String(existingSession._id), {
         otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,
         tokenHash: token,
         isActive: false,
         lastAccessedAt: now,
         verifyFailCount: 0,
-        lockedUntil: undefined,
+        lockedUntil: null,
         otpSendCount: windowExpired ? 1 : sendCount + 1,
         otpSendWindowStart: windowExpired ? now : windowStart,
       });
     } else {
-      const sessionId = await ctx.db.insert("gabinetPortalSessions", {
-        patientId: patient._id,
-        organizationId: args.organizationId,
-        tokenHash: token,
-        otpHash,
-        otpExpiresAt: now + 10 * 60 * 1000,
-        isActive: false,
-        lastAccessedAt: now,
-        createdAt: now,
-        expiresAt: now + 30 * 24 * 60 * 60 * 1000,
-        otpSendCount: 1,
-        otpSendWindowStart: now,
-      });
-
-      // Dual-write: replicate to Supabase
-      await ctx.scheduler.runAfter(0, writePortalSessionRef, {
-        portalSessionId: sessionId as string,
-        patientId: patient._id as string,
-        organizationId: args.organizationId as string,
+      await db.insert("gabinetPortalSessions", {
+        patientId,
+        organizationId: String(args.organizationId),
         tokenHash: token,
         otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,
@@ -122,7 +105,37 @@ export const sendPortalOtp = mutation({
       });
     }
 
-    // Send OTP via email (fallback to console if Resend not configured)
+    // Send OTP via email — delegate to internalMutation for @cvx/email
+    try {
+      await ctx.runMutation(
+        internal.gabinet.patientAuth._sendOtpEmail,
+        {
+          email: args.email,
+          organizationId: args.organizationId,
+          otp,
+        },
+      );
+    } catch (e) {
+      console.error("[sendPortalOtp] Email send FAILED:", e);
+    }
+
+    return { success: true };
+  },
+});
+
+/**
+ * Internal: send the OTP email via @cvx/email (requires mutation context for Convex email).
+ */
+export const _sendOtpEmail = internalMutation({
+  args: {
+    email: v.string(),
+    organizationId: v.id("organizations"),
+    otp: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { sendEmail } = await import("@cvx/email");
+    const { AUTH_RESEND_KEY } = await import("@cvx/env");
+
     if (AUTH_RESEND_KEY) {
       const org = await ctx.db.get(args.organizationId);
       const orgName = org?.name ?? "Portal Klienta";
@@ -136,49 +149,48 @@ export const sendPortalOtp = mutation({
               Twój jednorazowy kod do zalogowania się do portalu klienta:
             </p>
             <div style="background: #f5f5f5; border-radius: 8px; padding: 24px; text-align: center;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">${otp}</span>
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">${args.otp}</span>
             </div>
             <p style="margin: 24px 0 0; color: #888; font-size: 14px;">
               Kod jest ważny przez 10 minut. Jeśli nie prosiłeś o ten kod, zignoruj tę wiadomość.
             </p>
           </div>
         `,
-        text: `Twój kod weryfikacyjny: ${otp}\n\nKod jest ważny przez 10 minut.`,
+        text: `Twój kod weryfikacyjny: ${args.otp}\n\nKod jest ważny przez 10 minut.`,
       });
     } else {
       console.warn("[Patient Portal OTP] Resend not configured, logging OTP to console");
-      console.log(`[Patient Portal OTP] ${args.email}: ${otp}`);
+      console.log(`[Patient Portal OTP] ${args.email}: ${args.otp}`);
     }
-
-    return { success: true };
   },
 });
 
 /**
  * Verify an OTP code. Returns a result object instead of throwing so that
- * fail-count / lockout state is always persisted (Convex rolls back on throw).
+ * fail-count / lockout state is always persisted.
  */
-export const verifyPortalOtp = mutation({
+export const verifyPortalOtp = action({
   args: {
     email: v.string(),
     organizationId: v.id("organizations"),
     otp: v.string(),
   },
   handler: async (ctx, args) => {
-    const patient = await ctx.db
-      .query("gabinetPatients")
-      .withIndex("by_orgAndEmail", (q) =>
-        q.eq("organizationId", args.organizationId).eq("email", args.email)
-      )
+    const db = createSupabaseDb();
+
+    const patient = await db.query("gabinetPatients")
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.email)
       .first();
 
     if (!patient) {
       return { success: false as const, error: "Invalid credentials" };
     }
 
-    const session = await ctx.db
-      .query("gabinetPortalSessions")
-      .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
+    const patientId = String(patient._id);
+
+    const session = await db.query("gabinetPortalSessions")
+      .eq("patientId", patientId)
       .first();
 
     if (!session) {
@@ -186,8 +198,9 @@ export const verifyPortalOtp = mutation({
     }
 
     const now = Date.now();
+    const sessionId = String(session._id);
 
-    if (session.lockedUntil && now < session.lockedUntil) {
+    if (session.lockedUntil && now < (session.lockedUntil as number)) {
       return { success: false as const, error: "Too many failed attempts. Account is temporarily locked." };
     }
 
@@ -195,20 +208,20 @@ export const verifyPortalOtp = mutation({
       return { success: false as const, error: "No pending OTP" };
     }
 
-    if (now > session.otpExpiresAt) {
+    if (now > (session.otpExpiresAt as number)) {
       return { success: false as const, error: "OTP expired" };
     }
 
     const otpHash = await sha256(args.otp);
 
     if (session.otpHash !== otpHash) {
-      const failCount = (session.verifyFailCount ?? 0) + 1;
+      const failCount = ((session.verifyFailCount as number) ?? 0) + 1;
       const locked = failCount >= VERIFY_ATTEMPT_LIMIT;
 
-      await ctx.db.patch(session._id, {
+      await db.patch("gabinetPortalSessions", sessionId, {
         verifyFailCount: failCount,
         ...(locked
-          ? { lockedUntil: now + LOCKOUT_DURATION_MS, otpHash: undefined, otpExpiresAt: undefined }
+          ? { lockedUntil: now + LOCKOUT_DURATION_MS, otpHash: null, otpExpiresAt: null }
           : {}),
       });
 
@@ -221,20 +234,20 @@ export const verifyPortalOtp = mutation({
     }
 
     // Success — activate session, clear OTP, reset counters
-    await ctx.db.patch(session._id, {
+    await db.patch("gabinetPortalSessions", sessionId, {
       isActive: true,
-      otpHash: undefined,
-      otpExpiresAt: undefined,
+      otpHash: null,
+      otpExpiresAt: null,
       lastAccessedAt: now,
       expiresAt: now + 30 * 24 * 60 * 60 * 1000,
       verifyFailCount: 0,
-      lockedUntil: undefined,
+      lockedUntil: null,
     });
 
     return {
       success: true as const,
-      sessionToken: session.tokenHash,
-      patientId: patient._id,
+      sessionToken: session.tokenHash as string,
+      patientId: patient._id as string,
       patientName: `${patient.firstName} ${patient.lastName}`,
     };
   },
@@ -277,18 +290,19 @@ export const getPortalSession = query({
   },
 });
 
-export const logoutPortal = mutation({
+export const logoutPortal = action({
   args: {
     tokenHash: v.string(),
   },
   handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("gabinetPortalSessions")
-      .withIndex("by_token", (q) => q.eq("tokenHash", args.tokenHash))
+    const db = createSupabaseDb();
+
+    const session = await db.query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
       .first();
 
     if (session) {
-      await ctx.db.patch(session._id, { isActive: false });
+      await db.patch("gabinetPortalSessions", String(session._id), { isActive: false });
     }
   },
 });

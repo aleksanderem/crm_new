@@ -2183,31 +2183,43 @@ export const cancelRecurringSeries = action({
   },
 });
 
-export const getFullDetail = query({
+export const getFullDetail = action({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    // Get the appointment
-    const appointment = await ctx.db.get(args.appointmentId);
-    if (!appointment || appointment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appointment || String(appointment.organizationId) !== orgIdStr) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && appointment.createdBy !== user._id) {
+    if (
+      perm.scope === "own" &&
+      String(appointment.createdBy) !== String(authResult.userId)
+    ) {
       throw new Error("Permission denied: you can only view your own records");
     }
 
-    // Fetch all related data in parallel
+    const patientId = String(appointment.patientId);
+    const treatmentId = appointment.treatmentId
+      ? String(appointment.treatmentId)
+      : null;
+    const employeeId = String(appointment.employeeId);
+
     const [
       patient,
       treatment,
@@ -2216,133 +2228,131 @@ export const getFullDetail = query({
       payments,
       notes,
       patientPackageUsage,
-      patientHistory,
-      loyaltyBalance,
+      patientHistoryRaw,
+      loyaltyBalanceRow,
       loyaltyTransactions,
       allPatientPayments,
       workflowHistory,
     ] = await Promise.all([
-      // Patient
-      ctx.db.get(appointment.patientId),
-      // Treatment
-      appointment.treatmentId ? ctx.db.get(appointment.treatmentId) : Promise.resolve(null),
-      // Employee + User
-      ctx.db.get(appointment.employeeId),
-      // Documents (modern form system)
-      ctx.db
-        .query("formDocuments")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetAppointment").eq("entityId", args.appointmentId),
-        )
+      db.get("gabinetPatients", patientId),
+      treatmentId ? db.get("gabinetTreatments", treatmentId) : Promise.resolve(null),
+      db.get("gabinetEmployees", employeeId),
+      db.query("formDocuments")
+        .eq("entityType", "gabinetAppointment")
+        .eq("entityId", args.appointmentId)
         .collect(),
-      // Payments
-      ctx.db
-        .query("payments")
-        .withIndex("by_appointment", (q) =>
-          q.eq("appointmentId", args.appointmentId),
-        )
+      db.query("payments")
+        .eq("appointmentId", args.appointmentId)
         .collect(),
-      // Notes
-      ctx.db
-        .query("notes")
-        .withIndex("by_entity", (q) =>
-          q
-            .eq("entityType", "gabinetAppointment")
-            .eq("entityId", args.appointmentId),
-        )
-        .order("desc")
-        .take(50),
-      // Patient package usage
-      ctx.db
-        .query("gabinetPackageUsage")
-        .withIndex("by_orgAndPatient", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", appointment.patientId),
-        )
+      db.query("notes")
+        .eq("entityType", "gabinetAppointment")
+        .eq("entityId", args.appointmentId)
+        .order("createdAt", false)
+        .take(50)
         .collect(),
-      // Patient history (last 20 appointments, excluding current)
-      ctx.db
-        .query("gabinetAppointments")
-        .withIndex("by_orgAndPatient", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", appointment.patientId),
-        )
-        .filter((q) => q.neq(q.field("_id"), args.appointmentId))
-        .order("desc")
-        .take(20),
-      // Loyalty points balance
-      ctx.db
-        .query("gabinetLoyaltyPoints")
-        .withIndex("by_orgAndPatient", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", appointment.patientId),
-        )
+      db.query("gabinetPackageUsage")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
+        .collect(),
+      db.query("gabinetAppointments")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
+        .order("createdAt", false)
+        .take(21)
+        .collect(),
+      db.query("gabinetLoyaltyPoints")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
         .first(),
-      // Loyalty transactions (last 10)
-      ctx.db
-        .query("gabinetLoyaltyTransactions")
-        .withIndex("by_orgAndPatient", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", appointment.patientId),
-        )
-        .order("desc")
-        .take(10),
-      // All patient payments (for payment history)
-      ctx.db
-        .query("payments")
-        .withIndex("by_orgAndPatient", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", appointment.patientId),
-        )
-        .order("desc")
-        .take(50),
-      // Appointment workflow history
-      ctx.db
-        .query("appointmentWorkflowHistory")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
-        .order("desc")
+      db.query("gabinetLoyaltyTransactions")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
+        .order("createdAt", false)
+        .take(10)
+        .collect(),
+      db.query("payments")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
+        .order("createdAt", false)
+        .take(50)
+        .collect(),
+      db.query("appointmentWorkflowHistory")
+        .eq("appointmentId", args.appointmentId)
+        .order("createdAt", false)
         .collect(),
     ]);
 
-    // Get treatment details for history appointments
-    const historyTreatmentIds = patientHistory
-      .map((a) => a.treatmentId)
-      .filter(Boolean);
+    const patientHistory = patientHistoryRaw
+      .filter((a) => String(a._id) !== args.appointmentId)
+      .slice(0, 20);
+
+    // Enrich history appointments with treatment name
+    const historyTreatmentIds = Array.from(
+      new Set(
+        patientHistory
+          .map((a) => (a.treatmentId ? String(a.treatmentId) : null))
+          .filter((id): id is string => id !== null),
+      ),
+    );
     const historyTreatments = await Promise.all(
-      [...new Set(historyTreatmentIds)].map((id) => ctx.db.get(id as Id<"gabinetTreatments">)),
+      historyTreatmentIds.map((id) => db.get("gabinetTreatments", id)),
     );
     const treatmentMap = new Map(
-      historyTreatments.filter(Boolean).map((t) => [t!._id, t]),
+      historyTreatments
+        .filter((t): t is Record<string, unknown> => t !== null)
+        .map((t) => [String(t._id), t]),
     );
 
-    // Enrich package usage with package names and treatment names
-    const pkgUsagePkgIds = [...new Set(patientPackageUsage.map((u) => u.packageId))];
-    const pkgUsageTreatmentIds = [
-      ...new Set(patientPackageUsage.flatMap((u) => u.treatmentsUsed.map((t) => t.treatmentId))),
-    ];
+    // Enrich package usage
+    const pkgUsagePkgIds = Array.from(
+      new Set(
+        patientPackageUsage
+          .map((u) => (u.packageId ? String(u.packageId) : null))
+          .filter((id): id is string => id !== null),
+      ),
+    );
+    const pkgUsageTreatmentIds = Array.from(
+      new Set(
+        patientPackageUsage.flatMap((u) =>
+          ((u.treatmentsUsed as Array<{ treatmentId: string }>) ?? []).map((t) =>
+            String(t.treatmentId),
+          ),
+        ),
+      ),
+    );
     const [pkgDefs, pkgTreatmentDefs] = await Promise.all([
-      Promise.all(pkgUsagePkgIds.map((id) => ctx.db.get(id))),
-      Promise.all(pkgUsageTreatmentIds.map((id) => ctx.db.get(id))),
+      Promise.all(pkgUsagePkgIds.map((id) => db.get("gabinetTreatmentPackages", id))),
+      Promise.all(pkgUsageTreatmentIds.map((id) => db.get("gabinetTreatments", id))),
     ]);
-    const pkgDefMap = new Map(pkgDefs.filter(Boolean).map((p) => [p!._id, p!]));
-    const pkgTreatmentMap = new Map(pkgTreatmentDefs.filter(Boolean).map((t) => [t!._id, t!]));
+    const pkgDefMap = new Map(
+      pkgDefs
+        .filter((p): p is Record<string, unknown> => p !== null)
+        .map((p) => [String(p._id), p]),
+    );
+    const pkgTreatmentMap = new Map(
+      pkgTreatmentDefs
+        .filter((t): t is Record<string, unknown> => t !== null)
+        .map((t) => [String(t._id), t]),
+    );
 
     const enrichedPatientPackageUsage = patientPackageUsage.map((u) => {
-      const pkgDef = pkgDefMap.get(u.packageId);
-      const enrichedTreatments = u.treatmentsUsed.map((t) => ({
+      const pkgDef = pkgDefMap.get(String(u.packageId));
+      const treatmentsUsedArr =
+        (u.treatmentsUsed as Array<{
+          treatmentId: string;
+          usedCount: number;
+          totalCount: number;
+        }>) ?? [];
+      const enrichedTreatments = treatmentsUsedArr.map((t) => ({
         ...t,
-        treatmentName: pkgTreatmentMap.get(t.treatmentId)?.name ?? null,
+        treatmentName:
+          (pkgTreatmentMap.get(String(t.treatmentId))?.name as string | null) ?? null,
       }));
-      const totalUsed = enrichedTreatments.reduce((s, t) => s + t.usedCount, 0);
-      const totalCount = enrichedTreatments.reduce((s, t) => s + t.totalCount, 0);
+      const totalUsed = enrichedTreatments.reduce((s, t) => s + (t.usedCount ?? 0), 0);
+      const totalCount = enrichedTreatments.reduce((s, t) => s + (t.totalCount ?? 0), 0);
       return {
         ...u,
-        packageName: pkgDef?.name ?? null,
+        packageName: (pkgDef?.name as string | null) ?? null,
         treatmentsUsed: enrichedTreatments,
         totalUsed,
         totalCount,
@@ -2351,14 +2361,24 @@ export const getFullDetail = query({
     });
 
     // Enrich notes with author names
-    const noteAuthorIds = [...new Set(notes.map((n) => n.createdBy))];
-    const noteAuthors = await Promise.all(noteAuthorIds.map((id) => ctx.db.get(id)));
+    const noteAuthorIds = Array.from(
+      new Set(
+        notes
+          .map((n) => (n.createdBy ? String(n.createdBy) : null))
+          .filter((id): id is string => id !== null),
+      ),
+    );
+    const noteAuthors = await Promise.all(
+      noteAuthorIds.map((id) => db.get("users", id).catch(() => null)),
+    );
     const noteAuthorMap = new Map(
-      noteAuthors.filter(Boolean).map((u) => [u!._id, u!.name ?? u!.email ?? null]),
+      noteAuthors
+        .filter((u): u is Record<string, unknown> => u !== null)
+        .map((u) => [String(u._id), (u.name as string | null) ?? (u.email as string | null)]),
     );
     const enrichedNotes = notes.map((n) => ({
       ...n,
-      authorName: noteAuthorMap.get(n.createdBy) ?? null,
+      authorName: noteAuthorMap.get(String(n.createdBy)) ?? null,
     }));
 
     return {
@@ -2372,10 +2392,10 @@ export const getFullDetail = query({
       patientPackageUsage: enrichedPatientPackageUsage,
       patientHistory: patientHistory.map((a) => ({
         ...a,
-        treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) : undefined,
+        treatment: a.treatmentId ? treatmentMap.get(String(a.treatmentId)) : undefined,
       })),
-      loyaltyBalance: loyaltyBalance?.balance ?? 0,
-      loyaltyTier: loyaltyBalance?.tier ?? null,
+      loyaltyBalance: (loyaltyBalanceRow?.balance as number | null) ?? 0,
+      loyaltyTier: (loyaltyBalanceRow?.tier as string | null) ?? null,
       loyaltyTransactions,
       allPatientPayments,
       workflowHistory,

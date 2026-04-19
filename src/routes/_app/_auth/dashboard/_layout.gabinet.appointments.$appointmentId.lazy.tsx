@@ -396,16 +396,20 @@ function AppointmentDetail() {
   const [editNoteContent, setEditNoteContent] = useState("");
   const [isNoteSubmitting, setIsNoteSubmitting] = useState(false);
 
+  const getFullDetailAction = useAction(api.gabinet.appointments.getFullDetail);
   const {
     data: detail,
     isLoading,
     refetch,
-  } = useQuery(
-    convexQuery(api.gabinet.appointments.getFullDetail, {
-      organizationId,
-      appointmentId: appointmentId as Id<"gabinetAppointments">,
-    }),
-  );
+  } = useQuery({
+    queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
+    queryFn: () =>
+      getFullDetailAction({
+        organizationId,
+        appointmentId: appointmentId as string,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  });
 
   const { data: smsEvents = [] } = useQuery(
     convexQuery(api.gabinet.appointmentSms.listByAppointment, {

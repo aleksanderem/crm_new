@@ -1,18 +1,15 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
+import type { Id } from "./_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeDocumentRef = internal.supabase.documents.writeDocumentToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateDocumentRef = internal.supabase.documents.updateDocumentInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteDocumentRef = internal.supabase.documents.deleteDocumentFromSupabase;
+// Dual-write refs removed — Supabase is primary for document writes
 
 export const list = query({
   args: {
@@ -97,7 +94,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -110,183 +107,253 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
     status: v.optional(documentStatusValidator),
     amount: v.optional(v.number()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "create");
+  handler: async (ctx, args): Promise<string> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "documents", action: "create" },
+    );
     if (!perm.allowed) throw new Error("Permission denied");
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const docId = await ctx.db.insert("documents", {
-      ...args,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "document",
-      entityId: docId,
-      action: "document_uploaded",
-      description: `Uploaded document "${args.name}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate new document to Supabase
-    await ctx.scheduler.runAfter(0, writeDocumentRef, {
-      documentId: docId as string,
-      organizationId: args.organizationId as string,
+    const docId = await db.insert("documents", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
-      fileId: args.fileId,
-      fileUrl: args.fileUrl,
-      mimeType: args.mimeType,
-      fileSize: args.fileSize,
-      category: args.category,
-      tags: args.tags,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId as string | undefined,
-      status: args.status,
-      amount: args.amount,
-      createdBy: user._id as string,
+      description: args.description ?? null,
+      fileId: args.fileId ?? null,
+      fileUrl: args.fileUrl ?? null,
+      mimeType: args.mimeType ?? null,
+      fileSize: args.fileSize ?? null,
+      category: args.category ?? null,
+      tags: args.tags ?? null,
+      status: args.status ?? null,
+      amount: args.amount ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
+
+    try {
+      await ctx.runMutation(internal.documents._createSideEffects, {
+        organizationId: args.organizationId,
+        documentId: docId,
+        name: args.name,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[documents.create] Side effects FAILED for document", docId, ":", e);
+    }
 
     return docId;
   },
 });
 
-export const update = mutation({
+export const _createSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("documents"),
+    documentId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "document",
+      entityId: args.documentId,
+      action: "document_uploaded",
+      description: `Uploaded document "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
+    });
+  },
+});
+
+export const update = action({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(documentCategoryValidator),
     tags: v.optional(v.array(v.string())),
     status: v.optional(documentStatusValidator),
     amount: v.optional(v.number()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "edit");
+  handler: async (ctx, args): Promise<string> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "documents", action: "edit" },
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const doc = await db.get("documents", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId)) {
       throw new Error("Document not found");
     }
-    if (perm.scope === "own" && doc.createdBy !== user._id) {
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, documentId, ...updates } = args;
     const now = Date.now();
-    await ctx.db.patch(documentId, { ...updates, updatedAt: now });
 
-    await logActivity(ctx, {
-      organizationId,
-      entityType: "document",
-      entityId: documentId,
-      action: "updated",
-      description: `Updated document "${doc.name}"`,
-      performedBy: user._id,
-    });
+    const cleanUpdates: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(updates)) {
+      if (val !== undefined) cleanUpdates[k] = val;
+    }
+    cleanUpdates.updatedAt = now;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateDocumentRef, {
-      documentId: documentId as string,
-      organizationId: organizationId as string,
-      ...Object.fromEntries(
-        Object.entries(updates).map(([k, val]) => {
-          if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-          if (k === "categoryId" && val) return [k, val as string];
-          return [k, val];
-        })
-      ),
-      updatedAt: now,
-    });
+    await db.patch("documents", documentId, cleanUpdates);
+
+    try {
+      await ctx.runMutation(internal.documents._updateSideEffects, {
+        organizationId,
+        documentId,
+        name: doc.name as string,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[documents.update] Side effects FAILED for document", documentId, ":", e);
+    }
 
     return documentId;
   },
 });
 
-export const remove = mutation({
+export const _updateSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("documents"),
+    documentId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId) {
-      throw new Error("Document not found");
-    }
-    if (perm.scope === "own" && doc.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
-    }
-
-    const customValues = await ctx.db
-      .query("customFieldValues")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "document").eq("entityId", args.documentId)
-      )
-      .collect();
-    for (const cv of customValues) {
-      await ctx.db.delete(cv._id);
-    }
-
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteDocumentRef, {
-      documentId: args.documentId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.documentId);
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "document",
       entityId: args.documentId,
-      action: "deleted",
-      description: `Deleted document "${doc.name}"`,
-      performedBy: user._id,
+      action: "updated",
+      description: `Updated document "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
     });
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.string(),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "documents", action: "delete" },
+    );
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const doc = await db.get("documents", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId)) {
+      throw new Error("Document not found");
+    }
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId)) {
+      throw new Error("Permission denied: you can only delete your own records");
+    }
+
+    // Delete custom field values from Supabase
+    const cfValues = await db.query("customFieldValues")
+      .eq("entityType", "document")
+      .eq("entityId", args.documentId)
+      .collect();
+    for (const cv of cfValues) {
+      await db.delete("customFieldValues", String(cv._id));
+    }
+
+    // Delete document from Supabase
+    await db.delete("documents", args.documentId);
+
+    try {
+      await ctx.runMutation(internal.documents._removeSideEffects, {
+        organizationId: args.organizationId,
+        documentId: args.documentId,
+        name: doc.name as string,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[documents.remove] Side effects FAILED for document", args.documentId, ":", e);
+    }
 
     return args.documentId;
   },
 });
 
-export const updateStatus = mutation({
+export const _removeSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("documents"),
-    status: documentStatusValidator,
+    documentId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "edit");
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "document",
+      entityId: args.documentId,
+      action: "deleted",
+      description: `Deleted document "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
+    });
+  },
+});
+
+export const updateStatus = action({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.string(),
+    status: documentStatusValidator,
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "documents", action: "edit" },
+    );
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const doc = await db.get("documents", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId)) {
       throw new Error("Document not found");
     }
-    if (perm.scope === "own" && doc.createdBy !== user._id) {
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
     const now = Date.now();
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: args.status,
       updatedAt: now,
     };
@@ -297,32 +364,48 @@ export const updateStatus = mutation({
       updateData.acceptedAt = now;
     }
 
-    await ctx.db.patch(args.documentId, updateData);
+    await db.patch("documents", args.documentId, updateData);
 
-    // Dual-write: replicate status change to Supabase
-    await ctx.scheduler.runAfter(0, updateDocumentRef, {
-      documentId: args.documentId as string,
-      organizationId: args.organizationId as string,
-      status: args.status,
-      sentAt: updateData.sentAt,
-      acceptedAt: updateData.acceptedAt,
-      updatedAt: now,
-    });
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "document",
-      entityId: args.documentId,
-      action: "status_changed",
-      description: `Changed document "${doc.name}" status to "${args.status}"`,
-      metadata: { oldStatus: doc.status, newStatus: args.status },
-      performedBy: user._id,
-    });
+    try {
+      await ctx.runMutation(internal.documents._updateStatusSideEffects, {
+        organizationId: args.organizationId,
+        documentId: args.documentId,
+        name: doc.name as string,
+        oldStatus: (doc.status as string) ?? null,
+        newStatus: args.status,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[documents.updateStatus] Side effects FAILED for document", args.documentId, ":", e);
+    }
 
     return args.documentId;
   },
 });
 
+export const _updateStatusSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    documentId: v.string(),
+    name: v.string(),
+    oldStatus: v.union(v.string(), v.null()),
+    newStatus: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "document",
+      entityId: args.documentId,
+      action: "status_changed",
+      description: `Changed document "${args.name}" status to "${args.newStatus}"`,
+      metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
+      performedBy: args.performedBy as Id<"users">,
+    });
+  },
+});
+
+// Storage upload URL generation — stays as mutation (needs ctx.storage)
 export const generateUploadUrl = mutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {

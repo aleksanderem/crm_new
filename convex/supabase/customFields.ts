@@ -45,7 +45,6 @@ export const writeDefinitionToSupabase = internalAction({
     };
 
     const data = await upsertWithFkRetry(client, "custom_field_definitions", row);
-    }
 
     console.info(`Custom field definition written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

@@ -1,17 +1,14 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
+import { Id } from "../_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writePatientRef = internal.supabase.gabinet.patients.writePatientToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updatePatientRef = internal.supabase.gabinet.patients.updatePatientInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deletePatientRef = internal.supabase.gabinet.patients.deletePatientFromSupabase;
+// Dual-write refs removed — Supabase is now primary for patient writes
 
 export const list = query({
   args: {
@@ -114,10 +111,10 @@ export const searchUnlinkedContacts = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    contactId: v.optional(v.id("contacts")),
+    contactId: v.optional(v.string()),
     firstName: v.string(),
     lastName: v.string(),
     pesel: v.optional(v.string()),
@@ -136,33 +133,103 @@ export const create = mutation({
     emergencyContactName: v.optional(v.string()),
     emergencyContactPhone: v.optional(v.string()),
     referralSource: v.optional(v.string()),
-    referredByPatientId: v.optional(v.id("gabinetPatients")),
+    referredByPatientId: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.any()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "create");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const patientId = await ctx.db.insert("gabinetPatients", {
-      ...args,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    // --- INSERT patient directly to Supabase ---
+    const patientId = await db.insert("gabinetPatients", {
+      organizationId: String(args.organizationId),
+      contactId: args.contactId ?? null,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      pesel: args.pesel ?? null,
+      dateOfBirth: args.dateOfBirth ?? null,
+      gender: args.gender ?? null,
+      email: args.email,
+      phone: args.phone ?? null,
+      address: args.address ?? null,
+      medicalNotes: args.medicalNotes ?? null,
+      allergies: args.allergies ?? null,
+      bloodType: args.bloodType ?? null,
+      emergencyContactName: args.emergencyContactName ?? null,
+      emergencyContactPhone: args.emergencyContactPhone ?? null,
+      referralSource: args.referralSource ?? null,
+      referredByPatientId: args.referredByPatientId ?? null,
       isActive: true,
-      createdBy: user._id,
+      tags: args.tags ?? null,
+      customFields: args.customFields ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.patients._createSideEffects, {
+        patientId,
+        organizationId: args.organizationId,
+        contactId: args.contactId ?? undefined,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        email: args.email,
+        phone: args.phone,
+        referralSource: args.referralSource,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[patients.create] Side effects FAILED for patient", patientId, ":", e);
+    }
+
+    return patientId;
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    patientId: v.string(),
+    organizationId: v.id("organizations"),
+    contactId: v.optional(v.string()),
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    referralSource: v.optional(v.string()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const createdByUserId = args.createdBy as Id<"users">;
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
-      entityId: patientId,
+      entityId: args.patientId as Id<"gabinetPatients">,
       action: "created",
       description: `Created patient ${args.firstName} ${args.lastName}`,
-      performedBy: user._id,
+      performedBy: createdByUserId,
     });
 
     await ctx.runMutation(internal.automation.emitEvent, {
@@ -170,64 +237,32 @@ export const create = mutation({
       module: "gabinet",
       eventType: "gabinet.patient.created",
       entityType: "gabinetPatient",
-      entityId: String(patientId),
-      actorUserId: user._id,
-      correlationKey: `patient:${patientId}`,
-      eventIdempotencyKey: `automation-event:${args.organizationId}:${patientId}:created`,
+      entityId: args.patientId,
+      actorUserId: createdByUserId,
+      correlationKey: `patient:${args.patientId}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.patientId}:created`,
       payload: JSON.stringify({
         organizationId: String(args.organizationId),
-        patientId: String(patientId),
-        contactId: args.contactId ? String(args.contactId) : undefined,
+        patientId: args.patientId,
+        contactId: args.contactId,
         firstName: args.firstName,
         lastName: args.lastName,
         patientName: `${args.firstName}${args.lastName ? ` ${args.lastName}` : ""}`,
         patientEmail: args.email,
         patientPhone: args.phone,
         referralSource: args.referralSource,
-        createdBy: String(user._id),
+        createdBy: args.createdBy,
       }),
-      occurredAt: now,
+      occurredAt: args.createdAt,
     });
-
-    // Dual-write: replicate new patient to Supabase
-    await ctx.scheduler.runAfter(0, writePatientRef, {
-      patientId: patientId as string,
-      organizationId: args.organizationId as string,
-      contactId: args.contactId ? (args.contactId as string) : undefined,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      pesel: args.pesel,
-      dateOfBirth: args.dateOfBirth,
-      gender: args.gender,
-      email: args.email,
-      phone: args.phone,
-      address: args.address,
-      medicalNotes: args.medicalNotes,
-      allergies: args.allergies,
-      bloodType: args.bloodType,
-      emergencyContactName: args.emergencyContactName,
-      emergencyContactPhone: args.emergencyContactPhone,
-      referralSource: args.referralSource,
-      referredByPatientId: args.referredByPatientId ? (args.referredByPatientId as string) : undefined,
-      isActive: true,
-      tags: args.tags,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId ? (args.categoryId as string) : undefined,
-      customFields: args.customFields,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return patientId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
-    contactId: v.optional(v.id("contacts")),
+    patientId: v.string(),
+    contactId: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     pesel: v.optional(v.string()),
@@ -246,98 +281,156 @@ export const update = mutation({
     emergencyContactName: v.optional(v.string()),
     emergencyContactPhone: v.optional(v.string()),
     referralSource: v.optional(v.string()),
-    referredByPatientId: v.optional(v.id("gabinetPatients")),
+    referredByPatientId: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.any()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "edit");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_patients",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read patient from Supabase ---
+    const patient = await db.get("gabinetPatients", args.patientId);
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
       throw new Error("Patient not found");
     }
-    if (perm.scope === "own" && patient.createdBy !== user._id) {
+    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    // --- Build updates and PATCH to Supabase ---
     const { organizationId, patientId, ...updates } = args;
-    await ctx.db.patch(patientId, { ...updates, updatedAt: Date.now() });
+    await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
 
-    await logActivity(ctx, {
-      organizationId,
-      entityType: "gabinetPatient",
-      entityId: patientId,
-      action: "updated",
-      description: `Updated patient ${patient.firstName} ${patient.lastName}`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updatePatientRef, {
-      patientId: patientId as string,
-      organizationId: organizationId as string,
-      ...Object.fromEntries(
-        Object.entries(updates)
-          .filter(([k]) => k !== "updatedAt")
-          .map(([k, val]) => {
-            if (k === "contactId" && val) return [k, val as string];
-            if (k === "referredByPatientId" && val) return [k, val as string];
-            if (k === "tagIds" && Array.isArray(val)) return [k, val.map((id) => id as string)];
-            if (k === "categoryId" && val) return [k, val as string];
-            return [k, val];
-          })
-      ),
-      updatedAt: Date.now(),
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.patients._updateSideEffects, {
+        patientId,
+        organizationId,
+        firstName: (patient.firstName as string) ?? "",
+        lastName: (patient.lastName as string) ?? "",
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[patients.update] Side effects FAILED for patient", patientId, ":", e);
+    }
 
     return patientId;
   },
 });
 
-export const remove = mutation({
+export const _updateSideEffects = internalMutation({
   args: {
+    patientId: v.string(),
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    firstName: v.string(),
+    lastName: v.string(),
+    updatedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.organizationId !== args.organizationId) {
-      throw new Error("Patient not found");
-    }
-    if (perm.scope === "own" && patient.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only delete your own records");
-    }
-
-    await ctx.db.patch(args.patientId, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
+    const updatedByUserId = args.updatedBy as Id<"users">;
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
-      entityId: args.patientId,
-      action: "deleted",
-      description: `Deleted patient ${patient.firstName} ${patient.lastName}`,
-      performedBy: user._id,
+      entityId: args.patientId as Id<"gabinetPatients">,
+      action: "updated",
+      description: `Updated patient ${args.firstName} ${args.lastName}`,
+      performedBy: updatedByUserId,
+    });
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_patients",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    // --- Read patient from Supabase ---
+    const patient = await db.get("gabinetPatients", args.patientId);
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
+      throw new Error("Patient not found");
+    }
+    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
+      throw new Error("Permission denied: you can only delete your own records");
+    }
+
+    // --- Soft-delete: PATCH isActive=false in Supabase ---
+    await db.patch("gabinetPatients", args.patientId, {
+      isActive: false,
+      updatedAt: Date.now(),
     });
 
-    // Dual-write: replicate soft-delete to Supabase
-    await ctx.scheduler.runAfter(0, deletePatientRef, {
-      patientId: args.patientId as string,
-      organizationId: args.organizationId as string,
-    });
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.gabinet.patients._removeSideEffects, {
+        patientId: args.patientId,
+        organizationId: args.organizationId,
+        firstName: (patient.firstName as string) ?? "",
+        lastName: (patient.lastName as string) ?? "",
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[patients.remove] Side effects FAILED for patient", args.patientId, ":", e);
+    }
 
     return args.patientId;
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    patientId: v.string(),
+    organizationId: v.id("organizations"),
+    firstName: v.string(),
+    lastName: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const deletedByUserId = args.deletedBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPatient",
+      entityId: args.patientId as Id<"gabinetPatients">,
+      action: "deleted",
+      description: `Deleted patient ${args.firstName} ${args.lastName}`,
+      performedBy: deletedByUserId,
+    });
   },
 });
 

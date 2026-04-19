@@ -200,7 +200,7 @@ function DashboardLayout() {
   const createContact = useMutation(api.contacts.create);
   const createCompany = useMutation(api.companies.create);
   const createLead = useMutation(api.leads.create);
-  const createPatient = useMutation(api.gabinet.patients.create);
+  const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useMutation(api.gabinet.treatments.create);
   const createAppointment = useAction(api.gabinet.appointments.create);
   const createPackage = useMutation(api.gabinet.packages.create);

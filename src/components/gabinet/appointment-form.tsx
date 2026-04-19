@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useConvex } from "convex/react";
+import { useMutation, useAction, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
 import type { Id } from "~/convex/_generated/dataModel";
@@ -163,7 +163,7 @@ export function AppointmentForm({
   });
   const isCrmSearching = contactsLoading || isDebouncing;
 
-  const createPatientFromContact = useMutation(api.gabinet.patients.create);
+  const createPatientFromContact = useAction(api.gabinet.patients.create);
 
   // Locations query
   const { data: locations } = useQuery(

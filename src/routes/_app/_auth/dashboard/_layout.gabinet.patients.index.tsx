@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useOrganization } from "@/components/org-context";
@@ -41,8 +41,8 @@ function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const createPatient = useMutation(api.gabinet.patients.create);
-  const removePatient = useMutation(api.gabinet.patients.remove);
+  const createPatient = useAction(api.gabinet.patients.create);
+  const removePatient = useAction(api.gabinet.patients.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);

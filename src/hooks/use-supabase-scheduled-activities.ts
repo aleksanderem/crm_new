@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { useSupabase } from "@/components/supabase-provider";
+import { useSupabaseSafe as useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapScheduledActivityFromSupabase, type MappedScheduledActivity } from "@/lib/supabase/mappers";
 
@@ -45,6 +45,34 @@ export function useSupabaseScheduledActivitiesList(
       return (data ?? []).map(mapScheduledActivityFromSupabase);
     },
     enabled: enabled && isReady && !!organizationId,
+  });
+}
+
+// ── Get By ID ─────────────────────────────────────────────────────────────────
+
+export function useSupabaseScheduledActivityById(
+  organizationId: string,
+  activityId: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options ?? {};
+
+  return useQuery<MappedScheduledActivity | null, Error>({
+    queryKey: [...supabaseKeys.scheduledActivities.list(organizationId), "byId", activityId],
+    queryFn: async () => {
+      if (!client) throw new Error("Supabase client not ready");
+      if (!activityId) return null;
+      const { data, error } = await client
+        .from("scheduled_activities")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("id", activityId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapScheduledActivityFromSupabase(data) : null;
+    },
+    enabled: enabled && isReady && !!organizationId && !!activityId,
   });
 }
 

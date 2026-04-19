@@ -6,6 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
+import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -236,14 +237,12 @@ function DashboardLayout() {
     enabled: !!firstOrg,
   });
 
-  // Global activity detail drawer data
-  const { data: activityDetailData } = useQuery({
-    ...convexQuery(api.scheduledActivities.getById, {
-      organizationId: firstOrg?._id as Id<"organizations">,
-      activityId: activityDetailId as Id<"scheduledActivities">,
-    }),
-    enabled: !!firstOrg && !!activityDetailId,
-  });
+  // Global activity detail drawer data — Supabase-primary
+  const { data: activityDetailData } = useSupabaseScheduledActivityById(
+    firstOrg?._id ?? "",
+    activityDetailId,
+    { enabled: !!firstOrg && !!activityDetailId },
+  );
   const { data: activityTypeDefs } = useQuery({
     ...convexQuery(api.activityTypes.list, {
       organizationId: firstOrg?._id ?? ("" as any),

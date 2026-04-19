@@ -374,11 +374,10 @@ export const cancelRemindersInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
-    const db = createDb();
-
-    const reminders = await db.query("appointmentReminders")
-      .eq("appointmentId", args.appointmentId)
+    // appointmentReminders is a Convex-only table; read + patch via ctx.db.
+    const reminders = await ctx.db
+      .query("appointmentReminders")
+      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
       .collect();
 
     for (const reminder of reminders) {
@@ -392,7 +391,7 @@ export const cancelRemindersInternal = internalMutation({
             // Already fired or cancelled
           }
         }
-        await db.patch("appointmentReminders", String(reminder._id), { status: "cancelled" });
+        await ctx.db.patch(reminder._id, { status: "cancelled" });
       }
     }
   },

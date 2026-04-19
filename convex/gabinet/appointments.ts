@@ -1164,20 +1164,12 @@ export const create = action({
         },
       );
 
-      if (sideEffectResult) {
-        const result = sideEffectResult as {
-          scheduledActivityId: string;
-          recurActivityIds: Array<{ appointmentId: string; activityId: string }>;
-        };
-        await db.patch("gabinetAppointments", firstId, {
-          scheduledActivityId: result.scheduledActivityId,
-        });
-        for (const r of result.recurActivityIds) {
-          await db.patch("gabinetAppointments", r.appointmentId, {
-            scheduledActivityId: r.activityId,
-          });
-        }
-      }
+      // NOTE: scheduledActivityId is NOT patched onto the Supabase gabinet_appointments row
+      // because scheduledActivities still lives in Convex (Convex ID format, not UUID).
+      // Writing it would violate the Supabase FK `gabinet_appointments_scheduled_activity_id_fkey`.
+      // The link is tracked via Convex `scheduledActivities.linkedEntityId = appointmentId`.
+      // TODO: migrate scheduledActivities to Supabase-primary, then restore this patch.
+      void sideEffectResult;
     } catch (e) {
       console.error("[create] Side effects FAILED for appointment", firstId, ":", e);
     }

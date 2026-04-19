@@ -138,18 +138,7 @@ async function applyAppointmentStatusChange(
     }
   }
 
-  if (args.appointment.scheduledActivityId) {
-    const activityPatch: Record<string, unknown> = { updatedAt: Date.now() };
-    if (
-      args.nextStatus === "completed" ||
-      args.nextStatus === "cancelled" ||
-      args.nextStatus === "no_show"
-    ) {
-      activityPatch.isCompleted = true;
-      activityPatch.completedAt = Date.now();
-    }
-    await ctx.db.patch(args.appointment.scheduledActivityId, activityPatch);
-  }
+  // scheduledActivity patched in Supabase by the parent action (Supabase-primary).
 
   if (
     args.nextStatus === "cancelled" ||
@@ -797,37 +786,19 @@ export const _createSideEffects = internalMutation({
     }))),
     // Package usage (already resolved by action)
     packageUsageId: v.optional(v.string()),
+    // Pre-resolved Supabase UUIDs from the parent action (scheduledActivities
+    // are now written by the action, not here).
+    scheduledActivityId: v.string(),
+    recurActivityIds: v.array(v.object({
+      appointmentId: v.string(),
+      activityId: v.string(),
+    })),
   },
   handler: async (ctx, args) => {
     const now = args.createdAt;
     const createdByUserId = args.createdBy as Id<"users">;
-    const employeeUserId = args.employeeId as Id<"users">;
 
-    // --- 1. Create shared calendar event for the first appointment ---
-    const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
-    const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
-
-    const scheduledActivityId = await ctx.db.insert("scheduledActivities", {
-      organizationId: args.organizationId,
-      title: `${args.treatmentName} — ${args.patientName}`,
-      activityType: "gabinet:appointment",
-      dueDate: dueDateMs,
-      endDate: endDateMs,
-      isCompleted: false,
-      ownerId: createdByUserId,
-      description: args.notes,
-      linkedEntityType: "gabinetAppointment",
-      linkedEntityId: args.appointmentId,
-      moduleRef: {
-        moduleId: "gabinet",
-        entityType: "gabinetAppointment",
-        entityId: args.appointmentId,
-      },
-      resourceId: employeeUserId,
-      createdBy: createdByUserId,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const scheduledActivityId = args.scheduledActivityId;
 
     // --- 2. Emit automation event ---
     await emitAutomationEvent(ctx, {
@@ -868,37 +839,9 @@ export const _createSideEffects = internalMutation({
       timing: "before_start",
     });
 
-    // --- 4. Create calendar events for recurring appointments ---
+    // --- 4. Calendar events for recurring appointments already written to Supabase by the action ---
     const recurringAppointments = args.recurringAppointments ?? [];
-    const recurActivityIds: Array<{ appointmentId: string; activityId: Id<"scheduledActivities"> }> = [];
-    for (const recur of recurringAppointments) {
-      const recurDueMs = new Date(`${recur.date}T${args.startTime}:00`).getTime();
-      const recurEndMs = new Date(`${recur.date}T${args.endTime}:00`).getTime();
-
-      const recurActivityId = await ctx.db.insert("scheduledActivities", {
-        organizationId: args.organizationId,
-        title: `${args.treatmentName} — ${args.patientName}`,
-        activityType: "gabinet:appointment",
-        dueDate: recurDueMs,
-        endDate: recurEndMs,
-        isCompleted: false,
-        ownerId: createdByUserId,
-        description: args.notes,
-        linkedEntityType: "gabinetAppointment",
-        linkedEntityId: recur.appointmentId,
-        moduleRef: {
-          moduleId: "gabinet",
-          entityType: "gabinetAppointment",
-          entityId: recur.appointmentId,
-        },
-        resourceId: employeeUserId,
-        createdBy: createdByUserId,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      recurActivityIds.push({ appointmentId: recur.appointmentId, activityId: recurActivityId });
-    }
+    const recurActivityIds = args.recurActivityIds;
 
     // --- 5. Log activity ---
     await logActivity(ctx, {
@@ -947,10 +890,7 @@ export const _createSideEffects = internalMutation({
       }
     }
 
-    return {
-      scheduledActivityId: String(scheduledActivityId),
-      recurActivityIds,
-    };
+    return { scheduledActivityId, recurActivityIds };
   },
 });
 
@@ -1135,9 +1075,74 @@ export const create = action({
       }
     }
 
-    // --- Delegate Convex-only side effects ---
+    // --- Insert scheduledActivities directly to Supabase (primary) ---
+    const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
+    const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
+    const calendarTitle = `${treatmentName} — ${patientName}`;
+
+    const scheduledActivityId = await db.insert("scheduledActivities", {
+      organizationId: String(args.organizationId),
+      title: calendarTitle,
+      activityType: "gabinet:appointment",
+      dueDate: dueDateMs,
+      endDate: endDateMs,
+      isCompleted: false,
+      ownerId: String(authResult.userId),
+      description: args.notes ?? null,
+      linkedEntityType: "gabinetAppointment",
+      linkedEntityId: firstId,
+      moduleRef: {
+        moduleId: "gabinet",
+        entityType: "gabinetAppointment",
+        entityId: firstId,
+      },
+      resourceId: args.employeeId,
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const recurActivityIds: Array<{ appointmentId: string; activityId: string }> = [];
+    for (const recur of recurringAppointments) {
+      const recurDueMs = new Date(`${recur.date}T${args.startTime}:00`).getTime();
+      const recurEndMs = new Date(`${recur.date}T${args.endTime}:00`).getTime();
+      const recurActivityId = await db.insert("scheduledActivities", {
+        organizationId: String(args.organizationId),
+        title: calendarTitle,
+        activityType: "gabinet:appointment",
+        dueDate: recurDueMs,
+        endDate: recurEndMs,
+        isCompleted: false,
+        ownerId: String(authResult.userId),
+        description: args.notes ?? null,
+        linkedEntityType: "gabinetAppointment",
+        linkedEntityId: recur.appointmentId,
+        moduleRef: {
+          moduleId: "gabinet",
+          entityType: "gabinetAppointment",
+          entityId: recur.appointmentId,
+        },
+        resourceId: args.employeeId,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+        updatedAt: now,
+      });
+      recurActivityIds.push({ appointmentId: recur.appointmentId, activityId: recurActivityId });
+    }
+
+    // --- Patch appointments with their scheduled_activity_id (UUIDs now satisfy Supabase FK) ---
     try {
-      const sideEffectResult = await ctx.runMutation(
+      await db.patch("gabinetAppointments", firstId, { scheduledActivityId });
+      for (const r of recurActivityIds) {
+        await db.patch("gabinetAppointments", r.appointmentId, { scheduledActivityId: r.activityId });
+      }
+    } catch (e) {
+      console.warn("[create] scheduled_activity_id patch failed (non-fatal):", e);
+    }
+
+    // --- Delegate Convex-only side effects (automation event, docs, reminders) ---
+    try {
+      await ctx.runMutation(
         internal.gabinet.appointments._createSideEffects,
         {
           appointmentId: firstId,
@@ -1161,15 +1166,10 @@ export const create = action({
           patientPhone: (patient?.phone as string) ?? undefined,
           recurringAppointments: recurringAppointments.length > 0 ? recurringAppointments : undefined,
           packageUsageId: resolvedPackageUsageId ?? undefined,
+          scheduledActivityId,
+          recurActivityIds,
         },
       );
-
-      // NOTE: scheduledActivityId is NOT patched onto the Supabase gabinet_appointments row
-      // because scheduledActivities still lives in Convex (Convex ID format, not UUID).
-      // Writing it would violate the Supabase FK `gabinet_appointments_scheduled_activity_id_fkey`.
-      // The link is tracked via Convex `scheduledActivities.linkedEntityId = appointmentId`.
-      // TODO: migrate scheduledActivities to Supabase-primary, then restore this patch.
-      void sideEffectResult;
     } catch (e) {
       console.error("[create] Side effects FAILED for appointment", firstId, ":", e);
     }
@@ -1298,7 +1298,29 @@ export const update = action({
     console.info("[update] patching appointment in Supabase:", appointmentId);
     await db.patch("gabinetAppointments", appointmentId, patch);
 
-    // --- Side effects (Convex-only: calendar sync, activity log, automation) ---
+    // --- Sync scheduledActivity in Supabase (moved out of _updateSideEffects mutation) ---
+    const scheduledActivityIdStr = (appt.scheduledActivityId as string) ?? undefined;
+    const dateChanged = !!(args.date || args.startTime || args.endTime);
+    const employeeChanged = !!args.employeeId;
+    if (scheduledActivityIdStr) {
+      try {
+        const actPatch: Record<string, unknown> = { updatedAt: now };
+        if (dateChanged) {
+          actPatch.dueDate = new Date(`${newDate}T${newStart}:00`).getTime();
+          actPatch.endDate = new Date(`${newDate}T${newEnd}:00`).getTime();
+        }
+        if (employeeChanged) {
+          actPatch.resourceId = newEmployee;
+        }
+        if (Object.keys(actPatch).length > 1) {
+          await db.patch("scheduledActivities", scheduledActivityIdStr, actPatch);
+        }
+      } catch (e) {
+        console.warn("[update] scheduledActivity patch failed (non-fatal):", e);
+      }
+    }
+
+    // --- Side effects (Convex-only: activity log, automation event) ---
     try {
       await ctx.runMutation(
         internal.gabinet.appointments._updateSideEffects,
@@ -1363,22 +1385,7 @@ export const _updateSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const actorUserId = args.actorUserId as Id<"users">;
 
-    // Sync time/date changes to scheduledActivity
-    if (args.scheduledActivityId && args.dateChanged) {
-      await ctx.db.patch(args.scheduledActivityId as Id<"scheduledActivities">, {
-        dueDate: new Date(`${args.newDate}T${args.newStartTime}:00`).getTime(),
-        endDate: new Date(`${args.newDate}T${args.newEndTime}:00`).getTime(),
-        updatedAt: Date.now(),
-      });
-    }
-
-    // Sync resource change to scheduledActivity
-    if (args.scheduledActivityId && args.employeeChanged) {
-      await ctx.db.patch(args.scheduledActivityId as Id<"scheduledActivities">, {
-        resourceId: args.newEmployeeId as Id<"users">,
-        updatedAt: Date.now(),
-      });
-    }
+    // scheduledActivity patches moved to the parent action (Supabase-primary).
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
@@ -1487,6 +1494,25 @@ export const updateStatus = action({
     }
     console.info("[updateStatus] patching status in Supabase:", args.appointmentId, "->", args.status);
     await db.patch("gabinetAppointments", args.appointmentId, patch);
+
+    // --- Sync terminal status to linked scheduledActivity in Supabase ---
+    const scheduledActivityIdStr = (appt.scheduledActivityId as string) ?? undefined;
+    if (scheduledActivityIdStr) {
+      try {
+        const actPatch: Record<string, unknown> = { updatedAt: now };
+        if (
+          args.status === "completed" ||
+          args.status === "cancelled" ||
+          args.status === "no_show"
+        ) {
+          actPatch.isCompleted = true;
+          actPatch.completedAt = now;
+        }
+        await db.patch("scheduledActivities", scheduledActivityIdStr, actPatch);
+      } catch (e) {
+        console.warn("[updateStatus] scheduledActivity patch failed (non-fatal):", e);
+      }
+    }
 
     // --- Side effects (Convex-only: status change cascade, auto-doc gen) ---
     try {
@@ -1767,6 +1793,20 @@ export const cancel = action({
       updatedAt: now,
     });
 
+    // --- Mark linked scheduledActivity complete in Supabase ---
+    const scheduledActivityIdStr = (appt.scheduledActivityId as string) ?? undefined;
+    if (scheduledActivityIdStr) {
+      try {
+        await db.patch("scheduledActivities", scheduledActivityIdStr, {
+          isCompleted: true,
+          completedAt: now,
+          updatedAt: now,
+        });
+      } catch (e) {
+        console.warn("[cancel] scheduledActivity patch failed (non-fatal):", e);
+      }
+    }
+
     // --- Side effects (Convex-only) ---
     try {
       await ctx.runMutation(
@@ -1813,14 +1853,7 @@ export const _cancelSideEffects = internalMutation({
     const actorUserId = args.actorUserId as Id<"users">;
     const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
 
-    // Sync cancellation to scheduledActivity
-    if (args.scheduledActivityId) {
-      await ctx.db.patch(args.scheduledActivityId as Id<"scheduledActivities">, {
-        isCompleted: true,
-        completedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
+    // scheduledActivity patched in Supabase by the parent action.
 
     // Cancel pending reminders
     await ctx.scheduler.runAfter(

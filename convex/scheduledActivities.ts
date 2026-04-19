@@ -198,14 +198,19 @@ async function fetchCalendarActivities(
       let metadata: Record<string, unknown> = {};
       if (
         activity.moduleRef?.moduleId === "gabinet" &&
-        activity.moduleRef.entityType === "gabinetAppointment"
+        activity.moduleRef.entityType === "gabinetAppointment" &&
+        activity.moduleRef.entityId
       ) {
-        const appt = await ctx.db.get(
-          activity.moduleRef.entityId as any
-        );
+        // Appointment may live in Supabase now — ctx.db.get requires a Convex ID;
+        // guard against UUIDs and missing IDs.
+        const appt = await ctx.db.get(activity.moduleRef.entityId as any).catch(() => null);
         if (appt) {
-          const patient = await ctx.db.get((appt as any).patientId);
-          const treatment = await ctx.db.get((appt as any).treatmentId);
+          const patient = (appt as any).patientId
+            ? await ctx.db.get((appt as any).patientId).catch(() => null)
+            : null;
+          const treatment = (appt as any).treatmentId
+            ? await ctx.db.get((appt as any).treatmentId).catch(() => null)
+            : null;
           metadata = {
             patientName: patient
               ? `${(patient as any).firstName} ${(patient as any).lastName}`

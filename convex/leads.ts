@@ -743,7 +743,47 @@ export const moveToStage = action({
 
     await db.patch("leads", args.leadId, updateData);
 
-    // Side effects via internalMutation (activity log, stage actions, audit, notifications)
+    // --- Execute pipeline stage auto-actions (create_activity → scheduledActivities) in Supabase ---
+    const createdActivities: Array<{ ownerId: string; title: string }> = [];
+    try {
+      const stageActions = await db
+        .query("pipelineStageActions")
+        .eq("stageId", args.pipelineStageId)
+        .collect();
+      for (const stageAction of stageActions) {
+        if ((stageAction as any).actionType !== "create_activity") continue;
+        const config = (stageAction as any).config as {
+          dueInDays: number;
+          title: string;
+          description?: string;
+          activityTypeId?: string;
+          assignToOwner?: boolean;
+        };
+        const dueDate = now + (config.dueInDays ?? 0) * 24 * 60 * 60 * 1000;
+        const ownerId = config.assignToOwner
+          ? String(lead.assignedTo ?? lead.createdBy ?? authResult.userId)
+          : String(authResult.userId);
+        await db.insert("scheduledActivities", {
+          organizationId: String(args.organizationId),
+          title: config.title,
+          activityType: config.activityTypeId ?? "task",
+          dueDate,
+          isCompleted: false,
+          ownerId,
+          description: config.description ?? null,
+          linkedEntityType: "lead",
+          linkedEntityId: args.leadId,
+          createdBy: String(authResult.userId),
+          createdAt: now,
+          updatedAt: now,
+        });
+        createdActivities.push({ ownerId, title: config.title });
+      }
+    } catch (e) {
+      console.warn("[moveToStage] stage action activity inserts failed:", e);
+    }
+
+    // Side effects via internalMutation (activity log, notifications for stage actions, audit)
     try {
       await ctx.runMutation(internal.leads._moveToStageSideEffects, {
         organizationId: args.organizationId,
@@ -757,6 +797,7 @@ export const moveToStage = action({
         oldStageId: lead.pipelineStageId ? String(lead.pipelineStageId) : null,
         leadCreatedBy: String(lead.createdBy ?? ""),
         leadAssignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
+        createdActivities,
         now,
       });
     } catch {
@@ -780,6 +821,10 @@ export const _moveToStageSideEffects = internalMutation({
     oldStageId: v.union(v.string(), v.null()),
     leadCreatedBy: v.string(),
     leadAssignedTo: v.union(v.string(), v.null()),
+    createdActivities: v.optional(v.array(v.object({
+      ownerId: v.string(),
+      title: v.string(),
+    }))),
     now: v.number(),
   },
   handler: async (ctx, args) => {
@@ -796,47 +841,19 @@ export const _moveToStageSideEffects = internalMutation({
       performedBy: args.userId,
     });
 
-    // Execute pipeline stage auto-actions
-    const stageActions = await ctx.db
-      .query("pipelineStageActions")
-      .withIndex("by_stage", (q) => q.eq("stageId", args.pipelineStageId))
-      .collect();
-
-    for (const stageAction of stageActions) {
-      if (stageAction.actionType === "create_activity") {
-        const { config } = stageAction;
-        const dueDate = args.now + config.dueInDays * 24 * 60 * 60 * 1000;
-        const assignedTo = args.leadAssignedTo as Id<"users"> | null;
-        const createdBy = args.leadCreatedBy as unknown as Id<"users">;
-        const ownerId = config.assignToOwner
-          ? (assignedTo ?? createdBy)
-          : args.userId;
-
-        await ctx.db.insert("scheduledActivities", {
+    // scheduledActivities for stage actions are inserted by the parent action in Supabase.
+    // Here we only emit "New task from pipeline" notifications for activities that were
+    // assigned to someone other than the actor.
+    for (const created of args.createdActivities ?? []) {
+      if (created.ownerId !== String(args.userId)) {
+        await createNotificationDirect(ctx, {
           organizationId: args.organizationId,
-          title: config.title,
-          activityType: config.activityTypeId ?? "task",
-          dueDate,
-          isCompleted: false,
-          ownerId,
-          description: config.description,
-          linkedEntityType: "lead",
-          linkedEntityId: args.leadId,
-          createdBy: args.userId,
-          createdAt: args.now,
-          updatedAt: args.now,
+          userId: created.ownerId as Id<"users">,
+          type: "assigned",
+          title: "New task from pipeline",
+          message: `Task "${created.title}" created for lead "${args.leadTitle}"`,
+          link: `/leads/${args.leadId}`,
         });
-
-        if (ownerId !== args.userId) {
-          await createNotificationDirect(ctx, {
-            organizationId: args.organizationId,
-            userId: ownerId,
-            type: "assigned",
-            title: "New task from pipeline",
-            message: `Task "${config.title}" created for lead "${args.leadTitle}"`,
-            link: `/leads/${args.leadId}`,
-          });
-        }
       }
     }
 

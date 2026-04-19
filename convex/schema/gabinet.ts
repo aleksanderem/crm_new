@@ -382,7 +382,7 @@ export function createGabinetTables({
     prepaymentStatus: v.optional(v.string()),
     prepaymentPaidAt: v.optional(v.number()),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
-    scheduledActivityId: v.optional(v.id("scheduledActivities")),
+    scheduledActivityId: v.optional(v.string()),
     reminderSentAt: v.optional(v.number()),
     sendReminder: v.optional(v.boolean()),
     cancelledAt: v.optional(v.number()),

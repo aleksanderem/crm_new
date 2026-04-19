@@ -1,5 +1,6 @@
-import { query, mutation, internalMutation, MutationCtx } from "../_generated/server";
+import { query, mutation, action, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
@@ -627,12 +628,262 @@ export const checkQualification = query({
   },
 });
 
-export const create = mutation({
+// ---------------------------------------------------------------------------
+// Internal helpers for the create action (actions can't access ctx.db)
+// ---------------------------------------------------------------------------
+
+export const _getOrgSettings = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orgSettings")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+  },
+});
+
+export const _checkConflictQuery = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
-    treatmentId: v.id("gabinetTreatments"),
-    employeeId: v.id("users"),
+    userId: v.string(),
+    date: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    roomId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await checkConflict(ctx, args);
+  },
+});
+
+export const _checkQualificationQuery = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    treatmentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await checkEmployeeQualification(ctx, args);
+  },
+});
+
+export const _resolveLocationQuery = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    date: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const locationId = await resolveAppointmentLocation(ctx, args);
+    return locationId ? String(locationId) : null;
+  },
+});
+
+export const _resolveAutoPackageUsageMutation = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    treatmentId: v.string(),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const treatment = await ctx.db.get(args.treatmentId);
+    if (!treatment) return null;
+    const result = await resolveAutoPackageUsage(ctx, {
+      ...args,
+      treatment,
+    });
+    return result ? String(result) : null;
+  },
+});
+
+/**
+ * Internal mutation that handles all Convex-only side effects after the
+ * appointment has been written to Supabase by the create action.
+ */
+export const _createSideEffects = internalMutation({
+  args: {
+    // Appointment data (already written to Supabase)
+    appointmentId: v.string(),
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    treatmentId: v.string(),
+    employeeId: v.string(),
+    date: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    notes: v.optional(v.string()),
+    status: v.string(),
+    isRecurring: v.boolean(),
+    recurringGroupId: v.optional(v.string()),
+    sendReminder: v.boolean(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    // Resolved names for calendar title
+    patientName: v.string(),
+    treatmentName: v.string(),
+    // Patient contact info for automation event
+    patientEmail: v.optional(v.string()),
+    patientPhone: v.optional(v.string()),
+    // Recurring series: list of {appointmentId, date, recurringIndex} for each item
+    recurringAppointments: v.optional(v.array(v.object({
+      appointmentId: v.string(),
+      date: v.string(),
+      recurringIndex: v.number(),
+    }))),
+    // Package usage (already resolved by action)
+    packageUsageId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = args.createdAt;
+
+    // --- 1. Create shared calendar event for the first appointment ---
+    const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
+    const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
+
+    const scheduledActivityId = await ctx.db.insert("scheduledActivities", {
+      organizationId: args.organizationId,
+      title: `${args.treatmentName} — ${args.patientName}`,
+      activityType: "gabinet:appointment",
+      dueDate: dueDateMs,
+      endDate: endDateMs,
+      isCompleted: false,
+      ownerId: args.createdBy,
+      description: args.notes,
+      linkedEntityType: "gabinetAppointment",
+      linkedEntityId: args.appointmentId as Id<"gabinetAppointments">,
+      moduleRef: {
+        moduleId: "gabinet",
+        entityType: "gabinetAppointment",
+        entityId: args.appointmentId as Id<"gabinetAppointments">,
+      },
+      resourceId: args.employeeId,
+      createdBy: args.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // --- 2. Emit automation event ---
+    await emitAutomationEvent(ctx, {
+      organizationId: args.organizationId,
+      module: "gabinet",
+      eventType: "gabinet.appointment.created",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+      actorUserId: args.createdBy,
+      correlationKey: `appointment:${args.appointmentId}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:created`,
+      payload: {
+        organizationId: String(args.organizationId),
+        appointmentId: args.appointmentId,
+        patientId: String(args.patientId),
+        treatmentId: String(args.treatmentId),
+        employeeId: String(args.employeeId),
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        status: "scheduled",
+        patientEmail: args.patientEmail,
+        patientPhone: args.patientPhone,
+        patientName: args.patientName,
+        treatmentName: args.treatmentName,
+        employeeName: String(args.employeeId),
+        createdBy: String(args.createdBy),
+      },
+    });
+
+    // --- 3. Auto-generate appointment documents ---
+    await autoGenerateAppointmentDocuments(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+      treatmentId: args.treatmentId,
+      patientId: args.patientId,
+      createdBy: args.createdBy,
+      timing: "before_start",
+    });
+
+    // --- 4. Create calendar events for recurring appointments ---
+    const recurringAppointments = args.recurringAppointments ?? [];
+    const recurActivityIds: Array<{ appointmentId: string; activityId: Id<"scheduledActivities"> }> = [];
+    for (const recur of recurringAppointments) {
+      const recurDueMs = new Date(`${recur.date}T${args.startTime}:00`).getTime();
+      const recurEndMs = new Date(`${recur.date}T${args.endTime}:00`).getTime();
+
+      const recurActivityId = await ctx.db.insert("scheduledActivities", {
+        organizationId: args.organizationId,
+        title: `${args.treatmentName} — ${args.patientName}`,
+        activityType: "gabinet:appointment",
+        dueDate: recurDueMs,
+        endDate: recurEndMs,
+        isCompleted: false,
+        ownerId: args.createdBy,
+        description: args.notes,
+        linkedEntityType: "gabinetAppointment",
+        linkedEntityId: recur.appointmentId as Id<"gabinetAppointments">,
+        moduleRef: {
+          moduleId: "gabinet",
+          entityType: "gabinetAppointment",
+          entityId: recur.appointmentId as Id<"gabinetAppointments">,
+        },
+        resourceId: args.employeeId,
+        createdBy: args.createdBy,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      recurActivityIds.push({ appointmentId: recur.appointmentId, activityId: recurActivityId });
+    }
+
+    // --- 5. Log activity ---
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId as Id<"gabinetAppointments">,
+      action: "created",
+      description: `Created appointment for ${args.date} at ${args.startTime}`,
+      performedBy: args.createdBy,
+    });
+
+    // --- 6. Schedule reminders ---
+    if (args.sendReminder) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.gabinet.appointmentReminders.scheduleReminderInternal,
+        {
+          organizationId: args.organizationId,
+          appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+        },
+      );
+
+      for (const recur of recurringAppointments) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.gabinet.appointmentReminders.scheduleReminderInternal,
+          {
+            organizationId: args.organizationId,
+            appointmentId: recur.appointmentId as Id<"gabinetAppointments">,
+          },
+        );
+      }
+    }
+
+    return {
+      scheduledActivityId: String(scheduledActivityId),
+      recurActivityIds,
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// PUBLIC create action — Supabase-primary write
+// ---------------------------------------------------------------------------
+
+export const create = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    treatmentId: v.string(),
+    employeeId: v.string(),
     date: v.string(),
     startTime: v.string(),
     endTime: v.string(),
@@ -649,339 +900,200 @@ export const create = mutation({
     ),
     prepaymentRequired: v.optional(v.boolean()),
     prepaymentAmount: v.optional(v.number()),
-    packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    packageUsageId: v.optional(v.string()),
     sendReminder: v.optional(v.boolean()),
-    locationId: v.optional(v.id("gabinetLocations")),
-    roomId: v.optional(v.id("gabinetRooms")),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    locationId: v.optional(v.string()),
+    roomId: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "create",
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
-    if (!perm.allowed) throw new Error("Permission denied");
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    // Determine whether to send reminder: explicit arg or org default
-    const orgSettings = await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+    // --- Org settings (reminder default) ---
+    const orgSettings = await ctx.runQuery(
+      internal.gabinet.appointments._getOrgSettings,
+      { organizationId: args.organizationId },
+    );
     const shouldSendReminder =
-      args.sendReminder ?? orgSettings?.reminderEnabled ?? false;
+      args.sendReminder ?? (orgSettings as any)?.reminderEnabled ?? false;
 
-    // Check employee qualification for treatment
-    const qualification = await checkEmployeeQualification(ctx, {
-      organizationId: args.organizationId,
-      userId: args.employeeId,
-      treatmentId: args.treatmentId,
-    });
-    if (!qualification.qualified) {
-      throw new Error(qualification.reason ?? "Employee not qualified");
+    // --- Employee qualification check ---
+    const qualification = await ctx.runQuery(
+      internal.gabinet.appointments._checkQualificationQuery,
+      {
+        organizationId: args.organizationId,
+        userId: args.employeeId as Id<"users">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+      },
+    );
+    if (!(qualification as any).qualified) {
+      throw new Error((qualification as any).reason ?? "Employee not qualified");
     }
 
-    // Check conflict
-    const conflict = await checkConflict(ctx, {
-      organizationId: args.organizationId,
-      userId: args.employeeId,
-      date: args.date,
-      startTime: args.startTime,
-      endTime: args.endTime,
-      roomId: args.roomId,
-    });
-    if (conflict.hasConflict) {
-      throw new Error(conflict.reason ?? "Time slot conflict");
+    // --- Conflict check ---
+    const conflict = await ctx.runQuery(
+      internal.gabinet.appointments._checkConflictQuery,
+      {
+        organizationId: args.organizationId,
+        userId: args.employeeId as Id<"users">,
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        roomId: args.roomId ? args.roomId as Id<"gabinetRooms"> : undefined,
+      },
+    );
+    if ((conflict as any).hasConflict) {
+      throw new Error((conflict as any).reason ?? "Time slot conflict");
     }
+
+    // --- Resolve treatment + patient from Supabase ---
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    const patient = await db.get("gabinetPatients", args.patientId);
 
     const isRecurring = args.isRecurring ?? false;
     const recurringGroupId = isRecurring ? crypto.randomUUID() : undefined;
 
-    // Resolve treatment + patient for calendar event title and auto-package
-    const treatment = await ctx.db.get(args.treatmentId);
-    const patient = await ctx.db.get(args.patientId);
-
-    // Auto-create package for multi-session treatments
-    let resolvedPackageUsageId = args.packageUsageId;
-    if (!resolvedPackageUsageId && treatment && (treatment.treatmentCount ?? 1) > 1) {
-      resolvedPackageUsageId = await resolveAutoPackageUsage(ctx, {
-        organizationId: args.organizationId,
-        patientId: args.patientId,
-        treatmentId: args.treatmentId,
-        treatment,
-        userId: user._id,
-      });
+    // --- Auto-create package for multi-session treatments (Convex DB write) ---
+    let resolvedPackageUsageId = args.packageUsageId ?? null;
+    if (!resolvedPackageUsageId && treatment && ((treatment.treatmentCount as number) ?? 1) > 1) {
+      resolvedPackageUsageId = await ctx.runMutation(
+        internal.gabinet.appointments._resolveAutoPackageUsageMutation,
+        {
+          organizationId: args.organizationId,
+          patientId: args.patientId as Id<"gabinetPatients">,
+          treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+          userId: authResult.userId,
+        },
+      ) as string | null;
     }
 
-    // Resolve location from employee schedule (or use explicit)
+    // --- Resolve location ---
     let resolvedLocationId = args.locationId ?? null;
     if (!resolvedLocationId) {
-      resolvedLocationId = await resolveAppointmentLocation(ctx, {
-        organizationId: args.organizationId,
-        userId: args.employeeId,
-        date: args.date,
-      });
+      resolvedLocationId = await ctx.runQuery(
+        internal.gabinet.appointments._resolveLocationQuery,
+        {
+          organizationId: args.organizationId,
+          userId: args.employeeId as Id<"users">,
+          date: args.date,
+        },
+      ) as string | null;
     }
 
-    const baseData = {
-      organizationId: args.organizationId,
+    const patientName = patient
+      ? `${patient.firstName}${patient.lastName ? " " + (patient.lastName as string) : ""}`
+      : "Patient";
+    const treatmentName = (treatment?.name as string) ?? "Treatment";
+
+    // --- INSERT first appointment directly to Supabase ---
+    const baseRow: Record<string, unknown> = {
+      organizationId: String(args.organizationId),
       patientId: args.patientId,
       treatmentId: args.treatmentId,
       employeeId: args.employeeId,
       startTime: args.startTime,
       endTime: args.endTime,
-      status: "scheduled" as const,
-      notes: args.notes,
-      internalNotes: args.internalNotes,
-      color: args.color,
+      status: "scheduled",
+      notes: args.notes ?? null,
+      internalNotes: args.internalNotes ?? null,
+      color: args.color ?? null,
       isRecurring,
-      recurringRule: args.recurringRule,
-      recurringGroupId,
-      prepaymentRequired: args.prepaymentRequired,
-      prepaymentAmount: args.prepaymentAmount,
-      prepaymentStatus: args.prepaymentRequired ? "pending" : undefined,
-      packageUsageId: resolvedPackageUsageId,
+      recurringRule: args.recurringRule ?? null,
+      recurringGroupId: recurringGroupId ?? null,
+      prepaymentRequired: args.prepaymentRequired ?? null,
+      prepaymentAmount: args.prepaymentAmount ?? null,
+      prepaymentStatus: args.prepaymentRequired ? "pending" : null,
+      packageUsageId: resolvedPackageUsageId ?? null,
       sendReminder: shouldSendReminder,
-      locationId: resolvedLocationId ?? undefined,
-      roomId: args.roomId,
-      createdBy: user._id,
+      locationId: resolvedLocationId ?? null,
+      roomId: args.roomId ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     };
-    const patientName = patient
-      ? `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`
-      : "Patient";
-    const treatmentName = treatment?.name ?? "Treatment";
 
-    // Create first appointment
-    const firstId = await ctx.db.insert("gabinetAppointments", {
-      ...baseData,
+    const firstId = await db.insert("gabinetAppointments", {
+      ...baseRow,
       date: args.date,
-      recurringIndex: isRecurring ? 0 : undefined,
+      recurringIndex: isRecurring ? 0 : null,
     });
 
-    await emitAutomationEvent(ctx, {
-      organizationId: args.organizationId,
-      module: "gabinet",
-      eventType: "gabinet.appointment.created",
-      entityType: "gabinetAppointment",
-      entityId: String(firstId),
-      actorUserId: user._id,
-      correlationKey: `appointment:${firstId}`,
-      eventIdempotencyKey: `automation-event:${args.organizationId}:${firstId}:created`,
-      payload: {
-        organizationId: String(args.organizationId),
-        appointmentId: String(firstId),
-        patientId: String(args.patientId),
-        treatmentId: String(args.treatmentId),
-        employeeId: String(args.employeeId),
-        date: args.date,
-        startTime: args.startTime,
-        endTime: args.endTime,
-        status: "scheduled",
-        patientEmail: patient?.email,
-        patientPhone: patient?.phone,
-        patientName,
-        treatmentName,
-        employeeName: args.employeeId,
-        createdBy: String(user._id),
-      },
-    });
-
-    // Dual write: create shared calendar event
-    const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
-    const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
-
-    const scheduledActivityId = await ctx.db.insert("scheduledActivities", {
-      organizationId: args.organizationId,
-      title: `${treatmentName} — ${patientName}`,
-      activityType: "gabinet:appointment",
-      dueDate: dueDateMs,
-      endDate: endDateMs,
-      isCompleted: false,
-      ownerId: user._id,
-      description: args.notes,
-      linkedEntityType: "gabinetAppointment",
-      linkedEntityId: firstId,
-      moduleRef: {
-        moduleId: "gabinet",
-        entityType: "gabinetAppointment",
-        entityId: firstId,
-      },
-      resourceId: args.employeeId,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await ctx.db.patch(firstId, { scheduledActivityId });
-
-    // Dual-write first appointment to Supabase
-    await ctx.scheduler.runAfter(0, writeAppointmentRef, {
-      appointmentId: String(firstId),
-      organizationId: String(args.organizationId),
-      patientId: String(args.patientId),
-      treatmentId: String(args.treatmentId),
-      employeeId: String(args.employeeId),
-      date: args.date,
-      startTime: args.startTime,
-      endTime: args.endTime,
-      status: "scheduled",
-      notes: args.notes,
-      internalNotes: args.internalNotes,
-      color: args.color,
-      isRecurring,
-      recurringRule: args.recurringRule,
-      recurringGroupId,
-      recurringIndex: isRecurring ? 0 : undefined,
-      prepaymentRequired: args.prepaymentRequired,
-      prepaymentAmount: args.prepaymentAmount,
-      prepaymentStatus: args.prepaymentRequired ? "pending" : undefined,
-      packageUsageId: resolvedPackageUsageId ? String(resolvedPackageUsageId) : undefined,
-      scheduledActivityId: String(scheduledActivityId),
-      sendReminder: shouldSendReminder,
-      locationId: resolvedLocationId ? String(resolvedLocationId) : undefined,
-      roomId: args.roomId ? String(args.roomId) : undefined,
-      tagIds: args.tagIds?.map(String),
-      categoryId: args.categoryId ? String(args.categoryId) : undefined,
-      createdBy: String(user._id),
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Auto-generate required documents from treatment's form templates
-    // Only generate "before_start" docs now; "after_completion" docs are
-    // generated when the appointment is completed.
-    await autoGenerateAppointmentDocuments(ctx, {
-      organizationId: args.organizationId,
-      appointmentId: firstId,
-      treatmentId: args.treatmentId,
-      patientId: args.patientId,
-      createdBy: user._id,
-      timing: "before_start",
-    });
-
-    // Generate recurring series
+    // --- INSERT recurring appointments to Supabase ---
+    const recurringAppointments: Array<{ appointmentId: string; date: string; recurringIndex: number }> = [];
     if (isRecurring && args.recurringRule) {
       const dates = generateRecurringDates(args.date, args.recurringRule);
       for (let i = 0; i < dates.length; i++) {
-        const recurId = await ctx.db.insert("gabinetAppointments", {
-          ...baseData,
+        const recurId = await db.insert("gabinetAppointments", {
+          ...baseRow,
           date: dates[i],
           recurringIndex: i + 1,
         });
-
-        const recurDueMs = new Date(
-          `${dates[i]}T${args.startTime}:00`,
-        ).getTime();
-        const recurEndMs = new Date(`${dates[i]}T${args.endTime}:00`).getTime();
-
-        const recurActivityId = await ctx.db.insert("scheduledActivities", {
-          organizationId: args.organizationId,
-          title: `${treatmentName} — ${patientName}`,
-          activityType: "gabinet:appointment",
-          dueDate: recurDueMs,
-          endDate: recurEndMs,
-          isCompleted: false,
-          ownerId: user._id,
-          description: args.notes,
-          linkedEntityType: "gabinetAppointment",
-          linkedEntityId: recurId,
-          moduleRef: {
-            moduleId: "gabinet",
-            entityType: "gabinetAppointment",
-            entityId: recurId,
-          },
-          resourceId: args.employeeId,
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        await ctx.db.patch(recurId, { scheduledActivityId: recurActivityId });
-
-        // Dual-write recurring appointment to Supabase
-        await ctx.scheduler.runAfter(0, writeAppointmentRef, {
-          appointmentId: String(recurId),
-          organizationId: String(args.organizationId),
-          patientId: String(args.patientId),
-          treatmentId: String(args.treatmentId),
-          employeeId: String(args.employeeId),
+        recurringAppointments.push({
+          appointmentId: recurId,
           date: dates[i],
-          startTime: args.startTime,
-          endTime: args.endTime,
-          status: "scheduled",
-          notes: args.notes,
-          internalNotes: args.internalNotes,
-          color: args.color,
-          isRecurring: true,
-          recurringRule: args.recurringRule,
-          recurringGroupId,
           recurringIndex: i + 1,
-          prepaymentRequired: args.prepaymentRequired,
-          prepaymentAmount: args.prepaymentAmount,
-          prepaymentStatus: args.prepaymentRequired ? "pending" : undefined,
-          packageUsageId: resolvedPackageUsageId ? String(resolvedPackageUsageId) : undefined,
-          scheduledActivityId: String(recurActivityId),
-          sendReminder: shouldSendReminder,
-          locationId: resolvedLocationId ? String(resolvedLocationId) : undefined,
-          roomId: args.roomId ? String(args.roomId) : undefined,
-          tagIds: args.tagIds?.map(String),
-          categoryId: args.categoryId ? String(args.categoryId) : undefined,
-          createdBy: String(user._id),
-          createdAt: now,
-          updatedAt: now,
         });
       }
     }
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetAppointment",
-      entityId: firstId,
-      action: "created",
-      description: `Created appointment for ${args.date} at ${args.startTime}`,
-      performedBy: user._id,
-    });
+    // --- Delegate Convex-only side effects ---
+    const sideEffectResult = await ctx.runMutation(
+      internal.gabinet.appointments._createSideEffects,
+      {
+        appointmentId: firstId,
+        organizationId: args.organizationId,
+        patientId: args.patientId as Id<"gabinetPatients">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        employeeId: args.employeeId as Id<"users">,
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        notes: args.notes,
+        status: "scheduled",
+        isRecurring,
+        recurringGroupId,
+        sendReminder: shouldSendReminder,
+        createdBy: authResult.userId,
+        createdAt: now,
+        patientName,
+        treatmentName,
+        patientEmail: (patient?.email as string) ?? undefined,
+        patientPhone: (patient?.phone as string) ?? undefined,
+        recurringAppointments: recurringAppointments.length > 0 ? recurringAppointments : undefined,
+        packageUsageId: resolvedPackageUsageId ?? undefined,
+      },
+    );
 
-    // Schedule reminder if enabled
-    if (shouldSendReminder) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.gabinet.appointmentReminders.scheduleReminderInternal,
-        {
-          organizationId: args.organizationId,
-          appointmentId: firstId,
-        },
-      );
-
-      // Also schedule reminders for recurring appointments
-      if (isRecurring && args.recurringRule) {
-        const recurringAppts = await ctx.db
-          .query("gabinetAppointments")
-          .withIndex("by_orgAndRecurringGroup", (q) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("recurringGroupId", recurringGroupId!),
-          )
-          .collect();
-        for (const recurAppt of recurringAppts) {
-          if (recurAppt._id !== firstId) {
-            await ctx.scheduler.runAfter(
-              0,
-              internal.gabinet.appointmentReminders.scheduleReminderInternal,
-              {
-                organizationId: args.organizationId,
-                appointmentId: recurAppt._id,
-              },
-            );
-          }
-        }
+    // --- Patch scheduledActivityId back into Supabase appointment ---
+    if (sideEffectResult) {
+      const result = sideEffectResult as {
+        scheduledActivityId: string;
+        recurActivityIds: Array<{ appointmentId: string; activityId: string }>;
+      };
+      await db.patch("gabinetAppointments", firstId, {
+        scheduledActivityId: result.scheduledActivityId,
+      });
+      for (const r of result.recurActivityIds) {
+        await db.patch("gabinetAppointments", r.appointmentId, {
+          scheduledActivityId: r.activityId,
+        });
       }
     }
 

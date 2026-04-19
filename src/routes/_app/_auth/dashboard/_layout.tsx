@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseSafe } from "@/components/supabase-provider";
@@ -202,7 +202,7 @@ function DashboardLayout() {
   const createLead = useMutation(api.leads.create);
   const createPatient = useMutation(api.gabinet.patients.create);
   const createTreatment = useMutation(api.gabinet.treatments.create);
-  const createAppointment = useMutation(api.gabinet.appointments.create);
+  const createAppointment = useAction(api.gabinet.appointments.create);
   const createPackage = useMutation(api.gabinet.packages.create);
   const createEmployee = useMutation(api.gabinet.employees.create);
   const createActivity = useMutation(api.scheduledActivities.create);

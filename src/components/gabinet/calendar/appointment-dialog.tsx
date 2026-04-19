@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useConvex } from "convex/react";
+import { useMutation, useAction, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -111,7 +111,7 @@ export function AppointmentDialog({
 }: AppointmentDialogProps) {
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
-  const createAppointment = useMutation(api.gabinet.appointments.create);
+  const createAppointment = useAction(api.gabinet.appointments.create);
   const convex = useConvex();
 
   // -------------------------------------------------------------------------

@@ -148,6 +148,52 @@ export function useSupabaseScheduledActivitiesDueThisWeek(
   });
 }
 
+// ── By Date Range ─────────────────────────────────────────────────────────────
+
+interface UseSupabaseScheduledActivitiesByDateRangeOpts {
+  enabled?: boolean;
+  moduleFilter?: string; // matches module_ref.moduleId
+}
+
+export function useSupabaseScheduledActivitiesByDateRange(
+  organizationId: string,
+  startDate: number,
+  endDate: number,
+  options: UseSupabaseScheduledActivitiesByDateRangeOpts = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, moduleFilter } = options;
+
+  return useQuery<MappedScheduledActivity[], Error>({
+    queryKey: [
+      ...supabaseKeys.scheduledActivities.list(organizationId),
+      "dateRange",
+      startDate,
+      endDate,
+      moduleFilter ?? "all",
+    ],
+    queryFn: async () => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("scheduled_activities")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .gte("due_date", startDate)
+        .lte("due_date", endDate)
+        .order("due_date", { ascending: true });
+
+      if (error) throw error;
+      const mapped = (data ?? []).map(mapScheduledActivityFromSupabase);
+      if (moduleFilter) {
+        return mapped.filter((a) => a.moduleRef?.moduleId === moduleFilter);
+      }
+      return mapped;
+    },
+    enabled: enabled && isReady && !!organizationId,
+  });
+}
+
 // ── Overdue ───────────────────────────────────────────────────────────────────
 
 export function useSupabaseScheduledActivitiesOverdue(

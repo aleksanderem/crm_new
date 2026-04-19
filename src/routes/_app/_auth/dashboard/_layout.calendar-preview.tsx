@@ -12,6 +12,7 @@ import {
 } from "@untitled/app/calendar/calendar";
 import type { EventViewColor } from "@untitled/app/calendar/base-components/calendar-month-view-event";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
+import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calendar-preview"
@@ -47,12 +48,10 @@ function CalendarPreview() {
     return { startTs: start.getTime(), endTs: end.getTime() };
   }, []);
 
-  const { data: rawEvents } = useQuery(
-    convexQuery(api.scheduledActivities.listForCalendar, {
-      organizationId,
-      startDate: startTs,
-      endDate: endTs,
-    })
+  const { data: rawEvents } = useSupabaseScheduledActivitiesByDateRange(
+    organizationId,
+    startTs,
+    endTs,
   );
 
   const events: CalendarEvent[] = useMemo(() => {

@@ -50,6 +50,7 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createLazyFileRoute(
@@ -175,13 +176,11 @@ function GabinetCalendarPage() {
     return { startTs: s.getTime(), endTs: e.getTime() };
   }, [startDate, endDate]);
 
-  const { data: blockedTimeActivities } = useQuery(
-    convexQuery(api.scheduledActivities.listForCalendar, {
-      organizationId,
-      startDate: blockedTimeRange.startTs,
-      endDate: blockedTimeRange.endTs,
-      moduleFilter: "gabinet",
-    }),
+  const { data: blockedTimeActivities } = useSupabaseScheduledActivitiesByDateRange(
+    organizationId,
+    blockedTimeRange.startTs,
+    blockedTimeRange.endTs,
+    { moduleFilter: "gabinet" },
   );
 
   // Fetch employees for filter from Supabase

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
@@ -130,9 +130,9 @@ function CallsPage() {
     return filtered.filter((c: any) => c.note?.toLowerCase().includes(q));
   }, [allCalls, activeFilters, applyFilters, searchValue]);
 
-  const createCall = useMutation(api.calls.create);
-  const updateCall = useMutation(api.calls.update);
-  const removeCall = useMutation(api.calls.remove);
+  const createCall = useAction(api.calls.create);
+  const updateCall = useAction(api.calls.update);
+  const removeCall = useAction(api.calls.remove);
 
   const resetForm = () => {
     setOutcome("noAnswer");

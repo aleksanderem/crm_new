@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
@@ -128,10 +128,10 @@ function ProductsPage() {
     return data;
   }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue]);
 
-  const createProduct = useMutation(api.products.create);
-  const updateProduct = useMutation(api.products.update);
-  const removeProduct = useMutation(api.products.remove);
-  const toggleActive = useMutation(api.products.toggleActive);
+  const createProduct = useAction(api.products.create);
+  const updateProduct = useAction(api.products.update);
+  const removeProduct = useAction(api.products.remove);
+  const toggleActive = useAction(api.products.toggleActive);
 
   const resetForm = () => {
     setName("");

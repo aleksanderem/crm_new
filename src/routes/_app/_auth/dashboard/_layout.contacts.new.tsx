@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -21,7 +21,7 @@ function NewContact() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const createContact = useMutation(api.contacts.create);
+  const createContact = useAction(api.contacts.create);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(

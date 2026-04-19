@@ -197,23 +197,23 @@ function DashboardLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const createContact = useMutation(api.contacts.create);
-  const createCompany = useMutation(api.companies.create);
-  const createLead = useMutation(api.leads.create);
+  const createContact = useAction(api.contacts.create);
+  const createCompany = useAction(api.companies.create);
+  const createLead = useAction(api.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
   const createAppointment = useAction(api.gabinet.appointments.create);
   const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
-  const createActivity = useMutation(api.scheduledActivities.create);
+  const createActivity = useAction(api.scheduledActivities.create);
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
-  const createProduct = useMutation(api.products.create);
-  const createCall = useMutation(api.calls.create);
+  const createProduct = useAction(api.products.create);
+  const createCall = useAction(api.calls.create);
   const createInvitation = useMutation(api.invitations.create);
-  const updateActivity = useMutation(api.scheduledActivities.update);
-  const removeActivity = useMutation(api.scheduledActivities.remove);
-  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
-  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
+  const updateActivity = useAction(api.scheduledActivities.update);
+  const removeActivity = useAction(api.scheduledActivities.remove);
+  const markActivityComplete = useAction(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
 
   // Global activity detail drawer
   const [activityDetailId, setActivityDetailId] = useState<string | null>(null);

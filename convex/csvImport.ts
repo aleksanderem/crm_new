@@ -1,18 +1,9 @@
-import { mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireOrgAdmin } from "./_helpers/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { v } from "convex/values";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeContactRef = internal.supabase.contacts.writeContactToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeCompanyRef = internal.supabase.companies.writeCompanyToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLeadRef = internal.supabase.leads.writeLeadToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeProductRef = internal.supabase.products.writeProductToSupabase;
-
-export const batchCreateContacts = mutation({
+export const batchCreateContacts = action({
   args: {
     organizationId: v.id("organizations"),
     records: v.array(
@@ -29,7 +20,16 @@ export const batchCreateContacts = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    // Require org admin
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
     const now = Date.now();
     let created = 0;
     const errors: { row: number; error: string }[] = [];
@@ -41,33 +41,17 @@ export const batchCreateContacts = mutation({
           errors.push({ row: i, error: "firstName is required" });
           continue;
         }
-        const contactId = await ctx.db.insert("contacts", {
-          organizationId: args.organizationId,
+        await db.insert("contacts", {
+          organizationId: String(args.organizationId),
           firstName: record.firstName.trim(),
-          lastName: record.lastName?.trim(),
-          email: record.email?.trim(),
-          phone: record.phone?.trim(),
-          title: record.title?.trim(),
-          source: record.source?.trim(),
-          tags: record.tags,
-          notes: record.notes?.trim(),
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Dual-write: replicate to Supabase
-        await ctx.scheduler.runAfter(0, writeContactRef, {
-          contactId: contactId as string,
-          organizationId: args.organizationId as string,
-          firstName: record.firstName.trim(),
-          lastName: record.lastName?.trim(),
-          email: record.email?.trim(),
-          phone: record.phone?.trim(),
-          title: record.title?.trim(),
-          notes: record.notes?.trim(),
-          tags: record.tags,
-          createdBy: user._id as string,
+          lastName: record.lastName?.trim() ?? null,
+          email: record.email?.trim() ?? null,
+          phone: record.phone?.trim() ?? null,
+          title: record.title?.trim() ?? null,
+          source: record.source?.trim() ?? null,
+          tags: record.tags ?? null,
+          notes: record.notes?.trim() ?? null,
+          createdBy: String(authResult.userId),
           createdAt: now,
           updatedAt: now,
         });
@@ -82,7 +66,7 @@ export const batchCreateContacts = mutation({
   },
 });
 
-export const batchCreateCompanies = mutation({
+export const batchCreateCompanies = action({
   args: {
     organizationId: v.id("organizations"),
     records: v.array(
@@ -103,7 +87,15 @@ export const batchCreateCompanies = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
     const now = Date.now();
     let created = 0;
     const errors: { row: number; error: string }[] = [];
@@ -125,35 +117,18 @@ export const batchCreateCompanies = mutation({
               zip: record.zip?.trim(),
               country: record.country?.trim(),
             }
-          : undefined;
-        const companyId = await ctx.db.insert("companies", {
-          organizationId: args.organizationId,
+          : null;
+        await db.insert("companies", {
+          organizationId: String(args.organizationId),
           name: record.name.trim(),
-          domain: record.domain?.trim(),
-          industry: record.industry?.trim(),
-          size: record.size?.trim(),
-          website: record.website?.trim(),
-          phone: record.phone?.trim(),
+          domain: record.domain?.trim() ?? null,
+          industry: record.industry?.trim() ?? null,
+          size: record.size?.trim() ?? null,
+          website: record.website?.trim() ?? null,
+          phone: record.phone?.trim() ?? null,
           address,
-          notes: record.notes?.trim(),
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Dual-write: replicate to Supabase
-        await ctx.scheduler.runAfter(0, writeCompanyRef, {
-          companyId: companyId as string,
-          organizationId: args.organizationId as string,
-          name: record.name.trim(),
-          domain: record.domain?.trim(),
-          industry: record.industry?.trim(),
-          size: record.size?.trim(),
-          website: record.website?.trim(),
-          phone: record.phone?.trim(),
-          address,
-          notes: record.notes?.trim(),
-          createdBy: user._id as string,
+          notes: record.notes?.trim() ?? null,
+          createdBy: String(authResult.userId),
           createdAt: now,
           updatedAt: now,
         });
@@ -168,7 +143,7 @@ export const batchCreateCompanies = mutation({
   },
 });
 
-export const batchCreateLeads = mutation({
+export const batchCreateLeads = action({
   args: {
     organizationId: v.id("organizations"),
     records: v.array(
@@ -185,7 +160,15 @@ export const batchCreateLeads = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
     const now = Date.now();
     let created = 0;
     const errors: { row: number; error: string }[] = [];
@@ -205,36 +188,19 @@ export const batchCreateLeads = mutation({
           : "open";
         const priority = validPriorities.includes(record.priority as any)
           ? (record.priority as (typeof validPriorities)[number])
-          : undefined;
+          : null;
 
-        const leadId = await ctx.db.insert("leads", {
-          organizationId: args.organizationId,
+        await db.insert("leads", {
+          organizationId: String(args.organizationId),
           title: record.title.trim(),
-          value: record.value,
-          currency: record.currency?.trim(),
+          value: record.value ?? null,
+          currency: record.currency?.trim() ?? null,
           status,
           priority,
-          source: record.source?.trim(),
-          notes: record.notes?.trim(),
-          tags: record.tags,
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Dual-write: replicate to Supabase
-        await ctx.scheduler.runAfter(0, writeLeadRef, {
-          leadId: leadId as string,
-          organizationId: args.organizationId as string,
-          title: record.title.trim(),
-          value: record.value,
-          currency: record.currency?.trim(),
-          status,
-          priority,
-          source: record.source?.trim(),
-          notes: record.notes?.trim(),
-          tags: record.tags,
-          createdBy: user._id as string,
+          source: record.source?.trim() ?? null,
+          notes: record.notes?.trim() ?? null,
+          tags: record.tags ?? null,
+          createdBy: String(authResult.userId),
           createdAt: now,
           updatedAt: now,
         });
@@ -249,7 +215,7 @@ export const batchCreateLeads = mutation({
   },
 });
 
-export const batchCreateProducts = mutation({
+export const batchCreateProducts = action({
   args: {
     organizationId: v.id("organizations"),
     records: v.array(
@@ -264,7 +230,15 @@ export const batchCreateProducts = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+
+    const db = createSupabaseDb();
     const now = Date.now();
     let created = 0;
     const errors: { row: number; error: string }[] = [];
@@ -276,30 +250,15 @@ export const batchCreateProducts = mutation({
           errors.push({ row: i, error: "name and sku are required" });
           continue;
         }
-        const productId = await ctx.db.insert("products", {
-          organizationId: args.organizationId,
+        await db.insert("products", {
+          organizationId: String(args.organizationId),
           name: record.name.trim(),
           sku: record.sku.trim(),
           unitPrice: record.unitPrice,
           taxRate: record.taxRate ?? 0,
           isActive: record.isActive ?? true,
-          description: record.description?.trim(),
-          createdBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Dual-write: replicate to Supabase
-        await ctx.scheduler.runAfter(0, writeProductRef, {
-          productId: productId as string,
-          organizationId: args.organizationId as string,
-          name: record.name.trim(),
-          sku: record.sku.trim(),
-          unitPrice: record.unitPrice,
-          taxRate: record.taxRate ?? 0,
-          isActive: record.isActive ?? true,
-          description: record.description?.trim(),
-          createdBy: user._id as string,
+          description: record.description?.trim() ?? null,
+          createdBy: String(authResult.userId),
           createdAt: now,
           updatedAt: now,
         });

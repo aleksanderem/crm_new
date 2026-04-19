@@ -1,13 +1,12 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
+import { Id } from "./_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeRelRef = internal.supabase.relationships.writeRelationshipToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteRelRef = internal.supabase.relationships.deleteRelationshipFromSupabase;
+// Dual-write refs removed — Supabase is now primary for relationship writes
 
 export const getForSources = query({
   args: {
@@ -167,7 +166,7 @@ export const getForEntity = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     sourceType: v.string(),
@@ -177,9 +176,64 @@ export const create = mutation({
     relationshipType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    // Prevent duplicate relationships (check both directions)
+    // Check for duplicate via internalMutation (needs ctx.db queries with indexes)
+    const hasDuplicate = await ctx.runQuery(
+      internal.relationships._checkDuplicate,
+      {
+        organizationId: args.organizationId,
+        sourceType: args.sourceType,
+        sourceId: args.sourceId,
+        targetType: args.targetType,
+        targetId: args.targetId,
+      },
+    );
+    if (hasDuplicate) throw new Error("Relationship already exists");
+
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const relId = await db.insert("objectRelationships", {
+      organizationId: String(args.organizationId),
+      sourceType: args.sourceType,
+      sourceId: args.sourceId,
+      targetType: args.targetType,
+      targetId: args.targetId,
+      relationshipType: args.relationshipType ?? null,
+      createdBy: String(authResult.userId),
+      createdAt: now,
+    });
+
+    try {
+      await ctx.runMutation(internal.relationships._createSideEffects, {
+        organizationId: args.organizationId,
+        sourceType: args.sourceType,
+        sourceId: args.sourceId,
+        targetType: args.targetType,
+        targetId: args.targetId,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[relationships.create] Side effects FAILED for relationship", relId, ":", e);
+    }
+
+    return relId;
+  },
+});
+
+export const _checkDuplicate = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceType: v.string(),
+    sourceId: v.string(),
+    targetType: v.string(),
+    targetId: v.string(),
+  },
+  handler: async (ctx, args) => {
     const [forward, reverse] = await Promise.all([
       ctx.db
         .query("objectRelationships")
@@ -206,27 +260,20 @@ export const create = mutation({
     const duplicate =
       forward.find((r) => r.targetId === args.targetId) ||
       reverse.find((r) => r.targetId === args.sourceId);
-    if (duplicate) throw new Error("Relationship already exists");
+    return !!duplicate;
+  },
+});
 
-    const relId = await ctx.db.insert("objectRelationships", {
-      ...args,
-      createdBy: user._id,
-      createdAt: Date.now(),
-    });
-
-    // Dual-write: replicate new relationship to Supabase
-    await ctx.scheduler.runAfter(0, writeRelRef, {
-      relationshipId: relId as string,
-      organizationId: args.organizationId as string,
-      sourceType: args.sourceType,
-      sourceId: args.sourceId,
-      targetType: args.targetType,
-      targetId: args.targetId,
-      relationshipType: args.relationshipType,
-      createdBy: user._id as string,
-      createdAt: Date.now(),
-    });
-
+export const _createSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceType: v.string(),
+    sourceId: v.string(),
+    targetType: v.string(),
+    targetId: v.string(),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: args.sourceType,
@@ -234,44 +281,67 @@ export const create = mutation({
       action: "relationship_added",
       description: `Added relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
-      performedBy: user._id,
+      performedBy: args.createdBy as Id<"users">,
     });
-
-    return relId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    relationshipId: v.id("objectRelationships"),
+    relationshipId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const rel = await ctx.db.get(args.relationshipId);
-    if (!rel || rel.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const rel = await db.get("objectRelationships", args.relationshipId);
+    if (!rel || String(rel.organizationId) !== String(args.organizationId)) {
       throw new Error("Relationship not found");
     }
 
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteRelRef, {
-      relationshipId: args.relationshipId as string,
-      organizationId: args.organizationId as string,
-    });
+    // Delete from Supabase
+    await db.delete("objectRelationships", args.relationshipId);
 
-    await ctx.db.delete(args.relationshipId);
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: rel.sourceType,
-      entityId: rel.sourceId,
-      action: "relationship_removed",
-      description: `Removed relationship to ${rel.targetType} entity`,
-      metadata: { targetType: rel.targetType, targetId: rel.targetId },
-      performedBy: user._id,
-    });
+    try {
+      await ctx.runMutation(internal.relationships._removeSideEffects, {
+        organizationId: args.organizationId,
+        sourceType: String(rel.sourceType),
+        sourceId: String(rel.sourceId),
+        targetType: String(rel.targetType),
+        targetId: String(rel.targetId),
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[relationships.remove] Side effects FAILED for relationship", args.relationshipId, ":", e);
+    }
 
     return args.relationshipId;
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceType: v.string(),
+    sourceId: v.string(),
+    targetType: v.string(),
+    targetId: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: args.sourceType,
+      entityId: args.sourceId,
+      action: "relationship_removed",
+      description: `Removed relationship to ${args.targetType} entity`,
+      metadata: { targetType: args.targetType, targetId: args.targetId },
+      performedBy: args.deletedBy as Id<"users">,
+    });
   },
 });

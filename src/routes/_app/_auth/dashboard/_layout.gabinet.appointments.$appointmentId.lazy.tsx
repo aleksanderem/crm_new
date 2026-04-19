@@ -380,11 +380,11 @@ function AppointmentDetail() {
   const markPaymentPaid = useMutation(api.payments.markPaid);
   const refundPayment = useMutation(api.payments.refund);
 
-  // Note mutations
-  const createNote = useMutation(api.notes.create);
-  const updateNote = useMutation(api.notes.update);
-  const deleteNote = useMutation(api.notes.remove);
-  const togglePinNote = useMutation(api.notes.togglePin);
+  // Note actions (Supabase-primary)
+  const createNote = useAction(api.notes.create);
+  const updateNote = useAction(api.notes.update);
+  const deleteNote = useAction(api.notes.remove);
+  const togglePinNote = useAction(api.notes.togglePin);
 
   // Package usage mutation
   const usePackageTreatmentsBatch = useAction(api.gabinet.packages.usePackageTreatmentsBatch);

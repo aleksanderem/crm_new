@@ -1,4 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, mutation, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
@@ -7,14 +9,9 @@ import { checkPermission } from "./_helpers/permissions";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
-import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLeadRef = internal.supabase.leads.writeLeadToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLeadRef = internal.supabase.leads.updateLeadInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteLeadRef = internal.supabase.leads.deleteLeadFromSupabase;
+// Dual-write refs removed — Supabase is now primary for lead writes
 
 export const list = query({
   args: {
@@ -144,7 +141,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     title: v.string(),
@@ -154,52 +151,113 @@ export const create = mutation({
     priority: v.optional(leadPriorityValidator),
     expectedCloseDate: v.optional(v.number()),
     source: v.optional(v.string()),
-    companyId: v.optional(v.id("companies")),
-    assignedTo: v.optional(v.id("users")),
-    pipelineStageId: v.optional(v.id("pipelineStages")),
+    companyId: v.optional(v.string()),
+    assignedTo: v.optional(v.string()),
+    pipelineStageId: v.optional(v.string()),
     stageOrder: v.optional(v.number()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(
       v.array(
         v.object({
-          fieldDefinitionId: v.id("customFieldDefinitions"),
+          fieldDefinitionId: v.string(),
           value: v.any(),
         }),
       ),
     ),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "create",
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-    const { customFields, ...leadData } = args;
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "leads",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const leadId = await ctx.db.insert("leads", {
-      ...leadData,
-      createdBy: user._id,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    // --- INSERT lead directly to Supabase ---
+    const leadId = await db.insert("leads", {
+      organizationId: String(args.organizationId),
+      title: args.title,
+      value: args.value ?? null,
+      currency: args.currency ?? null,
+      status: args.status,
+      priority: args.priority ?? null,
+      expectedCloseDate: args.expectedCloseDate ?? null,
+      source: args.source ?? null,
+      companyId: args.companyId ?? null,
+      assignedTo: args.assignedTo ?? null,
+      pipelineStageId: args.pipelineStageId ?? null,
+      stageOrder: args.stageOrder ?? null,
+      notes: args.notes ?? null,
+      tags: args.tags ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
-    if (customFields) {
-      for (const field of customFields) {
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.leads._createSideEffects, {
+        leadId,
+        organizationId: args.organizationId,
+        title: args.title,
+        assignedTo: args.assignedTo,
+        customFields: args.customFields,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[leads.create] Side effects FAILED for lead", leadId, ":", e);
+    }
+
+    return leadId;
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    leadId: v.string(),
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    assignedTo: v.optional(v.string()),
+    customFields: v.optional(
+      v.array(
+        v.object({
+          fieldDefinitionId: v.string(),
+          value: v.any(),
+        }),
+      ),
+    ),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const createdByUserId = args.createdBy as Id<"users">;
+
+    // Insert custom field values into Convex
+    if (args.customFields) {
+      for (const field of args.customFields) {
         await ctx.db.insert("customFieldValues", {
           organizationId: args.organizationId,
-          fieldDefinitionId: field.fieldDefinitionId,
+          fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
           entityType: "lead",
-          entityId: leadId,
+          entityId: args.leadId as Id<"leads">,
           value: field.value,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: args.createdAt,
+          updatedAt: args.createdAt,
         });
       }
     }
@@ -207,56 +265,30 @@ export const create = mutation({
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "lead",
-      entityId: leadId,
+      entityId: args.leadId as Id<"leads">,
       action: "created",
       description: `Created lead "${args.title}"`,
-      performedBy: user._id,
+      performedBy: createdByUserId,
     });
 
     // Notify assigned user if different from creator
-    if (args.assignedTo && args.assignedTo !== user._id) {
+    if (args.assignedTo && args.assignedTo !== args.createdBy) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.assignedTo,
+        userId: args.assignedTo as Id<"users">,
         type: "assigned",
         title: "Lead assigned",
         message: `You have been assigned to lead "${args.title}"`,
-        link: `/leads/${leadId}`,
+        link: `/leads/${args.leadId}`,
       });
     }
-
-    // Dual-write: replicate new lead to Supabase
-    await ctx.scheduler.runAfter(0, writeLeadRef, {
-      leadId: leadId as string,
-      organizationId: args.organizationId as string,
-      title: args.title,
-      value: args.value,
-      currency: args.currency,
-      status: args.status,
-      priority: args.priority,
-      expectedCloseDate: args.expectedCloseDate,
-      source: args.source,
-      companyId: args.companyId as string | undefined,
-      assignedTo: args.assignedTo as string | undefined,
-      pipelineStageId: args.pipelineStageId as string | undefined,
-      stageOrder: args.stageOrder,
-      notes: args.notes,
-      tags: args.tags,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId as string | undefined,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return leadId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    leadId: v.id("leads"),
+    leadId: v.string(),
     title: v.optional(v.string()),
     value: v.optional(v.number()),
     currency: v.optional(v.string()),
@@ -264,68 +296,128 @@ export const update = mutation({
     priority: v.optional(leadPriorityValidator),
     expectedCloseDate: v.optional(v.number()),
     source: v.optional(v.string()),
-    companyId: v.optional(v.id("companies")),
-    assignedTo: v.optional(v.id("users")),
+    companyId: v.optional(v.string()),
+    assignedTo: v.optional(v.string()),
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     lostReason: v.optional(v.string()),
     customFields: v.optional(
       v.array(
         v.object({
-          fieldDefinitionId: v.id("customFieldDefinitions"),
+          fieldDefinitionId: v.string(),
           value: v.any(),
         }),
       ),
     ),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "edit",
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "leads",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
 
-    const lead = await ctx.db.get(args.leadId);
-    if (!lead || lead.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read lead from Supabase ---
+    const lead = await db.get("leads", args.leadId);
+    if (!lead || String(lead.organizationId) !== String(args.organizationId)) {
       throw new Error("Lead not found");
     }
     if (
       perm.scope === "own" &&
-      lead.createdBy !== user._id &&
-      lead.assignedTo !== user._id
+      String(lead.createdBy) !== String(authResult.userId) &&
+      String(lead.assignedTo) !== String(authResult.userId)
     ) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    const now = Date.now();
     const { organizationId, leadId, customFields, ...updates } = args;
 
     // Track status changes
+    const supabaseUpdates: Record<string, unknown> = { ...updates, updatedAt: now };
     if (updates.status && updates.status !== lead.status) {
       if (updates.status === "won") {
-        (updates as any).wonAt = now;
+        supabaseUpdates.wonAt = now;
       } else if (updates.status === "lost") {
-        (updates as any).lostAt = now;
+        supabaseUpdates.lostAt = now;
       }
     }
 
-    await ctx.db.patch(leadId, { ...updates, updatedAt: now });
+    // --- PATCH to Supabase ---
+    await db.patch("leads", leadId, supabaseUpdates);
 
-    if (customFields) {
-      for (const field of customFields) {
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.leads._updateSideEffects, {
+        leadId,
+        organizationId,
+        title: (lead.title as string) ?? "",
+        oldStatus: (lead.status as string) ?? "",
+        newStatus: updates.status,
+        oldAssignedTo: lead.assignedTo ? String(lead.assignedTo) : undefined,
+        newAssignedTo: updates.assignedTo,
+        leadOwnerId: String(lead.assignedTo ?? lead.createdBy),
+        customFields,
+        updatedBy: String(authResult.userId),
+        updatedAt: now,
+      });
+    } catch (e) {
+      console.error("[leads.update] Side effects FAILED for lead", leadId, ":", e);
+    }
+
+    return leadId;
+  },
+});
+
+export const _updateSideEffects = internalMutation({
+  args: {
+    leadId: v.string(),
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    oldStatus: v.string(),
+    newStatus: v.optional(v.string()),
+    oldAssignedTo: v.optional(v.string()),
+    newAssignedTo: v.optional(v.string()),
+    leadOwnerId: v.string(),
+    customFields: v.optional(
+      v.array(
+        v.object({
+          fieldDefinitionId: v.string(),
+          value: v.any(),
+        }),
+      ),
+    ),
+    updatedBy: v.string(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const updatedByUserId = args.updatedBy as Id<"users">;
+    const now = args.updatedAt;
+
+    // Update custom field values in Convex
+    if (args.customFields) {
+      for (const field of args.customFields) {
         const existing = await ctx.db
           .query("customFieldValues")
           .withIndex("by_orgEntityField", (q) =>
             q
-              .eq("organizationId", organizationId)
+              .eq("organizationId", args.organizationId)
               .eq("entityType", "lead")
-              .eq("entityId", leadId)
-              .eq("fieldDefinitionId", field.fieldDefinitionId),
+              .eq("entityId", args.leadId as Id<"leads">)
+              .eq("fieldDefinitionId", field.fieldDefinitionId as Id<"customFieldDefinitions">),
           )
           .unique();
 
@@ -336,10 +428,10 @@ export const update = mutation({
           });
         } else {
           await ctx.db.insert("customFieldValues", {
-            organizationId,
-            fieldDefinitionId: field.fieldDefinitionId,
+            organizationId: args.organizationId,
+            fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
             entityType: "lead",
-            entityId: leadId,
+            entityId: args.leadId as Id<"leads">,
             value: field.value,
             createdAt: now,
             updatedAt: now,
@@ -348,200 +440,200 @@ export const update = mutation({
       }
     }
 
-    if (updates.status && updates.status !== lead.status) {
+    if (args.newStatus && args.newStatus !== args.oldStatus) {
       await logActivity(ctx, {
-        organizationId,
+        organizationId: args.organizationId,
         entityType: "lead",
-        entityId: leadId,
+        entityId: args.leadId as Id<"leads">,
         action: "status_changed",
-        description: `Changed lead status from "${lead.status}" to "${updates.status}"`,
-        metadata: { oldStatus: lead.status, newStatus: updates.status },
-        performedBy: user._id,
+        description: `Changed lead status from "${args.oldStatus}" to "${args.newStatus}"`,
+        metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
+        performedBy: updatedByUserId,
       });
 
       // Audit log for status changes to won/lost
-      if (updates.status === "won" || updates.status === "lost") {
+      if (args.newStatus === "won" || args.newStatus === "lost") {
         await logAudit(ctx, {
-          organizationId,
-          userId: user._id,
+          organizationId: args.organizationId,
+          userId: updatedByUserId,
           action: "status_changed",
           entityType: "lead",
-          entityId: leadId,
+          entityId: args.leadId as Id<"leads">,
           details: JSON.stringify({
-            oldStatus: lead.status,
-            newStatus: updates.status,
+            oldStatus: args.oldStatus,
+            newStatus: args.newStatus,
           }),
         });
       }
 
       // Notify lead owner on won/lost
-      const leadOwner = lead.assignedTo ?? lead.createdBy;
-      if (updates.status === "won" && leadOwner !== user._id) {
+      const leadOwner = args.leadOwnerId as Id<"users">;
+      if (args.newStatus === "won" && leadOwner !== updatedByUserId) {
         await createNotificationDirect(ctx, {
-          organizationId,
+          organizationId: args.organizationId,
           userId: leadOwner,
           type: "deal_won",
           title: "Deal won!",
-          message: `Lead "${lead.title}" has been marked as won`,
-          link: `/leads/${leadId}`,
+          message: `Lead "${args.title}" has been marked as won`,
+          link: `/leads/${args.leadId}`,
         });
       }
-      if (updates.status === "lost" && leadOwner !== user._id) {
+      if (args.newStatus === "lost" && leadOwner !== updatedByUserId) {
         await createNotificationDirect(ctx, {
-          organizationId,
+          organizationId: args.organizationId,
           userId: leadOwner,
           type: "deal_lost",
           title: "Deal lost",
-          message: `Lead "${lead.title}" has been marked as lost`,
-          link: `/leads/${leadId}`,
+          message: `Lead "${args.title}" has been marked as lost`,
+          link: `/leads/${args.leadId}`,
         });
       }
 
       await ctx.runMutation(internal.automation.emitEvent, {
-        organizationId,
+        organizationId: args.organizationId,
         module: "crm",
         eventType: "crm.lead.status_changed",
         entityType: "lead",
-        entityId: String(leadId),
-        actorUserId: user._id,
-        correlationKey: `lead:${leadId}`,
-        eventIdempotencyKey: `automation-event:${organizationId}:${leadId}:${now}:status:${updates.status}`,
+        entityId: args.leadId,
+        actorUserId: updatedByUserId,
+        correlationKey: `lead:${args.leadId}`,
+        eventIdempotencyKey: `automation-event:${args.organizationId}:${args.leadId}:${now}:status:${args.newStatus}`,
         payload: JSON.stringify({
-          organizationId: String(organizationId),
-          leadId: String(leadId),
-          title: lead.title,
-          oldStatus: lead.status,
-          newStatus: updates.status,
-          assignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
-          ownerId: String(leadOwner),
-          createdBy: String(lead.createdBy),
+          organizationId: String(args.organizationId),
+          leadId: args.leadId,
+          title: args.title,
+          oldStatus: args.oldStatus,
+          newStatus: args.newStatus,
+          assignedTo: args.oldAssignedTo ?? null,
+          ownerId: args.leadOwnerId,
+          createdBy: args.leadOwnerId,
         }),
         occurredAt: now,
       });
     } else {
       await logActivity(ctx, {
-        organizationId,
+        organizationId: args.organizationId,
         entityType: "lead",
-        entityId: leadId,
+        entityId: args.leadId as Id<"leads">,
         action: "updated",
-        description: `Updated lead "${lead.title}"`,
-        performedBy: user._id,
+        description: `Updated lead "${args.title}"`,
+        performedBy: updatedByUserId,
       });
     }
 
     // Notify when assignedTo changes to someone other than the current user
     if (
-      updates.assignedTo &&
-      updates.assignedTo !== lead.assignedTo &&
-      updates.assignedTo !== user._id
+      args.newAssignedTo &&
+      args.newAssignedTo !== args.oldAssignedTo &&
+      args.newAssignedTo !== args.updatedBy
     ) {
       await createNotificationDirect(ctx, {
-        organizationId,
-        userId: updates.assignedTo,
+        organizationId: args.organizationId,
+        userId: args.newAssignedTo as Id<"users">,
         type: "assigned",
         title: "Lead assigned",
-        message: `You have been assigned to lead "${lead.title}"`,
-        link: `/leads/${leadId}`,
+        message: `You have been assigned to lead "${args.title}"`,
+        link: `/leads/${args.leadId}`,
       });
     }
-
-    // Dual-write: replicate lead update to Supabase
-    await ctx.scheduler.runAfter(0, updateLeadRef, {
-      leadId: leadId as string,
-      organizationId: organizationId as string,
-      ...Object.fromEntries(
-        Object.entries({
-          title: updates.title,
-          value: updates.value,
-          currency: updates.currency,
-          status: updates.status,
-          priority: updates.priority,
-          expectedCloseDate: updates.expectedCloseDate,
-          source: updates.source,
-          companyId: updates.companyId ? (updates.companyId as string) : updates.companyId,
-          assignedTo: updates.assignedTo ? (updates.assignedTo as string) : updates.assignedTo,
-          notes: updates.notes,
-          tags: updates.tags,
-          tagIds: updates.tagIds?.map((id) => id as string),
-          categoryId: updates.categoryId ? (updates.categoryId as string) : updates.categoryId,
-          lostReason: updates.lostReason,
-          wonAt: (updates as any).wonAt,
-          lostAt: (updates as any).lostAt,
-        }).filter(([, v]) => v !== undefined),
-      ),
-      updatedAt: now,
-    });
-
-    return leadId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    leadId: v.id("leads"),
+    leadId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "delete",
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "leads",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const lead = await ctx.db.get(args.leadId);
-    if (!lead || lead.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read lead from Supabase ---
+    const lead = await db.get("leads", args.leadId);
+    if (!lead || String(lead.organizationId) !== String(args.organizationId)) {
       throw new Error("Lead not found");
     }
     if (
       perm.scope === "own" &&
-      lead.createdBy !== user._id &&
-      lead.assignedTo !== user._id
+      String(lead.createdBy) !== String(authResult.userId) &&
+      String(lead.assignedTo) !== String(authResult.userId)
     ) {
       throw new Error(
         "Permission denied: you can only delete your own records",
       );
     }
 
+    // --- DELETE from Supabase ---
+    await db.delete("leads", args.leadId);
+
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.leads._removeSideEffects, {
+        leadId: args.leadId,
+        organizationId: args.organizationId,
+        title: (lead.title as string) ?? "",
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[leads.remove] Side effects FAILED for lead", args.leadId, ":", e);
+    }
+
+    return args.leadId;
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    leadId: v.string(),
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const deletedByUserId = args.deletedBy as Id<"users">;
+
+    // Delete custom field values from Convex
     const customValues = await ctx.db
       .query("customFieldValues")
       .withIndex("by_entity", (q) =>
-        q.eq("entityType", "lead").eq("entityId", args.leadId),
+        q.eq("entityType", "lead").eq("entityId", args.leadId as Id<"leads">),
       )
       .collect();
     for (const cv of customValues) {
       await ctx.db.delete(cv._id);
     }
 
-    await ctx.db.delete(args.leadId);
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "lead",
-      entityId: args.leadId,
+      entityId: args.leadId as Id<"leads">,
       action: "deleted",
-      description: `Deleted lead "${lead.title}"`,
-      performedBy: user._id,
+      description: `Deleted lead "${args.title}"`,
+      performedBy: deletedByUserId,
     });
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: deletedByUserId,
       action: "entity_deleted",
       entityType: "lead",
-      entityId: args.leadId,
-      details: JSON.stringify({ title: lead.title }),
+      entityId: args.leadId as Id<"leads">,
+      details: JSON.stringify({ title: args.title }),
     });
-
-    // Dual-write: replicate lead deletion to Supabase
-    await ctx.scheduler.runAfter(0, deleteLeadRef, {
-      leadId: args.leadId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    return args.leadId;
   },
 });
 
@@ -592,6 +684,10 @@ export const getByPipeline = query({
   },
 });
 
+// moveToStage stays as a mutation — it reads pipeline stages and creates
+// scheduledActivities in Convex DB, which are not yet migrated to Supabase.
+// It also writes to the leads table in Convex. This will be migrated in a
+// follow-up phase once scheduledActivities and pipelineStageActions are on Supabase.
 export const moveToStage = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -763,18 +859,6 @@ export const moveToStage = mutation({
         occurredAt: now,
       });
     }
-
-    // Dual-write: replicate stage move to Supabase
-    await ctx.scheduler.runAfter(0, updateLeadRef, {
-      leadId: args.leadId as string,
-      organizationId: args.organizationId as string,
-      pipelineStageId: args.pipelineStageId as string,
-      stageOrder: args.stageOrder,
-      status: updateData.status,
-      wonAt: updateData.wonAt,
-      lostAt: updateData.lostAt,
-      updatedAt: now,
-    });
 
     return args.leadId;
   },

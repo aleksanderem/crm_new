@@ -278,7 +278,7 @@ function UnifiedCalendarPage() {
     })
   );
 
-  const updateActivity = useMutation(api.scheduledActivities.update);
+  const updateActivity = useAction(api.scheduledActivities.update);
   const updateAppointment = useMutation(
     api.gabinet.appointments.update
   );

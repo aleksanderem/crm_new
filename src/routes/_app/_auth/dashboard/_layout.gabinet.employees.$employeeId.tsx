@@ -92,11 +92,11 @@ function EmployeeDetail() {
   const updateEmployee = useAction(api.gabinet.employees.update);
   const removeEmployee = useAction(api.gabinet.employees.remove);
   const setQualifiedTreatments = useAction(api.gabinet.employees.setQualifiedTreatments);
-  const createNote = useMutation(api.notes.create);
-  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
-  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
-  const updateScheduledActivity = useMutation(api.scheduledActivities.update);
-  const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
+  const createNote = useAction(api.notes.create);
+  const markActivityComplete = useAction(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
+  const updateScheduledActivity = useAction(api.scheduledActivities.update);
+  const removeScheduledActivity = useAction(api.scheduledActivities.remove);
   const bulkSetEmployeeSchedule = useAction(api.gabinet.scheduling.bulkSetEmployeeSchedule);
   const saveSchedulePeriod = useAction(api.gabinet.scheduling.saveSchedulePeriod);
   const removeSchedulePeriod = useAction(api.gabinet.scheduling.removeSchedulePeriod);

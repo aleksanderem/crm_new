@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -69,18 +69,18 @@ function ContactDetail() {
   const queryClient = useQueryClient();
   const { setShellSidebarMode } = useSidebarSlot();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const updateContact = useMutation(api.contacts.update);
-  const removeContact = useMutation(api.contacts.remove);
-  const createRelationship = useMutation(api.relationships.create);
-  const removeRelationship = useMutation(api.relationships.remove);
-  const createCompany = useMutation(api.companies.create);
-  const createLead = useMutation(api.leads.create);
-  const createNote = useMutation(api.notes.create);
-  const createScheduledActivity = useMutation(api.scheduledActivities.create);
-  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
-  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
-  const updateScheduledActivity = useMutation(api.scheduledActivities.update);
-  const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
+  const updateContact = useAction(api.contacts.update);
+  const removeContact = useAction(api.contacts.remove);
+  const createRelationship = useAction(api.relationships.create);
+  const removeRelationship = useAction(api.relationships.remove);
+  const createCompany = useAction(api.companies.create);
+  const createLead = useAction(api.leads.create);
+  const createNote = useAction(api.notes.create);
+  const createScheduledActivity = useAction(api.scheduledActivities.create);
+  const markActivityComplete = useAction(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
+  const updateScheduledActivity = useAction(api.scheduledActivities.update);
+  const removeScheduledActivity = useAction(api.scheduledActivities.remove);
   const setCustomFields = useMutation(api.customFields.setValues);
   const trackView = useMutation(api.recentlyViewed.track);
 

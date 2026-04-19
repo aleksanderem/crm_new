@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabasePipelinesList, useSupabasePipelineStages, useSupabasePipelineStageActions } from "@/hooks/use-supabase-pipelines";
@@ -34,11 +34,11 @@ function PipelinesSettings() {
   const [newStageColor, setNewStageColor] = useState("#3b82f6");
   const [addingStageFor, setAddingStageFor] = useState<string | null>(null);
 
-  // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const createPipeline = useMutation(api.pipelines.create);
-  const removePipeline = useMutation(api.pipelines.remove);
-  const addStage = useMutation(api.pipelines.addStage);
-  const removeStage = useMutation(api.pipelines.removeStage);
+  // @ts-ignore — TS2589 excessive depth in useAction type instantiation (pre-existing)
+  const createPipeline = useAction(api.pipelines.create);
+  const removePipeline = useAction(api.pipelines.remove);
+  const addStage = useAction(api.pipelines.addStage);
+  const removeStage = useAction(api.pipelines.removeStage);
 
   const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
@@ -125,9 +125,9 @@ function PipelineCard({
   setNewStageName: (v: string) => void;
   newStageColor: string;
   setNewStageColor: (v: string) => void;
-  onAddStage: (args: { organizationId: Id<"organizations">; pipelineId: Id<"pipelines">; name: string; color?: string; order: number }) => Promise<unknown>;
-  onRemoveStage: (args: { organizationId: Id<"organizations">; stageId: Id<"pipelineStages"> }) => Promise<unknown>;
-  onRemovePipeline: (args: { organizationId: Id<"organizations">; pipelineId: Id<"pipelines"> }) => Promise<unknown>;
+  onAddStage: (args: { organizationId: Id<"organizations">; pipelineId: string; name: string; color?: string; order: number }) => Promise<unknown>;
+  onRemoveStage: (args: { organizationId: Id<"organizations">; stageId: string }) => Promise<unknown>;
+  onRemovePipeline: (args: { organizationId: Id<"organizations">; pipelineId: string }) => Promise<unknown>;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -169,7 +169,7 @@ function PipelineCard({
                 size="icon"
                 className="h-6 w-6"
                 onClick={() =>
-                  onRemoveStage({ organizationId, stageId: stage._id as Id<"pipelineStages"> }).then(() => {
+                  onRemoveStage({ organizationId, stageId: stage._id }).then(() => {
                     queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
                   })
                 }
@@ -191,7 +191,7 @@ function PipelineCard({
               if (!newStageName.trim()) return;
               await onAddStage({
                 organizationId,
-                pipelineId: pipeline._id as Id<"pipelines">,
+                pipelineId: pipeline._id,
                 name: newStageName,
                 color: newStageColor,
                 order: (stages?.length ?? 0) + 1,
@@ -260,7 +260,7 @@ function PipelineCard({
               onClick={async () => {
                 await onRemovePipeline({
                   organizationId,
-                  pipelineId: pipeline._id as Id<"pipelines">,
+                  pipelineId: pipeline._id,
                 });
                 queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelines.all });
                 setDeleteDialogOpen(false);

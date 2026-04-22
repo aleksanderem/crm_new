@@ -16,13 +16,24 @@ import { asyncMap } from "convex-helpers";
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const writeSubscriptionRef = internal.supabase.subscriptions.writeSubscriptionToSupabase;
 
-if (!STRIPE_SECRET_KEY) {
-  throw new Error(`Stripe - ${ERRORS.ENVS_NOT_INITIALIZED}`);
-}
-
-export const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-  typescript: true,
+// Lazy Stripe client — we intentionally don't throw at module-load time so
+// that the Convex deployment still loads when STRIPE_SECRET_KEY hasn't been
+// configured yet (e.g. a fresh prod deploy before env vars land). Any call
+// through `stripe.*` still throws the ENVS_NOT_INITIALIZED error below.
+let _stripe: Stripe | null = null;
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop, receiver) {
+    if (!_stripe) {
+      if (!STRIPE_SECRET_KEY) {
+        throw new Error(`Stripe - ${ERRORS.ENVS_NOT_INITIALIZED}`);
+      }
+      _stripe = new Stripe(STRIPE_SECRET_KEY, {
+        apiVersion: "2024-06-20",
+        typescript: true,
+      });
+    }
+    return Reflect.get(_stripe, prop, receiver);
+  },
 });
 
 /**

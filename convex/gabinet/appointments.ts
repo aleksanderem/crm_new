@@ -322,26 +322,29 @@ export const list = query({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const appt = await ctx.db.get(args.appointmentId);
-    if (!appt || appt.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const appt = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appt || String(appt.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && appt.createdBy !== user._id) {
+    if (perm.scope === "own" && String(appt.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
     return appt;

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -372,7 +372,7 @@ function DocumentSection({
   onDocumentClick: (docId: string) => void;
   t: (key: string, fallback?: string) => string;
 }) {
-  const resendSigningEmail = useMutation(api.documents.documents.resendSigningEmail);
+  const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const [resendingDocId, setResendingDocId] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
 

@@ -1,10 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { action, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { internal } from "./_generated/api";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeBrandConfigRef = internal.supabase.emailBrandConfig.writeEmailBrandConfigToSupabase;
+// Dual-write refs removed — Supabase is now primary for brand config writes
 
 export const getForOrg = query({
   args: { organizationId: v.id("organizations") },
@@ -17,7 +17,7 @@ export const getForOrg = query({
   },
 });
 
-export const upsert = mutation({
+export const upsert = action({
   args: {
     organizationId: v.id("organizations"),
     logoStorageId: v.optional(v.id("_storage")),
@@ -39,89 +39,51 @@ export const upsert = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const existing = await ctx.db
-      .query("emailBrandConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first();
-
+    // Resolve logo URL from storage
     let logoUrl: string | undefined;
     if (args.logoStorageId) {
       logoUrl = (await ctx.storage.getUrl(args.logoStorageId)) ?? undefined;
     }
 
-    const data = {
-      organizationId: args.organizationId,
-      logoStorageId: args.logoStorageId,
-      logoUrl,
-      companyName: args.companyName,
+    // Check if config already exists for this org
+    const existing = await db.query("emailBrandConfig")
+      .eq("organizationId", String(args.organizationId))
+      .first();
+
+    const data: Record<string, unknown> = {
+      organizationId: String(args.organizationId),
+      logoStorageId: args.logoStorageId ? String(args.logoStorageId) : null,
+      logoUrl: logoUrl ?? null,
+      companyName: args.companyName ?? null,
       primaryColor: args.primaryColor,
       backgroundColor: args.backgroundColor,
       contentBackgroundColor: args.contentBackgroundColor,
       textColor: args.textColor,
       secondaryTextColor: args.secondaryTextColor,
       accentColor: args.accentColor,
-      footerText: args.footerText,
-      socialLinks: args.socialLinks,
-      updatedBy: user._id,
+      footerText: args.footerText ?? null,
+      socialLinks: args.socialLinks ?? null,
+      updatedBy: String(authResult.userId),
       updatedAt: now,
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, data);
-
-      // Dual-write: replicate update to Supabase
-      await ctx.scheduler.runAfter(0, writeBrandConfigRef, {
-        configId: existing._id as string,
-        organizationId: args.organizationId as string,
-        logoStorageId: args.logoStorageId as string | undefined,
-        logoUrl,
-        companyName: args.companyName,
-        primaryColor: args.primaryColor,
-        backgroundColor: args.backgroundColor,
-        contentBackgroundColor: args.contentBackgroundColor,
-        textColor: args.textColor,
-        secondaryTextColor: args.secondaryTextColor,
-        accentColor: args.accentColor,
-        footerText: args.footerText,
-        socialLinks: args.socialLinks,
-        createdBy: existing.createdBy as string,
-        createdAt: existing.createdAt,
-        updatedBy: user._id as string,
-        updatedAt: now,
-      });
-
-      return existing._id;
+      await db.patch("emailBrandConfig", existing._id as string, data);
+      return existing._id as string;
     } else {
-      const configId = await ctx.db.insert("emailBrandConfig", {
+      const configId = await db.insert("emailBrandConfig", {
         ...data,
-        createdBy: user._id,
+        createdBy: String(authResult.userId),
         createdAt: now,
       });
-
-      // Dual-write: replicate new config to Supabase
-      await ctx.scheduler.runAfter(0, writeBrandConfigRef, {
-        configId: configId as string,
-        organizationId: args.organizationId as string,
-        logoStorageId: args.logoStorageId as string | undefined,
-        logoUrl,
-        companyName: args.companyName,
-        primaryColor: args.primaryColor,
-        backgroundColor: args.backgroundColor,
-        contentBackgroundColor: args.contentBackgroundColor,
-        textColor: args.textColor,
-        secondaryTextColor: args.secondaryTextColor,
-        accentColor: args.accentColor,
-        footerText: args.footerText,
-        socialLinks: args.socialLinks,
-        createdBy: user._id as string,
-        createdAt: now,
-        updatedBy: user._id as string,
-        updatedAt: now,
-      });
-
       return configId;
     }
   },

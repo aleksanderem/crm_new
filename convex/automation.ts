@@ -1,7 +1,7 @@
 import {
   internalMutation,
   internalQuery,
-  mutation,
+  action,
   query,
   MutationCtx,
 } from "./_generated/server";
@@ -10,6 +10,7 @@ import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { createNotificationDirect } from "./notifications";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { Id } from "./_generated/dataModel";
 import {
   automationGraphValidator,
@@ -27,13 +28,8 @@ import {
   resolveRuleTrigger,
 } from "./automationRegistry";
 
-// ── Supabase dual-write action refs (extracted per Knowledge Pattern #1/#2) ──
-// @ts-ignore -- TS2589: type instantiation depth in generated Convex API types
-const writeRuleRef = internal.supabase.automationRules.writeRule;
-// @ts-ignore
-const updateRuleRef = internal.supabase.automationRules.updateRule;
-// @ts-ignore
-const deleteRuleRef = internal.supabase.automationRules.deleteRule;
+// Dual-write refs removed — Supabase is now primary for automation rule writes
+// Run/step dual-write refs kept for internalMutation execution engine
 // @ts-ignore
 const writeRunRef = internal.supabase.automationRuns.writeRun;
 // @ts-ignore
@@ -792,7 +788,7 @@ export const getRunSteps = query({
   },
 });
 
-export const createRule = mutation({
+export const createRule = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -808,32 +804,28 @@ export const createRule = mutation({
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
+    const db = createSupabaseDb();
     const now = Date.now();
-    const ruleId = await ctx.db.insert("automationRules", {
-      ...args,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
 
-    // Dual-write: replicate new automation rule to Supabase
-    await ctx.scheduler.runAfter(0, writeRuleRef, {
-      ruleId: ruleId as string,
-      organizationId: args.organizationId as string,
+    const ruleId = await db.insert("automationRules", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
+      description: args.description ?? null,
       module: args.module,
       eventType: args.eventType,
-      entityType: args.entityType,
-      trigger: args.trigger,
-      graph: args.graph,
-      definitionVersion: args.definitionVersion,
+      entityType: args.entityType ?? null,
+      trigger: args.trigger ?? null,
+      graph: args.graph ?? null,
+      definitionVersion: args.definitionVersion ?? null,
       conditions: args.conditions,
       actions: args.actions,
       enabled: args.enabled,
-      createdBy: user._id as string,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -842,10 +834,10 @@ export const createRule = mutation({
   },
 });
 
-export const updateRule = mutation({
+export const updateRule = action({
   args: {
     organizationId: v.id("organizations"),
-    ruleId: v.id("automationRules"),
+    ruleId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     module: v.optional(automationModuleValidator),
@@ -859,62 +851,51 @@ export const updateRule = mutation({
     enabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const rule = await ctx.db.get(args.ruleId);
-    if (!rule || rule.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const rule = await db.get("automationRules", args.ruleId);
+    if (!rule || rule.organizationId !== String(args.organizationId)) {
       throw new Error("Automation rule not found");
     }
 
-    const { organizationId, ruleId, ...updates } = args;
-    const updatedAt = Date.now();
-    await ctx.db.patch(ruleId, {
-      ...updates,
-      updatedAt,
-    });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.module !== undefined) updates.module = args.module;
+    if (args.eventType !== undefined) updates.eventType = args.eventType;
+    if (args.entityType !== undefined) updates.entityType = args.entityType;
+    if (args.trigger !== undefined) updates.trigger = args.trigger;
+    if (args.graph !== undefined) updates.graph = args.graph;
+    if (args.definitionVersion !== undefined) updates.definitionVersion = args.definitionVersion;
+    if (args.conditions !== undefined) updates.conditions = args.conditions;
+    if (args.actions !== undefined) updates.actions = args.actions;
+    if (args.enabled !== undefined) updates.enabled = args.enabled;
 
-    // Dual-write: replicate rule update to Supabase (sparse row pattern)
-    await ctx.scheduler.runAfter(0, updateRuleRef, {
-      ruleId: ruleId as string,
-      organizationId: organizationId as string,
-      name: updates.name,
-      description: updates.description,
-      module: updates.module,
-      eventType: updates.eventType,
-      entityType: updates.entityType,
-      trigger: updates.trigger,
-      graph: updates.graph,
-      definitionVersion: updates.definitionVersion,
-      conditions: updates.conditions,
-      actions: updates.actions,
-      enabled: updates.enabled,
-      updatedAt,
-    });
-
-    return ruleId;
+    await db.patch("automationRules", args.ruleId, updates);
+    return args.ruleId;
   },
 });
 
-export const deleteRule = mutation({
+export const deleteRule = action({
   args: {
     organizationId: v.id("organizations"),
-    ruleId: v.id("automationRules"),
+    ruleId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const rule = await ctx.db.get(args.ruleId);
-    if (!rule || rule.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const rule = await db.get("automationRules", args.ruleId);
+    if (!rule || rule.organizationId !== String(args.organizationId)) {
       throw new Error("Automation rule not found");
     }
 
-    // Dual-write: schedule delete sync BEFORE ctx.db.delete per Knowledge Pattern #4
-    await ctx.scheduler.runAfter(0, deleteRuleRef, {
-      ruleId: args.ruleId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.ruleId);
+    await db.delete("automationRules", args.ruleId);
     return args.ruleId;
   },
 });

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
@@ -50,8 +50,8 @@ function CustomFieldsSettings() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"customFieldDefinitions">; name: string } | null>(null);
 
   const queryClient = useQueryClient();
-  const createDefinition = useMutation(api.customFields.createDefinition);
-  const deleteDefinition = useMutation(api.customFields.deleteDefinition);
+  const createDefinition = useAction(api.customFields.createDefinition);
+  const deleteDefinition = useAction(api.customFields.deleteDefinition);
 
   const { data: definitions } = useSupabaseCustomFieldDefinitions(
     organizationId,

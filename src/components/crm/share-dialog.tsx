@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -61,8 +61,8 @@ export function ShareDialog({
     enabled: open && !!organizationId,
   });
 
-  const createInvite = useMutation(api.resourceInvites.create);
-  const revokeInvite = useMutation(api.resourceInvites.revoke);
+  const createInvite = useAction(api.resourceInvites.create);
+  const revokeInvite = useAction(api.resourceInvites.revoke);
 
   const handleSendInvite = async () => {
     if (!email.trim()) return;

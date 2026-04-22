@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeRecentlyViewedToSupabase = internalAction({
   args: {
@@ -29,20 +29,10 @@ export const writeRecentlyViewedToSupabase = internalAction({
       viewed_at: args.viewedAt,
     };
 
-    const { data, error } = await client
-      .from("recently_viewed")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "recently_viewed", row);
 
-    if (error) {
-      const msg = `Supabase write failed for recentlyViewed: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`RecentlyViewed written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`RecentlyViewed written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 

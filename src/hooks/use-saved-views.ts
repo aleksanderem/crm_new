@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useSupabaseSavedViewsList } from "@/hooks/use-supabase-saved-views";
@@ -97,9 +97,9 @@ export function useSavedViews({
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit; runtime works fine
-  const createViewMut = useMutation(api.savedViews.create);
-  const updateViewMut = useMutation(api.savedViews.update);
-  const removeViewMut = useMutation(api.savedViews.remove);
+  const createViewMut = useAction(api.savedViews.create);
+  const updateViewMut = useAction(api.savedViews.update);
+  const removeViewMut = useAction(api.savedViews.remove);
   const queryClient = useQueryClient();
 
   const { data: convexViews } = useSupabaseSavedViewsList(

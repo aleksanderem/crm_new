@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useTranslation } from "react-i18next";
@@ -161,9 +161,9 @@ export function AppointmentDetailDialog({
   onOpenChange,
 }: AppointmentDetailDialogProps) {
   const { t } = useTranslation();
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
-  const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
-  const cancelAppointment = useMutation(api.gabinet.appointments.cancel);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
+  const updateStatus = useAction(api.gabinet.appointments.updateStatus);
+  const cancelAppointment = useAction(api.gabinet.appointments.cancel);
 
   const { data: appointment } = useQuery({
     ...convexQuery(api.gabinet.appointments.getById, {

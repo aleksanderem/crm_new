@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeAuditLogToSupabase = internalAction({
   args: {
@@ -33,19 +33,9 @@ export const writeAuditLogToSupabase = internalAction({
       created_at: args.createdAt,
     };
 
-    const { data, error } = await client
-      .from("audit_log")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "audit_log", row);
 
-    if (error) {
-      const msg = `Supabase write failed for auditLog: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`AuditLog written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`AuditLog written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

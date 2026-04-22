@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 // ── Organization ──────────────────────────────────────────────────────────────
 
@@ -35,20 +35,10 @@ export const writeOrganizationToSupabase = internalAction({
       onboarding_completed: args.onboardingCompleted ?? null,
     };
 
-    const { data, error } = await client
-      .from("organizations")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "organizations", row);
 
-    if (error) {
-      const msg = `Supabase write failed for organization: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`Organization written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`Organization written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 
@@ -111,20 +101,10 @@ export const writeTeamMembershipToSupabase = internalAction({
       joined_at: args.joinedAt,
     };
 
-    const { data, error } = await client
-      .from("team_memberships")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "team_memberships", row);
 
-    if (error) {
-      const msg = `Supabase write failed for teamMembership: ${error.message}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`TeamMembership written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`TeamMembership written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 

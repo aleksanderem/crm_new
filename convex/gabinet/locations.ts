@@ -1,23 +1,10 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
-import { verifyProductAccess } from "../_helpers/products";
-import { GABINET_PRODUCT_ID } from "./_registry";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLocationRef = internal.supabase.gabinet.locations.writeLocationToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLocationRef = internal.supabase.gabinet.locations.updateLocationInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteLocationRef = internal.supabase.gabinet.locations.deleteLocationFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeRoomRef = internal.supabase.gabinet.rooms.writeRoomToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateRoomRef = internal.supabase.gabinet.rooms.updateRoomInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteRoomRef = internal.supabase.gabinet.rooms.deleteRoomFromSupabase;
+// Dual-write refs removed — Supabase is now primary for location/room writes
 
 export const listLocations = query({
   args: { organizationId: v.id("organizations") },
@@ -47,7 +34,7 @@ export const getLocation = query({
   },
 });
 
-export const createLocation = mutation({
+export const createLocation = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -62,29 +49,28 @@ export const createLocation = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-    const locationId = await ctx.db.insert("gabinetLocations", {
-      ...args,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
 
-    await ctx.scheduler.runAfter(0, writeLocationRef, {
-      locationId,
-      organizationId: args.organizationId,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const locationId = await db.insert("gabinetLocations", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      address: args.address,
-      phone: args.phone,
-      email: args.email,
-      color: args.color,
+      address: args.address ?? null,
+      phone: args.phone ?? null,
+      email: args.email ?? null,
+      color: args.color ?? null,
       isActive: true,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -93,10 +79,10 @@ export const createLocation = mutation({
   },
 });
 
-export const updateLocation = mutation({
+export const updateLocation = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     name: v.optional(v.string()),
     address: v.optional(v.object({
       street: v.optional(v.string()),
@@ -110,68 +96,71 @@ export const updateLocation = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const location = await ctx.db.get(args.locationId);
-    if (!location || location.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const location = await db.get("gabinetLocations", args.locationId);
+    if (!location || String(location.organizationId) !== String(args.organizationId)) {
       throw new Error("Location not found");
     }
+
     const { organizationId, locationId, ...updates } = args;
     const now = Date.now();
-    await ctx.db.patch(locationId, { ...updates, updatedAt: now });
-
-    await ctx.scheduler.runAfter(0, updateLocationRef, {
-      locationId,
-      organizationId: args.organizationId,
-      name: args.name,
-      address: args.address,
-      phone: args.phone,
-      email: args.email,
-      color: args.color,
-      isActive: args.isActive,
-      updatedAt: now,
-    });
+    await db.patch("gabinetLocations", locationId, { ...updates, updatedAt: now });
 
     return locationId;
   },
 });
 
-export const deleteLocation = mutation({
+export const deleteLocation = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const location = await ctx.db.get(args.locationId);
-    if (!location || location.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const location = await db.get("gabinetLocations", args.locationId);
+    if (!location || String(location.organizationId) !== String(args.organizationId)) {
       throw new Error("Location not found");
     }
-    const activeAppts = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("locationId"), args.locationId),
-          q.neq(q.field("status"), "cancelled"),
-          q.neq(q.field("status"), "completed"),
-          q.neq(q.field("status"), "no_show"),
-        )
-      )
+
+    // Check for active appointments at this location
+    const activeAppt = await db.query("gabinetAppointments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("locationId", args.locationId)
+      .neq("status", "cancelled")
+      .neq("status", "completed")
+      .neq("status", "no_show")
       .first();
-    if (activeAppts) {
+
+    if (activeAppt) {
       throw new Error("Cannot delete location with active appointments");
     }
-    await ctx.db.patch(args.locationId, { isActive: false, updatedAt: Date.now() });
 
-    await ctx.scheduler.runAfter(0, deleteLocationRef, {
-      locationId: args.locationId,
-      organizationId: args.organizationId,
+    // Soft-delete
+    await db.patch("gabinetLocations", args.locationId, {
+      isActive: false,
+      updatedAt: Date.now(),
     });
 
     return args.locationId;
@@ -194,37 +183,39 @@ export const listRooms = query({
   },
 });
 
-export const createRoom = mutation({
+export const createRoom = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     floor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const location = await ctx.db.get(args.locationId);
-    if (!location || location.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const location = await db.get("gabinetLocations", args.locationId);
+    if (!location || String(location.organizationId) !== String(args.organizationId)) {
       throw new Error("Location not found");
     }
-    const now = Date.now();
-    const roomId = await ctx.db.insert("gabinetRooms", {
-      ...args,
-      isActive: true,
-      createdAt: now,
-    });
 
-    await ctx.scheduler.runAfter(0, writeRoomRef, {
-      roomId,
-      organizationId: args.organizationId,
+    const now = Date.now();
+    const roomId = await db.insert("gabinetRooms", {
+      organizationId: String(args.organizationId),
       locationId: args.locationId,
       name: args.name,
-      description: args.description,
-      floor: args.floor,
+      description: args.description ?? null,
+      floor: args.floor ?? null,
       isActive: true,
       createdAt: now,
     });
@@ -233,76 +224,78 @@ export const createRoom = mutation({
   },
 });
 
-export const updateRoom = mutation({
+export const updateRoom = action({
   args: {
     organizationId: v.id("organizations"),
-    roomId: v.id("gabinetRooms"),
+    roomId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     floor: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const room = await ctx.db.get(args.roomId);
-    if (!room || room.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const room = await db.get("gabinetRooms", args.roomId);
+    if (!room || String(room.organizationId) !== String(args.organizationId)) {
       throw new Error("Room not found");
     }
-    const { organizationId, roomId, ...updates } = args;
-    await ctx.db.patch(roomId, updates);
 
-    await ctx.scheduler.runAfter(0, updateRoomRef, {
-      roomId,
-      organizationId: args.organizationId,
-      name: args.name,
-      description: args.description,
-      floor: args.floor,
-      isActive: args.isActive,
-    });
+    const { organizationId, roomId, ...updates } = args;
+    await db.patch("gabinetRooms", roomId, updates);
 
     return roomId;
   },
 });
 
-export const deleteRoom = mutation({
+export const deleteRoom = action({
   args: {
     organizationId: v.id("organizations"),
-    roomId: v.id("gabinetRooms"),
+    roomId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_settings", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const room = await ctx.db.get(args.roomId);
-    if (!room || room.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+
+    const room = await db.get("gabinetRooms", args.roomId);
+    if (!room || String(room.organizationId) !== String(args.organizationId)) {
       throw new Error("Room not found");
     }
-    const activeAppt = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndRoomAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("roomId", args.roomId)
-      )
-      .filter((q) =>
-        q.and(
-          q.neq(q.field("status"), "cancelled"),
-          q.neq(q.field("status"), "completed"),
-          q.neq(q.field("status"), "no_show"),
-        )
-      )
+
+    // Check for active appointments in this room
+    const activeAppt = await db.query("gabinetAppointments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("roomId", args.roomId)
+      .neq("status", "cancelled")
+      .neq("status", "completed")
+      .neq("status", "no_show")
       .first();
+
     if (activeAppt) {
       throw new Error("Cannot delete room with active appointments");
     }
-    await ctx.db.patch(args.roomId, { isActive: false });
 
-    await ctx.scheduler.runAfter(0, deleteRoomRef, {
-      roomId: args.roomId,
-      organizationId: args.organizationId,
-    });
+    // Soft-delete
+    await db.patch("gabinetRooms", args.roomId, { isActive: false });
 
     return args.roomId;
   },

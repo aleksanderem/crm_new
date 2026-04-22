@@ -8,7 +8,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeRunStep = internalAction({
   args: {
@@ -62,21 +62,7 @@ export const writeRunStep = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("automation_run_steps")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for automation run step: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "automation_run_steps", row);
 
     console.info(`Automation run step written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };
@@ -124,7 +110,7 @@ export const updateRunStep = internalAction({
       .update(row)
       .eq("id", args.stepId)
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (error) {
       const msg = `Supabase update failed for automation run step ${args.stepId}: ${error.message} (code=${error.code})`;
@@ -132,8 +118,13 @@ export const updateRunStep = internalAction({
       throw new Error(msg);
     }
 
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase update returned malformed response: missing id");
+    if (!data) {
+      // Row doesn't exist in Supabase yet (Convex-primary create hasn't mirrored).
+      // Don't throw — auxiliary audit trail.
+      console.warn(
+        `Automation run step ${args.stepId} not found in Supabase; skipping update.`,
+      );
+      return { success: false, id: args.stepId };
     }
 
     console.info(`Automation run step updated in Supabase id=${data.id} org=${args.organizationId}`);

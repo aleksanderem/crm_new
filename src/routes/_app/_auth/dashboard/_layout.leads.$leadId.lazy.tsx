@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -233,23 +233,23 @@ function LeadDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const updateLead = useMutation(api.leads.update);
-  const removeLead = useMutation(api.leads.remove);
-  const moveToStage = useMutation(api.leads.moveToStage);
-  const createRelationship = useMutation(api.relationships.create);
-  const removeRelationship = useMutation(api.relationships.remove);
-  const createContactMutation = useMutation(api.contacts.create);
-  const createCompanyMutation = useMutation(api.companies.create);
-  const setCustomFields = useMutation(api.customFields.setValues);
-  const trackView = useMutation(api.recentlyViewed.track);
-  const createNote = useMutation(api.notes.create);
-  const createScheduledActivity = useMutation(api.scheduledActivities.create);
-  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
-  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
-  const updateScheduledActivity = useMutation(api.scheduledActivities.update);
-  const removeScheduledActivity = useMutation(api.scheduledActivities.remove);
-  const addProductToDeal = useMutation(api.products.addToDeal);
-  const removeProductFromDeal = useMutation(api.products.removeFromDeal);
+  const updateLead = useAction(api.leads.update);
+  const removeLead = useAction(api.leads.remove);
+  const moveToStage = useAction(api.leads.moveToStage);
+  const createRelationship = useAction(api.relationships.create);
+  const removeRelationship = useAction(api.relationships.remove);
+  const createContactMutation = useAction(api.contacts.create);
+  const createCompanyMutation = useAction(api.companies.create);
+  const setCustomFields = useAction(api.customFields.setValues);
+  const trackView = useAction(api.recentlyViewed.track);
+  const createNote = useAction(api.notes.create);
+  const createScheduledActivity = useAction(api.scheduledActivities.create);
+  const markActivityComplete = useAction(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
+  const updateScheduledActivity = useAction(api.scheduledActivities.update);
+  const removeScheduledActivity = useAction(api.scheduledActivities.remove);
+  const addProductToDeal = useAction(api.products.addToDeal);
+  const removeProductFromDeal = useAction(api.products.removeFromDeal);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -770,8 +770,8 @@ function LeadDetail() {
 
     await addProductToDeal({
       organizationId,
-      dealId: leadId as Id<"leads">,
-      productId: selectedProductId as Id<"products">,
+      dealId: leadId,
+      productId: selectedProductId,
       quantity,
       unitPrice,
       discount,
@@ -784,7 +784,7 @@ function LeadDetail() {
   const handleRemoveDealProduct = async (dealProductId: string) => {
     await removeProductFromDeal({
       organizationId,
-      dealProductId: dealProductId as Id<"dealProducts">,
+      dealProductId,
     });
 
     await queryClient.invalidateQueries({ queryKey: dealProductsQuery.queryKey });

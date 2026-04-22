@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -38,8 +38,8 @@ function SmsSettings() {
     convexQuery(api.sms.getConfig, { organizationId })
   );
 
-  const saveConfig = useMutation(api.sms.saveConfig);
-  const toggleActive = useMutation(api.sms.toggleActive);
+  const saveConfig = useAction(api.sms.saveConfig);
+  const toggleActive = useAction(api.sms.toggleActive);
 
   // Form state
   const [provider, setProvider] = useState<Provider>("smsapi");

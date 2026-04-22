@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -21,7 +21,7 @@ export const Route = createFileRoute(
 function NewLead() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const createLead = useMutation(api.leads.create);
+  const createLead = useAction(api.leads.create);
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 

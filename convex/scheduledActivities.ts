@@ -1,131 +1,45 @@
-import { query, mutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
-import { checkPermission } from "./_helpers/permissions";
 import { activityTypeValidator } from "@cvx/schema";
-import { createNotificationDirect } from "./notifications";
 
-// @ts-ignore — TS2589
-const writeScheduledRef = internal.supabase.scheduledActivities.writeScheduledActivityToSupabase;
-// @ts-ignore — TS2589
-const updateScheduledRef = internal.supabase.scheduledActivities.updateScheduledActivityInSupabase;
-// @ts-ignore — TS2589
-const deleteScheduledRef = internal.supabase.scheduledActivities.deleteScheduledActivityFromSupabase;
+// ── Queries removed (Supabase-primary migration) ────────────────────────────
+// All public query endpoints (list, getById, listByEntity, listOverdue,
+// listDueToday, listForCalendar, listForCalendarWithVisibility, listDueThisWeek)
+// were deleted; frontends read scheduledActivities from Supabase via
+// use-supabase-scheduled-activities.ts hooks.
 
-export const list = query({
+// ── Internal mutation for Convex-only side effects ──────────────────────────
+
+export const _createSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    paginationOpts: paginationOptsValidator,
-    activityType: v.optional(activityTypeValidator),
-    isCompleted: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const applyScope = (result: any) => {
-      if (perm.scope === "own") {
-        return { ...result, page: result.page.filter((r: any) => r.createdBy === user._id) };
-      }
-      return result;
-    };
-
-    if (args.activityType) {
-      return applyScope(await ctx.db
-        .query("scheduledActivities")
-        .withIndex("by_orgAndType", (q) =>
-          q.eq("organizationId", args.organizationId).eq("activityType", args.activityType!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
-
-    if (args.isCompleted !== undefined) {
-      return applyScope(await ctx.db
-        .query("scheduledActivities")
-        .withIndex("by_orgAndCompleted", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isCompleted", args.isCompleted!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
-
-    return applyScope(await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts));
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || activity.organizationId !== args.organizationId) {
-      throw new Error("Scheduled activity not found");
-    }
-    if (perm.scope === "own" && activity.createdBy !== user._id) {
-      throw new Error("Permission denied");
-    }
-
-    return activity;
-  },
-});
-
-export const create = mutation({
-  args: {
-    organizationId: v.id("organizations"),
+    activityId: v.string(),
+    activityType: v.string(),
     title: v.string(),
-    activityType: activityTypeValidator,
-    dueDate: v.number(),
-    endDate: v.optional(v.number()),
-    ownerId: v.id("users"),
+    userId: v.string(),
+    ownerId: v.string(),
     description: v.optional(v.string()),
-    linkedEntityType: v.optional(v.string()),
-    linkedEntityId: v.optional(v.string()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "create");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-
-    const activityId = await ctx.db.insert("scheduledActivities", {
-      ...args,
-      isCompleted: false,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const { logActivity } = await import("./_helpers/activities");
+    const { createNotificationDirect } = await import("./notifications");
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
-      entityId: activityId,
+      entityId: args.activityId as any,
       action: "created",
       description: `Created ${args.activityType} "${args.title}"`,
-      performedBy: user._id,
+      performedBy: args.userId as any,
     });
 
     // Notify owner if different from creator
-    if (args.ownerId !== user._id) {
+    if (args.ownerId !== args.userId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.ownerId,
+        userId: args.ownerId as any,
         type: "assigned",
         title: "Activity assigned",
         message: `You have been assigned to ${args.activityType} "${args.title}"`,
@@ -135,519 +49,361 @@ export const create = mutation({
     // Schedule Google Calendar sync if connected
     await ctx.scheduler.runAfter(0, internal.google.calendar.createEvent, {
       organizationId: args.organizationId,
-      activityId,
+      activityId: args.activityId as any,
     });
-
-    // Dual-write: sync to Supabase
-    await ctx.scheduler.runAfter(0, writeScheduledRef, {
-      scheduledActivityId: activityId as any,
-      organizationId: args.organizationId as any,
-      title: args.title,
-      activityType: args.activityType,
-      dueDate: args.dueDate,
-      endDate: args.endDate,
-      isCompleted: false,
-      ownerId: args.ownerId as any,
-      description: args.description,
-      linkedEntityType: args.linkedEntityType,
-      linkedEntityId: args.linkedEntityId,
-      tagIds: args.tagIds as any,
-      categoryId: args.categoryId as any,
-      createdBy: user._id as any,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return activityId;
   },
 });
 
-export const update = mutation({
+export const _updateSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
-    title: v.optional(v.string()),
-    activityType: v.optional(activityTypeValidator),
-    dueDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-    ownerId: v.optional(v.id("users")),
+    activityId: v.string(),
+    activityType: v.string(),
+    title: v.string(),
+    userId: v.string(),
+    newOwnerId: v.optional(v.string()),
+    oldOwnerId: v.optional(v.string()),
+    googleEventId: v.optional(v.string()),
     description: v.optional(v.string()),
-    linkedEntityType: v.optional(v.string()),
-    linkedEntityId: v.optional(v.string()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || activity.organizationId !== args.organizationId) {
-      throw new Error("Scheduled activity not found");
-    }
-    if (perm.scope === "own" && activity.createdBy !== user._id) {
-      throw new Error("Permission denied: you can only edit your own records");
-    }
-
-    const { organizationId, activityId, ...updates } = args;
-    await ctx.db.patch(activityId, { ...updates, updatedAt: Date.now() });
+    const { logActivity } = await import("./_helpers/activities");
+    const { createNotificationDirect } = await import("./notifications");
 
     await logActivity(ctx, {
-      organizationId,
+      organizationId: args.organizationId,
       entityType: "scheduledActivity",
-      entityId: activityId,
+      entityId: args.activityId as any,
       action: "updated",
-      description: `Updated ${activity.activityType} "${activity.title}"`,
-      performedBy: user._id,
+      description: args.description ?? `Updated ${args.activityType} "${args.title}"`,
+      performedBy: args.userId as any,
     });
 
-    // Notify new owner if ownerId changed to someone other than the current user
-    if (updates.ownerId && updates.ownerId !== activity.ownerId && updates.ownerId !== user._id) {
+    // Notify new owner if changed and not the current user
+    if (args.newOwnerId && args.newOwnerId !== args.oldOwnerId && args.newOwnerId !== args.userId) {
       await createNotificationDirect(ctx, {
-        organizationId,
-        userId: updates.ownerId,
+        organizationId: args.organizationId,
+        userId: args.newOwnerId as any,
         type: "assigned",
         title: "Activity assigned",
-        message: `You have been assigned to ${activity.activityType} "${activity.title}"`,
+        message: `You have been assigned to ${args.activityType} "${args.title}"`,
       });
     }
 
     // Sync to Google Calendar if linked
-    if (activity.googleEventId) {
+    if (args.googleEventId) {
       await ctx.scheduler.runAfter(0, internal.google.calendar.updateEvent, {
-        organizationId,
-        activityId,
+        organizationId: args.organizationId,
+        activityId: args.activityId as any,
+      });
+    }
+  },
+});
+
+export const _deleteSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    activityId: v.string(),
+    activityType: v.string(),
+    title: v.string(),
+    userId: v.string(),
+    googleEventId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { logActivity } = await import("./_helpers/activities");
+
+    // Delete Google Calendar event before removing the activity
+    if (args.googleEventId) {
+      await ctx.scheduler.runAfter(0, internal.google.calendar.deleteEvent, {
+        organizationId: args.organizationId as any,
+        activityId: args.activityId as any,
       });
     }
 
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateScheduledRef, {
-      scheduledActivityId: activityId as any,
-      ...updates,
-      ownerId: updates.ownerId as any,
-      tagIds: updates.tagIds as any,
-      categoryId: updates.categoryId as any,
-      updatedAt: Date.now(),
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "scheduledActivity",
+      entityId: args.activityId as any,
+      action: "deleted",
+      description: `Deleted ${args.activityType} "${args.title}"`,
+      performedBy: args.userId as any,
     });
+  },
+});
+
+// ── Actions (Supabase-primary writes) ───────────────────────────────────────
+
+export const create = action({
+  args: {
+    organizationId: v.id("organizations"),
+    title: v.string(),
+    activityType: activityTypeValidator,
+    dueDate: v.number(),
+    endDate: v.optional(v.number()),
+    ownerId: v.string(),
+    description: v.optional(v.string()),
+    linkedEntityType: v.optional(v.string()),
+    linkedEntityId: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "activities", action: "create" },
+    );
+    if (!(perm as any).allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const activityId = await db.insert("scheduledActivities", {
+      organizationId: String(args.organizationId),
+      title: args.title,
+      activityType: args.activityType,
+      dueDate: args.dueDate,
+      endDate: args.endDate ?? null,
+      isCompleted: false,
+      ownerId: args.ownerId,
+      description: args.description ?? null,
+      linkedEntityType: args.linkedEntityType ?? null,
+      linkedEntityId: args.linkedEntityId ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    try {
+      await ctx.runMutation(internal.scheduledActivities._createSideEffects, {
+        organizationId: args.organizationId,
+        activityId,
+        activityType: args.activityType,
+        title: args.title,
+        userId: String(authResult.userId),
+        ownerId: args.ownerId,
+      });
+    } catch (e) {
+      console.error("[scheduledActivities.create] side effects error:", e);
+    }
 
     return activityId;
   },
 });
 
-export const remove = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
+    title: v.optional(v.string()),
+    activityType: v.optional(activityTypeValidator),
+    dueDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    ownerId: v.optional(v.string()),
+    description: v.optional(v.string()),
+    linkedEntityType: v.optional(v.string()),
+    linkedEntityId: v.optional(v.string()),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "delete");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "activities", action: "edit" },
+    );
+    if (!(perm as any).allowed) throw new Error("Permission denied");
 
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || activity.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
+    if (!activity || activity.organizationId !== String(args.organizationId)) {
       throw new Error("Scheduled activity not found");
     }
-    if (perm.scope === "own" && activity.createdBy !== user._id) {
+    if ((perm as any).scope === "own" && activity.createdBy !== String(authResult.userId)) {
+      throw new Error("Permission denied: you can only edit your own records");
+    }
+
+    const { organizationId, activityId, ...updates } = args;
+    const now = Date.now();
+    const patchData: Record<string, unknown> = { updatedAt: now };
+    if (updates.title !== undefined) patchData.title = updates.title;
+    if (updates.activityType !== undefined) patchData.activityType = updates.activityType;
+    if (updates.dueDate !== undefined) patchData.dueDate = updates.dueDate;
+    if (updates.endDate !== undefined) patchData.endDate = updates.endDate;
+    if (updates.ownerId !== undefined) patchData.ownerId = updates.ownerId;
+    if (updates.description !== undefined) patchData.description = updates.description;
+    if (updates.linkedEntityType !== undefined) patchData.linkedEntityType = updates.linkedEntityType;
+    if (updates.linkedEntityId !== undefined) patchData.linkedEntityId = updates.linkedEntityId;
+    if (updates.tagIds !== undefined) patchData.tagIds = updates.tagIds;
+    if (updates.categoryId !== undefined) patchData.categoryId = updates.categoryId;
+
+    await db.patch("scheduledActivities", activityId, patchData);
+
+    try {
+      await ctx.runMutation(internal.scheduledActivities._updateSideEffects, {
+        organizationId,
+        activityId,
+        activityType: (updates.activityType ?? activity.activityType) as string,
+        title: (updates.title ?? activity.title) as string,
+        userId: String(authResult.userId),
+        newOwnerId: updates.ownerId,
+        oldOwnerId: activity.ownerId as string | undefined,
+        googleEventId: activity.googleEventId as string | undefined,
+      });
+    } catch (e) {
+      console.error("[scheduledActivities.update] side effects error:", e);
+    }
+
+    return activityId;
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    activityId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "activities", action: "delete" },
+    );
+    if (!(perm as any).allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
+    if (!activity || activity.organizationId !== String(args.organizationId)) {
+      throw new Error("Scheduled activity not found");
+    }
+    if ((perm as any).scope === "own" && activity.createdBy !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // Delete Google Calendar event before removing the activity
-    if (activity.googleEventId) {
-      await ctx.scheduler.runAfter(0, internal.google.calendar.deleteEvent, {
+    await db.delete("scheduledActivities", args.activityId);
+
+    try {
+      await ctx.runMutation(internal.scheduledActivities._deleteSideEffects, {
         organizationId: args.organizationId,
         activityId: args.activityId,
+        activityType: activity.activityType as string,
+        title: activity.title as string,
+        userId: String(authResult.userId),
+        googleEventId: activity.googleEventId as string | undefined,
       });
+    } catch (e) {
+      console.error("[scheduledActivities.remove] side effects error:", e);
     }
-
-    // Dual-write: schedule delete BEFORE ctx.db.delete (Pattern #4)
-    await ctx.scheduler.runAfter(0, deleteScheduledRef, {
-      scheduledActivityId: args.activityId as any,
-      organizationId: args.organizationId as any,
-    });
-
-    await ctx.db.delete(args.activityId);
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "scheduledActivity",
-      entityId: args.activityId,
-      action: "deleted",
-      description: `Deleted ${activity.activityType} "${activity.title}"`,
-      performedBy: user._id,
-    });
 
     return args.activityId;
   },
 });
 
-export const markComplete = mutation({
+export const markComplete = action({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "activities", action: "edit" },
+    );
+    if (!(perm as any).allowed) throw new Error("Permission denied");
 
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || activity.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
+    if (!activity || activity.organizationId !== String(args.organizationId)) {
       throw new Error("Scheduled activity not found");
     }
-    if (perm.scope === "own" && activity.createdBy !== user._id) {
+    if ((perm as any).scope === "own" && activity.createdBy !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
     const now = Date.now();
-    await ctx.db.patch(args.activityId, {
+    await db.patch("scheduledActivities", args.activityId, {
       isCompleted: true,
       completedAt: now,
       updatedAt: now,
     });
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "scheduledActivity",
-      entityId: args.activityId,
-      action: "updated",
-      description: `Completed ${activity.activityType} "${activity.title}"`,
-      performedBy: user._id,
-    });
-
-    // Update Google Calendar event if linked
-    if (activity.googleEventId) {
-      await ctx.scheduler.runAfter(0, internal.google.calendar.updateEvent, {
+    try {
+      await ctx.runMutation(internal.scheduledActivities._updateSideEffects, {
         organizationId: args.organizationId,
         activityId: args.activityId,
+        activityType: activity.activityType as string,
+        title: activity.title as string,
+        userId: String(authResult.userId),
+        googleEventId: activity.googleEventId as string | undefined,
+        description: `Completed ${activity.activityType} "${activity.title}"`,
       });
+    } catch (e) {
+      console.error("[scheduledActivities.markComplete] side effects error:", e);
     }
-
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateScheduledRef, {
-      scheduledActivityId: args.activityId as any,
-      isCompleted: true,
-      completedAt: now,
-      updatedAt: now,
-    });
 
     return args.activityId;
   },
 });
 
-export const markIncomplete = mutation({
+export const markIncomplete = action({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "activities", action: "edit" },
+    );
+    if (!(perm as any).allowed) throw new Error("Permission denied");
 
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || activity.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
+    if (!activity || activity.organizationId !== String(args.organizationId)) {
       throw new Error("Scheduled activity not found");
     }
-    if (perm.scope === "own" && activity.createdBy !== user._id) {
+    if ((perm as any).scope === "own" && activity.createdBy !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
-    await ctx.db.patch(args.activityId, {
+    await db.patch("scheduledActivities", args.activityId, {
       isCompleted: false,
-      completedAt: undefined,
+      completedAt: null,
       updatedAt: Date.now(),
     });
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "scheduledActivity",
-      entityId: args.activityId,
-      action: "updated",
-      description: `Reopened ${activity.activityType} "${activity.title}"`,
-      performedBy: user._id,
-    });
-
-    // Dual-write
-    await ctx.scheduler.runAfter(0, updateScheduledRef, {
-      scheduledActivityId: args.activityId as any,
-      isCompleted: false,
-      updatedAt: Date.now(),
-    });
+    try {
+      await ctx.runMutation(internal.scheduledActivities._updateSideEffects, {
+        organizationId: args.organizationId,
+        activityId: args.activityId,
+        activityType: activity.activityType as string,
+        title: activity.title as string,
+        userId: String(authResult.userId),
+        description: `Reopened ${activity.activityType} "${activity.title}"`,
+      });
+    } catch (e) {
+      console.error("[scheduledActivities.markIncomplete] side effects error:", e);
+    }
 
     return args.activityId;
-  },
-});
-
-export const listByEntity = query({
-  args: {
-    organizationId: v.id("organizations"),
-    linkedEntityType: v.string(),
-    linkedEntityId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const all = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    let filtered = all.filter(
-      (a) => a.linkedEntityType === args.linkedEntityType && a.linkedEntityId === args.linkedEntityId
-    );
-    if (perm.scope === "own") {
-      filtered = filtered.filter((a) => a.createdBy === user._id);
-    }
-    return filtered;
-  },
-});
-
-export const listOverdue = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-
-    const incomplete = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_orgAndCompleted", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isCompleted", false)
-      )
-      .collect();
-
-    let results = incomplete.filter((a) => a.dueDate < now);
-    if (perm.scope === "own") {
-      results = results.filter((a) => a.createdBy === user._id);
-    }
-    return results;
-  },
-});
-
-export const listDueToday = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
-
-    const results = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_orgAndDueDate", (q) =>
-        q.eq("organizationId", args.organizationId).gte("dueDate", startOfDay).lte("dueDate", endOfDay)
-      )
-      .collect();
-
-    if (perm.scope === "own") {
-      return results.filter((a) => a.createdBy === user._id);
-    }
-    return results;
-  },
-});
-
-// Shared helper: fetch, filter by module, apply scope, enrich with Gabinet metadata
-async function fetchCalendarActivities(
-  ctx: any,
-  args: {
-    organizationId: any;
-    startDate: number;
-    endDate: number;
-    moduleFilter?: "all" | "gabinet" | "crm";
-  },
-  user: { _id: any },
-  permScope: string
-) {
-  const activities = await ctx.db
-    .query("scheduledActivities")
-    .withIndex("by_orgAndDueDate", (q: any) =>
-      q
-        .eq("organizationId", args.organizationId)
-        .gte("dueDate", args.startDate)
-        .lte("dueDate", args.endDate)
-    )
-    .collect();
-
-  let filtered = activities;
-  if (args.moduleFilter === "gabinet") {
-    filtered = activities.filter(
-      (a: any) => a.moduleRef?.moduleId === "gabinet"
-    );
-  } else if (args.moduleFilter === "crm") {
-    filtered = activities.filter(
-      (a: any) => !a.moduleRef || a.moduleRef.moduleId !== "gabinet"
-    );
-  }
-
-  if (permScope === "own") {
-    filtered = filtered.filter((a: any) => a.createdBy === user._id);
-  }
-
-  const enriched = await Promise.all(
-    filtered.map(async (activity: any) => {
-      let metadata: Record<string, unknown> = {};
-      if (
-        activity.moduleRef?.moduleId === "gabinet" &&
-        activity.moduleRef.entityType === "gabinetAppointment"
-      ) {
-        const appt = await ctx.db.get(
-          activity.moduleRef.entityId as any
-        );
-        if (appt) {
-          const patient = await ctx.db.get((appt as any).patientId);
-          const treatment = await ctx.db.get((appt as any).treatmentId);
-          metadata = {
-            patientName: patient
-              ? `${(patient as any).firstName} ${(patient as any).lastName}`
-              : "Unknown",
-            treatmentName: (treatment as any)?.name ?? "Unknown",
-            status: (appt as any).status,
-            employeeId: (appt as any).employeeId,
-            appointmentId: appt._id,
-          };
-        }
-      }
-      return { ...activity, metadata };
-    })
-  );
-
-  return enriched;
-}
-
-export const listForCalendar = query({
-  args: {
-    organizationId: v.id("organizations"),
-    startDate: v.number(),
-    endDate: v.number(),
-    moduleFilter: v.optional(
-      v.union(v.literal("all"), v.literal("gabinet"), v.literal("crm"))
-    ),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "activities",
-      "view"
-    );
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    return fetchCalendarActivities(ctx, args, user, perm.scope);
-  },
-});
-
-export const listForCalendarWithVisibility = query({
-  args: {
-    organizationId: v.id("organizations"),
-    startDate: v.number(),
-    endDate: v.number(),
-    moduleFilter: v.optional(
-      v.union(v.literal("all"), v.literal("gabinet"), v.literal("crm"))
-    ),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "activities",
-      "view"
-    );
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const enriched = await fetchCalendarActivities(ctx, args, user, perm.scope);
-
-    // Cache sync configs to avoid repeated lookups for the same config
-    const syncConfigCache = new Map<string, any>();
-
-    const visibilityFiltered: typeof enriched = [];
-
-    for (const activity of enriched) {
-      // Activities without syncConfigId are always fully visible
-      if (!activity.syncConfigId) {
-        visibilityFiltered.push(activity);
-        continue;
-      }
-
-      // Owner always sees full details
-      if (activity.ownerId === user._id) {
-        visibilityFiltered.push(activity);
-        continue;
-      }
-
-      // Determine effective visibility: per-event override takes precedence over sync config default
-      let effectiveVisibility = activity.visibilityOverride;
-      if (!effectiveVisibility) {
-        const configIdStr = activity.syncConfigId as string;
-        if (!syncConfigCache.has(configIdStr)) {
-          syncConfigCache.set(configIdStr, await ctx.db.get(activity.syncConfigId));
-        }
-        const syncConfig = syncConfigCache.get(configIdStr);
-        effectiveVisibility = syncConfig?.visibility ?? "full";
-      }
-
-      if (effectiveVisibility === "hidden") {
-        // Exclude from results
-        continue;
-      }
-
-      if (effectiveVisibility === "busy_only") {
-        // Sanitize: replace title, clear sensitive fields, add marker
-        visibilityFiltered.push({
-          ...activity,
-          title: "Zajęty",
-          description: undefined,
-          location: undefined,
-          meetingUrl: undefined,
-          _isBusyOnly: true as const,
-        });
-        continue;
-      }
-
-      // "full" — return as-is
-      visibilityFiltered.push(activity);
-    }
-
-    return visibilityFiltered;
-  },
-});
-
-export const listDueThisWeek = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "activities", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfWeek = startOfDay + 7 * 24 * 60 * 60 * 1000;
-
-    const results = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_orgAndDueDate", (q) =>
-        q.eq("organizationId", args.organizationId).gte("dueDate", startOfDay).lte("dueDate", endOfWeek)
-      )
-      .collect();
-
-    if (perm.scope === "own") {
-      return results.filter((a) => a.createdBy === user._id);
-    }
-    return results;
   },
 });

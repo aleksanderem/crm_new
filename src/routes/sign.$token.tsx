@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -123,8 +123,8 @@ function SigningFlow({
   document,
   organizationName,
 }: SigningFlowProps) {
-  const signExternal = useMutation(api.signatureRequests.signExternal);
-  const verifyOtp = useMutation(api.signatureRequests.verifyOtp);
+  const signExternal = useAction(api.signatureRequests.signExternal);
+  const verifyOtp = useAction(api.signatureRequests.verifyOtp);
   const requestOtp = useAction(api.sms.requestOtp);
 
   const [step, setStep] = useState<"review" | "verify" | "sign" | "done">(

@@ -382,7 +382,7 @@ export function createGabinetTables({
     prepaymentStatus: v.optional(v.string()),
     prepaymentPaidAt: v.optional(v.number()),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
-    scheduledActivityId: v.optional(v.id("scheduledActivities")),
+    scheduledActivityId: v.optional(v.string()),
     reminderSentAt: v.optional(v.number()),
     sendReminder: v.optional(v.boolean()),
     cancelledAt: v.optional(v.number()),
@@ -761,8 +761,8 @@ export function createGabinetTables({
 
   appointmentSmsEvents: defineTable({
     organizationId: v.id("organizations"),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
-    patientId: v.optional(v.id("gabinetPatients")),
+    appointmentId: v.optional(v.string()),
+    patientId: v.optional(v.string()),
     normalizedPhone: v.string(),
     direction: appointmentSmsDirectionValidator,
     provider: v.string(),
@@ -817,7 +817,7 @@ export function createGabinetTables({
 
   appointmentReminders: defineTable({
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     type: v.union(
       v.literal("email"),
       v.literal("sms"),
@@ -840,7 +840,7 @@ export function createGabinetTables({
 
   appointmentWorkflowHistory: defineTable({
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     workflowEvent: appointmentWorkflowEventValidator,
     channel: appointmentWorkflowChannelValidator,
     direction: v.literal("outbound"),

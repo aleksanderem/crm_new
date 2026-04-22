@@ -1,28 +1,13 @@
-import { query, mutation } from "../_generated/server";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
-import { logActivity } from "../_helpers/activities";
-import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+import { Id } from "../_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writePackageRef = internal.supabase.gabinet.packages.writePackageToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updatePackageRef = internal.supabase.gabinet.packages.updatePackageInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deletePackageRef = internal.supabase.gabinet.packages.deletePackageFromSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeUsageRef = internal.supabase.gabinet.packages.writePackageUsageToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateUsageRef = internal.supabase.gabinet.packages.updatePackageUsageInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeLoyaltyRef = internal.supabase.gabinet.loyalty.writeLoyaltyPointsToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateLoyaltyRef = internal.supabase.gabinet.loyalty.updateLoyaltyPointsInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTxnRef = internal.supabase.gabinet.loyalty.writeLoyaltyTransactionToSupabase;
+// Dual-write refs removed — Supabase is now primary for package writes
 
 export const list = query({
   args: {
@@ -85,13 +70,13 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.optional(v.string()),
     treatments: v.array(v.object({
-      treatmentId: v.id("gabinetTreatments"),
+      treatmentId: v.string(),
       quantity: v.number(),
     })),
     totalPrice: v.number(),
@@ -101,58 +86,78 @@ export const create = mutation({
     loyaltyPointsAwarded: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "create");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const id = await ctx.db.insert("gabinetTreatmentPackages", {
-      ...args,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetPackage",
-      entityId: id,
-      action: "created",
-      description: `Created package ${args.name}`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writePackageRef, {
-      packageId: id,
-      organizationId: args.organizationId,
+    const packageId = await db.insert("gabinetTreatmentPackages", {
+      organizationId: String(args.organizationId),
       name: args.name,
-      description: args.description,
+      description: args.description ?? null,
       treatments: args.treatments,
       totalPrice: args.totalPrice,
-      currency: args.currency,
-      discountPercent: args.discountPercent,
-      validityDays: args.validityDays,
+      currency: args.currency ?? null,
+      discountPercent: args.discountPercent ?? null,
+      validityDays: args.validityDays ?? null,
+      loyaltyPointsAwarded: args.loyaltyPointsAwarded ?? null,
       isActive: true,
-      loyaltyPointsAwarded: args.loyaltyPointsAwarded,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
-    return id;
+    try {
+      await ctx.runMutation(internal.gabinet.packages._createSideEffects, {
+        packageId,
+        organizationId: args.organizationId,
+        name: args.name,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[packages.create] Side effects FAILED for package", packageId, ":", e);
+    }
+
+    return packageId;
   },
 });
 
-export const update = mutation({
+export const _createSideEffects = internalMutation({
+  args: {
+    packageId: v.string(),
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { logActivity } = await import("../_helpers/activities");
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPackage",
+      entityId: args.packageId as Id<"gabinetTreatmentPackages">,
+      action: "created",
+      description: `Created package ${args.name}`,
+      performedBy: args.createdBy as Id<"users">,
+    });
+  },
+});
+
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    packageId: v.id("gabinetTreatmentPackages"),
+    packageId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     treatments: v.optional(v.array(v.object({
-      treatmentId: v.id("gabinetTreatments"),
+      treatmentId: v.string(),
       quantity: v.number(),
     }))),
     totalPrice: v.optional(v.number()),
@@ -163,96 +168,100 @@ export const update = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "edit");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const pkg = await ctx.db.get(args.packageId);
-    if (!pkg || pkg.organizationId !== args.organizationId) throw new Error("Package not found");
-    if (perm.scope === "own" && pkg.createdBy !== user._id) {
+    const db = createSupabaseDb();
+
+    const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
+    if (!pkg || String(pkg.organizationId) !== String(args.organizationId)) throw new Error("Package not found");
+    if (perm.scope === "own" && String(pkg.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
     const { organizationId, packageId, ...updates } = args;
-    await ctx.db.patch(packageId, { ...updates, updatedAt: Date.now() });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, updatePackageRef, {
-      packageId,
-      organizationId,
-      name: args.name,
-      description: args.description,
-      treatments: args.treatments,
-      totalPrice: args.totalPrice,
-      currency: args.currency,
-      discountPercent: args.discountPercent,
-      validityDays: args.validityDays,
-      isActive: args.isActive,
-      loyaltyPointsAwarded: args.loyaltyPointsAwarded,
-      updatedAt: Date.now(),
-    });
+    await db.patch("gabinetTreatmentPackages", packageId, { ...updates, updatedAt: Date.now() });
 
     return packageId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    packageId: v.id("gabinetTreatmentPackages"),
+    packageId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "delete");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "delete" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const pkg = await ctx.db.get(args.packageId);
-    if (!pkg || pkg.organizationId !== args.organizationId) throw new Error("Package not found");
-    if (perm.scope === "own" && pkg.createdBy !== user._id) {
+    const db = createSupabaseDb();
+
+    const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
+    if (!pkg || String(pkg.organizationId) !== String(args.organizationId)) throw new Error("Package not found");
+    if (perm.scope === "own" && String(pkg.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // Dual-write: replicate soft-delete to Supabase BEFORE Convex patch (Knowledge #4)
-    await ctx.scheduler.runAfter(0, deletePackageRef, {
-      packageId: args.packageId,
-      organizationId: args.organizationId,
-    });
-
-    await ctx.db.patch(args.packageId, { isActive: false, updatedAt: Date.now() });
+    await db.patch("gabinetTreatmentPackages", args.packageId, { isActive: false, updatedAt: Date.now() });
   },
 });
 
 // --- Package Usage ---
 
-export const purchasePackage = mutation({
+export const purchasePackage = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
-    packageId: v.id("gabinetTreatmentPackages"),
+    patientId: v.string(),
+    packageId: v.string(),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "create");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
+
     const now = Date.now();
+    const db = createSupabaseDb();
 
-    const pkg = await ctx.db.get(args.packageId);
-    if (!pkg || pkg.organizationId !== args.organizationId) throw new Error("Package not found");
+    const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
+    if (!pkg || String(pkg.organizationId) !== String(args.organizationId)) throw new Error("Package not found");
 
-    const expiresAt = pkg.validityDays
-      ? now + pkg.validityDays * 24 * 60 * 60 * 1000
-      : undefined;
+    const pkgValidityDays = pkg.validityDays as number | null | undefined;
+    const expiresAt = pkgValidityDays
+      ? now + pkgValidityDays * 24 * 60 * 60 * 1000
+      : null;
 
-    const treatmentsUsed = pkg.treatments.map((t) => ({
+    const pkgTreatments = pkg.treatments as Array<{ treatmentId: string; quantity: number }>;
+    const treatmentsUsed = pkgTreatments.map((t) => ({
       treatmentId: t.treatmentId,
       usedCount: 0,
       totalCount: t.quantity,
     }));
 
-    const usageId = await ctx.db.insert("gabinetPackageUsage", {
-      organizationId: args.organizationId,
+    const usageId = await db.insert("gabinetPackageUsage", {
+      organizationId: String(args.organizationId),
       patientId: args.patientId,
       packageId: args.packageId,
       purchasedAt: now,
@@ -260,31 +269,112 @@ export const purchasePackage = mutation({
       status: "active",
       treatmentsUsed,
       paidAmount: args.paidAmount,
-      paymentMethod: args.paymentMethod,
-      createdBy: user._id,
+      paymentMethod: args.paymentMethod ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
+    // Side effects: activity envelope + loyalty points
+    try {
+      await ctx.runMutation(internal.gabinet.packages._purchaseSideEffects, {
+        usageId,
+        organizationId: args.organizationId,
+        packageId: args.packageId,
+        packageName: (pkg.name as string) ?? "",
+        patientId: args.patientId,
+        paidAmount: args.paidAmount,
+        paymentMethod: args.paymentMethod,
+        loyaltyPointsAwarded: (pkg.loyaltyPointsAwarded as number | undefined) ?? 0,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[packages.purchasePackage] Side effects FAILED for usage", usageId, ":", e);
+    }
+
+    // Award loyalty points directly in Supabase
+    const loyaltyPointsAwarded = (pkg.loyaltyPointsAwarded as number | undefined) ?? 0;
+    if (loyaltyPointsAwarded > 0) {
+      const loyalty = await db
+        .query("gabinetLoyaltyPoints")
+        .eq("organizationId", String(args.organizationId))
+        .eq("patientId", args.patientId)
+        .first();
+
+      const newBalance = ((loyalty?.balance as number) ?? 0) + loyaltyPointsAwarded;
+      const newLifetimeEarned = ((loyalty?.lifetimeEarned as number) ?? 0) + loyaltyPointsAwarded;
+
+      if (loyalty) {
+        await db.patch("gabinetLoyaltyPoints", String(loyalty._id), {
+          balance: newBalance,
+          lifetimeEarned: newLifetimeEarned,
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("gabinetLoyaltyPoints", {
+          organizationId: String(args.organizationId),
+          patientId: args.patientId,
+          balance: newBalance,
+          lifetimeEarned: newLifetimeEarned,
+          lifetimeSpent: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await db.insert("gabinetLoyaltyTransactions", {
+        organizationId: String(args.organizationId),
+        patientId: args.patientId,
+        type: "earn",
+        points: loyaltyPointsAwarded,
+        reason: `Package purchase: ${pkg.name as string}`,
+        referenceType: "packageUsage",
+        referenceId: usageId,
+        balanceAfter: newBalance,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    }
+
+    return usageId;
+  },
+});
+
+export const _purchaseSideEffects = internalMutation({
+  args: {
+    usageId: v.string(),
+    organizationId: v.id("organizations"),
+    packageId: v.string(),
+    packageName: v.string(),
+    patientId: v.string(),
+    paidAmount: v.number(),
+    paymentMethod: v.optional(v.string()),
+    loyaltyPointsAwarded: v.number(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { publishActivityEnvelope } = await import("../_helpers/activityEnvelope");
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "package_assigned",
-      performedBy: user._id,
+      performedBy: args.createdBy as Id<"users">,
       module: "gabinet",
-      summary: `Assigned package ${pkg.name} to patient`,
-      occurredAt: now,
+      summary: `Assigned package ${args.packageName} to patient`,
+      occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: user._id,
+        userId: args.createdBy as Id<"users">,
       },
       payload: {
-        usageId,
+        usageId: args.usageId,
         packageId: args.packageId,
         patientId: args.patientId,
         paidAmount: args.paidAmount,
         paymentMethod: args.paymentMethod,
       },
-      eventKey: `gabinet:package:${usageId}:package_assigned`,
+      eventKey: `gabinet:package:${args.usageId}:package_assigned`,
       targets: [
         {
           entityType: "gabinetPackage",
@@ -296,157 +386,39 @@ export const purchasePackage = mutation({
         },
       ],
     });
-
-    // Award loyalty points for purchase
-    if (pkg.loyaltyPointsAwarded && pkg.loyaltyPointsAwarded > 0) {
-      const loyalty = await ctx.db
-        .query("gabinetLoyaltyPoints")
-        .withIndex("by_orgAndPatient", (q) =>
-          q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-        )
-        .first();
-
-      const newBalance = (loyalty?.balance ?? 0) + pkg.loyaltyPointsAwarded;
-      const newLifetimeEarned = (loyalty?.lifetimeEarned ?? 0) + pkg.loyaltyPointsAwarded;
-
-      if (loyalty) {
-        await ctx.db.patch(loyalty._id, {
-          balance: newBalance,
-          lifetimeEarned: newLifetimeEarned,
-          updatedAt: now,
-        });
-      } else {
-        await ctx.db.insert("gabinetLoyaltyPoints", {
-          organizationId: args.organizationId,
-          patientId: args.patientId,
-          balance: newBalance,
-          lifetimeEarned: newLifetimeEarned,
-          lifetimeSpent: 0,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-
-      await ctx.db.insert("gabinetLoyaltyTransactions", {
-        organizationId: args.organizationId,
-        patientId: args.patientId,
-        type: "earn",
-        points: pkg.loyaltyPointsAwarded,
-        reason: `Package purchase: ${pkg.name}`,
-        referenceType: "packageUsage",
-        referenceId: usageId,
-        balanceAfter: newBalance,
-        createdBy: user._id,
-        createdAt: now,
-      });
-
-      // Dual-write: replicate loyalty points to Supabase
-      if (loyalty) {
-        await ctx.scheduler.runAfter(0, updateLoyaltyRef, {
-          loyaltyId: loyalty._id,
-          organizationId: args.organizationId,
-          balance: newBalance,
-          lifetimeEarned: newLifetimeEarned,
-          updatedAt: now,
-        });
-      }
-      // Note: if loyalty was just created (else branch above), we rely on the
-      // writeLoyaltyRef call below to handle it via the loyaltyPointsId.
-    }
-
-    // Dual-write: replicate package usage to Supabase
-    await ctx.scheduler.runAfter(0, writeUsageRef, {
-      usageId,
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      packageId: args.packageId,
-      purchasedAt: now,
-      expiresAt,
-      status: "active",
-      treatmentsUsed: treatmentsUsed,
-      paidAmount: args.paidAmount,
-      paymentMethod: args.paymentMethod,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate loyalty records to Supabase (for newly created records)
-    if (pkg.loyaltyPointsAwarded && pkg.loyaltyPointsAwarded > 0) {
-      const loyaltyFresh = await ctx.db
-        .query("gabinetLoyaltyPoints")
-        .withIndex("by_orgAndPatient", (q) =>
-          q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-        )
-        .first();
-
-      if (loyaltyFresh) {
-        // Upsert the loyalty points record
-        await ctx.scheduler.runAfter(0, writeLoyaltyRef, {
-          loyaltyId: loyaltyFresh._id,
-          organizationId: args.organizationId,
-          patientId: args.patientId,
-          balance: loyaltyFresh.balance,
-          lifetimeEarned: loyaltyFresh.lifetimeEarned,
-          lifetimeSpent: loyaltyFresh.lifetimeSpent,
-          createdAt: loyaltyFresh.createdAt,
-          updatedAt: loyaltyFresh.updatedAt,
-        });
-      }
-
-      // Find and replicate the transaction
-      const txns = await ctx.db
-        .query("gabinetLoyaltyTransactions")
-        .withIndex("by_orgAndPatient", (q) =>
-          q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-        )
-        .order("desc")
-        .first();
-
-      if (txns) {
-        await ctx.scheduler.runAfter(0, writeTxnRef, {
-          transactionId: txns._id,
-          organizationId: args.organizationId,
-          patientId: args.patientId,
-          type: txns.type,
-          points: txns.points,
-          reason: txns.reason,
-          referenceType: txns.referenceType,
-          referenceId: txns.referenceId,
-          balanceAfter: txns.balanceAfter,
-          createdBy: txns.createdBy,
-          createdAt: txns.createdAt,
-        });
-      }
-    }
-
-    return usageId;
   },
 });
 
-export const usePackageTreatment = mutation({
+export const usePackageTreatment = action({
   args: {
     organizationId: v.id("organizations"),
-    usageId: v.id("gabinetPackageUsage"),
-    treatmentId: v.id("gabinetTreatments"),
+    usageId: v.string(),
+    treatmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "edit");
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const usage = await ctx.db.get(args.usageId);
-    if (!usage || usage.organizationId !== args.organizationId) throw new Error("Package usage not found");
-    if (usage.status !== "active") throw new Error("Package is not active");
-    if (usage.expiresAt && usage.expiresAt < Date.now()) throw new Error("Package has expired");
+    const db = createSupabaseDb();
 
-    const treatmentEntry = usage.treatmentsUsed.find(
-      (t) => t.treatmentId === args.treatmentId
-    );
+    const usage = await db.get("gabinetPackageUsage", args.usageId);
+    if (!usage || String(usage.organizationId) !== String(args.organizationId)) throw new Error("Package usage not found");
+    if ((usage.status as string) !== "active") throw new Error("Package is not active");
+    if (usage.expiresAt && (usage.expiresAt as number) < Date.now()) throw new Error("Package has expired");
+
+    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; usedCount: number; totalCount: number }>;
+    const treatmentEntry = treatmentsUsed.find((t) => t.treatmentId === args.treatmentId);
     if (!treatmentEntry) throw new Error("Treatment not in package");
     if (treatmentEntry.usedCount >= treatmentEntry.totalCount) throw new Error("Treatment usage exhausted");
 
-    const updatedTreatments = usage.treatmentsUsed.map((t) =>
+    const updatedTreatments = treatmentsUsed.map((t) =>
       t.treatmentId === args.treatmentId
         ? { ...t, usedCount: t.usedCount + 1 }
         : t
@@ -454,19 +426,108 @@ export const usePackageTreatment = mutation({
 
     const allUsed = updatedTreatments.every((t) => t.usedCount >= t.totalCount);
 
-    await ctx.db.patch(args.usageId, {
+    await db.patch("gabinetPackageUsage", args.usageId, {
+      treatmentsUsed: updatedTreatments,
+      status: allUsed ? "completed" : "active",
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// --- Batch usage: consume multiple treatments from a package in one visit ---
+
+export const usePackageTreatmentsBatch = action({
+  args: {
+    organizationId: v.id("organizations"),
+    usageId: v.string(),
+    items: v.array(
+      v.object({
+        treatmentId: v.string(),
+        quantity: v.number(),
+      }),
+    ),
+    appointmentId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    if (args.items.length === 0) throw new Error("No treatments to record");
+
+    const db = createSupabaseDb();
+
+    const usage = await db.get("gabinetPackageUsage", args.usageId);
+    if (!usage || String(usage.organizationId) !== String(args.organizationId)) throw new Error("Package usage not found");
+    if ((usage.status as string) !== "active") throw new Error("Package is not active");
+    if (usage.expiresAt && (usage.expiresAt as number) < Date.now()) throw new Error("Package has expired");
+
+    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; usedCount: number; totalCount: number }>;
+
+    // Validate all items before applying any
+    for (const item of args.items) {
+      if (item.quantity < 1) throw new Error("Quantity must be at least 1");
+      const entry = treatmentsUsed.find((t) => t.treatmentId === item.treatmentId);
+      if (!entry) throw new Error(`Treatment ${item.treatmentId} not in package`);
+      if (entry.usedCount + item.quantity > entry.totalCount) {
+        throw new Error(
+          `Not enough remaining for treatment ${item.treatmentId}: ${entry.totalCount - entry.usedCount} left, ${item.quantity} requested`,
+        );
+      }
+    }
+
+    // Apply all increments
+    const updatedTreatments = treatmentsUsed.map((t) => {
+      const item = args.items.find((i) => i.treatmentId === t.treatmentId);
+      if (!item) return t;
+      return { ...t, usedCount: t.usedCount + item.quantity };
+    });
+
+    const allUsed = updatedTreatments.every((t) => t.usedCount >= t.totalCount);
+
+    await db.patch("gabinetPackageUsage", args.usageId, {
       treatmentsUsed: updatedTreatments,
       status: allUsed ? "completed" : "active",
       updatedAt: Date.now(),
     });
 
-    // Dual-write: replicate usage update to Supabase
-    await ctx.scheduler.runAfter(0, updateUsageRef, {
-      usageId: args.usageId,
+    // Log activity via internalMutation
+    try {
+      await ctx.runMutation(internal.gabinet.packages._batchUsageSideEffects, {
+        organizationId: args.organizationId,
+        packageId: String(usage.packageId),
+        totalUsed: args.items.reduce((sum, i) => sum + i.quantity, 0),
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[packages.usePackageTreatmentsBatch] Side effects FAILED:", e);
+    }
+  },
+});
+
+export const _batchUsageSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    packageId: v.string(),
+    totalUsed: v.number(),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { logActivity } = await import("../_helpers/activities");
+    const pkg = await ctx.db.get(args.packageId as Id<"gabinetTreatmentPackages">);
+    await logActivity(ctx, {
       organizationId: args.organizationId,
-      status: allUsed ? "completed" : "active",
-      treatmentsUsed: updatedTreatments,
-      updatedAt: Date.now(),
+      entityType: "gabinetPackage",
+      entityId: args.packageId as Id<"gabinetTreatmentPackages">,
+      action: "updated",
+      description: `Used ${args.totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
+      performedBy: args.createdBy as Id<"users">,
     });
   },
 });
@@ -509,82 +570,6 @@ export const getPatientPackages = query({
         q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
       )
       .collect();
-  },
-});
-
-// --- Batch usage: consume multiple treatments from a package in one visit ---
-
-export const usePackageTreatmentsBatch = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    usageId: v.id("gabinetPackageUsage"),
-    items: v.array(
-      v.object({
-        treatmentId: v.id("gabinetTreatments"),
-        quantity: v.number(),
-      }),
-    ),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "edit");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    if (args.items.length === 0) throw new Error("No treatments to record");
-
-    const usage = await ctx.db.get(args.usageId);
-    if (!usage || usage.organizationId !== args.organizationId) throw new Error("Package usage not found");
-    if (usage.status !== "active") throw new Error("Package is not active");
-    if (usage.expiresAt && usage.expiresAt < Date.now()) throw new Error("Package has expired");
-
-    // Validate all items before applying any
-    for (const item of args.items) {
-      if (item.quantity < 1) throw new Error("Quantity must be at least 1");
-      const entry = usage.treatmentsUsed.find((t) => t.treatmentId === item.treatmentId);
-      if (!entry) throw new Error(`Treatment ${item.treatmentId} not in package`);
-      if (entry.usedCount + item.quantity > entry.totalCount) {
-        throw new Error(
-          `Not enough remaining for treatment ${item.treatmentId}: ${entry.totalCount - entry.usedCount} left, ${item.quantity} requested`,
-        );
-      }
-    }
-
-    // Apply all increments
-    const updatedTreatments = usage.treatmentsUsed.map((t) => {
-      const item = args.items.find((i) => i.treatmentId === t.treatmentId);
-      if (!item) return t;
-      return { ...t, usedCount: t.usedCount + item.quantity };
-    });
-
-    const allUsed = updatedTreatments.every((t) => t.usedCount >= t.totalCount);
-
-    await ctx.db.patch(args.usageId, {
-      treatmentsUsed: updatedTreatments,
-      status: allUsed ? "completed" : "active",
-      updatedAt: Date.now(),
-    });
-
-    // Log activity
-    const pkg = await ctx.db.get(usage.packageId);
-    const totalUsed = args.items.reduce((sum, i) => sum + i.quantity, 0);
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetPackage",
-      entityId: usage.packageId,
-      action: "updated",
-      description: `Used ${totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
-      performedBy: user._id,
-    });
-
-    // Dual-write: replicate usage update to Supabase
-    await ctx.scheduler.runAfter(0, updateUsageRef, {
-      usageId: args.usageId,
-      organizationId: args.organizationId,
-      status: allUsed ? "completed" : "active",
-      treatmentsUsed: updatedTreatments,
-      updatedAt: Date.now(),
-    });
   },
 });
 

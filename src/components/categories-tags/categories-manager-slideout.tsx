@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { LayersTwo02, Plus, Pencil01, Trash01 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
@@ -71,9 +71,9 @@ export function CategoriesManagerSlideout({
   canDelete = true,
 }: CategoriesManagerSlideoutProps) {
   const { t } = useTranslation();
-  const createCategory = useMutation(api.categoryDefinitions.create);
-  const updateCategory = useMutation(api.categoryDefinitions.update);
-  const removeCategory = useMutation(api.categoryDefinitions.remove);
+  const createCategory = useAction(api.categoryDefinitions.create);
+  const updateCategory = useAction(api.categoryDefinitions.update);
+  const removeCategory = useAction(api.categoryDefinitions.remove);
 
   const [addingParentId, setAddingParentId] = useState<Id<"categoryDefinitions"> | "root" | null>(null);
   const [newName, setNewName] = useState("");

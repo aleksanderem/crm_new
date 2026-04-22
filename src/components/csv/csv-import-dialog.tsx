@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -56,10 +56,10 @@ export function CsvImportDialog({
 }: CsvImportDialogProps) {
   const { t } = useTranslation();
 
-  const batchCreateContacts = useMutation(api.csvImport.batchCreateContacts);
-  const batchCreateCompanies = useMutation(api.csvImport.batchCreateCompanies);
-  const batchCreateLeads = useMutation(api.csvImport.batchCreateLeads);
-  const batchCreateProducts = useMutation(api.csvImport.batchCreateProducts);
+  const batchCreateContacts = useAction(api.csvImport.batchCreateContacts);
+  const batchCreateCompanies = useAction(api.csvImport.batchCreateCompanies);
+  const batchCreateLeads = useAction(api.csvImport.batchCreateLeads);
+  const batchCreateProducts = useAction(api.csvImport.batchCreateProducts);
 
   const [step, setStep] = useState<Step>("upload");
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);

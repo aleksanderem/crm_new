@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
@@ -22,7 +22,7 @@ export const Route = createFileRoute(
 function ReminderSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const upsertSettings = useMutation(api.orgSettings.upsert);
+  const upsertSettings = useAction(api.orgSettings.upsert);
   const [saving, setSaving] = useState(false);
 
   const { data: orgSettings } = useSupabaseOrgSettings(organizationId);

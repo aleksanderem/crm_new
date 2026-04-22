@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeOrgSettingsToSupabase = internalAction({
   args: {
@@ -39,19 +39,9 @@ export const writeOrgSettingsToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("org_settings")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "org_settings", row);
 
-    if (error) {
-      const msg = `Supabase write failed for orgSettings: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`OrgSettings written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`OrgSettings written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

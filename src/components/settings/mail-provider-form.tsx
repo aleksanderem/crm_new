@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import {
@@ -65,8 +65,8 @@ export function MailProviderForm({
   const { t } = useTranslation();
   const isEdit = !!provider;
 
-  const createProvider = useMutation(api.mailProviders.create);
-  const updateProvider = useMutation(api.mailProviders.update);
+  const createProvider = useAction(api.mailProviders.create);
+  const updateProvider = useAction(api.mailProviders.update);
 
   const [providerType, setProviderType] = useState<ProviderType>(
     provider?.providerType ?? "resend"

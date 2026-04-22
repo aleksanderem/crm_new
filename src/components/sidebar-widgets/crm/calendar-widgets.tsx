@@ -1,6 +1,10 @@
 import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import {
+  useSupabaseCalendarKpis,
+  useSupabaseWeeklyActivitiesTrend,
+} from "@/hooks/use-supabase-scheduled-activities";
 import { KpiRow } from "../kpi-row";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -22,13 +26,15 @@ const trendConfig = {
 export function CalendarWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
   const user = useQuery(api.app.getCurrentUser);
-  const kpis = useQuery(
-    api.sidebarWidgets.getCalendarKpis,
-    user?._id ? { organizationId, userId: user._id } : "skip"
+  const { data: kpis } = useSupabaseCalendarKpis(
+    organizationId,
+    user?._id ?? "",
+    { enabled: !!user?._id },
   );
-  const weeklyTrend = useQuery(
-    api.sidebarWidgets.getWeeklyActivitiesTrend,
-    user?._id ? { organizationId, userId: user._id } : "skip"
+  const { data: weeklyTrend } = useSupabaseWeeklyActivitiesTrend(
+    organizationId,
+    user?._id ?? "",
+    { enabled: !!user?._id },
   );
 
   if (!kpis) return null;

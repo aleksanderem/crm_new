@@ -1,11 +1,9 @@
-import { query, mutation, internalQuery, internalMutation, action } from "./_generated/server";
+import { query, action, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeOauthConnectionRef = internal.supabase.oauthConnections.writeOauthConnectionToSupabase;
 
 /** Strip sensitive tokens from an OAuth connection before returning to the client. */
 function stripTokens(c: Doc<"oauthConnections">) {
@@ -88,22 +86,19 @@ export const getMyGoogleConnection = query({
   },
 });
 
-export const deactivate = mutation({
+export const deactivate = action({
   args: {
     organizationId: v.id("organizations"),
-    connectionId: v.id("oauthConnections"),
+    connectionId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const connection = await ctx.db.get(args.connectionId);
-    if (!connection || connection.organizationId !== args.organizationId) {
-      throw new Error("Connection not found");
-    }
-
-    await ctx.db.patch(args.connectionId, {
-      isActive: false,
-      updatedAt: Date.now(),
+    // Deactivate in Convex DB (oauth connections are sensitive, keep in Convex)
+    await ctx.runMutation(internal.oauthConnections.internalDeactivate, {
+      connectionId: args.connectionId as any,
     });
   },
 });
@@ -114,7 +109,7 @@ export const revokeAndDeactivate = action({
     connectionId: v.id("oauthConnections"),
   },
   handler: async (ctx, args) => {
-    // Verify the calling user is an admin of this org (auth context propagates to internal queries)
+    // Verify the calling user is an admin of this org
     await ctx.runQuery(internal.oauthConnections.verifyAdminAccess, {
       organizationId: args.organizationId,
     });
@@ -183,7 +178,6 @@ export const createOrUpdate = internalMutation({
     const now = Date.now();
 
     if (args.userId) {
-      // Deactivate existing active Google connections for this user+org
       const existing = await ctx.db
         .query("oauthConnections")
         .withIndex("by_userOrgAndProvider", (q) =>
@@ -199,7 +193,6 @@ export const createOrUpdate = internalMutation({
         await ctx.db.patch(conn._id, { isActive: false, updatedAt: now });
       }
     } else {
-      // Deactivate any existing active Google connections for this org
       const existing = await ctx.db
         .query("oauthConnections")
         .withIndex("by_orgAndProvider", (q) =>
@@ -227,24 +220,6 @@ export const createOrUpdate = internalMutation({
       isActive: true,
       connectedBy: args.connectedBy,
       userId: args.userId,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writeOauthConnectionRef, {
-      oauthConnectionId: connectionId as string,
-      organizationId: args.organizationId as string,
-      provider: "google",
-      providerAccountId: args.providerAccountId,
-      userId: args.userId as string | undefined,
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      expiresAt: args.expiresAt,
-      scope: args.scope,
-      tokenType: args.tokenType,
-      isActive: true,
-      connectedBy: args.connectedBy as string,
       createdAt: now,
       updatedAt: now,
     });

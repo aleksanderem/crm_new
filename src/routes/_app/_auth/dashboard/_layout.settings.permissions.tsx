@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -79,7 +79,7 @@ function PermissionsSettings() {
   const resourceSharingEnabled = useQuery(api.permissions.getResourceSharingEnabled, { organizationId });
 
   const updatePermissions = useMutation(api.permissions.updateOrgPermissions);
-  const setResourceSharing = useMutation(api.permissions.setResourceSharingEnabled);
+  const setResourceSharing = useAction(api.permissions.setResourceSharingEnabled);
 
   const [memberPerms, setMemberPerms] = useState<PermissionsMap>(() => buildPermissionsMap(null));
   const [viewerPerms, setViewerPerms] = useState<PermissionsMap>(() => buildPermissionsMap(null));

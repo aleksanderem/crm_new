@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -67,7 +67,7 @@ function NewEmailTemplatePage() {
   const [variables, setVariables] = useState<TemplateVariable[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const createTemplate = useMutation(api.emailTemplates.create);
+  const createTemplate = useAction(api.emailTemplates.create);
 
   const { data: variableSources } = useQuery(
     convexQuery(api.emailTemplates.listVariableSources, {

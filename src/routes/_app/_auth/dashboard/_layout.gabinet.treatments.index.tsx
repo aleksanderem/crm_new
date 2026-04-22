@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
@@ -54,9 +54,9 @@ function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const createTreatment = useMutation(api.gabinet.treatments.create);
-  const updateTreatment = useMutation(api.gabinet.treatments.update);
-  const removeTreatment = useMutation(api.gabinet.treatments.remove);
+  const createTreatment = useAction(api.gabinet.treatments.create);
+  const updateTreatment = useAction(api.gabinet.treatments.update);
+  const removeTreatment = useAction(api.gabinet.treatments.remove);
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");

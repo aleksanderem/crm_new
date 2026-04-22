@@ -131,10 +131,7 @@ export function ActivityForm({
     new Date().toISOString().slice(0, 10)
   );
   const [startTime, setStartTime] = useState("07:00");
-  const [endTime, setEndTime] = useState("");
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [reminderValue, setReminderValue] = useState("30");
   const [reminderUnit, setReminderUnit] = useState("minuty");
   const [showDescription, setShowDescription] = useState(false);
@@ -219,8 +216,8 @@ export function ActivityForm({
       `${startDate}T${startTime || "00:00"}`
     ).getTime();
     let endDateMs: number | undefined;
-    if (endTime) {
-      endDateMs = new Date(`${endDate}T${endTime}`).getTime();
+    if (durationMinutes > 0) {
+      endDateMs = dueDateMs + durationMinutes * 60 * 1000;
     }
 
     // Collect only custom field values that belong to the active type
@@ -300,7 +297,7 @@ export function ActivityForm({
           />
         )}
 
-        {/* Date/time range */}
+        {/* Date/time + duration */}
         <div className="flex items-center gap-2 flex-wrap">
           <Input
             type="date"
@@ -325,20 +322,50 @@ export function ActivityForm({
               </button>
             )}
           </div>
-          <span className="text-muted-foreground">-</span>
-          <Input
-            type="time"
-            className="w-auto"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            placeholder="HH:mm"
-          />
-          <Input
-            type="date"
-            className="w-auto"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>{t("activityForm.duration", "Czas trwania")}</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {[15, 30, 45, 60, 90, 120, 180].map((mins) => {
+              const label =
+                mins < 60
+                  ? `${mins} min`
+                  : mins % 60 === 0
+                    ? `${mins / 60}h`
+                    : `${Math.floor(mins / 60)}h ${mins % 60}min`;
+              return (
+                <button
+                  key={mins}
+                  type="button"
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    durationMinutes === mins
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                  onClick={() => setDurationMinutes(mins)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+            <Input
+              type="number"
+              min={5}
+              step={5}
+              className="w-20 h-8 text-xs"
+              value={
+                [15, 30, 45, 60, 90, 120, 180].includes(durationMinutes)
+                  ? ""
+                  : durationMinutes
+              }
+              placeholder="inne"
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (v > 0) setDurationMinutes(v);
+              }}
+            />
+          </div>
         </div>
 
         {/* Reminder */}

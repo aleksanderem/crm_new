@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -23,8 +23,8 @@ function PatientLogin() {
   const navigate = useNavigate();
   const { org: orgSlug } = Route.useSearch();
 
-  const sendOtp = useMutation(api.gabinet.patientAuth.sendPortalOtp);
-  const verifyOtp = useMutation(api.gabinet.patientAuth.verifyPortalOtp);
+  const sendOtp = useAction(api.gabinet.patientAuth.sendPortalOtp);
+  const verifyOtp = useAction(api.gabinet.patientAuth.verifyPortalOtp);
 
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");

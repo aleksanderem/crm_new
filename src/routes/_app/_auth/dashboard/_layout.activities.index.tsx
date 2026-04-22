@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
@@ -148,12 +148,12 @@ function ActivitiesPage() {
     convexQuery(api.app.getCurrentUser, {})
   );
 
-  // Mutations
-  const createActivity = useMutation(api.scheduledActivities.create);
-  const updateActivity = useMutation(api.scheduledActivities.update);
-  const removeActivity = useMutation(api.scheduledActivities.remove);
-  const markComplete = useMutation(api.scheduledActivities.markComplete);
-  const markIncomplete = useMutation(api.scheduledActivities.markIncomplete);
+  // Actions (Supabase-primary)
+  const createActivity = useAction(api.scheduledActivities.create);
+  const updateActivity = useAction(api.scheduledActivities.update);
+  const removeActivity = useAction(api.scheduledActivities.remove);
+  const markComplete = useAction(api.scheduledActivities.markComplete);
+  const markIncomplete = useAction(api.scheduledActivities.markIncomplete);
 
   const activities = useMemo(() => {
     let data: ScheduledActivity[];

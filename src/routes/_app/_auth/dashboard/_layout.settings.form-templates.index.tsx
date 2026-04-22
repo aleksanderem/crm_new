@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -512,10 +512,10 @@ function FormTemplatesListPage() {
     convexQuery(api.documents.templates.list, { organizationId }),
   );
 
-  const updateTemplate = useMutation(api.documents.templates.update);
-  const createTemplate = useMutation(api.documents.templates.create);
-  const duplicateTemplate = useMutation(api.documents.templates.duplicate);
-  const removeTemplate = useMutation(api.documents.templates.remove);
+  const updateTemplate = useAction(api.documents.templates.update);
+  const createTemplate = useAction(api.documents.templates.create);
+  const duplicateTemplate = useAction(api.documents.templates.duplicate);
+  const removeTemplate = useAction(api.documents.templates.remove);
   const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 

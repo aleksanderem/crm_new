@@ -8,7 +8,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeCompanyToSupabase = internalAction({
   args: {
@@ -52,21 +52,7 @@ export const writeCompanyToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("companies")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for company: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "companies", row);
 
     console.info(`Company written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

@@ -9,7 +9,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "../client";
+import { createServiceRoleClient, upsertWithFkRetry } from "../client";
 
 // ---------------------------------------------------------------------------
 // Loyalty Points
@@ -43,21 +43,7 @@ export const writeLoyaltyPointsToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("gabinet_loyalty_points")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for loyalty points: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "gabinet_loyalty_points", row);
 
     console.info(`Loyalty points written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };
@@ -142,21 +128,7 @@ export const writeLoyaltyTransactionToSupabase = internalAction({
       created_at: args.createdAt,
     };
 
-    const { data, error } = await client
-      .from("gabinet_loyalty_transactions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase write failed for loyalty transaction: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase write returned malformed response: missing id");
-    }
+    const data = await upsertWithFkRetry(client, "gabinet_loyalty_transactions", row);
 
     console.info(`Loyalty transaction written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

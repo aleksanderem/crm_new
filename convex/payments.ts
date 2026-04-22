@@ -1,13 +1,9 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
-import { logAudit } from "./auditLog";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writePaymentRef = internal.supabase.payments.writePaymentToSupabase;
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -64,79 +60,74 @@ export const getByAppointment = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.optional(v.id("gabinetPatients")),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
-    packageUsageId: v.optional(v.id("gabinetPackageUsage")),
+    patientId: v.optional(v.string()),
+    appointmentId: v.optional(v.string()),
+    packageUsageId: v.optional(v.string()),
     amount: v.number(),
     currency: v.string(),
     paymentMethod: paymentMethodValidator,
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
-    const paymentId = await ctx.db.insert("payments", {
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      appointmentId: args.appointmentId,
-      packageUsageId: args.packageUsageId,
+    const paymentId = await db.insert("payments", {
+      organizationId: String(args.organizationId),
+      patientId: args.patientId ?? null,
+      appointmentId: args.appointmentId ?? null,
+      packageUsageId: args.packageUsageId ?? null,
       amount: args.amount,
       currency: args.currency,
       paymentMethod: args.paymentMethod,
       status: "completed",
       paidAt: now,
-      notes: args.notes,
-      createdBy: user._id,
+      notes: args.notes ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
-    await logAudit(ctx, {
-      organizationId: args.organizationId,
-      userId: user._id,
-      action: "payment_created",
-      entityType: "payment",
-      entityId: paymentId,
-      details: JSON.stringify({ amount: args.amount, currency: args.currency }),
-    });
-
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writePaymentRef, {
-      paymentId: paymentId as string,
-      organizationId: args.organizationId as string,
-      patientId: args.patientId as string | undefined,
-      appointmentId: args.appointmentId as string | undefined,
-      packageUsageId: args.packageUsageId as string | undefined,
-      amount: args.amount,
-      currency: args.currency,
-      paymentMethod: args.paymentMethod,
-      status: "completed",
-      paidAt: now,
-      notes: args.notes,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Side effects (audit log) via internal mutation
+    try {
+      await ctx.runMutation(internal.payments._createPaymentSideEffects, {
+        paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: args.amount,
+        currency: args.currency,
+      });
+    } catch {
+      // side effects are best-effort
+    }
 
     return paymentId;
   },
 });
 
-export const markPaid = mutation({
+export const markPaid = action({
   args: {
     organizationId: v.id("organizations"),
-    paymentId: v.id("payments"),
+    paymentId: v.string(),
     paymentMethod: v.optional(paymentMethodValidator),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const payment = await ctx.db.get(args.paymentId);
-    if (!payment || payment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || payment.organizationId !== String(args.organizationId)) {
       throw new Error("Payment not found");
     }
 
@@ -145,46 +136,48 @@ export const markPaid = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(args.paymentId, {
+    const updates: Record<string, unknown> = {
       status: "completed",
       paidAt: now,
-      ...(args.paymentMethod ? { paymentMethod: args.paymentMethod } : {}),
       updatedAt: now,
-    });
+    };
+    if (args.paymentMethod) updates.paymentMethod = args.paymentMethod;
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetAppointment",
-      entityId: payment.appointmentId ?? args.paymentId,
-      action: "updated",
-      description: `Payment of ${payment.amount} ${payment.currency} marked as paid`,
-      performedBy: user._id,
-    });
+    await db.patch("payments", args.paymentId, updates);
 
-    await logAudit(ctx, {
-      organizationId: args.organizationId,
-      userId: user._id,
-      action: "payment_completed",
-      entityType: "payment",
-      entityId: args.paymentId,
-      details: JSON.stringify({ amount: payment.amount }),
-    });
+    // Side effects via internal mutation
+    try {
+      await ctx.runMutation(internal.payments._markPaidSideEffects, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: payment.amount as number,
+        currency: payment.currency as string,
+        appointmentId: (payment.appointmentId as string) ?? null,
+      });
+    } catch {
+      // side effects are best-effort
+    }
 
     return args.paymentId;
   },
 });
 
-export const refund = mutation({
+export const refund = action({
   args: {
     organizationId: v.id("organizations"),
-    paymentId: v.id("payments"),
+    paymentId: v.string(),
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const payment = await ctx.db.get(args.paymentId);
-    if (!payment || payment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || payment.organizationId !== String(args.organizationId)) {
       throw new Error("Payment not found");
     }
 
@@ -192,24 +185,105 @@ export const refund = mutation({
       throw new Error(`Cannot refund a ${payment.status} payment`);
     }
 
-    await ctx.db.patch(args.paymentId, {
+    await db.patch("payments", args.paymentId, {
       status: "refunded",
       notes: args.reason
-        ? `${payment.notes ? payment.notes + "\n" : ""}Refund: ${args.reason}`
-        : payment.notes,
+        ? `${payment.notes ? (payment.notes as string) + "\n" : ""}Refund: ${args.reason}`
+        : (payment.notes as string) ?? null,
       updatedAt: Date.now(),
+    });
+
+    // Side effects via internal mutation
+    try {
+      await ctx.runMutation(internal.payments._refundSideEffects, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: payment.amount as number,
+        reason: args.reason,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return args.paymentId;
+  },
+});
+
+// --- Internal side-effect mutations ---
+
+export const _createPaymentSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { logAudit } = await import("./auditLog");
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "payment_created",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ amount: args.amount, currency: args.currency }),
+    });
+  },
+});
+
+export const _markPaidSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    appointmentId: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const { logActivity } = await import("./_helpers/activities");
+    const { logAudit } = await import("./auditLog");
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetAppointment",
+      entityId: (args.appointmentId ?? args.paymentId) as any,
+      action: "updated",
+      description: `Payment of ${args.amount} ${args.currency} marked as paid`,
+      performedBy: args.userId,
     });
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: args.userId,
+      action: "payment_completed",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ amount: args.amount }),
+    });
+  },
+});
+
+export const _refundSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    amount: v.number(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { logAudit } = await import("./auditLog");
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
       action: "payment_refunded",
       entityType: "payment",
-      entityId: args.paymentId,
-      details: JSON.stringify({ amount: payment.amount, reason: args.reason }),
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ amount: args.amount, reason: args.reason }),
     });
-
-    return args.paymentId;
   },
 });
 

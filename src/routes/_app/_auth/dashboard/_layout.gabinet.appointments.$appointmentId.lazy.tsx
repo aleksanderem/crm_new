@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -371,23 +371,23 @@ function AppointmentDetail() {
   // Document counts for gate checks and status badges (must be before early returns)
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
-  const updateStatus = useMutation(api.gabinet.appointments.updateStatus);
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const updateStatus = useAction(api.gabinet.appointments.updateStatus);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
+  const trackView = useAction(api.recentlyViewed.track);
 
-  // Payment mutations
-  const createPayment = useMutation(api.payments.create);
-  const markPaymentPaid = useMutation(api.payments.markPaid);
-  const refundPayment = useMutation(api.payments.refund);
+  // Payment actions (Supabase-primary)
+  const createPayment = useAction(api.payments.create);
+  const markPaymentPaid = useAction(api.payments.markPaid);
+  const refundPayment = useAction(api.payments.refund);
 
-  // Note mutations
-  const createNote = useMutation(api.notes.create);
-  const updateNote = useMutation(api.notes.update);
-  const deleteNote = useMutation(api.notes.remove);
-  const togglePinNote = useMutation(api.notes.togglePin);
+  // Note actions (Supabase-primary)
+  const createNote = useAction(api.notes.create);
+  const updateNote = useAction(api.notes.update);
+  const deleteNote = useAction(api.notes.remove);
+  const togglePinNote = useAction(api.notes.togglePin);
 
   // Package usage mutation
-  const usePackageTreatmentsBatch = useMutation(api.gabinet.packages.usePackageTreatmentsBatch);
+  const usePackageTreatmentsBatch = useAction(api.gabinet.packages.usePackageTreatmentsBatch);
 
   // Note state
   const [newNoteContent, setNewNoteContent] = useState("");
@@ -396,16 +396,20 @@ function AppointmentDetail() {
   const [editNoteContent, setEditNoteContent] = useState("");
   const [isNoteSubmitting, setIsNoteSubmitting] = useState(false);
 
+  const getFullDetailAction = useAction(api.gabinet.appointments.getFullDetail);
   const {
     data: detail,
     isLoading,
     refetch,
-  } = useQuery(
-    convexQuery(api.gabinet.appointments.getFullDetail, {
-      organizationId,
-      appointmentId: appointmentId as Id<"gabinetAppointments">,
-    }),
-  );
+  } = useQuery({
+    queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
+    queryFn: () =>
+      getFullDetailAction({
+        organizationId,
+        appointmentId: appointmentId as string,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  });
 
   const { data: smsEvents = [] } = useQuery(
     convexQuery(api.gabinet.appointmentSms.listByAppointment, {
@@ -2455,7 +2459,7 @@ function AppointmentDetail() {
                 const items = usageDialogItems
                   .filter((it) => it.qty > 0)
                   .map((it) => ({
-                    treatmentId: it.treatmentId as Id<"gabinetTreatments">,
+                    treatmentId: it.treatmentId,
                     quantity: it.qty,
                   }));
                 if (items.length === 0) return;
@@ -2463,9 +2467,9 @@ function AppointmentDetail() {
                 try {
                   await usePackageTreatmentsBatch({
                     organizationId,
-                    usageId: usageDialogPkgId as Id<"gabinetPackageUsage">,
+                    usageId: usageDialogPkgId,
                     items,
-                    appointmentId: appointmentId as Id<"gabinetAppointments">,
+                    appointmentId,
                   });
                   toast.success(t("gabinet.packages.usageRecorded"));
                   setUsageDialogOpen(false);

@@ -1,4 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import type { GenericQueryCtx } from "convex/server";
@@ -9,14 +11,8 @@ import {
   PLATFORM_DATA_SOURCES,
 } from "./documentDataSources";
 import type { DataSourceResolverContext } from "./documentDataSources";
-import { internal } from "./_generated/api";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeTemplateRef = internal.supabase.emailTemplates.writeEmailTemplateToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateTemplateRef = internal.supabase.emailTemplates.updateEmailTemplateInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteTemplateRef = internal.supabase.emailTemplates.deleteEmailTemplateFromSupabase;
+// Dual-write refs removed — Supabase is now primary for email template writes
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -30,11 +26,6 @@ const emailTemplateVariableValidator = v.object({
 
 const allSourceMap = new Map(ALL_DATA_SOURCES.map((s) => [s.key, s]));
 
-/**
- * Resolve all {{source.field}} variables in a template string.
- * Returns a new string with variables replaced by actual values.
- * Unresolved variables are left as-is.
- */
 /**
  * Resolve all {{source.field}} variables in a template string.
  * Uses the full data source registry — works with CRM, Gabinet, and platform sources.
@@ -142,10 +133,6 @@ export const listVariableSources = query({
 });
 
 /**
- * Render a template with actual entity data. Used by the compose dialog
- * to fill in variables when a template is selected.
- */
-/**
  * Render a template with actual entity data.
  * Accepts entity IDs from any module (CRM contacts/companies/leads,
  * Gabinet patients/employees/appointments). The resolver uses the
@@ -206,10 +193,10 @@ export const renderTemplate = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -221,48 +208,37 @@ export const create = mutation({
     variables: v.array(emailTemplateVariableValidator),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    return ctx.db.insert("emailTemplates", {
-      organizationId: args.organizationId,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const templateId = await db.insert("emailTemplates", {
+      organizationId: String(args.organizationId),
       name: args.name,
       subject: args.subject,
       body: args.body,
-      category: args.category,
-      module: args.module,
-      eventType: args.eventType,
+      category: args.category ?? null,
+      module: args.module ?? null,
+      eventType: args.eventType ?? null,
       variables: args.variables,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       isActive: true,
       createdAt: now,
       updatedAt: now,
-    }).then(async (templateId) => {
-      // Dual-write: replicate new template to Supabase
-      await ctx.scheduler.runAfter(0, writeTemplateRef, {
-        templateId: templateId as string,
-        organizationId: args.organizationId as string,
-        name: args.name,
-        subject: args.subject,
-        body: args.body,
-        category: args.category,
-        module: args.module,
-        eventType: args.eventType,
-        variables: args.variables,
-        createdBy: user._id as string,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-      return templateId;
     });
+
+    return templateId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     name: v.optional(v.string()),
     subject: v.optional(v.string()),
     body: v.optional(v.string()),
@@ -273,10 +249,15 @@ export const update = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId)) {
       throw new Error("Email template not found");
     }
 
@@ -290,49 +271,31 @@ export const update = mutation({
     if (args.variables !== undefined) updates.variables = args.variables;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 
-    await ctx.db.patch(args.templateId, updates);
-
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateTemplateRef, {
-      templateId: args.templateId as string,
-      organizationId: args.organizationId as string,
-      name: args.name,
-      subject: args.subject,
-      body: args.body,
-      category: args.category,
-      module: args.module,
-      eventType: args.eventType,
-      variables: args.variables,
-      isActive: args.isActive,
-      updatedAt: updates.updatedAt as number,
-    });
+    await db.patch("emailTemplates", args.templateId, updates);
 
     return args.templateId;
   },
 });
 
-export const archive = mutation({
+export const archive = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId)) {
       throw new Error("Email template not found");
     }
 
-    await ctx.db.patch(args.templateId, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate archive to Supabase
-    await ctx.scheduler.runAfter(0, updateTemplateRef, {
-      templateId: args.templateId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emailTemplates", args.templateId, {
       isActive: false,
       updatedAt: Date.now(),
     });
@@ -341,26 +304,26 @@ export const archive = mutation({
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId)) {
       throw new Error("Email template not found");
     }
 
-    // Dual-write: schedule delete BEFORE Convex delete (Knowledge Pattern #4)
-    await ctx.scheduler.runAfter(0, deleteTemplateRef, {
-      templateId: args.templateId as string,
-      organizationId: args.organizationId as string,
-    });
+    await db.delete("emailTemplates", args.templateId);
 
-    await ctx.db.delete(args.templateId);
     return args.templateId;
   },
 });

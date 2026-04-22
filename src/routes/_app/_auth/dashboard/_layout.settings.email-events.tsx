@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseEmailEventTypes, useSupabaseEmailEventBindings } from "@/hooks/use-supabase-email-events";
@@ -84,9 +84,9 @@ function EmailEventsSettings() {
   }) as Binding[] | undefined;
 
   // Mutations
-  const upsertBinding = useMutation(api.emailEventBindings.upsertBinding);
-  const toggleBinding = useMutation(api.emailEventBindings.toggleBinding);
-  const deleteBinding = useMutation(api.emailEventBindings.deleteBinding);
+  const upsertBinding = useAction(api.emailEventBindings.upsertBinding);
+  const toggleBinding = useAction(api.emailEventBindings.toggleBinding);
+  const deleteBinding = useAction(api.emailEventBindings.deleteBinding);
 
   const [bindingInProgress, setBindingInProgress] = useState<string | null>(null);
   const [unbindTarget, setUnbindTarget] = useState<{ binding: Binding; label: string } | null>(null);
@@ -103,7 +103,7 @@ function EmailEventsSettings() {
       await upsertBinding({
         organizationId,
         eventType,
-        templateId: templateId as Id<"emailTemplates">,
+        templateId,
         enabled: true,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -64,9 +64,9 @@ function AutomationSettingsOverview() {
   const queryClient = useQueryClient();
 
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const updateRule = useMutation(api.automation.updateRule);
+  const updateRule = useAction(api.automation.updateRule);
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const deleteRule = useMutation(api.automation.deleteRule);
+  const deleteRule = useAction(api.automation.deleteRule);
 
   const {
     data: rawRules,

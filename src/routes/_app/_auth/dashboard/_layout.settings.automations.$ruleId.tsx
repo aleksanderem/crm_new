@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -58,8 +58,8 @@ function EditAutomationRulePage() {
   const { ruleId } = Route.useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateRule = useMutation(api.automation.updateRule);
-  const deleteRule = useMutation(api.automation.deleteRule);
+  const updateRule = useAction(api.automation.updateRule);
+  const deleteRule = useAction(api.automation.deleteRule);
   const queryClient = useQueryClient();
 
   const {

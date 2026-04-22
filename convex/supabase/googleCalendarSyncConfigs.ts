@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeGoogleCalendarSyncConfigToSupabase = internalAction({
   args: {
@@ -46,19 +46,9 @@ export const writeGoogleCalendarSyncConfigToSupabase = internalAction({
       sync_error: args.syncError ?? null,
     };
 
-    const { data, error } = await client
-      .from("google_calendar_sync_configs")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "google_calendar_sync_configs", row);
 
-    if (error) {
-      const msg = `Supabase write failed for googleCalendarSyncConfig: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`GoogleCalendarSyncConfig written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`GoogleCalendarSyncConfig written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

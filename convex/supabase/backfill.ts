@@ -36,21 +36,36 @@ async function upsertBatch(
 export const _getUser = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    return ctx.db.get(args.userId as any);
+    try {
+      return await ctx.db.get(args.userId as any);
+    } catch {
+      const all = await ctx.db.query("users").collect();
+      return all.find((u) => u._id === args.userId) ?? null;
+    }
   },
 });
 
 export const _getPatient = internalQuery({
   args: { patientId: v.string() },
   handler: async (ctx, args) => {
-    return ctx.db.get(args.patientId as any);
+    try {
+      return await ctx.db.get(args.patientId as any);
+    } catch {
+      const all = await ctx.db.query("gabinetPatients").collect();
+      return all.find((p) => p._id === args.patientId) ?? null;
+    }
   },
 });
 
 export const _getTreatment = internalQuery({
   args: { treatmentId: v.string() },
   handler: async (ctx, args) => {
-    return ctx.db.get(args.treatmentId as any);
+    try {
+      return await ctx.db.get(args.treatmentId as any);
+    } catch {
+      const all = await ctx.db.query("gabinetTreatments").collect();
+      return all.find((t) => t._id === args.treatmentId) ?? null;
+    }
   },
 });
 

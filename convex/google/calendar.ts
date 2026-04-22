@@ -3,30 +3,30 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { auth as authModule } from "@cvx/auth";
 import { getValidAccessToken, getValidAccessTokenForConnection } from "./_helpers";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { upsertFromGoogleImportSupabase } from "./calendarSyncHelpers_supabase";
 
 export const createEvent = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
   },
   handler: async (ctx, args) => {
     const token = await getValidAccessToken(ctx, args.organizationId);
     if (!token) return; // No Google connection — silently skip
 
-    const activity = await ctx.runQuery(
-      internal.scheduledActivities_internal.getById,
-      { activityId: args.activityId }
-    );
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
     if (!activity) return;
 
-    const startDate = new Date(activity.dueDate);
+    const startDate = new Date(activity.dueDate as number);
     const endDate = activity.endDate
-      ? new Date(activity.endDate)
+      ? new Date(activity.endDate as number)
       : new Date(startDate.getTime() + 60 * 60 * 1000); // default 1 hour
 
     const event = {
       summary: activity.title,
-      description: activity.description ?? "",
+      description: (activity.description as string | null) ?? "",
       start: { dateTime: startDate.toISOString() },
       end: { dateTime: endDate.toISOString() },
     };
@@ -51,45 +51,41 @@ export const createEvent = internalAction({
 
     const result = await response.json();
 
-    await ctx.runMutation(
-      internal.scheduledActivities_internal.updateGoogleEventId,
-      {
-        activityId: args.activityId,
-        googleEventId: result.id as string,
-        googleCalendarId: "primary",
-      }
-    );
+    await db.patch("scheduledActivities", args.activityId, {
+      googleEventId: result.id as string,
+      googleCalendarId: "primary",
+      lastGoogleSyncAt: Date.now(),
+      updatedAt: Date.now(),
+    });
   },
 });
 
 export const updateEvent = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
   },
   handler: async (ctx, args) => {
     const token = await getValidAccessToken(ctx, args.organizationId);
     if (!token) return;
 
-    const activity = await ctx.runQuery(
-      internal.scheduledActivities_internal.getById,
-      { activityId: args.activityId }
-    );
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
     if (!activity || !activity.googleEventId) return;
 
-    const startDate = new Date(activity.dueDate);
+    const startDate = new Date(activity.dueDate as number);
     const endDate = activity.endDate
-      ? new Date(activity.endDate)
+      ? new Date(activity.endDate as number)
       : new Date(startDate.getTime() + 60 * 60 * 1000);
 
     const event = {
       summary: activity.title,
-      description: activity.description ?? "",
+      description: (activity.description as string | null) ?? "",
       start: { dateTime: startDate.toISOString() },
       end: { dateTime: endDate.toISOString() },
     };
 
-    const calendarId = activity.googleCalendarId ?? "primary";
+    const calendarId = (activity.googleCalendarId as string | null) ?? "primary";
 
     await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${activity.googleEventId}`,
@@ -108,19 +104,17 @@ export const updateEvent = internalAction({
 export const deleteEvent = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    activityId: v.id("scheduledActivities"),
+    activityId: v.string(),
   },
   handler: async (ctx, args) => {
     const token = await getValidAccessToken(ctx, args.organizationId);
     if (!token) return;
 
-    const activity = await ctx.runQuery(
-      internal.scheduledActivities_internal.getById,
-      { activityId: args.activityId }
-    );
+    const db = createSupabaseDb();
+    const activity = await db.get("scheduledActivities", args.activityId);
     if (!activity || !activity.googleEventId) return;
 
-    const calendarId = activity.googleCalendarId ?? "primary";
+    const calendarId = (activity.googleCalendarId as string | null) ?? "primary";
 
     await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${activity.googleEventId}`,
@@ -130,10 +124,12 @@ export const deleteEvent = internalAction({
       }
     );
 
-    await ctx.runMutation(
-      internal.scheduledActivities_internal.clearGoogleEventId,
-      { activityId: args.activityId }
-    );
+    await db.patch("scheduledActivities", args.activityId, {
+      googleEventId: null,
+      googleCalendarId: null,
+      lastGoogleSyncAt: null,
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -249,16 +245,24 @@ export const importFromGoogle = action({
     let totalUpdated = 0;
     const BATCH_SIZE = 50;
 
+    const db = createSupabaseDb();
     for (let i = 0; i < eventsToImport.length; i += BATCH_SIZE) {
       const batch = eventsToImport.slice(i, i + BATCH_SIZE);
-      const result = await ctx.runMutation(
-        internal.scheduledActivities_internal.upsertFromGoogleImport,
-        {
-          organizationId: args.organizationId,
-          ownerId: args.ownerId,
-          events: batch,
-        }
-      );
+      const result = await upsertFromGoogleImportSupabase(db, {
+        organizationId: String(args.organizationId),
+        ownerId: String(args.ownerId),
+        events: batch.map((b) => ({
+          googleEventId: b.googleEventId,
+          googleCalendarId: b.googleCalendarId,
+          title: b.title,
+          description: b.description,
+          location: b.location,
+          meetingUrl: b.meetingUrl,
+          dueDate: b.dueDate,
+          endDate: b.endDate,
+          activityType: b.activityType,
+        })),
+      });
       totalImported += result.imported;
       totalUpdated += result.updated;
     }

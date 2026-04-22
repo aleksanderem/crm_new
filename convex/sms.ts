@@ -1,10 +1,8 @@
-import { action, query, mutation, internalAction, internalQuery } from "./_generated/server";
+import { action, query, internalAction, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeOrgSmsConfigRef = internal.supabase.orgSmsConfig.writeOrgSmsConfigToSupabase;
 
 // ---------------------------------------------------------------------------
 // SMS Config (authenticated, org-scoped)
@@ -31,7 +29,7 @@ export const getConfig = query({
   },
 });
 
-export const saveConfig = mutation({
+export const saveConfig = action({
   args: {
     organizationId: v.id("organizations"),
     provider: v.union(v.literal("smsapi"), v.literal("twilio")),
@@ -41,45 +39,37 @@ export const saveConfig = mutation({
     fromNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    const existing = await ctx.db
-      .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        provider: args.provider,
-        apiToken: args.apiToken,
-        apiSecret: args.apiSecret,
-        senderId: args.senderId,
-        fromNumber: args.fromNumber,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    const configId = await ctx.db.insert("orgSmsConfig", {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
-      provider: args.provider,
-      apiToken: args.apiToken,
-      apiSecret: args.apiSecret,
-      senderId: args.senderId,
-      fromNumber: args.fromNumber,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
     });
 
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writeOrgSmsConfigRef, {
-      orgSmsConfigId: configId as string,
-      organizationId: args.organizationId as string,
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const existing = await db
+      .query("orgSmsConfig")
+      .eq("organizationId", String(args.organizationId))
+      .first();
+
+    if (existing) {
+      await db.patch("orgSmsConfig", existing._id as string, {
+        provider: args.provider,
+        apiToken: args.apiToken,
+        apiSecret: args.apiSecret ?? null,
+        senderId: args.senderId ?? null,
+        fromNumber: args.fromNumber ?? null,
+        updatedAt: now,
+      });
+      return existing._id as string;
+    }
+
+    const configId = await db.insert("orgSmsConfig", {
+      organizationId: String(args.organizationId),
       provider: args.provider,
       apiToken: args.apiToken,
-      apiSecret: args.apiSecret,
-      senderId: args.senderId,
-      fromNumber: args.fromNumber,
+      apiSecret: args.apiSecret ?? null,
+      senderId: args.senderId ?? null,
+      fromNumber: args.fromNumber ?? null,
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -93,19 +83,24 @@ export const saveConfig = mutation({
 // Toggle active state
 // ---------------------------------------------------------------------------
 
-export const toggleActive = mutation({
+export const toggleActive = action({
   args: {
     organizationId: v.id("organizations"),
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const config = await ctx.db
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const config = await db
       .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+      .eq("organizationId", String(args.organizationId))
+      .first();
     if (!config) throw new Error("SMS config not found");
-    await ctx.db.patch(config._id, {
+
+    await db.patch("orgSmsConfig", config._id as string, {
       isActive: args.isActive,
       updatedAt: Date.now(),
     });

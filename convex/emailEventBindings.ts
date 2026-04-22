@@ -1,14 +1,10 @@
-import { query, mutation, internalQuery } from "./_generated/server";
+import { query, action, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
-import { internal } from "./_generated/api";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeBindingRef = internal.supabase.emailEventBindings.writeEmailEventBindingToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateBindingRef = internal.supabase.emailEventBindings.updateEmailEventBindingInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteBindingRef = internal.supabase.emailEventBindings.deleteEmailEventBindingFromSupabase;
+// Dual-write refs removed — Supabase is now primary for event binding writes
 
 // ---------------------------------------------------------------------------
 // Internal Queries (used by processEvent action)
@@ -142,78 +138,59 @@ export const listEventLog = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-export const upsertBinding = mutation({
+export const upsertBinding = action({
   args: {
     organizationId: v.id("organizations"),
     eventType: v.string(),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     enabled: v.optional(v.boolean()),
     conditions: v.optional(v.string()),
     priority: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
 
     // Validate template exists and belongs to this org
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId)) {
       throw new Error("Template not found or belongs to another organization");
     }
 
-    const existing = await ctx.db
-      .query("emailEventBindings")
-      .withIndex("by_orgAndEventType", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("eventType", args.eventType),
-      )
+    // Check for existing binding for this org+eventType
+    const existing = await db.query("emailEventBindings")
+      .eq("organizationId", String(args.organizationId))
+      .eq("eventType", args.eventType)
       .first();
 
     const now = Date.now();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await db.patch("emailEventBindings", existing._id as string, {
         templateId: args.templateId,
-        enabled: args.enabled ?? existing.enabled,
-        conditions: args.conditions ?? existing.conditions,
-        priority: args.priority ?? existing.priority,
+        enabled: args.enabled ?? (existing.enabled as boolean),
+        conditions: args.conditions ?? (existing.conditions as string | null),
+        priority: args.priority ?? (existing.priority as number),
         updatedAt: now,
       });
-      await ctx.scheduler.runAfter(0, updateBindingRef, {
-        emailEventBindingId: existing._id as string,
-        organizationId: args.organizationId as string,
-        templateId: args.templateId as string,
-        enabled: args.enabled ?? existing.enabled,
-        priority: args.priority ?? existing.priority,
-        conditions: args.conditions ?? existing.conditions,
-        updatedAt: now,
-      });
-      return existing._id;
+      return existing._id as string;
     }
 
-    const newId = await ctx.db.insert("emailEventBindings", {
-      organizationId: args.organizationId,
+    const newId = await db.insert("emailEventBindings", {
+      organizationId: String(args.organizationId),
       eventType: args.eventType,
       templateId: args.templateId,
       enabled: args.enabled ?? true,
-      conditions: args.conditions,
+      conditions: args.conditions ?? null,
       priority: args.priority ?? 0,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-    await ctx.scheduler.runAfter(0, writeBindingRef, {
-      emailEventBindingId: newId as string,
-      organizationId: args.organizationId as string,
-      eventType: args.eventType,
-      templateId: args.templateId as string,
-      enabled: args.enabled ?? true,
-      priority: args.priority ?? 0,
-      conditions: args.conditions,
-      createdBy: user._id as string,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -221,50 +198,50 @@ export const upsertBinding = mutation({
   },
 });
 
-export const toggleBinding = mutation({
+export const toggleBinding = action({
   args: {
     organizationId: v.id("organizations"),
-    bindingId: v.id("emailEventBindings"),
+    bindingId: v.string(),
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const binding = await ctx.db.get(args.bindingId);
-    if (!binding || binding.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const binding = await db.get("emailEventBindings", args.bindingId);
+    if (!binding || String(binding.organizationId) !== String(args.organizationId)) {
       throw new Error("Binding not found");
     }
 
-    await ctx.db.patch(args.bindingId, {
-      enabled: args.enabled,
-      updatedAt: Date.now(),
-    });
-    await ctx.scheduler.runAfter(0, updateBindingRef, {
-      emailEventBindingId: args.bindingId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("emailEventBindings", args.bindingId, {
       enabled: args.enabled,
       updatedAt: Date.now(),
     });
   },
 });
 
-export const deleteBinding = mutation({
+export const deleteBinding = action({
   args: {
     organizationId: v.id("organizations"),
-    bindingId: v.id("emailEventBindings"),
+    bindingId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const binding = await ctx.db.get(args.bindingId);
-    if (!binding || binding.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const binding = await db.get("emailEventBindings", args.bindingId);
+    if (!binding || String(binding.organizationId) !== String(args.organizationId)) {
       throw new Error("Binding not found");
     }
 
-    await ctx.scheduler.runAfter(0, deleteBindingRef, {
-      emailEventBindingId: args.bindingId as string,
-      organizationId: args.organizationId as string,
-    });
-    await ctx.db.delete(args.bindingId);
+    await db.delete("emailEventBindings", args.bindingId);
   },
 });

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
@@ -145,8 +145,8 @@ function TemplatesTab() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const updateTemplate = useMutation(api.emailTemplates.update);
-  const removeTemplate = useMutation(api.emailTemplates.remove);
+  const updateTemplate = useAction(api.emailTemplates.update);
+  const removeTemplate = useAction(api.emailTemplates.remove);
 
   const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
 
@@ -296,9 +296,9 @@ function EventBindingsTab() {
   const [editPriority, setEditPriority] = useState<string>("0");
   const [isSaving, setIsSaving] = useState(false);
 
-  const upsertBinding = useMutation(api.emailEventBindings.upsertBinding);
-  const toggleBinding = useMutation(api.emailEventBindings.toggleBinding);
-  const deleteBinding = useMutation(api.emailEventBindings.deleteBinding);
+  const upsertBinding = useAction(api.emailEventBindings.upsertBinding);
+  const toggleBinding = useAction(api.emailEventBindings.toggleBinding);
+  const deleteBinding = useAction(api.emailEventBindings.deleteBinding);
 
   const { data: eventTypes, isLoading: loadingTypes } = useSupabaseEmailEventTypes(organizationId);
   const { data: rawBindings, isLoading: loadingBindings } = useSupabaseEmailEventBindings(organizationId);

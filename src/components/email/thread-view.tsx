@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,7 @@ export function ThreadView({
 }: ThreadViewProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const markRead = useMutation(api.emails.markRead);
+  const markRead = useAction(api.emails.markRead);
 
   const { data: thread } = useSupabaseEmailThread(
     organizationId,

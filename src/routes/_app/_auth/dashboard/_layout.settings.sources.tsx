@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseSourcesList } from "@/hooks/use-supabase-sources";
@@ -34,9 +34,9 @@ function SourcesSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const createSource = useMutation(api.sources.create);
-  const updateSource = useMutation(api.sources.update);
-  const removeSource = useMutation(api.sources.remove);
+  const createSource = useAction(api.sources.create);
+  const updateSource = useAction(api.sources.update);
+  const removeSource = useAction(api.sources.remove);
 
   const { data: sources } = useSupabaseSourcesList(organizationId);
 

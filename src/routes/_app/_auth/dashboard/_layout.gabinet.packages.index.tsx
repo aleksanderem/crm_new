@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatmentPackagesList, useSupabaseGabinetPackageUsageActive } from "@/hooks/use-supabase-gabinet-packages";
@@ -41,7 +41,7 @@ import { Plus, Trash2, Package, Pencil } from "@/lib/ez-icons";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Id } from "@cvx/_generated/dataModel";
+
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
@@ -124,11 +124,11 @@ function PackagesIndex() {
   const queryClient = useQueryClient();
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const createPkg = useMutation(api.gabinet.packages.create);
+  const createPkg = useAction(api.gabinet.packages.create);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const updatePkg = useMutation(api.gabinet.packages.update);
+  const updatePkg = useAction(api.gabinet.packages.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const removePkg = useMutation(api.gabinet.packages.remove);
+  const removePkg = useAction(api.gabinet.packages.remove);
 
   // Supabase-backed queries (replacing convexQuery)
   const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
@@ -225,14 +225,14 @@ function PackagesIndex() {
     setSubmitting(true);
     try {
       const treatmentsList = selectedTreatments.map((t) => ({
-        treatmentId: t.treatmentId as Id<"gabinetTreatments">,
+        treatmentId: t.treatmentId,
         quantity: t.quantity,
       }));
 
       if (editingId) {
         await updatePkg({
           organizationId,
-          packageId: editingId as Id<"gabinetTreatmentPackages">,
+          packageId: editingId,
           name,
           description: description || undefined,
           treatments: treatmentsList,
@@ -273,7 +273,7 @@ function PackagesIndex() {
   const handleRemove = async () => {
     if (!deletingId) return;
     try {
-      await removePkg({ organizationId, packageId: deletingId as Id<"gabinetTreatmentPackages"> });
+      await removePkg({ organizationId, packageId: deletingId });
       toast.success(t("common.deleted"));
       invalidatePackages();
     } catch (e: any) {

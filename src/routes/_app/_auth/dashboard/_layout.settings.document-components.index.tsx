@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -78,8 +78,8 @@ function DocumentComponentsListPage() {
     convexQuery(api.documents.components.list, { organizationId }),
   );
 
-  const removeMutation = useMutation(api.documents.components.remove);
-  const duplicateMutation = useMutation(api.documents.components.duplicate);
+  const removeMutation = useAction(api.documents.components.remove);
+  const duplicateMutation = useAction(api.documents.components.duplicate);
 
   const [deleteTarget, setDeleteTarget] = useState<Id<"documentComponents"> | null>(null);
 

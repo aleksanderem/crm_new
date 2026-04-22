@@ -1,12 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess, requireUser } from "./_helpers/auth";
-import { createNotificationDirect } from "./notifications";
-import { logAudit } from "./auditLog";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeResourceInviteRef = internal.supabase.resourceInvites.writeResourceInviteToSupabase;
+import { verifyOrgAccess } from "./_helpers/auth";
 
 export const listByResource = query({
   args: {
@@ -31,7 +27,7 @@ export const listByResource = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     email: v.string(),
@@ -40,44 +36,138 @@ export const create = mutation({
     accessLevel: v.union(v.literal("viewer"), v.literal("editor")),
   },
   handler: async (ctx, args) => {
-    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    if (membership.role !== "owner" && membership.role !== "admin") {
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Only admins or owners can create resource invites");
     }
 
+    const db = createSupabaseDb();
     const token = crypto.randomUUID();
     const now = Date.now();
 
-    const inviteId = await ctx.db.insert("resourceInvites", {
-      organizationId: args.organizationId,
+    const inviteId = await db.insert("resourceInvites", {
+      organizationId: String(args.organizationId),
       email: args.email,
       resourceType: args.resourceType,
       resourceId: args.resourceId,
       accessLevel: args.accessLevel,
-      invitedBy: user._id,
+      invitedBy: String(authResult.userId),
       token,
       status: "pending",
       createdAt: now,
       updatedAt: now,
     });
 
-    // Dual-write: replicate to Supabase
-    await ctx.scheduler.runAfter(0, writeResourceInviteRef, {
-      resourceInviteId: inviteId as string,
-      organizationId: args.organizationId as string,
-      email: args.email,
-      resourceType: args.resourceType,
-      resourceId: args.resourceId,
-      accessLevel: args.accessLevel,
-      invitedBy: user._id as string,
-      token,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
+    // Side effects (notifications, audit) via internal mutation
+    try {
+      await ctx.runMutation(internal.resourceInvites._createSideEffects, {
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        userName: authResult.userName ?? authResult.userEmail ?? "A team member",
+        email: args.email,
+        resourceType: args.resourceType,
+        resourceId: args.resourceId,
+        accessLevel: args.accessLevel,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return { inviteId, token };
+  },
+});
+
+export const acceptByToken = action({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+
+    const invites = await db
+      .query("resourceInvites")
+      .eq("token", args.token)
+      .first();
+
+    if (!invites) throw new Error("Invite not found");
+    if (invites.status !== "pending") throw new Error("Invite is no longer valid");
+
+    // Get user from auth context - we need the requesting user's ID
+    // Since this uses requireUser (not org-scoped), we pass through the token verification
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: invites.organizationId as any },
+    );
+
+    await db.patch("resourceInvites", invites._id as string, {
+      status: "accepted",
+      userId: String(authResult.userId),
+      updatedAt: Date.now(),
     });
 
-    // Notify org owner about the new share
+    return invites;
+  },
+});
+
+export const revoke = action({
+  args: {
+    organizationId: v.id("organizations"),
+    inviteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const invite = await db.get("resourceInvites", args.inviteId);
+    if (!invite || invite.organizationId !== String(args.organizationId)) {
+      throw new Error("Invite not found");
+    }
+
+    await db.patch("resourceInvites", args.inviteId, {
+      status: "revoked",
+      updatedAt: Date.now(),
+    });
+
+    // Side effects (audit) via internal mutation
+    try {
+      await ctx.runMutation(internal.resourceInvites._revokeSideEffects, {
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        email: invite.email as string,
+        resourceType: invite.resourceType as string,
+        resourceId: invite.resourceId as string,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return args.inviteId;
+  },
+});
+
+// --- Internal side-effect mutations ---
+
+export const _createSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    userName: v.string(),
+    email: v.string(),
+    resourceType: v.string(),
+    resourceId: v.string(),
+    accessLevel: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { createNotificationDirect } = await import("./notifications");
+    const { logAudit } = await import("./auditLog");
+
     const org = await ctx.db.get(args.organizationId);
     if (org) {
       await createNotificationDirect(ctx, {
@@ -85,76 +175,39 @@ export const create = mutation({
         userId: org.ownerId,
         type: "resource_invite",
         title: "Resource shared",
-        message: `${user.name ?? user.email ?? "A team member"} shared a ${args.resourceType} with ${args.email}`,
+        message: `${args.userName} shared a ${args.resourceType} with ${args.email}`,
         link: `/${args.resourceType}s/${args.resourceId}`,
       });
     }
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: args.userId,
       action: "resource_shared",
       entityType: args.resourceType,
-      entityId: args.resourceId,
+      entityId: args.resourceId as any,
       details: JSON.stringify({ email: args.email, resourceType: args.resourceType, accessLevel: args.accessLevel }),
     });
-
-    return { inviteId, token };
   },
 });
 
-export const acceptByToken = mutation({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-
-    const invite = await ctx.db
-      .query("resourceInvites")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
-
-    if (!invite) throw new Error("Invite not found");
-    if (invite.status !== "pending") throw new Error("Invite is no longer valid");
-
-    await ctx.db.patch(invite._id, {
-      status: "accepted",
-      userId: user._id,
-      updatedAt: Date.now(),
-    });
-
-    return invite;
-  },
-});
-
-export const revoke = mutation({
+export const _revokeSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    inviteId: v.id("resourceInvites"),
+    userId: v.id("users"),
+    email: v.string(),
+    resourceType: v.string(),
+    resourceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-
-    const invite = await ctx.db.get(args.inviteId);
-    if (!invite || invite.organizationId !== args.organizationId) {
-      throw new Error("Invite not found");
-    }
-
-    await ctx.db.patch(args.inviteId, {
-      status: "revoked",
-      updatedAt: Date.now(),
-    });
-
+    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: args.userId,
       action: "resource_invite_revoked",
-      entityType: invite.resourceType,
-      entityId: invite.resourceId,
-      details: JSON.stringify({ email: invite.email, resourceType: invite.resourceType }),
+      entityType: args.resourceType,
+      entityId: args.resourceId as any,
+      details: JSON.stringify({ email: args.email, resourceType: args.resourceType }),
     });
-
-    return args.inviteId;
   },
 });

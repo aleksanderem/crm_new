@@ -1,4 +1,5 @@
 import { query } from "../_generated/server";
+import { api } from "../_generated/api";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
 import type { NudgeData } from "../nudges";

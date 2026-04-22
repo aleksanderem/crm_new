@@ -1,10 +1,10 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-const writeFieldRef = internal.supabase.documentTemplateFields.writeDocumentTemplateFieldToSupabase;
-const deleteFieldRef = internal.supabase.documentTemplateFields.deleteDocumentTemplateFieldFromSupabase;
+// Dual-write refs removed — Supabase is now primary for template field writes
 
 const fieldTypeValidator = v.union(
   v.literal("text"),
@@ -55,12 +55,12 @@ export const listByTemplate = query({
 });
 
 // ---------------------------------------------------------------------------
-// Mutations
+// Actions (Supabase-primary)
 // ---------------------------------------------------------------------------
 
-export const create = mutation({
+export const create = action({
   args: {
-    templateId: v.id("documentTemplates"),
+    templateId: v.string(),
     fieldKey: v.string(),
     label: v.string(),
     type: fieldTypeValidator,
@@ -75,36 +75,38 @@ export const create = mutation({
     width: v.union(v.literal("full"), v.literal("half")),
   },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
-    if (!template) throw new Error("Template not found");
-    await verifyOrgAccess(ctx, template.organizationId);
+    // Verify org access via template lookup (needs Convex db)
+    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+      templateId: args.templateId,
+    });
 
-    // Check fieldKey uniqueness within template
-    const existing = await ctx.db
-      .query("documentTemplateFields")
-      .withIndex("by_templateAndKey", (q) =>
-        q.eq("templateId", args.templateId).eq("fieldKey", args.fieldKey),
-      )
-      .unique();
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: orgId },
+    );
+
+    const db = createSupabaseDb();
+
+    // Check fieldKey uniqueness
+    const existing = await db.query("documentTemplateFields")
+      .eq("templateId", args.templateId)
+      .eq("fieldKey", args.fieldKey)
+      .first();
     if (existing) throw new Error(`Field key "${args.fieldKey}" already exists in this template`);
 
-    const fieldId = await ctx.db.insert("documentTemplateFields", args);
-
-    // Dual-write: replicate new template field to Supabase
-    await ctx.scheduler.runAfter(0, writeFieldRef, {
-      fieldId: fieldId as string,
-      templateId: args.templateId as string,
+    const fieldId = await db.insert("documentTemplateFields", {
+      templateId: args.templateId,
       fieldKey: args.fieldKey,
       label: args.label,
       type: args.type,
       sortOrder: args.sortOrder,
-      group: args.group,
-      options: args.options ? JSON.stringify(args.options) : undefined,
-      defaultValue: args.defaultValue,
-      binding: args.binding ? JSON.stringify(args.binding) : undefined,
-      validation: args.validation ? JSON.stringify(args.validation) : undefined,
-      placeholder: args.placeholder,
-      helpText: args.helpText,
+      group: args.group ?? null,
+      options: args.options ? JSON.stringify(args.options) : null,
+      defaultValue: args.defaultValue ?? null,
+      binding: args.binding ? JSON.stringify(args.binding) : null,
+      validation: args.validation ? JSON.stringify(args.validation) : null,
+      placeholder: args.placeholder ?? null,
+      helpText: args.helpText ?? null,
       width: args.width,
     });
 
@@ -112,9 +114,18 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const _verifyTemplateAccess = internalMutation({
+  args: { templateId: v.string() },
+  handler: async (ctx, args) => {
+    const template = await ctx.db.get(args.templateId as any);
+    if (!template) throw new Error("Template not found");
+    return template.organizationId;
+  },
+});
+
+export const update = action({
   args: {
-    id: v.id("documentTemplateFields"),
+    id: v.string(),
     fieldKey: v.optional(v.string()),
     label: v.optional(v.string()),
     type: v.optional(fieldTypeValidator),
@@ -129,84 +140,85 @@ export const update = mutation({
     width: v.optional(v.union(v.literal("full"), v.literal("half"))),
   },
   handler: async (ctx, args) => {
-    const field = await ctx.db.get(args.id);
+    const db = createSupabaseDb();
+    const field = await db.get("documentTemplateFields", args.id);
     if (!field) throw new Error("Field not found");
-    const template = await ctx.db.get(field.templateId);
-    if (!template) throw new Error("Template not found");
-    await verifyOrgAccess(ctx, template.organizationId);
+
+    // Verify org access via template
+    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+      templateId: field.templateId as string,
+    });
+
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: orgId },
+    );
 
     // Check fieldKey uniqueness if changing
     if (args.fieldKey && args.fieldKey !== field.fieldKey) {
-      const existing = await ctx.db
-        .query("documentTemplateFields")
-        .withIndex("by_templateAndKey", (q) =>
-          q.eq("templateId", field.templateId).eq("fieldKey", args.fieldKey!),
-        )
-        .unique();
+      const existing = await db.query("documentTemplateFields")
+        .eq("templateId", field.templateId as string)
+        .eq("fieldKey", args.fieldKey)
+        .first();
       if (existing) throw new Error(`Field key "${args.fieldKey}" already exists in this template`);
     }
 
     const { id, ...patch } = args;
     const cleaned: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(patch)) {
-      if (val !== undefined) cleaned[k] = val;
+      if (val !== undefined) {
+        if (k === "options" || k === "binding" || k === "validation") {
+          cleaned[k] = JSON.stringify(val);
+        } else {
+          cleaned[k] = val;
+        }
+      }
     }
 
-    await ctx.db.patch(args.id, cleaned);
-
-    // Dual-write: replicate field update to Supabase via upsert
-    const updated = await ctx.db.get(args.id);
-    if (updated) {
-      await ctx.scheduler.runAfter(0, writeFieldRef, {
-        fieldId: args.id as string,
-        templateId: updated.templateId as string,
-        fieldKey: updated.fieldKey,
-        label: updated.label,
-        type: updated.type,
-        sortOrder: updated.sortOrder,
-        group: updated.group,
-        options: updated.options ? JSON.stringify(updated.options) : undefined,
-        defaultValue: updated.defaultValue,
-        binding: updated.binding ? JSON.stringify(updated.binding) : undefined,
-        validation: updated.validation ? JSON.stringify(updated.validation) : undefined,
-        placeholder: updated.placeholder,
-        helpText: updated.helpText,
-        width: updated.width,
-      });
-    }
+    await db.patch("documentTemplateFields", args.id, cleaned);
   },
 });
 
-export const remove = mutation({
-  args: { id: v.id("documentTemplateFields") },
+export const remove = action({
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const field = await ctx.db.get(args.id);
+    const db = createSupabaseDb();
+    const field = await db.get("documentTemplateFields", args.id);
     if (!field) throw new Error("Field not found");
-    const template = await ctx.db.get(field.templateId);
-    if (!template) throw new Error("Template not found");
-    await verifyOrgAccess(ctx, template.organizationId);
 
-    // Dual-write: delete field from Supabase
-    await ctx.scheduler.runAfter(0, deleteFieldRef, {
-      fieldId: args.id as string,
+    // Verify org access via template
+    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+      templateId: field.templateId as string,
     });
 
-    await ctx.db.delete(args.id);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: orgId },
+    );
+
+    await db.delete("documentTemplateFields", args.id);
   },
 });
 
-export const reorder = mutation({
+export const reorder = action({
   args: {
-    templateId: v.id("documentTemplates"),
-    fieldIds: v.array(v.id("documentTemplateFields")),
+    templateId: v.string(),
+    fieldIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
-    if (!template) throw new Error("Template not found");
-    await verifyOrgAccess(ctx, template.organizationId);
+    // Verify org access via template
+    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+      templateId: args.templateId,
+    });
 
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: orgId },
+    );
+
+    const db = createSupabaseDb();
     for (let i = 0; i < args.fieldIds.length; i++) {
-      await ctx.db.patch(args.fieldIds[i], { sortOrder: i });
+      await db.patch("documentTemplateFields", args.fieldIds[i], { sortOrder: i });
     }
   },
 });

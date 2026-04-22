@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -153,7 +153,7 @@ function SignatureSection({
   resolvedHtml?: string;
 }) {
   const { t } = useTranslation();
-  const recordSignature = useMutation(
+  const recordSignature = useAction(
     api.documents.documents.recordSignature,
   );
   const [acknowledged, setAcknowledged] = useState(false);
@@ -299,7 +299,7 @@ interface FlowProps {
 
 function DocumentSigningFlow({ token, document, template }: FlowProps) {
   const { t } = useTranslation();
-  const submitFormFields = useMutation(
+  const submitFormFields = useAction(
     api.documents.documents.submitDocumentFormFields,
   );
 

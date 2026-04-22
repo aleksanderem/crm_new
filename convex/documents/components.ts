@@ -1,9 +1,13 @@
-import { query, mutation, internalMutation, type MutationCtx } from "../_generated/server";
+import { query, action, internalMutation, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v, type GenericId } from "convex/values";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import {
   componentCategoryValidator,
 } from "../schema/documents";
+
+// Dual-write refs removed — Supabase is now primary for component writes
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -52,8 +56,6 @@ export const getById = query({
     const comp = await ctx.db.get(args.componentId);
     if (!comp) throw new Error("Component not found");
 
-    // Access check: system components are always accessible,
-    // org components need matching orgId, user components need matching creator
     if (comp.scope === "org" && comp.organizationId !== args.organizationId) {
       throw new Error("Component not found");
     }
@@ -66,7 +68,6 @@ export const getById = query({
 
 /**
  * Lightweight query returning just contentJson for a component.
- * Used by the ComponentBlock node for live rendering in the editor.
  */
 export const getContent = query({
   args: {
@@ -95,9 +96,9 @@ export const getContent = query({
   },
 });
 
-// ── Mutations ────────────────────────────────────────────────────────────────
+// ── Actions (Supabase-primary) ─────────────────────────────────────────────
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     scope: v.union(v.literal("org"), v.literal("user")),
@@ -110,33 +111,44 @@ export const create = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = args.scope === "org"
-      ? await requireOrgAdmin(ctx, args.organizationId)
-      : await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Org-scoped components require admin
+    if (args.scope === "org") {
+      if (authResult.role !== "owner" && authResult.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+    }
 
     const now = Date.now();
-    return await ctx.db.insert("documentComponents", {
-      organizationId: args.organizationId,
+    const db = createSupabaseDb();
+
+    const componentId = await db.insert("documentComponents", {
+      organizationId: String(args.organizationId),
       scope: args.scope,
-      createdBy: user._id,
+      createdBy: String(authResult.userId),
       name: args.name,
-      description: args.description,
+      description: args.description ?? null,
       category: args.category,
       contentJson: args.contentJson,
       protected: false,
-      positionConstraint: args.positionConstraint,
+      positionConstraint: args.positionConstraint ?? null,
       version: 1,
       isActive: true,
       createdAt: now,
       updatedAt: now,
     });
+
+    return componentId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    componentId: v.id("documentComponents"),
+    componentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(componentCategoryValidator),
@@ -146,32 +158,36 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const comp = await ctx.db.get(args.componentId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const comp = await db.get("documentComponents", args.componentId);
     if (!comp) throw new Error("Component not found");
 
-    // Cannot edit system components
     if (comp.scope === "system") {
       throw new Error("Cannot edit system components");
     }
-    // Org components require admin
     if (comp.scope === "org") {
-      await requireOrgAdmin(ctx, args.organizationId);
-      if (comp.organizationId !== args.organizationId) {
+      if (authResult.role !== "owner" && authResult.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      if (String(comp.organizationId) !== String(args.organizationId)) {
         throw new Error("Component not found");
       }
     }
-    // User components require matching creator
-    if (comp.scope === "user" && comp.createdBy !== user._id) {
+    if (comp.scope === "user" && String(comp.createdBy) !== String(authResult.userId)) {
       throw new Error("Cannot edit another user's component");
     }
 
     const { organizationId: _orgId, componentId, ...updates } = args;
     const contentChanged =
       updates.contentJson && updates.contentJson !== comp.contentJson;
-    const newVersion = contentChanged ? comp.version + 1 : comp.version;
+    const newVersion = contentChanged ? (comp.version as number ?? 1) + 1 : (comp.version as number ?? 1);
 
-    await ctx.db.patch(componentId, {
+    await db.patch("documentComponents", componentId, {
       ...updates,
       version: newVersion,
       updatedAt: Date.now(),
@@ -180,14 +196,19 @@ export const update = mutation({
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    componentId: v.id("documentComponents"),
+    componentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const comp = await ctx.db.get(args.componentId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const comp = await db.get("documentComponents", args.componentId);
     if (!comp) throw new Error("Component not found");
 
     if (comp.scope === "system") {
@@ -197,118 +218,127 @@ export const remove = mutation({
       throw new Error("Cannot delete protected components");
     }
     if (comp.scope === "org") {
-      await requireOrgAdmin(ctx, args.organizationId);
+      if (authResult.role !== "owner" && authResult.role !== "admin") {
+        throw new Error("Admin access required");
+      }
     }
-    if (comp.scope === "user" && comp.createdBy !== user._id) {
+    if (comp.scope === "user" && String(comp.createdBy) !== String(authResult.userId)) {
       throw new Error("Cannot delete another user's component");
     }
 
-    await ctx.db.patch(args.componentId, {
+    await db.patch("documentComponents", args.componentId, {
       isActive: false,
       updatedAt: Date.now(),
     });
   },
 });
 
-export const duplicate = mutation({
+export const duplicate = action({
   args: {
     organizationId: v.id("organizations"),
-    componentId: v.id("documentComponents"),
+    componentId: v.string(),
     scope: v.optional(v.union(v.literal("org"), v.literal("user"))),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const source = await ctx.db.get(args.componentId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const source = await db.get("documentComponents", args.componentId);
     if (!source) throw new Error("Component not found");
 
-    const targetScope = args.scope ?? (source.scope === "system" ? "org" : source.scope);
+    const targetScope = args.scope ?? (source.scope === "system" ? "org" : source.scope as string);
     if (targetScope === "org") {
-      await requireOrgAdmin(ctx, args.organizationId);
+      if (authResult.role !== "owner" && authResult.role !== "admin") {
+        throw new Error("Admin access required");
+      }
     }
 
     const now = Date.now();
-    const newId = await ctx.db.insert("documentComponents", {
-      organizationId: args.organizationId,
-      scope: targetScope as "org" | "user",
-      createdBy: user._id,
+    const newId = await db.insert("documentComponents", {
+      organizationId: String(args.organizationId),
+      scope: targetScope,
+      createdBy: String(authResult.userId),
       name: `${source.name} (Kopia)`,
-      description: source.description,
+      description: source.description ?? null,
       category: source.category,
       contentJson: source.contentJson,
       protected: false,
-      positionConstraint: source.positionConstraint,
+      positionConstraint: source.positionConstraint ?? null,
       version: 1,
       isActive: true,
       createdAt: now,
       updatedAt: now,
     });
 
-    // Auto-relink: when copying a system component to org, update all
-    // org templates that reference the source component to point to the copy.
+    // Auto-relink: when copying a system component to org, update templates
     if (source.scope === "system") {
-      await relinkTemplateComponents(
-        ctx,
-        args.organizationId,
-        args.componentId,
-        newId,
-      );
+      try {
+        await ctx.runMutation(internal.documents.components._relinkTemplateComponents, {
+          organizationId: args.organizationId,
+          oldComponentId: args.componentId,
+          newComponentId: newId,
+        });
+      } catch (e) {
+        console.error("[components.duplicate] Relink side effects FAILED:", e);
+      }
     }
 
     return newId;
   },
 });
 
-/**
- * Scan all org templates and replace componentBlock references
- * from `oldComponentId` to `newComponentId`.
- */
-async function relinkTemplateComponents(
-  ctx: MutationCtx,
-  organizationId: GenericId<"organizations">,
-  oldComponentId: GenericId<"documentComponents">,
-  newComponentId: GenericId<"documentComponents">,
-) {
-  const templates = await ctx.db
-    .query("formTemplates")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-    .collect();
+export const _relinkTemplateComponents = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    oldComponentId: v.string(),
+    newComponentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const templates = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
 
-  const oldIdStr = oldComponentId as string;
-  const newIdStr = newComponentId as string;
+    const oldIdStr = args.oldComponentId;
+    const newIdStr = args.newComponentId;
 
-  for (const tmpl of templates) {
-    if (!tmpl.contentJson || !tmpl.contentJson.includes(oldIdStr)) continue;
+    for (const tmpl of templates) {
+      if (!tmpl.contentJson || !tmpl.contentJson.includes(oldIdStr)) continue;
 
-    try {
-      const doc = JSON.parse(tmpl.contentJson);
-      let changed = false;
+      try {
+        const doc = JSON.parse(tmpl.contentJson);
+        let changed = false;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      function walkAndReplace(node: any) {
-        if (!node) return;
-        if (node.type === "componentBlock" && node.attrs?.componentId === oldIdStr) {
-          node.attrs.componentId = newIdStr;
-          node.attrs.componentVersion = 1;
-          changed = true;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function walkAndReplace(node: any) {
+          if (!node) return;
+          if (node.type === "componentBlock" && node.attrs?.componentId === oldIdStr) {
+            node.attrs.componentId = newIdStr;
+            node.attrs.componentVersion = 1;
+            changed = true;
+          }
+          if (Array.isArray(node.content)) {
+            for (const child of node.content) walkAndReplace(child);
+          }
         }
-        if (Array.isArray(node.content)) {
-          for (const child of node.content) walkAndReplace(child);
+
+        walkAndReplace(doc);
+
+        if (changed) {
+          await ctx.db.patch(tmpl._id, {
+            contentJson: JSON.stringify(doc),
+            updatedAt: Date.now(),
+          });
         }
+      } catch {
+        // Malformed JSON — skip
       }
-
-      walkAndReplace(doc);
-
-      if (changed) {
-        await ctx.db.patch(tmpl._id, {
-          contentJson: JSON.stringify(doc),
-          updatedAt: Date.now(),
-        });
-      }
-    } catch {
-      // Malformed JSON — skip
     }
-  }
-}
+  },
+});
 
 // ── Internal: Seed system components ─────────────────────────────────────────
 
@@ -379,7 +409,6 @@ export type SystemComponent = {
 
 export function buildSystemComponents(): SystemComponent[] {
   return [
-    // 1. Header
     {
       scope: "system",
       organizationId: undefined,
@@ -400,7 +429,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 2. Patient Data Block
     {
       scope: "system",
       organizationId: undefined,
@@ -423,7 +451,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 3. Treatment Data Block
     {
       scope: "system",
       organizationId: undefined,
@@ -447,7 +474,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 4. Dual Signature Block
     {
       scope: "system",
       organizationId: undefined,
@@ -470,7 +496,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 5. Client Signature Block
     {
       scope: "system",
       organizationId: undefined,
@@ -493,7 +518,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 6. QUERA Footer (protected)
     {
       scope: "system",
       organizationId: undefined,
@@ -517,7 +541,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 7. Form-style Data Table
     {
       scope: "system",
       organizationId: undefined,
@@ -559,7 +582,6 @@ export function buildSystemComponents(): SystemComponent[] {
       version: 1,
       isActive: true,
     },
-    // 8. Report-style Data Table
     {
       scope: "system",
       organizationId: undefined,

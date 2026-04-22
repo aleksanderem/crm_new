@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeScheduledActivityToSupabase = internalAction({
   args: {
@@ -71,20 +71,10 @@ export const writeScheduledActivityToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("scheduled_activities")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "scheduled_activities", row);
 
-    if (error) {
-      const msg = `Supabase write failed for scheduledActivity: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`ScheduledActivity written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`ScheduledActivity written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 

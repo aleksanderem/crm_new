@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
-import { useSupabaseActivityTypesList } from "@/hooks/use-supabase-activity-types";
+import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -198,23 +198,23 @@ function DashboardLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const createContact = useMutation(api.contacts.create);
-  const createCompany = useMutation(api.companies.create);
-  const createLead = useMutation(api.leads.create);
-  const createPatient = useMutation(api.gabinet.patients.create);
-  const createTreatment = useMutation(api.gabinet.treatments.create);
-  const createAppointment = useMutation(api.gabinet.appointments.create);
-  const createPackage = useMutation(api.gabinet.packages.create);
-  const createEmployee = useMutation(api.gabinet.employees.create);
-  const createActivity = useMutation(api.scheduledActivities.create);
-  const createLeave = useMutation(api.gabinet.scheduling.createLeave);
-  const createProduct = useMutation(api.products.create);
-  const createCall = useMutation(api.calls.create);
-  const createInvitation = useMutation(api.invitations.create);
-  const updateActivity = useMutation(api.scheduledActivities.update);
-  const removeActivity = useMutation(api.scheduledActivities.remove);
-  const markActivityComplete = useMutation(api.scheduledActivities.markComplete);
-  const markActivityIncomplete = useMutation(api.scheduledActivities.markIncomplete);
+  const createContact = useAction(api.contacts.create);
+  const createCompany = useAction(api.companies.create);
+  const createLead = useAction(api.leads.create);
+  const createPatient = useAction(api.gabinet.patients.create);
+  const createTreatment = useAction(api.gabinet.treatments.create);
+  const createAppointment = useAction(api.gabinet.appointments.create);
+  const createPackage = useAction(api.gabinet.packages.create);
+  const createEmployee = useAction(api.gabinet.employees.create);
+  const createActivity = useAction(api.scheduledActivities.create);
+  const createLeave = useAction(api.gabinet.scheduling.createLeave);
+  const createProduct = useAction(api.products.create);
+  const createCall = useAction(api.calls.create);
+  const createInvitation = useAction(api.invitations.create);
+  const updateActivity = useAction(api.scheduledActivities.update);
+  const removeActivity = useAction(api.scheduledActivities.remove);
+  const markActivityComplete = useAction(api.scheduledActivities.markComplete);
+  const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
 
   // Global activity detail drawer
   const [activityDetailId, setActivityDetailId] = useState<string | null>(null);
@@ -237,18 +237,18 @@ function DashboardLayout() {
     enabled: !!firstOrg,
   });
 
-  // Global activity detail drawer data
-  const { data: activityDetailData } = useQuery({
-    ...convexQuery(api.scheduledActivities.getById, {
-      organizationId: firstOrg?._id as Id<"organizations">,
-      activityId: activityDetailId as Id<"scheduledActivities">,
+  // Global activity detail drawer data — Supabase-primary
+  const { data: activityDetailData } = useSupabaseScheduledActivityById(
+    firstOrg?._id ?? "",
+    activityDetailId,
+    { enabled: !!firstOrg && !!activityDetailId },
+  );
+  const { data: activityTypeDefs } = useQuery({
+    ...convexQuery(api.activityTypes.list, {
+      organizationId: firstOrg?._id ?? ("" as any),
     }),
     enabled: !!firstOrg && !!activityDetailId,
   });
-  const { data: activityTypeDefs } = useSupabaseActivityTypesList(
-    firstOrg?._id ?? "",
-    { enabled: !!firstOrg && !!activityDetailId },
-  );
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -55,7 +55,7 @@ export function ComposeDialog({
   defaultTo,
 }: ComposeDialogProps) {
   const { t } = useTranslation();
-  const sendEmail = useMutation(api.emails.send);
+  const sendEmail = useAction(api.emails.send);
   const sendViaGmail = useAction(api.google.gmail.sendViaGmail);
 
   const { data: googleConnection } = useQuery(
@@ -181,7 +181,7 @@ export function ComposeDialog({
           contactId,
           companyId,
           leadId,
-          mailProviderId: selectedProviderId ? selectedProviderId as Id<"mailProviders"> : undefined,
+          mailProviderId: selectedProviderId || undefined,
         });
       }
 

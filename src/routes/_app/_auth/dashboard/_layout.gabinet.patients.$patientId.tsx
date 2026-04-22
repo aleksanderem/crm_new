@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
@@ -33,7 +33,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "@/lib/ez-icons";
-import type { Id } from "@cvx/_generated/dataModel";
+
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 
@@ -48,11 +48,11 @@ function PatientDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this mutation
-  const updatePatient = useMutation(api.gabinet.patients.update);
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this mutation
-  const removePatient = useMutation(api.gabinet.patients.remove);
-  const trackView = useMutation(api.recentlyViewed.track);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const updatePatient = useAction(api.gabinet.patients.update);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const removePatient = useAction(api.gabinet.patients.remove);
+  const trackView = useAction(api.recentlyViewed.track);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -187,7 +187,7 @@ function PatientDetail() {
     try {
       await updatePatient({
         organizationId,
-        patientId: patientId as Id<"gabinetPatients">,
+        patientId,
         ...formData,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
@@ -202,7 +202,7 @@ function PatientDetail() {
     if (window.confirm(t("gabinet.patients.confirmDelete"))) {
       await removePatient({
         organizationId,
-        patientId: patientId as Id<"gabinetPatients">,
+        patientId,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/patients" });

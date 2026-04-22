@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -85,8 +85,8 @@ function EditEmailTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  const updateTemplate = useMutation(api.emailTemplates.update);
-  const removeTemplate = useMutation(api.emailTemplates.remove);
+  const updateTemplate = useAction(api.emailTemplates.update);
+  const removeTemplate = useAction(api.emailTemplates.remove);
 
   const { data: template } = useSupabaseEmailTemplate(
     organizationId,

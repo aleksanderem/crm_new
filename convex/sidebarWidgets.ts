@@ -174,37 +174,7 @@ export const getCompaniesKpis = query({
 });
 
 // --- Activities ---
-export const getActivitiesKpis = query({
-  args: { organizationId: v.id("organizations"), userId: v.id("users") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = todayStart.getTime() + 24 * 60 * 60 * 1000;
-
-    const scheduled = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const userActivities = scheduled.filter((a) => a.ownerId === args.userId);
-    const overdue = userActivities.filter((a) => a.dueDate && a.dueDate < now && !a.isCompleted);
-    const today = userActivities.filter(
-      (a) => a.dueDate && a.dueDate >= todayStart.getTime() && a.dueDate < todayEnd
-    );
-    const completed = userActivities.filter((a) => a.isCompleted);
-    const completionRate = userActivities.length > 0
-      ? Math.round((completed.length / userActivities.length) * 100)
-      : 0;
-
-    return {
-      overdue: overdue.length,
-      today: today.length,
-      completionRate,
-    };
-  },
-});
+// Removed: getActivitiesKpis — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
 
 // --- Inbox ---
 export const getInboxKpis = query({
@@ -325,84 +295,10 @@ export const getDocumentsKpis = query({
 });
 
 // --- Calendar (CRM) ---
-export const getCalendarKpis = query({
-  args: { organizationId: v.id("organizations"), userId: v.id("users") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = todayStart.getTime() + 24 * 60 * 60 * 1000;
-    const weekEnd = todayStart.getTime() + 7 * 24 * 60 * 60 * 1000;
-
-    const scheduled = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const userActivities = scheduled.filter((a) => a.ownerId === args.userId);
-
-    return {
-      today: userActivities.filter((a) => a.dueDate && a.dueDate >= todayStart.getTime() && a.dueDate < todayEnd).length,
-      overdue: userActivities.filter((a) => a.dueDate && a.dueDate < now && !a.isCompleted).length,
-      thisWeek: userActivities.filter((a) => a.dueDate && a.dueDate >= todayStart.getTime() && a.dueDate < weekEnd).length,
-      requiresCompletion: userActivities.filter((a) => a.requiresCompletion === true).length,
-    };
-  },
-});
+// Removed: getCalendarKpis — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
 
 // --- Upcoming Events (Smart Agenda) ---
-export const getUpcomingEvents = query({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
-    onlyMine: v.optional(v.boolean()),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
-    const limit = args.limit ?? 5;
-    const onlyMine = args.onlyMine ?? false;
-
-    const scheduled = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const filtered = scheduled
-      .filter((a) => {
-        if (a.isCompleted || !a.dueDate || a.dueDate < now) return false;
-        if (onlyMine && a.ownerId !== args.userId) return false;
-        return true;
-      })
-      .sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0))
-      .slice(0, limit);
-
-    // Resolve owner info
-    const ownerIds = [...new Set(filtered.map((a) => a.ownerId))];
-    const owners = await Promise.all(ownerIds.map((id) => ctx.db.get(id)));
-    const ownerMap = new Map(owners.filter(Boolean).map((u) => [u!._id, u!]));
-
-    return filtered.map((a) => {
-      const owner = ownerMap.get(a.ownerId);
-      const isAppointment = a.moduleRef?.moduleId === "gabinet" && a.moduleRef.entityType === "appointment";
-      return {
-        id: a._id,
-        title: a.title,
-        startTime: a.dueDate!,
-        type: a.activityType,
-        // For gabinet appointments: navigate to detail page; for CRM activities: open drawer
-        appointmentLink: isAppointment
-          ? `/dashboard/gabinet/appointments/${a.moduleRef!.entityId}`
-          : null,
-        ownerId: a.ownerId,
-        ownerName: owner?.name ?? owner?.email ?? "?",
-        ownerImage: owner?.image ?? null,
-      };
-    });
-  },
-});
+// Removed: getUpcomingEvents — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
 
 // --- Leads by Stage (Mini Funnel) ---
 export const getLeadsByStage = query({
@@ -682,39 +578,7 @@ export const getWeeklyDealsTrend = query({
 });
 
 // --- Weekly Activities trend (completed vs created per day, last 7 days) ---
-export const getWeeklyActivitiesTrend = query({
-  args: { organizationId: v.id("organizations"), userId: v.id("users") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const dayNames = ["ni", "po", "wt", "śr", "cz", "pt", "so"];
-    const now = new Date();
-    const days: { day: string; created: number; completed: number; _start: number; _end: number }[] = [];
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const start = d.getTime();
-      days.push({ day: dayNames[d.getDay()], created: 0, completed: 0, _start: start, _end: start + 86400000 });
-    }
-
-    const activities = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const userActivities = activities.filter((a) => a.ownerId === args.userId);
-    const recentCreated = userActivities.filter((a) => a._creationTime >= days[0]._start);
-    const recentCompleted = userActivities.filter((a) => a.isCompleted && a.completedAt && a.completedAt >= days[0]._start);
-
-    for (const day of days) {
-      day.created = recentCreated.filter((a) => a._creationTime >= day._start && a._creationTime < day._end).length;
-      day.completed = recentCompleted.filter((a) => a.completedAt! >= day._start && a.completedAt! < day._end).length;
-    }
-
-    return days.map(({ day, created, completed }) => ({ day, created, completed }));
-  },
-});
+// Removed: getWeeklyActivitiesTrend — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
 
 // --- Weekly Calls trend (calls per day, last 7 days) ---
 export const getWeeklyCallsTrend = query({

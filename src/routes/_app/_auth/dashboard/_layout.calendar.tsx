@@ -6,6 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { usePermission } from "@/hooks/use-permission";
+import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -269,16 +270,14 @@ function UnifiedCalendarPage() {
     return { startTs: first.getTime(), endTs: last.getTime(), weekStart: monday };
   }, [view, currentDate]);
 
-  const { data: events } = useQuery(
-    convexQuery(api.scheduledActivities.listForCalendarWithVisibility, {
-      organizationId,
-      startDate: startTs,
-      endDate: endTs,
-      moduleFilter: moduleFilter === "all" ? undefined : moduleFilter,
-    })
+  const { data: events } = useSupabaseScheduledActivitiesByDateRange(
+    organizationId,
+    startTs,
+    endTs,
+    { moduleFilter: moduleFilter === "all" ? undefined : moduleFilter },
   );
 
-  const updateActivity = useMutation(api.scheduledActivities.update);
+  const updateActivity = useAction(api.scheduledActivities.update);
   const updateAppointment = useMutation(
     api.gabinet.appointments.update
   );

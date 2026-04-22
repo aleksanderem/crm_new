@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { useOrganization } from "@/components/org-context";
@@ -39,9 +39,9 @@ function ContactsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const createContact = useMutation(api.contacts.create);
-  const removeContact = useMutation(api.contacts.remove);
-  const setCustomFieldValues = useMutation(api.customFields.setValues);
+  const createContact = useAction(api.contacts.create);
+  const removeContact = useAction(api.contacts.remove);
+  const setCustomFieldValues = useAction(api.customFields.setValues);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

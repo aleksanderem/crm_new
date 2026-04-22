@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useUploadFiles } from "@xixixao/uploadstuff/react";
@@ -32,7 +32,7 @@ export function EmailBrandEditor({ organizationId }: EmailBrandEditorProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: config, isLoading } = useSupabaseEmailBrandConfig(organizationId) as { data: any; isLoading: boolean };
 
-  const upsert = useMutation(api.emailBrandConfig.upsert);
+  const upsert = useAction(api.emailBrandConfig.upsert);
   const generateUploadUrl = useConvexMutation(api.app.generateUploadUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

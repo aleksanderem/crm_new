@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeCategoryDefinitionToSupabase = internalAction({
   args: {
@@ -38,20 +38,10 @@ export const writeCategoryDefinitionToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("category_definitions")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "category_definitions", row);
 
-    if (error) {
-      const msg = `Supabase write failed for categoryDefinition: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`CategoryDefinition written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`CategoryDefinition written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });
 

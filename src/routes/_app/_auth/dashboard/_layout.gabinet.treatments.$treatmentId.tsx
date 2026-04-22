@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -141,14 +141,14 @@ function TreatmentDetail() {
   });
 
   // Mutations
-  const updateTreatment = useMutation(api.gabinet.treatments.update);
-  const removeTreatment = useMutation(api.gabinet.treatments.remove);
-  const saveTreatmentParameters = useMutation(api.gabinet.treatments.saveTreatmentParameters);
-  const setQualifiedTreatments = useMutation(api.gabinet.employees.setQualifiedTreatments);
-  const createVariantMut = useMutation(api.gabinet.treatments.createVariant);
-  const updateVariantMut = useMutation(api.gabinet.treatments.updateVariant);
-  const deleteVariantMut = useMutation(api.gabinet.treatments.deleteVariant);
-  const trackView = useMutation(api.recentlyViewed.track);
+  const updateTreatment = useAction(api.gabinet.treatments.update);
+  const removeTreatment = useAction(api.gabinet.treatments.remove);
+  const saveTreatmentParameters = useAction(api.gabinet.treatments.saveTreatmentParameters);
+  const setQualifiedTreatments = useAction(api.gabinet.employees.setQualifiedTreatments);
+  const createVariantMut = useAction(api.gabinet.treatments.createVariant);
+  const updateVariantMut = useAction(api.gabinet.treatments.updateVariant);
+  const deleteVariantMut = useAction(api.gabinet.treatments.deleteVariant);
+  const trackView = useAction(api.recentlyViewed.track);
   const queryClient = useQueryClient();
 
   // Queries — treatment detail + variants from Supabase

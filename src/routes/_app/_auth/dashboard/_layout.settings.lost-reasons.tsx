@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
@@ -36,10 +36,10 @@ function LostReasonsSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
-  const createReason = useMutation(api.lostReasons.create);
-  const updateReason = useMutation(api.lostReasons.update);
-  const removeReason = useMutation(api.lostReasons.remove);
-  const upsertSettings = useMutation(api.orgSettings.upsert);
+  const createReason = useAction(api.lostReasons.create);
+  const updateReason = useAction(api.lostReasons.update);
+  const removeReason = useAction(api.lostReasons.remove);
+  const upsertSettings = useAction(api.orgSettings.upsert);
 
   const { data: reasons } = useSupabaseLostReasonsList(organizationId);
 

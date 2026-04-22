@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabasePipelinesList, useSupabaseAllPipelineStages } from "@/hooks/use-supabase-pipelines";
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
@@ -84,9 +84,9 @@ function LeadsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
-  const updateLead = useMutation(api.leads.update);
-  const removeLead = useMutation(api.leads.remove);
-  const createLead = useMutation(api.leads.create);
+  const updateLead = useAction(api.leads.update);
+  const removeLead = useAction(api.leads.remove);
+  const createLead = useAction(api.leads.create);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient } from "./client";
+import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 export const writeResourceInviteToSupabase = internalAction({
   args: {
@@ -40,19 +40,9 @@ export const writeResourceInviteToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const { data, error } = await client
-      .from("resource_invites")
-      .upsert(row, { onConflict: "id" })
-      .select("id")
-      .single();
+    const data = await upsertWithFkRetry(client, "resource_invites", row);
 
-    if (error) {
-      const msg = `Supabase write failed for resourceInvite: ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`ResourceInvite written to Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
+    console.info(`ResourceInvite written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
   },
 });

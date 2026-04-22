@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -93,11 +93,11 @@ function LocationCard({
     expanded ? { organizationId, locationId } : "skip"
   ) as LocationWithRooms | null | undefined;
 
-  const updateLocation = useMutation(api.gabinet.locations.updateLocation);
-  const deleteLocation = useMutation(api.gabinet.locations.deleteLocation);
-  const createRoom = useMutation(api.gabinet.locations.createRoom);
-  const updateRoom = useMutation(api.gabinet.locations.updateRoom);
-  const deleteRoom = useMutation(api.gabinet.locations.deleteRoom);
+  const updateLocation = useAction(api.gabinet.locations.updateLocation);
+  const deleteLocation = useAction(api.gabinet.locations.deleteLocation);
+  const createRoom = useAction(api.gabinet.locations.createRoom);
+  const updateRoom = useAction(api.gabinet.locations.updateRoom);
+  const deleteRoom = useAction(api.gabinet.locations.deleteRoom);
 
   // Summary card always uses the list data (passed via parent), so we need the basic info
   // Use the fetched data when expanded, otherwise use the location prop from parent list
@@ -489,7 +489,7 @@ function LocationsSettingsPage() {
 
   const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
 
-  const createLocation = useMutation(api.gabinet.locations.createLocation);
+  const createLocation = useAction(api.gabinet.locations.createLocation);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;

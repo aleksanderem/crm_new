@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -56,11 +56,11 @@ function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const createLeave = useMutation(api.gabinet.scheduling.createLeave);
+  const createLeave = useAction(api.gabinet.scheduling.createLeave);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const approveLeave = useMutation(api.gabinet.scheduling.approveLeave);
+  const approveLeave = useAction(api.gabinet.scheduling.approveLeave);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const rejectLeave = useMutation(api.gabinet.scheduling.rejectLeave);
+  const rejectLeave = useAction(api.gabinet.scheduling.rejectLeave);
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");

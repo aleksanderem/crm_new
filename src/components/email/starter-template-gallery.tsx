@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseEmailLayout } from "@/hooks/use-supabase-email-config";
 import { api } from "@cvx/_generated/api";
@@ -56,8 +56,8 @@ export function StarterTemplateGallery({
 }: StarterTemplateGalleryProps) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const createTemplate = useMutation(api.emailTemplates.create);
-  const upsertBinding = useMutation(api.emailEventBindings.upsertBinding);
+  const createTemplate = useAction(api.emailTemplates.create);
+  const upsertBinding = useAction(api.emailEventBindings.upsertBinding);
 
   // Load org layout for preview wrapping
   const { data: rawLayout } = useSupabaseEmailLayout(organizationId);

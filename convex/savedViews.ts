@@ -1,14 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeViewRef = internal.supabase.savedViews.writeSavedViewToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateViewRef = internal.supabase.savedViews.updateSavedViewInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteViewRef = internal.supabase.savedViews.deleteSavedViewFromSupabase;
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { verifyOrgAccess } from "./_helpers/auth";
 
 export const listByEntityType = query({
   args: {
@@ -47,7 +41,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
@@ -60,55 +54,48 @@ export const create = mutation({
     isSystem: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
     const now = Date.now();
 
     // Enforce max 5 custom (non-system) views per entity per org
     if (!args.isSystem) {
-      const existing = await ctx.db
+      const existing = await db
         .query("savedViews")
-        .withIndex("by_orgAndEntityType", (q) =>
-          q.eq("organizationId", args.organizationId).eq("entityType", args.entityType)
-        )
+        .eq("organizationId", String(args.organizationId))
+        .eq("entityType", args.entityType)
         .collect();
 
-      const customViews = existing.filter((v) => !v.isSystem);
+      const customViews = existing.filter((v: any) => !v.isSystem);
       if (customViews.length >= 5) {
         throw new Error("Maximum of 5 custom views per entity type reached");
       }
     }
 
     // Calculate order (append at end)
-    const existing = await ctx.db
+    const existing = await db
       .query("savedViews")
-      .withIndex("by_orgAndEntityType", (q) =>
-        q.eq("organizationId", args.organizationId).eq("entityType", args.entityType)
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("entityType", args.entityType)
       .collect();
-    const maxOrder = existing.length > 0 ? Math.max(...existing.map((v) => v.order)) : -1;
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((v: any) => v.order ?? 0)) : -1;
 
-    const viewId = await ctx.db.insert("savedViews", {
-      ...args,
-      createdBy: user._id,
-      order: maxOrder + 1,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new saved view to Supabase
-    await ctx.scheduler.runAfter(0, writeViewRef, {
-      viewId: viewId as string,
-      organizationId: args.organizationId as string,
+    const viewId = await db.insert("savedViews", {
+      organizationId: String(args.organizationId),
       entityType: args.entityType,
       name: args.name,
       filters: args.filters,
-      columns: args.columns,
-      sortField: args.sortField,
-      sortDirection: args.sortDirection,
-      isDefault: args.isDefault,
+      columns: args.columns ?? null,
+      sortField: args.sortField ?? null,
+      sortDirection: args.sortDirection ?? null,
+      isDefault: args.isDefault ?? null,
       isSystem: args.isSystem,
+      createdBy: String(authResult.userId),
       order: maxOrder + 1,
-      createdBy: user._id as string,
       createdAt: now,
       updatedAt: now,
     });
@@ -117,10 +104,10 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    viewId: v.id("savedViews"),
+    viewId: v.string(),
     name: v.optional(v.string()),
     filters: v.optional(v.any()),
     columns: v.optional(v.array(v.string())),
@@ -129,79 +116,82 @@ export const update = mutation({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const view = await ctx.db.get(args.viewId);
-    if (!view || view.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const view = await db.get("savedViews", args.viewId);
+    if (!view || view.organizationId !== String(args.organizationId)) {
       throw new Error("Saved view not found");
     }
 
-    const isOwner = view.createdBy === user._id;
-    const isAdmin = membership.role === "owner" || membership.role === "admin";
+    const isOwner = view.createdBy === String(authResult.userId);
+    const isAdmin = authResult.role === "owner" || authResult.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new Error("Not authorized to update this view");
     }
 
-    const { organizationId, viewId, ...updates } = args;
-    const now = Date.now();
-    await ctx.db.patch(viewId, { ...updates, updatedAt: now });
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.filters !== undefined) updates.filters = args.filters;
+    if (args.columns !== undefined) updates.columns = args.columns;
+    if (args.sortField !== undefined) updates.sortField = args.sortField;
+    if (args.sortDirection !== undefined) updates.sortDirection = args.sortDirection;
+    if (args.isDefault !== undefined) updates.isDefault = args.isDefault;
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateViewRef, {
-      viewId: viewId as string,
-      organizationId: organizationId as string,
-      ...updates,
-      updatedAt: now,
-    });
-
-    return viewId;
-  },
-});
-
-export const remove = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    viewId: v.id("savedViews"),
-  },
-  handler: async (ctx, args) => {
-    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
-
-    const view = await ctx.db.get(args.viewId);
-    if (!view || view.organizationId !== args.organizationId) {
-      throw new Error("Saved view not found");
-    }
-
-    const isOwner = view.createdBy === user._id;
-    const isAdmin = membership.role === "owner" || membership.role === "admin";
-    if (!isOwner && !isAdmin) {
-      throw new Error("Not authorized to delete this view");
-    }
-
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteViewRef, {
-      viewId: args.viewId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.viewId);
+    await db.patch("savedViews", args.viewId, updates);
     return args.viewId;
   },
 });
 
-export const reorder = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    viewIds: v.array(v.id("savedViews")),
+    viewId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const view = await db.get("savedViews", args.viewId);
+    if (!view || view.organizationId !== String(args.organizationId)) {
+      throw new Error("Saved view not found");
+    }
+
+    const isOwner = view.createdBy === String(authResult.userId);
+    const isAdmin = authResult.role === "owner" || authResult.role === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new Error("Not authorized to delete this view");
+    }
+
+    await db.delete("savedViews", args.viewId);
+    return args.viewId;
+  },
+});
+
+export const reorder = action({
+  args: {
+    organizationId: v.id("organizations"),
+    viewIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
 
     for (let i = 0; i < args.viewIds.length; i++) {
-      const view = await ctx.db.get(args.viewIds[i]);
-      if (!view || view.organizationId !== args.organizationId) {
+      const view = await db.get("savedViews", args.viewIds[i]);
+      if (!view || view.organizationId !== String(args.organizationId)) {
         throw new Error("Saved view not found");
       }
-      await ctx.db.patch(args.viewIds[i], { order: i, updatedAt: Date.now() });
+      await db.patch("savedViews", args.viewIds[i], { order: i, updatedAt: Date.now() });
     }
 
     return true;

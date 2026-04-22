@@ -1,15 +1,12 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
+import { Id } from "./_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeNoteRef = internal.supabase.notes.writeNoteToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateNoteRef = internal.supabase.notes.updateNoteInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteNoteRef = internal.supabase.notes.deleteNoteFromSupabase;
+// Dual-write refs removed — Supabase is now primary for note writes
 
 export const listByEntity = query({
   args: {
@@ -65,45 +62,79 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     entityId: v.string(),
     content: v.string(),
-    parentNoteId: v.optional(v.id("notes")),
+    parentNoteId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const now = Date.now();
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const noteId = await ctx.db.insert("notes", {
-      organizationId: args.organizationId,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    const noteId = await db.insert("notes", {
+      organizationId: String(args.organizationId),
       entityType: args.entityType,
       entityId: args.entityId,
       content: args.content,
-      parentNoteId: args.parentNoteId,
-      createdBy: user._id,
+      parentNoteId: args.parentNoteId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.notes._createSideEffects, {
+        noteId,
+        organizationId: args.organizationId,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        content: args.content,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[notes.create] Side effects FAILED for note", noteId, ":", e);
+    }
+
+    return noteId;
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    noteId: v.string(),
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    content: v.string(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "note_added",
-      performedBy: user._id,
+      performedBy: args.createdBy as Id<"users">,
       module: "crm",
       summary: "Added a note",
-      occurredAt: now,
+      occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: user._id,
+        userId: args.createdBy as Id<"users">,
       },
       payload: {
-        noteId,
+        noteId: args.noteId,
         noteContent: args.content,
       },
-      eventKey: `crm:note:${args.entityType}:${args.entityId}:${noteId}:note_added`,
+      eventKey: `crm:note:${args.entityType}:${args.entityId}:${args.noteId}:note_added`,
       targets: [
         {
           entityType: args.entityType,
@@ -111,159 +142,202 @@ export const create = mutation({
         },
       ],
     });
-
-    // Dual-write: replicate new note to Supabase
-    await ctx.scheduler.runAfter(0, writeNoteRef, {
-      noteId: noteId as string,
-      organizationId: args.organizationId as string,
-      entityType: args.entityType,
-      entityId: args.entityId,
-      content: args.content,
-      parentNoteId: args.parentNoteId as string | undefined,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return noteId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    noteId: v.id("notes"),
+    noteId: v.string(),
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const note = await ctx.db.get(args.noteId);
-    if (!note || note.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const note = await db.get("notes", args.noteId);
+    if (!note || String(note.organizationId) !== String(args.organizationId)) {
       throw new Error("Note not found");
     }
 
-    await ctx.db.patch(args.noteId, {
+    const now = Date.now();
+    await db.patch("notes", args.noteId, {
       content: args.content,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
-    // Dual-write: replicate update to Supabase
-    await ctx.scheduler.runAfter(0, updateNoteRef, {
-      noteId: args.noteId as string,
-      organizationId: args.organizationId as string,
-      content: args.content,
-      updatedAt: Date.now(),
-    });
+    try {
+      await ctx.runMutation(internal.notes._updateSideEffects, {
+        noteId: args.noteId,
+        organizationId: args.organizationId,
+        entityType: String(note.entityType),
+        entityId: String(note.entityId),
+        content: args.content,
+        updatedBy: String(authResult.userId),
+        updatedAt: now,
+      });
+    } catch (e) {
+      console.error("[notes.update] Side effects FAILED for note", args.noteId, ":", e);
+    }
 
+    return args.noteId;
+  },
+});
+
+export const _updateSideEffects = internalMutation({
+  args: {
+    noteId: v.string(),
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    content: v.string(),
+    updatedBy: v.string(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "updated",
-      performedBy: user._id,
+      performedBy: args.updatedBy as Id<"users">,
       module: "crm",
       summary: "Updated a note",
-      occurredAt: Date.now(),
+      occurredAt: args.updatedAt,
       actor: {
         type: "user",
-        userId: user._id,
+        userId: args.updatedBy as Id<"users">,
       },
       payload: {
         noteId: args.noteId,
         noteContent: args.content,
       },
-      eventKey: `crm:note:${note.entityType}:${note.entityId}:${args.noteId}:updated`,
+      eventKey: `crm:note:${args.entityType}:${args.entityId}:${args.noteId}:updated`,
       targets: [
         {
-          entityType: note.entityType,
-          entityId: note.entityId,
+          entityType: args.entityType,
+          entityId: args.entityId,
         },
       ],
     });
+  },
+});
+
+export const remove = action({
+  args: {
+    organizationId: v.id("organizations"),
+    noteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+
+    const note = await db.get("notes", args.noteId);
+    if (!note || String(note.organizationId) !== String(args.organizationId)) {
+      throw new Error("Note not found");
+    }
+
+    // Delete child notes (replies) via internalMutation
+    await ctx.runMutation(internal.notes._removeChildNotes, {
+      organizationId: args.organizationId,
+      parentNoteId: args.noteId,
+    });
+
+    // Delete from Supabase
+    await db.delete("notes", args.noteId);
+
+    try {
+      await ctx.runMutation(internal.notes._removeSideEffects, {
+        noteId: args.noteId,
+        organizationId: args.organizationId,
+        entityType: String(note.entityType),
+        entityId: String(note.entityId),
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[notes.remove] Side effects FAILED for note", args.noteId, ":", e);
+    }
 
     return args.noteId;
   },
 });
 
-export const remove = mutation({
+export const _removeChildNotes = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    noteId: v.id("notes"),
+    parentNoteId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-
-    const note = await ctx.db.get(args.noteId);
-    if (!note || note.organizationId !== args.organizationId) {
-      throw new Error("Note not found");
-    }
-
-    // Delete child notes (replies)
     const children = await ctx.db
       .query("notes")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
-    const childNotes = children.filter((n) => n.parentNoteId === args.noteId);
+    const childNotes = children.filter((n) => n.parentNoteId === args.parentNoteId as any);
     for (const child of childNotes) {
       await ctx.db.delete(child._id);
     }
+  },
+});
 
-    // Dual-write: schedule delete from Supabase BEFORE removing from Convex
-    await ctx.scheduler.runAfter(0, deleteNoteRef, {
-      noteId: args.noteId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.noteId);
-
+export const _removeSideEffects = internalMutation({
+  args: {
+    noteId: v.string(),
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "deleted",
-      performedBy: user._id,
+      performedBy: args.deletedBy as Id<"users">,
       module: "crm",
       summary: "Deleted a note",
       occurredAt: Date.now(),
       actor: {
         type: "user",
-        userId: user._id,
+        userId: args.deletedBy as Id<"users">,
       },
       payload: {
         noteId: args.noteId,
       },
-      eventKey: `crm:note:${note.entityType}:${note.entityId}:${args.noteId}:deleted`,
+      eventKey: `crm:note:${args.entityType}:${args.entityId}:${args.noteId}:deleted`,
       targets: [
         {
-          entityType: note.entityType,
-          entityId: note.entityId,
+          entityType: args.entityType,
+          entityId: args.entityId,
         },
       ],
     });
-
-    return args.noteId;
   },
 });
 
-export const togglePin = mutation({
+export const togglePin = action({
   args: {
     organizationId: v.id("organizations"),
-    noteId: v.id("notes"),
+    noteId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
-    const note = await ctx.db.get(args.noteId);
-    if (!note || note.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const note = await db.get("notes", args.noteId);
+    if (!note || String(note.organizationId) !== String(args.organizationId)) {
       throw new Error("Note not found");
     }
 
-    await ctx.db.patch(args.noteId, {
-      isPinned: !note.isPinned,
-      updatedAt: Date.now(),
-    });
-
-    // Dual-write: replicate pin toggle to Supabase
-    await ctx.scheduler.runAfter(0, updateNoteRef, {
-      noteId: args.noteId as string,
-      organizationId: args.organizationId as string,
+    await db.patch("notes", args.noteId, {
       isPinned: !note.isPinned,
       updatedAt: Date.now(),
     });

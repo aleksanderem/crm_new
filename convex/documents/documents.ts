@@ -1,10 +1,15 @@
-import { query, mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { v } from "convex/values";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
+import { Id } from "../_generated/dataModel";
+import { checkPermission } from "../_helpers/permissions";
+
+// Dual-write refs removed — Supabase is now primary for document writes
 
 export const listAll = query({
   args: {
@@ -117,10 +122,10 @@ export const listByStatus = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
     title: v.string(),
     responseData: v.string(),
     entityType: v.string(),
@@ -131,60 +136,52 @@ export const create = mutation({
     signingTokenExpiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-
-    // Verify template exists and belongs to this org
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId)
-      throw new Error("Template not found");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
 
     const now = Date.now();
-    const docId = await ctx.db.insert("formDocuments", {
-      ...args,
-      createdBy: user._id,
+    const db = createSupabaseDb();
+
+    const docId = await db.insert("formDocuments", {
+      organizationId: String(args.organizationId),
+      templateId: args.templateId,
+      title: args.title,
+      responseData: args.responseData,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      scopeEntities: args.scopeEntities ?? null,
+      status: args.status,
+      signingToken: args.signingToken ?? null,
+      signingTokenExpiresAt: args.signingTokenExpiresAt ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
-
-    // Dual-write: replicate new form document to Supabase
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.formDocuments.writeFormDocumentToSupabase,
-      {
-        documentId: docId as string,
-        organizationId: args.organizationId as string,
-        templateId: args.templateId as string,
-        title: args.title,
-        responseData: args.responseData,
-        entityType: args.entityType,
-        entityId: args.entityId,
-        scopeEntities: args.scopeEntities,
-        status: args.status,
-        signingToken: args.signingToken,
-        signingTokenExpiresAt: args.signingTokenExpiresAt,
-        createdBy: user._id as string,
-        createdAt: now,
-        updatedAt: now,
-      },
-    );
 
     return docId;
   },
 });
 
-export const updateStatus = mutation({
+export const updateStatus = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId)
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
 
-    await ctx.db.patch(args.documentId, {
+    await db.patch("formDocuments", args.documentId, {
       status: args.status,
       updatedAt: Date.now(),
     });
@@ -192,21 +189,26 @@ export const updateStatus = mutation({
   },
 });
 
-export const updateResponseData = mutation({
+export const updateResponseData = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
     responseData: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId)
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
     if (doc.status !== "draft")
       throw new Error("Can only update response data on draft documents");
 
-    await ctx.db.patch(args.documentId, {
+    await db.patch("formDocuments", args.documentId, {
       responseData: args.responseData,
       updatedAt: Date.now(),
     });
@@ -217,7 +219,7 @@ export const updateResponseData = mutation({
 // Submit form field values for document-type templates (public, token-based).
 // Transitions status from "draft" → "pending_signature" after storing the
 // rendered HTML and form field values.
-export const submitDocumentFormFields = mutation({
+export const submitDocumentFormFields = action({
   args: {
     token: v.string(),
     renderedHtml: v.string(),
@@ -225,29 +227,27 @@ export const submitDocumentFormFields = mutation({
     scopeData: v.optional(v.string()), // JSON map of scope/variable data for re-rendering
   },
   handler: async (ctx, args) => {
-    const doc = await ctx.db
-      .query("formDocuments")
-      .withIndex("by_signingToken", (q) => q.eq("signingToken", args.token))
+    const db = createSupabaseDb();
+
+    const doc = await db.query("formDocuments")
+      .eq("signingToken", args.token)
       .first();
     if (!doc) throw new Error("Document not found");
-    if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
+    if (doc.signingTokenExpiresAt && (doc.signingTokenExpiresAt as number) < Date.now())
       throw new Error("Signing link expired");
     if (doc.status !== "draft" && doc.status !== "pending_signature")
       throw new Error("Document is not in a fillable status");
 
-    // Preserve scope data: prefer frontend-supplied, fall back to extracting
-    // from the current responseData (which IS the scope data before first submit)
+    // Preserve scope data
     let scopeData: Record<string, unknown> | undefined;
     if (args.scopeData) {
       scopeData = JSON.parse(args.scopeData);
     } else {
       try {
-        const existing = JSON.parse(doc.responseData);
-        // If no html yet, current responseData is the raw scope data map
+        const existing = JSON.parse(doc.responseData as string);
         if (!existing.html) {
           scopeData = existing;
         } else if (existing.scopeData) {
-          // Already submitted before — reuse stored scope data
           scopeData = existing.scopeData as Record<string, unknown>;
         }
       } catch {
@@ -263,34 +263,36 @@ export const submitDocumentFormFields = mutation({
       responseObj.scopeData = scopeData;
     }
 
-    await ctx.db.patch(doc._id, {
+    await db.patch("formDocuments", doc._id as string, {
       responseData: JSON.stringify(responseObj),
       status: "pending_signature",
       updatedAt: Date.now(),
     });
-    return doc._id;
+    return doc._id as string;
   },
 });
 
 // ---------------------------------------------------------------------------
 // Employee fills form fields internally (authenticated).
-// Stores rendered HTML + form field values, transitions draft → pending_signature,
-// and sends signing email to the patient. Used for after_completion documents
-// where the employee fills first, then the client signs.
 // ---------------------------------------------------------------------------
 
-export const submitEmployeeFormFields = mutation({
+export const submitEmployeeFormFields = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
     renderedHtml: v.string(),
-    formFieldValues: v.string(), // JSON map of field values
-    scopeData: v.optional(v.string()), // JSON map of scope data
+    formFieldValues: v.string(),
+    scopeData: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId)
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
     if (doc.status !== "draft")
       throw new Error("Document is not in draft status");
@@ -301,7 +303,7 @@ export const submitEmployeeFormFields = mutation({
       scopeData = JSON.parse(args.scopeData);
     } else {
       try {
-        const existing = JSON.parse(doc.responseData);
+        const existing = JSON.parse(doc.responseData as string);
         if (!existing.html) {
           scopeData = existing;
         } else if (existing.scopeData) {
@@ -320,63 +322,23 @@ export const submitEmployeeFormFields = mutation({
       responseObj.scopeData = scopeData;
     }
 
-    await ctx.db.patch(args.documentId, {
+    await db.patch("formDocuments", args.documentId, {
       responseData: JSON.stringify(responseObj),
       status: "pending_signature",
       updatedAt: Date.now(),
     });
 
-    // Send signing email to patient now that employee has filled the form.
-    // Look up patient from the linked entity (appointment or patient).
+    // Send signing email to patient — delegate to side effects
     if (doc.signingToken) {
-      let recipientEmail: string | undefined;
-      let recipientName: string | undefined;
-
-      if (doc.entityType === "appointment" && doc.entityId) {
-        const appointment = await ctx.db.get(doc.entityId as any);
-        if (appointment && typeof appointment === "object") {
-          const appt = appointment as { patientId?: any };
-          if (appt.patientId) {
-            const patient = await ctx.db.get(appt.patientId);
-            if (patient && typeof patient === "object") {
-              const p = patient as {
-                email?: string;
-                firstName?: string;
-                lastName?: string;
-              };
-              recipientEmail = p.email;
-              recipientName = [p.firstName, p.lastName]
-                .filter(Boolean)
-                .join(" ") || undefined;
-            }
-          }
-        }
-      } else if (doc.entityType === "patient" && doc.entityId) {
-        const patient = await ctx.db.get(doc.entityId as any);
-        if (patient && typeof patient === "object") {
-          const p = patient as {
-            email?: string;
-            firstName?: string;
-            lastName?: string;
-          };
-          recipientEmail = p.email;
-          recipientName = [p.firstName, p.lastName]
-            .filter(Boolean)
-            .join(" ") || undefined;
-        }
-      }
-
-      if (recipientEmail) {
-        await ctx.scheduler.runAfter(
-          0,
-          // @ts-ignore — deep type instantiation under app tsconfig
-          internal.documents.signing.sendSigningEmailInternal,
-          {
-            documentId: args.documentId,
-            recipientEmail,
-            recipientName,
-          },
-        );
+      try {
+        await ctx.runMutation(internal.documents.documents._submitEmployeeSideEffects, {
+          documentId: args.documentId,
+          entityType: doc.entityType as string,
+          entityId: doc.entityId as string,
+          signingToken: doc.signingToken as string,
+        });
+      } catch (e) {
+        console.error("[documents.submitEmployeeFormFields] Side effects FAILED:", e);
       }
     }
 
@@ -384,23 +346,71 @@ export const submitEmployeeFormFields = mutation({
   },
 });
 
-export const recordSignature = mutation({
+export const _submitEmployeeSideEffects = internalMutation({
+  args: {
+    documentId: v.string(),
+    entityType: v.string(),
+    entityId: v.string(),
+    signingToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    let recipientEmail: string | undefined;
+    let recipientName: string | undefined;
+
+    if (args.entityType === "appointment" && args.entityId) {
+      const appointment = await ctx.db.get(args.entityId as any);
+      if (appointment && typeof appointment === "object") {
+        const appt = appointment as { patientId?: any };
+        if (appt.patientId) {
+          const patient = await ctx.db.get(appt.patientId);
+          if (patient && typeof patient === "object") {
+            const p = patient as { email?: string; firstName?: string; lastName?: string };
+            recipientEmail = p.email;
+            recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+          }
+        }
+      }
+    } else if (args.entityType === "patient" && args.entityId) {
+      const patient = await ctx.db.get(args.entityId as any);
+      if (patient && typeof patient === "object") {
+        const p = patient as { email?: string; firstName?: string; lastName?: string };
+        recipientEmail = p.email;
+        recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+      }
+    }
+
+    if (recipientEmail) {
+      await ctx.scheduler.runAfter(
+        0,
+        // @ts-ignore — deep type instantiation under app tsconfig
+        internal.documents.signing.sendSigningEmailInternal,
+        {
+          documentId: args.documentId as Id<"formDocuments">,
+          recipientEmail,
+          recipientName,
+        },
+      );
+    }
+  },
+});
+
+export const recordSignature = action({
   args: {
     token: v.string(),
     signatureData: v.string(),
     signedByName: v.string(),
     signedByEmail: v.optional(v.string()),
     signedByIp: v.optional(v.string()),
-    // For document-type templates: store rendered HTML at signing time
     resolvedHtml: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const doc = await ctx.db
-      .query("formDocuments")
-      .withIndex("by_signingToken", (q) => q.eq("signingToken", args.token))
+    const db = createSupabaseDb();
+
+    const doc = await db.query("formDocuments")
+      .eq("signingToken", args.token)
       .first();
     if (!doc) throw new Error("Document not found");
-    if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
+    if (doc.signingTokenExpiresAt && (doc.signingTokenExpiresAt as number) < Date.now())
       throw new Error("Signing link expired");
     if (doc.status !== "pending_signature")
       throw new Error("Document is not awaiting signature");
@@ -411,16 +421,15 @@ export const recordSignature = mutation({
       signatureData: args.signatureData,
       signedAt: now,
       signedByName: args.signedByName,
-      signedByEmail: args.signedByEmail,
-      signedByIp: args.signedByIp,
+      signedByEmail: args.signedByEmail ?? null,
+      signedByIp: args.signedByIp ?? null,
       updatedAt: now,
     };
 
     // For document-type templates without form fields: store the resolved HTML
-    // rendered client-side so it's available for later viewing
     if (args.resolvedHtml) {
       try {
-        const existing = JSON.parse(doc.responseData);
+        const existing = JSON.parse(doc.responseData as string);
         if (!existing.html) {
           patch.responseData = JSON.stringify({
             ...existing,
@@ -436,8 +445,8 @@ export const recordSignature = mutation({
       }
     }
 
-    await ctx.db.patch(doc._id, patch);
-    return doc._id;
+    await db.patch("formDocuments", doc._id as string, patch);
+    return doc._id as string;
   },
 });
 
@@ -445,29 +454,54 @@ export const recordSignature = mutation({
 // Resend signing email (authenticated — staff action from appointment view)
 // ---------------------------------------------------------------------------
 
-export const resendSigningEmail = mutation({
+export const resendSigningEmail = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId)
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
     if (doc.status !== "draft" && doc.status !== "pending_signature")
       throw new Error("Document is not awaiting signature");
     if (!doc.signingToken)
       throw new Error("Document has no signing token");
 
-    // Look up patient email from the linked entity
+    // Delegate email sending to side effects (needs Convex db reads for patient lookup)
+    try {
+      await ctx.runMutation(internal.documents.documents._resendSigningSideEffects, {
+        documentId: args.documentId,
+        entityType: doc.entityType as string,
+        entityId: doc.entityId as string,
+      });
+    } catch (e) {
+      console.error("[documents.resendSigningEmail] Side effects FAILED:", e);
+      throw e;
+    }
+
+    return { sent: true };
+  },
+});
+
+export const _resendSigningSideEffects = internalMutation({
+  args: {
+    documentId: v.string(),
+    entityType: v.string(),
+    entityId: v.string(),
+  },
+  handler: async (ctx, args) => {
     let recipientEmail: string | undefined;
     let recipientName: string | undefined;
 
-    if (doc.entityType === "appointment" && doc.entityId) {
-      const appointment = await ctx.db.get(
-        doc.entityId as any,
-      );
+    if (args.entityType === "appointment" && args.entityId) {
+      const appointment = await ctx.db.get(args.entityId as any);
       if (appointment && typeof appointment === "object") {
         const appt = appointment as { patientId?: any };
         if (appt.patientId) {
@@ -479,8 +513,8 @@ export const resendSigningEmail = mutation({
           }
         }
       }
-    } else if (doc.entityType === "patient" && doc.entityId) {
-      const patient = await ctx.db.get(doc.entityId as any);
+    } else if (args.entityType === "patient" && args.entityId) {
+      const patient = await ctx.db.get(args.entityId as any);
       if (patient && typeof patient === "object") {
         const p = patient as { email?: string; firstName?: string; lastName?: string };
         recipientEmail = p.email;
@@ -496,40 +530,44 @@ export const resendSigningEmail = mutation({
       0,
       internal.documents.signing.sendSigningEmailInternal,
       {
-        documentId: args.documentId,
+        documentId: args.documentId as Id<"formDocuments">,
         recipientEmail,
         recipientName,
       },
     );
-
-    return { sent: true };
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "documents",
-      "delete",
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "documents",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId)) {
       throw new Error("Document not found");
     }
-    if (perm.scope === "own" && doc.createdBy !== user._id) {
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    await ctx.db.delete(args.documentId);
+    await db.delete("formDocuments", args.documentId);
     return args.documentId;
   },
 });
@@ -538,11 +576,6 @@ export const remove = mutation({
 // Patient-portal query (token-based auth, no org context)
 // ---------------------------------------------------------------------------
 
-/**
- * List formDocuments accessible to a patient through the portal.
- * Looks up documents linked to the patient entity, plus documents linked to
- * any of the patient's appointments.
- */
 export const listByPatientToken = query({
   args: { tokenHash: v.string() },
   handler: async (ctx, args) => {

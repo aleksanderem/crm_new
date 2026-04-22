@@ -1,17 +1,14 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { internal } from "./_generated/api";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
+import { Id } from "./_generated/dataModel";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeContactRef = internal.supabase.contacts.writeContactToSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const updateContactRef = internal.supabase.contacts.updateContactInSupabase;
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const deleteContactRef = internal.supabase.contacts.deleteContactFromSupabase;
+// Dual-write refs removed — Supabase is now primary for contact writes
 
 export const list = query({
   args: {
@@ -97,7 +94,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const create = action({
   args: {
     organizationId: v.id("organizations"),
     firstName: v.string(),
@@ -109,36 +106,93 @@ export const create = mutation({
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.array(v.object({
-      fieldDefinitionId: v.id("customFieldDefinitions"),
+      fieldDefinitionId: v.string(),
       value: v.any(),
     }))),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "contacts", "create");
-    if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
-    const { customFields, ...contactData } = args;
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "contacts",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
 
-    const contactId = await ctx.db.insert("contacts", {
-      ...contactData,
-      createdBy: user._id,
+    const now = Date.now();
+    const db = createSupabaseDb();
+
+    // --- INSERT contact directly to Supabase ---
+    const contactId = await db.insert("contacts", {
+      organizationId: String(args.organizationId),
+      firstName: args.firstName,
+      lastName: args.lastName ?? null,
+      email: args.email ?? null,
+      phone: args.phone ?? null,
+      title: args.title ?? null,
+      avatarUrl: args.avatarUrl ?? null,
+      notes: args.notes ?? null,
+      tags: args.tags ?? null,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
-    if (customFields) {
-      for (const field of customFields) {
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.contacts._createSideEffects, {
+        contactId,
+        organizationId: args.organizationId,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        customFields: args.customFields,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    } catch (e) {
+      console.error("[contacts.create] Side effects FAILED for contact", contactId, ":", e);
+    }
+
+    return contactId;
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    contactId: v.string(),
+    organizationId: v.id("organizations"),
+    firstName: v.string(),
+    lastName: v.optional(v.string()),
+    customFields: v.optional(v.array(v.object({
+      fieldDefinitionId: v.string(),
+      value: v.any(),
+    }))),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const createdByUserId = args.createdBy as Id<"users">;
+
+    // Insert custom field values into Convex
+    if (args.customFields) {
+      for (const field of args.customFields) {
         await ctx.db.insert("customFieldValues", {
           organizationId: args.organizationId,
-          fieldDefinitionId: field.fieldDefinitionId,
+          fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
           entityType: "contact",
-          entityId: contactId,
+          entityId: args.contactId as Id<"contacts">,
           value: field.value,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: args.createdAt,
+          updatedAt: args.createdAt,
         });
       }
     }
@@ -146,39 +200,18 @@ export const create = mutation({
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: contactId,
+      entityId: args.contactId as Id<"contacts">,
       action: "created",
       description: `Created contact "${args.firstName}${args.lastName ? ` ${args.lastName}` : ""}"`,
-      performedBy: user._id,
+      performedBy: createdByUserId,
     });
-
-    // Dual-write: replicate new contact to Supabase
-    await ctx.scheduler.runAfter(0, writeContactRef, {
-      contactId: contactId as string,
-      organizationId: args.organizationId as string,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      email: args.email,
-      phone: args.phone,
-      title: args.title,
-      avatarUrl: args.avatarUrl,
-      notes: args.notes,
-      tags: args.tags,
-      tagIds: args.tagIds?.map((id) => id as string),
-      categoryId: args.categoryId as string | undefined,
-      createdBy: user._id as string,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return contactId;
   },
 });
 
-export const update = mutation({
+export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    contactId: v.id("contacts"),
+    contactId: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -188,39 +221,86 @@ export const update = mutation({
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.array(v.object({
-      fieldDefinitionId: v.id("customFieldDefinitions"),
+      fieldDefinitionId: v.string(),
       value: v.any(),
     }))),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "contacts", "edit");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "contacts",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const now = Date.now();
 
-    const contact = await ctx.db.get(args.contactId);
-    if (!contact || contact.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read contact from Supabase ---
+    const contact = await db.get("contacts", args.contactId);
+    if (!contact || String(contact.organizationId) !== String(args.organizationId)) {
       throw new Error("Contact not found");
     }
-    if (perm.scope === "own" && contact.createdBy !== user._id) {
+    if (perm.scope === "own" && String(contact.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    // --- Build updates and PATCH to Supabase ---
     const { organizationId, contactId, customFields, ...updates } = args;
-    await ctx.db.patch(contactId, { ...updates, updatedAt: now });
+    await db.patch("contacts", contactId, { ...updates, updatedAt: Date.now() });
 
-    if (customFields) {
-      for (const field of customFields) {
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.contacts._updateSideEffects, {
+        contactId,
+        organizationId,
+        firstName: (contact.firstName as string) ?? "",
+        customFields,
+        updatedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[contacts.update] Side effects FAILED for contact", contactId, ":", e);
+    }
+
+    return contactId;
+  },
+});
+
+export const _updateSideEffects = internalMutation({
+  args: {
+    contactId: v.string(),
+    organizationId: v.id("organizations"),
+    firstName: v.string(),
+    customFields: v.optional(v.array(v.object({
+      fieldDefinitionId: v.string(),
+      value: v.any(),
+    }))),
+    updatedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const updatedByUserId = args.updatedBy as Id<"users">;
+    const now = Date.now();
+
+    // Update custom field values in Convex
+    if (args.customFields) {
+      for (const field of args.customFields) {
         const existing = await ctx.db
           .query("customFieldValues")
           .withIndex("by_orgEntityField", (q) =>
             q
-              .eq("organizationId", organizationId)
+              .eq("organizationId", args.organizationId)
               .eq("entityType", "contact")
-              .eq("entityId", contactId)
-              .eq("fieldDefinitionId", field.fieldDefinitionId)
+              .eq("entityId", args.contactId as Id<"contacts">)
+              .eq("fieldDefinitionId", field.fieldDefinitionId as Id<"customFieldDefinitions">)
           )
           .unique();
 
@@ -228,10 +308,10 @@ export const update = mutation({
           await ctx.db.patch(existing._id, { value: field.value, updatedAt: now });
         } else {
           await ctx.db.insert("customFieldValues", {
-            organizationId,
-            fieldDefinitionId: field.fieldDefinitionId,
+            organizationId: args.organizationId,
+            fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
             entityType: "contact",
-            entityId: contactId,
+            entityId: args.contactId as Id<"contacts">,
             value: field.value,
             createdAt: now,
             updatedAt: now,
@@ -241,63 +321,82 @@ export const update = mutation({
     }
 
     await logActivity(ctx, {
-      organizationId,
+      organizationId: args.organizationId,
       entityType: "contact",
-      entityId: contactId,
+      entityId: args.contactId as Id<"contacts">,
       action: "updated",
-      description: `Updated contact "${contact.firstName}"`,
-      performedBy: user._id,
+      description: `Updated contact "${args.firstName}"`,
+      performedBy: updatedByUserId,
     });
-
-    // Dual-write: replicate updated contact to Supabase
-    const updatedContact = await ctx.db.get(contactId);
-    if (updatedContact) {
-      await ctx.scheduler.runAfter(0, updateContactRef, {
-        contactId: contactId as string,
-        organizationId: organizationId as string,
-        firstName: updatedContact.firstName,
-        lastName: updatedContact.lastName,
-        email: updatedContact.email,
-        phone: updatedContact.phone,
-        title: updatedContact.title,
-        avatarUrl: updatedContact.avatarUrl,
-        notes: updatedContact.notes,
-        tags: updatedContact.tags,
-        tagIds: updatedContact.tagIds?.map((id) => id as string),
-        categoryId: updatedContact.categoryId as string | undefined,
-        createdBy: updatedContact.createdBy as string,
-        createdAt: updatedContact.createdAt,
-        updatedAt: updatedContact.updatedAt,
-      });
-    }
-
-    return contactId;
   },
 });
 
-export const remove = mutation({
+export const remove = action({
   args: {
     organizationId: v.id("organizations"),
-    contactId: v.id("contacts"),
+    contactId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "contacts", "delete");
+    // --- Auth + permissions (via internal queries) ---
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "contacts",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const contact = await ctx.db.get(args.contactId);
-    if (!contact || contact.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    // --- Read contact from Supabase ---
+    const contact = await db.get("contacts", args.contactId);
+    if (!contact || String(contact.organizationId) !== String(args.organizationId)) {
       throw new Error("Contact not found");
     }
-    if (perm.scope === "own" && contact.createdBy !== user._id) {
+    if (perm.scope === "own" && String(contact.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // Delete custom field values
+    // --- DELETE from Supabase ---
+    await db.delete("contacts", args.contactId);
+
+    // --- Delegate Convex-only side effects ---
+    try {
+      await ctx.runMutation(internal.contacts._removeSideEffects, {
+        contactId: args.contactId,
+        organizationId: args.organizationId,
+        firstName: (contact.firstName as string) ?? "",
+        deletedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[contacts.remove] Side effects FAILED for contact", args.contactId, ":", e);
+    }
+
+    return args.contactId;
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    contactId: v.string(),
+    organizationId: v.id("organizations"),
+    firstName: v.string(),
+    deletedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const deletedByUserId = args.deletedBy as Id<"users">;
+
+    // Delete custom field values from Convex
     const customValues = await ctx.db
       .query("customFieldValues")
       .withIndex("by_entity", (q) =>
-        q.eq("entityType", "contact").eq("entityId", args.contactId)
+        q.eq("entityType", "contact").eq("entityId", args.contactId as Id<"contacts">)
       )
       .collect();
     for (const cv of customValues) {
@@ -308,36 +407,26 @@ export const remove = mutation({
     const sourceRels = await ctx.db
       .query("objectRelationships")
       .withIndex("by_source", (q) =>
-        q.eq("sourceType", "contact").eq("sourceId", args.contactId)
+        q.eq("sourceType", "contact").eq("sourceId", args.contactId as Id<"contacts">)
       )
       .collect();
     const targetRels = await ctx.db
       .query("objectRelationships")
       .withIndex("by_target", (q) =>
-        q.eq("targetType", "contact").eq("targetId", args.contactId)
+        q.eq("targetType", "contact").eq("targetId", args.contactId as Id<"contacts">)
       )
       .collect();
     for (const rel of [...sourceRels, ...targetRels]) {
       await ctx.db.delete(rel._id);
     }
 
-    // Dual-write: delete contact from Supabase before removing from Convex
-    await ctx.scheduler.runAfter(0, deleteContactRef, {
-      contactId: args.contactId as string,
-      organizationId: args.organizationId as string,
-    });
-
-    await ctx.db.delete(args.contactId);
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: args.contactId,
+      entityId: args.contactId as Id<"contacts">,
       action: "deleted",
-      description: `Deleted contact "${contact.firstName}"`,
-      performedBy: user._id,
+      description: `Deleted contact "${args.firstName}"`,
+      performedBy: deletedByUserId,
     });
-
-    return args.contactId;
   },
 });

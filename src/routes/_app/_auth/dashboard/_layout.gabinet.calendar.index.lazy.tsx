@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
@@ -50,6 +50,7 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createLazyFileRoute(
@@ -116,7 +117,7 @@ function GabinetCalendarPage() {
   } | null>(null);
 
   // Mutations
-  const updateAppointment = useMutation(api.gabinet.appointments.update);
+  const updateAppointment = useAction(api.gabinet.appointments.update);
   const queryClient = useQueryClient();
 
   // DnD sensors
@@ -175,13 +176,11 @@ function GabinetCalendarPage() {
     return { startTs: s.getTime(), endTs: e.getTime() };
   }, [startDate, endDate]);
 
-  const { data: blockedTimeActivities } = useQuery(
-    convexQuery(api.scheduledActivities.listForCalendar, {
-      organizationId,
-      startDate: blockedTimeRange.startTs,
-      endDate: blockedTimeRange.endTs,
-      moduleFilter: "gabinet",
-    }),
+  const { data: blockedTimeActivities } = useSupabaseScheduledActivitiesByDateRange(
+    organizationId,
+    blockedTimeRange.startTs,
+    blockedTimeRange.endTs,
+    { moduleFilter: "gabinet" },
   );
 
   // Fetch employees for filter from Supabase

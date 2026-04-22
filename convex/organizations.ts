@@ -1,23 +1,52 @@
 import { internal } from "./_generated/api";
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { requireUser, verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
 import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeOrgRef = internal.supabase.organizations.writeOrganizationToSupabase;
-// @ts-ignore — TS2589
-const updateOrgRef = internal.supabase.organizations.updateOrganizationInSupabase;
-// @ts-ignore — TS2589
-const writeMembershipRef = internal.supabase.organizations.writeTeamMembershipToSupabase;
-// @ts-ignore — TS2589
-const updateMembershipRef = internal.supabase.organizations.updateTeamMembershipInSupabase;
-// @ts-ignore — TS2589
-const deleteMembershipRef = internal.supabase.organizations.deleteTeamMembershipFromSupabase;
+// organizations and teamMemberships are AUTH tables — STAY in Convex DB.
+// Supabase gets a copy for analytics/reporting.
 
-export const create = mutation({
+export const create = action({
+  args: {
+    name: v.string(),
+    slug: v.string(),
+    logo: v.optional(v.string()),
+    website: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Create org and membership in Convex DB (auth tables)
+    const orgId = await ctx.runMutation(internal.organizations._createOrgInternal, {
+      name: args.name,
+      slug: args.slug,
+      logo: args.logo,
+      website: args.website,
+    });
+
+    // Also write to Supabase
+    try {
+      const db = createSupabaseDb();
+      await db.insert("organizations", {
+        _id: orgId,
+        organizationId: orgId,
+        name: args.name,
+        slug: args.slug,
+        logo: args.logo ?? null,
+        website: args.website ?? null,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    } catch {
+      // Supabase write is best-effort
+    }
+
+    return orgId;
+  },
+});
+
+export const _createOrgInternal = internalMutation({
   args: {
     name: v.string(),
     slug: v.string(),
@@ -51,6 +80,7 @@ export const create = mutation({
       joinedAt: now,
     });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: orgId,
       entityType: "organization",
@@ -67,19 +97,7 @@ export const create = mutation({
       { organizationId: orgId, userId: user._id },
     );
 
-    // Dual-write: sync org + initial membership to Supabase
-    await ctx.scheduler.runAfter(0, writeOrgRef, {
-      organizationId: orgId as any,
-      name: args.name,
-      slug: args.slug,
-      ownerId: user._id as any,
-      logo: args.logo,
-      website: args.website,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return orgId;
+    return String(orgId);
   },
 });
 
@@ -112,7 +130,42 @@ export const getById = query({
   },
 });
 
-export const update = mutation({
+export const update = action({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    logo: v.optional(v.string()),
+    website: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Update in Convex DB (auth table)
+    await ctx.runMutation(internal.organizations._updateOrgInternal, {
+      organizationId: args.organizationId,
+      name: args.name,
+      slug: args.slug,
+      logo: args.logo,
+      website: args.website,
+    });
+
+    // Also update in Supabase
+    try {
+      const db = createSupabaseDb();
+      const updates: Record<string, unknown> = { updatedAt: Date.now() };
+      if (args.name !== undefined) updates.name = args.name;
+      if (args.slug !== undefined) updates.slug = args.slug;
+      if (args.logo !== undefined) updates.logo = args.logo;
+      if (args.website !== undefined) updates.website = args.website;
+      await db.patch("organizations", String(args.organizationId), updates);
+    } catch {
+      // Supabase write is best-effort
+    }
+
+    return args.organizationId;
+  },
+});
+
+export const _updateOrgInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     name: v.optional(v.string()),
@@ -136,6 +189,7 @@ export const update = mutation({
 
     await ctx.db.patch(organizationId, { ...updates, updatedAt: Date.now() });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId,
       entityType: "organization",
@@ -144,15 +198,6 @@ export const update = mutation({
       description: `Updated organization settings`,
       performedBy: user._id,
     });
-
-    // Dual-write: sync update to Supabase
-    await ctx.scheduler.runAfter(0, updateOrgRef, {
-      organizationId: organizationId as any,
-      ...updates,
-      updatedAt: Date.now(),
-    });
-
-    return organizationId;
   },
 });
 
@@ -182,7 +227,27 @@ export const getMembers = query({
   },
 });
 
-export const inviteMember = mutation({
+// teamMemberships are AUTH tables — stay in Convex DB
+export const inviteMember = action({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    role: orgRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const membershipId = await ctx.runMutation(
+      internal.organizations._inviteMemberInternal,
+      {
+        organizationId: args.organizationId,
+        userId: args.userId as any,
+        role: args.role,
+      },
+    );
+    return membershipId;
+  },
+});
+
+export const _inviteMemberInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     userId: v.id("users"),
@@ -191,7 +256,6 @@ export const inviteMember = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
 
-    // Check seat limit before adding member
     const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
       organizationId: args.organizationId,
     });
@@ -217,6 +281,7 @@ export const inviteMember = mutation({
       joinedAt: Date.now(),
     });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -226,21 +291,27 @@ export const inviteMember = mutation({
       performedBy: user._id,
     });
 
-    // Dual-write: sync membership to Supabase
-    await ctx.scheduler.runAfter(0, writeMembershipRef, {
-      membershipId: membershipId as any,
-      userId: args.userId as any,
-      organizationId: args.organizationId as any,
-      role: args.role,
-      invitedBy: user._id as any,
-      joinedAt: Date.now(),
-    });
-
-    return membershipId;
+    return String(membershipId);
   },
 });
 
-export const updateMemberRole = mutation({
+export const updateMemberRole = action({
+  args: {
+    organizationId: v.id("organizations"),
+    membershipId: v.string(),
+    role: orgRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.organizations._updateMemberRoleInternal, {
+      organizationId: args.organizationId,
+      membershipId: args.membershipId as any,
+      role: args.role,
+    });
+    return args.membershipId;
+  },
+});
+
+export const _updateMemberRoleInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     membershipId: v.id("teamMemberships"),
@@ -259,6 +330,7 @@ export const updateMemberRole = mutation({
 
     await ctx.db.patch(args.membershipId, { role: args.role });
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -267,18 +339,24 @@ export const updateMemberRole = mutation({
       description: `Updated member role to "${args.role}"`,
       performedBy: user._id,
     });
+  },
+});
 
-    // Dual-write: sync role update to Supabase
-    await ctx.scheduler.runAfter(0, updateMembershipRef, {
+export const removeMember = action({
+  args: {
+    organizationId: v.id("organizations"),
+    membershipId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.organizations._removeMemberInternal, {
+      organizationId: args.organizationId,
       membershipId: args.membershipId as any,
-      role: args.role,
     });
-
     return args.membershipId;
   },
 });
 
-export const removeMember = mutation({
+export const _removeMemberInternal = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     membershipId: v.id("teamMemberships"),
@@ -294,14 +372,9 @@ export const removeMember = mutation({
       throw new Error("Cannot remove the organization owner");
     }
 
-    // Dual-write: schedule delete BEFORE ctx.db.delete (Knowledge Pattern #4)
-    await ctx.scheduler.runAfter(0, deleteMembershipRef, {
-      membershipId: args.membershipId as any,
-      organizationId: args.organizationId as any,
-    });
-
     await ctx.db.delete(args.membershipId);
 
+    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -310,8 +383,6 @@ export const removeMember = mutation({
       description: `Removed a member from the organization`,
       performedBy: user._id,
     });
-
-    return args.membershipId;
   },
 });
 

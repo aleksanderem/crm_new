@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexAction } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Logo } from "@/ui/logo";
@@ -57,7 +57,7 @@ function SetupWizard() {
   );
 
   const { mutateAsync: completeSetup } = useMutation({
-    mutationFn: useConvexMutation(api.gabinet.onboarding.completeSetup),
+    mutationFn: useConvexAction(api.gabinet.onboarding.completeSetup),
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

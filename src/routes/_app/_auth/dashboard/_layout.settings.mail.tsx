@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -62,8 +62,8 @@ function MailSettings() {
 
   const { data: providers } = useSupabaseMailProvidersList(organizationId);
 
-  const removeProvider = useMutation(api.mailProviders.remove);
-  const setDefault = useMutation(api.mailProviders.setDefault);
+  const removeProvider = useAction(api.mailProviders.remove);
+  const setDefault = useAction(api.mailProviders.setDefault);
 
   const handleEdit = (provider: MailProvider) => {
     setEditingProvider(provider);

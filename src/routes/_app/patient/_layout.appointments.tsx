@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,7 @@ function PatientAppointments() {
     convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash }),
   );
 
-  const requestReschedule = useMutation(
+  const requestReschedule = useAction(
     api.gabinet.patientPortal.requestReschedule,
   );
 
@@ -102,7 +102,7 @@ function PatientAppointments() {
     try {
       await requestReschedule({
         tokenHash,
-        appointmentId: rescheduleAppt._id,
+        appointmentId: rescheduleAppt._id as string,
         requestedDate,
         requestedTime,
         reason: reason || undefined,

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -44,7 +44,7 @@ function NewAutomationRulePage() {
   const { organizationId } = useOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createRule = useMutation(api.automation.createRule);
+  const createRule = useAction(api.automation.createRule);
   const queryClient = useQueryClient();
 
   const {

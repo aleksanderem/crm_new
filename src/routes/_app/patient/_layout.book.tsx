@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ function PatientBooking() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const bookMutation = useMutation(api.gabinet.patientPortal.bookFromPortal);
+  const bookMutation = useAction(api.gabinet.patientPortal.bookFromPortal);
 
   const { data: treatments } = useQuery(
     convexQuery(api.gabinet.patientPortal.getBookableTreatments, { tokenHash }),
@@ -71,13 +71,22 @@ function PatientBooking() {
     selectedDate &&
     selectedTreatment
   );
+  const getPublicSlots = useAction(api.gabinet.patientPortal.getPublicAvailableSlots);
   const { data: slots } = useQuery({
-    ...convexQuery(api.gabinet.patientPortal.getPublicAvailableSlots, {
+    queryKey: [
+      "gabinet.publicAvailableSlots",
       tokenHash,
-      employeeId: selectedEmployee?.userId ?? ("" as Id<"users">),
-      date: dateStr || "1970-01-01",
-      duration: selectedTreatment?.duration ?? 0,
-    }),
+      selectedEmployee?.userId,
+      dateStr,
+      selectedTreatment?.duration,
+    ],
+    queryFn: () =>
+      getPublicSlots({
+        tokenHash,
+        employeeId: (selectedEmployee?.userId as string) ?? "",
+        date: dateStr || "1970-01-01",
+        duration: selectedTreatment?.duration ?? 0,
+      }),
     enabled: slotsEnabled,
   });
 
@@ -163,8 +172,8 @@ function PatientBooking() {
     try {
       await bookMutation({
         tokenHash,
-        treatmentId: selectedTreatment._id,
-        employeeId: anyEmployee ? undefined : selectedEmployee?.userId,
+        treatmentId: selectedTreatment._id as string,
+        employeeId: anyEmployee ? undefined : (selectedEmployee?.userId as string | undefined),
         preferredDate: dateStr,
         preferredTime: selectedTime,
       });

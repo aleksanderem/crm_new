@@ -5,6 +5,16 @@ import { internal } from "../_generated/api";
 import { auth } from "@cvx/auth";
 import type { Doc } from "../_generated/dataModel";
 import { getValidAccessTokenForConnection } from "./_helpers";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import {
+  createAppointmentFromSyncSupabase,
+  createSkeletonPatientSupabase,
+  deleteByGoogleEventIdSupabase,
+  findEmployeeByUserIdSupabase,
+  findPatientByEmailSupabase,
+  findTreatmentByNameSupabase,
+  upsertFromGoogleImportSupabase,
+} from "./calendarSyncHelpers_supabase";
 
 interface GoogleCalendarEvent {
   id: string;
@@ -143,18 +153,21 @@ export const syncCalendarConfig = internalAction({
         }
       } while (pageToken);
 
-      // Handle cancelled events — delete corresponding records
+      // Handle cancelled events — delete corresponding records (Supabase-primary)
+      const db = createSupabaseDb();
       const cancelledEvents = allEvents.filter(
         (e) => e.status === "cancelled"
       );
       for (const cancelled of cancelledEvents) {
-        await ctx.runMutation(
-          internal.scheduledActivities_internal.deleteByGoogleEventId,
-          {
-            organizationId: config.organizationId,
-            googleEventId: cancelled.id,
-          }
-        );
+        try {
+          await deleteByGoogleEventIdSupabase(
+            db,
+            String(config.organizationId),
+            cancelled.id,
+          );
+        } catch (e) {
+          console.warn("[syncCalendarConfig] delete failed:", e);
+        }
       }
 
       const validEvents = allEvents.filter(
@@ -237,15 +250,27 @@ async function resolveCrmEvents(
       );
 
     if (mapped.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const internalAny = internal as any;
-      const result: { imported?: number; updated?: number } = await ctx.runMutation(internalAny.scheduledActivities_internal.upsertFromGoogleImport, {
-          organizationId: config.organizationId,
-          ownerId: config.userId,
-          events: mapped,
-        }
-      );
-      total += (result.imported ?? 0) + (result.updated ?? 0);
+      const db = createSupabaseDb();
+      const result = await upsertFromGoogleImportSupabase(db, {
+        organizationId: String(config.organizationId),
+        ownerId: String(config.userId),
+        events: mapped.map((m) => ({
+          googleEventId: m.googleEventId,
+          googleCalendarId: m.googleCalendarId,
+          title: m.title,
+          description: m.description,
+          location: m.location,
+          meetingUrl: m.meetingUrl,
+          dueDate: m.dueDate,
+          endDate: m.endDate,
+          activityType: m.activityType,
+          sourceType: m.sourceType,
+          syncConfigId: String(m.syncConfigId),
+          requiresCompletion: m.requiresCompletion,
+          visibilityOverride: m.visibilityOverride,
+        })),
+      });
+      total += result.imported + result.updated;
     }
   }
 
@@ -253,14 +278,15 @@ async function resolveCrmEvents(
 }
 
 async function resolveGabinetEvents(
-  ctx: any,
+  _ctx: any,
   config: Doc<"googleCalendarSyncConfigs">,
   events: GoogleCalendarEvent[]
 ): Promise<number> {
-  const employee = await ctx.runQuery(
-    internal.google.calendarSyncHelpers.findEmployeeByUserId,
-    { organizationId: config.organizationId, userId: config.userId }
-  );
+  const db = createSupabaseDb();
+  const orgId = String(config.organizationId);
+  const ownerId = String(config.userId);
+
+  const employee = await findEmployeeByUserIdSupabase(db, orgId, ownerId);
 
   let synced = 0;
 
@@ -279,51 +305,48 @@ async function resolveGabinetEvents(
 
     if (!attendee?.email || !employee) {
       // No attendee or no linked employee — blocked time slot
-      const mapped = [
-        {
-          googleEventId: event.id,
-          googleCalendarId: config.googleCalendarId,
-          title:
-            config.visibility === "busy_only"
-              ? "Zajęty"
-              : (event.summary ?? "(Bez tytułu)"),
-          description:
-            config.visibility === "busy_only" ? undefined : event.description,
-          location:
-            config.visibility === "busy_only" ? undefined : event.location,
-          meetingUrl: extractMeetUrl(event),
-          dueDate,
-          endDate,
-          activityType: "blocked_time",
-          sourceType: "google" as const,
-          syncConfigId: config._id,
-          requiresCompletion: false,
-          visibilityOverride: config.visibility,
-        },
-      ];
-      await ctx.runMutation(
-        internal.scheduledActivities_internal.upsertFromGoogleImport,
-        {
-          organizationId: config.organizationId,
-          ownerId: config.userId,
-          events: mapped,
-        }
-      );
+      await upsertFromGoogleImportSupabase(db, {
+        organizationId: orgId,
+        ownerId,
+        events: [
+          {
+            googleEventId: event.id,
+            googleCalendarId: config.googleCalendarId,
+            title:
+              config.visibility === "busy_only"
+                ? "Zajęty"
+                : (event.summary ?? "(Bez tytułu)"),
+            description:
+              config.visibility === "busy_only" ? undefined : event.description,
+            location:
+              config.visibility === "busy_only" ? undefined : event.location,
+            meetingUrl: extractMeetUrl(event),
+            dueDate,
+            endDate,
+            activityType: "blocked_time",
+            sourceType: "google",
+            syncConfigId: String(config._id),
+            requiresCompletion: false,
+            visibilityOverride: config.visibility,
+          },
+        ],
+      });
       synced++;
       continue;
     }
 
-    // Find or create patient by attendee email
-    let patientId;
+    // Find or create patient by attendee email (Supabase-primary)
+    let patientId: string;
     let patientIsNew = false;
 
-    const existingPatient = await ctx.runQuery(
-      internal.google.calendarSyncHelpers.findPatientByEmail,
-      { organizationId: config.organizationId, email: attendee.email }
+    const existingPatient = await findPatientByEmailSupabase(
+      db,
+      orgId,
+      attendee.email,
     );
 
     if (existingPatient) {
-      patientId = existingPatient._id;
+      patientId = existingPatient.id;
     } else {
       const nameParts = (
         attendee.displayName ?? attendee.email.split("@")[0]
@@ -331,55 +354,50 @@ async function resolveGabinetEvents(
       const firstName = nameParts[0] ?? "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      patientId = await ctx.runMutation(
-        internal.google.calendarSyncHelpers.createSkeletonPatient,
-        {
-          organizationId: config.organizationId,
-          firstName,
-          lastName,
-          email: attendee.email,
-          createdBy: config.userId,
-        }
-      );
+      patientId = await createSkeletonPatientSupabase(db, {
+        organizationId: orgId,
+        firstName,
+        lastName,
+        email: attendee.email,
+        createdBy: ownerId,
+      });
       patientIsNew = true;
     }
 
     // Fuzzy-match treatment from event summary
-    let treatmentId;
+    let treatmentId: string | undefined;
     if (event.summary) {
-      const matched = await ctx.runQuery(
-        internal.google.calendarSyncHelpers.findTreatmentByName,
-        { organizationId: config.organizationId, searchTerm: event.summary }
+      const matched = await findTreatmentByNameSupabase(
+        db,
+        orgId,
+        event.summary,
       );
-      if (matched) treatmentId = matched._id;
+      if (matched) treatmentId = matched.id;
     }
 
     const requiresCompletion = !treatmentId || patientIsNew;
 
-    await ctx.runMutation(
-      internal.google.calendarSyncHelpers.createAppointmentFromSync,
-      {
-        organizationId: config.organizationId,
-        patientId,
-        treatmentId,
-        employeeUserId: employee.userId,
-        date,
-        startTime,
-        endTime,
-        requiresCompletion,
-        title: event.summary ?? "(Bez tytułu)",
-        description: event.description,
-        location: event.location,
-        meetingUrl: extractMeetUrl(event),
-        dueDate,
-        endDateTs: endDate,
-        ownerId: config.userId,
-        googleEventId: event.id,
-        googleCalendarId: config.googleCalendarId,
-        syncConfigId: config._id,
-        visibilityOverride: config.visibility,
-      }
-    );
+    await createAppointmentFromSyncSupabase(db, {
+      organizationId: orgId,
+      patientId,
+      treatmentId,
+      employeeUserId: employee.userId,
+      date,
+      startTime,
+      endTime,
+      requiresCompletion,
+      title: event.summary ?? "(Bez tytułu)",
+      description: event.description,
+      location: event.location,
+      meetingUrl: extractMeetUrl(event),
+      dueDate,
+      endDateTs: endDate,
+      ownerId,
+      googleEventId: event.id,
+      googleCalendarId: config.googleCalendarId,
+      syncConfigId: String(config._id),
+      visibilityOverride: config.visibility,
+    });
     synced++;
   }
 

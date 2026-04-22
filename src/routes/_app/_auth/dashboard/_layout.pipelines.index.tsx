@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/components/org-context";
 import { useSupabasePipelinesList } from "@/hooks/use-supabase-pipelines";
@@ -27,9 +27,9 @@ function PipelinesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   // @ts-ignore — Convex type instantiation too deep (pre-existing)
-  const moveToStage = useMutation(api.leads.moveToStage);
-  const updateLead = useMutation(api.leads.update);
-  const removeLead = useMutation(api.leads.remove);
+  const moveToStage = useAction(api.leads.moveToStage);
+  const updateLead = useAction(api.leads.update);
+  const removeLead = useAction(api.leads.remove);
   const queryClient = useQueryClient();
 
   const { data: pipelines } = useSupabasePipelinesList(organizationId);

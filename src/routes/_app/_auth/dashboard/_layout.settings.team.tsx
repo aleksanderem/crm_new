@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -80,11 +80,11 @@ function TeamSettings() {
   const isNearLimit = seatPercentage >= 80 && seatUsage?.canAddMore;
   const isAtLimit = seatUsage ? !seatUsage.canAddMore : false;
 
-  const updateRole = useMutation(api.organizations.updateMemberRole);
-  const removeMember = useMutation(api.organizations.removeMember);
-  const cancelInvitation = useMutation(api.invitations.cancel);
-  const resendInvitation = useMutation(api.invitations.resend);
-  const createInvitation = useMutation(api.invitations.create);
+  const updateRole = useAction(api.organizations.updateMemberRole);
+  const removeMember = useAction(api.organizations.removeMember);
+  const cancelInvitation = useAction(api.invitations.cancel);
+  const resendInvitation = useAction(api.invitations.resend);
+  const createInvitation = useAction(api.invitations.create);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");

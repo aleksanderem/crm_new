@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
@@ -145,7 +145,7 @@ function DocumentsPage() {
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
-  const removeDocument = useMutation(api.documents.documents.remove);
+  const removeDocument = useAction(api.documents.documents.remove);
 
   // --- Sidebar dispatches ---
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));

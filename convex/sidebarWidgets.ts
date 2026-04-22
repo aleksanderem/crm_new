@@ -295,10 +295,66 @@ export const getDocumentsKpis = query({
 });
 
 // --- Calendar (CRM) ---
-// Removed: getCalendarKpis — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
+// Stub to keep old frontend bundles working while a rolling deploy finishes.
+// The real widget logic now lives in useSupabaseCalendarKpis. Safe to delete
+// once the frontend everywhere is on the Supabase hook.
+export const getCalendarKpis = query({
+  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    void args.userId;
+    return { today: 0, overdue: 0, thisWeek: 0, requiresCompletion: 0 };
+  },
+});
 
 // --- Upcoming Events (Smart Agenda) ---
-// Removed: getUpcomingEvents — migrated to Supabase hook (see use-supabase-scheduled-activities.ts).
+// Stub for the same rolling-deploy reason — real source is
+// useSupabaseUpcomingEvents. Returns [] so the old frontend just renders
+// an empty agenda instead of hard-erroring.
+export const getUpcomingEvents = query({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    onlyMine: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<Array<{
+    id: string;
+    title: string;
+    startTime: number;
+    type: string;
+    appointmentLink: string | null;
+    ownerId: string;
+    ownerName: string;
+    ownerImage: string | null;
+  }>> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    void args.userId;
+    void args.onlyMine;
+    void args.limit;
+    return [];
+  },
+});
+
+// --- Activities KPIs (stub) ---
+export const getActivitiesKpis = query({
+  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    void args.userId;
+    return { overdue: 0, today: 0, completionRate: 0 };
+  },
+});
+
+// --- Weekly Activities Trend (stub) ---
+export const getWeeklyActivitiesTrend = query({
+  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  handler: async (ctx, args): Promise<Array<{ day: string; created: number; completed: number }>> => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    void args.userId;
+    return [];
+  },
+});
 
 // --- Leads by Stage (Mini Funnel) ---
 export const getLeadsByStage = query({

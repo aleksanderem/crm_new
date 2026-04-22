@@ -18,16 +18,18 @@ export const list = query({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
-    await verifyOrgAccess(ctx, args.organizationId);
-    const tmpl = await ctx.db.get(args.templateId);
-    if (!tmpl || tmpl.organizationId !== args.organizationId)
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const tmpl = await db.get("formTemplates", args.templateId);
+    if (!tmpl || String(tmpl.organizationId) !== String(args.organizationId))
       throw new Error("Template not found");
     return tmpl;
   },

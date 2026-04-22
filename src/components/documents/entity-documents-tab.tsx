@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -66,19 +67,25 @@ export function EntityDocumentsTab({
 
   // --- Viewing document ---
 
+  const getDocumentById = useAction(api.documents.documents.getById);
+  const getTemplateById = useAction(api.documents.templates.getById);
   const { data: viewingDoc, isLoading: viewingDocLoading } = useQuery({
-    ...convexQuery(api.documents.documents.getById, {
-      organizationId,
-      documentId: viewingDocId!,
-    }),
+    queryKey: ["documents.documents.getById", organizationId, viewingDocId],
+    queryFn: () =>
+      getDocumentById({
+        organizationId,
+        documentId: viewingDocId!,
+      }),
     enabled: !!viewingDocId,
   });
 
   const { data: viewingTemplate } = useQuery({
-    ...convexQuery(api.documents.templates.getById, {
-      organizationId,
-      templateId: viewingDoc?.templateId!,
-    }),
+    queryKey: ["documents.templates.getById", organizationId, viewingDoc?.templateId],
+    queryFn: () =>
+      getTemplateById({
+        organizationId,
+        templateId: viewingDoc?.templateId as string,
+      }),
     enabled: !!viewingDoc?.templateId,
   });
 

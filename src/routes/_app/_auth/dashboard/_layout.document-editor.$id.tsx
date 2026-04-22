@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction, useQuery as useConvexQuery } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -52,11 +53,17 @@ function EditDocumentEditorPage() {
   const { organizationId } = useOrganization();
   const editorRef = useRef<DocumentTemplateEditorHandle>(null);
 
-  const templateId = id as Id<"formTemplates">;
+  const templateId = id as string;
 
-  const template = useConvexQuery(api.documents.templates.getById, {
-    organizationId,
-    templateId,
+  const getTemplateByIdAction = useAction(api.documents.templates.getById);
+  const { data: template } = useQuery({
+    queryKey: ["documents.templates.getById", organizationId, templateId],
+    queryFn: () =>
+      getTemplateByIdAction({
+        organizationId,
+        templateId,
+      }),
+    enabled: !!organizationId && !!templateId,
   });
 
   const updateTemplate = useAction(api.documents.templates.update);

@@ -54,15 +54,18 @@ export const listByEntity = query({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId)
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
     return doc;
   },

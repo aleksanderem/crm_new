@@ -45,12 +45,16 @@ function EditDocumentComponentPage() {
   const { id } = Route.useParams();
   const { organizationId } = useOrganization();
 
-  const { data: component } = useQuery(
-    convexQuery(
-      api.documents.components.getById,
-      { organizationId, componentId: id as Id<"documentComponents"> },
-    ),
-  );
+  const getComponentById = useAction(api.documents.components.getById);
+  const { data: component } = useQuery({
+    queryKey: ["documents.components.getById", organizationId, id],
+    queryFn: () =>
+      getComponentById({
+        organizationId,
+        componentId: id as string,
+      }),
+    enabled: !!organizationId && !!id,
+  });
 
   const updateMutation = useAction(api.documents.components.update);
 

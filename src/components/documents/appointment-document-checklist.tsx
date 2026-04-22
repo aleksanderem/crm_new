@@ -109,20 +109,26 @@ export function AppointmentDocumentChecklist({
     }),
   );
 
-  // Viewing document
+  // Viewing document (Supabase-primary actions)
+  const getDocumentById = useAction(api.documents.documents.getById);
+  const getTemplateById = useAction(api.documents.templates.getById);
   const { data: viewingDoc, isLoading: viewingDocLoading } = useQuery({
-    ...convexQuery(api.documents.documents.getById, {
-      organizationId,
-      documentId: viewingDocId!,
-    }),
+    queryKey: ["documents.documents.getById", organizationId, viewingDocId],
+    queryFn: () =>
+      getDocumentById({
+        organizationId,
+        documentId: viewingDocId!,
+      }),
     enabled: !!viewingDocId,
   });
 
   const { data: viewingTemplate } = useQuery({
-    ...convexQuery(api.documents.templates.getById, {
-      organizationId,
-      templateId: viewingDoc?.templateId!,
-    }),
+    queryKey: ["documents.templates.getById", organizationId, viewingDoc?.templateId],
+    queryFn: () =>
+      getTemplateById({
+        organizationId,
+        templateId: viewingDoc?.templateId as string,
+      }),
     enabled: !!viewingDoc?.templateId,
   });
 

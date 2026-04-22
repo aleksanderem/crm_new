@@ -164,12 +164,15 @@ export function AppointmentDetailDialog({
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const cancelAppointment = useAction(api.gabinet.appointments.cancel);
+  const getAppointmentById = useAction(api.gabinet.appointments.getById);
 
   const { data: appointment } = useQuery({
-    ...convexQuery(api.gabinet.appointments.getById, {
-      organizationId,
-      appointmentId: appointmentId as Id<"gabinetAppointments">,
-    }),
+    queryKey: ["gabinet.appointment.getById", organizationId, appointmentId],
+    queryFn: () =>
+      getAppointmentById({
+        organizationId,
+        appointmentId: appointmentId as string,
+      }),
     enabled: !!appointmentId,
   });
 

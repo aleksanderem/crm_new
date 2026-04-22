@@ -46,20 +46,24 @@ export const list = query({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    componentId: v.id("documentComponents"),
+    componentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const comp = await ctx.db.get(args.componentId);
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const db = createSupabaseDb();
+    const comp = await db.get("documentComponents", args.componentId);
     if (!comp) throw new Error("Component not found");
 
-    if (comp.scope === "org" && comp.organizationId !== args.organizationId) {
+    if (comp.scope === "org" && String(comp.organizationId) !== String(args.organizationId)) {
       throw new Error("Component not found");
     }
-    if (comp.scope === "user" && comp.createdBy !== user._id) {
+    if (comp.scope === "user" && String(comp.createdBy) !== String(authResult.userId)) {
       throw new Error("Component not found");
     }
     return comp;

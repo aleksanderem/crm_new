@@ -109,12 +109,15 @@ export function AfterCompletionDocumentsDialog({
 
   const activeDoc = afterDocs.find((d) => d._id === activeDocId);
 
-  // Fetch template for the active document
+  // Fetch template for the active document (Supabase-primary action)
+  const getTemplateById = useAction(api.documents.templates.getById);
   const { data: activeTemplate } = useQuery({
-    ...convexQuery(api.documents.templates.getById, {
-      organizationId,
-      templateId: (activeDoc?.templateId ?? "") as Id<"formTemplates">,
-    }),
+    queryKey: ["documents.templates.getById", organizationId, activeDoc?.templateId],
+    queryFn: () =>
+      getTemplateById({
+        organizationId,
+        templateId: (activeDoc?.templateId ?? "") as string,
+      }),
     enabled: !!activeDoc?.templateId,
   });
 

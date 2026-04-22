@@ -114,7 +114,7 @@ function getEventColor(ev: CalendarEvent): {
   if (isBusyOnly(ev))
     return { bg: "bg-gray-100 dark:bg-gray-800", border: "border-gray-300 dark:border-gray-600", text: "text-gray-500 dark:text-gray-400" };
   if (isGabinet(ev)) {
-    const status = ev.metadata.status as string | undefined;
+    const status = ev.metadata?.status as string | undefined;
     if (status === "cancelled")
       return { bg: "bg-red-50", border: "border-red-300", text: "text-red-600" };
     if (status === "completed")
@@ -343,7 +343,7 @@ function UnifiedCalendarPage() {
         // If gabinet appointment, also update the appointment record
         if (
           isGabinet(ev) &&
-          ev.metadata.appointmentId
+          ev.metadata?.appointmentId
         ) {
           const newDate = new Date(newDueDate);
           const dateStr = formatDateStr(newDate);
@@ -355,7 +355,7 @@ function UnifiedCalendarPage() {
           }
           await updateAppointment({
             organizationId,
-            appointmentId: ev.metadata.appointmentId as Id<"gabinetAppointments">,
+            appointmentId: ev.metadata?.appointmentId as Id<"gabinetAppointments">,
             date: dateStr,
             startTime,
             ...(endTime ? { endTime } : {}),
@@ -519,14 +519,14 @@ function EventDetailPanel({
             {end && ` – ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
           </p>
           <p>{t("calendar.type", "Type")}: {event.activityType}</p>
-          {isGab && event.metadata.patientName ? (
-            <p>{t("gabinet.appointments.patient", "Patient")}: {String(event.metadata.patientName)}</p>
+          {isGab && event.metadata?.patientName ? (
+            <p>{t("gabinet.appointments.patient", "Patient")}: {String(event.metadata?.patientName)}</p>
           ) : null}
-          {isGab && event.metadata.treatmentName ? (
-            <p>{t("gabinet.appointments.treatment", "Treatment")}: {String(event.metadata.treatmentName)}</p>
+          {isGab && event.metadata?.treatmentName ? (
+            <p>{t("gabinet.appointments.treatment", "Treatment")}: {String(event.metadata?.treatmentName)}</p>
           ) : null}
-          {isGab && event.metadata.status ? (
-            <p>{t("common.status", "Status")}: {String(event.metadata.status)}</p>
+          {isGab && event.metadata?.status ? (
+            <p>{t("common.status", "Status")}: {String(event.metadata?.status)}</p>
           ) : null}
           {event.description && (
             <div className="rounded bg-muted/50 p-2 text-xs">
@@ -811,12 +811,12 @@ function DayColumn({
                 <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm bg-white/60 text-[8px] font-bold leading-none">G</span>
               )}
               <span className="truncate">
-                {isGabinet(ev) ? (ev.metadata.patientName as string) ?? ev.title : ev.title}
+                {isGabinet(ev) ? (ev.metadata?.patientName as string) ?? ev.title : ev.title}
               </span>
             </div>
             {height > 30 && !busy && (
               <div className="truncate opacity-75">
-                {isGabinet(ev) ? (ev.metadata.treatmentName as string) : ev.activityType}
+                {isGabinet(ev) ? (ev.metadata?.treatmentName as string) : ev.activityType}
               </div>
             )}
           </div>
@@ -946,7 +946,7 @@ function MonthView({
                       )}
                       <span className="truncate">
                         {isGabinet(ev)
-                          ? (ev.metadata.patientName as string) ?? ev.title
+                          ? (ev.metadata?.patientName as string) ?? ev.title
                           : ev.title}
                       </span>
                     </div>

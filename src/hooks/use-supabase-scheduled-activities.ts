@@ -183,6 +183,10 @@ interface UseSupabaseScheduledActivitiesByDateRangeOpts {
   moduleFilter?: string; // matches module_ref.moduleId
 }
 
+export interface CalendarScheduledActivity extends MappedScheduledActivity {
+  metadata: Record<string, unknown>;
+}
+
 export function useSupabaseScheduledActivitiesByDateRange(
   organizationId: string,
   startDate: number,
@@ -192,7 +196,7 @@ export function useSupabaseScheduledActivitiesByDateRange(
   const { client, isReady } = useSupabase();
   const { enabled = true, moduleFilter } = options;
 
-  return useQuery<MappedScheduledActivity[], Error>({
+  return useQuery<CalendarScheduledActivity[], Error>({
     queryKey: [
       ...supabaseKeys.scheduledActivities.list(organizationId),
       "dateRange",
@@ -212,11 +216,93 @@ export function useSupabaseScheduledActivitiesByDateRange(
         .order("due_date", { ascending: true });
 
       if (error) throw error;
-      const mapped = (data ?? []).map(mapScheduledActivityFromSupabase);
+      let activities = (data ?? []).map(mapScheduledActivityFromSupabase);
       if (moduleFilter) {
-        return mapped.filter((a) => a.moduleRef?.moduleId === moduleFilter);
+        activities = activities.filter((a) => (a.moduleRef as { moduleId?: string } | undefined)?.moduleId === moduleFilter);
       }
-      return mapped;
+
+      // Enrich gabinet-linked activities with appointment metadata so the
+      // calendar UI (which reads ev.metadata.status / patientName /
+      // treatmentName / appointmentId) keeps working after the move to
+      // Supabase-primary reads.
+      const gabinetEntityIds = Array.from(
+        new Set(
+          activities
+            .filter((a) => (a.moduleRef as { moduleId?: string } | undefined)?.moduleId === "gabinet")
+            .map((a) => (a.moduleRef as { entityId?: string } | undefined)?.entityId)
+            .filter((id): id is string => !!id),
+        ),
+      );
+
+      let apptMap = new Map<string, { status: string; patientId: string; treatmentId: string | null }>();
+      let patientMap = new Map<string, string>();
+      let treatmentMap = new Map<string, string>();
+
+      if (gabinetEntityIds.length > 0) {
+        const { data: appts, error: apptErr } = await client
+          .from("gabinet_appointments")
+          .select("id,status,patient_id,treatment_id")
+          .in("id", gabinetEntityIds);
+        if (apptErr) throw apptErr;
+        apptMap = new Map(
+          (appts ?? []).map((a) => [
+            a.id as string,
+            {
+              status: (a.status as string) ?? "scheduled",
+              patientId: a.patient_id as string,
+              treatmentId: (a.treatment_id as string | null) ?? null,
+            },
+          ]),
+        );
+
+        const patientIds = Array.from(new Set(Array.from(apptMap.values()).map((a) => a.patientId).filter(Boolean)));
+        if (patientIds.length > 0) {
+          const { data: patients } = await client
+            .from("gabinet_patients")
+            .select("id,first_name,last_name")
+            .in("id", patientIds);
+          patientMap = new Map(
+            (patients ?? []).map((p) => [
+              p.id as string,
+              `${(p.first_name as string) ?? ""} ${(p.last_name as string) ?? ""}`.trim(),
+            ]),
+          );
+        }
+
+        const treatmentIds = Array.from(
+          new Set(
+            Array.from(apptMap.values())
+              .map((a) => a.treatmentId)
+              .filter((id): id is string => !!id),
+          ),
+        );
+        if (treatmentIds.length > 0) {
+          const { data: treatments } = await client
+            .from("gabinet_treatments")
+            .select("id,name")
+            .in("id", treatmentIds);
+          treatmentMap = new Map(
+            (treatments ?? []).map((t) => [t.id as string, (t.name as string) ?? ""]),
+          );
+        }
+      }
+
+      return activities.map<CalendarScheduledActivity>((a) => {
+        const moduleRef = a.moduleRef as { moduleId?: string; entityId?: string } | undefined;
+        const metadata: Record<string, unknown> = {};
+        if (moduleRef?.moduleId === "gabinet" && moduleRef.entityId) {
+          const appt = apptMap.get(moduleRef.entityId);
+          if (appt) {
+            metadata.status = appt.status;
+            metadata.appointmentId = moduleRef.entityId;
+            metadata.patientName = patientMap.get(appt.patientId) ?? undefined;
+            if (appt.treatmentId) {
+              metadata.treatmentName = treatmentMap.get(appt.treatmentId) ?? undefined;
+            }
+          }
+        }
+        return { ...a, metadata };
+      });
     },
     enabled: enabled && isReady && !!organizationId,
   });

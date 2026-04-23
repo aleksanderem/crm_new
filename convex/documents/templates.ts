@@ -54,20 +54,22 @@ export const listByCategory = query({
   },
 });
 
-export const listByEntityType = query({
+export const listByEntityType = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
-    await verifyOrgAccess(ctx, args.organizationId);
-    const all = await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const all = await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
     return all.filter(
-      (t) => t.isActive && t.entityTypes.includes(args.entityType),
+      (t) => t.isActive === true && Array.isArray(t.entityTypes) && (t.entityTypes as string[]).includes(args.entityType),
     );
   },
 });

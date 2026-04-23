@@ -37,19 +37,22 @@ export const listAll = query({
   },
 });
 
-export const listByEntity = query({
+export const listByEntity = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return await db
       .query("formDocuments")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", args.entityType).eq("entityId", args.entityId),
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("entityType", args.entityType)
+      .eq("entityId", args.entityId)
       .collect();
   },
 });

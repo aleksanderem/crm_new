@@ -378,12 +378,16 @@ function LeadDetail() {
   );
   const relationships = relationshipsQuery.data;
 
-  const dealProductsQuery = convexQuery(api.products.listByDeal, {
-    organizationId,
-    dealId: leadId as Id<"leads">,
+  const listProductsByDeal = useAction(api.products.listByDeal);
+  const { data: dealProducts } = useQuery({
+    queryKey: ["products.listByDeal", organizationId, leadId],
+    queryFn: () =>
+      listProductsByDeal({
+        organizationId,
+        dealId: leadId as string,
+      }),
+    enabled: !!organizationId && !!leadId,
   });
-
-  const { data: dealProducts } = useQuery(dealProductsQuery);
 
   const { data: notesData } = useSupabaseNotesByEntity(
     organizationId,

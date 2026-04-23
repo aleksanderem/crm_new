@@ -114,12 +114,15 @@ function CallsPage() {
 
   const callIds = useMemo(() => allCalls.map((c) => c._id as string), [allCalls]);
 
+  const getRelationshipsForSources = useAction(api.relationships.getForSources);
   const { data: relMap } = useQuery({
-    ...convexQuery(api.relationships.getForSources, {
-      organizationId,
-      sourceType: "call",
-      sourceIds: callIds,
-    }),
+    queryKey: ["relationships.getForSources", organizationId, "call", callIds],
+    queryFn: () =>
+      getRelationshipsForSources({
+        organizationId,
+        sourceType: "call",
+        sourceIds: callIds,
+      }),
     enabled: callIds.length > 0,
   });
   const calls = useMemo(() => {

@@ -49,17 +49,21 @@ export function EntityDocumentsTab({
 
   // --- Document list ---
 
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const {
     data: documents,
     isLoading,
     refetch,
-  } = useQuery(
-    convexQuery(api.documents.documents.listByEntity, {
-      organizationId,
-      entityType,
-      entityId,
-    }),
-  );
+  } = useQuery({
+    queryKey: ["documents.documents.listByEntity", organizationId, entityType, entityId],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType,
+        entityId,
+      }),
+    enabled: !!organizationId && !!entityType && !!entityId,
+  });
 
   const handleDocumentCreated = useCallback(() => {
     refetch();
@@ -89,13 +93,16 @@ export function EntityDocumentsTab({
     enabled: !!viewingDoc?.templateId,
   });
 
-  // Fetch scope data to merge with responseData for viewer pre-fill
+  // Fetch scope data to merge with responseData for viewer pre-fill (Supabase)
+  const resolveEntityScopeAction = useAction(api.documents.generate.resolveEntityScope);
   const { data: scopeData } = useQuery({
-    ...convexQuery(api.documents.generate.resolveEntityScope, {
-      organizationId,
-      entityType,
-      entityId,
-    }),
+    queryKey: ["documents.generate.resolveEntityScope", organizationId, entityType, entityId],
+    queryFn: () =>
+      resolveEntityScopeAction({
+        organizationId,
+        entityType,
+        entityId,
+      }),
     enabled: !!viewingDocId,
   });
 

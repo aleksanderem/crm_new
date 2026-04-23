@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -39,13 +39,17 @@ export function EmailEntityTab({
     }
   }, [autoCompose]);
 
-  const { data: emailsData } = useQuery(
-    convexQuery(api.emails.listByEntity, {
-      organizationId,
-      entityType,
-      entityId,
-    })
-  );
+  const listEmailsByEntity = useAction(api.emails.listByEntity);
+  const { data: emailsData } = useQuery({
+    queryKey: ["emails.listByEntity", organizationId, entityType, entityId],
+    queryFn: () =>
+      listEmailsByEntity({
+        organizationId,
+        entityType,
+        entityId,
+      }),
+    enabled: !!organizationId && !!entityType && !!entityId,
+  });
 
   const emails = emailsData ?? [];
 

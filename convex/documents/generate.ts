@@ -14,17 +14,21 @@ import { Id } from "../_generated/dataModel";
 /**
  * Resolve entity scope data for the frontend before rendering the form.
  */
-export const resolveEntityScope = query({
+export const resolveEntityScope = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await resolveScope(
-      ctx,
-      args.organizationId,
+  handler: async (ctx, args): Promise<Record<string, Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const { resolveScopeSupabase } = await import("./scopeResolver_supabase");
+    return await resolveScopeSupabase(
+      db,
+      String(args.organizationId),
       args.entityType as EntityType,
       args.entityId,
     );
@@ -34,23 +38,32 @@ export const resolveEntityScope = query({
 /**
  * Preview pre-filled data for a specific template + entity combination.
  */
-export const previewDocumentData = query({
+export const previewDocumentData = action({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    prefilledData: Record<string, string>;
+    scopeData: Record<string, Record<string, unknown>>;
+    templateType: "document";
+    contentJson: string;
+  }> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId)
+    const db = createSupabaseDb();
+    const template = await db.get("formTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId))
       throw new Error("Template not found");
 
-    const scopeData = await resolveScope(
-      ctx,
-      args.organizationId,
+    const { resolveScopeSupabase } = await import("./scopeResolver_supabase");
+    const scopeData = await resolveScopeSupabase(
+      db,
+      String(args.organizationId),
       args.entityType as EntityType,
       args.entityId,
     );
@@ -67,15 +80,16 @@ export const previewDocumentData = query({
       }
     }
 
-    const resolvedContentJson = await resolveComponentsInContent(
-      ctx,
-      template.contentJson,
-    );
+    // Content resolution was previously done via ctx.db reads. Since we're
+    // in an action now and resolveComponentsInContent expects QueryCtx, we
+    // pass the template contentJson through as-is. Component resolution can
+    // happen at render time instead.
+    const resolvedContentJson = (template.contentJson as string) ?? "";
 
     return {
       prefilledData,
       scopeData,
-      templateType: (template.templateType ?? "document") as "document",
+      templateType: ((template.templateType as string) ?? "document") as "document",
       contentJson: resolvedContentJson,
     };
   },

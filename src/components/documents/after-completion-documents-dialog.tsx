@@ -66,14 +66,17 @@ export function AfterCompletionDocumentsDialog({
     api.documents.documents.submitEmployeeFormFields,
   );
 
-  // Fetch documents linked to this appointment
+  // Fetch documents linked to this appointment (Supabase-primary action)
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const { data: documents, refetch } = useQuery({
-    ...convexQuery(api.documents.documents.listByEntity, {
-      organizationId,
-      entityType: "appointment",
-      entityId: appointmentId,
-    }),
-    enabled: open,
+    queryKey: ["documents.documents.listByEntity", organizationId, "appointment", appointmentId],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "appointment",
+        entityId: appointmentId,
+      }),
+    enabled: open && !!organizationId && !!appointmentId,
     refetchInterval: open ? 2000 : false, // Poll while open to catch new docs
   });
 

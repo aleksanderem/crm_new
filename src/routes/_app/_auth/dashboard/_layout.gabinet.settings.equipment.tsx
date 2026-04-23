@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -175,12 +175,16 @@ function EquipmentCard({
   const updateEquipment = useAction(api.gabinet.equipment.updateEquipment);
   const transferEquipment = useAction(api.gabinet.equipment.transferEquipment);
 
-  const selectedLocationData = useConvexQuery(
-    api.gabinet.locations.getLocation,
-    transferLocationId
-      ? { organizationId, locationId: transferLocationId as Id<"gabinetLocations"> }
-      : "skip"
-  );
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
+  const { data: selectedLocationData } = useQuery({
+    queryKey: ["gabinet.locations.getLocation", organizationId, transferLocationId],
+    queryFn: () =>
+      getLocationAction({
+        organizationId,
+        locationId: transferLocationId as string,
+      }),
+    enabled: !!transferLocationId,
+  });
 
   const currentLocation = locations.find(
     (l) => l._id === item.currentLocationId

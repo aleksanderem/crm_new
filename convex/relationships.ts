@@ -8,14 +8,27 @@ import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for relationship writes
 
-export const getForSources = query({
+export const getForSources = action({
   args: {
     organizationId: v.id("organizations"),
     sourceType: v.string(),
     sourceIds: v.array(v.string()),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Record<
+    string,
+    Array<{
+      targetType: string;
+      targetId: string;
+      targetName: string;
+      targetSublabel?: string;
+    }>
+  >> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
 
     const result: Record<
       string,
@@ -28,33 +41,33 @@ export const getForSources = query({
     > = {};
 
     for (const sourceId of args.sourceIds) {
-      const rels = await ctx.db
+      const rels = (await db
         .query("objectRelationships")
-        .withIndex("by_source", (q) =>
-          q.eq("sourceType", args.sourceType).eq("sourceId", sourceId)
-        )
-        .collect();
+        .eq("organizationId", orgIdStr)
+        .eq("sourceType", args.sourceType)
+        .eq("sourceId", sourceId)
+        .collect()) as Array<Record<string, any>>;
 
       const resolved = await Promise.all(
         rels.map(async (rel) => {
-          let targetName = rel.targetId;
+          let targetName = String(rel.targetId);
           let targetSublabel: string | undefined;
 
           try {
             if (rel.targetType === "contact") {
-              const contact = await ctx.db.get(rel.targetId as any);
+              const contact = await db.get("contacts", String(rel.targetId));
               if (contact) {
                 targetName = `${(contact as any).firstName}${(contact as any).lastName ? ` ${(contact as any).lastName}` : ""}`;
                 targetSublabel = (contact as any).email;
               }
             } else if (rel.targetType === "company") {
-              const company = await ctx.db.get(rel.targetId as any);
+              const company = await db.get("companies", String(rel.targetId));
               if (company) {
                 targetName = (company as any).name;
                 targetSublabel = (company as any).domain;
               }
             } else if (rel.targetType === "lead" || rel.targetType === "deal") {
-              const lead = await ctx.db.get(rel.targetId as any);
+              const lead = await db.get("leads", String(rel.targetId));
               if (lead) {
                 targetName = (lead as any).title;
                 targetSublabel = (lead as any).value
@@ -67,12 +80,12 @@ export const getForSources = query({
           }
 
           return {
-            targetType: rel.targetType,
-            targetId: rel.targetId,
+            targetType: String(rel.targetType),
+            targetId: String(rel.targetId),
             targetName,
             targetSublabel,
           };
-        })
+        }),
       );
 
       result[sourceId] = resolved;

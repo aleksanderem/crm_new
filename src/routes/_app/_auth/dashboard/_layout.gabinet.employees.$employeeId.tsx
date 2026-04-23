@@ -177,13 +177,20 @@ function EmployeeDetail() {
     { enabled: !!employee },
   );
 
-  // Unique patients this employee has seen (with visit stats for filtering)
+  // Unique patients this employee has seen (Supabase-primary action)
+  const listPatientsWithStatsForEmployee = useAction(api.gabinet.appointments.listPatientsWithStatsForEmployee);
   const { data: employeePatients } = useQuery({
-    ...convexQuery(api.gabinet.appointments.listPatientsWithStatsForEmployee, {
+    queryKey: [
+      "gabinet.appointments.listPatientsWithStatsForEmployee",
       organizationId,
-      employeeId: (employee?.userId ?? "") as Id<"users">,
-    }),
-    enabled: !!employee,
+      employee?.userId,
+    ],
+    queryFn: () =>
+      listPatientsWithStatsForEmployee({
+        organizationId,
+        employeeId: (employee?.userId ?? "") as string,
+      }),
+    enabled: !!employee?.userId,
   });
 
   // Employee schedule (per-employee working hours)

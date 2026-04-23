@@ -142,19 +142,21 @@ export const bulkSetWorkingHours = action({
 
 // --- Employee Schedules (per-employee overrides) ---
 
-export const getEmployeeSchedule = query({
+export const getEmployeeSchedule = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("gabinetEmployeeSchedules")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", args.userId)
+      .collect()) as Array<Record<string, unknown>>;
   },
 });
 

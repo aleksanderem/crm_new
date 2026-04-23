@@ -665,12 +665,15 @@ export function GenerateDocumentDialog({
 
   // --- Step 1: Template list ---
 
+  const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
   const { data: templates, isLoading: templatesLoading } = useQuery({
-    ...convexQuery(api.documents.templates.listByEntityType, {
-      organizationId,
-      entityType,
-    }),
-    enabled: open,
+    queryKey: ["documents.templates.listByEntityType", organizationId, entityType],
+    queryFn: () =>
+      listTemplatesByEntityType({
+        organizationId,
+        entityType,
+      }),
+    enabled: open && !!organizationId && !!entityType,
   });
 
   const filteredTemplates = templates
@@ -693,15 +696,22 @@ export function GenerateDocumentDialog({
 
   // --- Step 2/3: Preview + fill data (also needed for complete_data step) ---
 
-  const previewQueryKey = convexQuery(api.documents.generate.previewDocumentData, {
-    organizationId,
-    templateId: selectedTemplateId!,
-    entityType,
-    entityId,
-  });
-
+  const previewDocumentDataAction = useAction(api.documents.generate.previewDocumentData);
   const { data: previewData, isLoading: previewLoading } = useQuery({
-    ...previewQueryKey,
+    queryKey: [
+      "documents.generate.previewDocumentData",
+      organizationId,
+      selectedTemplateId,
+      entityType,
+      entityId,
+    ],
+    queryFn: () =>
+      previewDocumentDataAction({
+        organizationId,
+        templateId: selectedTemplateId as unknown as string,
+        entityType,
+        entityId,
+      }),
     enabled: !!selectedTemplateId && (step === "fill_form" || step === "complete_data"),
   });
 

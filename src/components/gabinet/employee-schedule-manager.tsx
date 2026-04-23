@@ -62,9 +62,16 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
   const bulkSet = useAction(api.gabinet.scheduling.bulkSetEmployeeSchedule);
   const removeSchedule = useAction(api.gabinet.scheduling.removeEmployeeSchedule);
 
-  const { data: schedules } = useQuery(
-    convexQuery(api.gabinet.scheduling.getEmployeeSchedule, { organizationId, userId: employeeId as any })
-  );
+  const getEmployeeScheduleAction = useAction(api.gabinet.scheduling.getEmployeeSchedule);
+  const { data: schedules } = useQuery({
+    queryKey: ["gabinet.scheduling.getEmployeeSchedule", organizationId, employeeId],
+    queryFn: () =>
+      getEmployeeScheduleAction({
+        organizationId,
+        userId: employeeId as string,
+      }),
+    enabled: !!organizationId && !!employeeId,
+  });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<ScheduleEntry>>({});

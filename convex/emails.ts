@@ -117,43 +117,41 @@ export const getById = query({
   },
 });
 
-export const listByEntity = query({
+export const listByEntity = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    let emails;
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    let emails: Array<Record<string, any>>;
 
     if (args.entityType === "contact") {
-      emails = await ctx.db
-        .query("emails")
-        .withIndex("by_contact", (q) =>
-          q.eq("contactId", args.entityId as Id<"contacts">)
-        )
-        .collect();
+      emails = (await db.query("emails")
+        .eq("organizationId", orgIdStr)
+        .eq("contactId", args.entityId)
+        .collect()) as Array<Record<string, any>>;
     } else if (args.entityType === "company") {
-      emails = await ctx.db
-        .query("emails")
-        .withIndex("by_company", (q) =>
-          q.eq("companyId", args.entityId as Id<"companies">)
-        )
-        .collect();
+      emails = (await db.query("emails")
+        .eq("organizationId", orgIdStr)
+        .eq("companyId", args.entityId)
+        .collect()) as Array<Record<string, any>>;
     } else if (args.entityType === "lead") {
-      emails = await ctx.db
-        .query("emails")
-        .withIndex("by_lead", (q) =>
-          q.eq("leadId", args.entityId as Id<"leads">)
-        )
-        .collect();
+      emails = (await db.query("emails")
+        .eq("organizationId", orgIdStr)
+        .eq("leadId", args.entityId)
+        .collect()) as Array<Record<string, any>>;
     } else {
       throw new Error(`Invalid entity type: ${args.entityType}`);
     }
 
-    return emails.sort((a, b) => b.sentAt - a.sentAt);
+    return emails.sort((a, b) => (b.sentAt ?? 0) - (a.sentAt ?? 0));
   },
 });
 

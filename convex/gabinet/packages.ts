@@ -554,22 +554,28 @@ export const getActiveUsageCounts = query({
   },
 });
 
-export const getPatientPackages = query({
+export const getPatientPackages = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_packages",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    return await ctx.db
+    const db = createSupabaseDb();
+    return (await db
       .query("gabinetPackageUsage")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
+      .collect()) as Array<Record<string, unknown>>;
   },
 });
 

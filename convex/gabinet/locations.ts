@@ -17,19 +17,22 @@ export const listLocations = query({
   },
 });
 
-export const getLocation = query({
+export const getLocation = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const location = await ctx.db.get(args.locationId);
-    if (!location || location.organizationId !== args.organizationId) return null;
-    const rooms = await ctx.db
+  handler: async (ctx, args): Promise<Record<string, unknown> | null> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const location = await db.get("gabinetLocations", args.locationId);
+    if (!location || String(location.organizationId) !== String(args.organizationId)) return null;
+    const rooms = (await db
       .query("gabinetRooms")
-      .withIndex("by_location", (q) => q.eq("locationId", args.locationId))
-      .collect();
+      .eq("locationId", args.locationId)
+      .collect()) as Array<Record<string, unknown>>;
     return { ...location, rooms };
   },
 });

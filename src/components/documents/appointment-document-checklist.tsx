@@ -97,17 +97,21 @@ export function AppointmentDocumentChecklist({
   const [generateOpen, setGenerateOpen] = useState(false);
 
   // Fetch all documents for this appointment
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const {
     data: documents,
     isLoading,
     refetch,
-  } = useQuery(
-    convexQuery(api.documents.documents.listByEntity, {
-      organizationId,
-      entityType: "appointment",
-      entityId: appointmentId,
-    }),
-  );
+  } = useQuery({
+    queryKey: ["documents.documents.listByEntity", organizationId, "appointment", appointmentId],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "appointment",
+        entityId: appointmentId,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  });
 
   // Viewing document (Supabase-primary actions)
   const getDocumentById = useAction(api.documents.documents.getById);
@@ -510,13 +514,17 @@ export function useAppointmentDocumentCounts(
   appointmentId: string,
   organizationId: Id<"organizations">,
 ) {
-  const { data: documents } = useQuery(
-    convexQuery(api.documents.documents.listByEntity, {
-      organizationId,
-      entityType: "appointment",
-      entityId: appointmentId,
-    }),
-  );
+  const listDocumentsByEntityHook = useAction(api.documents.documents.listByEntity);
+  const { data: documents } = useQuery({
+    queryKey: ["documents.documents.listByEntity", organizationId, "appointment", appointmentId],
+    queryFn: () =>
+      listDocumentsByEntityHook({
+        organizationId,
+        entityType: "appointment",
+        entityId: appointmentId,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  });
 
   const allDocs = (documents ?? []) as FormDocument[];
 

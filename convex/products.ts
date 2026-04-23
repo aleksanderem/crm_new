@@ -362,26 +362,33 @@ export const _toggleActiveSideEffects = internalMutation({
   },
 });
 
-export const listByDeal = query({
+export const listByDeal = action({
   args: {
     organizationId: v.id("organizations"),
-    dealId: v.id("leads"),
+    dealId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "products", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "products",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const dealProducts = await ctx.db
+    const db = createSupabaseDb();
+    const dealProducts = (await db
       .query("dealProducts")
-      .withIndex("by_deal", (q) => q.eq("dealId", args.dealId))
-      .collect();
+      .eq("dealId", args.dealId)
+      .collect()) as Array<Record<string, any>>;
 
     const products = await Promise.all(
       dealProducts.map(async (dp) => {
-        const product = await ctx.db.get(dp.productId);
+        const product = await db.get("products", String(dp.productId)).catch(() => null);
         return { ...dp, product };
-      })
+      }),
     );
 
     return products;

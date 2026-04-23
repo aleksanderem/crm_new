@@ -194,12 +194,15 @@ export function AppointmentForm({
   const convex = useConvex();
 
   // Rooms query — enabled only when a location is selected
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
   const { data: locationWithRooms } = useQuery({
-    ...convexQuery(api.gabinet.locations.getLocation, {
-      organizationId: organizationId!,
-      locationId: locationId as Id<"gabinetLocations">,
-    }),
-    enabled: !!locationId,
+    queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
+    queryFn: () =>
+      getLocationAction({
+        organizationId: organizationId!,
+        locationId: locationId as string,
+      }),
+    enabled: !!organizationId && !!locationId,
   });
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 

@@ -423,38 +423,43 @@ export const getTreatmentStats = query({
   },
 });
 
-export const getTreatmentDetailedStats = query({
+export const getTreatmentDetailedStats = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const treatment = await ctx.db.get(args.treatmentId);
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
     if (!treatment) throw new Error("Treatment not found");
 
-    const price = treatment.price ?? 0;
+    const price = (treatment.price as number | null) ?? 0;
 
-    const allAppointments = await ctx.db
+    const allAppointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndTreatment", (q) =>
-        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
-      )
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .eq("treatmentId", args.treatmentId)
+      .collect()) as Array<Record<string, any>>;
 
-    // Fetch all completed payments for this org, then filter by appointment IDs
-    const appointmentIds = new Set(allAppointments.map((a) => a._id));
-    const completedPayments = await ctx.db
+    const appointmentIds = new Set(allAppointments.map((a) => String(a._id ?? a.id)));
+    const completedPayments = (await db
       .query("payments")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "completed")
-      )
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .eq("status", "completed")
+      .collect()) as Array<Record<string, any>>;
     const treatmentPayments = completedPayments.filter(
-      (p) => p.appointmentId && appointmentIds.has(p.appointmentId)
+      (p) => p.appointmentId && appointmentIds.has(String(p.appointmentId)),
     );
 
     const now = new Date();
@@ -477,7 +482,7 @@ export const getTreatmentDetailedStats = query({
     // --- Status distribution for donut chart ---
     const statusCounts: Record<string, number> = {};
     for (const apt of allAppointments) {
-      statusCounts[apt.status] = (statusCounts[apt.status] ?? 0) + 1;
+      statusCounts[String(apt.status)] = (statusCounts[String(apt.status)] ?? 0) + 1;
     }
 
     // --- Monthly trend (last 12 months) ---
@@ -485,10 +490,8 @@ export const getTreatmentDetailedStats = query({
     const paymentByAppointment = new Map<string, number>();
     for (const p of treatmentPayments) {
       if (p.appointmentId) {
-        paymentByAppointment.set(
-          p.appointmentId,
-          (paymentByAppointment.get(p.appointmentId) ?? 0) + p.amount,
-        );
+        const apId = String(p.appointmentId);
+        paymentByAppointment.set(apId, (paymentByAppointment.get(apId) ?? 0) + (p.amount ?? 0));
       }
     }
 
@@ -496,9 +499,9 @@ export const getTreatmentDetailedStats = query({
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const monthApts = allAppointments.filter((a) => a.date.startsWith(key));
+      const monthApts = allAppointments.filter((a) => String(a.date ?? "").startsWith(key));
       const monthRevenue = monthApts.reduce(
-        (sum, a) => sum + (paymentByAppointment.get(a._id) ?? 0),
+        (sum, a) => sum + (paymentByAppointment.get(String(a._id ?? a.id)) ?? 0),
         0,
       );
       monthlyTrend.push({
@@ -509,14 +512,13 @@ export const getTreatmentDetailedStats = query({
     }
 
     // --- Employee ranking (top performers) ---
-    // Build employee -> revenue map from appointments they handled
     const employeeMap: Record<string, { count: number; completedCount: number; revenue: number }> = {};
     for (const apt of allAppointments) {
-      const eid = apt.employeeId;
+      const eid = String(apt.employeeId);
       if (!employeeMap[eid]) employeeMap[eid] = { count: 0, completedCount: 0, revenue: 0 };
       employeeMap[eid].count++;
       if (apt.status === "completed") employeeMap[eid].completedCount++;
-      employeeMap[eid].revenue += paymentByAppointment.get(apt._id) ?? 0;
+      employeeMap[eid].revenue += paymentByAppointment.get(String(apt._id ?? apt.id)) ?? 0;
     }
 
     const employeeRanking = await Promise.all(
@@ -524,11 +526,11 @@ export const getTreatmentDetailedStats = query({
         .sort((a, b) => b[1].completedCount - a[1].completedCount)
         .slice(0, 5)
         .map(async ([userId, data]) => {
-          const user = await ctx.db.get(userId as Id<"users">);
+          const user = await db.get("users", userId).catch(() => null);
           return {
             userId,
-            name: user?.name ?? user?.email ?? "—",
-            image: user?.image,
+            name: (user?.name as string | null) ?? (user?.email as string | null) ?? "—",
+            image: user?.image as string | null | undefined,
             totalAppointments: data.count,
             completedAppointments: data.completedCount,
             revenue: data.revenue,
@@ -545,64 +547,65 @@ export const getTreatmentDetailedStats = query({
       .filter((a) => a.date >= today && a.status !== "cancelled" && a.status !== "no_show" && a.status !== "completed")
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
-    let lastAppointment = null;
+    let lastAppointment: { date: string; startTime: string; patientName: string } | null = null;
     if (pastApts[0]) {
-      const patient = await ctx.db.get(pastApts[0].patientId);
+      const patient = await db.get("gabinetPatients", String(pastApts[0].patientId));
       lastAppointment = {
         date: pastApts[0].date,
         startTime: pastApts[0].startTime,
-        patientName: patient ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim() : "—",
+        patientName: patient ? `${(patient.firstName as string) ?? ""} ${(patient.lastName as string) ?? ""}`.trim() : "—",
       };
     }
 
-    let nextAppointment = null;
+    let nextAppointment: { date: string; startTime: string; patientName: string } | null = null;
     if (futureApts[0]) {
-      const patient = await ctx.db.get(futureApts[0].patientId);
+      const patient = await db.get("gabinetPatients", String(futureApts[0].patientId));
       nextAppointment = {
         date: futureApts[0].date,
         startTime: futureApts[0].startTime,
-        patientName: patient ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim() : "—",
+        patientName: patient ? `${(patient.firstName as string) ?? ""} ${(patient.lastName as string) ?? ""}`.trim() : "—",
       };
     }
 
     // --- Package stats ---
-    const allPackages = await ctx.db
+    const allPackages = (await db
       .query("gabinetTreatmentPackages")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .collect()) as Array<Record<string, any>>;
 
     const packagesWithThisTreatment = allPackages.filter((pkg) =>
-      pkg.treatments.some((t) => t.treatmentId === args.treatmentId)
+      (pkg.treatments as Array<{ treatmentId: string }> | undefined)?.some(
+        (t) => String(t.treatmentId) === args.treatmentId,
+      ),
     );
-    const activePackages = packagesWithThisTreatment.filter((pkg) => pkg.isActive);
+    const activePackages = packagesWithThisTreatment.filter((pkg) => pkg.isActive === true);
 
-    // Count package usage
     let totalPackageSlots = 0;
     let usedPackageSlots = 0;
 
     if (packagesWithThisTreatment.length > 0) {
-      const packageIds = new Set(packagesWithThisTreatment.map((p) => p._id));
-      const allUsage = await ctx.db
+      const packageIds = new Set(packagesWithThisTreatment.map((p) => String(p._id ?? p.id)));
+      const allUsage = (await db
         .query("gabinetPackageUsage")
-        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-        .collect();
+        .eq("organizationId", orgIdStr)
+        .collect()) as Array<Record<string, any>>;
 
       const relevantUsage = allUsage.filter(
-        (u) => packageIds.has(u.packageId) && u.status === "active"
+        (u) => packageIds.has(String(u.packageId)) && u.status === "active",
       );
 
       for (const usage of relevantUsage) {
-        for (const tu of usage.treatmentsUsed) {
-          if (tu.treatmentId === args.treatmentId) {
-            totalPackageSlots += tu.totalCount;
-            usedPackageSlots += tu.usedCount;
+        for (const tu of (usage.treatmentsUsed as Array<{ treatmentId: string; totalCount: number; usedCount: number }> | undefined) ?? []) {
+          if (String(tu.treatmentId) === args.treatmentId) {
+            totalPackageSlots += tu.totalCount ?? 0;
+            usedPackageSlots += tu.usedCount ?? 0;
           }
         }
       }
     }
 
     // --- Unique patients count ---
-    const uniquePatients = new Set(allAppointments.map((a) => a.patientId)).size;
+    const uniquePatients = new Set(allAppointments.map((a) => String(a.patientId))).size;
 
     return {
       total,
@@ -632,88 +635,95 @@ export const getTreatmentDetailedStats = query({
   },
 });
 
-export const listTreatmentAppointments = query({
+export const listTreatmentAppointments = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
     status: v.optional(v.string()),
-    employeeId: v.optional(v.id("users")),
+    employeeId: v.optional(v.string()),
     dateFrom: v.optional(v.string()),
     dateTo: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_appointments", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    let appointments = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    let appointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndTreatment", (q) =>
-        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
-      )
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .eq("treatmentId", args.treatmentId)
+      .collect()) as Array<Record<string, any>>;
 
-    if (args.status) {
-      appointments = appointments.filter((a) => a.status === args.status);
-    }
-    if (args.employeeId) {
-      appointments = appointments.filter((a) => a.employeeId === args.employeeId);
-    }
-    if (args.dateFrom) {
-      appointments = appointments.filter((a) => a.date >= args.dateFrom!);
-    }
-    if (args.dateTo) {
-      appointments = appointments.filter((a) => a.date <= args.dateTo!);
-    }
+    if (args.status) appointments = appointments.filter((a) => a.status === args.status);
+    if (args.employeeId) appointments = appointments.filter((a) => String(a.employeeId) === args.employeeId);
+    if (args.dateFrom) appointments = appointments.filter((a) => String(a.date) >= args.dateFrom!);
+    if (args.dateTo) appointments = appointments.filter((a) => String(a.date) <= args.dateTo!);
 
-    // Sort by date descending
-    appointments.sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
+    appointments.sort((a, b) =>
+      String(b.date + b.startTime).localeCompare(String(a.date + a.startTime)),
+    );
 
-    // Enrich with patient and employee names
+    // Enrich with patient + employee names (batch .in() would be nicer but keep
+    // the original per-row shape for now).
     const enriched = await Promise.all(
       appointments.map(async (apt) => {
-        const patient = await ctx.db.get(apt.patientId);
-        const employeeUser = await ctx.db.get(apt.employeeId);
+        const patient = await db.get("gabinetPatients", String(apt.patientId)).catch(() => null);
+        const employeeUser = await db.get("users", String(apt.employeeId)).catch(() => null);
         return {
           ...apt,
           patientName: patient
-            ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
+            ? `${(patient.firstName as string) ?? ""} ${(patient.lastName as string) ?? ""}`.trim()
             : "—",
-          employeeName: employeeUser?.name ?? employeeUser?.email ?? "—",
+          employeeName: (employeeUser?.name as string | null) ?? (employeeUser?.email as string | null) ?? "—",
         };
-      })
+      }),
     );
 
     return enriched;
   },
 });
 
-export const getTreatmentEmployees = query({
+export const getTreatmentEmployees = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    // Employees store qualifiedTreatmentIds — query from that side
-    const allEmployees = await ctx.db
+    const db = createSupabaseDb();
+    const allEmployees = (await db
       .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, any>>;
 
     const assigned = allEmployees.filter((emp) =>
-      emp.qualifiedTreatmentIds.includes(args.treatmentId)
+      ((emp.qualifiedTreatmentIds as string[] | undefined) ?? []).includes(args.treatmentId),
     );
 
-    // Enrich with user info
     const enriched = await Promise.all(
       assigned.map(async (emp) => {
-        const user = await ctx.db.get(emp.userId);
+        const user = await db.get("users", String(emp.userId)).catch(() => null);
         return {
-          _id: emp._id,
+          _id: emp._id ?? emp.id,
           userId: emp.userId,
           firstName: emp.firstName,
           lastName: emp.lastName,
@@ -721,10 +731,10 @@ export const getTreatmentEmployees = query({
           specialization: emp.specialization,
           isActive: emp.isActive,
           color: emp.color,
-          userName: user?.name ?? user?.email ?? "—",
-          userImage: user?.image,
+          userName: (user?.name as string | null) ?? (user?.email as string | null) ?? "—",
+          userImage: user?.image as string | null | undefined,
         };
-      })
+      }),
     );
 
     return enriched;

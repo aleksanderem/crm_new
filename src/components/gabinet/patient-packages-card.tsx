@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -27,12 +27,16 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
   const { t } = useTranslation();
   const [purchaseOpen, setPurchaseOpen] = useState(false);
 
-  const { data: usages } = useQuery(
-    convexQuery(api.gabinet.packages.getPatientPackages, {
-      organizationId,
-      patientId: patientId as Id<"gabinetPatients">,
-    })
-  );
+  const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
+  const { data: usages } = useQuery({
+    queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
+    queryFn: () =>
+      getPatientPackagesAction({
+        organizationId,
+        patientId: patientId as string,
+      }),
+    enabled: !!organizationId && !!patientId,
+  });
 
   const { data: allPackages } = useQuery(
     convexQuery(api.gabinet.packages.listActive, { organizationId })

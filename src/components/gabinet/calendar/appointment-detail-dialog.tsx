@@ -197,11 +197,14 @@ export function AppointmentDetailDialog({
     enabled: !!appointment,
   });
 
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
   const { data: locationData } = useQuery({
-    ...convexQuery(api.gabinet.locations.getLocation, {
-      organizationId,
-      locationId: (appointment?.locationId ?? "") as Id<"gabinetLocations">,
-    }),
+    queryKey: ["gabinet.locations.getLocation", organizationId, appointment?.locationId],
+    queryFn: () =>
+      getLocationAction({
+        organizationId,
+        locationId: (appointment?.locationId ?? "") as string,
+      }),
     enabled: !!appointment?.locationId,
   });
 

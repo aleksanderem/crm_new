@@ -157,29 +157,49 @@ function TreatmentDetail() {
     treatmentId,
   );
 
-  const { data: detailedStats } = useQuery(
-    convexQuery(api.gabinet.treatments.getTreatmentDetailedStats, {
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-    }),
-  );
+  const getDetailedStatsAction = useAction(api.gabinet.treatments.getTreatmentDetailedStats);
+  const listTreatmentAppointmentsAction = useAction(api.gabinet.treatments.listTreatmentAppointments);
+  const getTreatmentEmployeesAction = useAction(api.gabinet.treatments.getTreatmentEmployees);
 
-  const { data: treatmentAppointments } = useQuery(
-    convexQuery(api.gabinet.treatments.listTreatmentAppointments, {
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-      status: aptStatusFilter !== "all" ? aptStatusFilter : undefined,
-      dateFrom: aptDateFrom || undefined,
-      dateTo: aptDateTo || undefined,
-    }),
-  );
+  const { data: detailedStats } = useQuery({
+    queryKey: ["gabinet.treatments.getTreatmentDetailedStats", organizationId, treatmentId],
+    queryFn: () =>
+      getDetailedStatsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+  });
 
-  const { data: treatmentEmployees } = useQuery(
-    convexQuery(api.gabinet.treatments.getTreatmentEmployees, {
+  const { data: treatmentAppointments } = useQuery({
+    queryKey: [
+      "gabinet.treatments.listTreatmentAppointments",
       organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-    }),
-  );
+      treatmentId,
+      aptStatusFilter,
+      aptDateFrom,
+      aptDateTo,
+    ],
+    queryFn: () =>
+      listTreatmentAppointmentsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+        status: aptStatusFilter !== "all" ? aptStatusFilter : undefined,
+        dateFrom: aptDateFrom || undefined,
+        dateTo: aptDateTo || undefined,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+  });
+
+  const { data: treatmentEmployees } = useQuery({
+    queryKey: ["gabinet.treatments.getTreatmentEmployees", organizationId, treatmentId],
+    queryFn: () =>
+      getTreatmentEmployeesAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+  });
 
   const { data: rawVariants } = useSupabaseGabinetTreatmentVariants(
     organizationId,

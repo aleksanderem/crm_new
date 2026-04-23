@@ -526,51 +526,52 @@ export const listPatientsForEmployee = query({
  * (visit count, last visit date, treatments used, statuses).
  * Used by the employee detail "Klienci" tab for search & filtering.
  */
-export const listPatientsWithStatsForEmployee = query({
+export const listPatientsWithStatsForEmployee = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("users"),
+    employeeId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    let appointments = await ctx.db
+    const db = createSupabaseDb();
+    let appointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndEmployee", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("employeeId", args.employeeId),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("employeeId", args.employeeId)
+      .collect()) as Array<Record<string, any>>;
+
     if (perm.scope === "own") {
-      appointments = appointments.filter((r) => r.createdBy === user._id);
+      appointments = appointments.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
 
-    // Group appointments by patient
-    const byPatient = new Map<Id<"gabinetPatients">, typeof appointments>();
+    // Group by patient
+    const byPatient = new Map<string, Array<Record<string, any>>>();
     for (const apt of appointments) {
-      const patientId = apt.patientId;
+      const patientId = String(apt.patientId);
       if (!byPatient.has(patientId)) byPatient.set(patientId, []);
       byPatient.get(patientId)!.push(apt);
     }
 
     const results = await Promise.all(
       Array.from(byPatient.entries()).map(async ([patientId, patientApts]) => {
-        const patient = await ctx.db.get(patientId);
+        const patient = await db.get("gabinetPatients", patientId).catch(() => null);
         if (!patient) return null;
 
-        const sortedAppointments = [...patientApts].sort((a, b) => b.date.localeCompare(a.date));
+        const sortedAppointments = [...patientApts].sort((a, b) => String(b.date).localeCompare(String(a.date)));
         const lastVisitDate = sortedAppointments[0]?.date ?? null;
         const firstVisitDate = sortedAppointments[sortedAppointments.length - 1]?.date ?? null;
-        const treatmentIds = [...new Set(patientApts.map((a) => a.treatmentId))];
-        const statuses = [...new Set(patientApts.map((a) => a.status))];
+        const treatmentIds = Array.from(new Set(patientApts.map((a) => String(a.treatmentId))));
+        const statuses = Array.from(new Set(patientApts.map((a) => String(a.status))));
 
         return {
           ...patient,
@@ -583,7 +584,7 @@ export const listPatientsWithStatsForEmployee = query({
       }),
     );
 
-    return results.filter((result) => result !== null);
+    return results.filter((result): result is Record<string, unknown> => result !== null);
   },
 });
 

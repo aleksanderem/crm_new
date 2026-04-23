@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -361,12 +362,15 @@ export function TemplatePreviewSheet({
 
   // --- Scope resolution (fires when entity selected) ---
 
+  const resolveEntityScopeAction = useAction(api.documents.generate.resolveEntityScope);
   const { data: scopeData, isLoading: scopeLoading } = useQuery({
-    ...convexQuery(api.documents.generate.resolveEntityScope, {
-      organizationId,
-      entityType: entityType || "patient",
-      entityId: selectedEntityId,
-    }),
+    queryKey: ["documents.generate.resolveEntityScope", organizationId, entityType || "patient", selectedEntityId],
+    queryFn: () =>
+      resolveEntityScopeAction({
+        organizationId,
+        entityType: entityType || "patient",
+        entityId: selectedEntityId,
+      }),
     enabled: !!entityType && !!selectedEntityId,
   });
 

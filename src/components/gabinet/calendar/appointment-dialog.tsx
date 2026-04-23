@@ -281,11 +281,14 @@ export function AppointmentDialog({
   });
 
   // Rooms query — enabled only when a location is selected
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
   const { data: locationWithRooms } = useQuery({
-    ...convexQuery(api.gabinet.locations.getLocation, {
-      organizationId,
-      locationId: locationId as Id<"gabinetLocations">,
-    }),
+    queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
+    queryFn: () =>
+      getLocationAction({
+        organizationId,
+        locationId: locationId as string,
+      }),
     enabled: !!locationId,
   });
   const activeRooms = locationWithRooms?.rooms?.filter((r: { isActive: boolean }) => r.isActive) ?? [];

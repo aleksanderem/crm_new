@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -62,14 +62,17 @@ export function DocumentGateDialog({
 }: DocumentGateDialogProps) {
   const { t } = useTranslation();
 
-  // Fetch documents for this appointment
+  // Fetch documents for this appointment (Supabase-primary action)
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const { data: documents } = useQuery({
-    ...convexQuery(api.documents.documents.listByEntity, {
-      organizationId,
-      entityType: "appointment",
-      entityId: appointmentId,
-    }),
-    enabled: open,
+    queryKey: ["documents.documents.listByEntity", organizationId, "appointment", appointmentId],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "appointment",
+        entityId: appointmentId,
+      }),
+    enabled: open && !!organizationId && !!appointmentId,
   });
 
   const allDocs = (documents ?? []) as Array<{

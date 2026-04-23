@@ -83,13 +83,17 @@ export function TreatmentRequiredDocuments({
 
   const updateTreatment = useAction(api.gabinet.treatments.update);
 
-  // Fetch all form templates to resolve names and for the picker
-  const { data: allTemplates, isLoading: templatesLoading } = useQuery(
-    convexQuery(api.documents.templates.listByEntityType, {
-      organizationId,
-      entityType: "treatment",
-    }),
-  );
+  // Fetch all form templates to resolve names and for the picker (Supabase)
+  const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
+  const { data: allTemplates, isLoading: templatesLoading } = useQuery({
+    queryKey: ["documents.templates.listByEntityType", organizationId, "treatment"],
+    queryFn: () =>
+      listTemplatesByEntityType({
+        organizationId,
+        entityType: "treatment",
+      }),
+    enabled: !!organizationId,
+  });
 
   const templateMap = new Map(
     (allTemplates ?? []).map((tpl) => [tpl._id, tpl]),

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -88,10 +88,13 @@ function LocationCard({
   const [saving, setSaving] = useState(false);
   const [addingRoom, setAddingRoom] = useState(false);
 
-  const location = useConvexQuery(
-    api.gabinet.locations.getLocation,
-    expanded ? { organizationId, locationId } : "skip"
-  ) as LocationWithRooms | null | undefined;
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
+  const { data: location } = useQuery({
+    queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
+    queryFn: () =>
+      getLocationAction({ organizationId, locationId: locationId as string }),
+    enabled: expanded && !!organizationId && !!locationId,
+  }) as { data: LocationWithRooms | null | undefined };
 
   const updateLocation = useAction(api.gabinet.locations.updateLocation);
   const deleteLocation = useAction(api.gabinet.locations.deleteLocation);

@@ -1,4 +1,5 @@
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
@@ -18,8 +19,18 @@ const gaugeConfig = {
 
 export function GabinetReportsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.gabinet.sidebarWidgets.getReportsKpis, { organizationId });
-  const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
+  const getReportsKpis = useAction(api.gabinet.sidebarWidgets.getReportsKpis);
+  const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getReportsKpis", organizationId],
+    queryFn: () => getReportsKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: staffLoad } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getStaffLoad", organizationId],
+    queryFn: () => getStaffLoad({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   if (!kpis) return null;
 

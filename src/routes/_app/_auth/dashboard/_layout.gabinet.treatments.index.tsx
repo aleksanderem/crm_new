@@ -66,13 +66,18 @@ function TreatmentsIndex() {
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
-  const { data: kpis } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getTreatmentsKpis, { organizationId })
-  );
-
-  const { data: topTreatments } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId })
-  );
+  const getTreatmentsKpis = useAction(api.gabinet.sidebarWidgets.getTreatmentsKpis);
+  const getTopTreatments = useAction(api.gabinet.sidebarWidgets.getTopTreatments);
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getTreatmentsKpis", organizationId],
+    queryFn: () => getTreatmentsKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: topTreatments } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getTopTreatments", organizationId],
+    queryFn: () => getTopTreatments({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   // Build sparkline from top treatments data
   const treatmentChartData = useMemo(() => {

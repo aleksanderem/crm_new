@@ -1,4 +1,5 @@
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
@@ -10,9 +11,24 @@ import { Separator } from "@/components/ui/separator";
 
 export function GabinetCalendarWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.gabinet.sidebarWidgets.getCalendarKpis, { organizationId });
-  const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
-  const todaySchedule = useQuery(api.gabinet.sidebarWidgets.getTodaySchedule, { organizationId });
+  const getCalendarKpis = useAction(api.gabinet.sidebarWidgets.getCalendarKpis);
+  const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
+  const getTodaySchedule = useAction(api.gabinet.sidebarWidgets.getTodaySchedule);
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getCalendarKpis", organizationId],
+    queryFn: () => getCalendarKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: staffLoad } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getStaffLoad", organizationId],
+    queryFn: () => getStaffLoad({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: todaySchedule } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getTodaySchedule", organizationId],
+    queryFn: () => getTodaySchedule({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   if (!kpis) return null;
 

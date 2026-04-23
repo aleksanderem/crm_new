@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useMatchRoute } from "@tanstack/react-router";
@@ -32,19 +32,19 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const [nudges, setNudges] = useState<NudgeData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch CRM nudges
+  // CRM nudges (Supabase-primary action)
+  const getCrmNudges = useAction(api.nudges.getAll);
   const { data: crmNudges, isLoading: crmLoading } = useQuery({
-    ...convexQuery(api.nudges.getAll, {
-      organizationId,
-    }),
+    queryKey: ["nudges.getAll", organizationId],
+    queryFn: () => getCrmNudges({ organizationId }),
     enabled: !!organizationId && !isGabinetRoute,
   });
 
-  // Fetch Gabinet nudges
+  // Gabinet nudges (Supabase-primary action)
+  const getGabinetNudges = useAction(api.gabinet.nudges.getAll);
   const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery({
-    ...convexQuery(api.gabinet.nudges.getAll, {
-      organizationId,
-    }),
+    queryKey: ["gabinet.nudges.getAll", organizationId],
+    queryFn: () => getGabinetNudges({ organizationId }),
     enabled: !!organizationId && isGabinetRoute,
   });
 

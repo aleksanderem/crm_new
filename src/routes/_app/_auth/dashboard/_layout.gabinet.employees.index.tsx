@@ -100,13 +100,18 @@ function EmployeesIndex() {
     [allTreatmentsRaw],
   );
 
-  const { data: kpis } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getEmployeesKpis, { organizationId })
-  );
-
-  const { data: staffLoad } = useQuery(
-    convexQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId })
-  );
+  const getEmployeesKpis = useAction(api.gabinet.sidebarWidgets.getEmployeesKpis);
+  const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getEmployeesKpis", organizationId],
+    queryFn: () => getEmployeesKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: staffLoad } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getStaffLoad", organizationId],
+    queryFn: () => getStaffLoad({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   // Build sparkline for staff load
   const staffChartData = useMemo(() => {

@@ -1,4 +1,5 @@
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
@@ -23,11 +24,37 @@ const weeklyChartConfig = {
 
 export function GabinetDashboardWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.gabinet.sidebarWidgets.getDashboardKpis, { organizationId });
-  const staffLoad = useQuery(api.gabinet.sidebarWidgets.getStaffLoad, { organizationId });
-  const todaySchedule = useQuery(api.gabinet.sidebarWidgets.getTodaySchedule, { organizationId });
-  const weeklyAppointments = useQuery(api.gabinet.sidebarWidgets.getWeeklyAppointments, { organizationId });
-  const weeklyCompleted = useQuery(api.gabinet.sidebarWidgets.getWeeklyCompletedTreatments, { organizationId });
+  const getDashboardKpis = useAction(api.gabinet.sidebarWidgets.getDashboardKpis);
+  const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
+  const getTodaySchedule = useAction(api.gabinet.sidebarWidgets.getTodaySchedule);
+  const getWeeklyAppointments = useAction(api.gabinet.sidebarWidgets.getWeeklyAppointments);
+  const getWeeklyCompleted = useAction(api.gabinet.sidebarWidgets.getWeeklyCompletedTreatments);
+
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getDashboardKpis", organizationId],
+    queryFn: () => getDashboardKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: staffLoad } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getStaffLoad", organizationId],
+    queryFn: () => getStaffLoad({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: todaySchedule } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getTodaySchedule", organizationId],
+    queryFn: () => getTodaySchedule({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: weeklyAppointments } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getWeeklyAppointments", organizationId],
+    queryFn: () => getWeeklyAppointments({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: weeklyCompleted } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getWeeklyCompletedTreatments", organizationId],
+    queryFn: () => getWeeklyCompleted({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   if (!kpis) return null;
 

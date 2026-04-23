@@ -1,86 +1,86 @@
-import { query } from "../_generated/server";
+import { action } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "../_helpers/auth";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+
+// All widgets are Supabase-primary actions — the underlying business tables
+// (gabinet_appointments, gabinet_patients, gabinet_employees, ...) live in
+// Supabase now. Each action: auth via internal query, then aggregate via
+// supabaseDb.
+
+async function verify(ctx: any, organizationId: string) {
+  await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    organizationId,
+  });
+}
 
 // --- Dashboard KPIs ---
-export const getDashboardKpis = query({
+export const getDashboardKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
+  handler: async (ctx, args): Promise<{
+    todayAppointments: number;
+    confirmedToday: number;
+    totalPatients: number;
+    activeEmployees: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
     const todayStr = new Date().toISOString().split("T")[0];
 
-    const appointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", todayStr),
-      )
-      .collect();
-
-    const confirmedToday = appointments.filter(
-      (a) => a.status === "confirmed",
-    ).length;
-
-    const patients = await ctx.db
-      .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const employees = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const activeEmployees = employees.filter((e) => e.isActive).length;
+    const [appointments, patients, employees] = await Promise.all([
+      db.query("gabinetAppointments").eq("organizationId", orgId).eq("date", todayStr).collect(),
+      db.query("gabinetPatients").eq("organizationId", orgId).collect(),
+      db.query("gabinetEmployees").eq("organizationId", orgId).collect(),
+    ]);
 
     return {
       todayAppointments: appointments.length,
-      confirmedToday,
+      confirmedToday: appointments.filter((a: any) => a.status === "confirmed").length,
       totalPatients: patients.length,
-      activeEmployees,
+      activeEmployees: employees.filter((e: any) => e.isActive).length,
     };
   },
 });
 
 // --- Calendar KPIs ---
-export const getCalendarKpis = query({
+export const getCalendarKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
+  handler: async (ctx, args): Promise<{
+    todayCount: number;
+    confirmed: number;
+    unconfirmed: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
     const todayStr = new Date().toISOString().split("T")[0];
 
-    const appointments = await ctx.db
+    const appointments = await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", todayStr),
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("date", todayStr)
       .collect();
-
-    const confirmed = appointments.filter(
-      (a) => a.status === "confirmed",
-    ).length;
-    const unconfirmed = appointments.filter(
-      (a) => a.status === "scheduled" || a.status === "pending_confirmation",
-    ).length;
 
     return {
       todayCount: appointments.length,
-      confirmed,
-      unconfirmed,
+      confirmed: appointments.filter((a: any) => a.status === "confirmed").length,
+      unconfirmed: appointments.filter(
+        (a: any) => a.status === "scheduled" || a.status === "pending_confirmation",
+      ).length,
     };
   },
 });
 
 // --- Patients KPIs ---
-export const getPatientsKpis = query({
+export const getPatientsKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{ total: number; newThisMonth: number }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
 
-    const patients = await ctx.db
+    const patients = await db
       .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     const startOfMonth = new Date();
@@ -88,59 +88,54 @@ export const getPatientsKpis = query({
     startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthMs = startOfMonth.getTime();
 
-    const newThisMonth = patients.filter(
-      (p) => p.createdAt >= startOfMonthMs,
-    ).length;
-
     return {
       total: patients.length,
-      newThisMonth,
+      newThisMonth: patients.filter((p: any) => (p.createdAt ?? 0) >= startOfMonthMs).length,
     };
   },
 });
 
 // --- Treatments KPIs ---
-export const getTreatmentsKpis = query({
+export const getTreatmentsKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    totalTreatments: number;
+    completedThisMonth: number;
+    popularTreatment: string | null;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
-    const treatments = await ctx.db
-      .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    const [treatments, completedAppointments] = await Promise.all([
+      db.query("gabinetTreatments").eq("organizationId", orgId).collect(),
+      db.query("gabinetAppointments").eq("organizationId", orgId).eq("status", "completed").collect(),
+    ]);
 
     const todayStr = new Date().toISOString().split("T")[0];
     const startOfMonthStr = todayStr.slice(0, 7) + "-01";
 
-    const completedAppointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "completed"),
-      )
-      .collect();
-
     const completedThisMonth = completedAppointments.filter(
-      (a) => a.date >= startOfMonthStr,
+      (a: any) => String(a.date ?? "") >= startOfMonthStr,
     );
 
-    // Find most popular treatment by completed appointments this month
     const treatmentCounts: Record<string, number> = {};
     for (const appt of completedThisMonth) {
-      const id = appt.treatmentId as string;
+      const id = String((appt as any).treatmentId);
       treatmentCounts[id] = (treatmentCounts[id] ?? 0) + 1;
     }
-    let popularTreatment: string | null = null;
+    let popularId: string | null = null;
     let maxCount = 0;
     for (const [id, count] of Object.entries(treatmentCounts)) {
       if (count > maxCount) {
         maxCount = count;
-        popularTreatment = id;
+        popularId = id;
       }
     }
-    if (popularTreatment !== null) {
-      const found = treatments.find((t) => t._id === popularTreatment);
-      popularTreatment = found?.name ?? null;
+    let popularTreatment: string | null = null;
+    if (popularId !== null) {
+      const found = treatments.find((t: any) => String(t._id ?? t.id) === popularId);
+      popularTreatment = (found as any)?.name ?? null;
     }
 
     return {
@@ -152,112 +147,89 @@ export const getTreatmentsKpis = query({
 });
 
 // --- Employees KPIs ---
-export const getEmployeesKpis = query({
+export const getEmployeesKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const employees = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const activeCount = employees.filter((e) => e.isActive).length;
-
+  handler: async (ctx, args): Promise<{
+    activeCount: number;
+    onLeave: number;
+    pendingLeaveRequests: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
     const todayStr = new Date().toISOString().split("T")[0];
 
-    const leaves = await ctx.db
-      .query("gabinetLeaves")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "approved"),
-      )
-      .collect();
-
-    const onLeave = leaves.filter(
-      (l) => l.startDate <= todayStr && l.endDate >= todayStr,
-    ).length;
-
-    const pendingLeaves = await ctx.db
-      .query("gabinetLeaves")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "pending"),
-      )
-      .collect();
+    const [employees, approvedLeaves, pendingLeaves] = await Promise.all([
+      db.query("gabinetEmployees").eq("organizationId", orgId).collect(),
+      db.query("gabinetLeaves").eq("organizationId", orgId).eq("status", "approved").collect(),
+      db.query("gabinetLeaves").eq("organizationId", orgId).eq("status", "pending").collect(),
+    ]);
 
     return {
-      activeCount,
-      onLeave,
+      activeCount: employees.filter((e: any) => e.isActive).length,
+      onLeave: approvedLeaves.filter(
+        (l: any) => String(l.startDate) <= todayStr && String(l.endDate) >= todayStr,
+      ).length,
       pendingLeaveRequests: pendingLeaves.length,
     };
   },
 });
 
 // --- Packages KPIs ---
-export const getPackagesKpis = query({
+export const getPackagesKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    totalPackages: number;
+    activePackages: number;
+    expiringPackages: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
-    const packages = await ctx.db
-      .query("gabinetTreatmentPackages")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const packageUsages = await ctx.db
-      .query("gabinetPackageUsage")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    const activePackages = packageUsages.filter(
-      (u) => u.status === "active",
-    ).length;
+    const [packages, packageUsages] = await Promise.all([
+      db.query("gabinetTreatmentPackages").eq("organizationId", orgId).collect(),
+      db.query("gabinetPackageUsage").eq("organizationId", orgId).collect(),
+    ]);
 
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-    const expiringPackages = packageUsages.filter(
-      (u) =>
-        u.status === "active" &&
-        u.expiresAt !== undefined &&
-        u.expiresAt <= now + thirtyDaysMs,
-    ).length;
 
     return {
       totalPackages: packages.length,
-      activePackages,
-      expiringPackages,
+      activePackages: packageUsages.filter((u: any) => u.status === "active").length,
+      expiringPackages: packageUsages.filter(
+        (u: any) =>
+          u.status === "active" &&
+          u.expiresAt !== undefined &&
+          u.expiresAt !== null &&
+          (u.expiresAt as number) <= now + thirtyDaysMs,
+      ).length,
     };
   },
 });
 
-// --- Staff Load (Gabinet Calendar) ---
-export const getStaffLoad = query({
+// --- Staff Load ---
+export const getStaffLoad = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
+  handler: async (ctx, args): Promise<Array<{ name: string; appointmentCount: number; maxCapacity: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
     const todayStr = new Date().toISOString().split("T")[0];
 
-    const appointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", todayStr),
-      )
-      .collect();
-
-    const employees = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isActive", true),
-      )
-      .collect();
+    const [appointments, employees] = await Promise.all([
+      db.query("gabinetAppointments").eq("organizationId", orgId).eq("date", todayStr).collect(),
+      db.query("gabinetEmployees").eq("organizationId", orgId).eq("isActive", true).collect(),
+    ]);
 
     const countMap = new Map<string, number>();
     for (const appt of appointments) {
-      const key = String(appt.employeeId);
+      const key = String((appt as any).employeeId);
       countMap.set(key, (countMap.get(key) ?? 0) + 1);
     }
 
-    return employees
+    return (employees as any[])
       .map((e) => ({
         name: [e.firstName, e.lastName].filter(Boolean).join(" ") || "Employee",
         appointmentCount: countMap.get(String(e.userId)) ?? 0,
@@ -268,55 +240,44 @@ export const getStaffLoad = query({
   },
 });
 
-// --- Today's Schedule (Gabinet Employees) ---
-export const getTodaySchedule = query({
+// --- Today's Schedule ---
+export const getTodaySchedule = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ name: string; startTime: string; endTime: string; status: "working" | "break" | "off" }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0=Sunday, 1=Monday...
+    const dayOfWeek = today.getDay();
     const todayStr = today.toISOString().split("T")[0];
 
-    const schedules = await ctx.db
-      .query("gabinetEmployeeSchedules")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    const [schedules, employees, approvedLeaves] = await Promise.all([
+      db.query("gabinetEmployeeSchedules").eq("organizationId", orgId).collect(),
+      db.query("gabinetEmployees").eq("organizationId", orgId).eq("isActive", true).collect(),
+      db.query("gabinetLeaves").eq("organizationId", orgId).eq("status", "approved").collect(),
+    ]);
 
-    const todaySchedules = schedules.filter(
+    const todaySchedules = (schedules as any[]).filter(
       (s) => s.dayOfWeek === dayOfWeek && s.isWorking,
     );
 
-    const employees = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isActive", true),
-      )
-      .collect();
-
-    const approvedLeaves = await ctx.db
-      .query("gabinetLeaves")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "approved"),
-      )
-      .collect();
-
     const onLeaveUserIds = new Set(
-      approvedLeaves
-        .filter((l) => l.startDate <= todayStr && l.endDate >= todayStr)
+      (approvedLeaves as any[])
+        .filter((l) => String(l.startDate) <= todayStr && String(l.endDate) >= todayStr)
         .map((l) => String(l.userId)),
     );
 
     return todaySchedules
-      .map((s) => {
-        const employee = employees.find((e) => e.userId === s.userId);
+      .map((s: any) => {
+        const employee = (employees as any[]).find((e) => String(e.userId) === String(s.userId));
         if (!employee) return null;
         const name =
           [employee.firstName, employee.lastName].filter(Boolean).join(" ") || "Employee";
         const status: "working" | "break" | "off" = onLeaveUserIds.has(String(s.userId))
           ? "off"
           : "working";
-        return { name, startTime: s.startTime, endTime: s.endTime, status };
+        return { name, startTime: String(s.startTime), endTime: String(s.endTime), status };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -324,50 +285,48 @@ export const getTodaySchedule = query({
 });
 
 // --- Reports KPIs ---
-export const getReportsKpis = query({
+export const getReportsKpis = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    thisMonthAppointments: number;
+    visitTrend: number;
+    attendance: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const todayStr = new Date().toISOString().split("T")[0];
-    const thisMonthPrefix = todayStr.slice(0, 7); // "YYYY-MM"
+    const thisMonthPrefix = todayStr.slice(0, 7);
 
     const now = new Date();
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthPrefix =
-      lastMonthDate.getFullYear() +
-      "-" +
-      String(lastMonthDate.getMonth() + 1).padStart(2, "0");
+      lastMonthDate.getFullYear() + "-" + String(lastMonthDate.getMonth() + 1).padStart(2, "0");
 
-    const allAppointments = await ctx.db
+    const allAppointments = await db
       .query("gabinetAppointments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgId)
       .collect();
 
-    const thisMonthAppointments = allAppointments.filter((a) =>
-      a.date.startsWith(thisMonthPrefix),
+    const thisMonthAppointments = (allAppointments as any[]).filter((a) =>
+      String(a.date ?? "").startsWith(thisMonthPrefix),
     );
-    const lastMonthAppointments = allAppointments.filter((a) =>
-      a.date.startsWith(lastMonthPrefix),
+    const lastMonthAppointments = (allAppointments as any[]).filter((a) =>
+      String(a.date ?? "").startsWith(lastMonthPrefix),
     );
 
     const thisMonthCount = thisMonthAppointments.length;
     const lastMonthCount = lastMonthAppointments.length;
 
-    let visitTrend = 0;
-    if (lastMonthCount > 0) {
-      visitTrend = Math.round(
-        ((thisMonthCount - lastMonthCount) / lastMonthCount) * 100,
-      );
-    }
-
-    const completedThisMonth = thisMonthAppointments.filter(
-      (a) => a.status === "completed",
-    ).length;
-    const attendance =
-      thisMonthCount > 0
-        ? Math.round((completedThisMonth / thisMonthCount) * 100)
+    const visitTrend =
+      lastMonthCount > 0
+        ? Math.round(((thisMonthCount - lastMonthCount) / lastMonthCount) * 100)
         : 0;
+
+    const completedThisMonth = thisMonthAppointments.filter((a) => a.status === "completed").length;
+    const attendance =
+      thisMonthCount > 0 ? Math.round((completedThisMonth / thisMonthCount) * 100) : 0;
 
     return {
       thisMonthAppointments: thisMonthCount,
@@ -377,38 +336,46 @@ export const getReportsKpis = query({
   },
 });
 
-// --- Day Agenda (Column 2 takeover) ---
-export const getDayAgenda = query({
+// --- Day Agenda ---
+export const getDayAgenda = action({
   args: { organizationId: v.id("organizations"), date: v.string() },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    date: string;
+    appointments: Array<Record<string, unknown>>;
+    totalAppointments: number;
+    confirmedCount: number;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
-    const appointments = await ctx.db
+    const appointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", args.date),
-      )
-      .collect();
+      .eq("organizationId", orgId)
+      .eq("date", args.date)
+      .collect()) as any[];
 
-    const sorted = appointments.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const sorted = appointments.sort((a, b) =>
+      String(a.startTime).localeCompare(String(b.startTime)),
+    );
 
     const enriched = await Promise.all(
       sorted.map(async (appt) => {
-        const patient = appt.patientId ? await ctx.db.get(appt.patientId) : null;
-        const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
-        const employee = appt.employeeId ? await ctx.db.get(appt.employeeId) : null;
+        const [patient, treatment, employee] = await Promise.all([
+          appt.patientId ? db.get("gabinetPatients", String(appt.patientId)).catch(() => null) : null,
+          appt.treatmentId ? db.get("gabinetTreatments", String(appt.treatmentId)).catch(() => null) : null,
+          appt.employeeId ? db.get("users", String(appt.employeeId)).catch(() => null) : null,
+        ]);
 
         return {
-          id: appt._id,
+          id: appt._id ?? appt.id,
           startTime: appt.startTime,
           endTime: appt.endTime,
           status: appt.status,
-          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "—",
-          treatmentName: treatment?.name ?? "—",
-          treatmentDuration: treatment?.duration ?? 0,
-          employeeName: employee
-            ? employee.name || "Employee"
-            : "—",
+          patientName: patient ? `${(patient as any).firstName} ${(patient as any).lastName}` : "—",
+          treatmentName: (treatment as any)?.name ?? "—",
+          treatmentDuration: (treatment as any)?.duration ?? 0,
+          employeeName: employee ? (employee as any).name || "Employee" : "—",
           confirmed: appt.status === "confirmed" || appt.status === "completed",
         };
       }),
@@ -423,63 +390,68 @@ export const getDayAgenda = query({
   },
 });
 
-// --- Dashboard Weekly Appointments (sparkline data) ---
-export const getWeeklyAppointments = query({
+// --- Weekly Appointments ---
+export const getWeeklyAppointments = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ day: string; appointments: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const today = new Date();
-    const days: { day: string; appointments: number }[] = [];
+    const oldestDate = new Date(today);
+    oldestDate.setDate(oldestDate.getDate() - 6);
+    const oldestStr = oldestDate.toISOString().split("T")[0];
+    const todayStr = today.toISOString().split("T")[0];
 
+    const appts = (await db
+      .query("gabinetAppointments")
+      .eq("organizationId", orgId)
+      .gte("date", oldestStr)
+      .lte("date", todayStr)
+      .collect()) as any[];
+
+    const byDate = new Map<string, number>();
+    for (const a of appts) {
+      byDate.set(String(a.date), (byDate.get(String(a.date)) ?? 0) + 1);
+    }
+
+    const days: { day: string; appointments: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split("T")[0];
       const dayLabel = d.toLocaleDateString("pl-PL", { weekday: "short" });
-
-      const appts = await ctx.db
-        .query("gabinetAppointments")
-        .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId).eq("date", dateStr),
-        )
-        .collect();
-
-      days.push({ day: dayLabel, appointments: appts.length });
+      days.push({ day: dayLabel, appointments: byDate.get(dateStr) ?? 0 });
     }
-
     return days;
   },
 });
 
-// --- Dashboard Monthly Patients (sparkline data) ---
-export const getMonthlyNewPatients = query({
+// --- Monthly New Patients ---
+export const getMonthlyNewPatients = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ month: string; patients: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
 
-    const patients = await ctx.db
+    const patients = (await db
       .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as any[];
 
     const now = new Date();
     const months: { month: string; patients: number }[] = [];
 
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const prefix =
-        d.getFullYear() +
-        "-" +
-        String(d.getMonth() + 1).padStart(2, "0");
+      const prefix = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
       const label = d.toLocaleDateString("pl-PL", { month: "short" });
 
       const count = patients.filter((p) => {
-        const created = new Date(p.createdAt);
+        const created = new Date(p.createdAt ?? 0);
         const createdPrefix =
-          created.getFullYear() +
-          "-" +
-          String(created.getMonth() + 1).padStart(2, "0");
+          created.getFullYear() + "-" + String(created.getMonth() + 1).padStart(2, "0");
         return createdPrefix === prefix;
       }).length;
 
@@ -490,30 +462,41 @@ export const getMonthlyNewPatients = query({
   },
 });
 
-// --- Dashboard Weekly Completed Treatments (sparkline data) ---
-export const getWeeklyCompletedTreatments = query({
+// --- Weekly Completed Treatments ---
+export const getWeeklyCompletedTreatments = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ day: string; completed: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const today = new Date();
-    const days: { day: string; completed: number }[] = [];
+    const oldestDate = new Date(today);
+    oldestDate.setDate(oldestDate.getDate() - 6);
+    const oldestStr = oldestDate.toISOString().split("T")[0];
+    const todayStr = today.toISOString().split("T")[0];
 
+    const appts = (await db
+      .query("gabinetAppointments")
+      .eq("organizationId", orgId)
+      .gte("date", oldestStr)
+      .lte("date", todayStr)
+      .collect()) as any[];
+
+    const byDate = new Map<string, number>();
+    for (const a of appts) {
+      if (a.status === "completed") {
+        byDate.set(String(a.date), (byDate.get(String(a.date)) ?? 0) + 1);
+      }
+    }
+
+    const days: { day: string; completed: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split("T")[0];
       const dayLabel = d.toLocaleDateString("pl-PL", { weekday: "short" });
-
-      const appts = await ctx.db
-        .query("gabinetAppointments")
-        .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId).eq("date", dateStr),
-        )
-        .collect();
-
-      const completed = appts.filter((a) => a.status === "completed").length;
-      days.push({ day: dayLabel, completed });
+      days.push({ day: dayLabel, completed: byDate.get(dateStr) ?? 0 });
     }
 
     return days;
@@ -521,53 +504,47 @@ export const getWeeklyCompletedTreatments = query({
 });
 
 // --- Top Treatments Ranking ---
-export const getTopTreatments = query({
+export const getTopTreatments = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ label: string; value: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
-    const appointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    const [appointments, treatments] = await Promise.all([
+      db.query("gabinetAppointments").eq("organizationId", orgId).collect(),
+      db.query("gabinetTreatments").eq("organizationId", orgId).collect(),
+    ]);
 
-    const treatments = await ctx.db
-      .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    // Count appointments per treatment
     const treatmentCounts = new Map<string, number>();
-    for (const appt of appointments) {
+    for (const appt of appointments as any[]) {
       if (appt.treatmentId) {
-        treatmentCounts.set(
-          String(appt.treatmentId),
-          (treatmentCounts.get(String(appt.treatmentId)) ?? 0) + 1,
-        );
+        const key = String(appt.treatmentId);
+        treatmentCounts.set(key, (treatmentCounts.get(key) ?? 0) + 1);
       }
     }
 
     const treatmentMap = new Map(
-      treatments.map((t) => [String(t._id), t.name]),
+      (treatments as any[]).map((t) => [String(t._id ?? t.id), t.name as string]),
     );
 
     const results: { label: string; value: number }[] = [];
     for (const [treatmentId, count] of treatmentCounts) {
       const name = treatmentMap.get(treatmentId);
-      if (name) {
-        results.push({ label: name, value: count });
-      }
+      if (name) results.push({ label: name, value: count });
     }
 
     return results.sort((a, b) => b.value - a.value).slice(0, 5);
   },
 });
 
-// --- Monthly Appointments (last 6 months, for area chart) ---
-export const getMonthlyAppointments = query({
+// --- Monthly Appointments ---
+export const getMonthlyAppointments = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<{ month: string; appointments: number; completed: number }>> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const now = new Date();
     const oldestMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1)
@@ -577,64 +554,61 @@ export const getMonthlyAppointments = query({
       .toISOString()
       .split("T")[0];
 
-    const allAppointments = await ctx.db
+    const allAppointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .gte("date", oldestMonthStart)
-          .lt("date", nextMonthStart),
-      )
-      .collect();
-    const months: { month: string; appointments: number; completed: number }[] = [];
+      .eq("organizationId", orgId)
+      .gte("date", oldestMonthStart)
+      .lt("date", nextMonthStart)
+      .collect()) as any[];
 
+    const months: { month: string; appointments: number; completed: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const prefix =
-        d.getFullYear() +
-        "-" +
-        String(d.getMonth() + 1).padStart(2, "0");
+      const prefix = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
       const label = d.toLocaleDateString("pl-PL", { month: "short" });
 
-      const monthAppts = allAppointments.filter((a) => a.date.startsWith(prefix));
+      const monthAppts = allAppointments.filter((a) => String(a.date ?? "").startsWith(prefix));
       const completedCount = monthAppts.filter((a) => a.status === "completed").length;
 
-      months.push({ month: label, appointments: monthAppts.length, completed: completedCount });
+      months.push({
+        month: label,
+        appointments: monthAppts.length,
+        completed: completedCount,
+      });
     }
 
     return months;
   },
 });
 
-// --- Appointment Status Distribution (for donut chart) ---
-export const getAppointmentStatusDistribution = query({
+// --- Appointment Status Distribution ---
+export const getAppointmentStatusDistribution = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<{
+    total: number;
+    statuses: Array<{ status: string; count: number }>;
+  }> => {
+    await verify(ctx, args.organizationId);
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
 
     const now = new Date();
-    const thisMonthPrefix =
-      now.getFullYear() +
-      "-" +
-      String(now.getMonth() + 1).padStart(2, "0");
+    const thisMonthPrefix = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
     const thisMonthStart = `${thisMonthPrefix}-01`;
     const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
       .toISOString()
       .split("T")[0];
 
-    const thisMonth = await ctx.db
+    const thisMonth = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .gte("date", thisMonthStart)
-          .lt("date", nextMonthStart),
-      )
-      .collect();
+      .eq("organizationId", orgId)
+      .gte("date", thisMonthStart)
+      .lt("date", nextMonthStart)
+      .collect()) as any[];
 
     const statusCounts: Record<string, number> = {};
     for (const appt of thisMonth) {
-      statusCounts[appt.status] = (statusCounts[appt.status] ?? 0) + 1;
+      statusCounts[String(appt.status)] = (statusCounts[String(appt.status)] ?? 0) + 1;
     }
 
     return {

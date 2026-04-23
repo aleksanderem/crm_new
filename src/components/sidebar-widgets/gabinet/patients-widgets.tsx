@@ -1,4 +1,5 @@
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
@@ -8,8 +9,18 @@ import { useTranslation } from "react-i18next";
 
 export function GabinetPatientsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.gabinet.sidebarWidgets.getPatientsKpis, { organizationId });
-  const topTreatments = useQuery(api.gabinet.sidebarWidgets.getTopTreatments, { organizationId });
+  const getPatientsKpis = useAction(api.gabinet.sidebarWidgets.getPatientsKpis);
+  const getTopTreatments = useAction(api.gabinet.sidebarWidgets.getTopTreatments);
+  const { data: kpis } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getPatientsKpis", organizationId],
+    queryFn: () => getPatientsKpis({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const { data: topTreatments } = useQuery({
+    queryKey: ["gabinet.sidebarWidgets.getTopTreatments", organizationId],
+    queryFn: () => getTopTreatments({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   if (!kpis) return null;
 

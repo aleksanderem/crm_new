@@ -6,15 +6,17 @@ import { formCategoryValidator } from "../schema/documents";
 
 // Dual-write refs removed — Supabase is now primary for template writes
 
-export const list = query({
+export const list = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, unknown>>;
   },
 });
 

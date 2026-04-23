@@ -138,10 +138,11 @@ function GabinetDocumentsPage() {
     { limit: 200 },
   );
 
+  const listTemplatesAction = useAction(api.documents.templates.list);
   const { data: templates } = useQuery({
-    ...convexQuery(api.documents.templates.list, {
-      organizationId,
-    }),
+    queryKey: ["documents.templates.list", organizationId],
+    queryFn: () => listTemplatesAction({ organizationId }),
+    enabled: !!organizationId,
   });
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);

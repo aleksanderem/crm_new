@@ -751,7 +751,15 @@ export function GenerateDocumentDialog({
           data,
         });
         // Invalidate the preview query so it re-fetches with the updated entity data
-        await queryClient.invalidateQueries({ queryKey: previewQueryKey.queryKey });
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "documents.generate.previewDocumentData",
+            organizationId,
+            selectedTemplateId,
+            entityType,
+            entityId,
+          ],
+        });
         setMissingDataHandled(true);
         setStep("fill_form");
       } catch (e: unknown) {
@@ -761,7 +769,7 @@ export function GenerateDocumentDialog({
         setSavingMissingData(false);
       }
     },
-    [completeMissingDataMutation, organizationId, entityType, entityId, queryClient, previewQueryKey.queryKey],
+    [completeMissingDataMutation, organizationId, entityType, entityId, queryClient, selectedTemplateId],
   );
 
   const handleComplete = useCallback(

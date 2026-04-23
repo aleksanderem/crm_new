@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -44,10 +45,12 @@ export function ComponentPicker({ editor }: ComponentPickerProps) {
   const [open, setOpen] = useState(false);
   const { organizationId } = useOrganization();
 
-  const components = useQuery(
-    api.documents.components.list,
-    { organizationId },
-  );
+  const listComponents = useAction(api.documents.components.list);
+  const { data: components } = useQuery({
+    queryKey: ["documents.components.list", organizationId],
+    queryFn: () => listComponents({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   const handleInsert = (comp: {
     _id: string;

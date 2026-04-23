@@ -508,9 +508,12 @@ function FormTemplatesListPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParent, setNewFolderParent] = useState("");
 
-  const { data: templates, isPending } = useQuery(
-    convexQuery(api.documents.templates.list, { organizationId }),
-  );
+  const listTemplatesAction = useAction(api.documents.templates.list);
+  const { data: templates, isPending } = useQuery({
+    queryKey: ["documents.templates.list", organizationId],
+    queryFn: () => listTemplatesAction({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   const updateTemplate = useAction(api.documents.templates.update);
   const createTemplate = useAction(api.documents.templates.create);

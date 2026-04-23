@@ -74,9 +74,12 @@ function DocumentComponentsListPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: components } = useQuery(
-    convexQuery(api.documents.components.list, { organizationId }),
-  );
+  const listComponents = useAction(api.documents.components.list);
+  const { data: components } = useQuery({
+    queryKey: ["documents.components.list", organizationId],
+    queryFn: () => listComponents({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   const removeMutation = useAction(api.documents.components.remove);
   const duplicateMutation = useAction(api.documents.components.duplicate);

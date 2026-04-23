@@ -15,34 +15,32 @@ import {
  * List all components available to the current user:
  * system-scope + org-scope + user-scope (filtered by createdBy).
  */
-export const list = query({
+export const list = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String(authResult.userId);
 
-    // System components (no orgId)
-    const system = await ctx.db
-      .query("documentComponents")
-      .withIndex("by_scope", (q) => q.eq("scope", "system"))
-      .collect();
+    const [system, org] = await Promise.all([
+      db.query("documentComponents").eq("scope", "system").collect(),
+      db.query("documentComponents").eq("organizationId", orgIdStr).collect(),
+    ]);
 
-    // Org components
-    const org = await ctx.db
-      .query("documentComponents")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    // Filter org-scope and user-scope from the org query
-    const orgScoped = org.filter((c) => c.scope === "org" && c.isActive);
-    const userScoped = org.filter(
-      (c) => c.scope === "user" && c.createdBy === user._id && c.isActive,
+    const orgScoped = (org as any[]).filter((c) => c.scope === "org" && c.isActive);
+    const userScoped = (org as any[]).filter(
+      (c) => c.scope === "user" && String(c.createdBy) === userIdStr && c.isActive,
     );
 
     return [
-      ...system.filter((c) => c.isActive),
+      ...(system as any[]).filter((c) => c.isActive),
       ...orgScoped,
       ...userScoped,
-    ];
+    ] as Array<Record<string, unknown>>;
   },
 });
 

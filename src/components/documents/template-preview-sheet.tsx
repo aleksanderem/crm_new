@@ -288,13 +288,15 @@ export function TemplatePreviewSheet({
 
   // --- Entity list queries (one per type, only the active one fires) ---
 
+  const listPatientsAction = useAction(api.gabinet.patients.list);
   const { data: patients } = useQuery({
-    ...convexQuery(api.gabinet.patients.list, {
+    queryKey: ["gabinet.patients.list", organizationId, "preview"],
+    queryFn: () => listPatientsAction({
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     }),
-    enabled: entityType === "patient",
-  });
+    enabled: entityType === "patient" && !!organizationId,
+  }) as { data: { page: any[] } | undefined };
 
   const { data: contacts } = useQuery({
     ...convexQuery(api.contacts.list, {
@@ -304,13 +306,15 @@ export function TemplatePreviewSheet({
     enabled: entityType === "contact",
   });
 
+  const listAppointmentsAction = useAction(api.gabinet.appointments.list);
   const { data: appointments } = useQuery({
-    ...convexQuery(api.gabinet.appointments.list, {
+    queryKey: ["gabinet.appointments.list", organizationId, "preview"],
+    queryFn: () => listAppointmentsAction({
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     }),
-    enabled: entityType === "appointment",
-  });
+    enabled: entityType === "appointment" && !!organizationId,
+  }) as { data: { page: any[] } | undefined };
 
   const { data: companies } = useQuery({
     ...convexQuery(api.companies.list, {
@@ -328,13 +332,15 @@ export function TemplatePreviewSheet({
     enabled: entityType === "lead",
   });
 
+  const listEmployeesAction = useAction(api.gabinet.employees.list);
   const { data: employees } = useQuery({
-    ...convexQuery(api.gabinet.employees.list, {
+    queryKey: ["gabinet.employees.list", organizationId, "preview"],
+    queryFn: () => listEmployeesAction({
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     }),
-    enabled: entityType === "employee",
-  });
+    enabled: entityType === "employee" && !!organizationId,
+  }) as { data: { page: any[] } | { page: any[]; isDone: boolean; continueCursor: string } | Array<any> | undefined };
 
   const { data: treatments } = useQuery({
     ...convexQuery(api.gabinet.treatments.list, {

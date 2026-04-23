@@ -11,16 +11,19 @@ export const DEFAULT_ACTIVITY_TYPES = [
   { key: "task", name: "Zadanie", icon: "check-circle", color: "#f97316" },
 ];
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("activityTypeDefinitions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, unknown>>;
   },
 });
 

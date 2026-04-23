@@ -135,12 +135,12 @@ export function ChangeEmployeeModal({
   const updateAppointment = useAction(api.gabinet.appointments.update);
 
   // Fetch all active employees
-  const { data: employeesList } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId,
-      activeOnly: true,
-    }),
-  );
+  const listEmployeesAction = useAction(api.gabinet.employees.listAll);
+  const { data: employeesList } = useQuery({
+    queryKey: ["gabinet.employees.listAll", organizationId, true],
+    queryFn: () => listEmployeesAction({ organizationId, activeOnly: true }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   // Build employee rows (excluding current)
   const employees: EmployeeRow[] = useMemo(() => {

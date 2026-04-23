@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -50,13 +50,19 @@ export function LeaveForm({
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId, activeOnly: true })
-  );
+  const listEmployees = useAction(api.gabinet.employees.listAll);
+  const { data: employees } = useQuery({
+    queryKey: ["gabinet.employees.listAll", organizationId, true],
+    queryFn: () => listEmployees({ organizationId, activeOnly: true }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
-  const { data: leaveTypes } = useQuery(
-    convexQuery(api.gabinet.leaveTypes.list, { organizationId })
-  );
+  const listLeaveTypes = useAction(api.gabinet.leaveTypes.list);
+  const { data: leaveTypes } = useQuery({
+    queryKey: ["gabinet.leaveTypes.list", organizationId],
+    queryFn: () => listLeaveTypes({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   const [userId, setUserId] = useState<string>("");
   const [type, setType] = useState<LeaveType>("vacation");

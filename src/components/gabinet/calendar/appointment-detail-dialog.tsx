@@ -176,17 +176,21 @@ export function AppointmentDetailDialog({
     enabled: !!appointmentId,
   });
 
+  const listPatientsAction = useAction(api.gabinet.patients.list);
   const { data: patients } = useQuery({
-    ...convexQuery(api.gabinet.patients.list, {
+    queryKey: ["gabinet.patients.list", organizationId, "detail"],
+    queryFn: () => listPatientsAction({
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     }),
-    enabled: !!appointment,
-  });
+    enabled: !!appointment && !!organizationId,
+  }) as { data: { page: any[] } | undefined };
 
+  const listActiveTreatmentsAction = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({
-    ...convexQuery(api.gabinet.treatments.listActive, { organizationId }),
-    enabled: !!appointment,
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatmentsAction({ organizationId }),
+    enabled: !!appointment && !!organizationId,
   });
 
   const { data: smsEvents = [] } = useQuery({

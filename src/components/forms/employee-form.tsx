@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -86,12 +87,19 @@ export function EmployeeForm({
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId })
   );
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, { organizationId })
-  );
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
-  );
+  const listEmployees = useAction(api.gabinet.employees.listAll);
+  const { data: employees } = useQuery({
+    queryKey: ["gabinet.employees.listAll", organizationId],
+    queryFn: () => listEmployees({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
+
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   // Users not yet registered as employees (for create mode)
   const availableUsers = useMemo(() => {

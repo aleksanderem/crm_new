@@ -11,86 +11,97 @@ import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for employee writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
     role: v.optional(gabinetEmployeeRoleValidator),
     activeOnly: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+  handler: async (ctx, args): Promise<
+    | Array<Record<string, unknown>>
+    | { page: Array<Record<string, unknown>>; isDone: boolean; continueCursor: string }
+  > => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String(authResult.userId);
+
     if (args.role) {
-      const all = await ctx.db
+      let q = db
         .query("gabinetEmployees")
-        .withIndex("by_orgAndRole", (q) =>
-          q.eq("organizationId", args.organizationId).eq("role", args.role!)
-        )
-        .collect();
+        .eq("organizationId", orgIdStr)
+        .eq("role", args.role);
+      let all = (await q.collect()) as Array<Record<string, any>>;
       let filtered = args.activeOnly ? all.filter((e) => e.isActive) : all;
       if (perm.scope === "own") {
-        filtered = filtered.filter((e) => e.createdBy === user._id);
+        filtered = filtered.filter((e) => String(e.createdBy) === userIdStr);
       }
       return filtered;
     }
 
     if (args.activeOnly) {
-      const results = await ctx.db
+      let results = (await db
         .query("gabinetEmployees")
-        .withIndex("by_orgAndActive", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isActive", true)
-        )
-        .collect();
+        .eq("organizationId", orgIdStr)
+        .eq("isActive", true)
+        .collect()) as Array<Record<string, any>>;
       if (perm.scope === "own") {
-        return results.filter((e) => e.createdBy === user._id);
+        results = results.filter((e) => String(e.createdBy) === userIdStr);
       }
       return results;
     }
 
-    const result = await ctx.db
+    let page = (await db
       .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+      .eq("organizationId", orgIdStr)
+      .order("createdAt", false)
+      .collect()) as Array<Record<string, any>>;
     if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((e) => e.createdBy === user._id) };
+      page = page.filter((e) => String(e.createdBy) === userIdStr);
     }
-    return result;
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 
-export const listAll = query({
+export const listAll = action({
   args: {
     organizationId: v.id("organizations"),
     activeOnly: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    if (args.activeOnly) {
-      const results = await ctx.db
-        .query("gabinetEmployees")
-        .withIndex("by_orgAndActive", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isActive", true)
-        )
-        .collect();
-      if (perm.scope === "own") {
-        return results.filter((e) => e.createdBy === user._id);
-      }
-      return results;
-    }
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String(authResult.userId);
 
-    const results = await ctx.db
-      .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    let q = db.query("gabinetEmployees").eq("organizationId", orgIdStr);
+    if (args.activeOnly) {
+      q = q.eq("isActive", true);
+    }
+    let results = (await q.collect()) as Array<Record<string, any>>;
     if (perm.scope === "own") {
-      return results.filter((e) => e.createdBy === user._id);
+      results = results.filter((e) => String(e.createdBy) === userIdStr);
     }
     return results;
   },

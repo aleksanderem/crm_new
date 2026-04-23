@@ -4,7 +4,8 @@ import {
   NodeViewWrapper,
   type ReactNodeViewProps,
 } from "@tiptap/react";
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { cn } from "@/lib/utils";
@@ -38,17 +39,17 @@ function ComponentBlockNodeView({
   const attrs = node.attrs as ComponentBlockAttrs;
   const { organizationId } = useOrganization();
 
-  // Fetch live component content
-  const componentData = useQuery(
-    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-    api.documents.components.getContent,
-    attrs.componentId
-      ? {
-          organizationId,
-          componentId: attrs.componentId as Id<"documentComponents">,
-        }
-      : "skip",
-  ) as { contentJson: string; version: number; name: string; category: string; protected: boolean; positionConstraint?: string | null } | null | undefined;
+  // Fetch live component content (Supabase-primary action)
+  const getComponentContent = useAction(api.documents.components.getContent);
+  const { data: componentData } = useQuery({
+    queryKey: ["documents.components.getContent", organizationId, attrs.componentId],
+    queryFn: () =>
+      getComponentContent({
+        organizationId,
+        componentId: attrs.componentId as string,
+      }),
+    enabled: !!attrs.componentId && !!organizationId,
+  }) as { data: { contentJson: string; version: number; name: string; category: string; protected: boolean; positionConstraint?: string | null } | null | undefined };
 
   const isProtected = attrs.state === "protected";
   const isLinked = attrs.state === "linked";

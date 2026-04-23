@@ -7,26 +7,21 @@ import { verifyOrgAccess } from "../_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for equipment writes
 
-export const listEquipment = query({
+export const listEquipment = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    let q = db.query("gabinetEquipment").eq("organizationId", String(args.organizationId));
     if (args.locationId) {
-      return await ctx.db
-        .query("gabinetEquipment")
-        .withIndex("by_location", (q) =>
-          q.eq("organizationId", args.organizationId)
-            .eq("currentLocationId", args.locationId)
-        )
-        .collect();
+      q = q.eq("currentLocationId", String(args.locationId));
     }
-    return await ctx.db
-      .query("gabinetEquipment")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    return (await q.collect()) as Array<Record<string, unknown>>;
   },
 });
 

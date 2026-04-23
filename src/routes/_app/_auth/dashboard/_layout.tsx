@@ -223,19 +223,23 @@ function DashboardLayout() {
   const firstOrg = orgs?.[0];
 
   // Tag & category definitions for quick-create appointment form
+  const listTagDefinitionsAction = useAction(api.tagDefinitions.list);
   const { data: appointmentTags } = useQuery({
-    ...convexQuery(api.tagDefinitions.list, {
+    queryKey: ["tagDefinitions.list", firstOrg?._id ?? null],
+    queryFn: () => listTagDefinitionsAction({
       organizationId: firstOrg?._id as Id<"organizations">,
     }),
     enabled: !!firstOrg,
-  });
+  }) as { data: any[] | undefined };
+  const listCategoryDefinitionsAction = useAction(api.categoryDefinitions.list);
   const { data: appointmentCategories } = useQuery({
-    ...convexQuery(api.categoryDefinitions.list, {
+    queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "gabinetAppointment"],
+    queryFn: () => listCategoryDefinitionsAction({
       organizationId: firstOrg?._id as Id<"organizations">,
       entityType: "gabinetAppointment" as const,
     }),
     enabled: !!firstOrg,
-  });
+  }) as { data: any[] | undefined };
 
   // Global activity detail drawer data — Supabase-primary
   const { data: activityDetailData } = useSupabaseScheduledActivityById(
@@ -243,12 +247,14 @@ function DashboardLayout() {
     activityDetailId,
     { enabled: !!firstOrg && !!activityDetailId },
   );
+  const listActivityTypesAction = useAction(api.activityTypes.list);
   const { data: activityTypeDefs } = useQuery({
-    ...convexQuery(api.activityTypes.list, {
+    queryKey: ["activityTypes.list", firstOrg?._id ?? null, activityDetailId],
+    queryFn: () => listActivityTypesAction({
       organizationId: firstOrg?._id ?? ("" as any),
     }),
     enabled: !!firstOrg && !!activityDetailId,
-  });
+  }) as { data: any[] | undefined };
 
   const handleSearch = useCallback(
     async (query: string): Promise<SearchResultGroup[]> => {

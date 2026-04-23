@@ -10,40 +10,60 @@ import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for patient writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "view");
+  handler: async (ctx, args): Promise<{
+    page: Array<Record<string, unknown>>;
+    isDone: boolean;
+    continueCursor: string;
+  }> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String(authResult.userId);
+
     if (args.search) {
-      const results = await ctx.db
+      const term = args.search.trim().toLowerCase();
+      let results = (await db
         .query("gabinetPatients")
-        .withSearchIndex("search_patients", (q) =>
-          q.search("firstName", args.search!).eq("organizationId", args.organizationId)
-        )
-        .take(50);
+        .eq("organizationId", orgIdStr)
+        .collect()) as Array<Record<string, any>>;
+      results = results.filter((r) => {
+        const fn = String(r.firstName ?? "").toLowerCase();
+        const ln = String(r.lastName ?? "").toLowerCase();
+        const em = String(r.email ?? "").toLowerCase();
+        const ph = String(r.phone ?? "").toLowerCase();
+        return fn.includes(term) || ln.includes(term) || em.includes(term) || ph.includes(term);
+      }).slice(0, 50);
       if (perm.scope === "own") {
-        const filtered = results.filter((r) => r.createdBy === user._id);
-        return { page: filtered, isDone: true, continueCursor: "" };
+        results = results.filter((r) => String(r.createdBy) === userIdStr);
       }
       return { page: results, isDone: true, continueCursor: "" };
     }
 
-    const result = await ctx.db
+    let page = (await db
       .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+      .eq("organizationId", orgIdStr)
+      .order("createdAt", false)
+      .collect()) as Array<Record<string, any>>;
     if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
+      page = page.filter((r) => String(r.createdBy) === userIdStr);
     }
-    return result;
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 
@@ -69,44 +89,65 @@ export const getById = query({
   },
 });
 
-export const searchUnlinkedContacts = query({
+export const searchUnlinkedContacts = action({
   args: {
     organizationId: v.id("organizations"),
     search: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
+  handler: async (ctx, args): Promise<Array<{
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  }>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "contacts",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) return [];
 
     if (!args.search.trim()) return [];
+    const term = args.search.trim().toLowerCase();
 
-    const contacts = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const allContacts = (await db
       .query("contacts")
-      .withSearchIndex("search_contacts", (q) =>
-        q.search("firstName", args.search).eq("organizationId", args.organizationId)
-      )
-      .take(20);
+      .eq("organizationId", orgIdStr)
+      .collect()) as Array<Record<string, any>>;
+    const matched = allContacts.filter((c) => {
+      const fn = String(c.firstName ?? "").toLowerCase();
+      const ln = String(c.lastName ?? "").toLowerCase();
+      const em = String(c.email ?? "").toLowerCase();
+      const ph = String(c.phone ?? "").toLowerCase();
+      return fn.includes(term) || ln.includes(term) || em.includes(term) || ph.includes(term);
+    }).slice(0, 20);
 
-    const linkedPatients = await ctx.db
+    const linkedPatients = (await db
       .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .collect()) as Array<Record<string, any>>;
 
     const linkedContactIds = new Set(
       linkedPatients
         .filter((p) => p.contactId)
-        .map((p) => p.contactId!)
+        .map((p) => String(p.contactId))
     );
 
-    return contacts
-      .filter((c) => !linkedContactIds.has(c._id))
+    return matched
+      .filter((c) => !linkedContactIds.has(String(c.id ?? c._id)))
       .map((c) => ({
-        _id: c._id,
-        firstName: c.firstName,
-        lastName: c.lastName ?? "",
-        email: c.email ?? "",
-        phone: c.phone ?? "",
+        _id: String(c.id ?? c._id),
+        firstName: String(c.firstName ?? ""),
+        lastName: String(c.lastName ?? ""),
+        email: String(c.email ?? ""),
+        phone: String(c.phone ?? ""),
       }));
   },
 });

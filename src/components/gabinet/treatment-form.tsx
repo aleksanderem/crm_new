@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,10 +94,12 @@ export function TreatmentForm({
   const [sortOrder, setSortOrder] = useState(String(initialData?.sortOrder ?? "0"));
   const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
 
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const { data: equipmentList } = useQuery(
-    convexQuery(api.gabinet.equipment.listEquipment, { organizationId })
-  );
+  const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
+  const { data: equipmentList } = useQuery({
+    queryKey: ["gabinet.equipment.listEquipment", organizationId],
+    queryFn: () => listEquipmentAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   const legacyEquipment = initialData?.requiredEquipment ?? [];
   const hasLegacyEquipment =

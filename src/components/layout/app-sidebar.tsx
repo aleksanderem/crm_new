@@ -1,6 +1,7 @@
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -46,10 +47,12 @@ export function AppSidebar() {
   const visibleModules = getVisibleModules(activeProducts);
   const hasGabinet = visibleModules.some((module) => module.id === "gabinet");
 
+  const listLeaves = useAction(api.gabinet.scheduling.listLeaves);
   const { data: pendingLeaves } = useQuery({
-    ...convexQuery(api.gabinet.scheduling.listLeaves, { organizationId, status: "pending" as const }),
-    enabled: hasGabinet,
-  });
+    queryKey: ["gabinet.scheduling.listLeaves", organizationId, "pending"],
+    queryFn: () => listLeaves({ organizationId, status: "pending" as const }),
+    enabled: hasGabinet && !!organizationId,
+  }) as { data: any[] | undefined };
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
   const matchedModule = routeAwareModules.find((module) =>

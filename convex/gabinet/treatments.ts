@@ -10,40 +10,48 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 // Dual-write refs removed — Supabase is now primary for treatment writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<{
+    page: Array<Record<string, unknown>>;
+    isDone: boolean;
+    continueCursor: string;
+  }> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    const db = createSupabaseDb();
+    let results = (await db
+      .query("gabinetTreatments")
+      .eq("organizationId", String(args.organizationId))
+      .order("createdAt", false)
+      .collect()) as Array<Record<string, any>>;
+
     if (args.search) {
-      const results = await ctx.db
-        .query("gabinetTreatments")
-        .withSearchIndex("search_treatments", (q) =>
-          q.search("name", args.search!).eq("organizationId", args.organizationId)
-        )
-        .take(50);
-      if (perm.scope === "own") {
-        const filtered = results.filter((r) => r.createdBy === user._id);
-        return { page: filtered, isDone: true, continueCursor: "" };
-      }
-      return { page: results, isDone: true, continueCursor: "" };
+      const term = args.search.toLowerCase();
+      results = results.filter((r) =>
+        String(r.name ?? "").toLowerCase().includes(term),
+      );
+    }
+    if (perm.scope === "own") {
+      results = results.filter(
+        (r) => String(r.createdBy) === String(authResult.userId),
+      );
     }
 
-    const result = await ctx.db
-      .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
-    }
-    return result;
+    return { page: results, isDone: true, continueCursor: "" };
   },
 });
 
@@ -365,23 +373,33 @@ export const listByCategory = query({
   },
 });
 
-export const listActive = query({
+export const listActive = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const results = await ctx.db
+    const db = createSupabaseDb();
+    let results = (await db
       .query("gabinetTreatments")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isActive", true)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("isActive", true)
+      .collect()) as Array<Record<string, any>>;
+
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter(
+        (r) => String(r.createdBy) === String(authResult.userId),
+      );
     }
     return results;
   },

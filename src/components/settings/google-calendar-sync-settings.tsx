@@ -56,7 +56,12 @@ export function GoogleCalendarSyncSettings({
   const { role } = useRole();
   const isAdmin = role === "owner" || role === "admin";
 
-  const activityTypes = useQuery(api.activityTypes.list, { organizationId });
+  const listActivityTypesAction = useAction(api.activityTypes.list);
+  const { data: activityTypes } = useTanstackQuery({
+    queryKey: ["activityTypes.list", organizationId],
+    queryFn: () => listActivityTypesAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
   const myConfigs = useQuery(api.googleCalendarSyncConfigs.listMine, {
     organizationId,
   });

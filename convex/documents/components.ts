@@ -71,29 +71,40 @@ export const getById = action({
 /**
  * Lightweight query returning just contentJson for a component.
  */
-export const getContent = query({
+export const getContent = action({
   args: {
     organizationId: v.id("organizations"),
-    componentId: v.id("documentComponents"),
+    componentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const comp = await ctx.db.get(args.componentId);
+  handler: async (ctx, args): Promise<{
+    contentJson: string;
+    version: number;
+    name: string;
+    category: string;
+    protected: boolean;
+    positionConstraint: string | null;
+  } | null> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const db = createSupabaseDb();
+    const comp = await db.get("documentComponents", args.componentId);
     if (!comp) return null;
 
-    if (comp.scope === "org" && comp.organizationId !== args.organizationId) {
+    if (comp.scope === "org" && String(comp.organizationId) !== String(args.organizationId)) {
       return null;
     }
-    if (comp.scope === "user" && comp.createdBy !== user._id) {
+    if (comp.scope === "user" && String(comp.createdBy) !== String(authResult.userId)) {
       return null;
     }
     return {
-      contentJson: comp.contentJson,
-      version: comp.version,
-      name: comp.name,
-      category: comp.category,
-      protected: comp.protected,
-      positionConstraint: comp.positionConstraint,
+      contentJson: comp.contentJson as string,
+      version: (comp.version as number) ?? 1,
+      name: comp.name as string,
+      category: comp.category as string,
+      protected: Boolean(comp.protected),
+      positionConstraint: (comp.positionConstraint as string | null) ?? null,
     };
   },
 });

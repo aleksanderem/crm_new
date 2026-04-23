@@ -5,22 +5,24 @@ import { v } from "convex/values";
 import { entityTypeValidator } from "./schema";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const categories = await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const categories = (await db
       .query("categoryDefinitions")
-      .withIndex("by_orgAndEntityType", (q) =>
-        q.eq("organizationId", args.organizationId).eq("entityType", args.entityType)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("entityType", args.entityType)
+      .collect()) as Array<Record<string, any>>;
     return categories
       .filter((c) => !c.isDeleted)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   },
 });
 

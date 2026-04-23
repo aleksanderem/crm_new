@@ -38,13 +38,19 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
     enabled: !!organizationId && !!patientId,
   });
 
-  const { data: allPackages } = useQuery(
-    convexQuery(api.gabinet.packages.listActive, { organizationId })
-  );
+  const listActivePackages = useAction(api.gabinet.packages.listActive);
+  const { data: allPackages } = useQuery({
+    queryKey: ["gabinet.packages.listActive", organizationId],
+    queryFn: () => listActivePackages({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
-  );
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   const treatmentMap = new Map(
     (treatments ?? []).map((tr) => [tr._id, tr.name])

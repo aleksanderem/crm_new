@@ -4,17 +4,20 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-export const list = query({
+export const list = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const tags = await ctx.db
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const tags = (await db
       .query("tagDefinitions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, any>>;
     return tags
       .filter((t) => !t.isDeleted)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   },
 });
 

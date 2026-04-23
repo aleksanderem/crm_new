@@ -408,27 +408,21 @@ export const listEmployeeSchedules = query({
 
 // --- Leaves ---
 
-export const listLeaves = query({
+export const listLeaves = action({
   args: {
     organizationId: v.id("organizations"),
     status: v.optional(gabinetLeaveStatusValidator),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    let q = db.query("gabinetLeaves").eq("organizationId", String(args.organizationId));
     if (args.status) {
-      return await ctx.db
-        .query("gabinetLeaves")
-        .withIndex("by_orgAndStatus", (q) =>
-          q.eq("organizationId", args.organizationId).eq("status", args.status!)
-        )
-        .collect();
+      q = q.eq("status", args.status);
     }
-
-    return await ctx.db
-      .query("gabinetLeaves")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    return (await q.collect()) as Array<Record<string, unknown>>;
   },
 });
 

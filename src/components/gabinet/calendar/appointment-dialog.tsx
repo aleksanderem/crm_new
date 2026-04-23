@@ -119,31 +119,41 @@ export function AppointmentDialog({
   // Data queries
   // -------------------------------------------------------------------------
 
-  const { data: patients } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
+  const listPatientsAction = useAction(api.gabinet.patients.list);
+  const { data: patientsPage } = useQuery({
+    queryKey: ["gabinet.patients.list", organizationId, "dialog"],
+    queryFn: () => listPatientsAction({
       organizationId,
       paginationOpts: { numItems: 200, cursor: null },
     }),
-  );
+    enabled: !!organizationId,
+  }) as { data: { page: any[] } | undefined };
+  const patients = patientsPage;
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId }),
-  );
+  const listActiveTreatmentsAction = useAction(api.gabinet.treatments.listActive);
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatmentsAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId,
-      activeOnly: true,
-    }),
-  );
+  const listEmployeesAction = useAction(api.gabinet.employees.listAll);
+  const { data: employees } = useQuery({
+    queryKey: ["gabinet.employees.listAll", organizationId, true],
+    queryFn: () => listEmployeesAction({ organizationId, activeOnly: true }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   const { data: members } = useQuery(
     convexQuery(api.organizations.getMembers, { organizationId }),
   );
 
-  const { data: locations } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, { organizationId }),
-  );
+  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
+  const { data: locations } = useQuery({
+    queryKey: ["gabinet.locations.listLocations", organizationId],
+    queryFn: () => listLocationsAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   // -------------------------------------------------------------------------
   // State
@@ -294,13 +304,15 @@ export function AppointmentDialog({
   const activeRooms = locationWithRooms?.rooms?.filter((r: { isActive: boolean }) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
+  const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
   const { data: equipmentAtLocation } = useQuery({
-    ...convexQuery(api.gabinet.equipment.listEquipment, {
+    queryKey: ["gabinet.equipment.listEquipment", organizationId, locationId],
+    queryFn: () => listEquipmentAction({
       organizationId,
-      locationId: locationId as Id<"gabinetLocations">,
+      locationId,
     }),
-    enabled: !!locationId,
-  });
+    enabled: !!organizationId && !!locationId,
+  }) as { data: any[] | undefined };
 
   const activeLocations = locations?.filter((l: { isActive: boolean }) => l.isActive) ?? [];
 

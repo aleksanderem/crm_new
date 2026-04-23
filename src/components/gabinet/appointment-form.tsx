@@ -110,23 +110,29 @@ export function AppointmentForm({
   const { organizationId } = useOrganization();
 
   // Data queries
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, {
-      organizationId: organizationId!,
-    }),
-  );
-  const { data: employees } = useQuery(
-    convexQuery(api.gabinet.employees.listAll, {
-      organizationId: organizationId!,
-      activeOnly: true,
-    }),
-  );
-  const { data: patientsPage } = useQuery(
-    convexQuery(api.gabinet.patients.list, {
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId: organizationId! }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
+
+  const listEmployees = useAction(api.gabinet.employees.listAll);
+  const { data: employees } = useQuery({
+    queryKey: ["gabinet.employees.listAll", organizationId, true],
+    queryFn: () => listEmployees({ organizationId: organizationId!, activeOnly: true }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
+
+  const listPatients = useAction(api.gabinet.patients.list);
+  const { data: patientsPage } = useQuery({
+    queryKey: ["gabinet.patients.list", organizationId, "form"],
+    queryFn: () => listPatients({
       organizationId: organizationId!,
       paginationOpts: { numItems: 200, cursor: null },
     }),
-  );
+    enabled: !!organizationId,
+  }) as { data: { page: any[]; isDone: boolean; continueCursor: string } | undefined };
   const { data: orgSettings } = useQuery(
     convexQuery(api.orgSettings.get, {
       organizationId: organizationId!,
@@ -154,24 +160,27 @@ export function AppointmentForm({
 
   const isDebouncing =
     patientSearch.length >= 2 && patientSearch !== debouncedSearch;
+  const searchUnlinkedContactsAction = useAction(api.gabinet.patients.searchUnlinkedContacts);
   const { data: unlinkedContacts, isLoading: contactsLoading } = useQuery({
-    ...convexQuery(api.gabinet.patients.searchUnlinkedContacts, {
+    queryKey: ["gabinet.patients.searchUnlinkedContacts", organizationId, debouncedSearch],
+    queryFn: () => searchUnlinkedContactsAction({
       organizationId: organizationId!,
       search: debouncedSearch,
     }),
-    enabled: debouncedSearch.length >= 2,
-  });
+    enabled: !!organizationId && debouncedSearch.length >= 2,
+  }) as { data: any[] | undefined; isLoading: boolean };
   const isCrmSearching = contactsLoading || isDebouncing;
 
   const createPatientFromContact = useAction(api.gabinet.patients.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
 
   // Locations query
-  const { data: locations } = useQuery(
-    convexQuery(api.gabinet.locations.listLocations, {
-      organizationId: organizationId!,
-    }),
-  );
+  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
+  const { data: locations } = useQuery({
+    queryKey: ["gabinet.locations.listLocations", organizationId],
+    queryFn: () => listLocationsAction({ organizationId: organizationId! }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   // Form state
   const [patientId, setPatientId] = useState("");
@@ -207,13 +216,15 @@ export function AppointmentForm({
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
+  const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
   const { data: equipmentAtLocation } = useQuery({
-    ...convexQuery(api.gabinet.equipment.listEquipment, {
+    queryKey: ["gabinet.equipment.listEquipment", organizationId, locationId],
+    queryFn: () => listEquipmentAction({
       organizationId: organizationId!,
-      locationId: locationId as Id<"gabinetLocations">,
+      locationId: locationId,
     }),
-    enabled: !!locationId,
-  });
+    enabled: !!organizationId && !!locationId,
+  }) as { data: any[] | undefined };
 
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];
 

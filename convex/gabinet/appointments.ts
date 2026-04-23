@@ -292,33 +292,40 @@ function generateRecurringDates(
   return dates;
 }
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<{
+    page: Array<Record<string, unknown>>;
+    isDone: boolean;
+    continueCursor: string;
+  }> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const result = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String(authResult.userId);
+
+    let page = (await db
       .query("gabinetAppointments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+      .eq("organizationId", orgIdStr)
+      .order("createdAt", false)
+      .collect()) as Array<Record<string, any>>;
     if (perm.scope === "own") {
-      return {
-        ...result,
-        page: result.page.filter((r) => r.createdBy === user._id),
-      };
+      page = page.filter((r) => String(r.createdBy) === userIdStr);
     }
-    return result;
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 

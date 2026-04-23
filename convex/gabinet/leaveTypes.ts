@@ -6,27 +6,21 @@ import { verifyOrgAccess } from "../_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     activeOnly: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
+  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    let q = db.query("gabinetLeaveTypes").eq("organizationId", String(args.organizationId));
     if (args.activeOnly) {
-      return await ctx.db
-        .query("gabinetLeaveTypes")
-        .withIndex("by_orgAndActive", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isActive", true)
-        )
-        .collect();
+      q = q.eq("isActive", true);
     }
-
-    return await ctx.db
-      .query("gabinetLeaveTypes")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    return (await q.collect()) as Array<Record<string, unknown>>;
   },
 });
 

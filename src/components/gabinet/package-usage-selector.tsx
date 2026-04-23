@@ -35,9 +35,12 @@ export function PackageUsageSelector({
     enabled: !!organizationId && !!patientId,
   });
 
-  const { data: allPackages } = useQuery(
-    convexQuery(api.gabinet.packages.listActive, { organizationId })
-  );
+  const listActivePackages = useAction(api.gabinet.packages.listActive);
+  const { data: allPackages } = useQuery({
+    queryKey: ["gabinet.packages.listActive", organizationId],
+    queryFn: () => listActivePackages({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   const packageMap = new Map(
     (allPackages ?? []).map((p) => [p._id, p.name])

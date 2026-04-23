@@ -1,4 +1,5 @@
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
+import { useQuery as useTanstackQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
@@ -33,11 +34,21 @@ export function DocumentsWidgets({ organizationId }: { organizationId: Id<"organ
   const byStatus = useQuery(api.sidebarWidgets.getFormDocumentsByStatus, { organizationId });
   const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyFormDocumentsTrend, { organizationId });
   const topCategories = useQuery(api.sidebarWidgets.getTopDocumentCategories, { organizationId });
-  const tagDefinitions = useQuery(api.tagDefinitions.list, { organizationId });
-  const categoryDefinitions = useQuery(api.categoryDefinitions.list, {
-    organizationId,
-    entityType: "document",
-  });
+  const listTagDefinitionsAction = useAction(api.tagDefinitions.list);
+  const { data: tagDefinitions } = useTanstackQuery({
+    queryKey: ["tagDefinitions.list", organizationId],
+    queryFn: () => listTagDefinitionsAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
+  const listCategoryDefinitionsAction = useAction(api.categoryDefinitions.list);
+  const { data: categoryDefinitions } = useTanstackQuery({
+    queryKey: ["categoryDefinitions.list", organizationId, "document"],
+    queryFn: () => listCategoryDefinitionsAction({
+      organizationId,
+      entityType: "document",
+    } as any),
+    enabled: !!organizationId,
+  }) as { data: any[] | undefined };
 
   if (!kpis) return null;
 

@@ -41,7 +41,7 @@ const TABLE_PAIRS: Array<{ convexTable: string; supabaseTable: string }> = [
   { convexTable: "gabinetEmployeeSchedules", supabaseTable: "gabinet_employee_schedules" },
   { convexTable: "gabinetLeaves", supabaseTable: "gabinet_leaves" },
   { convexTable: "gabinetLeaveTypes", supabaseTable: "gabinet_leave_types" },
-  { convexTable: "gabinetTreatmentPackages", supabaseTable: "gabinet_packages" },
+  { convexTable: "gabinetTreatmentPackages", supabaseTable: "gabinet_treatment_packages" },
   { convexTable: "gabinetLoyaltyPoints", supabaseTable: "gabinet_loyalty_points" },
   { convexTable: "gabinetEquipment", supabaseTable: "gabinet_equipment" },
   { convexTable: "formTemplates", supabaseTable: "form_templates" },

@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -15,6 +14,25 @@ interface PackageUsageSelectorProps {
   selectedUsageId?: string | null;
 }
 
+interface PackageUsageTreatmentEntry {
+  treatmentId: Id<"gabinetTreatments">;
+  usedCount: number;
+  totalCount: number;
+}
+
+interface PackageUsageDoc {
+  _id: Id<"gabinetPackageUsage">;
+  packageId: Id<"gabinetTreatmentPackages">;
+  status: string;
+  expiresAt?: number;
+  treatmentsUsed: PackageUsageTreatmentEntry[];
+}
+
+interface PackageDoc {
+  _id: Id<"gabinetTreatmentPackages">;
+  name: string;
+}
+
 export function PackageUsageSelector({
   patientId,
   treatmentId,
@@ -25,7 +43,7 @@ export function PackageUsageSelector({
   const { t } = useTranslation();
 
   const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
-  const { data: usages } = useQuery({
+  const { data: usagesRaw } = useQuery({
     queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
     queryFn: () =>
       getPatientPackagesAction({
@@ -34,13 +52,15 @@ export function PackageUsageSelector({
       }),
     enabled: !!organizationId && !!patientId,
   });
+  const usages = usagesRaw as unknown as PackageUsageDoc[] | undefined;
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
-  const { data: allPackages } = useQuery({
+  const { data: allPackagesRaw } = useQuery({
     queryKey: ["gabinet.packages.listActive", organizationId],
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
+  const allPackages = allPackagesRaw as unknown as PackageDoc[] | undefined;
 
   const packageMap = new Map(
     (allPackages ?? []).map((p) => [p._id, p.name])

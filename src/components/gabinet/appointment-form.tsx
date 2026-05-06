@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useAction, useConvex } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
 import type { Id } from "~/convex/_generated/dataModel";
@@ -97,6 +97,18 @@ interface AppointmentFormProps {
   isSubmitting?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+}
+
+interface RoomDoc {
+  _id: Id<"gabinetRooms">;
+  name: string;
+  isActive: boolean;
+}
+
+interface LocationWithRoomsDoc {
+  _id: Id<"gabinetLocations">;
+  name: string;
+  rooms?: RoomDoc[];
 }
 
 export function AppointmentForm({
@@ -200,11 +212,10 @@ export function AppointmentForm({
   const [roomId, setRoomId] = useState("");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>();
-  const convex = useConvex();
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRooms } = useQuery({
+  const { data: locationWithRoomsRaw } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
     queryFn: () =>
       getLocationAction({
@@ -213,6 +224,7 @@ export function AppointmentForm({
       }),
     enabled: !!organizationId && !!locationId,
   });
+  const locationWithRooms = locationWithRoomsRaw as unknown as LocationWithRoomsDoc | null | undefined;
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
@@ -241,7 +253,9 @@ export function AppointmentForm({
   const missingEquipmentIds = useMemo(() => {
     if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
     const atLocationIds = new Set(equipmentAtLocation?.map((e) => e._id) ?? []);
-    return selectedTreatment.requiredEquipmentIds.filter((id) => !atLocationIds.has(id));
+    return (selectedTreatment.requiredEquipmentIds as Id<"gabinetEquipment">[]).filter(
+      (id) => !atLocationIds.has(id),
+    );
   }, [locationId, selectedTreatment, equipmentAtLocation]);
 
   // Filter employees by treatment qualification

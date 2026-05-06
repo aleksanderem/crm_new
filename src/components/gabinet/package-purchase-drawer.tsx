@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -30,6 +29,26 @@ interface PackagePurchaseDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface PackageTreatmentEntry {
+  treatmentId: Id<"gabinetTreatments">;
+  quantity: number;
+}
+
+interface PackageDoc {
+  _id: Id<"gabinetTreatmentPackages">;
+  name: string;
+  description?: string;
+  treatments: PackageTreatmentEntry[];
+  totalPrice: number;
+  currency?: string;
+  validityDays?: number;
+}
+
+interface TreatmentDoc {
+  _id: Id<"gabinetTreatments">;
+  name: string;
+}
+
 export function PackagePurchaseDrawer({
   patientId,
   organizationId,
@@ -45,18 +64,20 @@ export function PackagePurchaseDrawer({
   const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
-  const { data: activePackages } = useQuery({
+  const { data: activePackagesRaw } = useQuery({
     queryKey: ["gabinet.packages.listActive", organizationId],
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
+  const activePackages = activePackagesRaw as unknown as PackageDoc[] | undefined;
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
-  const { data: treatments } = useQuery({
+  const { data: treatmentsRaw } = useQuery({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
+  const treatments = treatmentsRaw as unknown as TreatmentDoc[] | undefined;
 
   const treatmentMap = new Map(
     (treatments ?? []).map((tr) => [tr._id, tr.name])

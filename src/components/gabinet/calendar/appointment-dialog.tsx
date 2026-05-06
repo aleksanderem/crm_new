@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useMutation, useAction, useConvex } from "convex/react";
+import { useAction, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -296,7 +296,7 @@ export function AppointmentDialog({
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRooms } = useQuery({
+  const { data: locationWithRoomsRaw } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
     queryFn: () =>
       getLocationAction({
@@ -305,7 +305,11 @@ export function AppointmentDialog({
       }),
     enabled: !!locationId,
   });
-  const activeRooms = locationWithRooms?.rooms?.filter((r: { isActive: boolean }) => r.isActive) ?? [];
+  const locationWithRooms = locationWithRoomsRaw as unknown as
+    | { rooms?: Array<{ _id: Id<"gabinetRooms">; name: string; isActive: boolean }> }
+    | null
+    | undefined;
+  const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);

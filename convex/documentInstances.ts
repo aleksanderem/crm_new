@@ -191,7 +191,6 @@ export const _createResolveAndInsert = internalMutation({
     }));
 
     const db = createSupabaseDb();
-    const userId = args.userId as any;
 
     const instanceId = await db.insert("documentInstances", {
       organizationId: String(args.organizationId),

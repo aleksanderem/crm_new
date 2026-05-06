@@ -6,6 +6,7 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { verifyProductAccess } from "../_helpers/products";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
+import { getAvailableSlotsSupabase } from "./_availability_supabase";
 
 // Dual-write refs removed — Supabase is now primary for scheduling writes
 
@@ -620,7 +621,6 @@ export const findNextAvailableSlot = action({
     });
 
     const db = createSupabaseDb();
-    const { getAvailableSlotsSupabase } = await import("./_availability_supabase");
 
     const maxDays = args.maxDaysToSearch ?? 30;
 

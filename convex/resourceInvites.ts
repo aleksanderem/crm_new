@@ -3,6 +3,8 @@ import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
+import { createNotificationDirect } from "./notifications";
+import { logAudit } from "./auditLog";
 
 export const listByResource = query({
   args: {
@@ -165,9 +167,6 @@ export const _createSideEffects = internalMutation({
     accessLevel: v.string(),
   },
   handler: async (ctx, args) => {
-    const { createNotificationDirect } = await import("./notifications");
-    const { logAudit } = await import("./auditLog");
-
     const org = await ctx.db.get(args.organizationId);
     if (org) {
       await createNotificationDirect(ctx, {
@@ -200,7 +199,6 @@ export const _revokeSideEffects = internalMutation({
     resourceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: args.userId,

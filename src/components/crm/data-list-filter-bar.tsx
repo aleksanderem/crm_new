@@ -9,6 +9,7 @@ import {
   Columns03,
   Tag03,
   Folder,
+  X,
 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { CloseButton } from "@untitled/base/buttons/close-button";
@@ -209,6 +210,12 @@ export function DataListFilterBar({
     [onSearchChange],
   );
 
+  const handleClearSearch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setLocalSearch("");
+    onSearchChange("");
+  }, [onSearchChange]);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -399,14 +406,26 @@ export function DataListFilterBar({
 
       {/* Right: search + filter trigger (desktop) */}
       <div className="ml-auto hidden shrink-0 items-center gap-3 md:flex">
-        <Input
-          size="sm"
-          icon={SearchMd}
-          placeholder={searchPlaceholder ?? t("common.search")}
-          value={localSearch}
-          onChange={handleSearchInput}
-          className="w-[200px]"
-        />
+        <div className="relative w-[200px]">
+          <Input
+            size="sm"
+            icon={SearchMd}
+            placeholder={searchPlaceholder ?? t("common.search")}
+            value={localSearch}
+            onChange={handleSearchInput}
+            inputClassName={localSearch ? "pr-9" : undefined}
+          />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              aria-label={t("common.clearSearch", { defaultValue: "Wyczyść" })}
+              className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-quaternary transition hover:bg-bg-primary_hover hover:text-fg-quaternary_hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <X className="size-4 stroke-[2.25px]" />
+            </button>
+          )}
+        </div>
         {hasFilterableFields && (
           <Button
             size="sm"
@@ -690,13 +709,26 @@ export function DataListFilterBar({
           </h2>
         </SlideoutMenu.Header>
         <SlideoutMenu.Content className="gap-4">
-          <Input
-            size="sm"
-            icon={SearchMd}
-            placeholder={searchPlaceholder ?? t("common.search")}
-            value={localSearch}
-            onChange={handleSearchInput}
-          />
+          <div className="relative w-full">
+            <Input
+              size="sm"
+              icon={SearchMd}
+              placeholder={searchPlaceholder ?? t("common.search")}
+              value={localSearch}
+              onChange={handleSearchInput}
+              inputClassName={localSearch ? "pr-9" : undefined}
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label={t("common.clearSearch", { defaultValue: "Wyczyść" })}
+                className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-quaternary transition hover:bg-bg-primary_hover hover:text-fg-quaternary_hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                <X className="size-4 stroke-[2.25px]" />
+              </button>
+            )}
+          </div>
           {dropdownActions.length > 0 && (
             <div className="space-y-1 border-t border-border-secondary pt-3">
               {dropdownActions.map((action) => (

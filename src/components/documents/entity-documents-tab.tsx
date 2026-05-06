@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -32,6 +31,31 @@ interface EntityDocumentsTabProps {
   organizationId: Id<"organizations">;
 }
 
+type FormDocumentStatus =
+  | "draft"
+  | "pending_signature"
+  | "signed"
+  | "completed"
+  | "expired"
+  | "voided";
+
+interface FormDocument {
+  _id: Id<"formDocuments">;
+  title: string;
+  status: FormDocumentStatus;
+  templateId: Id<"formTemplates">;
+  createdAt: number;
+  responseData?: string;
+  signedAt?: number;
+  signatureData?: string;
+  signedByName?: string;
+}
+
+interface FormTemplate {
+  templateType?: string;
+  contentJson?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -51,7 +75,7 @@ export function EntityDocumentsTab({
 
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const {
-    data: documents,
+    data: documentsRaw,
     isLoading,
     refetch,
   } = useQuery({
@@ -64,6 +88,7 @@ export function EntityDocumentsTab({
       }),
     enabled: !!organizationId && !!entityType && !!entityId,
   });
+  const documents = documentsRaw as unknown as FormDocument[] | undefined;
 
   const handleDocumentCreated = useCallback(() => {
     refetch();
@@ -73,7 +98,7 @@ export function EntityDocumentsTab({
 
   const getDocumentById = useAction(api.documents.documents.getById);
   const getTemplateById = useAction(api.documents.templates.getById);
-  const { data: viewingDoc, isLoading: viewingDocLoading } = useQuery({
+  const { data: viewingDocRaw, isLoading: viewingDocLoading } = useQuery({
     queryKey: ["documents.documents.getById", organizationId, viewingDocId],
     queryFn: () =>
       getDocumentById({
@@ -82,16 +107,18 @@ export function EntityDocumentsTab({
       }),
     enabled: !!viewingDocId,
   });
+  const viewingDoc = viewingDocRaw as unknown as FormDocument | undefined;
 
-  const { data: viewingTemplate } = useQuery({
+  const { data: viewingTemplateRaw } = useQuery({
     queryKey: ["documents.templates.getById", organizationId, viewingDoc?.templateId],
     queryFn: () =>
       getTemplateById({
         organizationId,
-        templateId: viewingDoc?.templateId as string,
+        templateId: String(viewingDoc?.templateId ?? ""),
       }),
     enabled: !!viewingDoc?.templateId,
   });
+  const viewingTemplate = viewingTemplateRaw as unknown as FormTemplate | undefined;
 
   // Fetch scope data to merge with responseData for viewer pre-fill (Supabase)
   const resolveEntityScopeAction = useAction(api.documents.generate.resolveEntityScope);
@@ -288,7 +315,7 @@ export function EntityDocumentsTab({
                     // Try document-type viewer: check responseData for { html } field
                     try {
                       const parsed = JSON.parse(
-                        viewingDoc.responseData,
+                        viewingDoc.responseData ?? "{}",
                       ) as { html?: string };
                       if (parsed.html) {
                         return (

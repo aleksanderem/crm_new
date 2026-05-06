@@ -11,7 +11,6 @@ import { useOrganization } from "@/components/org-context";
 import { cn } from "@/lib/utils";
 import { Puzzle, Unlink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Id } from "@cvx/_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -666,7 +665,7 @@ export function GenerateDocumentDialog({
   // --- Step 1: Template list ---
 
   const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
-  const { data: templates, isLoading: templatesLoading } = useQuery({
+  const { data: templatesRaw, isLoading: templatesLoading } = useQuery({
     queryKey: ["documents.templates.listByEntityType", organizationId, entityType],
     queryFn: () =>
       listTemplatesByEntityType({
@@ -675,6 +674,17 @@ export function GenerateDocumentDialog({
       }),
     enabled: open && !!organizationId && !!entityType,
   });
+  const templates = templatesRaw as unknown as
+    | Array<{
+        _id: Id<"formTemplates">;
+        name: string;
+        folderPath?: string;
+        category: string;
+        description?: string;
+        formJson: string;
+        requiresSignature: boolean;
+      }>
+    | undefined;
 
   const filteredTemplates = templates
     ? search.trim()
@@ -791,7 +801,7 @@ export function GenerateDocumentDialog({
           t("documents.generated", "Dokument zostal wygenerowany"),
         );
         handleOpenChange(false);
-        onDocumentCreated?.(docId.documentId);
+        onDocumentCreated?.(docId.documentId as Id<"formDocuments">);
       } catch (e: unknown) {
         const message =
           e instanceof Error ? e.message : "Wystapil blad";

@@ -684,17 +684,18 @@ function DashboardLayout() {
         </div>
         <DevInfoDialog open={devInfoOpen} onOpenChange={handleDevInfoClose} />
 
-        <div className="flex min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1">
         <SidebarActionsContext.Provider value={sidebarActionsValue}>
           <SidebarProvider
             defaultOpen={false}
+            className="!min-h-0 h-full"
             style={{ "--sidebar-width-icon": "3.5625rem" } as CSSProperties}
           >
             {/* Columns 1 & 2: Icon sidebar + Detail panel */}
             <AppSidebar />
 
             {/* Column 3: Main content */}
-            <div className="flex min-w-0 flex-1 flex-col h-[calc(100dvh-30px)] overflow-hidden">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <HeaderBackButton />

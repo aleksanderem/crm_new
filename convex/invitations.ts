@@ -68,8 +68,8 @@ export const create = action({
     email: v.string(),
     role: orgRoleValidator,
   },
-  handler: async (ctx, args) => {
-    const invitationId = await ctx.runMutation(
+  handler: async (ctx, args): Promise<string> => {
+    const invitationId: string = await ctx.runMutation(
       internal.invitations._createInternal,
       {
         organizationId: args.organizationId,
@@ -180,8 +180,8 @@ export const _createInternal = internalMutation({
 // Accept needs seat limit check + creates teamMembership (auth table) — stays in Convex DB
 export const accept = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const orgId = await ctx.runMutation(
+  handler: async (ctx, args): Promise<string> => {
+    const orgId: string = await ctx.runMutation(
       internal.invitations._acceptInternal,
       { token: args.token },
     );

@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Tooltip,
   TooltipContent,
@@ -44,6 +45,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 
@@ -157,6 +159,11 @@ function PackagesIndex() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+
+  useSidebarDispatch("openFilter", () => setFilterPanelOpen(true));
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [totalPrice, setTotalPrice] = useState("");
@@ -284,7 +291,12 @@ function PackagesIndex() {
     }
   };
 
-  const items = packagesData ?? [];
+  const items = useMemo(() => {
+    const all = packagesData ?? [];
+    if (statusFilter === "active") return all.filter((p) => p.isActive);
+    if (statusFilter === "inactive") return all.filter((p) => !p.isActive);
+    return all;
+  }, [packagesData, statusFilter]);
 
   // Build a treatment name lookup from loaded treatments
   const treatmentNameMap = useMemo(() => {
@@ -538,6 +550,50 @@ function PackagesIndex() {
               </div>
             ))}
           </div>
+        </div>
+      </SidePanel>
+
+      <SidePanel
+        open={filterPanelOpen}
+        onOpenChange={setFilterPanelOpen}
+        title={t("nav.actions.filterByStatus")}
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("common.status")}</Label>
+            <RadioGroup
+              value={statusFilter}
+              onValueChange={(val) => setStatusFilter(val as "all" | "active" | "inactive")}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="all" id="package-filter-all" />
+                <Label htmlFor="package-filter-all" className="font-normal">
+                  {t("common.all")}
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="active" id="package-filter-active" />
+                <Label htmlFor="package-filter-active" className="font-normal">
+                  {t("gabinet.packages.active")}
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="inactive" id="package-filter-inactive" />
+                <Label htmlFor="package-filter-inactive" className="font-normal">
+                  {t("gabinet.packages.inactive")}
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+          {statusFilter !== "all" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStatusFilter("all")}
+            >
+              {t("common.clearFilters")}
+            </Button>
+          )}
         </div>
       </SidePanel>
 

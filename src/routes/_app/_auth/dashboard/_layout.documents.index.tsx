@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";

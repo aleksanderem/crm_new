@@ -1,6 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";

@@ -9,7 +9,6 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapFormDocumentFromSupabase, type MappedFormDocument } from "@/lib/supabase/mappers/form-documents";
-import type { Id } from "@cvx/_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Form Documents List

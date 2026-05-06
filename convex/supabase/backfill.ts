@@ -75,7 +75,7 @@ export const _getTreatment = internalQuery({
 
 export const backfillSinglePatient = internalAction({
   args: { patientId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const p = await ctx.runQuery(internal.supabase.backfill._getPatient, {
       patientId: args.patientId,
     });
@@ -158,7 +158,7 @@ export const backfillSinglePatient = internalAction({
 
 export const backfillSingleTreatment = internalAction({
   args: { treatmentId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const t = await ctx.runQuery(internal.supabase.backfill._getTreatment, {
       treatmentId: args.treatmentId,
     });
@@ -468,7 +468,17 @@ export const backfillEmployees = internalAction({
 
 export const backfillAll = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    users: number;
+    patients: number;
+    treatments: number;
+    employees: number;
+    appointments: number;
+    totalErrors: number;
+  }> => {
     const orgId = args.organizationId;
 
     console.info("=== BACKFILL START ===");

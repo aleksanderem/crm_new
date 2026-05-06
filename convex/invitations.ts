@@ -5,6 +5,9 @@ import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
+import { logActivity } from "./_helpers/activities";
+import { logAudit } from "./auditLog";
+import { createNotificationDirect } from "./notifications";
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -152,7 +155,6 @@ export const _createInternal = internalMutation({
       updatedAt: now,
     });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -162,7 +164,6 @@ export const _createInternal = internalMutation({
       performedBy: user._id,
     });
 
-    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: user._id,
@@ -229,7 +230,6 @@ export const _acceptInternal = internalMutation({
       updatedAt: Date.now(),
     });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: invitation.organizationId,
       entityType: "organization",
@@ -239,7 +239,6 @@ export const _acceptInternal = internalMutation({
       performedBy: user._id,
     });
 
-    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: invitation.organizationId,
       userId: user._id,
@@ -250,7 +249,6 @@ export const _acceptInternal = internalMutation({
     });
 
     // Notify org owner
-    const { createNotificationDirect } = await import("./notifications");
     const org = await ctx.db.get(invitation.organizationId);
     if (org && org.ownerId !== user._id) {
       await createNotificationDirect(ctx, {

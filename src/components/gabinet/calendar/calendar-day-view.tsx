@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
+import { useDragToCreate } from "./use-drag-to-create";
 
 interface Appointment {
   _id: string;
@@ -16,6 +17,7 @@ interface CalendarDayViewProps {
   date: string;
   appointments: Appointment[];
   onSlotClick?: (time: string) => void;
+  onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentClick?: (id: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
 }
@@ -90,7 +92,7 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onAppointmentClick, workingHours }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, workingHours }: CalendarDayViewProps) {
   const now = new Date();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -103,6 +105,33 @@ export function CalendarDayView({ date, appointments, onSlotClick, onAppointment
   const workEndTop = workingHours ? timeToTop(workingHours.endTime) : null;
   const breakStartTop = workingHours?.breakStart ? timeToTop(workingHours.breakStart) : null;
   const breakEndTop = workingHours?.breakEnd ? timeToTop(workingHours.breakEnd) : null;
+
+  const handleClick = useCallback(
+    (time: string) => onSlotClick?.(time),
+    [onSlotClick],
+  );
+  const handleDragSelect = useCallback(
+    (startTime: string, endTime: string) =>
+      onSlotDragSelect?.(date, startTime, endTime),
+    [onSlotDragSelect, date],
+  );
+
+  const dragHandler = useDragToCreate({
+    hoursStart: 7,
+    hoursCount: HOURS.length,
+    hourHeight: 60,
+    snapMinutes: 15,
+    minDragDistance: 8,
+    onClick: handleClick,
+    onDragSelect: handleDragSelect,
+  });
+
+  const dragTop = dragHandler.dragRange
+    ? Math.min(dragHandler.dragRange.start, dragHandler.dragRange.end)
+    : 0;
+  const dragHeight = dragHandler.dragRange
+    ? Math.abs(dragHandler.dragRange.end - dragHandler.dragRange.start)
+    : 0;
 
   return (
     <div className="relative flex h-full overflow-y-auto">
@@ -118,7 +147,11 @@ export function CalendarDayView({ date, appointments, onSlotClick, onAppointment
       </div>
 
       {/* Grid + appointments */}
-      <div className="relative flex-1">
+      <div
+        ref={dragHandler.containerRef}
+        className="relative flex-1 select-none"
+        onMouseDown={dragHandler.handleMouseDown}
+      >
         {/* Working hours background */}
         {workStartTop !== null && workEndTop !== null && (
           <div
@@ -150,12 +183,20 @@ export function CalendarDayView({ date, appointments, onSlotClick, onAppointment
             time={`${String(h).padStart(2, "0")}:00`}
             className="h-[60px] border-b border-dashed border-muted"
           >
-            <div
-              className="h-full w-full cursor-pointer hover:bg-muted/30"
-              onClick={() => onSlotClick?.(`${String(h).padStart(2, "0")}:00`)}
-            />
+            <div className="h-full w-full cursor-pointer hover:bg-muted/30" />
           </DroppableSlot>
         ))}
+
+        {/* Drag-to-create ghost */}
+        {dragHandler.dragRange && dragHeight > 0 && (
+          <div
+            className="pointer-events-none absolute left-1 right-1 z-30 rounded-sm bg-primary/30 ring-2 ring-primary/60"
+            style={{
+              top: `${dragTop}px`,
+              height: `${Math.max(dragHeight, 4)}px`,
+            }}
+          />
+        )}
 
         {/* Current time line */}
         {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60 && (

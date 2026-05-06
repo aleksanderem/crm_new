@@ -1,6 +1,8 @@
 import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { logActivity } from "./_helpers/activities";
+import { createNotificationDirect } from "./notifications";
 import { v } from "convex/values";
 import { activityTypeValidator } from "@cvx/schema";
 
@@ -23,9 +25,6 @@ export const _createSideEffects = internalMutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("./_helpers/activities");
-    const { createNotificationDirect } = await import("./notifications");
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
@@ -67,9 +66,6 @@ export const _updateSideEffects = internalMutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("./_helpers/activities");
-    const { createNotificationDirect } = await import("./notifications");
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
@@ -110,8 +106,6 @@ export const _deleteSideEffects = internalMutation({
     googleEventId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("./_helpers/activities");
-
     // Delete Google Calendar event before removing the activity
     if (args.googleEventId) {
       await ctx.scheduler.runAfter(0, internal.google.calendar.deleteEvent, {

@@ -43,6 +43,7 @@ export function DraggableAppointment({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      data-appointment-card="true"
       className={isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"}
     >
       <AppointmentCard

@@ -104,6 +104,9 @@ function GabinetCalendarPage() {
   const [createDefaultTime, setCreateDefaultTime] = useState<
     string | undefined
   >();
+  const [createDefaultEndTime, setCreateDefaultEndTime] = useState<
+    string | undefined
+  >();
 
   // Drag state
   const [activeAppointment, setActiveAppointment] = useState<{
@@ -426,9 +429,21 @@ function GabinetCalendarPage() {
         setCreateDefaultDate(formatDateStr(currentDate));
         setCreateDefaultTime(dateOrTime);
       }
+      setCreateDefaultEndTime(undefined);
       setCreateDialogOpen(true);
     },
     [currentDate],
+  );
+
+  // Drag-to-create handler (sets both start and end time)
+  const handleSlotDragSelect = useCallback(
+    (date: string, startTime: string, endTime: string) => {
+      setCreateDefaultDate(date);
+      setCreateDefaultTime(startTime);
+      setCreateDefaultEndTime(endTime);
+      setCreateDialogOpen(true);
+    },
+    [],
   );
 
   const handleDayClick = useCallback((date: string) => {
@@ -643,6 +658,7 @@ function GabinetCalendarPage() {
                 onClick={() => {
                   setCreateDefaultDate(formatDateStr(currentDate));
                   setCreateDefaultTime(undefined);
+                  setCreateDefaultEndTime(undefined);
                   setCreateDialogOpen(true);
                 }}
               >
@@ -805,6 +821,7 @@ function GabinetCalendarPage() {
               onSlotClick={(time) =>
                 handleSlotClick(formatDateStr(currentDate), time)
               }
+              onSlotDragSelect={handleSlotDragSelect}
               onAppointmentClick={handleAppointmentClick}
               workingHours={dayWorkingHours}
             />
@@ -814,6 +831,7 @@ function GabinetCalendarPage() {
               weekStart={formatDateStr(getMonday(currentDate))}
               appointments={viewAppointments}
               onSlotClick={handleSlotClick}
+              onSlotDragSelect={handleSlotDragSelect}
               onAppointmentClick={handleAppointmentClick}
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
@@ -838,6 +856,7 @@ function GabinetCalendarPage() {
           onOpenChange={setCreateDialogOpen}
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
+          defaultEndTime={createDefaultEndTime}
         />
       </div>
 

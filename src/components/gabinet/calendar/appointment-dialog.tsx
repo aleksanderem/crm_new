@@ -72,6 +72,7 @@ interface AppointmentDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultDate?: string;
   defaultTime?: string;
+  defaultEndTime?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +109,7 @@ export function AppointmentDialog({
   onOpenChange,
   defaultDate,
   defaultTime,
+  defaultEndTime,
 }: AppointmentDialogProps) {
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
@@ -168,7 +170,9 @@ export function AppointmentDialog({
   const [selectedSlot, setSelectedSlot] = useState<{
     start: string;
     end: string;
-  } | null>(defaultTime ? { start: defaultTime, end: "" } : null);
+  } | null>(
+    defaultTime ? { start: defaultTime, end: defaultEndTime ?? "" } : null,
+  );
   const [notes, setNotes] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("weekly");
@@ -491,7 +495,7 @@ export function AppointmentDialog({
         defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
       );
       setSelectedSlot(
-        defaultTime ? { start: defaultTime, end: "" } : null,
+        defaultTime ? { start: defaultTime, end: defaultEndTime ?? "" } : null,
       );
       setNotes("");
       setIsRecurring(false);
@@ -502,7 +506,7 @@ export function AppointmentDialog({
       setLocationId("");
       setRoomId("");
     }
-  }, [open, defaultDate, defaultTime]);
+  }, [open, defaultDate, defaultTime, defaultEndTime]);
 
   // -------------------------------------------------------------------------
   // Determine which panels are active

@@ -7,7 +7,7 @@ import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-f
 import { PageHeader } from "@/components/layout/page-header";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
@@ -35,7 +35,9 @@ function NewContact() {
       <Card>
         <CardContent className="pt-6">
           <ContactForm
-            customFieldDefinitions={customFieldDefs}
+            customFieldDefinitions={
+              customFieldDefs as unknown as ComponentProps<typeof ContactForm>["customFieldDefinitions"]
+            }
             isSubmitting={isSubmitting}
             onCancel={() => navigate({ to: "/dashboard/contacts" })}
             onSubmit={async (data, customFieldRecord) => {

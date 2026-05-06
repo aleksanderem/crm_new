@@ -82,7 +82,8 @@ function ContactsIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data: contacts = [], isLoading } = useSupabaseContactsList(organizationId);
+  const { data: contactsRaw = [], isLoading } = useSupabaseContactsList(organizationId);
+  const contacts = contactsRaw as unknown as Contact[];
 
   const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
 

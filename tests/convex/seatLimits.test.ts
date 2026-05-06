@@ -219,7 +219,7 @@ describe("invitations.create with seat limit", () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const invitationId = await t.withIdentity(identity).mutation(
+    const invitationId = await t.withIdentity(identity).action(
       api.invitations.create,
       {
         organizationId,
@@ -273,7 +273,7 @@ describe("invitations.create with seat limit", () => {
 
     // Owner already counts as 1 seat, limit is 1
     await expect(
-      t.withIdentity(identity).mutation(api.invitations.create, {
+      t.withIdentity(identity).action(api.invitations.create, {
         organizationId,
         email: "new@example.com",
         role: "member",
@@ -321,7 +321,7 @@ describe("invitations.create with seat limit", () => {
     });
 
     await expect(
-      t.withIdentity(identity).mutation(api.invitations.create, {
+      t.withIdentity(identity).action(api.invitations.create, {
         organizationId,
         email: "new@example.com",
         role: "member",

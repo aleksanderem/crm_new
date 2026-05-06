@@ -232,7 +232,7 @@ export const submitDocumentFormFields = action({
     formFieldValues: v.string(), // JSON map of field values
     scopeData: v.optional(v.string()), // JSON map of scope/variable data for re-rendering
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const doc = await db.query("formDocuments")
@@ -409,7 +409,7 @@ export const recordSignature = action({
     signedByIp: v.optional(v.string()),
     resolvedHtml: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const doc = await db.query("formDocuments")

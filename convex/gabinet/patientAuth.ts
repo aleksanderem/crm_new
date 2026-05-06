@@ -173,7 +173,7 @@ export const verifyPortalOtp = action({
     organizationId: v.id("organizations"),
     otp: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const patient = await db.query("gabinetPatients")
@@ -292,7 +292,7 @@ export const logoutPortal = action({
   args: {
     tokenHash: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const session = await db.query("gabinetPortalSessions")

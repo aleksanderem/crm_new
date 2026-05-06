@@ -83,6 +83,8 @@ export interface DataListFilterBarProps {
   filterableFields?: FieldDef[];
   createDialogOpen?: boolean;
   onCreateDialogOpenChange?: (open: boolean) => void;
+  filterSlideoutOpen?: boolean;
+  onFilterSlideoutOpenChange?: (open: boolean) => void;
 
   // Search (right side)
   searchValue: string;
@@ -142,6 +144,8 @@ export function DataListFilterBar({
   filterableFields = [],
   createDialogOpen: externalCreateDialogOpen,
   onCreateDialogOpenChange,
+  filterSlideoutOpen: externalFilterSlideoutOpen,
+  onFilterSlideoutOpenChange,
   searchValue,
   onSearchChange,
   searchPlaceholder,
@@ -156,10 +160,16 @@ export function DataListFilterBar({
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
+  const [internalFilterSlideoutOpen, setInternalFilterSlideoutOpen] =
+    useState(false);
   const [internalCreateDialogOpen, setInternalCreateDialogOpen] =
     useState(false);
   const [newViewName, setNewViewName] = useState("");
+
+  const filterSlideoutOpen =
+    externalFilterSlideoutOpen ?? internalFilterSlideoutOpen;
+  const setFilterSlideoutOpen =
+    onFilterSlideoutOpenChange ?? setInternalFilterSlideoutOpen;
 
   const createDialogOpen =
     externalCreateDialogOpen ?? internalCreateDialogOpen;

@@ -56,9 +56,11 @@ function EmployeesIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
 
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
 
   const [showCreate, setShowCreate] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -332,6 +334,8 @@ function EmployeesIndex() {
 
       <DataListFilterBar
         filterableFields={filterableFields}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t("gabinet.employees.searchPlaceholder")}

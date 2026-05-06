@@ -91,7 +91,7 @@ export const earnPoints = action({
       updatedAt: now,
     });
 
-    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+    await db.insert("gabinetLoyaltyTransactions", {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "earn",
@@ -135,7 +135,7 @@ export const spendPoints = action({
       updatedAt: now,
     });
 
-    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+    await db.insert("gabinetLoyaltyTransactions", {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "spend",
@@ -181,7 +181,7 @@ export const adjustPoints = action({
       updatedAt: now,
     });
 
-    const txnId = await db.insert("gabinetLoyaltyTransactions", {
+    await db.insert("gabinetLoyaltyTransactions", {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
       type: "adjust",

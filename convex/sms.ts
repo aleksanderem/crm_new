@@ -2,7 +2,6 @@ import { action, query, internalAction, internalQuery } from "./_generated/serve
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // ---------------------------------------------------------------------------
 // SMS Config (authenticated, org-scoped)
@@ -363,26 +362,25 @@ export const requestOtp = action({
   args: { token: v.string() },
   handler: async (ctx, args): Promise<{ sent: boolean; method: string }> => {
     // Create OTP (this validates the token and returns code + delivery info)
-    const result: {
-      code: string;
-      verificationMethod: string;
-      signerPhone?: string;
-      signerEmail?: string;
-      organizationId: string;
-    } = await ctx.runMutation(api.signatureRequests.createOtp, {
+    const result = await ctx.runAction(api.signatureRequests.createOtp, {
       token: args.token,
     });
 
-    if (result.verificationMethod === "sms") {
-      if (!result.signerPhone) throw new Error("No phone number for SMS delivery");
+    const verificationMethod = String(result.verificationMethod ?? "");
+    const organizationId = String(result.organizationId ?? "");
+    const signerPhone =
+      typeof result.signerPhone === "string" ? result.signerPhone : undefined;
+
+    if (verificationMethod === "sms") {
+      if (!signerPhone) throw new Error("No phone number for SMS delivery");
       await ctx.runAction(api.sms.sendOtpSms, {
-        organizationId: result.organizationId as never,
-        phone: result.signerPhone,
+        organizationId: organizationId as never,
+        phone: signerPhone,
         code: result.code,
       });
     }
     // email_otp: TODO — will use Resend in Phase E
 
-    return { sent: true, method: result.verificationMethod };
+    return { sent: true, method: verificationMethod };
   },
 });

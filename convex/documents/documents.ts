@@ -7,7 +7,6 @@ import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
 import { Id } from "../_generated/dataModel";
-import { checkPermission } from "../_helpers/permissions";
 
 // Dual-write refs removed — Supabase is now primary for document writes
 

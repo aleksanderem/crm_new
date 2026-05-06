@@ -237,7 +237,7 @@ export const updateDraft = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as string },
+      { organizationId: instance.organizationId as Id<"organizations"> },
     );
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
@@ -287,7 +287,7 @@ export const updateStatus = action({
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as string },
+      { organizationId: instance.organizationId as Id<"organizations"> },
     );
 
     const now = Date.now();
@@ -358,7 +358,7 @@ export const sign = action({
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as string },
+      { organizationId: instance.organizationId as Id<"organizations"> },
     );
 
     const now = Date.now();
@@ -477,7 +477,7 @@ export const remove = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as string },
+      { organizationId: instance.organizationId as Id<"organizations"> },
     );
 
     await db.delete("documentInstances", args.id);

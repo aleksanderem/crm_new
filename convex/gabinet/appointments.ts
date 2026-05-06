@@ -591,7 +591,7 @@ export const listPatientsWithStatsForEmployee = action({
       }),
     );
 
-    return results.filter((result): result is Record<string, unknown> => result !== null);
+    return results.filter((result): result is NonNullable<typeof result> => result !== null);
   },
 });
 

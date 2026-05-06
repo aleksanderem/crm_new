@@ -117,6 +117,7 @@ import type * as mail_adapters_mailgun from "../mail/adapters/mailgun.js";
 import type * as mail_adapters_microsoft from "../mail/adapters/microsoft.js";
 import type * as mail_adapters_resend from "../mail/adapters/resend.js";
 import type * as mail_emailShell from "../mail/emailShell.js";
+import type * as mail_testConnectionNode from "../mail/testConnectionNode.js";
 import type * as mailProviders from "../mailProviders.js";
 import type * as microsoft_oauth from "../microsoft/oauth.js";
 import type * as migrations_backfillMailProviders from "../migrations/backfillMailProviders.js";
@@ -345,6 +346,7 @@ declare const fullApi: ApiFromModules<{
   "mail/adapters/microsoft": typeof mail_adapters_microsoft;
   "mail/adapters/resend": typeof mail_adapters_resend;
   "mail/emailShell": typeof mail_emailShell;
+  "mail/testConnectionNode": typeof mail_testConnectionNode;
   mailProviders: typeof mailProviders;
   "microsoft/oauth": typeof microsoft_oauth;
   "migrations/backfillMailProviders": typeof migrations_backfillMailProviders;

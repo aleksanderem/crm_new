@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 
@@ -117,7 +118,7 @@ export const create = action({
 export const _verifyTemplateAccess = internalMutation({
   args: { templateId: v.string() },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId as any);
+    const template = await ctx.db.get(args.templateId as Id<"documentTemplates">);
     if (!template) throw new Error("Template not found");
     return template.organizationId;
   },

@@ -1,8 +1,7 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 export const DEFAULT_ACTIVITY_TYPES = [
   { key: "call", name: "Połączenie", icon: "phone", color: "#3b82f6" },

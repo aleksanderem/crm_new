@@ -126,7 +126,7 @@ export function AppFooter() {
     <footer className="bg-card sticky bottom-0 z-40 border-t">
       <div className="flex items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2 max-sm:hidden">
-          <p className="text-muted-foreground text-xs text-balance">
+          <p className="text-muted-foreground text-xs whitespace-nowrap">
             {`© ${new Date().getFullYear()}`}
           </p>
           <LanguageSwitcher />

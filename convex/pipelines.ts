@@ -2,14 +2,15 @@ import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
+import { verifyOrgAccess } from "./_helpers/auth";
+import { checkPermission } from "./_helpers/permissions";
+import { logActivity } from "./_helpers/activities";
 
 // ── Queries (unchanged — still read from Convex) ────────────────────────────
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("./_helpers/auth");
-    const { checkPermission } = await import("./_helpers/permissions");
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
     if (!perm.allowed) throw new Error("Permission denied");
@@ -30,8 +31,6 @@ export const getById = query({
     pipelineId: v.id("pipelines"),
   },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("./_helpers/auth");
-    const { checkPermission } = await import("./_helpers/permissions");
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
     if (!perm.allowed) throw new Error("Permission denied");
@@ -52,8 +51,6 @@ export const getStages = query({
     pipelineId: v.id("pipelines"),
   },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("./_helpers/auth");
-    const { checkPermission } = await import("./_helpers/permissions");
     await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
     if (!perm.allowed) throw new Error("Permission denied");
@@ -67,8 +64,6 @@ export const getStages = query({
 export const getAllStages = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("./_helpers/auth");
-    const { checkPermission } = await import("./_helpers/permissions");
     await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
     if (!perm.allowed) throw new Error("Permission denied");
@@ -102,7 +97,6 @@ export const _sideEffects = internalMutation({
     leadIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("./_helpers/activities");
     const userId = args.userId as any;
 
     if (args.type === "pipeline_created" && args.pipelineId) {

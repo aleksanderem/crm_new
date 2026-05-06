@@ -337,11 +337,23 @@ export const getReportsKpis = action({
 });
 
 // --- Day Agenda ---
+export interface DayAgendaAppointment {
+  id: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  patientName: string;
+  treatmentName: string;
+  treatmentDuration: number;
+  employeeName: string;
+  confirmed: boolean;
+}
+
 export const getDayAgenda = action({
   args: { organizationId: v.id("organizations"), date: v.string() },
   handler: async (ctx, args): Promise<{
     date: string;
-    appointments: Array<Record<string, unknown>>;
+    appointments: DayAgendaAppointment[];
     totalAppointments: number;
     confirmedCount: number;
   }> => {
@@ -367,17 +379,20 @@ export const getDayAgenda = action({
           appt.employeeId ? db.get("users", String(appt.employeeId)).catch(() => null) : null,
         ]);
 
-        return {
-          id: appt._id ?? appt.id,
-          startTime: appt.startTime,
-          endTime: appt.endTime,
-          status: appt.status,
-          patientName: patient ? `${(patient as any).firstName} ${(patient as any).lastName}` : "—",
-          treatmentName: (treatment as any)?.name ?? "—",
-          treatmentDuration: (treatment as any)?.duration ?? 0,
+        const row: DayAgendaAppointment = {
+          id: String(appt._id ?? appt.id ?? ""),
+          startTime: String(appt.startTime ?? ""),
+          endTime: String(appt.endTime ?? ""),
+          status: String(appt.status ?? ""),
+          patientName: patient
+            ? `${(patient as any).firstName ?? ""} ${(patient as any).lastName ?? ""}`.trim() || "—"
+            : "—",
+          treatmentName: ((treatment as any)?.name as string | undefined) ?? "—",
+          treatmentDuration: Number((treatment as any)?.duration ?? 0),
           employeeName: employee ? (employee as any).name || "Employee" : "—",
           confirmed: appt.status === "confirmed" || appt.status === "completed",
         };
+        return row;
       }),
     );
 

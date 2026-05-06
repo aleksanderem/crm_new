@@ -531,6 +531,19 @@ export const listPatientsForEmployee = query({
 });
 
 /**
+ * Row shape returned by `listPatientsWithStatsForEmployee` — a patient
+ * augmented with per-employee visit summary fields. Exported so consumers
+ * can type props directly instead of duck-typing the result.
+ */
+export type EmployeePatientStats = GabinetPatientRow & {
+  visitCount: number;
+  lastVisitDate: string | null;
+  firstVisitDate: string | null;
+  treatmentIds: string[];
+  statuses: string[];
+};
+
+/**
  * Returns patients for an employee enriched with visit summary data
  * (visit count, last visit date, treatments used, statuses).
  * Used by the employee detail "Klienci" tab for search & filtering.
@@ -540,13 +553,7 @@ export const listPatientsWithStatsForEmployee = action({
     organizationId: v.id("organizations"),
     employeeId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<GabinetPatientRow & {
-    visitCount: number;
-    lastVisitDate: string | null;
-    firstVisitDate: string | null;
-    treatmentIds: string[];
-    statuses: string[];
-  }>> => {
+  handler: async (ctx, args): Promise<EmployeePatientStats[]> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },

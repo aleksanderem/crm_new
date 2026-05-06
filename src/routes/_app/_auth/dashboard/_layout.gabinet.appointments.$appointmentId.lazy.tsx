@@ -93,6 +93,7 @@ import {
   Inbox,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
+import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -172,24 +173,6 @@ function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus
   return { labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory", tone: "secondary" as const };
 }
 
-function getPackageUsageTotals(pkg: Record<string, unknown>) {
-  const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed)
-    ? pkg.treatmentsUsed
-    : [];
-
-  return treatmentsUsed.reduce(
-    (acc: { used: number; total: number }, treatment: Record<string, unknown>) => {
-      const usedCount = Number(treatment?.usedCount ?? 0);
-      const totalCount = Number(treatment?.totalCount ?? 0);
-      return {
-        used: acc.used + (Number.isFinite(usedCount) ? usedCount : 0),
-        total: acc.total + (Number.isFinite(totalCount) ? totalCount : 0),
-      };
-    },
-    { used: 0, total: 0 },
-  );
-}
-
 // Note Item Component
 function NoteItem({
   note,
@@ -206,7 +189,7 @@ function NoteItem({
   hasReplies = false,
   isReply = false,
 }: {
-  note: Record<string, unknown>;
+  note: AppointmentFullDetailNote;
   isEditing: boolean;
   editContent: string;
   onEditContentChange: (content: string) => void;
@@ -221,9 +204,9 @@ function NoteItem({
   isReply?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const authorName = (note.authorName as string) ?? t("common.unknown");
+  const authorName = note.authorName ?? t("common.unknown");
   const initials = authorName.slice(0, 2).toUpperCase();
-  const dateStr = new Date(note.createdAt as number).toLocaleString(i18n.language);
+  const dateStr = new Date(note.createdAt).toLocaleString(i18n.language);
 
   return (
     <article className="relative flex gap-3">
@@ -283,7 +266,7 @@ function NoteItem({
           <div className="flex items-start gap-1">
             <section className="flex-1 rounded-lg rounded-tl-none border p-3">
               <p className="text-sm whitespace-pre-wrap">
-                {plateJsonToText(note.content as string)}
+                {plateJsonToText(note.content)}
               </p>
             </section>
             <DropdownMenu>
@@ -492,10 +475,9 @@ function AppointmentDetail() {
     if (!detail) return null;
     const { appointment: appt, patient: pat, treatment: treat, employee: emp, patientPackageUsage: pkgUsage, loyaltyBalance: loyBal } = detail;
     const empName = emp ? (emp.name ?? emp.email ?? "-") : "-";
-    const relevantPkgs = (pkgUsage ?? []).filter((pkg: Record<string, unknown>) => {
-      const treatments = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
-      return treatments.some((tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId);
-    });
+    const relevantPkgs = (pkgUsage ?? []).filter((pkg) =>
+      pkg.treatmentsUsed.some((tu) => tu.treatmentId === appt.treatmentId),
+    );
 
     return (
       <div className="space-y-3">
@@ -597,20 +579,21 @@ function AppointmentDetail() {
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               {t("gabinet.packages.activePackages", "Aktywne pakiety")}
             </p>
-            {relevantPkgs.map((pkg: Record<string, unknown>) => {
-              const treatmentsUsed = Array.isArray(pkg?.treatmentsUsed) ? pkg.treatmentsUsed : [];
-              const relevantTreatment = treatmentsUsed.find((tu: Record<string, unknown>) => tu.treatmentId === appt.treatmentId) as Record<string, unknown> | undefined;
-              const used = Number(relevantTreatment?.usedCount ?? 0);
-              const total = Number(relevantTreatment?.totalCount ?? 0);
+            {relevantPkgs.map((pkg) => {
+              const relevantTreatment = pkg.treatmentsUsed.find(
+                (tu) => tu.treatmentId === appt.treatmentId,
+              );
+              const used = relevantTreatment?.usedCount ?? 0;
+              const total = relevantTreatment?.totalCount ?? 0;
               const remaining = Math.max(total - used, 0);
               const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
               let barColor = "bg-emerald-500";
               if (remaining <= 0) barColor = "bg-red-500";
               else if (remaining / total < 0.3) barColor = "bg-amber-500";
               return (
-                <div key={pkg._id as string} className="rounded-md border p-2.5 space-y-1.5">
+                <div key={pkg._id} className="rounded-md border p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium truncate">{pkg.packageName as string}</p>
+                    <p className="text-xs font-medium truncate">{pkg.packageName}</p>
                     <Badge variant="outline" className={`text-[10px] shrink-0 ${pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}`}>
                       {t(`gabinet.packages.status.${pkg.status}`)}
                     </Badge>
@@ -935,9 +918,9 @@ function AppointmentDetail() {
     }
   };
 
-  const startEditNote = (note: Record<string, unknown>) => {
-    setEditingNoteId(note._id as string);
-    setEditNoteContent(note.content as string);
+  const startEditNote = (note: AppointmentFullDetailNote) => {
+    setEditingNoteId(note._id);
+    setEditNoteContent(note.content);
   };
 
   // Body chart handlers
@@ -965,9 +948,9 @@ function AppointmentDetail() {
   };
 
   // Group notes by parent for threading
-  const rootNotes = notes.filter((n: Record<string, unknown>) => !n.parentNoteId);
+  const rootNotes = notes.filter((n) => !n.parentNoteId);
   const getReplies = (noteId: string) =>
-    notes.filter((n: Record<string, unknown>) => n.parentNoteId === noteId);
+    notes.filter((n) => n.parentNoteId === noteId);
 
   // Calculate payment summary
   const treatmentPrice = treatment?.price ?? 0;
@@ -1624,8 +1607,8 @@ function AppointmentDetail() {
                 <div className="relative">
                   <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
                   <div className="space-y-4">
-                    {patientHistory.map((appt: Record<string, unknown>, index: number) => (
-                      <div key={appt._id as string} className="relative flex gap-4">
+                    {patientHistory.map((appt, index) => (
+                      <div key={appt._id} className="relative flex gap-4">
                         <div className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-background border-2">
                           {index === 0 && (
                             <div className="w-2 h-2 rounded-full bg-primary" />
@@ -1633,22 +1616,22 @@ function AppointmentDetail() {
                         </div>
                         <Link
                           to="/dashboard/gabinet/appointments/$appointmentId"
-                          params={{ appointmentId: appt._id as string }}
+                          params={{ appointmentId: appt._id }}
                           className="flex-1 flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <div>
                             <p className="font-medium">
-                              {((appt as Record<string, unknown>).treatment as Record<string, unknown>)?.name as string ?? "-"}
+                              {appt.treatment?.name ?? "-"}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {formatDate(appt.date as string)} &bull;{" "}
-                              {formatTime(appt.startTime as string)} -{" "}
-                              {formatTime(appt.endTime as string)}
+                              {formatDate(appt.date)} &bull;{" "}
+                              {formatTime(appt.startTime)} -{" "}
+                              {formatTime(appt.endTime)}
                             </p>
                           </div>
                           <Badge
                             variant={
-                              statusColors[appt.status as string] ?? "secondary"
+                              statusColors[appt.status] ?? "secondary"
                             }
                           >
                             {t(
@@ -1681,8 +1664,8 @@ function AppointmentDetail() {
                 />
               ) : (
                 <div className="space-y-3">
-                  {patientPackageUsage.map((pkg: Record<string, unknown>) => {
-                    const totals = getPackageUsageTotals(pkg);
+                  {patientPackageUsage.map((pkg) => {
+                    const totals = { used: pkg.totalUsed, total: pkg.totalCount };
                     const progressPercent =
                       totals.total > 0
                         ? Math.min((totals.used / totals.total) * 100, 100)
@@ -1694,11 +1677,10 @@ function AppointmentDetail() {
                     else if (overallRemainingRatio < 0.3) overallBarColor = "bg-amber-500";
 
                     return (
-                      <div key={pkg._id as string} className="p-4 border rounded-lg space-y-3">
+                      <div key={pkg._id} className="p-4 border rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
                           <p className="font-medium">
-                            {(pkg.packageName as string) ??
-                              t("gabinet.packages.package")}
+                            {pkg.packageName ?? t("gabinet.packages.package")}
                           </p>
                           <div className="flex items-center gap-2">
                             {pkg.status === "active" && (
@@ -1706,14 +1688,14 @@ function AppointmentDetail() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setUsageDialogPkgId(pkg._id as string);
+                                  setUsageDialogPkgId(pkg._id);
                                   setUsageDialogItems(
-                                    ((pkg.treatmentsUsed as Array<Record<string, unknown>>) ?? [])
-                                      .filter((e: Record<string, unknown>) => ((e.usedCount as number) ?? 0) < ((e.totalCount as number) ?? 0))
-                                      .map((e: Record<string, unknown>) => ({
-                                        treatmentId: e.treatmentId as string,
-                                        treatmentName: (e.treatmentName as string) ?? t("gabinet.packages.treatment"),
-                                        remaining: ((e.totalCount as number) ?? 0) - ((e.usedCount as number) ?? 0),
+                                    pkg.treatmentsUsed
+                                      .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                                      .map((e) => ({
+                                        treatmentId: e.treatmentId,
+                                        treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                                        remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
                                         qty: 0,
                                       })),
                                   );
@@ -1754,15 +1736,14 @@ function AppointmentDetail() {
                         </div>
 
                         {/* Per-treatment progress bars */}
-                        {!!(Array.isArray(pkg.treatmentsUsed) &&
-                          (pkg.treatmentsUsed as Array<Record<string, unknown>>).length > 0) && (
+                        {pkg.treatmentsUsed.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground">
                                 {t("gabinet.packages.perTreatmentProgress")}
                               </p>
-                              {(pkg.treatmentsUsed as Array<Record<string, unknown>>).map((entry: Record<string, unknown>, index: number) => {
-                                const usedCount = (entry.usedCount as number) ?? 0;
-                                const totalCount = (entry.totalCount as number) ?? 0;
+                              {pkg.treatmentsUsed.map((entry, index) => {
+                                const usedCount = entry.usedCount ?? 0;
+                                const totalCount = entry.totalCount ?? 0;
                                 const remaining = totalCount - usedCount;
                                 const pct = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
                                 const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
@@ -1773,10 +1754,10 @@ function AppointmentDetail() {
                                 else if (remainingRatio < 0.3) { barColor = "bg-amber-500"; statusLabel = t("gabinet.packages.runningLow"); }
 
                                 return (
-                                  <div key={`${pkg._id}-${(entry.treatmentId as string) ?? index}`} className="space-y-1">
+                                  <div key={`${pkg._id}-${entry.treatmentId ?? index}`} className="space-y-1">
                                     <div className="flex items-center justify-between text-xs">
                                       <span className="truncate max-w-[50%]">
-                                        {(entry.treatmentName as string) ?? t("gabinet.treatments.treatment")}
+                                        {entry.treatmentName ?? t("gabinet.treatments.treatment")}
                                       </span>
                                       <span className="text-muted-foreground tabular-nums">
                                         {usedCount} / {totalCount}
@@ -1798,7 +1779,7 @@ function AppointmentDetail() {
                         {!!pkg.expiresAt && (
                           <p className="text-xs text-muted-foreground">
                             {t("gabinet.packages.expires")}:{" "}
-                            {new Date(pkg.expiresAt as number).toLocaleDateString(
+                            {new Date(pkg.expiresAt).toLocaleDateString(
                               i18n.language,
                             )}
                           </p>
@@ -2047,10 +2028,10 @@ function AppointmentDetail() {
               />
             ) : (
               <ul className="flex flex-col gap-8">
-                {rootNotes.map((note: Record<string, unknown>) => {
-                  const replies = getReplies(note._id as string);
+                {rootNotes.map((note) => {
+                  const replies = getReplies(note._id);
                   return (
-                    <li key={note._id as string}>
+                    <li key={note._id}>
                       <NoteItem
                         note={note}
                         isEditing={editingNoteId === note._id}
@@ -2061,17 +2042,17 @@ function AppointmentDetail() {
                           setEditingNoteId(null);
                           setEditNoteContent("");
                         }}
-                        onSaveEdit={() => handleUpdateNote(note._id as Id<"notes">)}
-                        onDelete={() => handleDeleteNote(note._id as Id<"notes">)}
-                        onTogglePin={() => handleTogglePin(note._id as Id<"notes">)}
-                        onReply={() => setReplyToNoteId(note._id as string)}
+                        onSaveEdit={() => handleUpdateNote(note._id)}
+                        onDelete={() => handleDeleteNote(note._id)}
+                        onTogglePin={() => handleTogglePin(note._id)}
+                        onReply={() => setReplyToNoteId(note._id)}
                         isSubmitting={isNoteSubmitting}
                         hasReplies={replies.length > 0}
                       />
                       {replies.length > 0 && (
                         <ul className="ml-12 mt-4 flex flex-col gap-6">
-                          {replies.map((reply: Record<string, unknown>) => (
-                            <li key={reply._id as string}>
+                          {replies.map((reply) => (
+                            <li key={reply._id}>
                               <NoteItem
                                 note={reply}
                                 isEditing={editingNoteId === reply._id}
@@ -2082,14 +2063,10 @@ function AppointmentDetail() {
                                   setEditingNoteId(null);
                                   setEditNoteContent("");
                                 }}
-                                onSaveEdit={() =>
-                                  handleUpdateNote(reply._id as Id<"notes">)
-                                }
-                                onDelete={() => handleDeleteNote(reply._id as Id<"notes">)}
-                                onTogglePin={() =>
-                                  handleTogglePin(reply._id as Id<"notes">)
-                                }
-                                onReply={() => setReplyToNoteId(note._id as string)}
+                                onSaveEdit={() => handleUpdateNote(reply._id)}
+                                onDelete={() => handleDeleteNote(reply._id)}
+                                onTogglePin={() => handleTogglePin(reply._id)}
+                                onReply={() => setReplyToNoteId(note._id)}
                                 isSubmitting={isNoteSubmitting}
                                 isReply
                               />

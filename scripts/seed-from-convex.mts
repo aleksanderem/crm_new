@@ -23,6 +23,13 @@ const sb: SupabaseClient<Database> = createClient<Database>(url, key, {
 type ConvexDoc = Record<string, unknown> & { _id: string; _creationTime?: number };
 type TableInsert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
 
+// Per-table override map: transforms keyed by snake_case column names of the
+// target Insert type. Using a mapped type ensures callers can't register
+// transforms for columns that don't exist on the target table.
+type ExtraMap<T extends TableName> = {
+  [K in keyof TableInsert<T>]?: (v: unknown) => TableInsert<T>[K];
+};
+
 // ─── camelCase → snake_case ──────────────────────────────────────────────
 function toSnake(s: string): string {
   return s.replace(/([A-Z])/g, '_$1').toLowerCase();
@@ -54,11 +61,15 @@ const GENERATED_COLUMNS: ReadonlySet<string> = new Set(['search_vector']);
 function mapRow<T extends TableName>(
   table: T,
   doc: ConvexDoc,
-  extraMap: Record<string, (v: unknown) => unknown> = {},
+  extraMap: ExtraMap<T> = {},
 ): { row: TableInsert<T>; unknownKeys: string[] } {
   const validColumns = TABLE_COLUMNS[table];
   const row: Record<string, unknown> = {};
   const unknownKeys: string[] = [];
+  // The mapped type keys `extraMap` by `keyof TableInsert<T>`, but at runtime
+  // we look up by the dynamic snake_case key (a plain `string`). Index through
+  // a record view to perform that lookup without losing the public guarantee.
+  const lookups = extraMap as Record<string, ((v: unknown) => unknown) | undefined>;
 
   for (const [k, v] of Object.entries(doc)) {
     if (k === '_creationTime') continue;
@@ -68,8 +79,9 @@ function mapRow<T extends TableName>(
     if (GENERATED_COLUMNS.has(snakeKey)) continue;
 
     let value: unknown;
-    if (extraMap[snakeKey]) {
-      value = extraMap[snakeKey](v);
+    const transform = lookups[snakeKey];
+    if (transform) {
+      value = transform(v);
     } else if (Array.isArray(v)) {
       // supabase-js serializes native arrays correctly for TEXT[] / JSONB.
       value = v;
@@ -169,7 +181,7 @@ async function seed() {
     pgTable: T,
     convexTable: string,
     filter?: (docs: ConvexDoc[]) => ConvexDoc[],
-    extraMap: Record<string, (v: unknown) => unknown> = {},
+    extraMap: ExtraMap<T> = {},
     skipCols: ReadonlyArray<string> = [],
   ) {
     let docs = readTable(convexTable);

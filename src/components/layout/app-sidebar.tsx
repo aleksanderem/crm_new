@@ -136,7 +136,7 @@ export function AppSidebar() {
       {shellSidebarMode !== "icon-only" && (
         <div
           className={cn(
-            "bg-sidebar sticky top-0 flex h-dvh w-65 shrink-0 flex-col border-r",
+            "bg-sidebar sticky top-0 flex h-full w-65 shrink-0 flex-col border-r",
             wideContent ? "max-2xl:hidden lg:flex" : "max-lg:hidden",
           )}
         >

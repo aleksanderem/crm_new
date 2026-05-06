@@ -46,7 +46,7 @@ export const markAsRead = action({
   args: {
     notificationId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       // notifications are user-scoped, we pass a dummy org to verify auth
@@ -70,7 +70,7 @@ export const markAllRead = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<number> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },

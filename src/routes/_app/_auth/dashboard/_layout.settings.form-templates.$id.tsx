@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useAction, useQuery as useConvexQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
-import type { Id } from "@cvx/_generated/dataModel";
 import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
 
 export const Route = createFileRoute(
@@ -131,19 +130,21 @@ function EditFormTemplatePage() {
   // Initialize form from loaded template
   useEffect(() => {
     if (template && !initialized) {
-      setName(template.name);
-      setDescription(template.description ?? "");
+      setName(template.name as string);
+      setDescription((template.description as string | undefined) ?? "");
       setCategory(template.category as FormCategory);
       setModules((template.modules ?? []) as Module[]);
       setEntityTypes((template.entityTypes ?? []) as EntityType[]);
-      setRequiresSignature(template.requiresSignature);
+      setRequiresSignature(template.requiresSignature as boolean);
       if (template.signatureConfig) {
-        setSignatureMethod(
-          template.signatureConfig.method as SignatureMethod,
-        );
-        setSignerRole(template.signatureConfig.signerRole as SignerRole);
+        const signatureConfig = template.signatureConfig as {
+          method: SignatureMethod;
+          signerRole: SignerRole;
+        };
+        setSignatureMethod(signatureConfig.method);
+        setSignerRole(signatureConfig.signerRole);
       }
-      setContentJson(template.contentJson ?? "{}");
+      setContentJson((template.contentJson as string | undefined) ?? "{}");
       setInitialized(true);
     }
   }, [template, initialized]);
@@ -237,10 +238,10 @@ function EditFormTemplatePage() {
             {t("settings.formTemplates.title")}
           </Link>
           <span>/</span>
-          <span className="text-foreground">{template.name}</span>
+          <span className="text-foreground">{template.name as string}</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant="outline">v{template.version}</Badge>
+          <Badge variant="outline">v{template.version as number}</Badge>
           <Badge variant={template.isActive ? "default" : "secondary"}>
             {template.isActive
               ? t("settings.formTemplates.statusActive")

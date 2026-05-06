@@ -12,6 +12,7 @@ export type GabinetTreatmentRow = SupabaseRow<"gabinetTreatments">;
 export type GabinetPatientRow = SupabaseRow<"gabinetPatients">;
 export type GabinetAppointmentRow = SupabaseRow<"gabinetAppointments">;
 export type GabinetEmployeeRow = SupabaseRow<"gabinetEmployees">;
+export type EmailRow = SupabaseRow<"emails">;
 
 // Envelope returned by Supabase-backed list actions that imitate the Convex
 // pagination contract. The cursor is unused (Supabase-backed lists return

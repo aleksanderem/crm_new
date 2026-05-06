@@ -8,6 +8,7 @@ import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
 import { Id } from "./_generated/dataModel";
+import type { EmailRow } from "./_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for email writes
 
@@ -123,30 +124,30 @@ export const listByEntity = action({
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<EmailRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
-    let emails: Array<Record<string, any>>;
+    let emails: EmailRow[];
 
     if (args.entityType === "contact") {
       emails = (await db.query("emails")
         .eq("organizationId", orgIdStr)
         .eq("contactId", args.entityId)
-        .collect()) as Array<Record<string, any>>;
+        .collect()) as EmailRow[];
     } else if (args.entityType === "company") {
       emails = (await db.query("emails")
         .eq("organizationId", orgIdStr)
         .eq("companyId", args.entityId)
-        .collect()) as Array<Record<string, any>>;
+        .collect()) as EmailRow[];
     } else if (args.entityType === "lead") {
       emails = (await db.query("emails")
         .eq("organizationId", orgIdStr)
         .eq("leadId", args.entityId)
-        .collect()) as Array<Record<string, any>>;
+        .collect()) as EmailRow[];
     } else {
       throw new Error(`Invalid entity type: ${args.entityType}`);
     }

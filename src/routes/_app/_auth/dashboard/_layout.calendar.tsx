@@ -299,6 +299,11 @@ function UnifiedCalendarPage() {
 
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
+  useSidebarDispatch("openFilter", () => {
+    setModuleFilter((prev) =>
+      prev === "all" ? "gabinet" : prev === "gabinet" ? "crm" : "all"
+    );
+  });
 
   const title = useMemo(() => {
     const locale = i18n.language;

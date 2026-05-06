@@ -330,7 +330,7 @@ export const backfillPatients = internalAction({
       tags: p.tags ?? null,
       tag_ids: p.tagIds?.map(String) ?? null,
       category_id: p.categoryId ? String(p.categoryId) : null,
-      custom_fields: null,
+      custom_fields: p.customFields ?? null,
       created_by: String(p.createdBy),
       created_at: p.createdAt,
       updated_at: p.updatedAt,

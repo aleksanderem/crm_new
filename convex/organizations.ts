@@ -4,6 +4,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { requireUser, verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { checkSeatLimit } from "./_helpers/seatLimits";
+import { logActivity } from "./_helpers/activities";
 import { orgRoleValidator } from "@cvx/schema";
 
 // organizations and teamMemberships are AUTH tables — STAY in Convex DB.
@@ -80,7 +81,6 @@ export const _createOrgInternal = internalMutation({
       joinedAt: now,
     });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: orgId,
       entityType: "organization",
@@ -189,7 +189,6 @@ export const _updateOrgInternal = internalMutation({
 
     await ctx.db.patch(organizationId, { ...updates, updatedAt: Date.now() });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId,
       entityType: "organization",
@@ -281,7 +280,6 @@ export const _inviteMemberInternal = internalMutation({
       joinedAt: Date.now(),
     });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -330,7 +328,6 @@ export const _updateMemberRoleInternal = internalMutation({
 
     await ctx.db.patch(args.membershipId, { role: args.role });
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -374,7 +371,6 @@ export const _removeMemberInternal = internalMutation({
 
     await ctx.db.delete(args.membershipId);
 
-    const { logActivity } = await import("./_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",

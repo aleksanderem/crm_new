@@ -223,3 +223,43 @@ writeFileSync(outPath, out, "utf-8");
 console.log(`✅ Generated ${outPath}`);
 console.log(`   Tables: ${tables.length}`);
 console.log(`   Row types: ${tables.length} (one per table)`);
+
+// ─── Generate runtime column registry ───────────────────────────────────────
+//
+// Emitted as a separate sibling file so manual additions to database.types.ts
+// (incremental migrations, hand-curated aliases) survive regeneration.
+// Used by scripts that build rows dynamically — they can verify produced
+// keys against the actual schema instead of trusting a string transformation
+// like camelCase → snake_case.
+const colsLines = [];
+colsLines.push(`/**`);
+colsLines.push(` * Supabase Runtime Column Registry`);
+colsLines.push(` *`);
+colsLines.push(` * AUTO-GENERATED from supabase/migrations/00001_initial_schema.sql`);
+colsLines.push(` * by scripts/gen-db-types.mjs — DO NOT EDIT MANUALLY.`);
+colsLines.push(` *`);
+colsLines.push(` * Re-generate: npx tsx scripts/gen-db-types.mjs`);
+colsLines.push(` */`);
+colsLines.push(``);
+colsLines.push(`/** Set of table names known to the generated schema. */`);
+colsLines.push(`export type TableName =`);
+const tableNames = tables.map((t) => `  | "${t.tableName}"`);
+colsLines.push(tableNames.join("\n") + ";");
+colsLines.push(``);
+colsLines.push(`/**`);
+colsLines.push(` * Column names per table, as a runtime-checkable Set.`);
+colsLines.push(` * Generated columns (e.g. tsvector search_vector) are excluded.`);
+colsLines.push(` */`);
+colsLines.push(`export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {`);
+for (const table of tables) {
+  const cols = table.columns.map((c) => `"${c.name}"`).join(", ");
+  colsLines.push(`  ${table.tableName}: new Set([${cols}]),`);
+}
+colsLines.push(`};`);
+
+const colsOut = colsLines.join("\n") + "\n";
+const colsPath = resolve(ROOT, "src/lib/supabase/database.columns.ts");
+writeFileSync(colsPath, colsOut, "utf-8");
+
+console.log(`✅ Generated ${colsPath}`);
+console.log(`   Tables: ${tables.length}`);

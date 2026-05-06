@@ -300,7 +300,7 @@ function ProductsPage() {
       <CrmDataTable
         columns={allColumns}
         hiddenColumnIds={hiddenColumnIds}
-        data={products}
+        data={products as unknown as Product[]}
         rowActions={rowActions}
         isLoading={isLoading}
       />

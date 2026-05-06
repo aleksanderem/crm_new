@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
@@ -523,7 +522,7 @@ function FormTemplatesListPage() {
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
   const allTemplates = useMemo(
-    () => (templates ?? []) as FormTemplateRecord[],
+    () => (templates ?? []) as unknown as FormTemplateRecord[],
     [templates],
   );
 

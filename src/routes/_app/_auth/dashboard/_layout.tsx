@@ -67,7 +67,7 @@ import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { MiniCalendarProvider } from "@/components/layout/mini-calendar-context";
 import { SidebarSlotProvider, useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { HeaderSlotProvider, HeaderBackButton } from "@/components/layout/header-slot-context";
-import { moduleRegistry, getVisibleModules } from "@/modules/registry";
+import { moduleRegistry } from "@/modules/registry";
 import { useMatchRoute } from "@tanstack/react-router";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";

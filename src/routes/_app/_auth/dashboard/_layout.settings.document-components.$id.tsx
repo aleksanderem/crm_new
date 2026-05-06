@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -68,10 +67,10 @@ function EditDocumentComponentPage() {
   // Load component data when fetched
   useEffect(() => {
     if (component && !loaded) {
-      setName(component.name);
-      setDescription(component.description ?? "");
+      setName(component.name as string);
+      setDescription((component.description as string | undefined) ?? "");
       setCategory(component.category as ComponentCategory);
-      setContentJson(component.contentJson);
+      setContentJson(component.contentJson as string);
       setLoaded(true);
     }
   }, [component, loaded]);

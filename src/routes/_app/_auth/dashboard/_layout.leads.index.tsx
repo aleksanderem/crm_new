@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabasePipelinesList, useSupabaseAllPipelineStages } from "@/hooks/use-supabase-pipelines";
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
@@ -232,7 +232,7 @@ function LeadsIndex() {
     return map;
   }, [companiesRaw]);
 
-  const leads = (leadsData?.page ?? []) as Lead[];
+  const leads = (leadsData?.page ?? []) as unknown as Lead[];
 
   const filteredLeads = useMemo(() => {
     let data = applyFilterConditions(leads, activeFilters);
@@ -659,8 +659,8 @@ function LeadsIndex() {
         description={t("deals.createDescription")}
       >
         <LeadForm
-          pipelines={pipelines}
-          stages={stages}
+          pipelines={pipelines as unknown as { _id: Id<"pipelines">; name: string }[]}
+          stages={stages as unknown as { _id: Id<"pipelineStages">; name: string; pipelineId: Id<"pipelines"> }[]}
           customFieldDefinitions={cfDefs}
           isSubmitting={isSubmitting}
           onCancel={() => setCreateOpen(false)}

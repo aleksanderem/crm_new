@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 import { resolveSource } from "./documentDataSources";
@@ -143,7 +144,7 @@ export const _createResolveAndInsert = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const templateId = args.templateId as any;
+    const templateId = args.templateId as Id<"documentTemplates">;
     const template = await ctx.db.get(templateId);
     if (!template) throw new Error("Template not found");
     if (template.status !== "active") throw new Error("Template is not active");
@@ -337,7 +338,7 @@ export const updateStatus = action({
 export const _resolveReviewerName = internalMutation({
   args: { reviewerId: v.string() },
   handler: async (ctx, args) => {
-    const reviewer = await ctx.db.get(args.reviewerId as any);
+    const reviewer = await ctx.db.get(args.reviewerId as Id<"users">);
     return reviewer?.name ?? "";
   },
 });

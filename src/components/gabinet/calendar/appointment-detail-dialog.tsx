@@ -154,6 +154,45 @@ interface AppointmentDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface AppointmentDoc {
+  _id: Id<"gabinetAppointments">;
+  patientId: Id<"gabinetPatients">;
+  treatmentId?: Id<"gabinetTreatments">;
+  employeeId: Id<"users">;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  notes?: string;
+  isRecurring?: boolean;
+  locationId?: Id<"gabinetLocations">;
+  roomId?: Id<"gabinetRooms">;
+}
+
+interface PatientDoc {
+  _id: Id<"gabinetPatients">;
+  firstName: string;
+  lastName: string;
+}
+
+interface TreatmentDoc {
+  _id: Id<"gabinetTreatments">;
+  name: string;
+  duration: number;
+  price: number;
+  currency?: string;
+}
+
+interface RoomDoc {
+  _id: Id<"gabinetRooms">;
+  name: string;
+}
+
+interface LocationDoc {
+  name: string;
+  rooms?: RoomDoc[];
+}
+
 export function AppointmentDetailDialog({
   organizationId,
   appointmentId,
@@ -166,7 +205,7 @@ export function AppointmentDetailDialog({
   const cancelAppointment = useAction(api.gabinet.appointments.cancel);
   const getAppointmentById = useAction(api.gabinet.appointments.getById);
 
-  const { data: appointment } = useQuery({
+  const { data: appointmentRaw } = useQuery({
     queryKey: ["gabinet.appointment.getById", organizationId, appointmentId],
     queryFn: () =>
       getAppointmentById({
@@ -175,6 +214,7 @@ export function AppointmentDetailDialog({
       }),
     enabled: !!appointmentId,
   });
+  const appointment = appointmentRaw as unknown as AppointmentDoc | undefined;
 
   const listPatientsAction = useAction(api.gabinet.patients.list);
   const { data: patients } = useQuery({
@@ -184,14 +224,15 @@ export function AppointmentDetailDialog({
       paginationOpts: { numItems: 200, cursor: null },
     }),
     enabled: !!appointment && !!organizationId,
-  }) as { data: { page: any[] } | undefined };
+  }) as { data: { page: PatientDoc[] } | undefined };
 
   const listActiveTreatmentsAction = useAction(api.gabinet.treatments.listActive);
-  const { data: treatments } = useQuery({
+  const { data: treatmentsRaw } = useQuery({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatmentsAction({ organizationId }),
     enabled: !!appointment && !!organizationId,
   });
+  const treatments = treatmentsRaw as unknown as TreatmentDoc[] | undefined;
 
   const { data: smsEvents = [] } = useQuery({
     ...convexQuery(api.gabinet.appointmentSms.listByAppointment, {
@@ -202,7 +243,7 @@ export function AppointmentDetailDialog({
   });
 
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationData } = useQuery({
+  const { data: locationDataRaw } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, appointment?.locationId],
     queryFn: () =>
       getLocationAction({
@@ -211,6 +252,7 @@ export function AppointmentDetailDialog({
       }),
     enabled: !!appointment?.locationId,
   });
+  const locationData = locationDataRaw as unknown as LocationDoc | null | undefined;
 
   const [editing, setEditing] = useState(false);
   const [editDate, setEditDate] = useState("");

@@ -99,6 +99,9 @@ function GabinetDocumentsPage() {
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
 
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
+  useSidebarDispatch("createFromTemplate", () =>
+    navigate({ to: "/dashboard/settings/form-templates" }),
+  );
 
   // --- State ---
   const [searchValue, setSearchValue] = useState("");
@@ -131,6 +134,10 @@ function GabinetDocumentsPage() {
     systemViews: systemViews,
     defaultColumnVisibility: {},
   });
+
+  useSidebarDispatch("pendingSignatures", () =>
+    onViewChange("pending_signature"),
+  );
 
   // --- Mutations ---
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);

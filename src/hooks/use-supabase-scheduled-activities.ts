@@ -244,13 +244,19 @@ export function useSupabaseScheduledActivitiesByDateRange(
           .select("id,status,patient_id,treatment_id")
           .in("id", gabinetEntityIds);
         if (apptErr) throw apptErr;
+        const apptRows = (appts ?? []) as Array<{
+          id: string;
+          status: string | null;
+          patient_id: string;
+          treatment_id: string | null;
+        }>;
         apptMap = new Map(
-          (appts ?? []).map((a) => [
-            a.id as string,
+          apptRows.map((a) => [
+            a.id,
             {
-              status: (a.status as string) ?? "scheduled",
-              patientId: a.patient_id as string,
-              treatmentId: (a.treatment_id as string | null) ?? null,
+              status: a.status ?? "scheduled",
+              patientId: a.patient_id,
+              treatmentId: a.treatment_id ?? null,
             },
           ]),
         );
@@ -261,10 +267,15 @@ export function useSupabaseScheduledActivitiesByDateRange(
             .from("gabinet_patients")
             .select("id,first_name,last_name")
             .in("id", patientIds);
+          const patientRows = (patients ?? []) as Array<{
+            id: string;
+            first_name: string | null;
+            last_name: string | null;
+          }>;
           patientMap = new Map(
-            (patients ?? []).map((p) => [
-              p.id as string,
-              `${(p.first_name as string) ?? ""} ${(p.last_name as string) ?? ""}`.trim(),
+            patientRows.map((p) => [
+              p.id,
+              `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
             ]),
           );
         }
@@ -281,8 +292,12 @@ export function useSupabaseScheduledActivitiesByDateRange(
             .from("gabinet_treatments")
             .select("id,name")
             .in("id", treatmentIds);
+          const treatmentRows = (treatments ?? []) as Array<{
+            id: string;
+            name: string | null;
+          }>;
           treatmentMap = new Map(
-            (treatments ?? []).map((t) => [t.id as string, (t.name as string) ?? ""]),
+            treatmentRows.map((t) => [t.id, t.name ?? ""]),
           );
         }
       }
@@ -372,22 +387,30 @@ export function useSupabaseUpcomingEvents(
           .select("id,name,email,image")
           .in("id", ownerIds);
         if (usersErr) throw usersErr;
-        owners = userRows ?? [];
+        owners = (userRows ?? []) as Array<{
+          id: string;
+          name: string | null;
+          email: string | null;
+          image: string | null;
+        }>;
       }
       const ownerMap = new Map(owners.map((u) => [u.id, u]));
 
       return activities.slice(0, limit).map<UpcomingEvent>((a) => {
         const owner = ownerMap.get(String(a.ownerId));
+        const moduleRef = a.moduleRef as
+          | { moduleId?: string; entityType?: string; entityId?: string }
+          | undefined;
         const isAppointment =
-          a.moduleRef?.moduleId === "gabinet" &&
-          a.moduleRef?.entityType === "gabinetAppointment";
+          moduleRef?.moduleId === "gabinet" &&
+          moduleRef?.entityType === "gabinetAppointment";
         return {
           id: a._id,
           title: a.title,
           startTime: a.dueDate,
           type: a.activityType,
-          appointmentLink: isAppointment && a.moduleRef?.entityId
-            ? `/dashboard/gabinet/appointments/${a.moduleRef.entityId}`
+          appointmentLink: isAppointment && moduleRef?.entityId
+            ? `/dashboard/gabinet/appointments/${moduleRef.entityId}`
             : null,
           ownerId: String(a.ownerId),
           ownerName: owner?.name ?? owner?.email ?? "?",
@@ -431,7 +454,11 @@ export function useSupabaseActivitiesKpis(
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = todayStart.getTime() + 86400000;
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{
+        due_date: number | null;
+        is_completed: boolean | null;
+        owner_id: string | null;
+      }>;
       const overdue = rows.filter(
         (a) => a.due_date && a.due_date < now && !a.is_completed,
       ).length;
@@ -481,7 +508,12 @@ export function useSupabaseCalendarKpis(
       const todayEnd = todayStart.getTime() + 86400000;
       const weekEnd = todayStart.getTime() + 7 * 86400000;
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{
+        due_date: number | null;
+        is_completed: boolean | null;
+        owner_id: string | null;
+        requires_completion: boolean | null;
+      }>;
       return {
         today: rows.filter((a) => a.due_date && a.due_date >= todayStart.getTime() && a.due_date < todayEnd).length,
         overdue: rows.filter((a) => a.due_date && a.due_date < now && !a.is_completed).length,
@@ -532,7 +564,12 @@ export function useSupabaseWeeklyActivitiesTrend(
         .eq("owner_id", userId)
         .gte("created_at", days[0]._start);
       if (error) throw error;
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{
+        created_at: number;
+        is_completed: boolean | null;
+        completed_at: number | null;
+        owner_id: string | null;
+      }>;
 
       for (const day of days) {
         day.created = rows.filter((a) => a.created_at >= day._start && a.created_at < day._end).length;

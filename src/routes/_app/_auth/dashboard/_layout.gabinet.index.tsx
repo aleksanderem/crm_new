@@ -17,9 +17,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 import {
   CalendarCheck,
@@ -70,6 +71,11 @@ function GabinetDashboard() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const today = new Date().toISOString().split("T")[0];
+  const todayScheduleRef = useRef<HTMLDivElement | null>(null);
+
+  useSidebarDispatch("viewTodaySchedule", () => {
+    todayScheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   // --- Data queries (Supabase-backed) ---
   const { data: todayAppointments } = useSupabaseGabinetAppointmentsByDateRange(
@@ -357,7 +363,7 @@ function GabinetDashboard() {
       </div>
 
       {/* Today's schedule + Pending leaves + Nudges */}
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      <div ref={todayScheduleRef} className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 scroll-mt-6">
         {/* Today's schedule */}
         <Card className="gap-0 py-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 py-3">

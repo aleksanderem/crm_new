@@ -69,6 +69,7 @@ import {
   FileText,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
+import type { EmployeePatientStats } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
@@ -272,11 +273,11 @@ function EmployeeDetail() {
     }
     // Status filter
     if (clientStatusFilter !== "all") {
-      result = result.filter((p) => (p.statuses as string[]).includes(clientStatusFilter));
+      result = result.filter((p) => p.statuses.includes(clientStatusFilter));
     }
     // Treatment filter
     if (clientTreatmentFilter !== "all") {
-      result = result.filter((p) => (p.treatmentIds as string[]).includes(clientTreatmentFilter));
+      result = result.filter((p) => p.treatmentIds.includes(clientTreatmentFilter));
     }
     return result;
   }, [employeePatients, clientSearch, clientStatusFilter, clientTreatmentFilter]);
@@ -617,8 +618,8 @@ function EmployeeDetail() {
       count: employeePatients?.length,
       content: (
         <PatientsTabContent
-          employeePatients={employeePatients as any}
-          filteredClients={filteredClients as any}
+          employeePatients={employeePatients}
+          filteredClients={filteredClients}
           clientSearch={clientSearch}
           setClientSearch={setClientSearch}
           clientStatusFilter={clientStatusFilter}
@@ -1003,28 +1004,8 @@ function PatientsTabContent({
   t,
   i18nLanguage,
 }: {
-  employeePatients: Array<{
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email?: string;
-    phone?: string;
-    visitCount: number;
-    lastVisitDate?: string;
-    isActive: boolean;
-    statuses: string[];
-    treatmentIds: string[];
-  }> | undefined;
-  filteredClients: Array<{
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email?: string;
-    phone?: string;
-    visitCount: number;
-    lastVisitDate?: string;
-    isActive: boolean;
-  }>;
+  employeePatients: EmployeePatientStats[] | undefined;
+  filteredClients: EmployeePatientStats[];
   clientSearch: string;
   setClientSearch: (v: string) => void;
   clientStatusFilter: string;

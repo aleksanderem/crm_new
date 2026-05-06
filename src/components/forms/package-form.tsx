@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { Id } from "@cvx/_generated/dataModel";
 
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,13 @@ export interface PackageFormData {
   treatments: Array<{ treatmentId: string; quantity: number }>;
 }
 
+interface TreatmentDoc {
+  _id: Id<"gabinetTreatments">;
+  name: string;
+  duration: number;
+  price: number;
+}
+
 interface PackageFormProps {
   initialData?: Partial<PackageFormData>;
   onSubmit: (data: PackageFormData) => void;
@@ -44,9 +52,13 @@ export function PackageForm({
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.treatments.listActive, { organizationId })
-  );
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const { data: treatmentsRaw } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId }),
+    enabled: !!organizationId,
+  });
+  const treatments = treatmentsRaw as unknown as TreatmentDoc[] | undefined;
 
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");

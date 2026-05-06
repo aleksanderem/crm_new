@@ -6,6 +6,7 @@ import { requireUser, verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 import { checkSeatLimit } from "./_helpers/seatLimits";
 import { logActivity } from "./_helpers/activities";
 import { orgRoleValidator } from "@cvx/schema";
+import type { Id } from "./_generated/dataModel";
 
 // organizations and teamMemberships are AUTH tables — STAY in Convex DB.
 // Supabase gets a copy for analytics/reporting.
@@ -17,9 +18,9 @@ export const create = action({
     logo: v.optional(v.string()),
     website: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     // Create org and membership in Convex DB (auth tables)
-    const orgId = await ctx.runMutation(internal.organizations._createOrgInternal, {
+    const orgId: string = await ctx.runMutation(internal.organizations._createOrgInternal, {
       name: args.name,
       slug: args.slug,
       logo: args.logo,
@@ -138,7 +139,7 @@ export const update = action({
     logo: v.optional(v.string()),
     website: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"organizations">> => {
     // Update in Convex DB (auth table)
     await ctx.runMutation(internal.organizations._updateOrgInternal, {
       organizationId: args.organizationId,
@@ -233,8 +234,8 @@ export const inviteMember = action({
     userId: v.string(),
     role: orgRoleValidator,
   },
-  handler: async (ctx, args) => {
-    const membershipId = await ctx.runMutation(
+  handler: async (ctx, args): Promise<string> => {
+    const membershipId: string = await ctx.runMutation(
       internal.organizations._inviteMemberInternal,
       {
         organizationId: args.organizationId,
@@ -299,7 +300,7 @@ export const updateMemberRole = action({
     membershipId: v.string(),
     role: orgRoleValidator,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     await ctx.runMutation(internal.organizations._updateMemberRoleInternal, {
       organizationId: args.organizationId,
       membershipId: args.membershipId as any,
@@ -344,7 +345,7 @@ export const removeMember = action({
     organizationId: v.id("organizations"),
     membershipId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     await ctx.runMutation(internal.organizations._removeMemberInternal, {
       organizationId: args.organizationId,
       membershipId: args.membershipId as any,

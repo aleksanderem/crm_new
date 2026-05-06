@@ -286,7 +286,7 @@ export const _listEmployees = internalQuery({
 
 export const backfillPatients = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const patients = await ctx.runQuery(
       internal.supabase.backfill._listPatients,
       { organizationId: args.organizationId },
@@ -332,7 +332,7 @@ export const backfillPatients = internalAction({
 
 export const backfillAppointments = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const appointments = await ctx.runQuery(
       internal.supabase.backfill._listAppointments,
       { organizationId: args.organizationId },
@@ -396,7 +396,7 @@ export const backfillAppointments = internalAction({
 
 export const backfillTreatments = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const treatments = await ctx.runQuery(
       internal.supabase.backfill._listTreatments,
       { organizationId: args.organizationId },
@@ -432,7 +432,7 @@ export const backfillTreatments = internalAction({
 
 export const backfillEmployees = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const employees = await ctx.runQuery(
       internal.supabase.backfill._listEmployees,
       { organizationId: args.organizationId },

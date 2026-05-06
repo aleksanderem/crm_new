@@ -99,18 +99,6 @@ interface AppointmentFormProps {
   categoryDefinitions?: CategoryDef[];
 }
 
-interface RoomDoc {
-  _id: Id<"gabinetRooms">;
-  name: string;
-  isActive: boolean;
-}
-
-interface LocationWithRoomsDoc {
-  _id: Id<"gabinetLocations">;
-  name: string;
-  rooms?: RoomDoc[];
-}
-
 export function AppointmentForm({
   onSubmit,
   onCancel,
@@ -192,7 +180,7 @@ export function AppointmentForm({
     queryKey: ["gabinet.locations.listLocations", organizationId],
     queryFn: () => listLocationsAction({ organizationId: organizationId! }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   // Form state
   const [patientId, setPatientId] = useState("");
@@ -215,7 +203,7 @@ export function AppointmentForm({
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRoomsRaw } = useQuery({
+  const { data: locationWithRooms } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
     queryFn: () =>
       getLocationAction({
@@ -224,7 +212,6 @@ export function AppointmentForm({
       }),
     enabled: !!organizationId && !!locationId,
   });
-  const locationWithRooms = locationWithRoomsRaw as unknown as LocationWithRoomsDoc | null | undefined;
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
@@ -236,7 +223,7 @@ export function AppointmentForm({
       locationId: locationId,
     }),
     enabled: !!organizationId && !!locationId,
-  }) as { data: any[] | undefined };
+  });
 
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];
 

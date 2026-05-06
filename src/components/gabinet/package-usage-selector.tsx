@@ -14,25 +14,6 @@ interface PackageUsageSelectorProps {
   selectedUsageId?: string | null;
 }
 
-interface PackageUsageTreatmentEntry {
-  treatmentId: Id<"gabinetTreatments">;
-  usedCount: number;
-  totalCount: number;
-}
-
-interface PackageUsageDoc {
-  _id: Id<"gabinetPackageUsage">;
-  packageId: Id<"gabinetTreatmentPackages">;
-  status: string;
-  expiresAt?: number;
-  treatmentsUsed: PackageUsageTreatmentEntry[];
-}
-
-interface PackageDoc {
-  _id: Id<"gabinetTreatmentPackages">;
-  name: string;
-}
-
 export function PackageUsageSelector({
   patientId,
   treatmentId,
@@ -43,7 +24,7 @@ export function PackageUsageSelector({
   const { t } = useTranslation();
 
   const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
-  const { data: usagesRaw } = useQuery({
+  const { data: usages } = useQuery({
     queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
     queryFn: () =>
       getPatientPackagesAction({
@@ -52,15 +33,13 @@ export function PackageUsageSelector({
       }),
     enabled: !!organizationId && !!patientId,
   });
-  const usages = usagesRaw as unknown as PackageUsageDoc[] | undefined;
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
-  const { data: allPackagesRaw } = useQuery({
+  const { data: allPackages } = useQuery({
     queryKey: ["gabinet.packages.listActive", organizationId],
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
   });
-  const allPackages = allPackagesRaw as unknown as PackageDoc[] | undefined;
 
   const packageMap = new Map(
     (allPackages ?? []).map((p) => [p._id, p.name])

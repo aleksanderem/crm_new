@@ -12,6 +12,14 @@ export type GabinetTreatmentRow = SupabaseRow<"gabinetTreatments">;
 export type GabinetPatientRow = SupabaseRow<"gabinetPatients">;
 export type GabinetAppointmentRow = SupabaseRow<"gabinetAppointments">;
 export type GabinetEmployeeRow = SupabaseRow<"gabinetEmployees">;
+export type GabinetEmployeeScheduleRow = SupabaseRow<"gabinetEmployeeSchedules">;
+export type GabinetLeaveRow = SupabaseRow<"gabinetLeaves">;
+export type GabinetLeaveTypeRow = SupabaseRow<"gabinetLeaveTypes">;
+export type GabinetLocationRow = SupabaseRow<"gabinetLocations">;
+export type GabinetRoomRow = SupabaseRow<"gabinetRooms">;
+export type GabinetEquipmentRow = SupabaseRow<"gabinetEquipment">;
+export type GabinetTreatmentPackageRow = SupabaseRow<"gabinetTreatmentPackages">;
+export type GabinetPackageUsageRow = SupabaseRow<"gabinetPackageUsage">;
 export type EmailRow = SupabaseRow<"emails">;
 
 // Envelope returned by Supabase-backed list actions that imitate the Convex

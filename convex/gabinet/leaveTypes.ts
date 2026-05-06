@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
 
@@ -11,7 +12,7 @@ export const list = action({
     organizationId: v.id("organizations"),
     activeOnly: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetLeaveTypeRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -20,7 +21,7 @@ export const list = action({
     if (args.activeOnly) {
       q = q.eq("isActive", true);
     }
-    return (await q.collect()) as Array<Record<string, unknown>>;
+    return (await q.collect()) as GabinetLeaveTypeRow[];
   },
 });
 

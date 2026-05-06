@@ -5,6 +5,10 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
+import type {
+  GabinetEmployeeScheduleRow,
+  GabinetLeaveRow,
+} from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for scheduling writes
 
@@ -146,7 +150,7 @@ export const getEmployeeSchedule = action({
     organizationId: v.id("organizations"),
     userId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -155,7 +159,7 @@ export const getEmployeeSchedule = action({
       .query("gabinetEmployeeSchedules")
       .eq("organizationId", String(args.organizationId))
       .eq("userId", args.userId)
-      .collect()) as Array<Record<string, unknown>>;
+      .collect()) as GabinetEmployeeScheduleRow[];
   },
 });
 
@@ -412,7 +416,7 @@ export const listLeaves = action({
     organizationId: v.id("organizations"),
     status: v.optional(gabinetLeaveStatusValidator),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetLeaveRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -421,7 +425,7 @@ export const listLeaves = action({
     if (args.status) {
       q = q.eq("status", args.status);
     }
-    return (await q.collect()) as Array<Record<string, unknown>>;
+    return (await q.collect()) as GabinetLeaveRow[];
   },
 });
 

@@ -16,30 +16,6 @@ interface PatientPackagesCardProps {
   organizationId: Id<"organizations">;
 }
 
-interface PackageUsageTreatmentEntry {
-  treatmentId: Id<"gabinetTreatments">;
-  usedCount: number;
-  totalCount: number;
-}
-
-interface PackageUsageDoc {
-  _id: Id<"gabinetPackageUsage">;
-  packageId: Id<"gabinetTreatmentPackages">;
-  status: string;
-  expiresAt?: number;
-  treatmentsUsed: PackageUsageTreatmentEntry[];
-}
-
-interface PackageDoc {
-  _id: Id<"gabinetTreatmentPackages">;
-  name: string;
-}
-
-interface TreatmentDoc {
-  _id: Id<"gabinetTreatments">;
-  name: string;
-}
-
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   active: "default",
   completed: "secondary",
@@ -52,7 +28,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
   const [purchaseOpen, setPurchaseOpen] = useState(false);
 
   const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
-  const { data: usagesRaw } = useQuery({
+  const { data: usages } = useQuery({
     queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
     queryFn: () =>
       getPatientPackagesAction({
@@ -61,23 +37,20 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
       }),
     enabled: !!organizationId && !!patientId,
   });
-  const usages = usagesRaw as unknown as PackageUsageDoc[] | undefined;
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
-  const { data: allPackagesRaw } = useQuery({
+  const { data: allPackages } = useQuery({
     queryKey: ["gabinet.packages.listActive", organizationId],
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
   });
-  const allPackages = allPackagesRaw as unknown as PackageDoc[] | undefined;
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
-  const { data: treatmentsRaw } = useQuery({
+  const { data: treatments } = useQuery({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   });
-  const treatments = treatmentsRaw as unknown as TreatmentDoc[] | undefined;
 
   const treatmentMap = new Map(
     (treatments ?? []).map((tr) => [tr._id, tr.name])

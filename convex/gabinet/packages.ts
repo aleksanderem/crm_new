@@ -8,6 +8,11 @@ import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { Id } from "../_generated/dataModel";
+import type {
+  GabinetPackageUsageRow,
+  GabinetTreatmentPackageRow,
+  SupabasePaginationResult,
+} from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for package writes
 
@@ -16,11 +21,10 @@ export const list = action({
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, args): Promise<{
-    page: Array<Record<string, unknown>>;
-    isDone: boolean;
-    continueCursor: string;
-  }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<SupabasePaginationResult<GabinetTreatmentPackageRow>> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -40,7 +44,7 @@ export const list = action({
       .query("gabinetTreatmentPackages")
       .eq("organizationId", orgIdStr)
       .order("createdAt", false)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetTreatmentPackageRow[];
     if (perm.scope === "own") {
       page = page.filter((r) => String(r.createdBy) === userIdStr);
     }
@@ -50,7 +54,7 @@ export const list = action({
 
 export const listActive = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetTreatmentPackageRow[]> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -70,7 +74,7 @@ export const listActive = action({
       .query("gabinetTreatmentPackages")
       .eq("organizationId", orgIdStr)
       .eq("isActive", true)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetTreatmentPackageRow[];
     if (perm.scope === "own") {
       results = results.filter((r) => String(r.createdBy) === userIdStr);
     }
@@ -583,7 +587,7 @@ export const getPatientPackages = action({
     organizationId: v.id("organizations"),
     patientId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetPackageUsageRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -599,7 +603,7 @@ export const getPatientPackages = action({
       .query("gabinetPackageUsage")
       .eq("organizationId", String(args.organizationId))
       .eq("patientId", args.patientId)
-      .collect()) as Array<Record<string, unknown>>;
+      .collect()) as GabinetPackageUsageRow[];
   },
 });
 

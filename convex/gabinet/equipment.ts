@@ -4,6 +4,7 @@ import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import type { GabinetEquipmentRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for equipment writes
 
@@ -12,7 +13,7 @@ export const listEquipment = action({
     organizationId: v.id("organizations"),
     locationId: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetEquipmentRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -21,7 +22,7 @@ export const listEquipment = action({
     if (args.locationId) {
       q = q.eq("currentLocationId", String(args.locationId));
     }
-    return (await q.collect()) as Array<Record<string, unknown>>;
+    return (await q.collect()) as GabinetEquipmentRow[];
   },
 });
 

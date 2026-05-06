@@ -62,7 +62,7 @@ export function LeaveForm({
     queryKey: ["gabinet.leaveTypes.list", organizationId],
     queryFn: () => listLeaveTypes({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   const [userId, setUserId] = useState<string>("");
   const [type, setType] = useState<LeaveType>("vacation");

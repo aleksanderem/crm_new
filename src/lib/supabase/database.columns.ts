@@ -1,8 +1,14 @@
 /**
  * Supabase Runtime Column Registry
  *
- * AUTO-GENERATED from supabase/migrations/00001_initial_schema.sql
- * by scripts/gen-db-types.mjs — DO NOT EDIT MANUALLY.
+ * AUTO-GENERATED from supabase/migrations/ by scripts/gen-db-types.mjs
+ * — DO NOT EDIT MANUALLY.
+ *
+ * Source migrations (applied in order):
+ *   • 00001_initial_schema.sql
+ *   • 00002_rls_policies.sql
+ *   • 00003_add_selected_id_to_saved_views.sql
+ *   • 00004_document_components.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -98,7 +104,8 @@ export type TableName =
   | "form_documents"
   | "automation_rules"
   | "automation_runs"
-  | "automation_run_steps";
+  | "automation_run_steps"
+  | "document_components";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -143,7 +150,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   calls: new Set(["id", "organization_id", "outcome", "call_date", "note", "duration", "tag_ids", "category_id", "created_by", "created_at", "updated_at"]),
   lost_reasons: new Set(["id", "organization_id", "label", "order", "is_active", "created_by", "created_at", "updated_at"]),
   sources: new Set(["id", "organization_id", "name", "order", "is_active", "created_by", "created_at", "updated_at"]),
-  saved_views: new Set(["id", "organization_id", "entity_type", "name", "filters", "columns", "sort_field", "sort_direction", "is_default", "is_system", "created_by", "order", "created_at", "updated_at"]),
+  saved_views: new Set(["id", "organization_id", "entity_type", "name", "filters", "columns", "sort_field", "sort_direction", "is_default", "is_system", "created_by", "order", "created_at", "updated_at", "selected_id"]),
   email_templates: new Set(["id", "organization_id", "name", "subject", "body", "content_json", "rendered_html", "slug", "category", "module", "event_type", "is_system", "locale", "required_sources", "variables", "created_by", "is_active", "created_at", "updated_at"]),
   email_layouts: new Set(["id", "organization_id", "header_blocks", "footer_blocks", "background_color", "content_background_color", "primary_color", "logo_url", "company_name", "footer_text", "updated_by", "updated_at"]),
   email_accounts: new Set(["id", "organization_id", "from_name", "from_email", "is_default", "created_at", "updated_at"]),
@@ -195,4 +202,5 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   automation_rules: new Set(["id", "organization_id", "name", "description", "module", "event_type", "entity_type", "trigger", "graph", "definition_version", "conditions", "actions", "enabled", "created_by", "created_at", "updated_at"]),
   automation_runs: new Set(["id", "organization_id", "rule_id", "module", "event_type", "entity_type", "entity_id", "event_idempotency_key", "correlation_key", "payload_snapshot", "actor_user_id", "status", "error_message", "occurred_at", "processed_at", "created_at", "updated_at"]),
   automation_run_steps: new Set(["id", "organization_id", "run_id", "rule_id", "action_index", "action_type", "idempotency_key", "status", "recipient", "recipient_name", "linked_entity_type", "linked_entity_id", "rendered_subject", "rendered_body", "metadata_snapshot", "error_message", "email_event_log_id", "appointment_sms_event_id", "processed_at", "created_at", "updated_at"]),
+  document_components: new Set(["id", "organization_id", "scope", "created_by", "name", "description", "category", "content_json", "protected", "position_constraint", "version", "is_active", "created_at", "updated_at"]),
 };

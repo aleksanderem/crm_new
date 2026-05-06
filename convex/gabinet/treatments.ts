@@ -7,6 +7,11 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type {
+  GabinetAppointmentRow,
+  GabinetTreatmentRow,
+  SupabasePaginationResult,
+} from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for treatment writes
 
@@ -16,11 +21,7 @@ export const list = action({
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{
-    page: Array<Record<string, unknown>>;
-    isDone: boolean;
-    continueCursor: string;
-  }> => {
+  handler: async (ctx, args): Promise<SupabasePaginationResult<GabinetTreatmentRow>> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -37,7 +38,7 @@ export const list = action({
       .query("gabinetTreatments")
       .eq("organizationId", String(args.organizationId))
       .order("createdAt", false)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetTreatmentRow[];
 
     if (args.search) {
       const term = args.search.toLowerCase();
@@ -377,7 +378,7 @@ export const listActive = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetTreatmentRow[]> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -394,7 +395,7 @@ export const listActive = action({
       .query("gabinetTreatments")
       .eq("organizationId", String(args.organizationId))
       .eq("isActive", true)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetTreatmentRow[];
 
     if (perm.scope === "own") {
       results = results.filter(
@@ -662,7 +663,7 @@ export const listTreatmentAppointments = action({
     dateFrom: v.optional(v.string()),
     dateTo: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<Array<GabinetAppointmentRow & { patientName: string; employeeName: string }>> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -680,7 +681,7 @@ export const listTreatmentAppointments = action({
       .query("gabinetAppointments")
       .eq("organizationId", orgIdStr)
       .eq("treatmentId", args.treatmentId)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetAppointmentRow[];
 
     if (args.status) appointments = appointments.filter((a) => a.status === args.status);
     if (args.employeeId) appointments = appointments.filter((a) => String(a.employeeId) === args.employeeId);

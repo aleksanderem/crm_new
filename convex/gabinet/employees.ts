@@ -7,6 +7,7 @@ import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for employee writes
@@ -19,8 +20,8 @@ export const list = action({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<
-    | Array<Record<string, unknown>>
-    | { page: Array<Record<string, unknown>>; isDone: boolean; continueCursor: string }
+    | GabinetEmployeeRow[]
+    | SupabasePaginationResult<GabinetEmployeeRow>
   > => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -42,7 +43,7 @@ export const list = action({
         .query("gabinetEmployees")
         .eq("organizationId", orgIdStr)
         .eq("role", args.role);
-      let all = (await q.collect()) as Array<Record<string, any>>;
+      let all = (await q.collect()) as GabinetEmployeeRow[];
       let filtered = args.activeOnly ? all.filter((e) => e.isActive) : all;
       if (perm.scope === "own") {
         filtered = filtered.filter((e) => String(e.createdBy) === userIdStr);
@@ -55,7 +56,7 @@ export const list = action({
         .query("gabinetEmployees")
         .eq("organizationId", orgIdStr)
         .eq("isActive", true)
-        .collect()) as Array<Record<string, any>>;
+        .collect()) as GabinetEmployeeRow[];
       if (perm.scope === "own") {
         results = results.filter((e) => String(e.createdBy) === userIdStr);
       }
@@ -66,7 +67,7 @@ export const list = action({
       .query("gabinetEmployees")
       .eq("organizationId", orgIdStr)
       .order("createdAt", false)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetEmployeeRow[];
     if (perm.scope === "own") {
       page = page.filter((e) => String(e.createdBy) === userIdStr);
     }
@@ -79,7 +80,7 @@ export const listAll = action({
     organizationId: v.id("organizations"),
     activeOnly: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -99,7 +100,7 @@ export const listAll = action({
     if (args.activeOnly) {
       q = q.eq("isActive", true);
     }
-    let results = (await q.collect()) as Array<Record<string, any>>;
+    let results = (await q.collect()) as GabinetEmployeeRow[];
     if (perm.scope === "own") {
       results = results.filter((e) => String(e.createdBy) === userIdStr);
     }

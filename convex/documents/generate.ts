@@ -2,7 +2,7 @@ import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { resolveScope, EntityType } from "./scopeResolver";
+import { resolveScope, EntityType, ScopeData } from "./scopeResolver";
 import { resolveScopeSupabase } from "./scopeResolver_supabase";
 import { Id } from "../_generated/dataModel";
 
@@ -19,7 +19,7 @@ export const resolveEntityScope = action({
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args): Promise<Record<string, Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<ScopeData> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -45,7 +45,7 @@ export const previewDocumentData = action({
   },
   handler: async (ctx, args): Promise<{
     prefilledData: Record<string, string>;
-    scopeData: Record<string, Record<string, unknown>>;
+    scopeData: ScopeData;
     templateType: "document";
     contentJson: string;
   }> => {

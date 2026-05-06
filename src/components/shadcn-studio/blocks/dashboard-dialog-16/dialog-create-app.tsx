@@ -370,7 +370,12 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
               billing: () => <BillingStep />
             })}
             <DialogFooter className='flex !justify-between'>
-              <Button variant='secondary' size='lg' onClick={stepper.navigation.prev} disabled={stepper.state.isFirst}>
+              <Button
+                variant='secondary'
+                size='lg'
+                onClick={() => stepper.navigation.prev()}
+                disabled={stepper.state.isFirst}
+              >
                 <ArrowLeftIcon />
                 Previous
               </Button>
@@ -385,7 +390,7 @@ const CreateAppDialog = ({ defaultOpen = false, trigger, className }: Props) => 
                   </Button>
                 </DialogClose>
               ) : (
-                <Button size='lg' onClick={stepper.navigation.next}>
+                <Button size='lg' onClick={() => stepper.navigation.next()}>
                   Next
                   <ArrowRightIcon />
                 </Button>

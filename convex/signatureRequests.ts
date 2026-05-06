@@ -380,7 +380,7 @@ export const _notifyAuthor = internalMutation({
 
 export const createOtp = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const request = await db.query("signatureRequests")
@@ -419,7 +419,7 @@ export const verifyOtp = action({
     token: v.string(),
     code: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const request = await db.query("signatureRequests")

@@ -60,7 +60,7 @@ export const updateMyProfile = action({
     emergencyContactName: v.optional(v.string()),
     emergencyContactPhone: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     // Validate session via Supabase
     const db = createSupabaseDb();
     const session = await db.query("gabinetPortalSessions")
@@ -254,7 +254,7 @@ export const getPublicAvailableSlots = action({
     date: v.string(),
     duration: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     // Validate portal session (read-only — via Supabase)

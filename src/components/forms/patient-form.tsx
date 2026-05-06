@@ -150,11 +150,14 @@ export function PatientForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>{t("common.phone")}</Label>
+          <Label>
+            {t("common.phone")} <span className="text-destructive">*</span>
+          </Label>
           <Input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            required
           />
         </div>
         <div className="space-y-1.5">
@@ -284,7 +287,7 @@ export function PatientForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        <Button type="submit" disabled={!firstName.trim() || !lastName.trim() || !email.trim() || isSubmitting}>
+        <Button type="submit" disabled={!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || isSubmitting}>
           {isSubmitting
             ? t("common.saving")
             : initialData

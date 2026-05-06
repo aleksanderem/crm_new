@@ -2,7 +2,7 @@ import { crmManifest } from "@/modules/crm/manifest";
 import { gabinetManifest } from "@/modules/gabinet/manifest";
 import type { ModuleManifest, ModuleId, ProductKey } from "@/modules/types";
 
-export const moduleRegistry: ModuleManifest[] = [crmManifest, gabinetManifest];
+export const moduleRegistry: ModuleManifest[] = [gabinetManifest, crmManifest];
 
 export function getModuleById(id: ModuleId) {
   return moduleRegistry.find((module) => module.id === id);

@@ -292,55 +292,32 @@ export const testConnection = action({
       throw new Error("Mail provider not found");
     }
 
-    let result: { success: boolean; error?: string; accountEmail?: string };
+    const oauthTokens = provider.oauthTokens as
+      | { accessToken?: string; refreshToken?: string; expiresAt?: number }
+      | null
+      | undefined;
 
-    try {
-      if (provider.providerType === "mailgun") {
-        const { createMailgunAdapter } = await import("./mail/adapters/mailgun");
-        const adapter = createMailgunAdapter(
-          (provider.apiConfig as any)?.apiKey ?? "",
-          (provider.apiConfig as any)?.domain ?? "",
-          provider.fromEmail as string,
-          provider.fromName as string,
-          (provider.apiConfig as any)?.region ?? "us",
-        );
-        result = adapter.testConnection
-          ? await adapter.testConnection()
-          : { success: true, accountEmail: provider.fromEmail as string };
-      } else if (provider.providerType === "google") {
-        const { createGoogleAdapter } = await import("./mail/adapters/google");
-        const adapter = createGoogleAdapter(
-          (provider.oauthTokens as any)?.accessToken ?? "",
-          (provider.oauthTokens as any)?.refreshToken ?? "",
-          provider.fromEmail as string,
-          provider.fromName as string,
-          process.env.GOOGLE_CLIENT_ID ?? "",
-          process.env.GOOGLE_CLIENT_SECRET ?? "",
-          (provider.oauthTokens as any)?.expiresAt ?? 0,
-        );
-        result = adapter.testConnection
-          ? await adapter.testConnection()
-          : { success: true, accountEmail: provider.fromEmail as string };
-      } else if (provider.providerType === "microsoft") {
-        const { createMicrosoftAdapter } = await import("./mail/adapters/microsoft");
-        const adapter = createMicrosoftAdapter(
-          (provider.oauthTokens as any)?.accessToken ?? "",
-          (provider.oauthTokens as any)?.refreshToken ?? "",
-          provider.fromEmail as string,
-          provider.fromName as string,
-        );
-        result = adapter.testConnection
-          ? await adapter.testConnection()
-          : { success: true, accountEmail: provider.fromEmail as string };
-      } else {
-        // Resend has no testConnection — check that API key is present
-        result = (provider.apiConfig as any)?.apiKey
-          ? { success: true, accountEmail: provider.fromEmail as string }
-          : { success: false, error: "Missing API key" };
-      }
-    } catch (err) {
-      result = { success: false, error: String(err) };
-    }
+    const result: { success: boolean; error?: string; accountEmail?: string } =
+      await ctx.runAction(internal.mail.testConnectionNode.runProviderTest, {
+        providerType: provider.providerType as
+          | "google"
+          | "microsoft"
+          | "mailgun"
+          | "resend",
+        fromEmail: provider.fromEmail as string,
+        fromName: provider.fromName as string,
+        apiConfig: (provider.apiConfig as
+          | { apiKey?: string; domain?: string; region?: string }
+          | null
+          | undefined) ?? undefined,
+        oauthTokens: oauthTokens
+          ? {
+              accessToken: oauthTokens.accessToken ?? "",
+              refreshToken: oauthTokens.refreshToken,
+              expiresAt: oauthTokens.expiresAt,
+            }
+          : undefined,
+      });
 
     // Update provider status based on test result
     if (result.success && provider.status !== "active") {

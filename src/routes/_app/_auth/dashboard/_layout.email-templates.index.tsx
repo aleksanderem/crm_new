@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, type RefObject } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { ComposeDialog } from "@/components/email/compose-dialog";
 import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
 import { useSupabaseEmailEventTypes, useSupabaseEmailEventBindings, useSupabaseEmailEventLog } from "@/hooks/use-supabase-email-events";
 import type { MappedEmailEventType } from "@/lib/supabase/mappers/email-event-types";
@@ -50,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Eye, Settings2, Filter } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Eye, Settings2, Filter, SearchIcon } from "@/lib/ez-icons";
 import type { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
 import { StarterTemplateGallery } from "@/components/email/starter-template-gallery";
@@ -68,6 +70,18 @@ export const Route = createFileRoute(
 
 function EmailTemplatesPage() {
   const { t } = useTranslation();
+  const { organizationId } = useOrganization();
+  const [activeTab, setActiveTab] = useState("templates");
+  const [searchValue, setSearchValue] = useState("");
+  const [composeOpen, setComposeOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useSidebarDispatch("openSearch", () => {
+    setActiveTab("templates");
+    // Wait for the templates tab content to mount before focusing.
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  });
+  useSidebarDispatch("composeEmail", () => setComposeOpen(true));
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
@@ -76,7 +90,7 @@ function EmailTemplatesPage() {
         description={t("emailTemplates.description")}
       />
 
-      <Tabs defaultValue="templates" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="templates">
             {t("emailTemplates.tabTemplates")}
@@ -96,7 +110,11 @@ function EmailTemplatesPage() {
         </TabsList>
 
         <TabsContent value="templates" className="mt-4">
-          <TemplatesTab />
+          <TemplatesTab
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            searchInputRef={searchInputRef}
+          />
         </TabsContent>
 
         <TabsContent value="starter" className="mt-4">
@@ -115,6 +133,12 @@ function EmailTemplatesPage() {
           <EventLogTab />
         </TabsContent>
       </Tabs>
+
+      <ComposeDialog
+        organizationId={organizationId}
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+      />
     </div>
   );
 }
@@ -141,7 +165,13 @@ function StarterTab() {
 // Templates Tab — list only, edit/create via dedicated routes
 // ---------------------------------------------------------------------------
 
-function TemplatesTab() {
+interface TemplatesTabProps {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchInputRef: RefObject<HTMLInputElement>;
+}
+
+function TemplatesTab({ searchValue, onSearchChange, searchInputRef }: TemplatesTabProps) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
@@ -149,6 +179,19 @@ function TemplatesTab() {
   const removeTemplate = useAction(api.emailTemplates.remove);
 
   const { data: templates } = useSupabaseEmailTemplatesList(organizationId);
+
+  const filteredTemplates = useMemo(() => {
+    if (!templates) return templates;
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return templates;
+    return templates.filter((tmpl) => {
+      const haystack = [tmpl.name, tmpl.subject, tmpl.category, tmpl.module]
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [templates, searchValue]);
 
   const handleToggleActive = async (
     templateId: string,
@@ -163,7 +206,18 @@ function TemplatesTab() {
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" variant="stroke" />
+          <Input
+            ref={searchInputRef}
+            type="search"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={t("nav.actions.searchTemplates")}
+            className="pl-8"
+          />
+        </div>
         <Button asChild>
           <Link to="/dashboard/email-templates/new">
             <Plus className="mr-2 h-4 w-4" variant="stroke" />
@@ -173,12 +227,12 @@ function TemplatesTab() {
       </div>
 
       <div className="space-y-2">
-        {(!templates || templates.length === 0) && (
+        {(!filteredTemplates || filteredTemplates.length === 0) && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t("emailTemplates.empty")}
           </p>
         )}
-        {templates?.map((template) => (
+        {filteredTemplates?.map((template) => (
           <Card key={template._id}>
             <CardContent className="flex items-center justify-between py-3">
               <Link

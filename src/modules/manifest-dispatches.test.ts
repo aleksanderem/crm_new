@@ -34,12 +34,7 @@ type Orphan = `${string}::${string}::${string}`;
 // `useSidebarDispatch` on the target route. They are tracked here so the test
 // passes today and starts failing the moment a NEW orphan is introduced — or
 // an existing orphan is wired up (in which case remove the entry).
-const KNOWN_ORPHANS: ReadonlySet<Orphan> = new Set<Orphan>([
-  "src/modules/gabinet/manifest.ts::reports::exportReport",
-  "src/modules/gabinet/manifest.ts::reports::filterByDate",
-  "src/modules/gabinet/manifest.ts::reports::viewTreatmentStats",
-  "src/modules/gabinet/manifest.ts::reports::viewRevenueReport",
-]);
+const KNOWN_ORPHANS: ReadonlySet<Orphan> = new Set<Orphan>([]);
 
 interface PageContextEntry {
   manifestFile: string;

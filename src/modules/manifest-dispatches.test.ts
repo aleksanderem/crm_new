@@ -35,7 +35,6 @@ type Orphan = `${string}::${string}::${string}`;
 // passes today and starts failing the moment a NEW orphan is introduced — or
 // an existing orphan is wired up (in which case remove the entry).
 const KNOWN_ORPHANS: ReadonlySet<Orphan> = new Set<Orphan>([
-  "src/modules/crm/manifest.ts::products::openFilter",
   "src/modules/crm/manifest.ts::email-templates::openSearch",
   "src/modules/crm/manifest.ts::email-templates::composeEmail",
   "src/modules/gabinet/manifest.ts::packages::viewExpiring",

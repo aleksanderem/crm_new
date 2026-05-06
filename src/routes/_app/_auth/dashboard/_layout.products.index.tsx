@@ -66,6 +66,7 @@ function ProductsPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const { handleExport } = useCsvExport(organizationId, "products");
@@ -95,6 +96,7 @@ function ProductsPage() {
   useSidebarDispatch("importCsv", () => setImportOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -277,6 +279,8 @@ function ProductsPage() {
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t('products.searchPlaceholder')}

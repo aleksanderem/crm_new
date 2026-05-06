@@ -1,8 +1,14 @@
 /**
  * Supabase Database Types
  *
- * AUTO-GENERATED from supabase/migrations/00001_initial_schema.sql
- * by scripts/gen-db-types.mjs — DO NOT EDIT MANUALLY.
+ * AUTO-GENERATED from supabase/migrations/ by scripts/gen-db-types.mjs
+ * — DO NOT EDIT MANUALLY.
+ *
+ * Source migrations (applied in order):
+ *   • 00001_initial_schema.sql
+ *   • 00002_rls_policies.sql
+ *   • 00003_add_selected_id_to_saved_views.sql
+ *   • 00004_document_components.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -1516,6 +1522,7 @@ export interface Database {
           order: number;
           created_at: number;
           updated_at: number;
+          selected_id: string | null;
         };
         Insert: {
           id?: string;
@@ -1532,6 +1539,7 @@ export interface Database {
           order: number;
           created_at: number;
           updated_at: number;
+          selected_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1548,6 +1556,7 @@ export interface Database {
           order?: number;
           created_at?: number;
           updated_at?: number;
+          selected_id?: string | null;
         };
       };
       email_templates: {
@@ -4442,6 +4451,56 @@ export interface Database {
           updated_at?: number;
         };
       };
+      document_components: {
+        Row: {
+          id: string;
+          organization_id: string | null;
+          scope: string;
+          created_by: string | null;
+          name: string;
+          description: string | null;
+          category: string;
+          content_json: string;
+          protected: boolean;
+          position_constraint: string | null;
+          version: number;
+          is_active: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id?: string | null;
+          scope: string;
+          created_by?: string | null;
+          name: string;
+          description?: string | null;
+          category: string;
+          content_json: string;
+          protected?: boolean;
+          position_constraint?: string | null;
+          version?: number;
+          is_active?: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string | null;
+          scope?: string;
+          created_by?: string | null;
+          name?: string;
+          description?: string | null;
+          category?: string;
+          content_json?: string;
+          protected?: boolean;
+          position_constraint?: string | null;
+          version?: number;
+          is_active?: boolean;
+          created_at?: number;
+          updated_at?: number;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -4491,145 +4550,108 @@ export type CustomFieldValueUpdate = Database["public"]["Tables"]["custom_field_
 export type ObjectRelationshipRow = Database["public"]["Tables"]["object_relationships"]["Row"];
 export type ObjectRelationshipInsert = Database["public"]["Tables"]["object_relationships"]["Insert"];
 export type ObjectRelationshipUpdate = Database["public"]["Tables"]["object_relationships"]["Update"];
-
 export type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 export type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
 export type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
-
 export type PipelineRow = Database["public"]["Tables"]["pipelines"]["Row"];
 export type PipelineInsert = Database["public"]["Tables"]["pipelines"]["Insert"];
 export type PipelineUpdate = Database["public"]["Tables"]["pipelines"]["Update"];
-
 export type PipelineStageRow = Database["public"]["Tables"]["pipeline_stages"]["Row"];
 export type PipelineStageInsert = Database["public"]["Tables"]["pipeline_stages"]["Insert"];
 export type PipelineStageUpdate = Database["public"]["Tables"]["pipeline_stages"]["Update"];
-
 export type PipelineStageActionRow = Database["public"]["Tables"]["pipeline_stage_actions"]["Row"];
 export type PipelineStageActionInsert = Database["public"]["Tables"]["pipeline_stage_actions"]["Insert"];
 export type PipelineStageActionUpdate = Database["public"]["Tables"]["pipeline_stage_actions"]["Update"];
-
-// ── Platform Entities ─────────────────────────────────────────────────────
 export type OrganizationRow = Database["public"]["Tables"]["organizations"]["Row"];
 export type OrganizationInsert = Database["public"]["Tables"]["organizations"]["Insert"];
 export type OrganizationUpdate = Database["public"]["Tables"]["organizations"]["Update"];
-
 export type TeamMembershipRow = Database["public"]["Tables"]["team_memberships"]["Row"];
 export type TeamMembershipInsert = Database["public"]["Tables"]["team_memberships"]["Insert"];
 export type TeamMembershipUpdate = Database["public"]["Tables"]["team_memberships"]["Update"];
-
 export type InvitationRow = Database["public"]["Tables"]["invitations"]["Row"];
 export type InvitationInsert = Database["public"]["Tables"]["invitations"]["Insert"];
 export type InvitationUpdate = Database["public"]["Tables"]["invitations"]["Update"];
-
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 export type NotificationInsert = Database["public"]["Tables"]["notifications"]["Insert"];
 export type NotificationUpdate = Database["public"]["Tables"]["notifications"]["Update"];
-
 export type RecentlyViewedRow = Database["public"]["Tables"]["recently_viewed"]["Row"];
 export type RecentlyViewedInsert = Database["public"]["Tables"]["recently_viewed"]["Insert"];
 export type RecentlyViewedUpdate = Database["public"]["Tables"]["recently_viewed"]["Update"];
-
 export type OrgSettingsRow = Database["public"]["Tables"]["org_settings"]["Row"];
 export type OrgSettingsInsert = Database["public"]["Tables"]["org_settings"]["Insert"];
 export type OrgSettingsUpdate = Database["public"]["Tables"]["org_settings"]["Update"];
-
 export type AuditLogRow = Database["public"]["Tables"]["audit_log"]["Row"];
 export type AuditLogInsert = Database["public"]["Tables"]["audit_log"]["Insert"];
 export type AuditLogUpdate = Database["public"]["Tables"]["audit_log"]["Update"];
-
 export type ActivityTypeDefinitionRow = Database["public"]["Tables"]["activity_type_definitions"]["Row"];
 export type ActivityTypeDefinitionInsert = Database["public"]["Tables"]["activity_type_definitions"]["Insert"];
 export type ActivityTypeDefinitionUpdate = Database["public"]["Tables"]["activity_type_definitions"]["Update"];
-
 export type ScheduledActivityRow = Database["public"]["Tables"]["scheduled_activities"]["Row"];
 export type ScheduledActivityInsert = Database["public"]["Tables"]["scheduled_activities"]["Insert"];
 export type ScheduledActivityUpdate = Database["public"]["Tables"]["scheduled_activities"]["Update"];
-
 export type EmailSequenceRow = Database["public"]["Tables"]["email_sequences"]["Row"];
 export type EmailSequenceInsert = Database["public"]["Tables"]["email_sequences"]["Insert"];
 export type EmailSequenceUpdate = Database["public"]["Tables"]["email_sequences"]["Update"];
-
-// ── Gabinet Entities ──────────────────────────────────────────────────────
 export type GabinetPatientRow = Database["public"]["Tables"]["gabinet_patients"]["Row"];
 export type GabinetPatientInsert = Database["public"]["Tables"]["gabinet_patients"]["Insert"];
 export type GabinetPatientUpdate = Database["public"]["Tables"]["gabinet_patients"]["Update"];
-
 export type GabinetTreatmentRow = Database["public"]["Tables"]["gabinet_treatments"]["Row"];
 export type GabinetTreatmentInsert = Database["public"]["Tables"]["gabinet_treatments"]["Insert"];
 export type GabinetTreatmentUpdate = Database["public"]["Tables"]["gabinet_treatments"]["Update"];
-
 export type GabinetTreatmentVariantRow = Database["public"]["Tables"]["gabinet_treatment_variants"]["Row"];
 export type GabinetTreatmentVariantInsert = Database["public"]["Tables"]["gabinet_treatment_variants"]["Insert"];
 export type GabinetTreatmentVariantUpdate = Database["public"]["Tables"]["gabinet_treatment_variants"]["Update"];
-
 export type GabinetEmployeeRow = Database["public"]["Tables"]["gabinet_employees"]["Row"];
 export type GabinetEmployeeInsert = Database["public"]["Tables"]["gabinet_employees"]["Insert"];
 export type GabinetEmployeeUpdate = Database["public"]["Tables"]["gabinet_employees"]["Update"];
-
 export type GabinetLocationRow = Database["public"]["Tables"]["gabinet_locations"]["Row"];
 export type GabinetLocationInsert = Database["public"]["Tables"]["gabinet_locations"]["Insert"];
 export type GabinetLocationUpdate = Database["public"]["Tables"]["gabinet_locations"]["Update"];
-
 export type GabinetRoomRow = Database["public"]["Tables"]["gabinet_rooms"]["Row"];
 export type GabinetRoomInsert = Database["public"]["Tables"]["gabinet_rooms"]["Insert"];
 export type GabinetRoomUpdate = Database["public"]["Tables"]["gabinet_rooms"]["Update"];
-
 export type GabinetEquipmentRow = Database["public"]["Tables"]["gabinet_equipment"]["Row"];
 export type GabinetEquipmentInsert = Database["public"]["Tables"]["gabinet_equipment"]["Insert"];
 export type GabinetEquipmentUpdate = Database["public"]["Tables"]["gabinet_equipment"]["Update"];
-
 export type GabinetEquipmentTransferRow = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Row"];
 export type GabinetEquipmentTransferInsert = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Insert"];
 export type GabinetEquipmentTransferUpdate = Database["public"]["Tables"]["gabinet_equipment_transfers"]["Update"];
-
 export type GabinetLeaveTypeRow = Database["public"]["Tables"]["gabinet_leave_types"]["Row"];
 export type GabinetLeaveTypeInsert = Database["public"]["Tables"]["gabinet_leave_types"]["Insert"];
 export type GabinetLeaveTypeUpdate = Database["public"]["Tables"]["gabinet_leave_types"]["Update"];
-
 export type GabinetLeaveBalanceRow = Database["public"]["Tables"]["gabinet_leave_balances"]["Row"];
 export type GabinetLeaveBalanceInsert = Database["public"]["Tables"]["gabinet_leave_balances"]["Insert"];
 export type GabinetLeaveBalanceUpdate = Database["public"]["Tables"]["gabinet_leave_balances"]["Update"];
-
 export type GabinetWorkingHoursRow = Database["public"]["Tables"]["gabinet_working_hours"]["Row"];
 export type GabinetWorkingHoursInsert = Database["public"]["Tables"]["gabinet_working_hours"]["Insert"];
 export type GabinetWorkingHoursUpdate = Database["public"]["Tables"]["gabinet_working_hours"]["Update"];
-
 export type GabinetEmployeeScheduleRow = Database["public"]["Tables"]["gabinet_employee_schedules"]["Row"];
 export type GabinetEmployeeScheduleInsert = Database["public"]["Tables"]["gabinet_employee_schedules"]["Insert"];
 export type GabinetEmployeeScheduleUpdate = Database["public"]["Tables"]["gabinet_employee_schedules"]["Update"];
-
 export type GabinetAppointmentRow = Database["public"]["Tables"]["gabinet_appointments"]["Row"];
 export type GabinetAppointmentInsert = Database["public"]["Tables"]["gabinet_appointments"]["Insert"];
 export type GabinetAppointmentUpdate = Database["public"]["Tables"]["gabinet_appointments"]["Update"];
-
 export type GabinetLeaveRow = Database["public"]["Tables"]["gabinet_leaves"]["Row"];
 export type GabinetLeaveInsert = Database["public"]["Tables"]["gabinet_leaves"]["Insert"];
 export type GabinetLeaveUpdate = Database["public"]["Tables"]["gabinet_leaves"]["Update"];
-
 export type GabinetOvertimeRow = Database["public"]["Tables"]["gabinet_overtime"]["Row"];
 export type GabinetOvertimeInsert = Database["public"]["Tables"]["gabinet_overtime"]["Insert"];
 export type GabinetOvertimeUpdate = Database["public"]["Tables"]["gabinet_overtime"]["Update"];
-
 export type GabinetDocumentTemplateRow = Database["public"]["Tables"]["gabinet_document_templates"]["Row"];
 export type GabinetDocumentTemplateInsert = Database["public"]["Tables"]["gabinet_document_templates"]["Insert"];
 export type GabinetDocumentTemplateUpdate = Database["public"]["Tables"]["gabinet_document_templates"]["Update"];
-
 export type GabinetDocumentRow = Database["public"]["Tables"]["gabinet_documents"]["Row"];
 export type GabinetDocumentInsert = Database["public"]["Tables"]["gabinet_documents"]["Insert"];
 export type GabinetDocumentUpdate = Database["public"]["Tables"]["gabinet_documents"]["Update"];
-
 export type GabinetTreatmentPackageRow = Database["public"]["Tables"]["gabinet_treatment_packages"]["Row"];
 export type GabinetTreatmentPackageInsert = Database["public"]["Tables"]["gabinet_treatment_packages"]["Insert"];
 export type GabinetTreatmentPackageUpdate = Database["public"]["Tables"]["gabinet_treatment_packages"]["Update"];
-
 export type GabinetPackageUsageRow = Database["public"]["Tables"]["gabinet_package_usage"]["Row"];
 export type GabinetPackageUsageInsert = Database["public"]["Tables"]["gabinet_package_usage"]["Insert"];
 export type GabinetPackageUsageUpdate = Database["public"]["Tables"]["gabinet_package_usage"]["Update"];
-
 export type GabinetLoyaltyPointsRow = Database["public"]["Tables"]["gabinet_loyalty_points"]["Row"];
 export type GabinetLoyaltyPointsInsert = Database["public"]["Tables"]["gabinet_loyalty_points"]["Insert"];
 export type GabinetLoyaltyPointsUpdate = Database["public"]["Tables"]["gabinet_loyalty_points"]["Update"];
-
 export type GabinetLoyaltyTransactionRow = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Row"];
 export type GabinetLoyaltyTransactionInsert = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Insert"];
 export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Update"];

@@ -9,6 +9,7 @@ import { logActivity } from "../_helpers/activities";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type {
   GabinetAppointmentRow,
+  GabinetEmployeeRow,
   GabinetTreatmentRow,
   SupabasePaginationResult,
 } from "../_helpers/supabaseRows";
@@ -745,12 +746,33 @@ export const listTreatmentAppointments = action({
   },
 });
 
+/**
+ * Row shape returned by `getTreatmentEmployees` — a subset of employee
+ * fields enriched with the linked user's display name and avatar. Exported
+ * so the treatment detail page can type its consumer directly instead of
+ * duck-typing the result.
+ */
+export type TreatmentEmployeeSummary = Pick<
+  GabinetEmployeeRow,
+  | "_id"
+  | "userId"
+  | "firstName"
+  | "lastName"
+  | "role"
+  | "specialization"
+  | "isActive"
+  | "color"
+> & {
+  userName: string;
+  userImage: string | null | undefined;
+};
+
 export const getTreatmentEmployees = action({
   args: {
     organizationId: v.id("organizations"),
     treatmentId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<TreatmentEmployeeSummary[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -765,17 +787,17 @@ export const getTreatmentEmployees = action({
     const allEmployees = (await db
       .query("gabinetEmployees")
       .eq("organizationId", String(args.organizationId))
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetEmployeeRow[];
 
     const assigned = allEmployees.filter((emp) =>
-      ((emp.qualifiedTreatmentIds as string[] | undefined) ?? []).includes(args.treatmentId),
+      (emp.qualifiedTreatmentIds ?? []).includes(args.treatmentId as Id<"gabinetTreatments">),
     );
 
     const enriched = await Promise.all(
       assigned.map(async (emp) => {
         const user = await db.get("users", String(emp.userId)).catch(() => null);
         return {
-          _id: emp._id ?? emp.id,
+          _id: emp._id,
           userId: emp.userId,
           firstName: emp.firstName,
           lastName: emp.lastName,

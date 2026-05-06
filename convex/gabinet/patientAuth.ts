@@ -3,6 +3,8 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
+import { sendEmail } from "@cvx/email";
+import { AUTH_RESEND_KEY } from "@cvx/env";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -133,9 +135,6 @@ export const _sendOtpEmail = internalMutation({
     otp: v.string(),
   },
   handler: async (ctx, args) => {
-    const { sendEmail } = await import("@cvx/email");
-    const { AUTH_RESEND_KEY } = await import("@cvx/env");
-
     if (AUTH_RESEND_KEY) {
       const org = await ctx.db.get(args.organizationId);
       const orgName = org?.name ?? "Portal Klienta";

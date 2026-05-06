@@ -2,6 +2,7 @@ import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
+import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { createNotificationDirect } from "../notifications";
 import { Id } from "../_generated/dataModel";
@@ -104,8 +105,7 @@ export const _scheduleReminderSideEffects = internalMutation({
     );
 
     // Store scheduled function ID in Supabase so we can cancel if needed
-    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
-    const db = createDb();
+    const db = createSupabaseDb();
     await db.patch("appointmentReminders", args.reminderId, {
       scheduledFunctionId: scheduledId as unknown as string,
     });
@@ -122,8 +122,7 @@ export const sendReminder = internalMutation({
     reminderId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
-    const db = createDb();
+    const db = createSupabaseDb();
 
     const reminder = await db.get("appointmentReminders", args.reminderId);
     if (!reminder) return;
@@ -317,8 +316,7 @@ export const scheduleReminderInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { createSupabaseDb: createDb } = await import("../_helpers/supabaseDb");
-    const db = createDb();
+    const db = createSupabaseDb();
 
     const appointment = await db.get("gabinetAppointments", args.appointmentId);
     if (!appointment) return null;
@@ -406,7 +404,6 @@ export const listByAppointment = query({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(
       ctx,

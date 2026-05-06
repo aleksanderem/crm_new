@@ -2,6 +2,7 @@ import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { verifyOrgAccess } from "../_helpers/auth";
 import { formCategoryValidator } from "../schema/documents";
 
 // Dual-write refs removed — Supabase is now primary for template writes
@@ -43,7 +44,6 @@ export const listByCategory = query({
     category: formCategoryValidator,
   },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     return await ctx.db
       .query("formTemplates")
@@ -81,7 +81,6 @@ export const listDocumentTemplates = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const { verifyOrgAccess } = await import("../_helpers/auth");
     await verifyOrgAccess(ctx, args.organizationId);
     const all = await ctx.db
       .query("formTemplates")

@@ -16,6 +16,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import type { GenericQueryCtx } from "convex/server";
 import type { DataModel } from "./_generated/dataModel";
+import { auth } from "@cvx/auth";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -182,7 +183,7 @@ export const resolveSourceValues = query({
     sources: v.any(), // Record<string, string | null>
   },
   handler: async (ctx, args) => {
-    const userId = await (await import("@cvx/auth")).auth.getUserId(ctx);
+    const userId = await auth.getUserId(ctx);
     if (!userId) return {};
 
     const rctx: DataSourceResolverContext = {

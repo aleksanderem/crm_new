@@ -3,13 +3,14 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import type { FormTemplateRow } from "../_helpers/supabaseRows";
 import { formCategoryValidator } from "../schema/documents";
 
 // Dual-write refs removed — Supabase is now primary for template writes
 
 export const list = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<FormTemplateRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -17,7 +18,7 @@ export const list = action({
     return (await db
       .query("formTemplates")
       .eq("organizationId", String(args.organizationId))
-      .collect()) as Array<Record<string, unknown>>;
+      .collect()) as FormTemplateRow[];
   },
 });
 
@@ -26,7 +27,7 @@ export const getById = action({
     organizationId: v.id("organizations"),
     templateId: v.string(),
   },
-  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+  handler: async (ctx, args): Promise<FormTemplateRow> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -34,7 +35,7 @@ export const getById = action({
     const tmpl = await db.get("formTemplates", args.templateId);
     if (!tmpl || String(tmpl.organizationId) !== String(args.organizationId))
       throw new Error("Template not found");
-    return tmpl;
+    return tmpl as FormTemplateRow;
   },
 });
 
@@ -61,17 +62,17 @@ export const listByEntityType = action({
     organizationId: v.id("organizations"),
     entityType: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<FormTemplateRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    const all = await db
+    const all = (await db
       .query("formTemplates")
       .eq("organizationId", String(args.organizationId))
-      .collect();
+      .collect()) as FormTemplateRow[];
     return all.filter(
-      (t) => t.isActive === true && Array.isArray(t.entityTypes) && (t.entityTypes as string[]).includes(args.entityType),
+      (t) => t.isActive === true && Array.isArray(t.entityTypes) && t.entityTypes.includes(args.entityType),
     );
   },
 });

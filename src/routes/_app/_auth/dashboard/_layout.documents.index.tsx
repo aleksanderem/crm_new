@@ -319,7 +319,7 @@ function DocumentsPage() {
 
   const selectedTemplate = useMemo(() => {
     if (!selectedDoc) return null;
-    return templateMap.get(selectedDoc.templateId) ?? null;
+    return templateMap.get(selectedDoc.templateId as Id<"formTemplates">) ?? null;
   }, [selectedDoc, templateMap]);
 
   // --- Columns ---

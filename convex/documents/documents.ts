@@ -6,6 +6,7 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
+import type { FormDocumentRow } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for document writes
@@ -42,17 +43,17 @@ export const listByEntity = action({
     entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<FormDocumentRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    return await db
+    return (await db
       .query("formDocuments")
       .eq("organizationId", String(args.organizationId))
       .eq("entityType", args.entityType)
       .eq("entityId", args.entityId)
-      .collect();
+      .collect()) as FormDocumentRow[];
   },
 });
 
@@ -61,7 +62,7 @@ export const getById = action({
     organizationId: v.id("organizations"),
     documentId: v.string(),
   },
-  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+  handler: async (ctx, args): Promise<FormDocumentRow> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -69,7 +70,7 @@ export const getById = action({
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
-    return doc;
+    return doc as FormDocumentRow;
   },
 });
 

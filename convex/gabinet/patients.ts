@@ -6,6 +6,7 @@ import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
+import type { GabinetPatientRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for patient writes
@@ -16,11 +17,7 @@ export const list = action({
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{
-    page: Array<Record<string, unknown>>;
-    isDone: boolean;
-    continueCursor: string;
-  }> => {
+  handler: async (ctx, args): Promise<SupabasePaginationResult<GabinetPatientRow>> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -41,7 +38,7 @@ export const list = action({
       let results = (await db
         .query("gabinetPatients")
         .eq("organizationId", orgIdStr)
-        .collect()) as Array<Record<string, any>>;
+        .collect()) as GabinetPatientRow[];
       results = results.filter((r) => {
         const fn = String(r.firstName ?? "").toLowerCase();
         const ln = String(r.lastName ?? "").toLowerCase();
@@ -59,7 +56,7 @@ export const list = action({
       .query("gabinetPatients")
       .eq("organizationId", orgIdStr)
       .order("createdAt", false)
-      .collect()) as Array<Record<string, any>>;
+      .collect()) as GabinetPatientRow[];
     if (perm.scope === "own") {
       page = page.filter((r) => String(r.createdBy) === userIdStr);
     }

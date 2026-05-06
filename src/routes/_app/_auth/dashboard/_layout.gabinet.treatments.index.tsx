@@ -20,6 +20,7 @@ import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Doc, Id } from "@cvx/_generated/dataModel";
 import { useState, useMemo, useCallback } from "react";
+import type { SortDescriptor } from "react-aria-components";
 import { useTranslation } from "react-i18next";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
@@ -63,10 +64,18 @@ function TreatmentsIndex() {
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>(undefined);
 
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
+  useSidebarDispatch("sortByPrice", () => {
+    setSortDescriptor((prev) =>
+      prev?.column === "price" && prev.direction === "descending"
+        ? { column: "price", direction: "ascending" }
+        : { column: "price", direction: "descending" },
+    );
+  });
 
   const getTreatmentsKpis = useAction(api.gabinet.sidebarWidgets.getTreatmentsKpis);
   const getTopTreatments = useAction(api.gabinet.sidebarWidgets.getTopTreatments);
@@ -424,6 +433,8 @@ function TreatmentsIndex() {
         data={filteredTreatments}
         isLoading={isLoading}
         hiddenColumnIds={hiddenColumnIds}
+        sortDescriptor={sortDescriptor}
+        onSortChange={setSortDescriptor}
         enableBulkSelect
         bulkActions={[
           {

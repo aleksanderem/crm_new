@@ -8,7 +8,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CompanyForm } from "@/components/forms/company-form";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -35,7 +35,9 @@ function NewCompany() {
       <Card>
         <CardContent className="pt-6">
           <CompanyForm
-            customFieldDefinitions={customFieldDefs}
+            customFieldDefinitions={
+              customFieldDefs as unknown as ComponentProps<typeof CompanyForm>["customFieldDefinitions"]
+            }
             isSubmitting={isSubmitting}
             onCancel={() => navigate({ to: "/dashboard/companies" })}
             onSubmit={async (data, customFieldRecord) => {

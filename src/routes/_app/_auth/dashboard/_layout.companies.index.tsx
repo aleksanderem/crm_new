@@ -94,7 +94,8 @@ function CompaniesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
+  const { data: companiesRaw = [], isLoading } = useSupabaseCompaniesList(organizationId);
+  const companies = companiesRaw as unknown as Company[];
 
   const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
 

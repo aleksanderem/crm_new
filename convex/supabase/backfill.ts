@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { createServiceRoleClient } from "./client";
 
 const BATCH_SIZE = 50;
@@ -37,7 +38,7 @@ export const _getUser = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     try {
-      return await ctx.db.get(args.userId as any);
+      return await ctx.db.get(args.userId as Id<"users">);
     } catch {
       const all = await ctx.db.query("users").collect();
       return all.find((u) => u._id === args.userId) ?? null;
@@ -49,7 +50,7 @@ export const _getPatient = internalQuery({
   args: { patientId: v.string() },
   handler: async (ctx, args) => {
     try {
-      return await ctx.db.get(args.patientId as any);
+      return await ctx.db.get(args.patientId as Id<"gabinetPatients">);
     } catch {
       const all = await ctx.db.query("gabinetPatients").collect();
       return all.find((p) => p._id === args.patientId) ?? null;
@@ -61,7 +62,7 @@ export const _getTreatment = internalQuery({
   args: { treatmentId: v.string() },
   handler: async (ctx, args) => {
     try {
-      return await ctx.db.get(args.treatmentId as any);
+      return await ctx.db.get(args.treatmentId as Id<"gabinetTreatments">);
     } catch {
       const all = await ctx.db.query("gabinetTreatments").collect();
       return all.find((t) => t._id === args.treatmentId) ?? null;

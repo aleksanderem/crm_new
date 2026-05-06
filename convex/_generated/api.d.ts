@@ -200,7 +200,6 @@ import type * as supabase_gabinet_packages from "../supabase/gabinet/packages.js
 import type * as supabase_gabinet_patients from "../supabase/gabinet/patients.js";
 import type * as supabase_gabinet_portalSessions from "../supabase/gabinet/portalSessions.js";
 import type * as supabase_gabinet_rooms from "../supabase/gabinet/rooms.js";
-import type * as supabase_gabinet_treatments from "../supabase/gabinet/treatments.js";
 import type * as supabase_gabinet_workingHours from "../supabase/gabinet/workingHours.js";
 import type * as supabase_googleCalendarSyncConfigs from "../supabase/googleCalendarSyncConfigs.js";
 import type * as supabase_invitations from "../supabase/invitations.js";
@@ -429,7 +428,6 @@ declare const fullApi: ApiFromModules<{
   "supabase/gabinet/patients": typeof supabase_gabinet_patients;
   "supabase/gabinet/portalSessions": typeof supabase_gabinet_portalSessions;
   "supabase/gabinet/rooms": typeof supabase_gabinet_rooms;
-  "supabase/gabinet/treatments": typeof supabase_gabinet_treatments;
   "supabase/gabinet/workingHours": typeof supabase_gabinet_workingHours;
   "supabase/googleCalendarSyncConfigs": typeof supabase_googleCalendarSyncConfigs;
   "supabase/invitations": typeof supabase_invitations;

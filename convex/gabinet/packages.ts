@@ -5,6 +5,8 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
+import { logActivity } from "../_helpers/activities";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for package writes
@@ -163,7 +165,6 @@ export const _createSideEffects = internalMutation({
     createdBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("../_helpers/activities");
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetPackage",
@@ -380,7 +381,6 @@ export const _purchaseSideEffects = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const { publishActivityEnvelope } = await import("../_helpers/activityEnvelope");
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "package_assigned",
@@ -544,7 +544,6 @@ export const _batchUsageSideEffects = internalMutation({
     createdBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("../_helpers/activities");
     const pkg = await ctx.db.get(args.packageId as Id<"gabinetTreatmentPackages">);
     await logActivity(ctx, {
       organizationId: args.organizationId,

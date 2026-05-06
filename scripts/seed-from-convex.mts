@@ -5,15 +5,23 @@
  * 
  * Inserts data in FK order, maps camelCase→snake_case, skips auth tables.
  */
-import { createClient } from '@supabase/supabase-js';
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { TABLE_COLUMNS, type TableName } from '../src/lib/supabase/database.columns';
+import type { Database } from '../src/lib/supabase/database.types';
 
 const url = process.env.SUPABASE_URL!;
 const key = process.env.SERVICE_KEY!;
 const exportDir = process.argv[2] || '/tmp/convex-export';
 
-const sb = createClient(url, key, { auth: { persistSession: false } });
+const sb: SupabaseClient<Database> = createClient<Database>(url, key, {
+  auth: { persistSession: false },
+});
+
+// ─── Convex doc & row types ──────────────────────────────────────────────
+type ConvexDoc = Record<string, unknown> & { _id: string; _creationTime?: number };
+type TableInsert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
 
 // ─── camelCase → snake_case ──────────────────────────────────────────────
 function toSnake(s: string): string {
@@ -21,51 +29,86 @@ function toSnake(s: string): string {
 }
 
 // ─── Read JSONL ──────────────────────────────────────────────────────────
-function readTable(name: string): any[] {
+function readTable(name: string): ConvexDoc[] {
   const p = join(exportDir, name, 'documents.jsonl');
   if (!existsSync(p)) return [];
   return readFileSync(p, 'utf-8')
     .split('\n')
     .filter(Boolean)
-    .map(l => JSON.parse(l));
+    .map(l => JSON.parse(l) as ConvexDoc);
 }
 
+// Columns that are known to exist in Postgres but are stripped from the
+// generated types because Postgres computes them (GENERATED ALWAYS). The seed
+// script must never write to these — they're auto-populated.
+const GENERATED_COLUMNS: ReadonlySet<string> = new Set(['search_vector']);
+
 // ─── Map Convex doc → Supabase row ──────────────────────────────────────
-function mapRow(doc: any, extraMap?: Record<string, (v: any) => any>): Record<string, any> {
-  const row: Record<string, any> = {};
+//
+// `validColumns` is the set of column names known to the target Supabase
+// table (sourced from `TABLE_COLUMNS`). Keys produced by the dynamic
+// camelCase→snake_case conversion that fall outside this set are reported
+// and dropped — without this, a column rename in the SQL schema would
+// silently land as the old key and the upsert would still appear to succeed
+// for the unaffected columns.
+function mapRow<T extends TableName>(
+  table: T,
+  doc: ConvexDoc,
+  extraMap: Record<string, (v: unknown) => unknown> = {},
+): { row: TableInsert<T>; unknownKeys: string[] } {
+  const validColumns = TABLE_COLUMNS[table];
+  const row: Record<string, unknown> = {};
+  const unknownKeys: string[] = [];
+
   for (const [k, v] of Object.entries(doc)) {
     if (k === '_creationTime') continue;
     const snakeKey = k === '_id' ? 'id' : toSnake(k);
-    if (extraMap && extraMap[snakeKey]) {
-      row[snakeKey] = extraMap[snakeKey](v);
+
+    // Drop generated columns silently — Postgres recomputes them on insert.
+    if (GENERATED_COLUMNS.has(snakeKey)) continue;
+
+    let value: unknown;
+    if (extraMap[snakeKey]) {
+      value = extraMap[snakeKey](v);
     } else if (Array.isArray(v)) {
-      // PostgreSQL needs {val1,val2} format, but supabase-js handles
-      // native JS arrays correctly — pass the array directly
-      row[snakeKey] = v;
+      // supabase-js serializes native arrays correctly for TEXT[] / JSONB.
+      value = v;
     } else if (typeof v === 'object' && v !== null) {
-      row[snakeKey] = JSON.stringify(v);
+      value = JSON.stringify(v);
     } else {
-      row[snakeKey] = v;
+      value = v;
     }
+
+    if (!validColumns.has(snakeKey)) {
+      unknownKeys.push(snakeKey);
+      continue;
+    }
+    row[snakeKey] = value;
   }
-  return row;
+
+  return { row: row as TableInsert<T>, unknownKeys };
 }
 
 // ─── Upsert batch ────────────────────────────────────────────────────────
-async function upsertBatch(table: string, rows: Record<string, any>[], batchSize = 200) {
+async function upsertBatch<T extends TableName>(
+  table: T,
+  rows: TableInsert<T>[],
+  batchSize = 200,
+) {
   if (rows.length === 0) return { ok: 0, err: 0 };
   let ok = 0, err = 0;
-  
+
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const { error } = await sb.from(table).upsert(batch, { onConflict: 'id' });
+    const { error } = await sb.from(table).upsert(batch as never, { onConflict: 'id' });
     if (error) {
       // Try one-by-one for the failing batch
       for (const row of batch) {
-        const { error: e2 } = await sb.from(table).upsert(row, { onConflict: 'id' });
+        const { error: e2 } = await sb.from(table).upsert(row as never, { onConflict: 'id' });
         if (e2) {
           err++;
-          if (err <= 3) console.log(`    ⚠ ${table} row ${row.id}: ${e2.message.slice(0, 100)}`);
+          const id = (row as { id?: string }).id ?? '<no-id>';
+          if (err <= 3) console.log(`    ⚠ ${table} row ${id}: ${e2.message.slice(0, 100)}`);
         } else {
           ok++;
         }
@@ -81,7 +124,7 @@ async function upsertBatch(table: string, rows: Record<string, any>[], batchSize
 const ORG_ID = 'kx79hvdbedpfd3h7wkd37za67d8292j3';
 const USER_ID = 'mn734w9bg99bv05j8gc9p241bd829mrz';
 
-function forOrg(docs: any[]): any[] {
+function forOrg(docs: ConvexDoc[]): ConvexDoc[] {
   return docs.filter(d => d.organizationId === ORG_ID);
 }
 
@@ -95,39 +138,54 @@ async function seed() {
   console.log('Disabling FK triggers...');
   const sqlHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`, 'apikey': key };
   
-  async function runSQL(query: string) {
+  async function runSQL(query: string): Promise<Array<Record<string, unknown>>> {
     const r = await fetch(`${url}/pg/query`, { method: 'POST', headers: sqlHeaders, body: JSON.stringify({ query }) });
     if (!r.ok) throw new Error(`SQL failed: ${await r.text()}`);
-    return r.json();
+    return r.json() as Promise<Array<Record<string, unknown>>>;
   }
-  
+
   // Get all tables and disable triggers
   const tables = await runSQL("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
   for (const t of tables) {
-    await runSQL(`ALTER TABLE public."${t.tablename}" DISABLE TRIGGER ALL`).catch(() => {});
+    const tableName = t.tablename as string;
+    await runSQL(`ALTER TABLE public."${tableName}" DISABLE TRIGGER ALL`).catch(() => {});
   }
   console.log(`Disabled triggers on ${tables.length} tables\n`);
-  
-  const results: Array<{ table: string; ok: number; err: number }> = [];
 
-  async function seedTable(
-    pgTable: string, 
-    convexTable: string, 
-    filter?: (docs: any[]) => any[],
-    extraMap?: Record<string, (v: any) => any>,
-    skipCols?: string[]
+  const results: Array<{ table: string; ok: number; err: number }> = [];
+  const unknownColumnReports = new Map<string, Set<string>>();
+
+  function reportUnknown(table: string, keys: string[]) {
+    if (keys.length === 0) return;
+    let bucket = unknownColumnReports.get(table);
+    if (!bucket) {
+      bucket = new Set();
+      unknownColumnReports.set(table, bucket);
+    }
+    for (const k of keys) bucket.add(k);
+  }
+
+  async function seedTable<T extends TableName>(
+    pgTable: T,
+    convexTable: string,
+    filter?: (docs: ConvexDoc[]) => ConvexDoc[],
+    extraMap: Record<string, (v: unknown) => unknown> = {},
+    skipCols: ReadonlyArray<string> = [],
   ) {
     let docs = readTable(convexTable);
     if (filter) docs = filter(docs);
-    
+
     const rows = docs.map(d => {
-      const row = mapRow(d, extraMap);
-      if (skipCols) for (const c of skipCols) delete row[c];
-      // Remove search_vector — it's auto-generated
-      delete row['search_vector'];
+      const { row, unknownKeys } = mapRow(pgTable, d, extraMap);
+      reportUnknown(pgTable, unknownKeys);
+      if (skipCols.length > 0) {
+        const writable = row as Record<string, unknown>;
+        for (const c of skipCols) delete writable[c];
+        return writable as TableInsert<T>;
+      }
       return row;
     });
-    
+
     const { ok, err } = await upsertBatch(pgTable, rows);
     results.push({ table: pgTable, ok, err });
     const status = err > 0 ? `${ok} ok, ${err} err` : `${ok} ok`;
@@ -140,22 +198,25 @@ async function seed() {
     // Insert the target user + any users referenced in team memberships
     const allUsers = readTable('users');
     const memberships = readTable('teamMemberships').filter(m => m.organizationId === ORG_ID);
-    const neededUserIds = new Set([USER_ID, ...memberships.map((m: any) => m.userId)]);
+    const neededUserIds = new Set<string>([
+      USER_ID,
+      ...memberships.map(m => m.userId as string),
+    ]);
     const users = allUsers.filter(u => neededUserIds.has(u._id));
-    
-    const rows = users.map(u => mapRow(u, {}));
-    // Remove columns that don't exist in PG schema
-    for (const r of rows) {
-      delete r['role']; // no role column in users table
-    }
-    
+
+    const rows = users.map(u => {
+      const { row, unknownKeys } = mapRow('users', u);
+      reportUnknown('users', unknownKeys);
+      return row;
+    });
+
     const { ok, err } = await upsertBatch('users', rows);
     results.push({ table: 'users', ok, err });
     console.log(`  users: ${ok} ok, ${err} err`);
   }
 
   // ── 2. Organizations ──
-  await seedTable('organizations', 'organizations', d => d.filter((x: any) => x._id === ORG_ID));
+  await seedTable('organizations', 'organizations', docs => docs.filter(x => x._id === ORG_ID));
   
   // ── 3. Team memberships ──
   await seedTable('team_memberships', 'teamMemberships', forOrg);
@@ -177,8 +238,8 @@ async function seed() {
 
   // ── 6. Contacts & companies (have FK to org, user, source, category) ──
   console.log('\nPhase 4: CRM entities');
-  await seedTable('contacts', 'contacts', forOrg, {}, ['search_vector']);
-  await seedTable('companies', 'companies', forOrg, {}, ['search_vector']);
+  await seedTable('contacts', 'contacts', forOrg);
+  await seedTable('companies', 'companies', forOrg);
   await seedTable('leads', 'leads', forOrg);
   await seedTable('calls', 'calls', forOrg);
 
@@ -219,7 +280,7 @@ async function seed() {
   await seedTable('gabinet_treatments', 'gabinetTreatments', forOrg);
   await seedTable('gabinet_treatment_variants', 'gabinetTreatmentVariants', forOrg);
   await seedTable('gabinet_treatment_packages', 'gabinetTreatmentPackages', forOrg);
-  await seedTable('gabinet_patients', 'gabinetPatients', forOrg, {}, ['search_vector']);
+  await seedTable('gabinet_patients', 'gabinetPatients', forOrg);
   await seedTable('gabinet_appointments', 'gabinetAppointments', forOrg);
   await seedTable('gabinet_documents', 'gabinetDocuments', forOrg);
   await seedTable('gabinet_document_templates', 'gabinetDocumentTemplates', forOrg);
@@ -257,13 +318,21 @@ async function seed() {
     }
   }
 
+  if (unknownColumnReports.size > 0) {
+    console.log('\n⚠ Dropped unknown columns (not in Supabase schema):');
+    for (const [table, cols] of unknownColumnReports) {
+      console.log(`  ${table}: ${[...cols].sort().join(', ')}`);
+    }
+  }
+
   // ── Verify contacts specifically ──
   console.log('\n═══ Verification ═══');
-  
+
   // Re-enable FK triggers
   console.log('\nRe-enabling FK triggers...');
   for (const t of tables) {
-    await runSQL(`ALTER TABLE public."${t.tablename}" ENABLE TRIGGER ALL`).catch(() => {});
+    const tableName = t.tablename as string;
+    await runSQL(`ALTER TABLE public."${tableName}" ENABLE TRIGGER ALL`).catch(() => {});
   }
   
   const { count: contactCount } = await sb.from('contacts').select('*', { count: 'exact', head: true }).eq('organization_id', ORG_ID);

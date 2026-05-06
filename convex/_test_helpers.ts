@@ -1,21 +1,167 @@
-// Stub — real implementation in project root _test_helpers.ts.bak
-// Uses import.meta.glob which is Vite-only and breaks Convex deploy.
-// Tests run via Vitest which uses the .bak file directly.
+// Test helpers for convex-test based unit tests.
+//
+// `import.meta.glob` is a Vite-only feature. To keep this file safe to bundle
+// into the Convex deploy (where `import.meta.glob` is undefined and would
+// throw), the call is deferred into `createTestCtx` so it never runs at
+// module-load time. Vite/Vitest still transform the call statically into a
+// module map, so vitest tests get the real implementation.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { convexTest } from "convex-test";
+import schema from "./schema";
+import type { Id } from "./_generated/dataModel";
 
-export function createTestCtx(): any {
-  throw new Error("Not available in Convex runtime");
+/**
+ * Create a fresh convex-test instance with our schema.
+ */
+export function createTestCtx() {
+  const modules = (
+    import.meta as ImportMeta & {
+      glob: (pattern: string) => Record<string, () => Promise<any>>;
+    }
+  ).glob("./**/!(*.test).*s");
+  return convexTest(schema, modules);
 }
 
-export async function seedTestUser(_t: any): Promise<any> {
-  throw new Error("Not available in Convex runtime");
+/**
+ * Seed a test user + org + membership, returning IDs needed for test calls.
+ * Also returns an identity that makes auth.getUserId(ctx) resolve to the user.
+ */
+export async function seedTestUser(
+  t: ReturnType<typeof convexTest>,
+  opts?: { role?: "owner" | "admin" | "member" },
+) {
+  const role = opts?.role ?? "owner";
+
+  const ids = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", {
+      name: "Test User",
+      email: "test@example.com",
+    });
+
+    const organizationId = await ctx.db.insert("organizations", {
+      name: "Test Org",
+      slug: "test-org",
+      ownerId: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.insert("teamMemberships", {
+      organizationId,
+      userId,
+      role,
+      joinedAt: Date.now(),
+    });
+
+    return { userId, organizationId };
+  });
+
+  // auth.getUserId splits identity.subject by "|" and takes first part
+  const identity = {
+    subject: `${ids.userId}|fake-session-id`,
+    issuer: "test",
+    tokenIdentifier: `test|${ids.userId}`,
+  };
+
+  return { ...ids, identity };
 }
 
-export async function seedSecondUser(_t: any, _orgId: any): Promise<any> {
-  throw new Error("Not available in Convex runtime");
+/**
+ * Seed a second user in the same org (useful for resource/employee tests).
+ */
+export async function seedSecondUser(
+  t: ReturnType<typeof convexTest>,
+  organizationId: Id<"organizations">,
+  opts?: { role?: "owner" | "admin" | "member" },
+) {
+  const role = opts?.role ?? "member";
+
+  const ids = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", {
+      name: "Second User",
+      email: "second@example.com",
+    });
+
+    await ctx.db.insert("teamMemberships", {
+      organizationId,
+      userId,
+      role,
+      joinedAt: Date.now(),
+    });
+
+    return { userId };
+  });
+
+  const identity = {
+    subject: `${ids.userId}|fake-session-id-2`,
+    issuer: "test",
+    tokenIdentifier: `test|${ids.userId}`,
+  };
+
+  return { ...ids, identity };
 }
 
-export async function seedGabinetPrereqs(_t: any, _orgId: any, _userId: any): Promise<any> {
-  throw new Error("Not available in Convex runtime");
+/**
+ * Seed gabinet prerequisites: patient, treatment, employee.
+ * Returns IDs needed for creating appointments.
+ */
+export async function seedGabinetPrereqs(
+  t: ReturnType<typeof convexTest>,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">,
+) {
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+
+    const patientId = await ctx.db.insert("gabinetPatients", {
+      organizationId,
+      firstName: "Jan",
+      lastName: "Kowalski",
+      email: "jan@example.com",
+      isActive: true,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const treatmentId = await ctx.db.insert("gabinetTreatments", {
+      organizationId,
+      name: "Consultation",
+      duration: 30,
+      price: 100,
+      isActive: true,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Register user as gabinet employee qualified for the treatment
+    await ctx.db.insert("gabinetEmployees", {
+      organizationId,
+      userId,
+      role: "doctor",
+      qualifiedTreatmentIds: [treatmentId],
+      isActive: true,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Seed working hours for all 7 days (Mon-Sun, 08:00-18:00)
+    for (let day = 0; day <= 6; day++) {
+      await ctx.db.insert("gabinetWorkingHours", {
+        organizationId,
+        dayOfWeek: day,
+        startTime: "08:00",
+        endTime: "18:00",
+        isOpen: true,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { patientId, treatmentId };
+  });
 }

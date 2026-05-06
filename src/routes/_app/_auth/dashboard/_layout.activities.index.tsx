@@ -107,6 +107,7 @@ function ActivitiesPage() {
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
   const [searchValue, setSearchValue] = useState("");
@@ -116,6 +117,7 @@ function ActivitiesPage() {
     // Switch to "open" view which shows only incomplete activities
     onViewChange("open");
   });
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
@@ -373,6 +375,8 @@ function ActivitiesPage() {
         onViewChange={onViewChange}
         onCreateView={onCreateView}
         filterableFields={filterableFields}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         onFiltersChange={setActiveFilters}
         searchValue={searchValue}
         onSearchChange={setSearchValue}

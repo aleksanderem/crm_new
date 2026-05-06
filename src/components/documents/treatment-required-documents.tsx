@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -62,6 +61,12 @@ interface TreatmentRequiredDocumentsProps {
   requiredFormTemplates: RequiredFormTemplate[];
 }
 
+interface FormTemplate {
+  _id: Id<"formTemplates">;
+  name: string;
+  description?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -85,7 +90,7 @@ export function TreatmentRequiredDocuments({
 
   // Fetch all form templates to resolve names and for the picker (Supabase)
   const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
-  const { data: allTemplates, isLoading: templatesLoading } = useQuery({
+  const { data: allTemplatesRaw, isLoading: templatesLoading } = useQuery({
     queryKey: ["documents.templates.listByEntityType", organizationId, "treatment"],
     queryFn: () =>
       listTemplatesByEntityType({
@@ -94,8 +99,9 @@ export function TreatmentRequiredDocuments({
       }),
     enabled: !!organizationId,
   });
+  const allTemplates = allTemplatesRaw as unknown as FormTemplate[] | undefined;
 
-  const templateMap = new Map(
+  const templateMap = new Map<Id<"formTemplates">, FormTemplate>(
     (allTemplates ?? []).map((tpl) => [tpl._id, tpl]),
   );
 

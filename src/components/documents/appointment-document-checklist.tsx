@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -60,6 +59,13 @@ interface FormDocument {
   responseData?: string;
   signingToken?: string;
   signingEmailSentAt?: number;
+  signatureData?: string;
+  signedByName?: string;
+}
+
+interface FormTemplate {
+  templateType?: string;
+  contentJson?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +122,7 @@ export function AppointmentDocumentChecklist({
   // Viewing document (Supabase-primary actions)
   const getDocumentById = useAction(api.documents.documents.getById);
   const getTemplateById = useAction(api.documents.templates.getById);
-  const { data: viewingDoc, isLoading: viewingDocLoading } = useQuery({
+  const { data: viewingDocRaw, isLoading: viewingDocLoading } = useQuery({
     queryKey: ["documents.documents.getById", organizationId, viewingDocId],
     queryFn: () =>
       getDocumentById({
@@ -125,16 +131,18 @@ export function AppointmentDocumentChecklist({
       }),
     enabled: !!viewingDocId,
   });
+  const viewingDoc = viewingDocRaw as unknown as FormDocument | undefined;
 
-  const { data: viewingTemplate } = useQuery({
+  const { data: viewingTemplateRaw } = useQuery({
     queryKey: ["documents.templates.getById", organizationId, viewingDoc?.templateId],
     queryFn: () =>
       getTemplateById({
         organizationId,
-        templateId: viewingDoc?.templateId as string,
+        templateId: String(viewingDoc?.templateId ?? ""),
       }),
     enabled: !!viewingDoc?.templateId,
   });
+  const viewingTemplate = viewingTemplateRaw as unknown as FormTemplate | undefined;
 
   const handleDocumentCreated = useCallback(() => {
     refetch();
@@ -164,7 +172,7 @@ export function AppointmentDocumentChecklist({
     );
   }
 
-  const allDocs = (documents ?? []) as FormDocument[];
+  const allDocs = (documents ?? []) as unknown as FormDocument[];
 
   // Split by timing
   const beforeDocs = allDocs.filter((d) => d.timing === "before_start");
@@ -526,7 +534,7 @@ export function useAppointmentDocumentCounts(
     enabled: !!organizationId && !!appointmentId,
   });
 
-  const allDocs = (documents ?? []) as FormDocument[];
+  const allDocs = (documents ?? []) as unknown as FormDocument[];
 
   const beforeDocs = allDocs.filter((d) => d.timing === "before_start");
   const afterDocs = allDocs.filter((d) => d.timing === "after_completion");

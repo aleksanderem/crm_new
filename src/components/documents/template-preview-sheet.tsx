@@ -342,13 +342,15 @@ export function TemplatePreviewSheet({
     enabled: entityType === "employee" && !!organizationId,
   }) as { data: { page: any[] } | { page: any[]; isDone: boolean; continueCursor: string } | Array<any> | undefined };
 
+  const listTreatmentsAction = useAction(api.gabinet.treatments.list);
   const { data: treatments } = useQuery({
-    ...convexQuery(api.gabinet.treatments.list, {
+    queryKey: ["gabinet.treatments.list", organizationId, "preview"],
+    queryFn: () => listTreatmentsAction({
       organizationId,
       paginationOpts: { numItems: 50, cursor: null },
     }),
-    enabled: entityType === "treatment",
-  });
+    enabled: entityType === "treatment" && !!organizationId,
+  }) as { data: { page: any[] } | undefined };
 
   // Normalize entity lists to a common shape
   const entityList = useMemo((): Array<Record<string, unknown>> => {

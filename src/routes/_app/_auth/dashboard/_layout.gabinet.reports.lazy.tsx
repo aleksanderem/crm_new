@@ -1,11 +1,17 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
+import Papa from "papaparse";
+import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { useMemo, useState } from "react";
+import { SidePanel } from "@/components/crm/side-panel";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { Input } from "@/components/ui/input";
+import { Label as FieldLabel } from "@/components/ui/label";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EllipsisVerticalIcon } from "@/lib/ez-icons";
 import {
@@ -77,9 +83,12 @@ const UTILIZATION_COLORS = [
   "var(--chart-5)",
 ];
 
-type DateRangeKey = "7d" | "30d" | "90d" | "365d";
+type DateRangeKey = "7d" | "30d" | "90d" | "365d" | "custom";
 
-function getDateRange(key: DateRangeKey): { startDate: string; endDate: string } {
+function getPresetDateRange(key: Exclude<DateRangeKey, "custom">): {
+  startDate: string;
+  endDate: string;
+} {
   const today = new Date();
   const past = new Date(today);
   const days = key === "7d" ? 7 : key === "30d" ? 30 : key === "90d" ? 90 : 365;
@@ -788,21 +797,55 @@ function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
+  const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
+  const todayIso = new Date().toISOString().split("T")[0];
+  const defaultCustomStart = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split("T")[0];
+  }, []);
+  const [customStart, setCustomStart] = useState<string>(defaultCustomStart);
+  const [customEnd, setCustomEnd] = useState<string>(todayIso);
+  const revenueSectionRef = useRef<HTMLDivElement>(null);
+  const treatmentStatsSectionRef = useRef<HTMLDivElement>(null);
 
-  const { startDate, endDate } = useMemo(
-    () => getDateRange(dateRange),
-    [dateRange]
-  );
+  const { startDate, endDate } = useMemo(() => {
+    if (dateRange === "custom") {
+      return { startDate: customStart, endDate: customEnd };
+    }
+    return getPresetDateRange(dateRange);
+  }, [dateRange, customStart, customEnd]);
 
   const rangeLabel = useMemo(() => {
-    const labels: Record<DateRangeKey, string> = {
+    const labels: Record<Exclude<DateRangeKey, "custom">, string> = {
       "7d": t("gabinet.reports.last7days"),
       "30d": t("gabinet.reports.last30days"),
       "90d": t("gabinet.reports.last90days"),
       "365d": t("gabinet.reports.lastYear"),
     };
+    if (dateRange === "custom") {
+      return `${customStart} – ${customEnd}`;
+    }
     return labels[dateRange];
-  }, [dateRange, t]);
+  }, [dateRange, customStart, customEnd, t]);
+
+  useSidebarDispatch("filterByDate", () => setDateFilterPanelOpen(true));
+  useSidebarDispatch("viewRevenueReport", () => {
+    revenueSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  useSidebarDispatch("viewTreatmentStats", () => {
+    treatmentStatsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  const handleApplyCustomRange = useCallback(() => {
+    if (!customStart || !customEnd) return;
+    if (customStart > customEnd) {
+      toast.error(t("common.invalidDateRange", "End date must be after start date"));
+      return;
+    }
+    setDateRange("custom");
+    setDateFilterPanelOpen(false);
+  }, [customStart, customEnd, t]);
 
   const { data: appointments, isLoading: loadingAppointments } =
     useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate);
@@ -1003,6 +1046,70 @@ function GabinetReports() {
     return bucketizePairs(Array.from(map.entries()));
   }, [appointments, treatmentMap]);
 
+  const handleExportReport = useCallback(() => {
+    type Row = {
+      section: string;
+      metric: string;
+      value: number | string;
+      revenue: number | string;
+    };
+    const rows: Row[] = [];
+    rows.push({ section: "summary", metric: "totalAppointments", value: totalAppointments, revenue: "" });
+    rows.push({ section: "summary", metric: "completed", value: completedCount, revenue: "" });
+    rows.push({ section: "summary", metric: "cancelled", value: cancelledCount, revenue: "" });
+    rows.push({ section: "summary", metric: "totalPatients", value: totalPatients, revenue: "" });
+    rows.push({ section: "summary", metric: "completionRate", value: completionRate, revenue: "" });
+    rows.push({ section: "revenue", metric: "today", value: dailyRevenue, revenue: "" });
+    rows.push({ section: "revenue", metric: "week", value: weeklyRevenue, revenue: "" });
+    rows.push({ section: "revenue", metric: "month", value: monthlyRevenue, revenue: "" });
+    for (const tr of treatmentStats) {
+      rows.push({ section: "treatment", metric: tr.name, value: tr.count, revenue: tr.revenue });
+    }
+    for (const s of statusStats) {
+      rows.push({ section: "status", metric: s.status, value: s.count, revenue: "" });
+    }
+    for (const d of dailyStats) {
+      rows.push({ section: "daily", metric: d.date, value: d.count, revenue: "" });
+    }
+    for (const e of employeeStats) {
+      rows.push({
+        section: "employee",
+        metric: e.name,
+        value: e.count,
+        revenue: e.completedCount,
+      });
+    }
+    const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gabinet_report_${startDate}_${endDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(t("nav.actions.exportReport"));
+  }, [
+    totalAppointments,
+    completedCount,
+    cancelledCount,
+    totalPatients,
+    completionRate,
+    dailyRevenue,
+    weeklyRevenue,
+    monthlyRevenue,
+    treatmentStats,
+    statusStats,
+    dailyStats,
+    employeeStats,
+    startDate,
+    endDate,
+    t,
+  ]);
+
+  useSidebarDispatch("exportReport", handleExportReport);
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 p-6">
@@ -1030,7 +1137,13 @@ function GabinetReports() {
         />
         <Select
           value={dateRange}
-          onValueChange={(v) => setDateRange(v as DateRangeKey)}
+          onValueChange={(v) => {
+            if (v === "custom") {
+              setDateFilterPanelOpen(true);
+              return;
+            }
+            setDateRange(v as DateRangeKey);
+          }}
         >
           <SelectTrigger className="w-40 shrink-0" aria-label={t("gabinet.reports.dateRange")}>
             <SelectValue />
@@ -1040,6 +1153,7 @@ function GabinetReports() {
             <SelectItem value="30d">{t("gabinet.reports.last30days")}</SelectItem>
             <SelectItem value="90d">{t("gabinet.reports.last90days")}</SelectItem>
             <SelectItem value="365d">{t("gabinet.reports.lastYear")}</SelectItem>
+            <SelectItem value="custom">{t("common.custom", "Custom")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1082,15 +1196,17 @@ function GabinetReports() {
       </div>
 
       {/* Revenue Summary */}
-      <RevenueSummaryCard
-        dailyRevenue={dailyRevenue}
-        weeklyRevenue={weeklyRevenue}
-        monthlyRevenue={monthlyRevenue}
-        currency={defaultCurrency}
-      />
+      <div ref={revenueSectionRef} className="scroll-mt-6">
+        <RevenueSummaryCard
+          dailyRevenue={dailyRevenue}
+          weeklyRevenue={weeklyRevenue}
+          monthlyRevenue={monthlyRevenue}
+          currency={defaultCurrency}
+        />
+      </div>
 
       {/* Treatment Popularity + Status Distribution */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div ref={treatmentStatsSectionRef} className="grid gap-6 lg:grid-cols-2 scroll-mt-6">
         <TreatmentPopularityChart data={treatmentStats} rangeLabel={rangeLabel} />
         <StatusDistributionChart
           data={statusStats}
@@ -1106,6 +1222,38 @@ function GabinetReports() {
 
       {/* Daily Appointment Volume */}
       <DailyVolumeChart data={dailyStats} rangeLabel={rangeLabel} />
+
+      <SidePanel
+        open={dateFilterPanelOpen}
+        onOpenChange={setDateFilterPanelOpen}
+        title={t("nav.actions.filterByDate")}
+        onSubmit={handleApplyCustomRange}
+        submitLabel={t("common.apply", "Apply")}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="report-custom-start">{t("common.startDate")}</FieldLabel>
+            <Input
+              id="report-custom-start"
+              type="date"
+              value={customStart}
+              max={customEnd || undefined}
+              onChange={(e) => setCustomStart(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="report-custom-end">{t("common.endDate")}</FieldLabel>
+            <Input
+              id="report-custom-end"
+              type="date"
+              value={customEnd}
+              min={customStart || undefined}
+              max={todayIso}
+              onChange={(e) => setCustomEnd(e.target.value)}
+            />
+          </div>
+        </div>
+      </SidePanel>
     </div>
   );
 }

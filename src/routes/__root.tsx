@@ -7,6 +7,7 @@ import {
 import React, { Suspense } from "react";
 import { Helmet } from "react-helmet-async";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
+import { Toaster } from "@/components/ui/sonner";
 
 const TanStackRouterDevtools =
   process.env.NODE_ENV === "production"
@@ -39,6 +40,7 @@ export const Route = createRootRouteWithContext<{
         <Helmet>
           <title>{title}</title>
         </Helmet>
+        <Toaster richColors position="top-right" />
         <Suspense>
           <TanStackRouterDevtools />
         </Suspense>

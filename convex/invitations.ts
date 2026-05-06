@@ -69,7 +69,7 @@ export const create = action({
     role: orgRoleValidator,
   },
   handler: async (ctx, args) => {
-    const invitationId = await ctx.runMutation(
+    const created = await ctx.runMutation(
       internal.invitations._createInternal,
       {
         organizationId: args.organizationId,
@@ -78,16 +78,27 @@ export const create = action({
       },
     );
 
-    // Also write to Supabase
+    // Mirror to Supabase so the team-settings page (which reads from
+    // Supabase) sees the new pending invitation immediately.
     try {
       const db = createSupabaseDb();
-      const inv = await db.get("invitations", invitationId);
-      // invitation already written by internal mutation + scheduler
-    } catch {
-      // best-effort
+      await db.insert("invitations", {
+        _id: created.invitationId,
+        organizationId: args.organizationId,
+        email: created.email,
+        role: created.role,
+        token: created.token,
+        status: created.status,
+        invitedBy: created.invitedBy,
+        expiresAt: created.expiresAt,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      });
+    } catch (e) {
+      console.error("[invitations.create] Supabase mirror failed:", e);
     }
 
-    return invitationId;
+    return created.invitationId;
   },
 });
 
@@ -173,7 +184,17 @@ export const _createInternal = internalMutation({
       details: JSON.stringify({ email: args.email, role: args.role }),
     });
 
-    return String(invitationId);
+    return {
+      invitationId: String(invitationId),
+      email: args.email,
+      role: args.role,
+      token,
+      status: "pending" as const,
+      invitedBy: String(user._id),
+      expiresAt,
+      createdAt: now,
+      updatedAt: now,
+    };
   },
 });
 
@@ -301,6 +322,18 @@ export const cancel = action({
       organizationId: args.organizationId,
       invitationId: args.invitationId as any,
     });
+
+    // Mirror status change to Supabase so the team page (which reads
+    // pending invitations from Supabase) updates.
+    try {
+      const db = createSupabaseDb();
+      await db.patch("invitations", args.invitationId, {
+        status: "expired",
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[invitations.cancel] Supabase mirror failed:", e);
+    }
   },
 });
 
@@ -333,10 +366,23 @@ export const resend = action({
     invitationId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runMutation(internal.invitations._resendInternal, {
+    const updated = await ctx.runMutation(internal.invitations._resendInternal, {
       organizationId: args.organizationId,
       invitationId: args.invitationId as any,
     });
+
+    // Mirror new expiry to Supabase so any consumer reading from there
+    // sees the refreshed expiresAt.
+    try {
+      const db = createSupabaseDb();
+      await db.patch("invitations", args.invitationId, {
+        expiresAt: updated.expiresAt,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (e) {
+      console.error("[invitations.resend] Supabase mirror failed:", e);
+    }
+
     return args.invitationId;
   },
 });
@@ -357,9 +403,10 @@ export const _resendInternal = internalMutation({
       throw new Error("Invitation is no longer pending");
     }
 
-    await ctx.db.patch(args.invitationId, {
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      updatedAt: Date.now(),
-    });
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const updatedAt = Date.now();
+    await ctx.db.patch(args.invitationId, { expiresAt, updatedAt });
+
+    return { expiresAt, updatedAt };
   },
 });

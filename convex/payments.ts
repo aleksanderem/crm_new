@@ -4,6 +4,8 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "./_helpers/auth";
+import { logAudit } from "./auditLog";
+import { logActivity } from "./_helpers/activities";
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -221,7 +223,6 @@ export const _createPaymentSideEffects = internalMutation({
     currency: v.string(),
   },
   handler: async (ctx, args) => {
-    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: args.userId,
@@ -243,9 +244,6 @@ export const _markPaidSideEffects = internalMutation({
     appointmentId: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
-    const { logActivity } = await import("./_helpers/activities");
-    const { logAudit } = await import("./auditLog");
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
@@ -275,7 +273,6 @@ export const _refundSideEffects = internalMutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { logAudit } = await import("./auditLog");
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: args.userId,

@@ -112,7 +112,7 @@ export const create = action({
     sources: v.any(),
     fieldOverrides: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -228,7 +228,7 @@ export const updateDraft = action({
     mimeType: v.optional(v.string()),
     fileSize: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     const db = createSupabaseDb();
     const instance = await db.get("documentInstances", args.id);
     if (!instance) throw new Error("Document not found");
@@ -281,7 +281,7 @@ export const updateStatus = action({
     status: statusValidator,
     assignedReviewerId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     const db = createSupabaseDb();
     const instance = await db.get("documentInstances", args.id);
     if (!instance) throw new Error("Document not found");
@@ -404,7 +404,7 @@ export const createFromFile = action({
     category: v.optional(v.string()),
     module: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -447,7 +447,7 @@ export const createFromFile = action({
 
 export const generateUploadUrl = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },

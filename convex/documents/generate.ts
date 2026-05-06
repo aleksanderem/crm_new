@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { resolveScope, EntityType } from "./scopeResolver";
+import { resolveScopeSupabase } from "./scopeResolver_supabase";
 import { resolveComponentsInContent } from "./resolveComponents";
 import { Id } from "../_generated/dataModel";
 
@@ -25,7 +26,6 @@ export const resolveEntityScope = action({
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    const { resolveScopeSupabase } = await import("./scopeResolver_supabase");
     return await resolveScopeSupabase(
       db,
       String(args.organizationId),
@@ -60,7 +60,6 @@ export const previewDocumentData = action({
     if (!template || String(template.organizationId) !== String(args.organizationId))
       throw new Error("Template not found");
 
-    const { resolveScopeSupabase } = await import("./scopeResolver_supabase");
     const scopeData = await resolveScopeSupabase(
       db,
       String(args.organizationId),

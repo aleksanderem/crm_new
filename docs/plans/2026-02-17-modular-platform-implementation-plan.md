@@ -1,6 +1,18 @@
 # Modular Platform Architecture — Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **STATUS — HISTORICAL / SUPERSEDED (as of 2026-05-06).** This plan dates to 2026-02-17, before the Supabase-primary migration. It is preserved as history per the convention in `docs/PLANS.md`; do **not** treat its dual-write guidance as current.
+>
+> What the plan describes vs. current reality:
+>
+> - **Phase 1 (Architecture Formalization, Tasks 1–7):** Implemented. `scheduledActivities` has `moduleRef`/`resourceId`, `gabinetAppointments` has `scheduledActivityId`, `platformProducts`/`productSubscriptions` exist, `verifyProductAccess` lives at `convex/_helpers/products.ts`, registries exist at `convex/gabinet/_registry.ts` and `convex/crm/_registry.ts`, and gabinet activity types are seeded in `convex/seedDefaults.ts`.
+> - **Phase 2 (Dual Write — Appointment ↔ scheduledActivity, Tasks 8–10):** **The "Convex-primary + dual-write" framing in this phase is obsolete.** Between 2026-04-19 and 2026-04-23 gabinet writes migrated to Supabase-primary (commits `ad7b5c5`, `fa93074`, `a29c5ff`, `7fb2d4a`). Mutations now write through `createSupabaseDb()` in `convex/_helpers/supabaseDb.ts`; the legacy `writeXToSupabase` internalActions remain only for backfill (see `convex/supabase/backfill.ts`). The `scheduledActivities` insert from `gabinet/appointments.ts` still happens, but it writes to the Supabase copy of that table — not a second Convex row. Conflict checking now uses `convex/gabinet/_availability_supabase.ts` rather than the original `_availability.ts`.
+> - **Phase 3 (Basic Billing, Tasks 11–13):** Implemented. `payments` table exists in `convex/schema/crm.ts`; `convex/payments.ts` exposes the documented CRUD/revenue API; appointment completion auto-creates pending payments.
+> - **Phase 4 (Backend Tests, Tasks 14–18):** Not implemented. No `convex/tests/` directory exists; no Vitest setup landed for these tests.
+> - **Phase 5 (SaaS Launch Prep, Tasks 19–21):** Implemented. Mutation-level `verifyProductAccess` gating, sidebar product gating, and platform-product seeding all exist.
+>
+> Read the rest of this document only as a record of what was originally proposed. For current architecture, see `docs/modules/platform-core.md`, `docs/modules/gabinet.md`, and the `convex/gabinet/*` source. For the migration that invalidated Phase 2's framing, see issues #161, #191, #218.
+
+---
 
 **Goal:** Formalize the modular platform architecture (registry pattern, shared calendar, dual-write appointments, product subscriptions, basic billing), complete Gabinet end-to-end, add tests, and prepare for multi-tenant SaaS launch.
 

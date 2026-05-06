@@ -128,6 +128,7 @@ function DocumentsPage() {
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] =
     useState<Id<"formDocuments"> | null>(null);
 
@@ -150,6 +151,7 @@ function DocumentsPage() {
 
   // --- Sidebar dispatches ---
   useSidebarDispatch("savedViews", () => setSavedViewsDialogOpen(true));
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
 
@@ -468,6 +470,8 @@ function DocumentsPage() {
         filterableFields={filterableFields}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t("documents.searchPlaceholder", "Szukaj po tytule...")}

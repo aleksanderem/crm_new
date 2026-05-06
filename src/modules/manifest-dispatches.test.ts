@@ -46,7 +46,6 @@ const KNOWN_ORPHANS: ReadonlySet<Orphan> = new Set<Orphan>([
   "src/modules/gabinet/manifest.ts::packages::viewExpiring",
   "src/modules/gabinet/manifest.ts::packages::assignPackage",
   "src/modules/gabinet/manifest.ts::documents::createFromTemplate",
-  "src/modules/gabinet/manifest.ts::documents::openFilter",
   "src/modules/gabinet/manifest.ts::documents::pendingSignatures",
   "src/modules/gabinet/manifest.ts::reports::exportReport",
   "src/modules/gabinet/manifest.ts::reports::filterByDate",

@@ -44,6 +44,7 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // ---------------------------------------------------------------------------
 // Route
@@ -95,6 +96,9 @@ function GabinetDocumentsPage() {
   const { categories } = useCategoryDefinitions(organizationId, "gabinetDocument");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
+
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
 
   // --- State ---
   const [searchValue, setSearchValue] = useState("");
@@ -475,6 +479,8 @@ function GabinetDocumentsPage() {
         onCreateView={onCreateView}
         onDeleteView={async (id) => { onDeleteView(id); }}
         filterableFields={filterableFields}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         createDialogOpen={savedViewsDialogOpen}
         onCreateDialogOpenChange={setSavedViewsDialogOpen}
         searchValue={searchValue}

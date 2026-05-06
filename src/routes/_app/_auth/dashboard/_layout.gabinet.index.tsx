@@ -362,8 +362,8 @@ function GabinetDashboard() {
         />
       </div>
 
-      {/* Today's schedule + Pending leaves + Nudges */}
-      <div ref={todayScheduleRef} className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 scroll-mt-6">
+      {/* Today's schedule + Pending leaves */}
+      <div ref={todayScheduleRef} className="grid gap-6 lg:grid-cols-2 scroll-mt-6">
         {/* Today's schedule */}
         <Card className="gap-0 py-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 py-3">

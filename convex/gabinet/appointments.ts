@@ -24,8 +24,15 @@ import {
 import { Id, Doc } from "../_generated/dataModel";
 import type {
   GabinetAppointmentRow,
+  GabinetEmployeeRow,
   GabinetPatientRow,
   GabinetTreatmentRow,
+  GabinetPackageUsageRow,
+  GabinetLoyaltyTransactionRow,
+  AppointmentWorkflowHistoryRow,
+  FormDocumentRow,
+  PaymentRow,
+  NoteRow,
   SupabasePaginationResult,
 } from "../_helpers/supabaseRows";
 import { logAudit } from "../auditLog";
@@ -2195,12 +2202,76 @@ export const cancelRecurringSeries = action({
   },
 });
 
+/**
+ * Treatment usage entry within an enriched package usage row — the raw
+ * `treatmentsUsed` array is augmented with a resolved `treatmentName`.
+ */
+export interface AppointmentFullDetailPackageTreatment {
+  treatmentId: string;
+  usedCount: number;
+  totalCount: number;
+  treatmentName: string | null;
+}
+
+/**
+ * Package usage row enriched with the package name, totals across all
+ * treatments, and a progress percentage. Returned by `getFullDetail`.
+ */
+export interface AppointmentFullDetailPackageUsage
+  extends Omit<GabinetPackageUsageRow, "treatmentsUsed"> {
+  packageName: string | null;
+  treatmentsUsed: AppointmentFullDetailPackageTreatment[];
+  totalUsed: number;
+  totalCount: number;
+  progressPercent: number;
+}
+
+/** Past appointment in the patient's history, enriched with the treatment row. */
+export interface AppointmentFullDetailHistoryEntry extends GabinetAppointmentRow {
+  treatment?: GabinetTreatmentRow;
+}
+
+/** Note row enriched with the resolved author display name. */
+export interface AppointmentFullDetailNote extends NoteRow {
+  authorName: string | null;
+}
+
+/**
+ * Employee row returned by the action. The Convex schema for
+ * `gabinetEmployees` doesn't define `name` or `image`, but the consumer
+ * code reads them as optional fallbacks (always `undefined` at runtime
+ * for this action — the underlying enrichment lives elsewhere). Kept on
+ * the type so call sites typecheck without `as` casts.
+ */
+export type AppointmentFullDetailEmployee = GabinetEmployeeRow & {
+  name?: string;
+  image?: string;
+};
+
+/** Full DTO returned by `getFullDetail`. */
+export interface AppointmentFullDetail {
+  appointment: GabinetAppointmentRow;
+  patient: GabinetPatientRow | null;
+  treatment: GabinetTreatmentRow | null;
+  employee: AppointmentFullDetailEmployee | null;
+  documents: FormDocumentRow[];
+  payments: PaymentRow[];
+  notes: AppointmentFullDetailNote[];
+  patientPackageUsage: AppointmentFullDetailPackageUsage[];
+  patientHistory: AppointmentFullDetailHistoryEntry[];
+  loyaltyBalance: number;
+  loyaltyTier: string | null;
+  loyaltyTransactions: GabinetLoyaltyTransactionRow[];
+  allPatientPayments: PaymentRow[];
+  workflowHistory: AppointmentWorkflowHistoryRow[];
+}
+
 export const getFullDetail = action({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<AppointmentFullDetail> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -2215,16 +2286,17 @@ export const getFullDetail = action({
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
 
-    const appointment = await db.get("gabinetAppointments", args.appointmentId);
-    if (!appointment || String(appointment.organizationId) !== orgIdStr) {
+    const appointmentRaw = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appointmentRaw || String(appointmentRaw.organizationId) !== orgIdStr) {
       throw new Error("Appointment not found");
     }
     if (
       perm.scope === "own" &&
-      String(appointment.createdBy) !== String(authResult.userId)
+      String(appointmentRaw.createdBy) !== String(authResult.userId)
     ) {
       throw new Error("Permission denied: you can only view your own records");
     }
+    const appointment = appointmentRaw as unknown as GabinetAppointmentRow;
 
     const patientId = String(appointment.patientId);
     const treatmentId = appointment.treatmentId
@@ -2233,18 +2305,18 @@ export const getFullDetail = action({
     const employeeId = String(appointment.employeeId);
 
     const [
-      patient,
-      treatment,
-      employee,
-      documents,
-      payments,
-      notes,
-      patientPackageUsage,
-      patientHistoryRaw,
+      patientRaw,
+      treatmentRaw,
+      employeeRaw,
+      documentsRaw,
+      paymentsRaw,
+      notesRaw,
+      patientPackageUsageRaw,
+      patientHistoryRawAll,
       loyaltyBalanceRow,
-      loyaltyTransactions,
-      allPatientPayments,
-      workflowHistory,
+      loyaltyTransactionsRaw,
+      allPatientPaymentsRaw,
+      workflowHistoryRaw,
     ] = await Promise.all([
       db.get("gabinetPatients", patientId),
       treatmentId ? db.get("gabinetTreatments", treatmentId) : Promise.resolve(null),
@@ -2294,6 +2366,18 @@ export const getFullDetail = action({
         .collect(),
     ]);
 
+    const patient = patientRaw as unknown as GabinetPatientRow | null;
+    const treatment = treatmentRaw as unknown as GabinetTreatmentRow | null;
+    const employee = employeeRaw as unknown as AppointmentFullDetailEmployee | null;
+    const documents = documentsRaw as unknown as FormDocumentRow[];
+    const payments = paymentsRaw as unknown as PaymentRow[];
+    const notes = notesRaw as unknown as NoteRow[];
+    const patientPackageUsage = patientPackageUsageRaw as unknown as GabinetPackageUsageRow[];
+    const patientHistoryRaw = patientHistoryRawAll as unknown as GabinetAppointmentRow[];
+    const loyaltyTransactions = loyaltyTransactionsRaw as unknown as GabinetLoyaltyTransactionRow[];
+    const allPatientPayments = allPatientPaymentsRaw as unknown as PaymentRow[];
+    const workflowHistory = workflowHistoryRaw as unknown as AppointmentWorkflowHistoryRow[];
+
     const patientHistory = patientHistoryRaw
       .filter((a) => String(a._id) !== args.appointmentId)
       .slice(0, 20);
@@ -2309,10 +2393,10 @@ export const getFullDetail = action({
     const historyTreatments = await Promise.all(
       historyTreatmentIds.map((id) => db.get("gabinetTreatments", id)),
     );
-    const treatmentMap = new Map(
+    const treatmentMap = new Map<string, GabinetTreatmentRow>(
       historyTreatments
         .filter((t): t is Record<string, unknown> => t !== null)
-        .map((t) => [String(t._id), t]),
+        .map((t) => [String(t._id), t as unknown as GabinetTreatmentRow]),
     );
 
     // Enrich package usage
@@ -2326,9 +2410,7 @@ export const getFullDetail = action({
     const pkgUsageTreatmentIds = Array.from(
       new Set(
         patientPackageUsage.flatMap((u) =>
-          ((u.treatmentsUsed as Array<{ treatmentId: string }>) ?? []).map((t) =>
-            String(t.treatmentId),
-          ),
+          (u.treatmentsUsed ?? []).map((t) => String(t.treatmentId)),
         ),
       ),
     );
@@ -2336,41 +2418,40 @@ export const getFullDetail = action({
       Promise.all(pkgUsagePkgIds.map((id) => db.get("gabinetTreatmentPackages", id))),
       Promise.all(pkgUsageTreatmentIds.map((id) => db.get("gabinetTreatments", id))),
     ]);
-    const pkgDefMap = new Map(
+    const pkgDefMap = new Map<string, Record<string, unknown>>(
       pkgDefs
         .filter((p): p is Record<string, unknown> => p !== null)
         .map((p) => [String(p._id), p]),
     );
-    const pkgTreatmentMap = new Map(
+    const pkgTreatmentMap = new Map<string, Record<string, unknown>>(
       pkgTreatmentDefs
         .filter((t): t is Record<string, unknown> => t !== null)
         .map((t) => [String(t._id), t]),
     );
 
-    const enrichedPatientPackageUsage = patientPackageUsage.map((u) => {
-      const pkgDef = pkgDefMap.get(String(u.packageId));
-      const treatmentsUsedArr =
-        (u.treatmentsUsed as Array<{
-          treatmentId: string;
-          usedCount: number;
-          totalCount: number;
-        }>) ?? [];
-      const enrichedTreatments = treatmentsUsedArr.map((t) => ({
-        ...t,
-        treatmentName:
-          (pkgTreatmentMap.get(String(t.treatmentId))?.name as string | null) ?? null,
-      }));
-      const totalUsed = enrichedTreatments.reduce((s, t) => s + (t.usedCount ?? 0), 0);
-      const totalCount = enrichedTreatments.reduce((s, t) => s + (t.totalCount ?? 0), 0);
-      return {
-        ...u,
-        packageName: (pkgDef?.name as string | null) ?? null,
-        treatmentsUsed: enrichedTreatments,
-        totalUsed,
-        totalCount,
-        progressPercent: totalCount > 0 ? Math.round((totalUsed / totalCount) * 100) : 0,
-      };
-    });
+    const enrichedPatientPackageUsage: AppointmentFullDetailPackageUsage[] =
+      patientPackageUsage.map((u) => {
+        const pkgDef = pkgDefMap.get(String(u.packageId));
+        const treatmentsUsedArr = u.treatmentsUsed ?? [];
+        const enrichedTreatments: AppointmentFullDetailPackageTreatment[] =
+          treatmentsUsedArr.map((t) => ({
+            treatmentId: String(t.treatmentId),
+            usedCount: Number(t.usedCount ?? 0),
+            totalCount: Number(t.totalCount ?? 0),
+            treatmentName:
+              (pkgTreatmentMap.get(String(t.treatmentId))?.name as string | null) ?? null,
+          }));
+        const totalUsed = enrichedTreatments.reduce((s, t) => s + (t.usedCount ?? 0), 0);
+        const totalCount = enrichedTreatments.reduce((s, t) => s + (t.totalCount ?? 0), 0);
+        return {
+          ...u,
+          packageName: (pkgDef?.name as string | null) ?? null,
+          treatmentsUsed: enrichedTreatments,
+          totalUsed,
+          totalCount,
+          progressPercent: totalCount > 0 ? Math.round((totalUsed / totalCount) * 100) : 0,
+        };
+      });
 
     // Enrich notes with author names
     const noteAuthorIds = Array.from(
@@ -2383,12 +2464,15 @@ export const getFullDetail = action({
     const noteAuthors = await Promise.all(
       noteAuthorIds.map((id) => db.get("users", id).catch(() => null)),
     );
-    const noteAuthorMap = new Map(
+    const noteAuthorMap = new Map<string, string | null>(
       noteAuthors
         .filter((u): u is Record<string, unknown> => u !== null)
-        .map((u) => [String(u._id), (u.name as string | null) ?? (u.email as string | null)]),
+        .map((u) => [
+          String(u._id),
+          (u.name as string | null) ?? (u.email as string | null),
+        ]),
     );
-    const enrichedNotes = notes.map((n) => ({
+    const enrichedNotes: AppointmentFullDetailNote[] = notes.map((n) => ({
       ...n,
       authorName: noteAuthorMap.get(String(n.createdBy)) ?? null,
     }));

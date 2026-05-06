@@ -106,15 +106,15 @@ function GabinetDocumentsPage() {
   const [searchValue, setSearchValue] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
-  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [, setActiveFilters] = useState<FilterCondition[]>([]);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
 
   // --- System views ---
   const systemViews = useMemo((): SavedView[] => [
     { id: "all", name: t("gabinet.formDocuments.views.all", "Wszystkie"), isSystem: true, isDefault: true },
-    { id: "draft", name: t("gabinet.formDocuments.views.draft", "Wersje robocze"), isSystem: true },
-    { id: "pending_signature", name: t("gabinet.formDocuments.views.pendingSignature", "Oczekujące podpisu"), isSystem: true },
-    { id: "signed", name: t("gabinet.formDocuments.views.signed", "Podpisane"), isSystem: true },
+    { id: "draft", name: t("gabinet.formDocuments.views.draft", "Wersje robocze"), isSystem: true, isDefault: false },
+    { id: "pending_signature", name: t("gabinet.formDocuments.views.pendingSignature", "Oczekujące podpisu"), isSystem: true, isDefault: false },
+    { id: "signed", name: t("gabinet.formDocuments.views.signed", "Podpisane"), isSystem: true, isDefault: false },
   ], [t]);
 
   // --- Saved views ---
@@ -166,11 +166,15 @@ function GabinetDocumentsPage() {
 
   // Build user lookup from org members
   const userMap = useMemo(() => {
-    if (!members)
-      return new Map<string, { name?: string; email?: string }>();
     const map = new Map<string, { name?: string; email?: string }>();
+    if (!members) return map;
     for (const m of members) {
-      if (m.user) map.set(m.user._id as string, m.user);
+      if (m.user) {
+        map.set(m.user._id as string, {
+          name: m.user.name ?? undefined,
+          email: m.user.email ?? undefined,
+        });
+      }
     }
     return map;
   }, [members]);
@@ -586,21 +590,15 @@ function GabinetDocumentsPage() {
           if (!open) setSelectedId(undefined);
         }}
         title={selectedDoc?.title ?? "—"}
-        description={
-          selectedDoc && (
-            <span className="flex items-center gap-2">
-              <DocumentStatusBadge
-                status={selectedDoc.status as any}
-              />
-              <span className="text-xs">
-                {formatDate(selectedDoc.createdAt)}
-              </span>
-            </span>
-          )
-        }
       >
         {selectedDoc && (
           <>
+            <div className="flex items-center gap-2 -mt-2 mb-2">
+              <DocumentStatusBadge status={selectedDoc.status as any} />
+              <span className="text-xs text-muted-foreground">
+                {formatDate(selectedDoc.createdAt)}
+              </span>
+            </div>
             {/* Statistics section */}
             <div className="space-y-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">

@@ -91,13 +91,14 @@ function EmployeesIndex() {
   const createEmployee = useAction(api.gabinet.employees.create);
   const removeEmployee = useAction(api.gabinet.employees.remove);
 
-  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
+  const { data: employeesRaw } = useSupabaseGabinetEmployeesList(organizationId);
+  const employees = employeesRaw as unknown as Employee[] | undefined;
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const { data: allTreatmentsRaw } = useSupabaseGabinetTreatmentsList(organizationId);
   const treatments = useMemo(
-    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive),
+    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive) as unknown as Doc<"gabinetTreatments">[],
     [allTreatmentsRaw],
   );
 
@@ -126,7 +127,7 @@ function EmployeesIndex() {
   // Users not yet registered as employees
   const availableUsers = useMemo(() => {
     if (!members || !employees) return [] as Array<{ _id: Id<"users">; name?: string | null; email?: string | null }>;
-    const empUserIds = new Set(employees.map((e) => e.userId));
+    const empUserIds = new Set<string>(employees.map((e) => e.userId as string));
     return members
       .filter((m) => m.user && !empUserIds.has(m.userId))
       .map((m) => ({ _id: m.user!._id as Id<"users">, name: m.user!.name, email: m.user!.email }));

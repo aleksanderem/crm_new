@@ -144,7 +144,8 @@ function PatientsIndex() {
     [t, tags, categories],
   );
 
-  const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsRaw = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
+  const patients = patientsRaw as unknown as Patient[];
 
   const {
     views,

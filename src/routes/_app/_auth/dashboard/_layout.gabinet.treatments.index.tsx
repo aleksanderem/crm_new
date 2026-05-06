@@ -154,7 +154,8 @@ function TreatmentsIndex() {
     [t, tags, categories],
   );
 
-  const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: allTreatmentsRaw = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
+  const allTreatments = allTreatmentsRaw as unknown as Treatment[];
 
   const {
     views,

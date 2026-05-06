@@ -280,7 +280,7 @@ function TreatmentDetail() {
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
-    return new Set((treatmentEmployees ?? []).map((e) => e._id));
+    return new Set<string>((treatmentEmployees ?? []).map((e) => e._id as string));
   }, [treatmentEmployees]);
 
   const unassignedEmployees = useMemo(() => {

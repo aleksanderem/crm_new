@@ -2,7 +2,6 @@ import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY } from "@cvx/env";
 

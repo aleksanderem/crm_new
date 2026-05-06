@@ -73,7 +73,7 @@ export const auditAll = internalAction({
       let convexCount: number;
       try {
         convexCount = await ctx.runQuery(
-          internal.supabase["sync-audit"]._countConvexTable,
+          internal.supabase.syncAudit._countConvexTable,
           {
             table: pair.convexTable,
             organizationId: args.organizationId

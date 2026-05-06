@@ -3,8 +3,6 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { verifyProductAccess } from "../_helpers/products";
-import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 

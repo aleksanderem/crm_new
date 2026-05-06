@@ -47,7 +47,7 @@ export const markAsRead = action({
     notificationId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       // notifications are user-scoped, we pass a dummy org to verify auth
       // Actually notifications use requireUser, not verifyOrgAccess

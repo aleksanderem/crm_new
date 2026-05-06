@@ -1,4 +1,4 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { query, action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";

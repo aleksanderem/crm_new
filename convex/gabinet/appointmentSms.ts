@@ -157,7 +157,7 @@ export const listByAppointment = query({
 export const queueAutomationSms = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.string(),
+    appointmentId: v.id("gabinetAppointments"),
     phone: v.string(),
     message: v.string(),
     eventType: v.string(),
@@ -236,7 +236,7 @@ export const queueAutomationSms = internalMutation({
 export const queueConfirmationRequest = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.string(),
+    appointmentId: v.id("gabinetAppointments"),
     reminderId: v.optional(v.id("appointmentReminders")),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
   },
@@ -462,19 +462,25 @@ export const processIncomingMessage = internalMutation({
       updatedAt: now,
     });
 
-    const matchingAppointment = matchingOutbound?.appointmentId
-      ? await ctx.db.get(matchingOutbound.appointmentId)
+    const matchingAppointmentId = matchingOutbound?.appointmentId as
+      | Id<"gabinetAppointments">
+      | undefined;
+    const matchingPatientId = matchingOutbound?.patientId as
+      | Id<"gabinetPatients">
+      | undefined;
+    const matchingAppointment = matchingAppointmentId
+      ? await ctx.db.get(matchingAppointmentId)
       : null;
 
     if (
       matchingAppointment &&
       matchingAppointment.organizationId === config.organizationId &&
-      (matchingOutbound?.appointmentId || matchingOutbound?.patientId)
+      (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
         organizationId: config.organizationId,
-        appointmentId: matchingOutbound?.appointmentId,
-        patientId: matchingOutbound?.patientId,
+        appointmentId: matchingAppointmentId,
+        patientId: matchingPatientId,
         action: "sms_received",
         description: `Received appointment confirmation reply: ${normalizedBody}`,
         performedBy: matchingAppointment.employeeId,
@@ -563,7 +569,7 @@ export const processIncomingMessage = internalMutation({
       eventId,
       processingStatus: transitionResult.processingStatus,
       reason: transitionResult.reason,
-      appointmentId: matchingOutbound.appointmentId,
+      appointmentId: matchingOutbound.appointmentId as Id<"gabinetAppointments">,
     };
   },
 });

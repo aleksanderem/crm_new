@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 
@@ -129,7 +130,7 @@ export const sendForSigning = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as string },
+      { organizationId: instance.organizationId as Id<"organizations"> },
     );
 
     const now = Date.now();
@@ -240,7 +241,7 @@ export const sendForSigning = action({
 export const _resolveUser = internalMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId as any);
+    const user = await ctx.db.get(args.userId as Id<"users">);
     return {
       name: user?.name ?? "",
       email: user?.email ?? "",
@@ -257,7 +258,7 @@ export const _sendSigningEmails = internalMutation({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId as any);
+    const org = await ctx.db.get(args.organizationId as Id<"organizations">);
     const orgName = org?.name ?? "Organizacja";
     const tokens = JSON.parse(args.createdTokens) as Array<{ slotId: string; token: string; requestId: string }>;
     const sigs = JSON.parse(args.signatures) as any[];
@@ -360,15 +361,15 @@ export const _notifyAuthor = internalMutation({
     allSigned: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const instance = await ctx.db.get(args.instanceId as any);
+    const instance = await ctx.db.get(args.instanceId as Id<"documentInstances">);
     if (!instance) return;
 
-    const author = await ctx.db.get(instance.createdBy);
+    const author = await ctx.db.get(instance.createdBy as Id<"users">);
     if (author?.email) {
       await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
         authorEmail: author.email,
         authorName: author.name ?? author.email,
-        documentTitle: instance.title,
+        documentTitle: instance.title as string,
         signerName: args.signerName,
         slotLabel: args.slotLabel,
         allSigned: args.allSigned,
@@ -460,7 +461,7 @@ export const resend = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: request.organizationId as string },
+      { organizationId: request.organizationId as Id<"organizations"> },
     );
 
     const now = Date.now();

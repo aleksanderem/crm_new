@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 
@@ -205,7 +206,7 @@ export const update = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as string },
+      { organizationId: template.organizationId as Id<"organizations"> },
     );
 
     const { id, ...patch } = args;
@@ -234,7 +235,7 @@ export const publish = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as string },
+      { organizationId: template.organizationId as Id<"organizations"> },
     );
 
     if (template.status === "active") {
@@ -265,7 +266,7 @@ export const archive = action({
 
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as string },
+      { organizationId: template.organizationId as Id<"organizations"> },
     );
 
     await db.patch("documentTemplates", args.id, {
@@ -284,7 +285,7 @@ export const duplicate = action({
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as string },
+      { organizationId: template.organizationId as Id<"organizations"> },
     );
     const now = Date.now();
 
@@ -362,7 +363,7 @@ export const createNewVersion = action({
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as string },
+      { organizationId: template.organizationId as Id<"organizations"> },
     );
     const now = Date.now();
 

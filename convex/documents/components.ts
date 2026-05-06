@@ -1,8 +1,7 @@
-import { query, action, internalMutation, type MutationCtx } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { v, type GenericId } from "convex/values";
+import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess, requireOrgAdmin } from "../_helpers/auth";
 import {
   componentCategoryValidator,
 } from "../schema/documents";

@@ -1,11 +1,9 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
 import { resolveScope, EntityType } from "./scopeResolver";
 import { resolveScopeSupabase } from "./scopeResolver_supabase";
-import { resolveComponentsInContent } from "./resolveComponents";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for document writes

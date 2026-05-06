@@ -1,9 +1,8 @@
-import { action, query, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { entityTypeValidator } from "./schema";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 export const list = action({
   args: {

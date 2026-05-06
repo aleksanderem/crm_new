@@ -442,12 +442,45 @@ export const getTreatmentStats = query({
   },
 });
 
+export interface TreatmentDetailedStats {
+  total: number;
+  thisMonth: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  revenue: number;
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+  statusCounts: Record<string, number>;
+  monthlyTrend: { month: string; appointments: number; revenue: number }[];
+  employeeRanking: {
+    userId: string;
+    name: string;
+    image?: string | null;
+    totalAppointments: number;
+    completedAppointments: number;
+    revenue: number;
+  }[];
+  lastAppointment: { date: string; startTime: string; patientName: string } | null;
+  nextAppointment: { date: string; startTime: string; patientName: string } | null;
+  packageStats: {
+    totalPackages: number;
+    activePackages: number;
+    totalSlots: number;
+    usedSlots: number;
+    remainingSlots: number;
+  };
+  uniquePatients: number;
+  price: number;
+}
+
 export const getTreatmentDetailedStats = action({
   args: {
     organizationId: v.id("organizations"),
     treatmentId: v.string(),
   },
-  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+  handler: async (ctx, args): Promise<TreatmentDetailedStats> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });

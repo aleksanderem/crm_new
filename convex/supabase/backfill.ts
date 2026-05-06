@@ -2,13 +2,18 @@ import { v } from "convex/values";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { Database } from "~/src/lib/supabase/database.types";
 import { createServiceRoleClient } from "./client";
 
 const BATCH_SIZE = 50;
 
-async function upsertBatch(
-  table: string,
-  rows: Record<string, unknown>[],
+type SupabaseTable = keyof Database["public"]["Tables"];
+type SupabaseInsert<T extends SupabaseTable> =
+  Database["public"]["Tables"][T]["Insert"];
+
+async function upsertBatch<T extends SupabaseTable>(
+  table: T,
+  rows: SupabaseInsert<T>[],
 ): Promise<{ synced: number; errors: string[] }> {
   if (rows.length === 0) return { synced: 0, errors: [] };
   const client = createServiceRoleClient();

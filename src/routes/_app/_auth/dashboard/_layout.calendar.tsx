@@ -1,7 +1,7 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useWideContent } from "@/hooks/use-wide-content";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -270,15 +270,16 @@ function UnifiedCalendarPage() {
     return { startTs: first.getTime(), endTs: last.getTime(), weekStart: monday };
   }, [view, currentDate]);
 
-  const { data: events } = useSupabaseScheduledActivitiesByDateRange(
+  const { data: rawEvents } = useSupabaseScheduledActivitiesByDateRange(
     organizationId,
     startTs,
     endTs,
     { moduleFilter: moduleFilter === "all" ? undefined : moduleFilter },
   );
+  const events = rawEvents as unknown as CalendarEvent[] | undefined;
 
   const updateActivity = useAction(api.scheduledActivities.update);
-  const updateAppointment = useMutation(
+  const updateAppointment = useAction(
     api.gabinet.appointments.update
   );
 

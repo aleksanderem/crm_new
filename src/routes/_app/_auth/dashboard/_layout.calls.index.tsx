@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseCallsList } from "@/hooks/use-supabase-calls";
@@ -108,7 +107,13 @@ function CallsPage() {
   const userMap = useMemo(() => {
     const map = new Map<Id<"users">, { name?: string; email?: string }>();
     if (!members) return map;
-    for (const m of members) if (m.user) map.set(m.user._id, m.user);
+    for (const m of members) {
+      if (!m.user) continue;
+      map.set(m.user._id as Id<"users">, {
+        name: m.user.name ?? undefined,
+        email: m.user.email ?? undefined,
+      });
+    }
     return map;
   }, [members]);
 
@@ -355,7 +360,7 @@ function CallsPage() {
       <CrmDataTable
         columns={allColumns}
         hiddenColumnIds={hiddenColumnIds}
-        data={calls}
+        data={calls as unknown as Call[]}
         rowActions={rowActions}
         isLoading={isLoading}
       />

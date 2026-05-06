@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { api, internal } from "../_generated/api";
-import { createTestCtx, seedTestUser } from "../_test_helpers";
+import { api, internal } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { sendEmail } from "@cvx/email";
 
 vi.mock("@cvx/email", () => ({

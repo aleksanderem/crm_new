@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
-import { api } from "../_generated/api";
-import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../../convex/_test_helpers";
 
 describe("conflict checking", () => {
   test("cannot double-book same employee at same time", async () => {

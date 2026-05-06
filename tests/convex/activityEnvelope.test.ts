@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { api } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
-import { createTestCtx, seedTestUser } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import {
   publishActivityEnvelope,
   type ActivityEnvelopeTarget,
-} from "../_helpers/activityEnvelope";
-import { logActivity } from "../_helpers/activities";
+} from "../../convex/_helpers/activityEnvelope";
+import { logActivity } from "../../convex/_helpers/activities";
 
 async function listActivities(
   t: ReturnType<typeof createTestCtx>,

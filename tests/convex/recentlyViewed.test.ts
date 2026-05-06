@@ -1,8 +1,8 @@
 import { expect, test, describe } from "vitest";
 import { convexTest } from "convex-test";
-import { api } from "../_generated/api";
-import schema from "../schema";
-import { seedTestUser } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import schema from "../../convex/schema";
+import { seedTestUser } from "../../convex/_test_helpers";
 
 const modules = (
   import.meta as ImportMeta & {

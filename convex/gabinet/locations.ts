@@ -3,12 +3,18 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import type {
+  GabinetLocationRow,
+  GabinetRoomRow,
+} from "../_helpers/supabaseRows";
+
+type GabinetLocationWithRooms = GabinetLocationRow & { rooms: GabinetRoomRow[] };
 
 // Dual-write refs removed — Supabase is now primary for location/room writes
 
 export const listLocations = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<GabinetLocationRow[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -16,7 +22,7 @@ export const listLocations = action({
     const results = (await db
       .query("gabinetLocations")
       .eq("organizationId", String(args.organizationId))
-      .collect()) as Array<Record<string, unknown>>;
+      .collect()) as GabinetLocationRow[];
     return results;
   },
 });
@@ -26,17 +32,19 @@ export const getLocation = action({
     organizationId: v.id("organizations"),
     locationId: v.string(),
   },
-  handler: async (ctx, args): Promise<Record<string, unknown> | null> => {
+  handler: async (ctx, args): Promise<GabinetLocationWithRooms | null> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    const location = await db.get("gabinetLocations", args.locationId);
+    const location = (await db.get("gabinetLocations", args.locationId)) as
+      | GabinetLocationRow
+      | null;
     if (!location || String(location.organizationId) !== String(args.organizationId)) return null;
     const rooms = (await db
       .query("gabinetRooms")
       .eq("locationId", args.locationId)
-      .collect()) as Array<Record<string, unknown>>;
+      .collect()) as GabinetRoomRow[];
     return { ...location, rooms };
   },
 });

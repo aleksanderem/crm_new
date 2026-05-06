@@ -29,26 +29,6 @@ interface PackagePurchaseDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface PackageTreatmentEntry {
-  treatmentId: Id<"gabinetTreatments">;
-  quantity: number;
-}
-
-interface PackageDoc {
-  _id: Id<"gabinetTreatmentPackages">;
-  name: string;
-  description?: string;
-  treatments: PackageTreatmentEntry[];
-  totalPrice: number;
-  currency?: string;
-  validityDays?: number;
-}
-
-interface TreatmentDoc {
-  _id: Id<"gabinetTreatments">;
-  name: string;
-}
-
 export function PackagePurchaseDrawer({
   patientId,
   organizationId,
@@ -64,20 +44,18 @@ export function PackagePurchaseDrawer({
   const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
-  const { data: activePackagesRaw } = useQuery({
+  const { data: activePackages } = useQuery({
     queryKey: ["gabinet.packages.listActive", organizationId],
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
   });
-  const activePackages = activePackagesRaw as unknown as PackageDoc[] | undefined;
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
-  const { data: treatmentsRaw } = useQuery({
+  const { data: treatments } = useQuery({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   });
-  const treatments = treatmentsRaw as unknown as TreatmentDoc[] | undefined;
 
   const treatmentMap = new Map(
     (treatments ?? []).map((tr) => [tr._id, tr.name])

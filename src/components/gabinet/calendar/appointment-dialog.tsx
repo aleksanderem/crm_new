@@ -155,7 +155,7 @@ export function AppointmentDialog({
     queryKey: ["gabinet.locations.listLocations", organizationId],
     queryFn: () => listLocationsAction({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   // -------------------------------------------------------------------------
   // State
@@ -296,7 +296,7 @@ export function AppointmentDialog({
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRoomsRaw } = useQuery({
+  const { data: locationWithRooms } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
     queryFn: () =>
       getLocationAction({
@@ -305,10 +305,6 @@ export function AppointmentDialog({
       }),
     enabled: !!locationId,
   });
-  const locationWithRooms = locationWithRoomsRaw as unknown as
-    | { rooms?: Array<{ _id: Id<"gabinetRooms">; name: string; isActive: boolean }> }
-    | null
-    | undefined;
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   // Equipment at selected location — for advisory warnings
@@ -320,9 +316,9 @@ export function AppointmentDialog({
       locationId,
     }),
     enabled: !!organizationId && !!locationId,
-  }) as { data: any[] | undefined };
+  });
 
-  const activeLocations = locations?.filter((l: { isActive: boolean }) => l.isActive) ?? [];
+  const activeLocations = locations?.filter((l) => l.isActive) ?? [];
 
   // Equipment warning — advisory only
   const missingEquipmentIds = useMemo(() => {

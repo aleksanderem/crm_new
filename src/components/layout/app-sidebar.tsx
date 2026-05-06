@@ -52,7 +52,7 @@ export function AppSidebar() {
     queryKey: ["gabinet.scheduling.listLeaves", organizationId, "pending"],
     queryFn: () => listLeaves({ organizationId, status: "pending" as const }),
     enabled: hasGabinet && !!organizationId,
-  }) as { data: any[] | undefined };
+  });
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
   const matchedModule = routeAwareModules.find((module) =>

@@ -98,7 +98,7 @@ export function TreatmentForm({
     queryKey: ["gabinet.equipment.listEquipment", organizationId],
     queryFn: () => listEquipmentAction({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   const legacyEquipment = initialData?.requiredEquipment ?? [];
   const hasLegacyEquipment =

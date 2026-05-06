@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
-import { useUploadFiles } from "@xixixao/uploadstuff/react";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useSupabaseEmailBrandConfig } from "@/hooks/use-supabase-email-config";
 import { Input } from "@/components/ui/input";
@@ -70,13 +70,13 @@ export function EmailBrandEditor({ organizationId }: EmailBrandEditorProps) {
     setLogoPreviewUrl(config.logoUrl ?? undefined);
   }, [config]);
 
-  const { startUpload, isUploading } = useUploadFiles(generateUploadUrl, {
+  const { startUpload, isUploading } = useConvexUpload(generateUploadUrl, {
     onUploadComplete: async (uploaded) => {
       if (fileInputRef.current) fileInputRef.current.value = "";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const storageId = (uploaded[0].response as any).storageId as Id<"_storage">;
       setLogoStorageId(storageId);
-      setLogoPreviewUrl(URL.createObjectURL((uploaded[0] as any).file ?? new Blob()));
+      setLogoPreviewUrl(URL.createObjectURL(uploaded[0].file));
     },
   });
 

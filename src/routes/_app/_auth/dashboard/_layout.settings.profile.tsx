@@ -17,7 +17,7 @@ import {
 import { Upload, Sun, Moon, Monitor } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { cn } from "@/utils/misc";
-import { useUploadFiles } from "@xixixao/uploadstuff/react";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
 import { AVATAR_FALLBACK_GRADIENT } from "@/lib/avatar";
 
 export const Route = createFileRoute(
@@ -76,7 +76,7 @@ function ProfileSettings() {
     mutationFn: useConvexMutation(api.app.removeUserImage),
   });
 
-  const { startUpload } = useUploadFiles(generateUploadUrl, {
+  const { startUpload } = useConvexUpload(generateUploadUrl, {
     onUploadComplete: async (uploaded) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";

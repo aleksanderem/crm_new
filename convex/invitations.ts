@@ -1,6 +1,5 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { checkSeatLimit } from "./_helpers/seatLimits";
@@ -77,15 +76,6 @@ export const create = action({
         role: args.role,
       },
     );
-
-    // Also write to Supabase
-    try {
-      const db = createSupabaseDb();
-      const inv = await db.get("invitations", invitationId);
-      // invitation already written by internal mutation + scheduler
-    } catch {
-      // best-effort
-    }
 
     return invitationId;
   },

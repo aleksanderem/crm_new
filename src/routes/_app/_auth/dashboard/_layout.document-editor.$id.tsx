@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAction, useQuery as useConvexQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -33,7 +33,6 @@ import {
 } from "@/components/documents/document-template-editor";
 import { TemplatePreviewSheet } from "@/components/documents/template-preview-sheet";
 import type { VariableField } from "@/lib/document-variables";
-import type { Id } from "@cvx/_generated/dataModel";
 import { Menu } from "lucide-react";
 
 export const Route = createFileRoute(

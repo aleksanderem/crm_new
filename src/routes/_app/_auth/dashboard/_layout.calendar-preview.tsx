@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import {
   Calendar,

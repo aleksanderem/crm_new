@@ -5,6 +5,11 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { validatePortalSession } from "../_helpers/portalSession";
 import { createNotificationDirect } from "../notifications";
+import {
+  getAvailableSlotsSupabase,
+  checkEmployeeQualificationSupabase,
+  checkConflictSupabase,
+} from "./_availability_supabase";
 
 // ---------------------------------------------------------------------------
 // Internal query: validate portal session via Supabase
@@ -262,7 +267,6 @@ export const getPublicAvailableSlots = action({
     }
     const organizationId = String(session.organizationId);
 
-    const { getAvailableSlotsSupabase } = await import("./_availability_supabase");
     return await getAvailableSlotsSupabase(db, {
       organizationId,
       userId: args.employeeId,
@@ -331,13 +335,9 @@ export const bookFromPortal = action({
         },
       );
 
-      const {
-        getAvailableSlotsSupabase: _slotsFn,
-      } = await import("./_availability_supabase");
-
       let foundEmployee: string | null = null;
       for (const emp of qualifiedEmployees) {
-        const slots = await _slotsFn(db, {
+        const slots = await getAvailableSlotsSupabase(db, {
           organizationId: String(organizationId),
           userId: String(emp.userId),
           date: args.preferredDate,
@@ -356,10 +356,6 @@ export const bookFromPortal = action({
     }
 
     // Verify qualification via Supabase
-    const {
-      checkEmployeeQualificationSupabase,
-      checkConflictSupabase,
-    } = await import("./_availability_supabase");
     const qualification = await checkEmployeeQualificationSupabase(db, {
       organizationId: String(organizationId),
       userId: employeeId,

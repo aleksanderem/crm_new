@@ -119,24 +119,24 @@ export function createSupabaseDb() {
   const client = createServiceRoleClient();
 
   return {
-    async get(table: string, id: string): Promise<Record<string, unknown> | null> {
+    async get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null> {
       const { data, error } = await client
         .from(resolveTable(table))
         .select("*")
         .eq("id", id)
         .maybeSingle();
       if (error) throw new Error(`supabaseDb.get(${table}, ${id}): ${error.message}`);
-      return data ? mapRowFromSnake(data) : null;
+      return data ? (mapRowFromSnake(data) as T) : null;
     },
 
-    async getMany(table: string, ids: string[]): Promise<Record<string, unknown>[]> {
+    async getMany<T = Record<string, unknown>>(table: string, ids: string[]): Promise<T[]> {
       if (ids.length === 0) return [];
       const { data, error } = await client
         .from(resolveTable(table))
         .select("*")
         .in("id", ids);
       if (error) throw new Error(`supabaseDb.getMany(${table}): ${error.message}`);
-      return (data ?? []).map(mapRowFromSnake);
+      return (data ?? []).map(mapRowFromSnake) as T[];
     },
 
     async insert(
@@ -171,9 +171,9 @@ export function createSupabaseDb() {
       if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
     },
 
-    query(table: string) {
+    query<T = Record<string, unknown>>(table: string) {
       const pgTable = resolveTable(table);
-      return new SupabaseQueryBuilder(client, pgTable);
+      return new SupabaseQueryBuilder<T>(client, pgTable);
     },
 
     raw() {
@@ -182,7 +182,7 @@ export function createSupabaseDb() {
   };
 }
 
-class SupabaseQueryBuilder {
+class SupabaseQueryBuilder<T = Record<string, unknown>> {
   private client: ReturnType<typeof createServiceRoleClient>;
   private table: string;
   private filters: Array<(q: any) => any> = [];
@@ -236,27 +236,27 @@ class SupabaseQueryBuilder {
     return this;
   }
 
-  async collect(): Promise<Record<string, unknown>[]> {
+  async collect(): Promise<T[]> {
     let q = this.client.from(this.table).select("*");
     for (const f of this.filters) q = f(q);
     if (this.orderField) q = q.order(this.orderField, { ascending: this.orderAsc });
     if (this.limitN) q = q.limit(this.limitN);
     const { data, error } = await q;
     if (error) throw new Error(`supabaseDb.query(${this.table}).collect(): ${error.message}`);
-    return (data ?? []).map(mapRowFromSnake);
+    return (data ?? []).map(mapRowFromSnake) as T[];
   }
 
-  async first(): Promise<Record<string, unknown> | null> {
+  async first(): Promise<T | null> {
     let q = this.client.from(this.table).select("*");
     for (const f of this.filters) q = f(q);
     if (this.orderField) q = q.order(this.orderField, { ascending: this.orderAsc });
     q = q.limit(1);
     const { data, error } = await q;
     if (error) throw new Error(`supabaseDb.query(${this.table}).first(): ${error.message}`);
-    return data && data.length > 0 ? mapRowFromSnake(data[0]) : null;
+    return data && data.length > 0 ? (mapRowFromSnake(data[0]) as T) : null;
   }
 
-  async unique(): Promise<Record<string, unknown> | null> {
+  async unique(): Promise<T | null> {
     return this.first();
   }
 }

@@ -50,6 +50,7 @@ function CompaniesIndex() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [relationshipsPanelOpen, setRelationshipsPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const { handleExport } = useCsvExport(organizationId, "companies");
   const { tags } = useTagDefinitions(organizationId);
@@ -64,6 +65,7 @@ function CompaniesIndex() {
   useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+  useSidebarDispatch("viewRelationships", () => setRelationshipsPanelOpen(true));
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
@@ -456,6 +458,47 @@ function CompaniesIndex() {
             </>
           }
         />
+      </SidePanel>
+
+      <SidePanel
+        open={relationshipsPanelOpen}
+        onOpenChange={setRelationshipsPanelOpen}
+        title={t('nav.actions.viewRelationships')}
+        description={t('companies.relationshipsPanel.description', {
+          defaultValue:
+            "Wybierz firmę, aby zobaczyć i zarządzać jej powiązaniami z kontaktami i leadami.",
+        })}
+      >
+        {filteredCompanies.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t('companies.relationshipsPanel.empty', {
+              defaultValue: "Brak firm w bieżącym widoku.",
+            })}
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {filteredCompanies.map((company) => (
+              <li key={company._id}>
+                <button
+                  type="button"
+                  className="w-full rounded-md border border-transparent px-3 py-2 text-left text-sm hover:bg-accent"
+                  onClick={() => {
+                    setRelationshipsPanelOpen(false);
+                    navigate({
+                      to: '/dashboard/companies/$companyId',
+                      params: { companyId: company._id },
+                    });
+                  }}
+                >
+                  <div className="font-medium text-fg-primary">{company.name}</div>
+                  {company.domain && (
+                    <div className="text-xs text-muted-foreground">{company.domain}</div>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </SidePanel>
 
       <TagsManagerSlideout

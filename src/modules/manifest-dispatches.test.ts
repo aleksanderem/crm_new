@@ -42,7 +42,6 @@ const KNOWN_ORPHANS: ReadonlySet<Orphan> = new Set<Orphan>([
   "src/modules/crm/manifest.ts::products::openFilter",
   "src/modules/crm/manifest.ts::email-templates::openSearch",
   "src/modules/crm/manifest.ts::email-templates::composeEmail",
-  "src/modules/gabinet/manifest.ts::treatments::openFilter",
   "src/modules/gabinet/manifest.ts::treatments::sortByPrice",
   "src/modules/gabinet/manifest.ts::packages::openFilter",
   "src/modules/gabinet/manifest.ts::packages::viewExpiring",

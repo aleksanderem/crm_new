@@ -62,9 +62,11 @@ function TreatmentsIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
 
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+  useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
 
   const getTreatmentsKpis = useAction(api.gabinet.sidebarWidgets.getTreatmentsKpis);
   const getTopTreatments = useAction(api.gabinet.sidebarWidgets.getTopTreatments);
@@ -371,6 +373,8 @@ function TreatmentsIndex() {
         onCreateView={onCreateView}
         onDeleteView={onDeleteView}
         filterableFields={filterableFields}
+        filterSlideoutOpen={filterSlideoutOpen}
+        onFilterSlideoutOpenChange={setFilterSlideoutOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={t("gabinet.treatments.searchPlaceholder")}

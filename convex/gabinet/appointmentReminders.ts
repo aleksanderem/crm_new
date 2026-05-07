@@ -179,8 +179,24 @@ export const sendReminder = internalMutation({
 
     // Send appointment.reminder email if patient has email
     if (patient?.email) {
-      const employee = await db.get("gabinetEmployees", String(appointment.employeeId));
-      const employeeName = (employee?.name as string) ?? "Specjalista";
+      // appointment.employeeId references users(id), not gabinetEmployees(id),
+      // so query the gabinet profile by userId and fall back to the linked user.
+      const employeeUserId = String(appointment.employeeId);
+      const [employee, employeeUser] = await Promise.all([
+        db.query("gabinetEmployees")
+          .eq("organizationId", String(reminder.organizationId))
+          .eq("userId", employeeUserId)
+          .first(),
+        db.get("users", employeeUserId).catch(() => null),
+      ]);
+      const employeeFullName = employee
+        ? [employee.firstName, employee.lastName].filter(Boolean).join(" ").trim()
+        : "";
+      const employeeName =
+        (employeeUser?.name as string | undefined) ??
+        (employeeFullName.length > 0 ? employeeFullName : undefined) ??
+        (employeeUser?.email as string | undefined) ??
+        "Specjalista";
       await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
         organizationId: reminder.organizationId as Id<"organizations">,
         eventType: "appointment.reminder",

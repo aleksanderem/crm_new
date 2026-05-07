@@ -1,6 +1,7 @@
 import { createServiceRoleClient, upsertWithFkRetry } from "../supabase/client";
 
 const TABLE_MAP: Record<string, string> = {
+  users: "users",
   contacts: "contacts",
   companies: "companies",
   leads: "leads",

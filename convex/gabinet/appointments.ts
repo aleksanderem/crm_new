@@ -2237,11 +2237,10 @@ export interface AppointmentFullDetailNote extends NoteRow {
 }
 
 /**
- * Employee row returned by the action. The Convex schema for
- * `gabinetEmployees` doesn't define `name` or `image`, but the consumer
- * code reads them as optional fallbacks (always `undefined` at runtime
- * for this action — the underlying enrichment lives elsewhere). Kept on
- * the type so call sites typecheck without `as` casts.
+ * Employee row returned by the action, enriched with the linked user's
+ * display `name` and `image`. The Convex schema for `gabinetEmployees`
+ * doesn't define those fields — they come from the `users` row that
+ * `gabinetAppointments.employeeId` points at.
  */
 export type AppointmentFullDetailEmployee = GabinetEmployeeRow & {
   name?: string;
@@ -2302,12 +2301,13 @@ export const getFullDetail = action({
     const treatmentId = appointment.treatmentId
       ? String(appointment.treatmentId)
       : null;
-    const employeeId = String(appointment.employeeId);
+    const employeeUserId = String(appointment.employeeId);
 
     const [
       patientRaw,
       treatmentRaw,
       employeeRaw,
+      employeeUserRaw,
       documentsRaw,
       paymentsRaw,
       notesRaw,
@@ -2320,7 +2320,13 @@ export const getFullDetail = action({
     ] = await Promise.all([
       db.get("gabinetPatients", patientId),
       treatmentId ? db.get("gabinetTreatments", treatmentId) : Promise.resolve(null),
-      db.get("gabinetEmployees", employeeId),
+      // appointment.employeeId references users(id), not gabinetEmployees(id),
+      // so query the gabinet profile by userId.
+      db.query("gabinetEmployees")
+        .eq("organizationId", orgIdStr)
+        .eq("userId", employeeUserId)
+        .first(),
+      db.get("users", employeeUserId).catch(() => null),
       db.query("formDocuments")
         .eq("entityType", "gabinetAppointment")
         .eq("entityId", args.appointmentId)
@@ -2368,7 +2374,22 @@ export const getFullDetail = action({
 
     const patient = patientRaw as unknown as GabinetPatientRow | null;
     const treatment = treatmentRaw as unknown as GabinetTreatmentRow | null;
-    const employee = employeeRaw as unknown as AppointmentFullDetailEmployee | null;
+    const employeeRow = employeeRaw as unknown as GabinetEmployeeRow | null;
+    const employeeUser = employeeUserRaw as
+      | { name?: string | null; image?: string | null; email?: string | null }
+      | null;
+    const fullName = employeeRow
+      ? [employeeRow.firstName, employeeRow.lastName].filter(Boolean).join(" ").trim()
+      : "";
+    const employee: AppointmentFullDetailEmployee | null = employeeRow
+      ? {
+          ...employeeRow,
+          name:
+            employeeUser?.name ??
+            (fullName.length > 0 ? fullName : (employeeUser?.email ?? undefined)),
+          image: employeeUser?.image ?? undefined,
+        }
+      : null;
     const documents = documentsRaw as unknown as FormDocumentRow[];
     const payments = paymentsRaw as unknown as PaymentRow[];
     const notes = notesRaw as unknown as NoteRow[];

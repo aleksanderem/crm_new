@@ -50,6 +50,7 @@ export const create = action({
     columns: v.optional(v.array(v.string())),
     sortField: v.optional(v.string()),
     sortDirection: v.optional(v.string()),
+    selectedId: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
     isSystem: v.boolean(),
   },
@@ -92,6 +93,7 @@ export const create = action({
       columns: args.columns ?? null,
       sortField: args.sortField ?? null,
       sortDirection: args.sortDirection ?? null,
+      selectedId: args.selectedId ?? null,
       isDefault: args.isDefault ?? null,
       isSystem: args.isSystem,
       createdBy: String(authResult.userId),
@@ -113,6 +115,7 @@ export const update = action({
     columns: v.optional(v.array(v.string())),
     sortField: v.optional(v.string()),
     sortDirection: v.optional(v.string()),
+    selectedId: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -139,6 +142,7 @@ export const update = action({
     if (args.columns !== undefined) updates.columns = args.columns;
     if (args.sortField !== undefined) updates.sortField = args.sortField;
     if (args.sortDirection !== undefined) updates.sortDirection = args.sortDirection;
+    if (args.selectedId !== undefined) updates.selectedId = args.selectedId;
     if (args.isDefault !== undefined) updates.isDefault = args.isDefault;
 
     await db.patch("savedViews", args.viewId, updates);

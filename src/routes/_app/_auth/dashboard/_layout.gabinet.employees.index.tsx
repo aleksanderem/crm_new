@@ -23,7 +23,9 @@ import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import type { FieldDef, FilterCondition } from "@/components/crm/types";
 import { toast } from "sonner";
-import { Id, Doc } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
+import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -45,7 +47,7 @@ export const Route = createFileRoute(
 });
 
 
-type Employee = Doc<"gabinetEmployees">;
+type Employee = MappedGabinetEmployee;
 
 function EmployeesIndex() {
   const { t } = useTranslation();
@@ -91,14 +93,13 @@ function EmployeesIndex() {
   const createEmployee = useAction(api.gabinet.employees.create);
   const removeEmployee = useAction(api.gabinet.employees.remove);
 
-  const { data: employeesRaw } = useSupabaseGabinetEmployeesList(organizationId);
-  const employees = employeesRaw as unknown as Employee[] | undefined;
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const { data: allTreatmentsRaw } = useSupabaseGabinetTreatmentsList(organizationId);
-  const treatments = useMemo(
-    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive) as unknown as Doc<"gabinetTreatments">[],
+  const treatments: MappedGabinetTreatment[] = useMemo(
+    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive),
     [allTreatmentsRaw],
   );
 
@@ -269,7 +270,7 @@ function EmployeesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.employees.confirmDelete"))) {
-            await removeEmployee({ organizationId, employeeId: row._id });
+            await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
           }
         },
       },
@@ -281,7 +282,7 @@ function EmployeesIndex() {
     async (action: string, selectedRows: Employee[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeEmployee({ organizationId, employeeId: row._id });
+          await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
         }
       }
     },
@@ -412,7 +413,7 @@ function CreateEmployeeSheet({
   open: boolean;
   onClose: () => void;
   availableUsers: Array<{ _id: Id<"users">; name?: string | null; email?: string | null }>;
-  treatments: Array<{ _id: Id<"gabinetTreatments">; name: string }>;
+  treatments: Array<{ _id: string; name: string }>;
   organizationId: Id<"organizations">;
   onCreate: any;
   tags: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;

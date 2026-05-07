@@ -7,6 +7,14 @@ import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { Id } from "./_generated/dataModel";
+import type { SupabaseRow } from "./_helpers/supabaseRows";
+
+type DealProductRow = SupabaseRow<"dealProducts">;
+type ProductRow = SupabaseRow<"products">;
+
+export interface DealProductWithProduct extends DealProductRow {
+  product: ProductRow | null;
+}
 
 // Dual-write refs removed — Supabase is now primary for product writes
 
@@ -367,7 +375,7 @@ export const listByDeal = action({
     organizationId: v.id("organizations"),
     dealId: v.string(),
   },
-  handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+  handler: async (ctx, args): Promise<DealProductWithProduct[]> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -379,14 +387,16 @@ export const listByDeal = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    const dealProducts = (await db
-      .query("dealProducts")
+    const dealProducts = await db
+      .query<DealProductRow>("dealProducts")
       .eq("dealId", args.dealId)
-      .collect()) as Array<Record<string, any>>;
+      .collect();
 
     const products = await Promise.all(
       dealProducts.map(async (dp) => {
-        const product = await db.get("products", String(dp.productId)).catch(() => null);
+        const product = await db
+          .get<ProductRow>("products", String(dp.productId))
+          .catch(() => null);
         return { ...dp, product };
       }),
     );

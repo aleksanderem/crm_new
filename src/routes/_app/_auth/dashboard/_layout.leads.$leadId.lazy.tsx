@@ -379,8 +379,12 @@ function LeadDetail() {
   const relationships = relationshipsQuery.data;
 
   const listProductsByDeal = useAction(api.products.listByDeal);
+  const dealProductsQueryKey = useMemo(
+    () => ["products.listByDeal", organizationId, leadId] as const,
+    [organizationId, leadId],
+  );
   const { data: dealProducts } = useQuery({
-    queryKey: ["products.listByDeal", organizationId, leadId],
+    queryKey: dealProductsQueryKey,
     queryFn: () =>
       listProductsByDeal({
         organizationId,
@@ -781,7 +785,7 @@ function LeadDetail() {
       discount,
     });
 
-    await queryClient.invalidateQueries({ queryKey: dealProductsQuery.queryKey });
+    await queryClient.invalidateQueries({ queryKey: dealProductsQueryKey });
     handleCloseProductDialog(false);
   };
 
@@ -791,7 +795,7 @@ function LeadDetail() {
       dealProductId,
     });
 
-    await queryClient.invalidateQueries({ queryKey: dealProductsQuery.queryKey });
+    await queryClient.invalidateQueries({ queryKey: dealProductsQueryKey });
   };
 
   const handleCreateActivity = async (data: {

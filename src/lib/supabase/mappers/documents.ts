@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedDocument {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   description?: string;
@@ -32,5 +33,8 @@ const documentMapper = createEntityMapper<DocumentRow, MappedDocument>({
   exclude: ["search_vector"],
 });
 
-export const mapDocumentFromSupabase = documentMapper.mapFromSupabase;
+export const mapDocumentFromSupabase = (row: DocumentRow): MappedDocument => {
+  const mapped = documentMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapDocumentToSupabase = documentMapper.mapToSupabase;

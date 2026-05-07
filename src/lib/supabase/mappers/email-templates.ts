@@ -18,6 +18,7 @@ type EmailTemplateRow = Database["public"]["Tables"]["email_templates"]["Row"];
 /** Shape that mirrors `Doc<'emailTemplates'>` from Convex (camelCase). */
 export interface MappedEmailTemplate {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   subject: string;
@@ -46,7 +47,8 @@ const emailTemplateMapper = createEntityMapper<EmailTemplateRow, MappedEmailTemp
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailTemplateFromSupabase(row: EmailTemplateRow): MappedEmailTemplate {
-  return emailTemplateMapper.mapFromSupabase(row);
+  const mapped = emailTemplateMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapEmailTemplateToSupabase(

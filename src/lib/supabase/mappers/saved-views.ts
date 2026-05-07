@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedSavedView {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   entityType: string;
   name: string;
@@ -25,5 +26,10 @@ export interface MappedSavedView {
 
 const savedViewMapper = createEntityMapper<SavedViewRow, MappedSavedView>();
 
-export const mapSavedViewFromSupabase = savedViewMapper.mapFromSupabase;
+export const mapSavedViewFromSupabase = (
+  row: SavedViewRow,
+): MappedSavedView => {
+  const mapped = savedViewMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapSavedViewToSupabase = savedViewMapper.mapToSupabase;

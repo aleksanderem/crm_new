@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedAuditLogEntry {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   userId: string;
   action: string;
@@ -20,5 +21,10 @@ export interface MappedAuditLogEntry {
 
 const auditLogMapper = createEntityMapper<AuditLogRow, MappedAuditLogEntry>({});
 
-export const mapAuditLogFromSupabase = auditLogMapper.mapFromSupabase;
+export const mapAuditLogFromSupabase = (
+  row: AuditLogRow,
+): MappedAuditLogEntry => {
+  const mapped = auditLogMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapAuditLogToSupabase = auditLogMapper.mapToSupabase;

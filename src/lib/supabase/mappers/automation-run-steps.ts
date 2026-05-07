@@ -15,6 +15,7 @@ type AutomationRunStepRow = Database["public"]["Tables"]["automation_run_steps"]
 /** Shape that mirrors `Doc<'automationRunSteps'>` from Convex (camelCase). */
 export interface MappedAutomationRunStep {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   runId: string;
   ruleId?: string;
@@ -45,7 +46,8 @@ const automationRunStepMapper = createEntityMapper<AutomationRunStepRow, MappedA
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapAutomationRunStepFromSupabase(row: AutomationRunStepRow): MappedAutomationRunStep {
-  return automationRunStepMapper.mapFromSupabase(row);
+  const mapped = automationRunStepMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapAutomationRunStepToSupabase(

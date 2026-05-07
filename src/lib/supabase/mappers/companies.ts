@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedCompany {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   domain?: string;
@@ -29,5 +30,8 @@ const companyMapper = createEntityMapper<CompanyRow, MappedCompany>({
   exclude: ["search_vector"],
 });
 
-export const mapCompanyFromSupabase = companyMapper.mapFromSupabase;
+export const mapCompanyFromSupabase = (row: CompanyRow): MappedCompany => {
+  const mapped = companyMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapCompanyToSupabase = companyMapper.mapToSupabase;

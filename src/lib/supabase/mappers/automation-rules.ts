@@ -18,6 +18,7 @@ type AutomationRuleRow = Database["public"]["Tables"]["automation_rules"]["Row"]
 /** Shape that mirrors `Doc<'automationRules'>` from Convex (camelCase). */
 export interface MappedAutomationRule {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   description?: string;
@@ -43,7 +44,8 @@ const automationRuleMapper = createEntityMapper<AutomationRuleRow, MappedAutomat
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapAutomationRuleFromSupabase(row: AutomationRuleRow): MappedAutomationRule {
-  return automationRuleMapper.mapFromSupabase(row);
+  const mapped = automationRuleMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapAutomationRuleToSupabase(

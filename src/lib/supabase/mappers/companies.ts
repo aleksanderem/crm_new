@@ -15,7 +15,13 @@ export interface MappedCompany {
   size?: string;
   website?: string;
   phone?: string;
-  address?: unknown;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
   notes?: string;
   tags?: string[];
   tagIds?: string[];

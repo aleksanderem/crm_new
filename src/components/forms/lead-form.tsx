@@ -28,13 +28,13 @@ interface FieldDefinition {
 }
 
 interface PipelineStage {
-  _id: Id<"pipelineStages">;
+  _id: string;
   name: string;
-  pipelineId: Id<"pipelines">;
+  pipelineId: string;
 }
 
 interface Pipeline {
-  _id: Id<"pipelines">;
+  _id: string;
   name: string;
 }
 

@@ -23,7 +23,8 @@ import { FileText, Eye, Trash2 } from "@/lib/ez-icons";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { Doc, Id } from "@cvx/_generated/dataModel";
+import type { Id } from "@cvx/_generated/dataModel";
+import type { MappedFormDocument } from "@/lib/supabase/mappers/form-documents";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -84,7 +85,7 @@ const STATUS_OPTIONS: FormDocumentStatus[] = [
   "voided",
 ];
 
-type FormDocument = Doc<"formDocuments">;
+type FormDocument = MappedFormDocument;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -128,8 +129,7 @@ function DocumentsPage() {
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
-  const [selectedDocId, setSelectedDocId] =
-    useState<Id<"formDocuments"> | null>(null);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
   // --- Data ---
   const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(
@@ -289,8 +289,8 @@ function DocumentsPage() {
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
 
-    let data = (documents as unknown as FormDocument[]).map(
-      (doc) => ({ ...doc, category: getCategoryKey(doc.templateId as string) }),
+    let data = documents.map(
+      (doc) => ({ ...doc, category: getCategoryKey(doc.templateId) }),
     );
 
     // System view filter (status-based)

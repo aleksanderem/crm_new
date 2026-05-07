@@ -39,7 +39,8 @@ import {
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedLead } from "@/lib/supabase/mappers/leads";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
@@ -59,7 +60,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
 });
 
-type Lead = Doc<"leads">;
+type Lead = MappedLead;
 type LeadRow = Lead & { __cfValues: Record<string, unknown> };
 
 const stageColors: Record<string, string> = {
@@ -232,7 +233,7 @@ function LeadsIndex() {
     return map;
   }, [companiesRaw]);
 
-  const leads = (leadsData?.page ?? []) as unknown as Lead[];
+  const leads = leadsData?.page ?? [];
 
   const filteredLeads = useMemo(() => {
     let data = applyFilterConditions(leads, activeFilters);
@@ -252,7 +253,7 @@ function LeadsIndex() {
   }, [leads, activeViewId, applyFilters, activeFilters]);
 
   const leadIds = useMemo(
-    () => filteredLeads.map((l) => l._id as string),
+    () => filteredLeads.map((l) => l._id),
     [filteredLeads],
   );
   const {
@@ -659,8 +660,8 @@ function LeadsIndex() {
         description={t("deals.createDescription")}
       >
         <LeadForm
-          pipelines={pipelines as unknown as { _id: Id<"pipelines">; name: string }[]}
-          stages={stages as unknown as { _id: Id<"pipelineStages">; name: string; pipelineId: Id<"pipelines"> }[]}
+          pipelines={pipelines}
+          stages={stages}
           customFieldDefinitions={cfDefs}
           isSubmitting={isSubmitting}
           onCancel={() => setCreateOpen(false)}

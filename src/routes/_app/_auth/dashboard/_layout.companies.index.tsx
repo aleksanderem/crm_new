@@ -15,7 +15,8 @@ import { companySizeOptions } from "@/lib/options";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedCompany } from "@/lib/supabase/mappers/companies";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
@@ -37,7 +38,7 @@ export const Route = createFileRoute(
   component: CompaniesIndex,
 });
 
-type Company = Doc<"companies">;
+type Company = MappedCompany;
 type CompanyRow = Company & { __cfValues: Record<string, unknown> };
 
 function CompaniesIndex() {
@@ -94,10 +95,9 @@ function CompaniesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data: companiesRaw = [], isLoading } = useSupabaseCompaniesList(organizationId);
-  const companies = companiesRaw as unknown as Company[];
+  const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
 
-  const companyIds = useMemo(() => companies.map((c) => c._id as string), [companies]);
+  const companyIds = useMemo(() => companies.map((c) => c._id), [companies]);
 
   const { definitions: cfDefs, columns: cfColumns, mergeCustomFieldValues } =
     useCustomFieldColumns<Company>({ organizationId, entityType: "company", entityIds: companyIds });

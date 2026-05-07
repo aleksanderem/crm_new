@@ -18,7 +18,6 @@ import { AutomationSimpleMode } from "@/components/settings/automation-builder/a
 import {
   type AutomationActionCapability,
   type AutomationCustomFieldDefinition,
-  type AutomationEmailTemplateRecord,
   type AutomationUpdateFieldTargetEntityType,
 } from "@/components/settings/automation-builder/automation-simple-presets";
 import { Button } from "@/components/ui/button";
@@ -184,7 +183,7 @@ function NewAutomationRulePage() {
         <AutomationSimpleMode
           eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
-          emailTemplates={emailTemplates as unknown as AutomationEmailTemplateRecord[]}
+          emailTemplates={emailTemplates ?? []}
           customFieldsByEntityType={customFieldsByEntityType}
           isSubmitting={isSubmitting}
           onCancel={handleCancel}

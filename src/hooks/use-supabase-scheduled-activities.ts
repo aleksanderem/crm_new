@@ -218,7 +218,7 @@ export function useSupabaseScheduledActivitiesByDateRange(
       if (error) throw error;
       let activities = (data ?? []).map(mapScheduledActivityFromSupabase);
       if (moduleFilter) {
-        activities = activities.filter((a) => (a.moduleRef as { moduleId?: string } | undefined)?.moduleId === moduleFilter);
+        activities = activities.filter((a) => a.moduleRef?.moduleId === moduleFilter);
       }
 
       // Enrich gabinet-linked activities with appointment metadata so the
@@ -228,8 +228,8 @@ export function useSupabaseScheduledActivitiesByDateRange(
       const gabinetEntityIds = Array.from(
         new Set(
           activities
-            .filter((a) => (a.moduleRef as { moduleId?: string } | undefined)?.moduleId === "gabinet")
-            .map((a) => (a.moduleRef as { entityId?: string } | undefined)?.entityId)
+            .filter((a) => a.moduleRef?.moduleId === "gabinet")
+            .map((a) => a.moduleRef?.entityId)
             .filter((id): id is string => !!id),
         ),
       );
@@ -303,7 +303,7 @@ export function useSupabaseScheduledActivitiesByDateRange(
       }
 
       return activities.map<CalendarScheduledActivity>((a) => {
-        const moduleRef = a.moduleRef as { moduleId?: string; entityId?: string } | undefined;
+        const moduleRef = a.moduleRef;
         const metadata: Record<string, unknown> = {};
         if (moduleRef?.moduleId === "gabinet" && moduleRef.entityId) {
           const appt = apptMap.get(moduleRef.entityId);
@@ -398,9 +398,7 @@ export function useSupabaseUpcomingEvents(
 
       return activities.slice(0, limit).map<UpcomingEvent>((a) => {
         const owner = ownerMap.get(String(a.ownerId));
-        const moduleRef = a.moduleRef as
-          | { moduleId?: string; entityType?: string; entityId?: string }
-          | undefined;
+        const moduleRef = a.moduleRef;
         const isAppointment =
           moduleRef?.moduleId === "gabinet" &&
           moduleRef?.entityType === "gabinetAppointment";

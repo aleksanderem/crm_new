@@ -28,7 +28,7 @@ export interface MappedScheduledActivity {
   sourceType?: string;
   syncConfigId?: string;
   visibilityOverride?: string;
-  moduleRef?: unknown;
+  moduleRef?: { moduleId?: string; entityType?: string; entityId?: string };
   resourceId?: string;
   tagIds?: string[];
   categoryId?: string;

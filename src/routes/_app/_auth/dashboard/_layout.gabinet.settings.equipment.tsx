@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import type { MappedGabinetEquipment } from "@/lib/supabase/mappers/gabinet/equipment";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -47,15 +48,7 @@ export const Route = createFileRoute(
 
 type EquipmentStatus = "available" | "in_use" | "maintenance" | "retired";
 
-type EquipmentItem = {
-  _id: Id<"gabinetEquipment">;
-  name: string;
-  description?: string;
-  serialNumber?: string;
-  currentLocationId?: Id<"gabinetLocations">;
-  currentRoomId?: Id<"gabinetRooms">;
-  status: EquipmentStatus;
-};
+type EquipmentItem = MappedGabinetEquipment;
 
 type LocationItem = {
   _id: string;
@@ -163,7 +156,9 @@ function EquipmentCard({
     item.description ?? ""
   );
   const [editSerial, setEditSerial] = useState(item.serialNumber ?? "");
-  const [editStatus, setEditStatus] = useState<EquipmentStatus>(item.status);
+  const [editStatus, setEditStatus] = useState<EquipmentStatus>(
+    item.status as EquipmentStatus,
+  );
   const [saving, setSaving] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -275,7 +270,7 @@ function EquipmentCard({
         )}
 
         <StatusBadge
-          status={item.status}
+          status={item.status as EquipmentStatus}
           label={
             statusOptions.find((o) => o.value === item.status)?.label ??
             item.status
@@ -390,7 +385,7 @@ function EquipmentCard({
 
             {historyOpen && (
               <TransferHistoryPanel
-                equipmentId={item._id}
+                equipmentId={item._id as Id<"gabinetEquipment">}
                 organizationId={organizationId}
                 locations={locations}
               />
@@ -574,7 +569,7 @@ function EquipmentSettingsPage() {
             (equipment ?? []).map((item) => (
               <EquipmentCard
                 key={item._id}
-                item={item as unknown as EquipmentItem}
+                item={item}
                 organizationId={organizationId}
                 locations={locationList}
               />

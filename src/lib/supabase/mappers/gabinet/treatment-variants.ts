@@ -7,6 +7,7 @@ import { createEntityMapper } from "../generic";
 
 export interface MappedGabinetTreatmentVariant {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   treatmentId: string;
   name: string;
@@ -25,5 +26,10 @@ const mapper = createEntityMapper<
   MappedGabinetTreatmentVariant
 >({});
 
-export const mapGabinetTreatmentVariantFromSupabase = mapper.mapFromSupabase;
+export const mapGabinetTreatmentVariantFromSupabase = (
+  row: GabinetTreatmentVariantRow,
+): MappedGabinetTreatmentVariant => {
+  const mapped = mapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: 0 };
+};
 export const mapGabinetTreatmentVariantToSupabase = mapper.mapToSupabase;

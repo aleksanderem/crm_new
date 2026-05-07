@@ -7,6 +7,7 @@ import { createEntityMapper } from "../generic";
 
 export interface MappedGabinetWorkingHours {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   dayOfWeek: number;
   startTime: string;
@@ -26,5 +27,10 @@ const mapper = createEntityMapper<
   MappedGabinetWorkingHours
 >({});
 
-export const mapGabinetWorkingHoursFromSupabase = mapper.mapFromSupabase;
+export const mapGabinetWorkingHoursFromSupabase = (
+  row: GabinetWorkingHoursRow,
+): MappedGabinetWorkingHours => {
+  const mapped = mapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapGabinetWorkingHoursToSupabase = mapper.mapToSupabase;

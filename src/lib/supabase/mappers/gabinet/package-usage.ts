@@ -18,6 +18,7 @@ export interface PackageTreatmentUsageEntry {
 
 export interface MappedGabinetPackageUsage {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   patientId: string;
   packageId: string;
@@ -45,6 +46,7 @@ export function mapGabinetPackageUsageFromSupabase(
   const base = mapper.mapFromSupabase(row);
   return {
     ...base,
+    _creationTime: base.createdAt,
     treatmentsUsed: (row.treatments_used ?? []) as PackageTreatmentUsageEntry[],
   };
 }

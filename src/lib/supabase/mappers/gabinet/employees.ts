@@ -24,14 +24,14 @@ export interface MappedGabinetEmployee {
   email?: string;
   dateOfBirth?: string;
   pesel?: string;
-  address?: unknown;
+  address?: { street?: string; city?: string; postalCode?: string };
   employmentType?: string;
   endDate?: string;
   position?: string;
   department?: string;
   skills?: string[];
   yearsOfExperience?: number;
-  certifications?: unknown;
+  certifications?: Array<{ name: string; dateObtained?: string; expiryDate?: string }>;
   baseSalary?: number;
   commissionPercent?: number;
   bankAccount?: string;

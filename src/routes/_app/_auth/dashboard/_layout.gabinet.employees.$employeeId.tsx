@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
+import type { FunctionArgs } from "convex/server";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployee } from "@/hooks/use-supabase-gabinet-employees";
@@ -70,6 +71,9 @@ import {
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EmployeePatientStats } from "@cvx/gabinet/appointments";
+import type { GabinetEmployeeRole } from "@cvx/schema";
+import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
+import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
@@ -587,7 +591,7 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.agenda"),
       content: (
         <UpcomingAgenda
-          appointments={employeeAppointments as any}
+          appointments={employeeAppointments}
           treatmentMap={treatmentMap}
           navigate={navigate}
           t={t}
@@ -599,11 +603,11 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.appointments"),
       content: (
         <AppointmentsTabContent
-          employeeAppointments={employeeAppointments as any}
+          employeeAppointments={employeeAppointments}
           calendarWeekStart={calendarWeekStart}
           setCalendarWeekStart={setCalendarWeekStart}
           calendarWeekDates={calendarWeekDates}
-          calendarAppointments={calendarAppointments as any}
+          calendarAppointments={calendarAppointments}
           appointmentsView={appointmentsView}
           setAppointmentsView={setAppointmentsView}
           treatmentMap={treatmentMap}
@@ -637,13 +641,13 @@ function EmployeeDetail() {
       label: t("gabinet.employees.tabs.detailedData"),
       content: (
         <DetailedDataTab
-          employee={employee as any}
+          employee={employee}
           userEmail={user?.email}
           treatments={treatments}
           treatmentMap={treatmentMap}
           organizationId={organizationId}
-          onUpdate={async (a: any) => { await updateEmployee(a); invalidateEmployeeCache(); }}
-          onSetTreatments={async (a: any) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
+          onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
+          onSetTreatments={async (a) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
           t={t}
           i18nLanguage={i18n.language}
         />
@@ -657,9 +661,9 @@ function EmployeeDetail() {
           userId={employee.userId as Id<"users">}
           periods={schedulePeriods}
           clinicHours={clinicHours ?? []}
-          onSavePeriod={async (a: any) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
-          onRemovePeriod={async (a: any) => { await removeSchedulePeriod(a); invalidateScheduleCache(); }}
-          onSaveLegacy={async (a: any) => { await bulkSetEmployeeSchedule(a); invalidateScheduleCache(); }}
+          onSavePeriod={async (a) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
+          onRemovePeriod={async (a) => { await removeSchedulePeriod(a); invalidateScheduleCache(); }}
+          onSaveLegacy={async (a) => { await bulkSetEmployeeSchedule(a); invalidateScheduleCache(); }}
         />
       ),
     },
@@ -691,7 +695,7 @@ function EmployeeDetail() {
       label: t("gabinet.employees.activity"),
       content: (
         <ActivityFeed
-          entries={activitiesToFeedEntries((activities ?? []) as any[])}
+          entries={activitiesToFeedEntries(activities ?? [])}
           maxHeight="600px"
         />
       ),
@@ -722,9 +726,9 @@ function EmployeeDetail() {
         <EditEmployeeDrawer
           open={editDrawerOpen}
           onOpenChange={setEditDrawerOpen}
-          employee={employee as any}
+          employee={employee}
           organizationId={organizationId}
-          onUpdate={async (a: any) => { await updateEmployee(a); invalidateEmployeeCache(); }}
+          onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
           t={t}
@@ -764,25 +768,11 @@ function AppointmentsTabContent({
   t,
   i18nLanguage,
 }: {
-  employeeAppointments: Array<{
-    _id: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    status: string;
-    treatmentId: string;
-  }> | undefined;
+  employeeAppointments: MappedGabinetAppointment[] | undefined;
   calendarWeekStart: string;
   setCalendarWeekStart: (v: string) => void;
   calendarWeekDates: string[];
-  calendarAppointments: Array<{
-    _id: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    status: string;
-    treatmentId: string;
-  }>;
+  calendarAppointments: MappedGabinetAppointment[];
   appointmentsView: "calendar" | "list";
   setAppointmentsView: (v: "calendar" | "list") => void;
   treatmentMap: Map<string, string>;
@@ -905,7 +895,7 @@ function AppointmentsTabContent({
                 return (
                   <div key={date} className="border-r last:border-r-0 p-1 space-y-1">
                     {dayApts.map((apt) => {
-                      const tName = treatmentMap.get(apt.treatmentId);
+                      const tName = apt.treatmentId ? treatmentMap.get(apt.treatmentId) : undefined;
                       const statusColors: Record<string, string> = {
                         scheduled: "bg-blue-50 border-blue-200 text-blue-800",
                         confirmed: "bg-green-50 border-green-200 text-green-800",
@@ -949,7 +939,7 @@ function AppointmentsTabContent({
               (b.date + b.startTime).localeCompare(a.date + a.startTime)
             )
             .map((apt) => {
-              const treatmentName = treatmentMap.get(apt.treatmentId);
+              const treatmentName = apt.treatmentId ? treatmentMap.get(apt.treatmentId) : undefined;
               const isPast = apt.date < new Date().toISOString().split("T")[0];
               return (
                 <div
@@ -1269,27 +1259,16 @@ function EditEmployeeDrawer({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  employee: {
-    _id: Id<"gabinetEmployees">;
-    firstName?: string;
-    lastName?: string;
-    role: string;
-    specialization?: string;
-    licenseNumber?: string;
-    hireDate?: string;
-    color?: string;
-    notes?: string;
-    isActive: boolean;
-  };
+  employee: MappedGabinetEmployee;
   organizationId: Id<"organizations">;
-  onUpdate: any;
+  onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   isSubmitting: boolean;
   setIsSubmitting: (v: boolean) => void;
-  t: any;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const [firstName, setFirstName] = useState(employee.firstName ?? "");
   const [lastName, setLastName] = useState(employee.lastName ?? "");
-  const [role, setRole] = useState(employee.role);
+  const [role, setRole] = useState<GabinetEmployeeRole>(employee.role as GabinetEmployeeRole);
   const [specialization, setSpecialization] = useState(employee.specialization ?? "");
   const [licenseNumber, setLicenseNumber] = useState(employee.licenseNumber ?? "");
   const [hireDate, setHireDate] = useState(employee.hireDate ?? "");
@@ -1301,7 +1280,7 @@ function EditEmployeeDrawer({
     if (open) {
       setFirstName(employee.firstName ?? "");
       setLastName(employee.lastName ?? "");
-      setRole(employee.role);
+      setRole(employee.role as GabinetEmployeeRole);
       setSpecialization(employee.specialization ?? "");
       setLicenseNumber(employee.licenseNumber ?? "");
       setHireDate(employee.hireDate ?? "");
@@ -1318,7 +1297,7 @@ function EditEmployeeDrawer({
         employeeId: employee._id,
         firstName: firstName || undefined,
         lastName: lastName || undefined,
-        role: role as any,
+        role,
         specialization: specialization || undefined,
         licenseNumber: licenseNumber || undefined,
         hireDate: hireDate || undefined,
@@ -1363,7 +1342,7 @@ function EditEmployeeDrawer({
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.role")}</Label>
-          <Select value={role} onValueChange={setRole}>
+          <Select value={role} onValueChange={(v) => setRole(v as GabinetEmployeeRole)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1473,9 +1452,9 @@ function FlexibleScheduleEditor({
     breakStart?: string;
     breakEnd?: string;
   }>;
-  onSavePeriod: any;
-  onRemovePeriod: any;
-  onSaveLegacy: any;
+  onSavePeriod: (args: FunctionArgs<typeof api.gabinet.scheduling.saveSchedulePeriod>) => Promise<void>;
+  onRemovePeriod: (args: FunctionArgs<typeof api.gabinet.scheduling.removeSchedulePeriod>) => Promise<void>;
+  onSaveLegacy: (args: FunctionArgs<typeof api.gabinet.scheduling.bulkSetEmployeeSchedule>) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
@@ -1850,16 +1829,7 @@ function UpcomingAgenda({
   t,
   i18nLanguage,
 }: {
-  appointments: Array<{
-    _id: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    status: string;
-    treatmentId: string;
-    patientId: string;
-    notes?: string;
-  }> | undefined;
+  appointments: MappedGabinetAppointment[] | undefined;
   treatmentMap: Map<string, string>;
   navigate: (opts: { to: string }) => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
@@ -1957,7 +1927,7 @@ function UpcomingAgenda({
             </div>
             <div className="space-y-2 ml-4">
               {dayAppointments.map((apt) => {
-                const treatmentName = treatmentMap.get(apt.treatmentId);
+                const treatmentName = apt.treatmentId ? treatmentMap.get(apt.treatmentId) : undefined;
                 const durationMin = (() => {
                   const [sh, sm] = apt.startTime.split(":").map(Number);
                   const [eh, em] = apt.endTime.split(":").map(Number);
@@ -2004,6 +1974,7 @@ function UpcomingAgenda({
 // --- Detailed Data tab component ---
 
 const EMPLOYMENT_TYPES = ["umowa_o_prace", "umowa_zlecenie", "b2b", "staz"] as const;
+type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
 
 function DetailedDataTab({
   employee,
@@ -2016,40 +1987,13 @@ function DetailedDataTab({
   t,
   i18nLanguage,
 }: {
-  employee: {
-    _id: Id<"gabinetEmployees">;
-    firstName?: string;
-    lastName?: string;
-    role: string;
-    specialization?: string;
-    licenseNumber?: string;
-    hireDate?: string;
-    color?: string;
-    notes?: string;
-    isActive: boolean;
-    qualifiedTreatmentIds: string[];
-    phone?: string;
-    email?: string;
-    dateOfBirth?: string;
-    pesel?: string;
-    address?: { street?: string; city?: string; postalCode?: string };
-    employmentType?: string;
-    endDate?: string;
-    position?: string;
-    department?: string;
-    skills?: string[];
-    yearsOfExperience?: number;
-    certifications?: Array<{ name: string; dateObtained?: string; expiryDate?: string }>;
-    baseSalary?: number;
-    commissionPercent?: number;
-    bankAccount?: string;
-  };
+  employee: MappedGabinetEmployee;
   userEmail?: string | null;
   treatments: Array<{ _id: string; name: string }> | undefined;
   treatmentMap: Map<string, string>;
   organizationId: Id<"organizations">;
-  onUpdate: any;
-  onSetTreatments: any;
+  onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
+  onSetTreatments: (args: FunctionArgs<typeof api.gabinet.employees.setQualifiedTreatments>) => Promise<void>;
   t: (key: string, opts?: Record<string, unknown>) => string;
   i18nLanguage: string;
 }) {
@@ -2164,7 +2108,7 @@ function DetailedDataTab({
   const saveSection = async (section: string) => {
     setSaving(true);
     try {
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: FunctionArgs<typeof api.gabinet.employees.update> = {
         organizationId,
         employeeId: employee._id,
       };
@@ -2185,12 +2129,12 @@ function DetailedDataTab({
               }
             : undefined;
       } else if (section === "employment") {
-        updatePayload.employmentType = formData.employmentType || undefined;
+        updatePayload.employmentType = (formData.employmentType || undefined) as EmploymentType | undefined;
         updatePayload.hireDate = formData.hireDate || undefined;
         updatePayload.endDate = formData.endDate || undefined;
         updatePayload.position = formData.position || undefined;
         updatePayload.department = formData.department || undefined;
-        updatePayload.role = formData.role as any;
+        updatePayload.role = formData.role as GabinetEmployeeRole;
         updatePayload.notes = formData.notes || undefined;
       } else if (section === "qualifications") {
         updatePayload.skills = formData.skills

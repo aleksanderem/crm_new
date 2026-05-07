@@ -16,6 +16,7 @@ export const writeSavedViewToSupabase = internalAction({
     columns: v.optional(v.array(v.string())),
     sortField: v.optional(v.string()),
     sortDirection: v.optional(v.string()),
+    selectedId: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
     isSystem: v.boolean(),
     order: v.number(),
@@ -36,6 +37,7 @@ export const writeSavedViewToSupabase = internalAction({
       columns: args.columns ?? null,
       sort_field: args.sortField ?? null,
       sort_direction: args.sortDirection ?? null,
+      selected_id: args.selectedId ?? null,
       is_default: args.isDefault ?? null,
       is_system: args.isSystem,
       order: args.order,
@@ -60,6 +62,7 @@ export const updateSavedViewInSupabase = internalAction({
     columns: v.optional(v.array(v.string())),
     sortField: v.optional(v.string()),
     sortDirection: v.optional(v.string()),
+    selectedId: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
     order: v.optional(v.number()),
     updatedAt: v.number(),
@@ -74,6 +77,7 @@ export const updateSavedViewInSupabase = internalAction({
     if (args.columns !== undefined) row.columns = args.columns;
     if (args.sortField !== undefined) row.sort_field = args.sortField;
     if (args.sortDirection !== undefined) row.sort_direction = args.sortDirection;
+    if (args.selectedId !== undefined) row.selected_id = args.selectedId;
     if (args.isDefault !== undefined) row.is_default = args.isDefault;
     if (args.order !== undefined) row.order = args.order;
 

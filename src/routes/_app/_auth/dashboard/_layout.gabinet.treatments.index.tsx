@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
 import { useState, useMemo, useCallback } from "react";
 import type { SortDescriptor } from "react-aria-components";
 import { useTranslation } from "react-i18next";
@@ -41,7 +42,7 @@ export const Route = createFileRoute(
   component: TreatmentsIndex,
 });
 
-type Treatment = Doc<"gabinetTreatments">;
+type Treatment = MappedGabinetTreatment;
 
 function formatCurrency(amount: number, currency?: string): string {
   return new Intl.NumberFormat("pl-PL", {
@@ -154,8 +155,7 @@ function TreatmentsIndex() {
     [t, tags, categories],
   );
 
-  const { data: allTreatmentsRaw = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
-  const allTreatments = allTreatmentsRaw as unknown as Treatment[];
+  const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
 
   const {
     views,
@@ -291,7 +291,7 @@ function TreatmentsIndex() {
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
-            treatmentId: editingTreatment._id,
+            treatmentId: editingTreatment._id as Id<"gabinetTreatments">,
             ...formData,
             tagIds,
             categoryId,
@@ -319,7 +319,7 @@ function TreatmentsIndex() {
     async (action: string, selectedRows: Treatment[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removeTreatment({ organizationId, treatmentId: row._id });
+          await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
         }
       }
     },
@@ -339,11 +339,11 @@ function TreatmentsIndex() {
         onClick: async () => {
           // Soft toggle by removing (deactivate) or updating
           if (row.isActive) {
-            await removeTreatment({ organizationId, treatmentId: row._id });
+            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
           } else {
             await updateTreatment({
               organizationId,
-              treatmentId: row._id,
+              treatmentId: row._id as Id<"gabinetTreatments">,
               name: row.name,
             });
           }
@@ -354,7 +354,7 @@ function TreatmentsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
-            await removeTreatment({ organizationId, treatmentId: row._id });
+            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
           }
         },
       },
@@ -487,7 +487,7 @@ function TreatmentsIndex() {
                   requiredEquipment:
                     editingTreatment.requiredEquipment ?? undefined,
                   requiredEquipmentIds:
-                    editingTreatment.requiredEquipmentIds ?? undefined,
+                    (editingTreatment.requiredEquipmentIds as Id<"gabinetEquipment">[] | undefined) ?? undefined,
                   contraindications:
                     editingTreatment.contraindications ?? undefined,
                   preparationInstructions:

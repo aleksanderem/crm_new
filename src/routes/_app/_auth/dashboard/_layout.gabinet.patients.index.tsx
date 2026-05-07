@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedGabinetPatient } from "@/lib/supabase/mappers/gabinet/patients";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
@@ -35,7 +36,7 @@ export const Route = createFileRoute(
   component: PatientsIndex,
 });
 
-type Patient = Doc<"gabinetPatients">;
+type Patient = MappedGabinetPatient;
 
 function PatientsIndex() {
   const { t } = useTranslation();
@@ -144,8 +145,7 @@ function PatientsIndex() {
     [t, tags, categories],
   );
 
-  const { data: patientsRaw = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
-  const patients = patientsRaw as unknown as Patient[];
+  const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
 
   const {
     views,
@@ -345,7 +345,7 @@ function PatientsIndex() {
     async (action: string, selectedRows: Patient[]) => {
       if (action === "delete") {
         for (const row of selectedRows) {
-          await removePatient({ organizationId, patientId: row._id });
+          await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
         }
       }
     },
@@ -364,7 +364,7 @@ function PatientsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-            await removePatient({ organizationId, patientId: row._id });
+            await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
           }
         },
       },

@@ -6,7 +6,10 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { usePermission } from "@/hooks/use-permission";
-import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
+import {
+  useSupabaseScheduledActivitiesByDateRange,
+  type CalendarScheduledActivity,
+} from "@/hooks/use-supabase-scheduled-activities";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -40,23 +43,7 @@ export const Route = createFileRoute(
 type ViewMode = "day" | "week" | "month";
 type ModuleFilter = "all" | "gabinet" | "crm";
 
-interface CalendarEvent {
-  _id: string;
-  title: string;
-  activityType: string;
-  dueDate: number;
-  endDate?: number;
-  isCompleted: boolean;
-  location?: string;
-  meetingUrl?: string;
-  description?: string;
-  googleEventId?: string;
-  googleCalendarId?: string;
-  moduleRef?: { moduleId: string; entityType: string; entityId: string };
-  metadata: Record<string, unknown>;
-  requiresCompletion?: boolean;
-  _isBusyOnly?: boolean;
-}
+type CalendarEvent = CalendarScheduledActivity & { _isBusyOnly?: boolean };
 
 // --- Helpers ---
 
@@ -276,7 +263,7 @@ function UnifiedCalendarPage() {
     endTs,
     { moduleFilter: moduleFilter === "all" ? undefined : moduleFilter },
   );
-  const events = rawEvents as unknown as CalendarEvent[] | undefined;
+  const events: CalendarEvent[] | undefined = rawEvents;
 
   const updateActivity = useAction(api.scheduledActivities.update);
   const updateAppointment = useAction(

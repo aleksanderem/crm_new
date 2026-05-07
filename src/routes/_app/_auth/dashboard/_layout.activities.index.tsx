@@ -43,7 +43,8 @@ import {
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { applyFilterConditions } from "@/hooks/use-saved-views";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedScheduledActivity } from "@/lib/supabase/mappers/scheduled-activities";
 import { useSavedViews } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
@@ -58,7 +59,7 @@ export const Route = createFileRoute(
   component: ActivitiesPage,
 });
 
-type ScheduledActivity = Doc<"scheduledActivities">;
+type ScheduledActivity = MappedScheduledActivity;
 type ActivityRow = ScheduledActivity & { __cfValues: Record<string, unknown> };
 
 function ActivitiesPage() {
@@ -161,19 +162,19 @@ function ActivitiesPage() {
     let data: ScheduledActivity[];
     switch (activeViewId) {
       case "open":
-        data = (openActivities ?? []) as unknown as ScheduledActivity[];
+        data = openActivities ?? [];
         break;
       case "due-today":
-        data = (dueTodayData ?? []) as unknown as ScheduledActivity[];
+        data = dueTodayData ?? [];
         break;
       case "due-this-week":
-        data = (dueThisWeekData ?? []) as unknown as ScheduledActivity[];
+        data = dueThisWeekData ?? [];
         break;
       case "overdue":
-        data = (overdueData ?? []) as unknown as ScheduledActivity[];
+        data = overdueData ?? [];
         break;
       default:
-        data = (allActivities ?? []) as unknown as ScheduledActivity[];
+        data = allActivities ?? [];
     }
     let filtered = applyFilters(data);
     filtered = applyFilterConditions(filtered, activeFilters);
@@ -185,7 +186,7 @@ function ActivitiesPage() {
   }, [activeViewId, allActivities, openActivities, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue]);
 
   const activityIds = useMemo(
-    () => activities.map((a) => a._id as string),
+    () => activities.map((a) => a._id),
     [activities]
   );
 

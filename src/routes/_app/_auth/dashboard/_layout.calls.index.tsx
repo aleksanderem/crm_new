@@ -28,7 +28,8 @@ import { callOutcomeOptions } from "@/lib/options";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedCall } from "@/lib/supabase/mappers/calls";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
@@ -44,7 +45,7 @@ export const Route = createFileRoute(
   component: CallsPage,
 });
 
-type Call = Doc<"calls">;
+type Call = MappedCall;
 type CallOutcome = "busy" | "leftVoiceMessage" | "movedConversationForward" | "wrongNumber" | "noAnswer";
 
 const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> = {
@@ -117,7 +118,7 @@ function CallsPage() {
     return map;
   }, [members]);
 
-  const callIds = useMemo(() => allCalls.map((c) => c._id as string), [allCalls]);
+  const callIds = useMemo(() => allCalls.map((c) => c._id), [allCalls]);
 
   const getRelationshipsForSources = useAction(api.relationships.getForSources);
   const { data: relMap } = useQuery({
@@ -273,9 +274,9 @@ function CallsPage() {
       id: "createdBy",
       label: t('calls.performedBy', "Wykonał"),
       sortable: true,
-      render: (item) => renderUserAvatar(item.createdBy),
+      render: (item) => renderUserAvatar(item.createdBy as Id<"users">),
       getSortValue: (item) => {
-        const u = userMap.get(item.createdBy);
+        const u = userMap.get(item.createdBy as Id<"users">);
         return u?.name ?? u?.email ?? "";
       },
     },
@@ -360,7 +361,7 @@ function CallsPage() {
       <CrmDataTable
         columns={allColumns}
         hiddenColumnIds={hiddenColumnIds}
-        data={calls as unknown as Call[]}
+        data={calls}
         rowActions={rowActions}
         isLoading={isLoading}
       />

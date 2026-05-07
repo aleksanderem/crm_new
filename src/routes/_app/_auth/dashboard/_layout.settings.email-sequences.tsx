@@ -6,6 +6,7 @@ import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseEmailSequencesList, useSupabaseEmailSequence, useSupabaseEmailSequenceSteps } from "@/hooks/use-supabase-email-sequences";
+import type { MappedEmailSequenceStep } from "@/lib/supabase/mappers/email-sequence-steps";
 import { useSupabaseEmailEventTypes } from "@/hooks/use-supabase-email-events";
 import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -71,13 +72,7 @@ interface Sequence {
   updatedAt: number;
 }
 
-interface SequenceStep {
-  _id: string;
-  sequenceId: string;
-  order: number;
-  delayMs: number;
-  templateId: string;
-}
+type SequenceStep = MappedEmailSequenceStep;
 
 
 
@@ -421,7 +416,7 @@ function SequenceEditorDialog({
     organizationId as string, sequenceId,
   );
 
-  const steps = (stepsRaw ?? []) as unknown as SequenceStep[];
+  const steps = stepsRaw ?? [];
   const sequence = sequenceBase ? { ...sequenceBase, steps } : null;
   const isLoading = seqLoading || stepsLoading;
 

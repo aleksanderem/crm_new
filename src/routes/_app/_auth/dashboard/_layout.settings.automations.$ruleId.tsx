@@ -22,7 +22,6 @@ import {
   classifyAutomationPlaygroundRule,
   type AutomationActionCapability,
   type AutomationCustomFieldDefinition,
-  type AutomationEmailTemplateRecord,
   type AutomationRuleRecord,
   type AutomationUpdateFieldTargetEntityType,
   type AutomationRuleAction,
@@ -332,7 +331,7 @@ function EditAutomationRulePage() {
         <AutomationSimpleMode
           eventCatalog={(eventCatalog ?? []) as AutomationBuilderEventCatalogEntry[]}
           actionCapabilities={actionCapabilities as AutomationActionCapability[]}
-          emailTemplates={emailTemplates as unknown as AutomationEmailTemplateRecord[]}
+          emailTemplates={emailTemplates ?? []}
           customFieldsByEntityType={customFieldsByEntityType}
           initialValue={playgroundValue}
           isSubmitting={isSubmitting}

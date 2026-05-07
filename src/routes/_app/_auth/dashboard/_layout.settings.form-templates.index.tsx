@@ -95,7 +95,7 @@ interface FormTemplateRecord {
   description?: string;
   category: string;
   folderPath?: string;
-  templateType?: "document";
+  templateType?: "document" | "pdfme";
   modules: string[];
   entityTypes: string[];
   version: number;
@@ -521,8 +521,8 @@ function FormTemplatesListPage() {
   const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
-  const allTemplates = useMemo(
-    () => (templates ?? []) as unknown as FormTemplateRecord[],
+  const allTemplates = useMemo<FormTemplateRecord[]>(
+    () => templates ?? [],
     [templates],
   );
 

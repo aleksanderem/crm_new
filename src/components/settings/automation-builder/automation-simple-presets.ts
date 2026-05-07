@@ -116,7 +116,7 @@ export type AutomationRuleRecord = {
 };
 
 export type AutomationEmailTemplateRecord = {
-  _id: Id<"emailTemplates">;
+  _id: string;
   name: string;
   subject: string;
   module?: string;

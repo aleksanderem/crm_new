@@ -14,7 +14,7 @@ import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
-import type { Doc } from "@cvx/_generated/dataModel";
+import type { MappedContact } from "@/lib/supabase/mappers/contacts";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef } from "@/components/crm/types";
@@ -33,7 +33,7 @@ export const Route = createFileRoute(
   component: ContactsIndex,
 });
 
-type Contact = Doc<"contacts">;
+type Contact = MappedContact;
 
 function ContactsIndex() {
   const { t } = useTranslation();
@@ -82,10 +82,9 @@ function ContactsIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const { data: contactsRaw = [], isLoading } = useSupabaseContactsList(organizationId);
-  const contacts = contactsRaw as unknown as Contact[];
+  const { data: contacts = [], isLoading } = useSupabaseContactsList(organizationId);
 
-  const contactIds = useMemo(() => contacts.map((c) => c._id as string), [contacts]);
+  const contactIds = useMemo(() => contacts.map((c) => c._id), [contacts]);
 
   const { definitions: cfDefs, columns: cfColumns, mergeCustomFieldValues } =
     useCustomFieldColumns<Contact>({ organizationId, entityType: "contact", entityIds: contactIds });

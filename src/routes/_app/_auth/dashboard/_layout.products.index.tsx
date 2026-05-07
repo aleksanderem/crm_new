@@ -18,7 +18,8 @@ import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Id } from "@cvx/_generated/dataModel";
+import type { MappedProduct } from "@/lib/supabase/mappers/products";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
@@ -34,7 +35,7 @@ export const Route = createFileRoute(
   component: ProductsPage,
 });
 
-type Product = Doc<"products">;
+type Product = MappedProduct;
 
 function generateSku(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -300,7 +301,7 @@ function ProductsPage() {
       <CrmDataTable
         columns={allColumns}
         hiddenColumnIds={hiddenColumnIds}
-        data={products as unknown as Product[]}
+        data={products}
         rowActions={rowActions}
         isLoading={isLoading}
       />

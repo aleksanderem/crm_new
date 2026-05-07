@@ -87,7 +87,7 @@ export function useSupabaseFormDocumentsList(
       // (In production, this should be done via a database join or view)
       if (category?.trim()) {
         const templateIds = mapped
-          .filter((doc) => {
+          .filter((_doc) => {
             // This is a placeholder - we'd need template data
             // For now, return all docs if category filter is set
             return true;

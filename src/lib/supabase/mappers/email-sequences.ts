@@ -15,6 +15,7 @@ type EmailSequenceRow = Database["public"]["Tables"]["email_sequences"]["Row"];
 /** Shape that mirrors `Doc<'emailSequences'>` from Convex (camelCase). */
 export interface MappedEmailSequence {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   triggerEventType: string;
@@ -31,7 +32,8 @@ const emailSequenceMapper = createEntityMapper<EmailSequenceRow, MappedEmailSequ
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailSequenceFromSupabase(row: EmailSequenceRow): MappedEmailSequence {
-  return emailSequenceMapper.mapFromSupabase(row);
+  const mapped = emailSequenceMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapEmailSequenceToSupabase(

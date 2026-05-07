@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedInvitation {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   email: string;
   role: string;
@@ -22,5 +23,10 @@ export interface MappedInvitation {
 
 const invitationMapper = createEntityMapper<InvitationRow, MappedInvitation>({});
 
-export const mapInvitationFromSupabase = invitationMapper.mapFromSupabase;
+export const mapInvitationFromSupabase = (
+  row: InvitationRow,
+): MappedInvitation => {
+  const mapped = invitationMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapInvitationToSupabase = invitationMapper.mapToSupabase;

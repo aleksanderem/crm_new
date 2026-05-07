@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedRecentlyViewed {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   userId: string;
   entityType: string;
@@ -18,5 +19,10 @@ export interface MappedRecentlyViewed {
 
 const recentlyViewedMapper = createEntityMapper<RecentlyViewedRow, MappedRecentlyViewed>({});
 
-export const mapRecentlyViewedFromSupabase = recentlyViewedMapper.mapFromSupabase;
+export const mapRecentlyViewedFromSupabase = (
+  row: RecentlyViewedRow,
+): MappedRecentlyViewed => {
+  const mapped = recentlyViewedMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.viewedAt };
+};
 export const mapRecentlyViewedToSupabase = recentlyViewedMapper.mapToSupabase;

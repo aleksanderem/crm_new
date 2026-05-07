@@ -15,6 +15,7 @@ import { createEntityMapper } from "./generic";
 export interface MappedContact {
   /** Supabase UUID → used as _id surrogate for list rendering */
   _id: string;
+  _creationTime: number;
   organizationId: string;
   firstName: string;
   lastName?: string;
@@ -61,7 +62,8 @@ const contactMapper = createEntityMapper<SupabaseContactRow, MappedContact>({
 // ─── Exported Functions (backward-compatible signatures) ──────────────────────
 
 export function mapContactFromSupabase(row: SupabaseContactRow): MappedContact {
-  return contactMapper.mapFromSupabase(row);
+  const mapped = contactMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapContactToSupabase(

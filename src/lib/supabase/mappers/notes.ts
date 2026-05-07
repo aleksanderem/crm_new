@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedNote {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   entityType: string;
   entityId: string;
@@ -21,5 +22,8 @@ export interface MappedNote {
 
 const noteMapper = createEntityMapper<NoteRow, MappedNote>();
 
-export const mapNoteFromSupabase = noteMapper.mapFromSupabase;
+export const mapNoteFromSupabase = (row: NoteRow): MappedNote => {
+  const mapped = noteMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapNoteToSupabase = noteMapper.mapToSupabase;

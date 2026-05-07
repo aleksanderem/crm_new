@@ -15,6 +15,7 @@ type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 /** Shape that mirrors `Doc<'leads'>` from Convex (camelCase). */
 export interface MappedLead {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   title: string;
   value?: number;
@@ -49,7 +50,8 @@ const leadMapper = createEntityMapper<LeadRow, MappedLead>({
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapLeadFromSupabase(row: LeadRow): MappedLead {
-  return leadMapper.mapFromSupabase(row);
+  const mapped = leadMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapLeadToSupabase(

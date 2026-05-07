@@ -9,6 +9,7 @@ export type FormDocumentRow = Database["public"]["Tables"]["form_documents"]["Ro
 
 export interface MappedFormDocument {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   templateId: string;
   title: string;
@@ -41,5 +42,10 @@ const formDocumentMapper = createEntityMapper<FormDocumentRow, MappedFormDocumen
   exclude: [],
 });
 
-export const mapFormDocumentFromSupabase = formDocumentMapper.mapFromSupabase;
+export const mapFormDocumentFromSupabase = (
+  row: FormDocumentRow,
+): MappedFormDocument => {
+  const mapped = formDocumentMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapFormDocumentToSupabase = formDocumentMapper.mapToSupabase;

@@ -10,6 +10,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedActivityType {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   key: string;
   name: string;
@@ -24,5 +25,10 @@ export interface MappedActivityType {
 
 const activityTypeMapper = createEntityMapper<ActivityTypeDefinitionRow, MappedActivityType>({});
 
-export const mapActivityTypeFromSupabase = activityTypeMapper.mapFromSupabase;
+export const mapActivityTypeFromSupabase = (
+  row: ActivityTypeDefinitionRow,
+): MappedActivityType => {
+  const mapped = activityTypeMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapActivityTypeToSupabase = activityTypeMapper.mapToSupabase;

@@ -18,6 +18,7 @@ type ActivityRowWithUser = ActivityRow & {
 
 export interface MappedActivity {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   entityType: string;
   entityId: string;
@@ -38,6 +39,7 @@ export function mapActivityFromSupabase(row: ActivityRowWithUser): MappedActivit
   const mapped = activityMapper.mapFromSupabase(row);
   return {
     ...mapped,
+    _creationTime: mapped.createdAt,
     performedByName: row.users?.name ?? row.users?.email ?? undefined,
   };
 }

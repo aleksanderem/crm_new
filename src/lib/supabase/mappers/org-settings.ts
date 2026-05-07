@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedOrgSettings {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   allowCustomLostReason: boolean;
   lostReasonRequired: boolean;
@@ -23,5 +24,10 @@ export interface MappedOrgSettings {
 
 const orgSettingsMapper = createEntityMapper<OrgSettingsRow, MappedOrgSettings>({});
 
-export const mapOrgSettingsFromSupabase = orgSettingsMapper.mapFromSupabase;
+export const mapOrgSettingsFromSupabase = (
+  row: OrgSettingsRow,
+): MappedOrgSettings => {
+  const mapped = orgSettingsMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapOrgSettingsToSupabase = orgSettingsMapper.mapToSupabase;

@@ -18,6 +18,7 @@ type EmailBrandConfigRow = Database["public"]["Tables"]["email_brand_config"]["R
 /** Shape that mirrors `Doc<'emailBrandConfig'>` from Convex (camelCase). */
 export interface MappedEmailBrandConfig {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   logoStorageId?: string;
   logoUrl?: string;
@@ -44,7 +45,8 @@ const emailBrandConfigMapper = createEntityMapper<EmailBrandConfigRow, MappedEma
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailBrandConfigFromSupabase(row: EmailBrandConfigRow): MappedEmailBrandConfig {
-  return emailBrandConfigMapper.mapFromSupabase(row);
+  const mapped = emailBrandConfigMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapEmailBrandConfigToSupabase(

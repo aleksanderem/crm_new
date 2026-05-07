@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedSource {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   order: number;
@@ -19,5 +20,8 @@ export interface MappedSource {
 
 const sourceMapper = createEntityMapper<SourceRow, MappedSource>();
 
-export const mapSourceFromSupabase = sourceMapper.mapFromSupabase;
+export const mapSourceFromSupabase = (row: SourceRow): MappedSource => {
+  const mapped = sourceMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapSourceToSupabase = sourceMapper.mapToSupabase;

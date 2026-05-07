@@ -15,6 +15,7 @@ type EmailEventLogRow = Database["public"]["Tables"]["email_event_log"]["Row"];
 /** Shape that mirrors `Doc<'emailEventLog'>` from Convex (camelCase). */
 export interface MappedEmailEventLog {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   eventType: string;
   bindingId?: string;
@@ -43,7 +44,8 @@ const emailEventLogMapper = createEntityMapper<EmailEventLogRow, MappedEmailEven
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailEventLogFromSupabase(row: EmailEventLogRow): MappedEmailEventLog {
-  return emailEventLogMapper.mapFromSupabase(row);
+  const mapped = emailEventLogMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapEmailEventLogToSupabase(

@@ -18,6 +18,7 @@ type MailProviderRow = Database["public"]["Tables"]["mail_providers"]["Row"];
 /** Shape that mirrors `Doc<'mailProviders'>` from Convex (camelCase). */
 export interface MappedMailProvider {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   providerType: string;
@@ -47,7 +48,8 @@ const mailProviderMapper = createEntityMapper<MailProviderRow, MappedMailProvide
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapMailProviderFromSupabase(row: MailProviderRow): MappedMailProvider {
-  return mailProviderMapper.mapFromSupabase(row);
+  const mapped = mailProviderMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapMailProviderToSupabase(

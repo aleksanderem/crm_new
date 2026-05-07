@@ -7,6 +7,7 @@ import { createEntityMapper } from "./generic";
 
 export interface MappedScheduledActivity {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   title: string;
   activityType: string;
@@ -39,5 +40,10 @@ export interface MappedScheduledActivity {
 
 const scheduledActivityMapper = createEntityMapper<ScheduledActivityRow, MappedScheduledActivity>({});
 
-export const mapScheduledActivityFromSupabase = scheduledActivityMapper.mapFromSupabase;
+export const mapScheduledActivityFromSupabase = (
+  row: ScheduledActivityRow,
+): MappedScheduledActivity => {
+  const mapped = scheduledActivityMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
+};
 export const mapScheduledActivityToSupabase = scheduledActivityMapper.mapToSupabase;

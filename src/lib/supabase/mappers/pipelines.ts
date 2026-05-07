@@ -16,6 +16,7 @@ type PipelineStageRow = Database["public"]["Tables"]["pipeline_stages"]["Row"];
 /** Shape that mirrors `Doc<'pipelines'>` from Convex (camelCase). */
 export interface MappedPipeline {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   name: string;
   description?: string;
@@ -30,6 +31,7 @@ export interface MappedPipeline {
 /** Shape that mirrors `Doc<'pipelineStages'>` from Convex (camelCase). */
 export interface MappedPipelineStage {
   _id: string;
+  _creationTime: number;
   pipelineId: string;
   organizationId: string;
   name: string;
@@ -51,7 +53,8 @@ const pipelineStageMapper = createEntityMapper<PipelineStageRow, MappedPipelineS
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapPipelineFromSupabase(row: PipelineRow): MappedPipeline {
-  return pipelineMapper.mapFromSupabase(row);
+  const mapped = pipelineMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapPipelineToSupabase(
@@ -61,7 +64,8 @@ export function mapPipelineToSupabase(
 }
 
 export function mapPipelineStageFromSupabase(row: PipelineStageRow): MappedPipelineStage {
-  return pipelineStageMapper.mapFromSupabase(row);
+  const mapped = pipelineStageMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapPipelineStageToSupabase(

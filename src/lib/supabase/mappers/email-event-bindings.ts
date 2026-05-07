@@ -15,6 +15,7 @@ type EmailEventBindingRow = Database["public"]["Tables"]["email_event_bindings"]
 /** Shape that mirrors `Doc<'emailEventBindings'>` from Convex (camelCase). */
 export interface MappedEmailEventBinding {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   eventType: string;
   templateId: string;
@@ -34,7 +35,8 @@ const emailEventBindingMapper = createEntityMapper<EmailEventBindingRow, MappedE
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailEventBindingFromSupabase(row: EmailEventBindingRow): MappedEmailEventBinding {
-  return emailEventBindingMapper.mapFromSupabase(row);
+  const mapped = emailEventBindingMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.createdAt };
 }
 
 export function mapEmailEventBindingToSupabase(

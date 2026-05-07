@@ -15,6 +15,7 @@ type EmailLayoutRow = Database["public"]["Tables"]["email_layouts"]["Row"];
 /** Shape that mirrors `Doc<'emailLayouts'>` from Convex (camelCase). */
 export interface MappedEmailLayout {
   _id: string;
+  _creationTime: number;
   organizationId: string;
   headerBlocks: string;
   footerBlocks: string;
@@ -36,7 +37,8 @@ const emailLayoutMapper = createEntityMapper<EmailLayoutRow, MappedEmailLayout>(
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 export function mapEmailLayoutFromSupabase(row: EmailLayoutRow): MappedEmailLayout {
-  return emailLayoutMapper.mapFromSupabase(row);
+  const mapped = emailLayoutMapper.mapFromSupabase(row);
+  return { ...mapped, _creationTime: mapped.updatedAt };
 }
 
 export function mapEmailLayoutToSupabase(

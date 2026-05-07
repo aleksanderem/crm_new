@@ -4,20 +4,17 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { useNudges } from "@/contexts/nudges-context";
-import { NudgeData } from "@/contexts/nudges-context";
 
 const severityConfig = {
   red: {

@@ -53,14 +53,17 @@ function CalendarPreview() {
 
   const events: CalendarEvent[] = useMemo(() => {
     if (!rawEvents) return [];
-    return rawEvents.map((a) => ({
-      id: a._id,
-      title: a.title,
-      start: new Date(a.dueDate),
-      end: new Date(a.endDate ?? a.dueDate + 60 * 60 * 1000),
-      color: getEventColor(a.activityType, a.isCompleted, a.moduleRef?.moduleId),
-      dot: a.isCompleted,
-    }));
+    return rawEvents.map((a) => {
+      const moduleRef = a.moduleRef as { moduleId?: string } | undefined;
+      return {
+        id: a._id,
+        title: a.title,
+        start: new Date(a.dueDate),
+        end: new Date(a.endDate ?? a.dueDate + 60 * 60 * 1000),
+        color: getEventColor(a.activityType, a.isCompleted, moduleRef?.moduleId),
+        dot: a.isCompleted,
+      };
+    });
   }, [rawEvents]);
 
   // Hide mini calendar when leaving this page

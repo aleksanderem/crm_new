@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Selection, SortDescriptor } from "react-aria-components";
 import { SearchLg, Menu01 } from "@untitledui/icons";
@@ -290,10 +290,10 @@ export function CrmDataTable<TData>({
                             size="sm"
                             color="tertiary"
                             iconLeading={<Menu01 className="size-5" />}
-                            onClick={(e) => {
+                            onClick={(e: ReactMouseEvent<HTMLButtonElement>) => {
                               e.stopPropagation();
                             }}
-                            onPointerDown={(e) => {
+                            onPointerDown={(e: ReactPointerEvent<HTMLButtonElement>) => {
                               // Prevent React Aria from starting selection on pointer down
                               e.stopPropagation();
                             }}

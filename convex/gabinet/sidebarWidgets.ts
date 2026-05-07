@@ -376,7 +376,14 @@ export const getDayAgenda = action({
         const [patient, treatment, employee] = await Promise.all([
           appt.patientId ? db.get("gabinetPatients", String(appt.patientId)).catch(() => null) : null,
           appt.treatmentId ? db.get("gabinetTreatments", String(appt.treatmentId)).catch(() => null) : null,
-          appt.employeeId ? db.get("users", String(appt.employeeId)).catch(() => null) : null,
+          appt.employeeId
+            ? db
+                .get<{ name?: string | null; email?: string | null }>(
+                  "users",
+                  String(appt.employeeId),
+                )
+                .catch(() => null)
+            : null,
         ]);
 
         const row: DayAgendaAppointment = {
@@ -389,7 +396,10 @@ export const getDayAgenda = action({
             : "—",
           treatmentName: ((treatment as any)?.name as string | undefined) ?? "—",
           treatmentDuration: Number((treatment as any)?.duration ?? 0),
-          employeeName: employee ? (employee as any).name || "Employee" : "—",
+          employeeName:
+            (employee?.name as string | null | undefined) ||
+            (employee?.email as string | null | undefined) ||
+            "—",
           confirmed: appt.status === "confirmed" || appt.status === "completed",
         };
         return row;

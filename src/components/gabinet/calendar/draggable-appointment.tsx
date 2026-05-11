@@ -44,7 +44,7 @@ export function DraggableAppointment({
       {...listeners}
       {...attributes}
       data-appointment-card="true"
-      className={isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"}
+      className={`h-full ${isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"}`}
     >
       <AppointmentCard
         startTime={startTime}

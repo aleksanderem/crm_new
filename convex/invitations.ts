@@ -210,11 +210,30 @@ export const _createInternal = internalMutation({
 export const accept = action({
   args: { token: v.string() },
   handler: async (ctx, args): Promise<string> => {
-    const orgId: string = await ctx.runMutation(
+    const result: {
+      organizationId: string;
+      invitationId: string;
+      acceptedAt: number;
+      updatedAt: number;
+    } = await ctx.runMutation(
       internal.invitations._acceptInternal,
       { token: args.token },
     );
-    return orgId;
+
+    // Mirror status change to Supabase so any consumer reading invitations
+    // from there (e.g. team-settings page) sees the accepted state.
+    try {
+      const db = createSupabaseDb();
+      await db.patch("invitations", result.invitationId, {
+        status: "accepted",
+        acceptedAt: result.acceptedAt,
+        updatedAt: result.updatedAt,
+      });
+    } catch (e) {
+      console.error("[invitations.accept] Supabase mirror failed:", e);
+    }
+
+    return result.organizationId;
   },
 });
 
@@ -253,10 +272,12 @@ export const _acceptInternal = internalMutation({
       joinedAt: Date.now(),
     });
 
+    const acceptedAt = Date.now();
+    const updatedAt = acceptedAt;
     await ctx.db.patch(invitation._id, {
       status: "accepted",
-      acceptedAt: Date.now(),
-      updatedAt: Date.now(),
+      acceptedAt,
+      updatedAt,
     });
 
     await logActivity(ctx, {
@@ -289,14 +310,34 @@ export const _acceptInternal = internalMutation({
       });
     }
 
-    return String(invitation.organizationId);
+    return {
+      organizationId: String(invitation.organizationId),
+      invitationId: String(invitation._id),
+      acceptedAt,
+      updatedAt,
+    };
   },
 });
 
 export const decline = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    await ctx.runMutation(internal.invitations._declineInternal, { token: args.token });
+    const result: { invitationId: string; updatedAt: number } = await ctx.runMutation(
+      internal.invitations._declineInternal,
+      { token: args.token },
+    );
+
+    // Mirror status change to Supabase so any consumer reading invitations
+    // from there sees the declined state.
+    try {
+      const db = createSupabaseDb();
+      await db.patch("invitations", result.invitationId, {
+        status: "declined",
+        updatedAt: result.updatedAt,
+      });
+    } catch (e) {
+      console.error("[invitations.decline] Supabase mirror failed:", e);
+    }
   },
 });
 
@@ -313,10 +354,16 @@ export const _declineInternal = internalMutation({
     if (!invitation) throw new Error("Invitation not found");
     if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
 
+    const updatedAt = Date.now();
     await ctx.db.patch(invitation._id, {
       status: "declined",
-      updatedAt: Date.now(),
+      updatedAt,
     });
+
+    return {
+      invitationId: String(invitation._id),
+      updatedAt,
+    };
   },
 });
 

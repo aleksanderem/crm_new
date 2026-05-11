@@ -127,6 +127,8 @@ export function EmployeeForm({
     e.preventDefault();
     if (requireUserSelection && !userId) return;
 
+    const isClinicalRole = role !== "receptionist" && role !== "admin";
+
     onSubmit({
       userId: userId as Id<"users"> | undefined,
       firstName: firstName || undefined,
@@ -135,7 +137,9 @@ export function EmployeeForm({
       specialization: specialization || undefined,
       licenseNumber: licenseNumber || undefined,
       color: color || undefined,
-      qualifiedTreatmentIds: selectedTreatments as Id<"gabinetTreatments">[],
+      qualifiedTreatmentIds: isClinicalRole
+        ? (selectedTreatments as Id<"gabinetTreatments">[])
+        : [],
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
     });
@@ -262,37 +266,39 @@ export function EmployeeForm({
         </div>
       </div>
 
-      {/* Qualified treatments */}
-      <div className="space-y-2">
-        <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
-        <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-          {treatments?.map((tr) => (
-            <label
-              key={tr._id}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
-              <Checkbox
-                checked={selectedTreatments.includes(tr._id)}
-                onCheckedChange={() => toggleTreatment(tr._id)}
-              />
-              <span className="flex-1">{tr.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {tr.duration} min
-              </span>
-            </label>
-          ))}
-          {(!treatments || treatments.length === 0) && (
-            <p className="text-xs text-muted-foreground py-2">
-              {t("gabinet.employees.noTreatments")}
+      {/* Qualified treatments — hidden for non-clinical roles */}
+      {role !== "receptionist" && role !== "admin" && (
+        <div className="space-y-2">
+          <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
+          <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+            {treatments?.map((tr) => (
+              <label
+                key={tr._id}
+                className="flex items-center gap-2 text-sm cursor-pointer"
+              >
+                <Checkbox
+                  checked={selectedTreatments.includes(tr._id)}
+                  onCheckedChange={() => toggleTreatment(tr._id)}
+                />
+                <span className="flex-1">{tr.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {tr.duration} min
+                </span>
+              </label>
+            ))}
+            {(!treatments || treatments.length === 0) && (
+              <p className="text-xs text-muted-foreground py-2">
+                {t("gabinet.employees.noTreatments")}
+              </p>
+            )}
+          </div>
+          {selectedTreatments.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.employees.selectedTreatments", { count: selectedTreatments.length })}
             </p>
           )}
         </div>
-        {selectedTreatments.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {t("gabinet.employees.selectedTreatments", { count: selectedTreatments.length })}
-          </p>
-        )}
-      </div>
+      )}
 
       {tagDefinitions.length > 0 && (
         <div className="space-y-1.5 sm:col-span-2">

@@ -2117,6 +2117,8 @@
       "end": "End",
       "breakStart": "Break Start",
       "breakEnd": "Break End",
+      "addBreak": "Add break",
+      "removeBreak": "Remove break",
       "validationEndAfterStart": "End time must be after start time: {{days}}",
       "validationBreakEndAfterStart": "Break end must be after break start: {{days}}"
     },

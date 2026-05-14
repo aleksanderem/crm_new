@@ -22,6 +22,7 @@ interface CalendarWeekViewProps {
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentClick?: (id: string) => void;
+  onAppointmentResize?: (id: string, newEndTime: string) => void;
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
   employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
@@ -123,6 +124,7 @@ interface WeekDayColumnProps {
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentClick?: (id: string) => void;
+  onAppointmentResize?: (id: string, newEndTime: string) => void;
   onDayHeaderClick?: (date: string) => void;
 }
 
@@ -136,6 +138,7 @@ function WeekDayColumn({
   onSlotClick,
   onSlotDragSelect,
   onAppointmentClick,
+  onAppointmentResize,
   onDayHeaderClick,
 }: WeekDayColumnProps) {
   const handleClick = useCallback(
@@ -256,6 +259,9 @@ function WeekDayColumn({
               <DraggableAppointment
                 {...appt}
                 onAppointmentClick={onAppointmentClick}
+                onResize={onAppointmentResize}
+                hourHeight={60}
+                snapMinutes={15}
               />
             </div>
           );
@@ -265,7 +271,7 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -309,6 +315,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}
             onAppointmentClick={onAppointmentClick}
+            onAppointmentResize={onAppointmentResize}
             onDayHeaderClick={onDayHeaderClick}
           />
         );

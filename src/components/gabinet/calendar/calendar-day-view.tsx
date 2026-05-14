@@ -20,6 +20,7 @@ interface CalendarDayViewProps {
   onSlotClick?: (time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentClick?: (id: string) => void;
+  onAppointmentResize?: (id: string, newEndTime: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
 }
 
@@ -93,7 +94,7 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, workingHours }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, onAppointmentResize, workingHours }: CalendarDayViewProps) {
   const now = new Date();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -235,6 +236,9 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
                 {...appt}
                 date={date}
                 onAppointmentClick={onAppointmentClick}
+                onResize={onAppointmentResize}
+                hourHeight={60}
+                snapMinutes={15}
               />
             </div>
           );

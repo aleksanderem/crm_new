@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
 import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
-import { Plus, Trash2 } from "@/lib/ez-icons";
+import { Plus, Search, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -431,6 +431,13 @@ function CreateEmployeeSheet({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+
+  const filteredTreatments = useMemo(() => {
+    const q = treatmentSearch.trim().toLowerCase();
+    if (!q) return treatments;
+    return treatments.filter((tr) => tr.name?.toLowerCase().includes(q));
+  }, [treatments, treatmentSearch]);
 
   const handleCreate = async () => {
     if (!userId) return;
@@ -460,6 +467,7 @@ function CreateEmployeeSheet({
       setSelectedTreatments([]);
       setTagIds([]);
       setCategoryId(undefined);
+      setTreatmentSearch("");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -548,8 +556,23 @@ function CreateEmployeeSheet({
 
           <div className="space-y-1.5">
             <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
+            {treatments.length > 0 && (
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                  variant="stroke"
+                />
+                <Input
+                  type="search"
+                  value={treatmentSearch}
+                  onChange={(e) => setTreatmentSearch(e.target.value)}
+                  placeholder={t("gabinet.treatments.searchPlaceholder")}
+                  className="pl-8"
+                />
+              </div>
+            )}
             <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-              {treatments.map((tr) => (
+              {filteredTreatments.map((tr) => (
                 <label key={tr._id} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox
                     checked={selectedTreatments.includes(tr._id)}
@@ -566,6 +589,9 @@ function CreateEmployeeSheet({
               ))}
               {treatments.length === 0 && (
                 <p className="text-xs text-muted-foreground py-2">{t("gabinet.employees.noTreatments")}</p>
+              )}
+              {treatments.length > 0 && filteredTreatments.length === 0 && (
+                <p className="text-xs text-muted-foreground py-2">{t("detail.relationships.noResults")}</p>
               )}
             </div>
           </div>

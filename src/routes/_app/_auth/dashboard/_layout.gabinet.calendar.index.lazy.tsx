@@ -50,6 +50,7 @@ import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-t
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 export const Route = createLazyFileRoute(
@@ -116,6 +117,7 @@ function GabinetCalendarPage() {
     treatmentName: string;
     status: string;
     color?: string;
+    tags?: Array<{ name: string; color: string }>;
   } | null>(null);
 
   // Mutations
@@ -240,6 +242,21 @@ function GabinetCalendarPage() {
     return map;
   }, [treatments]);
 
+  // Fetch tag definitions to render colored pills on appointment cards
+  const { tags: tagDefinitions } = useTagDefinitions(organizationId);
+  const tagMap = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    for (const tag of tagDefinitions ?? []) {
+      if (tag?._id) {
+        map.set(String(tag._id), {
+          name: String(tag.name ?? ""),
+          color: String(tag.color ?? "#9ca3af"),
+        });
+      }
+    }
+    return map;
+  }, [tagDefinitions]);
+
   const userMap = useMemo(() => {
     const map = new Map<string, string>();
     members?.forEach((m) => {
@@ -313,6 +330,7 @@ function GabinetCalendarPage() {
       treatmentName: string;
       status: string;
       color?: string;
+      tags?: Array<{ name: string; color: string }>;
     }> = [];
 
     if (rawAppointments) {
@@ -326,6 +344,9 @@ function GabinetCalendarPage() {
           if (!name.toLowerCase().includes(searchLower)) continue;
         }
         const treatment = treatmentMap.get(a.treatmentId as string);
+        const tags = a.tagIds
+          ?.map((id) => tagMap.get(String(id)))
+          .filter((t): t is { name: string; color: string } => !!t);
         items.push({
           _id: a._id,
           date: a.date,
@@ -335,6 +356,7 @@ function GabinetCalendarPage() {
           treatmentName: treatment?.name ?? "",
           status: a.status,
           color: a.color ?? treatment?.color,
+          tags: tags && tags.length > 0 ? tags : undefined,
         });
       }
     }
@@ -370,7 +392,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -873,6 +895,7 @@ function GabinetCalendarPage() {
               treatmentName={activeAppointment.treatmentName}
               status={activeAppointment.status}
               color={activeAppointment.color}
+              tags={activeAppointment.tags}
             />
           </div>
         ) : null}

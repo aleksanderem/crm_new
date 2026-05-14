@@ -13,6 +13,7 @@ interface Appointment {
   treatmentName: string;
   status: string;
   color?: string;
+  tags?: Array<{ name: string; color: string }>;
 }
 
 interface CalendarWeekViewProps {

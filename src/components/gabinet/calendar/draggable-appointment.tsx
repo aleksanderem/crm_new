@@ -1,5 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import { AppointmentCard } from "./appointment-card";
+import { AppointmentCard, type AppointmentTag } from "./appointment-card";
 
 interface Appointment {
   _id: string;
@@ -10,6 +10,7 @@ interface Appointment {
   treatmentName: string;
   status: string;
   color?: string;
+  tags?: AppointmentTag[];
 }
 
 interface DraggableAppointmentProps extends Appointment {
@@ -25,6 +26,7 @@ export function DraggableAppointment({
   treatmentName,
   status,
   color,
+  tags,
   onAppointmentClick,
 }: DraggableAppointmentProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -53,6 +55,7 @@ export function DraggableAppointment({
         treatmentName={treatmentName}
         status={status}
         color={color}
+        tags={tags}
         onClick={() => onAppointmentClick?.(_id)}
       />
     </div>

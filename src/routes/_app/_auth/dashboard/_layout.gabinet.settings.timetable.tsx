@@ -120,6 +120,7 @@ function TimetablePage() {
   const queryClient = useQueryClient();
 
   const bulkSetEmployeeSchedule = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
     api.gabinet.scheduling.bulkSetEmployeeSchedule,
   );
 

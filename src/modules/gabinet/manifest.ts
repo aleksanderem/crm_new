@@ -136,7 +136,7 @@ export const gabinetManifest: ModuleManifest = {
         },
         { labelKey: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },
         { labelKey: "nav.actions.sortByPrice", icon: TrendingUp, dispatch: "sortByPrice" },
-        { labelKey: "nav.actions.manageCategories", icon: Settings, href: "/dashboard/gabinet/settings" },
+        { labelKey: "nav.actions.manageCategories", icon: Settings, dispatch: "manageCategories" },
       ],
     },
     {

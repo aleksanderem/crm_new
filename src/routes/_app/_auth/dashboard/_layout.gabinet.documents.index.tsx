@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Send, Download, MoreHorizontal, Trash2, Calendar, User, Tag, FileSignature } from "@/lib/ez-icons";
+import { FileText, Send, Download, Menu, Trash2, Calendar, User, Tag, FileSignature } from "@/lib/ez-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -373,7 +373,7 @@ function GabinetDocumentsPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <span className="sr-only">Otwórz menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+                <Menu className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

@@ -255,6 +255,29 @@ export function createPlatformTables({
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),
 
+  // Global error log — every uncaught throw on the server or unhandled error
+  // on the frontend that flows through reportError() lands here. Read from
+  // /admin/errors. Records are bounded by an external retention job (TODO).
+  errorLogs: defineTable({
+    ts: v.number(),
+    source: v.union(v.literal("convex"), v.literal("frontend")),
+    scope: v.optional(v.string()),       // module/area, e.g. "gabinet.treatments"
+    fnName: v.optional(v.string()),      // exact function or route
+    level: v.optional(v.union(v.literal("error"), v.literal("warn"))),
+    message: v.string(),
+    stack: v.optional(v.string()),
+    url: v.optional(v.string()),         // frontend: window.location
+    userAgent: v.optional(v.string()),   // frontend
+    userId: v.optional(v.id("users")),
+    organizationId: v.optional(v.id("organizations")),
+    argsJson: v.optional(v.string()),    // sanitized JSON of inputs (truncated)
+    requestId: v.optional(v.string()),   // optional correlation id
+  })
+    .index("by_ts", ["ts"])
+    .index("by_userId_ts", ["userId", "ts"])
+    .index("by_organizationId_ts", ["organizationId", "ts"])
+    .index("by_scope_ts", ["scope", "ts"]),
+
   recentlyViewed: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),

@@ -91,6 +91,7 @@ import { Route as AppAuthDashboardLayoutSettingsFormTemplatesIndexRouteImport } 
 import { Route as AppAuthDashboardLayoutSettingsDocumentComponentsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.document-components.index'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.automations.index'
 import { Route as AppAuthDashboardLayoutGabinetTreatmentsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.index'
+import { Route as AppAuthDashboardLayoutGabinetSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.index'
 import { Route as AppAuthDashboardLayoutGabinetPatientsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.index'
 import { Route as AppAuthDashboardLayoutGabinetPackagesIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.packages.index'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.index'
@@ -596,6 +597,12 @@ const AppAuthDashboardLayoutGabinetTreatmentsIndexRoute =
     path: '/gabinet/treatments/',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetSettingsIndexRoute =
+  AppAuthDashboardLayoutGabinetSettingsIndexRouteImport.update({
+    id: '/gabinet/settings/',
+    path: '/gabinet/settings/',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetPatientsIndexRoute =
   AppAuthDashboardLayoutGabinetPatientsIndexRouteImport.update({
     id: '/gabinet/patients/',
@@ -843,6 +850,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/gabinet/employees/': typeof AppAuthDashboardLayoutGabinetEmployeesIndexRoute
   '/dashboard/gabinet/packages/': typeof AppAuthDashboardLayoutGabinetPackagesIndexRoute
   '/dashboard/gabinet/patients/': typeof AppAuthDashboardLayoutGabinetPatientsIndexRoute
+  '/dashboard/gabinet/settings/': typeof AppAuthDashboardLayoutGabinetSettingsIndexRoute
   '/dashboard/gabinet/treatments/': typeof AppAuthDashboardLayoutGabinetTreatmentsIndexRoute
   '/dashboard/settings/automations/': typeof AppAuthDashboardLayoutSettingsAutomationsIndexRoute
   '/dashboard/settings/document-components/': typeof AppAuthDashboardLayoutSettingsDocumentComponentsIndexRoute
@@ -939,6 +947,7 @@ export interface FileRoutesByTo {
   '/dashboard/gabinet/employees': typeof AppAuthDashboardLayoutGabinetEmployeesIndexRoute
   '/dashboard/gabinet/packages': typeof AppAuthDashboardLayoutGabinetPackagesIndexRoute
   '/dashboard/gabinet/patients': typeof AppAuthDashboardLayoutGabinetPatientsIndexRoute
+  '/dashboard/gabinet/settings': typeof AppAuthDashboardLayoutGabinetSettingsIndexRoute
   '/dashboard/gabinet/treatments': typeof AppAuthDashboardLayoutGabinetTreatmentsIndexRoute
   '/dashboard/settings/automations': typeof AppAuthDashboardLayoutSettingsAutomationsIndexRoute
   '/dashboard/settings/document-components': typeof AppAuthDashboardLayoutSettingsDocumentComponentsIndexRoute
@@ -1047,6 +1056,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gabinet/employees/': typeof AppAuthDashboardLayoutGabinetEmployeesIndexRoute
   '/_app/_auth/dashboard/_layout/gabinet/packages/': typeof AppAuthDashboardLayoutGabinetPackagesIndexRoute
   '/_app/_auth/dashboard/_layout/gabinet/patients/': typeof AppAuthDashboardLayoutGabinetPatientsIndexRoute
+  '/_app/_auth/dashboard/_layout/gabinet/settings/': typeof AppAuthDashboardLayoutGabinetSettingsIndexRoute
   '/_app/_auth/dashboard/_layout/gabinet/treatments/': typeof AppAuthDashboardLayoutGabinetTreatmentsIndexRoute
   '/_app/_auth/dashboard/_layout/settings/automations/': typeof AppAuthDashboardLayoutSettingsAutomationsIndexRoute
   '/_app/_auth/dashboard/_layout/settings/document-components/': typeof AppAuthDashboardLayoutSettingsDocumentComponentsIndexRoute
@@ -1154,6 +1164,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/employees/'
     | '/dashboard/gabinet/packages/'
     | '/dashboard/gabinet/patients/'
+    | '/dashboard/gabinet/settings/'
     | '/dashboard/gabinet/treatments/'
     | '/dashboard/settings/automations/'
     | '/dashboard/settings/document-components/'
@@ -1250,6 +1261,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/employees'
     | '/dashboard/gabinet/packages'
     | '/dashboard/gabinet/patients'
+    | '/dashboard/gabinet/settings'
     | '/dashboard/gabinet/treatments'
     | '/dashboard/settings/automations'
     | '/dashboard/settings/document-components'
@@ -1357,6 +1369,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gabinet/employees/'
     | '/_app/_auth/dashboard/_layout/gabinet/packages/'
     | '/_app/_auth/dashboard/_layout/gabinet/patients/'
+    | '/_app/_auth/dashboard/_layout/gabinet/settings/'
     | '/_app/_auth/dashboard/_layout/gabinet/treatments/'
     | '/_app/_auth/dashboard/_layout/settings/automations/'
     | '/_app/_auth/dashboard/_layout/settings/document-components/'
@@ -1947,6 +1960,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsIndexRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/'
+      path: '/gabinet/settings'
+      fullPath: '/dashboard/gabinet/settings/'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsIndexRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/patients/': {
       id: '/_app/_auth/dashboard/_layout/gabinet/patients/'
       path: '/gabinet/patients'
@@ -2345,6 +2365,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutGabinetEmployeesIndexRoute: typeof AppAuthDashboardLayoutGabinetEmployeesIndexRoute
   AppAuthDashboardLayoutGabinetPackagesIndexRoute: typeof AppAuthDashboardLayoutGabinetPackagesIndexRoute
   AppAuthDashboardLayoutGabinetPatientsIndexRoute: typeof AppAuthDashboardLayoutGabinetPatientsIndexRoute
+  AppAuthDashboardLayoutGabinetSettingsIndexRoute: typeof AppAuthDashboardLayoutGabinetSettingsIndexRoute
   AppAuthDashboardLayoutGabinetTreatmentsIndexRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsIndexRoute
 }
 
@@ -2433,6 +2454,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetPackagesIndexRoute,
     AppAuthDashboardLayoutGabinetPatientsIndexRoute:
       AppAuthDashboardLayoutGabinetPatientsIndexRoute,
+    AppAuthDashboardLayoutGabinetSettingsIndexRoute:
+      AppAuthDashboardLayoutGabinetSettingsIndexRoute,
     AppAuthDashboardLayoutGabinetTreatmentsIndexRoute:
       AppAuthDashboardLayoutGabinetTreatmentsIndexRoute,
   }

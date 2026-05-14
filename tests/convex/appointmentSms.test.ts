@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import {
   createTestCtx,
   seedGabinetPrereqs,
   seedSecondUser,
   seedTestUser,
-} from "../_test_helpers";
+} from "../../convex/_test_helpers";
 
 const activeContexts = new Set<ReturnType<typeof createTestCtx>>();
 

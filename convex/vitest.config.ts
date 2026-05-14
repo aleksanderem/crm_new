@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ["**/*.test.ts", "../tests/convex/**/*.test.ts"],
     server: { deps: { inline: ["convex-test"] } },
   },
 });

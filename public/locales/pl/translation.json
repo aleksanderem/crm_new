@@ -2123,7 +2123,13 @@
       "searchPlaceholder": "Szukaj pracownika...",
       "empty": "Brak aktywnych pracowników do wyświetlenia grafiku.",
       "usingDefaults": "Godziny domyślne",
-      "editTitle": "Edytuj grafik pracownika"
+      "editTitle": "Edytuj grafik pracownika",
+      "datedPeriodsCount_one": "{{count}} okres datowany",
+      "datedPeriodsCount_few": "{{count}} okresy datowane",
+      "datedPeriodsCount_many": "{{count}} okresów datowanych",
+      "datedPeriodsCount_other": "{{count}} okresów datowanych",
+      "datedPeriodsHint": "Zarządzaj datowanymi okresami grafiku tego pracownika w panelu edycji.",
+      "activePeriodHint": "Aktualnie obowiązujący okres datowany (kolumny pokazują jego godziny)."
     },
     "scheduling": {
       "title": "Godziny pracy",

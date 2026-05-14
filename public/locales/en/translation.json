@@ -2115,7 +2115,11 @@
       "searchPlaceholder": "Search employee...",
       "empty": "No active employees to display in the timetable.",
       "usingDefaults": "Default hours",
-      "editTitle": "Edit employee schedule"
+      "editTitle": "Edit employee schedule",
+      "datedPeriodsCount_one": "{{count}} dated period",
+      "datedPeriodsCount_other": "{{count}} dated periods",
+      "datedPeriodsHint": "Manage dated schedule periods for this employee from the edit panel.",
+      "activePeriodHint": "Currently active dated schedule period (shown columns reflect it)."
     },
     "scheduling": {
       "title": "Working Hours",

@@ -34,6 +34,10 @@ export function createPlatformTables({
       v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     ),
     timezone: v.optional(v.string()),
+    // Platform-level admin flag. Distinct from organization roles; grants
+    // access to the /admin area and ability to configure global platform
+    // settings (e.g. invitation email From address).
+    isPlatformAdmin: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),
@@ -261,5 +265,19 @@ export function createPlatformTables({
   })
     .index("by_user_type", ["organizationId", "userId", "entityType", "viewedAt"])
     .index("by_entity", ["entityId"]),
+
+  // Singleton-style table: holds global platform configuration that is NOT
+  // scoped to any organization. There should be at most ONE row here; the
+  // queries/mutations in convex/platformSettings.ts enforce that invariant.
+  // Used for things like the From name/email used on platform-sent emails
+  // (invitations, password resets, etc.) so they represent Quera (the
+  // platform) rather than any individual tenant gabinet.
+  platformSettings: defineTable({
+    invitationFromName: v.optional(v.string()),
+    invitationFromEmail: v.optional(v.string()),
+    invitationReplyToEmail: v.optional(v.string()),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  }),
   };
 }

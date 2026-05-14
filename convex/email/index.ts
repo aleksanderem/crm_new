@@ -24,6 +24,9 @@ export type SendEmailOptions = {
   subject: string;
   html: string;
   text?: string;
+  // Optional per-call overrides. If unset, falls back to AUTH_EMAIL env.
+  from?: string;
+  replyTo?: string;
 };
 
 export async function sendEmail(options: SendEmailOptions) {
@@ -31,8 +34,13 @@ export async function sendEmail(options: SendEmailOptions) {
     throw new Error(`Resend - ${ERRORS.ENVS_NOT_INITIALIZED}`);
   }
 
-  const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
-  const email = { from, ...options };
+  const { from: fromOverride, replyTo, ...rest } = options;
+  const from = fromOverride ?? AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
+  const email = {
+    from,
+    ...rest,
+    ...(replyTo ? { reply_to: replyTo } : {}),
+  };
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
@@ -12,20 +13,23 @@ import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Pencil, Plus, Trash2 } from "@/lib/ez-icons";
-import { useMemo, useState, useEffect } from "react";
+import { Pencil } from "@/lib/ez-icons";
+import {
+  FlexibleScheduleEditor,
+  findActivePeriod,
+  groupSchedulesIntoPeriods,
+  type SchedulePeriod,
+} from "@/components/gabinet/flexible-schedule-editor";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import type { MappedGabinetEmployeeSchedule } from "@/lib/supabase/mappers/gabinet/employee-schedules";
 import type { MappedGabinetWorkingHours } from "@/lib/supabase/mappers/gabinet/working-hours";
@@ -41,18 +45,18 @@ const DAY_NAMES_PL = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
 // Display order: Mon..Sun. Convex/Supabase stores dayOfWeek 0=Sun..6=Sat.
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-interface DaySchedule {
+interface DisplayEntry {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
   isWorking: boolean;
-  breakStart: string;
-  breakEnd: string;
+  breakStart?: string;
+  breakEnd?: string;
 }
 
-function buildDefaultSchedule(
+function buildClinicFallback(
   clinicHours: MappedGabinetWorkingHours[] | undefined,
-): DaySchedule[] {
+): DisplayEntry[] {
   return Array.from({ length: 7 }, (_, i) => {
     const clinicDay = clinicHours?.find((h) => h.dayOfWeek === i);
     if (clinicDay) {
@@ -61,8 +65,8 @@ function buildDefaultSchedule(
         startTime: clinicDay.startTime,
         endTime: clinicDay.endTime,
         isWorking: clinicDay.isOpen,
-        breakStart: clinicDay.breakStart ?? "",
-        breakEnd: clinicDay.breakEnd ?? "",
+        breakStart: clinicDay.breakStart ?? undefined,
+        breakEnd: clinicDay.breakEnd ?? undefined,
       };
     }
     return {
@@ -70,58 +74,83 @@ function buildDefaultSchedule(
       startTime: "08:00",
       endTime: "17:00",
       isWorking: i >= 1 && i <= 5,
-      breakStart: "",
-      breakEnd: "",
     };
   });
 }
 
-function buildEmployeeSchedule(
+interface ResolvedEmployeeSchedule {
+  entries: DisplayEntry[];
+  activePeriod?: SchedulePeriod;
+  totalPeriods: number;
+  datedPeriods: number;
+  hasOverrides: boolean;
+}
+
+function resolveEmployeeSchedule(
   employee: MappedGabinetEmployee,
   schedules: MappedGabinetEmployeeSchedule[] | undefined,
   clinicHours: MappedGabinetWorkingHours[] | undefined,
-): { entries: DaySchedule[]; hasOverrides: boolean } {
-  // Use only default-period entries (those without effectiveFrom)
-  const own = (schedules ?? []).filter(
-    (s) => s.userId === employee.userId && !s.effectiveFrom,
-  );
-  if (own.length === 0) {
-    return { entries: buildDefaultSchedule(clinicHours), hasOverrides: false };
-  }
-  const entries = Array.from({ length: 7 }, (_, i) => {
-    const found = own.find((e) => e.dayOfWeek === i);
-    if (found) {
-      return {
-        dayOfWeek: i,
-        startTime: found.startTime,
-        endTime: found.endTime,
-        isWorking: found.isWorking,
-        breakStart: found.breakStart ?? "",
-        breakEnd: found.breakEnd ?? "",
-      };
-    }
-    // Fallback to clinic default for missing days
-    const clinicDay = clinicHours?.find((h) => h.dayOfWeek === i);
+  today: string,
+): ResolvedEmployeeSchedule {
+  const own = (schedules ?? []).filter((s) => s.userId === employee.userId);
+  const periods = groupSchedulesIntoPeriods(own);
+  const fallback = buildClinicFallback(clinicHours);
+
+  if (periods.length === 0) {
     return {
-      dayOfWeek: i,
-      startTime: clinicDay?.startTime ?? "08:00",
-      endTime: clinicDay?.endTime ?? "17:00",
-      isWorking: clinicDay?.isOpen ?? (i >= 1 && i <= 5),
-      breakStart: clinicDay?.breakStart ?? "",
-      breakEnd: clinicDay?.breakEnd ?? "",
+      entries: fallback,
+      totalPeriods: 0,
+      datedPeriods: 0,
+      hasOverrides: false,
     };
-  });
-  return { entries, hasOverrides: true };
+  }
+
+  const datedPeriods = periods.filter((p) => p.effectiveFrom).length;
+  const activePeriod = findActivePeriod(periods, today);
+
+  const entries: DisplayEntry[] = activePeriod
+    ? Array.from({ length: 7 }, (_, i) => {
+        const found = activePeriod.entries.find((e) => e.dayOfWeek === i);
+        if (found) {
+          return {
+            dayOfWeek: i,
+            startTime: found.startTime,
+            endTime: found.endTime,
+            isWorking: found.isWorking,
+            breakStart: found.breakStart,
+            breakEnd: found.breakEnd,
+          };
+        }
+        return fallback[i];
+      })
+    : fallback;
+
+  return {
+    entries,
+    activePeriod,
+    totalPeriods: periods.length,
+    datedPeriods,
+    hasOverrides: true,
+  };
 }
 
 function TimetablePage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const bulkSetEmployeeSchedule = useAction(
     // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
     api.gabinet.scheduling.bulkSetEmployeeSchedule,
+  );
+  const saveSchedulePeriod = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+    api.gabinet.scheduling.saveSchedulePeriod,
+  );
+  const removeSchedulePeriod = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+    api.gabinet.scheduling.removeSchedulePeriod,
   );
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, {
@@ -132,6 +161,7 @@ function TimetablePage() {
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const dayNames = i18n.language === "pl" ? DAY_NAMES_PL : DAY_NAMES_EN;
+  const today = new Date().toISOString().split("T")[0];
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string | null; email: string | null }>();
@@ -186,24 +216,30 @@ function TimetablePage() {
     });
   };
 
-  const handleSave = async (
-    employee: MappedGabinetEmployee,
-    hours: DaySchedule[],
-  ) => {
-    await bulkSetEmployeeSchedule({
-      organizationId,
-      userId: employee.userId,
-      hours: hours.map((h) => ({
+  const editingEmployeeSchedules = useMemo(() => {
+    if (!editingEmployee) return undefined;
+    return (schedules ?? []).filter(
+      (s) => s.userId === editingEmployee.userId,
+    );
+  }, [schedules, editingEmployee]);
+
+  const editingEmployeePeriods = useMemo(
+    () => groupSchedulesIntoPeriods(editingEmployeeSchedules),
+    [editingEmployeeSchedules],
+  );
+
+  const clinicHoursForEditor = useMemo(
+    () =>
+      (clinicHours ?? []).map((h) => ({
         dayOfWeek: h.dayOfWeek,
         startTime: h.startTime,
         endTime: h.endTime,
-        isWorking: h.isWorking,
-        breakStart: h.breakStart || undefined,
-        breakEnd: h.breakEnd || undefined,
+        isOpen: h.isOpen,
+        breakStart: h.breakStart ?? undefined,
+        breakEnd: h.breakEnd ?? undefined,
       })),
-    });
-    invalidateScheduleCache();
-  };
+    [clinicHours],
+  );
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
@@ -255,17 +291,26 @@ function TimetablePage() {
               </tr>
             )}
             {sortedEmployees.map((emp) => {
-              const { entries, hasOverrides } = buildEmployeeSchedule(
-                emp,
-                schedules,
-                clinicHours,
-              );
+              const {
+                entries,
+                activePeriod,
+                datedPeriods,
+                hasOverrides,
+              } = resolveEmployeeSchedule(emp, schedules, clinicHours, today);
+              const activeDatedLabel =
+                activePeriod?.effectiveFrom
+                  ? `${activePeriod.effectiveFrom}${
+                      activePeriod.effectiveTo
+                        ? ` — ${activePeriod.effectiveTo}`
+                        : ` — ${t("gabinet.employees.schedule.ongoing")}`
+                    }`
+                  : null;
               return (
                 <tr key={emp._id} className="border-b last:border-b-0">
                   <td className="px-4 py-2 align-middle">
                     <div className="flex flex-col">
                       <span className="font-medium">{employeeName(emp)}</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                         {emp.specialization && (
                           <span className="text-xs text-muted-foreground">
                             {emp.specialization}
@@ -274,6 +319,26 @@ function TimetablePage() {
                         {!hasOverrides && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1">
                             {t("gabinet.timetable.usingDefaults")}
+                          </Badge>
+                        )}
+                        {activeDatedLabel && (
+                          <Badge
+                            variant="default"
+                            className="text-[10px] h-4 px-1"
+                            title={t("gabinet.timetable.activePeriodHint")}
+                          >
+                            {activeDatedLabel}
+                          </Badge>
+                        )}
+                        {datedPeriods > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] h-4 px-1"
+                            title={t("gabinet.timetable.datedPeriodsHint")}
+                          >
+                            {t("gabinet.timetable.datedPeriodsCount", {
+                              count: datedPeriods,
+                            })}
                           </Badge>
                         )}
                       </div>
@@ -321,221 +386,47 @@ function TimetablePage() {
       </div>
 
       {editingEmployee && (
-        <EmployeeScheduleEditor
-          employee={editingEmployee}
-          employeeName={employeeName(editingEmployee)}
-          schedules={schedules}
-          clinicHours={clinicHours}
-          onClose={() => setEditingEmployee(null)}
-          onSave={async (hours) => {
-            await handleSave(editingEmployee, hours);
-          }}
-        />
+        <Sheet
+          open
+          onOpenChange={(open) => !open && setEditingEmployee(null)}
+        >
+          <SheetContent
+            side="right"
+            className="flex flex-col sm:max-w-[760px] overflow-y-auto"
+          >
+            <SheetHeader>
+              <SheetTitle>{t("gabinet.timetable.editTitle")}</SheetTitle>
+              <SheetDescription>
+                {employeeName(editingEmployee)}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto py-4">
+              <FlexibleScheduleEditor
+                organizationId={organizationId as Id<"organizations">}
+                userId={editingEmployee.userId as Id<"users">}
+                periods={editingEmployeePeriods}
+                clinicHours={clinicHoursForEditor}
+                onSavePeriod={async (a) => {
+                  await saveSchedulePeriod(a);
+                  invalidateScheduleCache();
+                }}
+                onRemovePeriod={async (a) => {
+                  await removeSchedulePeriod(a);
+                  invalidateScheduleCache();
+                }}
+                onSaveLegacy={async (a) => {
+                  await bulkSetEmployeeSchedule(a);
+                  invalidateScheduleCache();
+                }}
+                onManageLeaves={() =>
+                  navigate({ to: "/dashboard/gabinet/settings/leaves" })
+                }
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
     </div>
-  );
-}
-
-function EmployeeScheduleEditor({
-  employee,
-  employeeName,
-  schedules,
-  clinicHours,
-  onClose,
-  onSave,
-}: {
-  employee: MappedGabinetEmployee;
-  employeeName: string;
-  schedules: MappedGabinetEmployeeSchedule[] | undefined;
-  clinicHours: MappedGabinetWorkingHours[] | undefined;
-  onClose: () => void;
-  onSave: (hours: DaySchedule[]) => Promise<void>;
-}) {
-  const { t, i18n } = useTranslation();
-  const dayFull =
-    i18n.language === "pl"
-      ? ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"]
-      : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-  const [hours, setHours] = useState<DaySchedule[]>(() => {
-    const { entries } = buildEmployeeSchedule(employee, schedules, clinicHours);
-    return entries;
-  });
-  const [saving, setSaving] = useState(false);
-
-  // Re-init if the editor is reopened for a different employee (or data refreshes)
-  useEffect(() => {
-    const { entries } = buildEmployeeSchedule(employee, schedules, clinicHours);
-    setHours(entries);
-  }, [employee._id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const updateDay = (
-    dayOfWeek: number,
-    field: keyof DaySchedule,
-    value: string | boolean,
-  ) => {
-    setHours((prev) =>
-      prev.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h)),
-    );
-  };
-
-  const timeErrors = hours.filter(
-    (h) => h.isWorking && h.endTime <= h.startTime,
-  );
-  const breakErrors = hours.filter(
-    (h) =>
-      h.isWorking &&
-      h.breakStart &&
-      h.breakEnd &&
-      h.breakEnd <= h.breakStart,
-  );
-
-  const handleSubmit = async () => {
-    if (timeErrors.length > 0) {
-      toast.error(
-        t("gabinet.scheduling.validationEndAfterStart", {
-          days: timeErrors.map((h) => dayFull[h.dayOfWeek]).join(", "),
-        }),
-      );
-      return;
-    }
-    if (breakErrors.length > 0) {
-      toast.error(
-        t("gabinet.scheduling.validationBreakEndAfterStart", {
-          days: breakErrors.map((h) => dayFull[h.dayOfWeek]).join(", "),
-        }),
-      );
-      return;
-    }
-    setSaving(true);
-    try {
-      await onSave(hours);
-      toast.success(t("common.saved"));
-      onClose();
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="flex flex-col sm:max-w-[560px]">
-        <SheetHeader>
-          <SheetTitle>{t("gabinet.timetable.editTitle")}</SheetTitle>
-          <SheetDescription>{employeeName}</SheetDescription>
-        </SheetHeader>
-
-        <div className="flex-1 overflow-y-auto py-4">
-          <div className="rounded-lg border">
-            <div className="grid grid-cols-[140px_50px_1fr_1fr_2fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
-              <span>{t("gabinet.scheduling.day")}</span>
-              <span>{t("gabinet.scheduling.open")}</span>
-              <span>{t("gabinet.scheduling.start")}</span>
-              <span>{t("gabinet.scheduling.end")}</span>
-              <span>{t("gabinet.schedules.break")}</span>
-            </div>
-
-            {DISPLAY_ORDER.map((dayIdx) => {
-              const h = hours.find((x) => x.dayOfWeek === dayIdx)!;
-              const hasBreak = Boolean(h.breakStart || h.breakEnd);
-              const hasTimeError = h.isWorking && h.endTime <= h.startTime;
-              const hasBreakError =
-                h.isWorking && h.breakStart && h.breakEnd && h.breakEnd <= h.breakStart;
-              return (
-                <div
-                  key={dayIdx}
-                  className={`grid grid-cols-[140px_50px_1fr_1fr_2fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0 ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
-                >
-                  <span className="text-sm font-medium">{dayFull[dayIdx]}</span>
-                  <Checkbox
-                    checked={h.isWorking}
-                    onCheckedChange={(checked) =>
-                      updateDay(dayIdx, "isWorking", checked as boolean)
-                    }
-                  />
-                  <Input
-                    type="time"
-                    className="h-7"
-                    value={h.startTime}
-                    onChange={(e) => updateDay(dayIdx, "startTime", e.target.value)}
-                    disabled={!h.isWorking}
-                  />
-                  <Input
-                    type="time"
-                    className="h-7"
-                    value={h.endTime}
-                    onChange={(e) => updateDay(dayIdx, "endTime", e.target.value)}
-                    disabled={!h.isWorking}
-                  />
-                  {hasBreak ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="time"
-                        className="h-7"
-                        value={h.breakStart}
-                        onChange={(e) =>
-                          updateDay(dayIdx, "breakStart", e.target.value)
-                        }
-                        disabled={!h.isWorking}
-                      />
-                      <span className="text-xs text-muted-foreground">–</span>
-                      <Input
-                        type="time"
-                        className="h-7"
-                        value={h.breakEnd}
-                        onChange={(e) =>
-                          updateDay(dayIdx, "breakEnd", e.target.value)
-                        }
-                        disabled={!h.isWorking}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          updateDay(dayIdx, "breakStart", "");
-                          updateDay(dayIdx, "breakEnd", "");
-                        }}
-                        disabled={!h.isWorking}
-                        aria-label={t("gabinet.scheduling.removeBreak")}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" variant="stroke" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 justify-self-start text-xs"
-                      onClick={() => {
-                        updateDay(dayIdx, "breakStart", "12:00");
-                        updateDay(dayIdx, "breakEnd", "13:00");
-                      }}
-                      disabled={!h.isWorking}
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                      {t("gabinet.scheduling.addBreak")}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <SheetFooter className="border-t pt-4">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            {t("common.cancel")}
-          </Button>
-          <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? t("common.saving") : t("common.save")}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   );
 }

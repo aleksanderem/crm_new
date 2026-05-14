@@ -253,11 +253,15 @@ export const bulkSetEmployeeSchedule = action({
     const db = createSupabaseDb();
 
     for (const h of args.hours) {
-      const existing = await db.query("gabinetEmployeeSchedules")
+      const candidates = await db.query("gabinetEmployeeSchedules")
         .eq("organizationId", String(args.organizationId))
         .eq("userId", args.userId)
         .eq("dayOfWeek", h.dayOfWeek)
-        .first();
+        .collect();
+
+      const existing = candidates.find(
+        (c) => !((c.effectiveFrom as string | null | undefined) ?? "")
+      );
 
       if (existing) {
         await db.patch("gabinetEmployeeSchedules", existing._id as string, {
@@ -279,6 +283,8 @@ export const bulkSetEmployeeSchedule = action({
           isWorking: h.isWorking,
           breakStart: h.breakStart ?? null,
           breakEnd: h.breakEnd ?? null,
+          effectiveFrom: null,
+          effectiveTo: null,
           locationId: h.locationId ?? null,
           createdBy: authResult.userId,
           createdAt: now,

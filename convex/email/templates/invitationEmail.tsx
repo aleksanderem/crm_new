@@ -19,6 +19,11 @@ type InvitationEmailOptions = {
   inviterName: string;
   role: string;
   token: string;
+  // Optional platform-level overrides. If unset, sendEmail falls back to the
+  // AUTH_EMAIL env var.
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
 };
 
 /**
@@ -98,6 +103,9 @@ export async function sendInvitationEmail({
   inviterName,
   role,
   token,
+  fromName,
+  fromEmail,
+  replyTo,
 }: InvitationEmailOptions) {
   const html = renderInvitationEmail({
     email,
@@ -107,9 +115,16 @@ export async function sendInvitationEmail({
     token,
   });
 
+  // Build the From header only if BOTH name+email are provided; partial
+  // overrides fall back to AUTH_EMAIL to keep the address valid.
+  const from =
+    fromName && fromEmail ? `${fromName} <${fromEmail}>` : fromEmail || undefined;
+
   await sendEmail({
     to: email,
     subject: `You've been invited to join ${orgName}`,
     html,
+    ...(from ? { from } : {}),
+    ...(replyTo ? { replyTo } : {}),
   });
 }

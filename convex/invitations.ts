@@ -138,13 +138,13 @@ export const _sendInvitationEmail = internalAction({
     inviterUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    const ctxInfo = await ctx.runQuery(
-      internal.invitations._getEmailContext,
-      {
+    const [ctxInfo, platformSettings] = await Promise.all([
+      ctx.runQuery(internal.invitations._getEmailContext, {
         organizationId: args.organizationId,
         inviterUserId: args.inviterUserId,
-      },
-    );
+      }),
+      ctx.runQuery(internal.platformSettings._getInternal, {}),
+    ]);
     try {
       await sendInvitationEmail({
         email: args.email,
@@ -152,6 +152,9 @@ export const _sendInvitationEmail = internalAction({
         inviterName: ctxInfo.inviterName,
         role: args.role,
         token: args.token,
+        fromName: platformSettings?.invitationFromName,
+        fromEmail: platformSettings?.invitationFromEmail,
+        replyTo: platformSettings?.invitationReplyToEmail,
       });
     } catch (e) {
       console.error(

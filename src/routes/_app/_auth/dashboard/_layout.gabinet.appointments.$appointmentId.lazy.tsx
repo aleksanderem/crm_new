@@ -97,6 +97,8 @@ import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
@@ -318,6 +320,10 @@ function AppointmentDetail() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
+  const [isSavingTags, setIsSavingTags] = useState(false);
+
+  const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
 
   // Payment management state
@@ -422,6 +428,11 @@ function AppointmentDetail() {
     }
   }, [detail?.appointment.internalNotes]);
 
+  // Initialize tagIds from appointment data
+  useEffect(() => {
+    setTagIds((detail?.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
+  }, [detail?.appointment._id, detail?.appointment.tagIds]);
+
   // Initialize body chart data from appointment
   useEffect(() => {
     if (detail?.appointment.bodyChartData) {
@@ -447,6 +458,26 @@ function AppointmentDetail() {
     setShellSidebarMode("icon-only");
     return () => setShellSidebarMode("default");
   }, [setShellSidebarMode]);
+
+  const handleTagsChange = async (newTagIds: Id<"tagDefinitions">[]) => {
+    setTagIds(newTagIds);
+    if (!detail) return;
+    setIsSavingTags(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: detail.appointment._id,
+        tagIds: newTagIds,
+      });
+      refetch();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+      setTagIds((detail.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
 
   // Build fields for EntityDetailLayout sidebar
   const detailFields: DetailField[] = (() => {
@@ -610,6 +641,25 @@ function AppointmentDetail() {
             })}
           </div>
         )}
+
+        {/* Tags */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              {t("common.tags")}
+            </p>
+            {isSavingTags && (
+              <span className="text-[10px] text-muted-foreground">
+                {t("common.saving")}
+              </span>
+            )}
+          </div>
+          <TagsPicker
+            tags={tagDefinitions}
+            selectedIds={tagIds}
+            onChange={handleTagsChange}
+          />
+        </div>
       </div>
     );
   })();

@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction, useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -116,6 +117,7 @@ export function AppointmentDialog({
   const createAppointment = useAction(api.gabinet.appointments.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
   const convex = useConvex();
+  const queryClient = useQueryClient();
 
   // -------------------------------------------------------------------------
   // Data queries
@@ -459,6 +461,12 @@ export function AppointmentDialog({
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
       });
+      // Refresh the calendar immediately — Convex actions don't invalidate
+      // the Supabase React Query cache automatically.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+      ]);
       toast.success(t("gabinet.appointments.created"));
       onOpenChange(false);
     } catch (e: unknown) {
@@ -481,7 +489,10 @@ export function AppointmentDialog({
     isRecurring,
     frequency,
     recurringCount,
+    locationId,
+    roomId,
     onOpenChange,
+    queryClient,
     t,
   ]);
 

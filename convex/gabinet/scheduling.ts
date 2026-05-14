@@ -188,11 +188,15 @@ export const setEmployeeSchedule = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
-    const existing = await db.query("gabinetEmployeeSchedules")
+    const candidates = await db.query("gabinetEmployeeSchedules")
       .eq("organizationId", String(args.organizationId))
       .eq("userId", args.userId)
       .eq("dayOfWeek", args.dayOfWeek)
-      .first();
+      .collect();
+
+    const existing = candidates.find(
+      (c) => ((c.effectiveFrom as string | null | undefined) ?? "") === (args.effectiveFrom ?? "")
+    );
 
     const data: Record<string, unknown> = {
       startTime: args.startTime,

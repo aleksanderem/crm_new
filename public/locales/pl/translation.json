@@ -2116,6 +2116,15 @@
         "created": "Wariant utworzony"
       }
     },
+    "timetable": {
+      "title": "Grafik pracowników",
+      "description": "Edytuj grafiki wszystkich pracowników w jednym miejscu. Każdy wiersz to pracownik, a kolumny pokazują tygodniowe godziny pracy.",
+      "employee": "Pracownik",
+      "searchPlaceholder": "Szukaj pracownika...",
+      "empty": "Brak aktywnych pracowników do wyświetlenia grafiku.",
+      "usingDefaults": "Godziny domyślne",
+      "editTitle": "Edytuj grafik pracownika"
+    },
     "scheduling": {
       "title": "Godziny pracy",
       "description": "Ustaw godziny otwarcia kliniki i harmonogramy pracowników",

@@ -2108,6 +2108,15 @@
         "created": "Variant created"
       }
     },
+    "timetable": {
+      "title": "Employee timetable",
+      "description": "Edit schedules for all employees in one place. Each row is an employee; columns show weekly working hours.",
+      "employee": "Employee",
+      "searchPlaceholder": "Search employee...",
+      "empty": "No active employees to display in the timetable.",
+      "usingDefaults": "Default hours",
+      "editTitle": "Edit employee schedule"
+    },
     "scheduling": {
       "title": "Working Hours",
       "description": "Set clinic opening hours and employee schedules",

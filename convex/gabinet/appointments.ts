@@ -1208,7 +1208,7 @@ export const create = action({
 export const update = action({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.string(),
+    appointmentId: v.id("gabinetAppointments"),
     date: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),

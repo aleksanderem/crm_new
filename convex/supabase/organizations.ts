@@ -42,42 +42,6 @@ export const writeOrganizationToSupabase = internalAction({
   },
 });
 
-export const updateOrganizationInSupabase = internalAction({
-  args: {
-    organizationId: v.string(),
-    name: v.optional(v.string()),
-    slug: v.optional(v.string()),
-    logo: v.optional(v.string()),
-    website: v.optional(v.string()),
-    updatedAt: v.number(),
-  },
-  returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args) => {
-    const client = createServiceRoleClient();
-    const row: Record<string, unknown> = { updated_at: args.updatedAt };
-    if (args.name !== undefined) row.name = args.name;
-    if (args.slug !== undefined) row.slug = args.slug;
-    if (args.logo !== undefined) row.logo = args.logo;
-    if (args.website !== undefined) row.website = args.website;
-
-    const { data, error } = await client
-      .from("organizations")
-      .update(row)
-      .eq("id", args.organizationId)
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase update failed for organization ${args.organizationId}: ${error.message}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`Organization updated in Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
-  },
-});
-
 // ── Team Membership ───────────────────────────────────────────────────────────
 
 export const writeTeamMembershipToSupabase = internalAction({
@@ -108,56 +72,3 @@ export const writeTeamMembershipToSupabase = internalAction({
   },
 });
 
-export const updateTeamMembershipInSupabase = internalAction({
-  args: {
-    membershipId: v.string(),
-    role: v.optional(v.string()),
-  },
-  returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args) => {
-    const client = createServiceRoleClient();
-    const row: Record<string, unknown> = {};
-    if (args.role !== undefined) row.role = args.role;
-
-    const { data, error } = await client
-      .from("team_memberships")
-      .update(row)
-      .eq("id", args.membershipId)
-      .select("id")
-      .single();
-
-    if (error) {
-      const msg = `Supabase update failed for teamMembership ${args.membershipId}: ${error.message}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`TeamMembership updated in Supabase id=${data!.id}`);
-    return { success: true, id: data!.id };
-  },
-});
-
-export const deleteTeamMembershipFromSupabase = internalAction({
-  args: {
-    membershipId: v.string(),
-    organizationId: v.string(),
-  },
-  returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args) => {
-    const client = createServiceRoleClient();
-
-    const { error } = await client
-      .from("team_memberships")
-      .delete()
-      .eq("id", args.membershipId);
-
-    if (error) {
-      const msg = `Supabase delete failed for teamMembership ${args.membershipId}: ${error.message}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    console.info(`TeamMembership deleted from Supabase id=${args.membershipId}`);
-    return { success: true, id: args.membershipId };
-  },
-});

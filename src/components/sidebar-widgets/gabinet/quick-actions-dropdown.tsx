@@ -97,7 +97,7 @@ export function GabinetQuickActionsDropdown() {
           </DropdownMenuItem>
           <DropdownMenuItem
             className="px-3 py-2.5 text-sm"
-            onSelect={() => navigate({ to: "/dashboard/gabinet/settings" })}
+            onSelect={() => navigate({ to: "/dashboard/gabinet/settings/scheduling" })}
           >
             <Settings className="text-foreground size-5" />
             {t("sidebar.gabinet.goToSettings", "Ustawienia")}

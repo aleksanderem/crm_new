@@ -8,6 +8,7 @@ import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -141,22 +142,22 @@ function SchedulingSettings() {
       </SectionHeader.Root>
 
       <div className="rounded-lg border">
-        <div className="grid grid-cols-[180px_80px_1fr_1fr_1fr_1fr] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-[180px_80px_1fr_1fr_2fr] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">
           <span>{t("gabinet.scheduling.day")}</span>
           <span>{t("gabinet.scheduling.open")}</span>
           <span>{t("gabinet.scheduling.start")}</span>
           <span>{t("gabinet.scheduling.end")}</span>
-          <span>{t("gabinet.scheduling.breakStart")}</span>
-          <span>{t("gabinet.scheduling.breakEnd")}</span>
+          <span>{t("gabinet.schedules.break")}</span>
         </div>
 
         {hours.map((h) => {
           const hasTimeError = h.isOpen && h.endTime <= h.startTime;
           const hasBreakError = h.isOpen && h.breakStart && h.breakEnd && h.breakEnd <= h.breakStart;
+          const hasBreak = Boolean(h.breakStart || h.breakEnd);
           return (
           <div
             key={h.dayOfWeek}
-            className={`grid grid-cols-[180px_80px_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-4 py-2 last:border-b-0 ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
+            className={`grid grid-cols-[180px_80px_1fr_1fr_2fr] items-center gap-2 border-b px-4 py-2 last:border-b-0 ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
           >
             <span className="text-sm font-medium">{dayNames[h.dayOfWeek]}</span>
             <Checkbox
@@ -177,20 +178,55 @@ function SchedulingSettings() {
               onChange={(e) => updateDay(h.dayOfWeek, "endTime", e.target.value)}
               disabled={!h.isOpen}
             />
-            <Input
-              type="time"
-              className="h-8 w-24"
-              value={h.breakStart}
-              onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
-              disabled={!h.isOpen}
-            />
-            <Input
-              type="time"
-              className="h-8 w-24"
-              value={h.breakEnd}
-              onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
-              disabled={!h.isOpen}
-            />
+            {hasBreak ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="time"
+                  className="h-8 w-24"
+                  value={h.breakStart}
+                  onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
+                  disabled={!h.isOpen}
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <Input
+                  type="time"
+                  className="h-8 w-24"
+                  value={h.breakEnd}
+                  onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
+                  disabled={!h.isOpen}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    updateDay(h.dayOfWeek, "breakStart", "");
+                    updateDay(h.dayOfWeek, "breakEnd", "");
+                  }}
+                  disabled={!h.isOpen}
+                  aria-label={t("gabinet.scheduling.removeBreak")}
+                  title={t("gabinet.scheduling.removeBreak")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 justify-self-start text-xs"
+                onClick={() => {
+                  updateDay(h.dayOfWeek, "breakStart", "12:00");
+                  updateDay(h.dayOfWeek, "breakEnd", "13:00");
+                }}
+                disabled={!h.isOpen}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                {t("gabinet.scheduling.addBreak")}
+              </Button>
+            )}
           </div>
         );
         })}

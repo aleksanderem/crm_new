@@ -32,10 +32,17 @@ import {
   MessageSquare,
   Eye,
   StickyNote,
+  ChevronLeft,
+  ChevronRight,
 } from "@/lib/ez-icons";
 import { XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { formatBytes } from "@/hooks/use-file-upload";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -668,53 +675,168 @@ function PhotoGrid({
   urlMap: Map<string, string | null>;
   onRemove: (storageId: Id<"_storage">) => void;
 }) {
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
   if (photos.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      {photos.map((photo) => {
-        const url = urlMap.get(photo.storageId);
-        return (
-          <div
-            key={photo.storageId}
-            className="bg-muted group flex items-center gap-3 rounded-lg p-3"
-          >
-            <div className="size-10 shrink-0 overflow-hidden rounded">
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((photo, idx) => {
+          const url = urlMap.get(photo.storageId);
+          return (
+            <div
+              key={photo.storageId}
+              className="group bg-muted relative aspect-square overflow-hidden rounded-lg"
+            >
               {url ? (
-                <img
-                  src={url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndex(idx)}
+                  className="block h-full w-full cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label="Preview photo"
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                </button>
               ) : (
-                <div className="flex h-full items-center justify-center bg-muted">
+                <div className="flex h-full w-full items-center justify-center">
                   <Loader2
-                    size={14}
+                    size={16}
                     variant="stroke"
                     className="animate-spin text-muted-foreground"
                   />
                 </div>
               )}
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute right-1 top-1 size-6 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(photo.storageId);
+                }}
+                aria-label="Remove"
+              >
+                <XIcon className="size-3.5" />
+              </Button>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <p className="truncate text-sm font-medium">
-                {url ? url.split("/").pop() : "..."}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {new Date(photo.uploadedAt).toLocaleDateString()}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              className="size-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-transparent"
-              onClick={() => onRemove(photo.storageId)}
-              aria-label="Remove"
-            >
-              <XIcon className="size-4" />
-            </Button>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+
+      <PhotoPreviewDialog
+        photos={photos}
+        urlMap={urlMap}
+        index={previewIndex}
+        onChangeIndex={setPreviewIndex}
+        onClose={() => setPreviewIndex(null)}
+      />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PhotoPreviewDialog — lightbox for viewing photos at full size with nav
+// ---------------------------------------------------------------------------
+
+function PhotoPreviewDialog({
+  photos,
+  urlMap,
+  index,
+  onChangeIndex,
+  onClose,
+}: {
+  photos: Photo[];
+  urlMap: Map<string, string | null>;
+  index: number | null;
+  onChangeIndex: (index: number) => void;
+  onClose: () => void;
+}) {
+  const open = index !== null;
+  const photo = index !== null ? photos[index] : undefined;
+  const url = photo ? urlMap.get(photo.storageId) : undefined;
+
+  const goPrev = useCallback(() => {
+    if (index === null || photos.length === 0) return;
+    onChangeIndex((index - 1 + photos.length) % photos.length);
+  }, [index, photos.length, onChangeIndex]);
+
+  const goNext = useCallback(() => {
+    if (index === null || photos.length === 0) return;
+    onChangeIndex((index + 1) % photos.length);
+  }, [index, photos.length, onChangeIndex]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, goPrev, goNext]);
+
+  if (!photo) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[95dvh] w-[95vw] max-w-[95vw] flex-col gap-3 bg-background p-4 sm:max-w-4xl">
+        <DialogTitle className="sr-only">Photo preview</DialogTitle>
+        <div className="relative flex min-h-0 flex-1 items-center justify-center">
+          {url ? (
+            <img
+              src={url}
+              alt=""
+              className="max-h-[80dvh] max-w-full rounded-md object-contain"
+            />
+          ) : (
+            <Loader2
+              size={32}
+              variant="stroke"
+              className="animate-spin text-muted-foreground"
+            />
+          )}
+          {photos.length > 1 && (
+            <>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full shadow"
+                onClick={goPrev}
+                aria-label="Previous"
+              >
+                <ChevronLeft className="size-5" variant="stroke" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full shadow"
+                onClick={goNext}
+                aria-label="Next"
+              >
+                <ChevronRight className="size-5" variant="stroke" />
+              </Button>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{new Date(photo.uploadedAt).toLocaleString()}</span>
+          {photos.length > 1 && (
+            <span>
+              {(index ?? 0) + 1} / {photos.length}
+            </span>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

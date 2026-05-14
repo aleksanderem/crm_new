@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { Search } from "@/lib/ez-icons";
 
 const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
 type EmployeeRole = (typeof ROLES)[number];
@@ -122,6 +123,14 @@ export function EmployeeForm({
   );
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+
+  const filteredTreatments = useMemo(() => {
+    if (!treatments) return [];
+    const q = treatmentSearch.trim().toLowerCase();
+    if (!q) return treatments;
+    return treatments.filter((tr) => tr.name?.toLowerCase().includes(q));
+  }, [treatments, treatmentSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,8 +279,23 @@ export function EmployeeForm({
       {role !== "receptionist" && role !== "admin" && (
         <div className="space-y-2">
           <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
+          {treatments && treatments.length > 0 && (
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                variant="stroke"
+              />
+              <Input
+                type="search"
+                value={treatmentSearch}
+                onChange={(e) => setTreatmentSearch(e.target.value)}
+                placeholder={t("gabinet.treatments.searchPlaceholder")}
+                className="pl-8"
+              />
+            </div>
+          )}
           <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-            {treatments?.map((tr) => (
+            {filteredTreatments.map((tr) => (
               <label
                 key={tr._id}
                 className="flex items-center gap-2 text-sm cursor-pointer"
@@ -289,6 +313,11 @@ export function EmployeeForm({
             {(!treatments || treatments.length === 0) && (
               <p className="text-xs text-muted-foreground py-2">
                 {t("gabinet.employees.noTreatments")}
+              </p>
+            )}
+            {treatments && treatments.length > 0 && filteredTreatments.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2">
+                {t("detail.relationships.noResults")}
               </p>
             )}
           </div>

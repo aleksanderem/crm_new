@@ -21,6 +21,7 @@ import { Route as AppLoginLayoutRouteImport } from './routes/_app/login/_layout'
 import { Route as AppInviteTokenRouteImport } from './routes/_app/invite.$token'
 import { Route as AppPatientLayoutIndexRouteImport } from './routes/_app/patient/_layout.index'
 import { Route as AppLoginLayoutIndexRouteImport } from './routes/_app/login/_layout.index'
+import { Route as AppAuthAdminIndexRouteImport } from './routes/_app/_auth/admin.index'
 import { Route as AppPatientLayoutProfileRouteImport } from './routes/_app/patient/_layout.profile'
 import { Route as AppPatientLayoutPackagesRouteImport } from './routes/_app/patient/_layout.packages'
 import { Route as AppPatientLayoutLoyaltyRouteImport } from './routes/_app/patient/_layout.loyalty'
@@ -29,6 +30,7 @@ import { Route as AppPatientLayoutBookRouteImport } from './routes/_app/patient/
 import { Route as AppPatientLayoutAppointmentsRouteImport } from './routes/_app/patient/_layout.appointments'
 import { Route as AppAuthOnboardingLayoutRouteImport } from './routes/_app/_auth/onboarding/_layout'
 import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/dashboard/_layout'
+import { Route as AppAuthAdminUsersRouteImport } from './routes/_app/_auth/admin.users'
 import { Route as AppAuthAdminEmailConfigRouteImport } from './routes/_app/_auth/admin.email-config'
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
@@ -169,6 +171,11 @@ const AppLoginLayoutIndexRoute = AppLoginLayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppLoginLayoutRoute,
 } as any)
+const AppAuthAdminIndexRoute = AppAuthAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AppAuthRoute,
+} as any)
 const AppPatientLayoutProfileRoute = AppPatientLayoutProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -210,6 +217,11 @@ const AppAuthOnboardingLayoutRoute = AppAuthOnboardingLayoutRouteImport.update({
 const AppAuthDashboardLayoutRoute = AppAuthDashboardLayoutRouteImport.update({
   id: '/dashboard/_layout',
   path: '/dashboard',
+  getParentRoute: () => AppAuthRoute,
+} as any)
+const AppAuthAdminUsersRoute = AppAuthAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
   getParentRoute: () => AppAuthRoute,
 } as any)
 const AppAuthAdminEmailConfigRoute = AppAuthAdminEmailConfigRouteImport.update({
@@ -728,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/patient/login': typeof AppPatientLoginRoute
   '/sign/form/$token': typeof SignFormTokenRoute
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
+  '/admin/users': typeof AppAuthAdminUsersRoute
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -736,6 +749,7 @@ export interface FileRoutesByFullPath {
   '/patient/loyalty': typeof AppPatientLayoutLoyaltyRoute
   '/patient/packages': typeof AppPatientLayoutPackagesRoute
   '/patient/profile': typeof AppPatientLayoutProfileRoute
+  '/admin/': typeof AppAuthAdminIndexRoute
   '/login/': typeof AppLoginLayoutIndexRoute
   '/patient/': typeof AppPatientLayoutIndexRoute
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
@@ -827,6 +841,7 @@ export interface FileRoutesByTo {
   '/patient/login': typeof AppPatientLoginRoute
   '/sign/form/$token': typeof SignFormTokenRoute
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
+  '/admin/users': typeof AppAuthAdminUsersRoute
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
   '/patient/book': typeof AppPatientLayoutBookRoute
@@ -834,6 +849,7 @@ export interface FileRoutesByTo {
   '/patient/loyalty': typeof AppPatientLayoutLoyaltyRoute
   '/patient/packages': typeof AppPatientLayoutPackagesRoute
   '/patient/profile': typeof AppPatientLayoutProfileRoute
+  '/admin': typeof AppAuthAdminIndexRoute
   '/login': typeof AppLoginLayoutIndexRoute
   '/patient': typeof AppPatientLayoutIndexRoute
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
@@ -924,6 +940,7 @@ export interface FileRoutesById {
   '/_app/patient/login': typeof AppPatientLoginRoute
   '/sign/form/$token': typeof SignFormTokenRoute
   '/_app/_auth/admin/email-config': typeof AppAuthAdminEmailConfigRoute
+  '/_app/_auth/admin/users': typeof AppAuthAdminUsersRoute
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/_app/patient/_layout/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -932,6 +949,7 @@ export interface FileRoutesById {
   '/_app/patient/_layout/loyalty': typeof AppPatientLayoutLoyaltyRoute
   '/_app/patient/_layout/packages': typeof AppPatientLayoutPackagesRoute
   '/_app/patient/_layout/profile': typeof AppPatientLayoutProfileRoute
+  '/_app/_auth/admin/': typeof AppAuthAdminIndexRoute
   '/_app/login/_layout/': typeof AppLoginLayoutIndexRoute
   '/_app/patient/_layout/': typeof AppPatientLayoutIndexRoute
   '/_app/_auth/dashboard/_layout/calendar': typeof AppAuthDashboardLayoutCalendarRoute
@@ -1027,6 +1045,7 @@ export interface FileRouteTypes {
     | '/patient/login'
     | '/sign/form/$token'
     | '/admin/email-config'
+    | '/admin/users'
     | '/dashboard'
     | '/onboarding'
     | '/patient/appointments'
@@ -1035,6 +1054,7 @@ export interface FileRouteTypes {
     | '/patient/loyalty'
     | '/patient/packages'
     | '/patient/profile'
+    | '/admin/'
     | '/login/'
     | '/patient/'
     | '/dashboard/calendar'
@@ -1126,6 +1146,7 @@ export interface FileRouteTypes {
     | '/patient/login'
     | '/sign/form/$token'
     | '/admin/email-config'
+    | '/admin/users'
     | '/onboarding'
     | '/patient/appointments'
     | '/patient/book'
@@ -1133,6 +1154,7 @@ export interface FileRouteTypes {
     | '/patient/loyalty'
     | '/patient/packages'
     | '/patient/profile'
+    | '/admin'
     | '/login'
     | '/patient'
     | '/dashboard/calendar'
@@ -1222,6 +1244,7 @@ export interface FileRouteTypes {
     | '/_app/patient/login'
     | '/sign/form/$token'
     | '/_app/_auth/admin/email-config'
+    | '/_app/_auth/admin/users'
     | '/_app/_auth/dashboard/_layout'
     | '/_app/_auth/onboarding/_layout'
     | '/_app/patient/_layout/appointments'
@@ -1230,6 +1253,7 @@ export interface FileRouteTypes {
     | '/_app/patient/_layout/loyalty'
     | '/_app/patient/_layout/packages'
     | '/_app/patient/_layout/profile'
+    | '/_app/_auth/admin/'
     | '/_app/login/_layout/'
     | '/_app/patient/_layout/'
     | '/_app/_auth/dashboard/_layout/calendar'
@@ -1408,6 +1432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLoginLayoutIndexRouteImport
       parentRoute: typeof AppLoginLayoutRoute
     }
+    '/_app/_auth/admin/': {
+      id: '/_app/_auth/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AppAuthAdminIndexRouteImport
+      parentRoute: typeof AppAuthRoute
+    }
     '/_app/patient/_layout/profile': {
       id: '/_app/patient/_layout/profile'
       path: '/profile'
@@ -1462,6 +1493,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppAuthDashboardLayoutRouteImport
+      parentRoute: typeof AppAuthRoute
+    }
+    '/_app/_auth/admin/users': {
+      id: '/_app/_auth/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AppAuthAdminUsersRouteImport
       parentRoute: typeof AppAuthRoute
     }
     '/_app/_auth/admin/email-config': {
@@ -2378,14 +2416,18 @@ const AppAuthOnboardingLayoutRouteWithChildren =
 
 interface AppAuthRouteChildren {
   AppAuthAdminEmailConfigRoute: typeof AppAuthAdminEmailConfigRoute
+  AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRoute
   AppAuthDashboardLayoutRoute: typeof AppAuthDashboardLayoutRouteWithChildren
   AppAuthOnboardingLayoutRoute: typeof AppAuthOnboardingLayoutRouteWithChildren
+  AppAuthAdminIndexRoute: typeof AppAuthAdminIndexRoute
 }
 
 const AppAuthRouteChildren: AppAuthRouteChildren = {
   AppAuthAdminEmailConfigRoute: AppAuthAdminEmailConfigRoute,
+  AppAuthAdminUsersRoute: AppAuthAdminUsersRoute,
   AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRouteWithChildren,
   AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRouteWithChildren,
+  AppAuthAdminIndexRoute: AppAuthAdminIndexRoute,
 }
 
 const AppAuthRouteWithChildren =

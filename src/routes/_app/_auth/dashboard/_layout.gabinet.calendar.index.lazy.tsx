@@ -483,6 +483,34 @@ function GabinetCalendarPage() {
     [navigate],
   );
 
+  // Resize handler (called when user drags an appointment's bottom edge)
+  const handleAppointmentResize = useCallback(
+    async (id: string, newEndTime: string) => {
+      try {
+        await updateAppointment({
+          organizationId,
+          appointmentId: id as Id<"gabinetAppointments">,
+          endTime: newEndTime,
+        });
+        toast.success(
+          t("gabinet.appointments.resized", "Appointment resized"),
+        );
+        void queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetAppointments.all,
+        });
+      } catch (e: any) {
+        toast.error(
+          e.message ??
+            t(
+              "gabinet.appointments.resizeFailed",
+              "Failed to resize appointment",
+            ),
+        );
+      }
+    },
+    [organizationId, updateAppointment, queryClient, t],
+  );
+
   // DnD handlers
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -844,6 +872,7 @@ function GabinetCalendarPage() {
               }
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentClick={handleAppointmentClick}
+              onAppointmentResize={handleAppointmentResize}
               workingHours={dayWorkingHours}
             />
           )}
@@ -854,6 +883,7 @@ function GabinetCalendarPage() {
               onSlotClick={handleSlotClick}
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentClick={handleAppointmentClick}
+              onAppointmentResize={handleAppointmentResize}
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               employeeSchedules={employeeSchedules}

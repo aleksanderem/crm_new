@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { Button } from "@/components/ui/button";
 import {
@@ -363,6 +364,17 @@ function AppointmentDetail() {
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const trackView = useAction(api.recentlyViewed.track);
+  const queryClient = useQueryClient();
+
+  // Refresh the Supabase-backed appointment lists (calendar, dashboards, etc.)
+  // after a Convex action mutates the appointment — Convex actions do not
+  // automatically invalidate the React Query cache for Supabase reads.
+  const invalidateAppointmentCaches = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+    ]);
+  };
 
   // Payment actions (Supabase-primary)
   const createPayment = useAction(api.payments.create);
@@ -469,6 +481,7 @@ function AppointmentDetail() {
         appointmentId: detail.appointment._id,
         tagIds: newTagIds,
       });
+      await invalidateAppointmentCaches();
       refetch();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t("common.error");
@@ -757,6 +770,7 @@ function AppointmentDetail() {
         status: newStatus as "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show" | "pending_confirmation",
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
+      await invalidateAppointmentCaches();
       refetch();
 
       // When completing: the backend auto-generates after_completion docs.
@@ -809,6 +823,7 @@ function AppointmentDetail() {
       toast.success(t("gabinet.appointments.cancelled"));
       setCancelDialogOpen(false);
       setCancelReason("");
+      await invalidateAppointmentCaches();
       refetch();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t("common.error");

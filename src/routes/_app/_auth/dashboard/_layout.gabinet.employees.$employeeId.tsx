@@ -1736,20 +1736,21 @@ function FlexibleScheduleEditor({
 
             {/* Weekly schedule grid */}
             <div className="rounded-lg border">
-              <div className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-[140px_50px_1fr_1fr_2fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.scheduling.day")}</span>
                 <span>{t("gabinet.scheduling.open")}</span>
                 <span>{t("gabinet.scheduling.start")}</span>
                 <span>{t("gabinet.scheduling.end")}</span>
-                <span>{t("gabinet.scheduling.breakStart")}</span>
-                <span>{t("gabinet.scheduling.breakEnd")}</span>
+                <span>{t("gabinet.schedules.break")}</span>
                 <span>{t("gabinet.appointments.location")}</span>
               </div>
 
-              {periodHours.map((h) => (
+              {periodHours.map((h) => {
+                const hasBreak = Boolean(h.breakStart || h.breakEnd);
+                return (
                 <div
                   key={h.dayOfWeek}
-                  className="grid grid-cols-[140px_50px_1fr_1fr_1fr_1fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
+                  className="grid grid-cols-[140px_50px_1fr_1fr_2fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
                 >
                   <span className="text-sm font-medium">{dayNames[h.dayOfWeek]}</span>
                   <Checkbox
@@ -1770,20 +1771,55 @@ function FlexibleScheduleEditor({
                     onChange={(e) => updateDay(h.dayOfWeek, "endTime", e.target.value)}
                     disabled={!h.isWorking}
                   />
-                  <Input
-                    type="time"
-                    className="h-7 w-22"
-                    value={h.breakStart}
-                    onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
-                    disabled={!h.isWorking}
-                  />
-                  <Input
-                    type="time"
-                    className="h-7 w-22"
-                    value={h.breakEnd}
-                    onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
-                    disabled={!h.isWorking}
-                  />
+                  {hasBreak ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="time"
+                        className="h-7 w-22"
+                        value={h.breakStart}
+                        onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
+                        disabled={!h.isWorking}
+                      />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input
+                        type="time"
+                        className="h-7 w-22"
+                        value={h.breakEnd}
+                        onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
+                        disabled={!h.isWorking}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          updateDay(h.dayOfWeek, "breakStart", "");
+                          updateDay(h.dayOfWeek, "breakEnd", "");
+                        }}
+                        disabled={!h.isWorking}
+                        aria-label={t("gabinet.scheduling.removeBreak")}
+                        title={t("gabinet.scheduling.removeBreak")}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 justify-self-start text-xs"
+                      onClick={() => {
+                        updateDay(h.dayOfWeek, "breakStart", "12:00");
+                        updateDay(h.dayOfWeek, "breakEnd", "13:00");
+                      }}
+                      disabled={!h.isWorking}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                      {t("gabinet.scheduling.addBreak")}
+                    </Button>
+                  )}
                   <Select
                     value={h.locationId || "none"}
                     onValueChange={(val) => updateDay(h.dayOfWeek, "locationId", val === "none" ? "" : val)}
@@ -1802,7 +1838,8 @@ function FlexibleScheduleEditor({
                     </SelectContent>
                   </Select>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex justify-end gap-2">

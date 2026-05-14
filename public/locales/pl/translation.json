@@ -2125,6 +2125,8 @@
       "end": "Koniec",
       "breakStart": "Początek przerwy",
       "breakEnd": "Koniec przerwy",
+      "addBreak": "Dodaj przerwę",
+      "removeBreak": "Usuń przerwę",
       "validationEndAfterStart": "Godzina końca musi być po godzinie początku: {{days}}",
       "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}"
     },

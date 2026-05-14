@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { api } from "../_generated/api";
-import { createTestCtx, seedGabinetPrereqs, seedTestUser } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import { createTestCtx, seedGabinetPrereqs, seedTestUser } from "../../convex/_test_helpers";
 
 describe("package activities", () => {
   test("purchasePackage publishes semantic package_assigned envelope", async () => {

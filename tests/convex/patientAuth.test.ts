@@ -1,7 +1,7 @@
 import { expect, test, describe } from "vitest";
 import { createHash } from "crypto";
-import { api } from "../_generated/api";
-import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../../convex/_test_helpers";
 
 /** SHA-256 helper matching what the production code uses. */
 function sha256Sync(input: string): string {

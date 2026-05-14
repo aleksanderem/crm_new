@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
-import { api } from "../_generated/api";
-import { createTestCtx, seedTestUser, seedSecondUser } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser, seedSecondUser } from "../../convex/_test_helpers";
 
 describe("checkSeatLimit via getSeatUsage", () => {
   test("returns 1 seat used for org with only owner (free tier default)", async () => {

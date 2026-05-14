@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
-import { internal } from "../_generated/api";
-import { createTestCtx, seedTestUser } from "../_test_helpers";
+import { internal } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 
 describe("emailEventTrigger", () => {
   // ─── No-op: no bindings configured ────────────────────────────

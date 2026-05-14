@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
-import { api } from "../_generated/api";
-import { createTestCtx, seedTestUser } from "../_test_helpers";
+import { api } from "../../convex/_generated/api";
+import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 
 describe("updateUserImage", () => {
   test("caches storage URL in image field when imageId is set", async () => {

@@ -75,6 +75,7 @@ export const ICON_MAP: Record<string, string> = {
   MailOpen: "mail-open",
   MapPin: "map-pin",
   MapPinIcon: "map-pin",
+  Menu: "menu-01",
   MessageCircle: "message-01",
   MessageSquare: "message-02",
   Minus: "minus-sign",

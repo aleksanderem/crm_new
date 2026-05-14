@@ -98,6 +98,7 @@ export const Mail = createIcon("Mail");
 export const MailOpen = createIcon("MailOpen");
 export const MapPin = createIcon("MapPin");
 export const MapPinIcon = createIcon("MapPinIcon");
+export const Menu = createIcon("Menu");
 export const MessageCircle = createIcon("MessageCircle");
 export const MessageSquare = createIcon("MessageSquare");
 export const Minus = createIcon("Minus");

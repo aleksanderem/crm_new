@@ -70,6 +70,18 @@ function AdminIndex() {
             </CardHeader>
           </Card>
         </Link>
+
+        <Link to="/admin/errors" className="block">
+          <Card className="h-full transition hover:border-foreground/20">
+            <CardHeader>
+              <CardTitle>Errors</CardTitle>
+              <CardDescription>
+                Live log of uncaught errors from the Convex backend and the
+                frontend. Filter by source, expand stack traces.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </div>
   );

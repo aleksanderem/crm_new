@@ -13,6 +13,7 @@ import type * as _helpers_activityEnvelope from "../_helpers/activityEnvelope.js
 import type * as _helpers_auth from "../_helpers/auth.js";
 import type * as _helpers_authAction from "../_helpers/authAction.js";
 import type * as _helpers_html from "../_helpers/html.js";
+import type * as _helpers_logged from "../_helpers/logged.js";
 import type * as _helpers_permissionTypes from "../_helpers/permissionTypes.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
 import type * as _helpers_portalSession from "../_helpers/portalSession.js";
@@ -75,6 +76,7 @@ import type * as emailTemplates from "../emailTemplates.js";
 import type * as emails from "../emails.js";
 import type * as emails_internal from "../emails_internal.js";
 import type * as env from "../env.js";
+import type * as errorLogs from "../errorLogs.js";
 import type * as gabinet__availability from "../gabinet/_availability.js";
 import type * as gabinet__availability_supabase from "../gabinet/_availability_supabase.js";
 import type * as gabinet__e2eTest from "../gabinet/_e2eTest.js";
@@ -231,6 +233,7 @@ declare const fullApi: ApiFromModules<{
   "_helpers/auth": typeof _helpers_auth;
   "_helpers/authAction": typeof _helpers_authAction;
   "_helpers/html": typeof _helpers_html;
+  "_helpers/logged": typeof _helpers_logged;
   "_helpers/permissionTypes": typeof _helpers_permissionTypes;
   "_helpers/permissions": typeof _helpers_permissions;
   "_helpers/portalSession": typeof _helpers_portalSession;
@@ -293,6 +296,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   emails_internal: typeof emails_internal;
   env: typeof env;
+  errorLogs: typeof errorLogs;
   "gabinet/_availability": typeof gabinet__availability;
   "gabinet/_availability_supabase": typeof gabinet__availability_supabase;
   "gabinet/_e2eTest": typeof gabinet__e2eTest;

@@ -7,6 +7,7 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logError } from "../_helpers/logged";
 import type {
   GabinetAppointmentRow,
   GabinetEmployeeRow,
@@ -926,46 +927,60 @@ export const saveTreatmentParameters = action({
     ),
   },
   handler: async (ctx, args) => {
-    // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
-      internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: args.organizationId },
-    );
-    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
-      organizationId: args.organizationId,
-      feature: "gabinet_treatments",
-      action: "edit",
-    }).then((perm: { allowed: boolean; scope: string }) => {
-      if (!perm.allowed) throw new Error("Permission denied");
-    });
-
-    const db = createSupabaseDb();
-
-    // --- Read treatment from Supabase ---
-    const treatment = await db.get("gabinetTreatments", args.treatmentId);
-    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
-      throw new Error("Treatment not found");
-    }
-
-    // --- PATCH to Supabase ---
-    await db.patch("gabinetTreatments", args.treatmentId, {
-      parameters: args.parameters,
-      updatedAt: Date.now(),
-    });
-
-    // --- Delegate Convex-only side effects ---
     try {
-      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
-        treatmentId: args.treatmentId,
+      // --- Auth + permissions (via internal queries) ---
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
-        treatmentName: (treatment.name as string) ?? "",
-        updatedBy: String(authResult.userId),
+        feature: "gabinet_treatments",
+        action: "edit",
+      }).then((perm: { allowed: boolean; scope: string }) => {
+        if (!perm.allowed) throw new Error("Permission denied");
       });
-    } catch (e) {
-      console.error("[treatments.saveTreatmentParameters] Side effects FAILED:", e);
-    }
 
-    return args.treatmentId;
+      const db = createSupabaseDb();
+
+      // --- Read treatment from Supabase ---
+      const treatment = await db.get("gabinetTreatments", args.treatmentId);
+      if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
+        throw new Error("Treatment not found");
+      }
+
+      // --- PATCH to Supabase ---
+      await db.patch("gabinetTreatments", args.treatmentId, {
+        parameters: args.parameters,
+        updatedAt: Date.now(),
+      });
+
+      // --- Delegate Convex-only side effects ---
+      try {
+        await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+          treatmentId: args.treatmentId,
+          organizationId: args.organizationId,
+          treatmentName: (treatment.name as string) ?? "",
+          updatedBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error("[treatments.saveTreatmentParameters] Side effects FAILED:", e);
+      }
+
+      return args.treatmentId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "saveTreatmentParameters",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          treatmentId: args.treatmentId,
+          parameterCount: args.parameters?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

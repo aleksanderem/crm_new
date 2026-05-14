@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { reportError } from "@/lib/error-reporter";
 
 export function RouteErrorBoundary({
   error,
@@ -10,6 +12,18 @@ export function RouteErrorBoundary({
   reset: () => void;
 }) {
   const router = useRouter();
+
+  // Push the error into the global errorLogs table on first render of the
+  // boundary. reportError de-duplicates the same key within a 5s window so a
+  // re-rendering boundary won't spam the table.
+  useEffect(() => {
+    reportError(error, {
+      scope: "route-error-boundary",
+      fnName:
+        typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
+  }, [error]);
+
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 p-8 text-center">
       <AlertTriangle className="h-10 w-10 text-destructive" />

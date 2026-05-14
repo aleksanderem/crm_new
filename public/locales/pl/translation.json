@@ -2133,7 +2133,11 @@
       "datedPeriodsCount_many": "{{count}} okresów datowanych",
       "datedPeriodsCount_other": "{{count}} okresów datowanych",
       "datedPeriodsHint": "Zarządzaj datowanymi okresami grafiku tego pracownika w panelu edycji.",
-      "activePeriodHint": "Aktualnie obowiązujący okres datowany (kolumny pokazują jego godziny)."
+      "activePeriodHint": "Aktualnie obowiązujący okres datowany (kolumny pokazują jego godziny).",
+      "onLeaveBadge": "Urlop do {{end}}",
+      "upcomingLeaveBadge": "Urlop: {{start}} — {{end}}",
+      "onLeaveCell": "Urlop",
+      "leaveBadgeHint": "Zatwierdzony urlop pokrywający ten zakres dat."
     },
     "scheduling": {
       "title": "Godziny pracy",

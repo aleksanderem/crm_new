@@ -2123,7 +2123,11 @@
       "datedPeriodsCount_one": "{{count}} dated period",
       "datedPeriodsCount_other": "{{count}} dated periods",
       "datedPeriodsHint": "Manage dated schedule periods for this employee from the edit panel.",
-      "activePeriodHint": "Currently active dated schedule period (shown columns reflect it)."
+      "activePeriodHint": "Currently active dated schedule period (shown columns reflect it).",
+      "onLeaveBadge": "On leave until {{end}}",
+      "upcomingLeaveBadge": "Leave: {{start}} — {{end}}",
+      "onLeaveCell": "Leave",
+      "leaveBadgeHint": "Approved leave covering this date range."
     },
     "scheduling": {
       "title": "Working Hours",

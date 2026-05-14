@@ -8,6 +8,7 @@ import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-em
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -42,6 +43,7 @@ import { useTranslation } from "react-i18next";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import type { MappedGabinetEmployeeSchedule } from "@/lib/supabase/mappers/gabinet/employee-schedules";
 import type { MappedGabinetWorkingHours } from "@/lib/supabase/mappers/gabinet/working-hours";
+import type { MappedGabinetLeave } from "@/lib/supabase/mappers/gabinet/leaves";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/timetable"
@@ -143,6 +145,59 @@ function resolveEmployeeSchedule(
   };
 }
 
+function getWeekDates(today: string): Map<number, string> {
+  const base = new Date(`${today}T00:00:00`);
+  const dow = base.getDay();
+  const offsetToMonday = dow === 0 ? -6 : 1 - dow;
+  const map = new Map<number, string>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + offsetToMonday + i);
+    const iso = d.toISOString().split("T")[0];
+    map.set(d.getDay(), iso);
+  }
+  return map;
+}
+
+function findLeaveForDate(
+  leaves: MappedGabinetLeave[] | undefined,
+  userId: string,
+  date: string,
+): MappedGabinetLeave | undefined {
+  if (!leaves) return undefined;
+  return leaves.find(
+    (l) =>
+      l.userId === userId &&
+      l.status === "approved" &&
+      l.startDate <= date &&
+      l.endDate >= date,
+  );
+}
+
+function findUpcomingOrActiveLeave(
+  leaves: MappedGabinetLeave[] | undefined,
+  userId: string,
+  today: string,
+  horizonDate: string,
+): MappedGabinetLeave | undefined {
+  if (!leaves) return undefined;
+  return leaves
+    .filter(
+      (l) =>
+        l.userId === userId &&
+        l.status === "approved" &&
+        l.endDate >= today &&
+        l.startDate <= horizonDate,
+    )
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+}
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
 function TimetablePage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
@@ -170,10 +225,15 @@ function TimetablePage() {
   const { data: locations } = useSupabaseGabinetLocationsList(organizationId, {
     activeOnly: true,
   });
+  const { data: leaves } = useSupabaseGabinetLeavesList(organizationId, {
+    status: "approved",
+  });
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const dayNames = i18n.language === "pl" ? DAY_NAMES_PL : DAY_NAMES_EN;
   const today = new Date().toISOString().split("T")[0];
+  const weekDates = useMemo(() => getWeekDates(today), [today]);
+  const leaveHorizon = useMemo(() => addDays(today, 30), [today]);
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string | null; email: string | null }>();
@@ -365,6 +425,22 @@ function TimetablePage() {
                         : ` — ${t("gabinet.employees.schedule.ongoing")}`
                     }`
                   : null;
+              const upcomingLeave = findUpcomingOrActiveLeave(
+                leaves,
+                emp.userId,
+                today,
+                leaveHorizon,
+              );
+              const leaveBadgeLabel = upcomingLeave
+                ? upcomingLeave.startDate <= today
+                  ? t("gabinet.timetable.onLeaveBadge", {
+                      end: upcomingLeave.endDate,
+                    })
+                  : t("gabinet.timetable.upcomingLeaveBadge", {
+                      start: upcomingLeave.startDate,
+                      end: upcomingLeave.endDate,
+                    })
+                : null;
               return (
                 <tr key={emp._id} className="border-b last:border-b-0">
                   <td className="px-4 py-2 align-middle">
@@ -401,17 +477,49 @@ function TimetablePage() {
                             })}
                           </Badge>
                         )}
+                        {leaveBadgeLabel && (
+                          <Badge
+                            variant="destructive"
+                            className="text-[10px] h-4 px-1"
+                            title={t("gabinet.timetable.leaveBadgeHint")}
+                          >
+                            {leaveBadgeLabel}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </td>
                   {DISPLAY_ORDER.map((dayIdx) => {
                     const entry = entries.find((e) => e.dayOfWeek === dayIdx);
+                    const date = weekDates.get(dayIdx);
+                    const leave = date
+                      ? findLeaveForDate(leaves, emp.userId, date)
+                      : undefined;
                     return (
                       <td
                         key={dayIdx}
                         className="px-2 py-2 text-center align-middle"
                       >
-                        {entry?.isWorking ? (
+                        {leave ? (
+                          <div
+                            className="text-xs leading-tight"
+                            title={`${leave.startDate} — ${leave.endDate}${
+                              leave.reason ? `\n${leave.reason}` : ""
+                            }`}
+                          >
+                            <Badge
+                              variant="destructive"
+                              className="text-[10px] h-4 px-1"
+                            >
+                              {t("gabinet.timetable.onLeaveCell")}
+                            </Badge>
+                            {entry?.isWorking && (
+                              <div className="text-muted-foreground text-[10px] line-through mt-0.5">
+                                {entry.startTime}–{entry.endTime}
+                              </div>
+                            )}
+                          </div>
+                        ) : entry?.isWorking ? (
                           <div className="text-xs leading-tight">
                             <div className="font-medium">
                               {entry.startTime}–{entry.endTime}

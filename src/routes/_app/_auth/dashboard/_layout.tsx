@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
@@ -194,6 +195,7 @@ function DashboardLayout() {
   const signOut = useSignOut();
   const navigate = useNavigate();
   const { client: supabase } = useSupabaseSafe();
+  const queryClient = useQueryClient();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -374,6 +376,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createContact({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -390,6 +393,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createCompany({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -414,6 +418,7 @@ function DashboardLayout() {
                     source: data.source,
                     notes: data.notes,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -430,6 +435,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createPatient({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -446,6 +452,8 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createAppointment({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -465,6 +473,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createTreatment({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -481,6 +490,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createPackage({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentPackages.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -498,6 +508,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -524,6 +535,8 @@ function DashboardLayout() {
                     ownerId: user!._id,
                     description: data.description,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(orgId) });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -550,6 +563,7 @@ function DashboardLayout() {
                     endTime: data.endTime,
                     reason: data.reason,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -566,6 +580,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createProduct({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -582,6 +597,7 @@ function DashboardLayout() {
                 setIsCreating(true);
                 try {
                   await createCall({ organizationId: orgId, ...data });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -602,6 +618,7 @@ function DashboardLayout() {
                     email: data.email,
                     role: data.role,
                   });
+                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
                   opts.onSuccess();
                 } finally {
                   setIsCreating(false);
@@ -615,7 +632,7 @@ function DashboardLayout() {
           return null;
       }
     },
-    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user, queryClient]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });

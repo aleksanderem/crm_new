@@ -1,5 +1,6 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
@@ -8,6 +9,7 @@ import { orgRoleValidator } from "@cvx/schema";
 import { logActivity } from "./_helpers/activities";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
+import { sendInvitationEmail } from "./email/templates/invitationEmail";
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -106,7 +108,58 @@ export const create = action({
       console.error("[invitations.create] Supabase mirror failed:", e);
     }
 
+    // Send the invitation email out-of-band. Failure here must NOT roll back
+    // the invitation — the row already exists; the user can use "Resend" to
+    // retry. The send is delegated to an internalAction so the user-facing
+    // create() response isn't blocked by Resend latency.
+    await ctx.scheduler.runAfter(0, internal.invitations._sendInvitationEmail, {
+      invitationId: created.invitationId,
+      email: created.email,
+      role: created.role,
+      token: created.token,
+      organizationId: args.organizationId,
+      inviterUserId: created.invitedBy,
+    });
+
     return created.invitationId;
+  },
+});
+
+// Internal action: render + send the invitation email via Resend.
+// Loads orgName / inviterName from the DB so the user-facing create() doesn't
+// need to round-trip these via the scheduler payload.
+export const _sendInvitationEmail = internalAction({
+  args: {
+    invitationId: v.string(),
+    email: v.string(),
+    role: v.string(),
+    token: v.string(),
+    organizationId: v.id("organizations"),
+    inviterUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const ctxInfo = await ctx.runQuery(
+      internal.invitations._getEmailContext,
+      {
+        organizationId: args.organizationId,
+        inviterUserId: args.inviterUserId,
+      },
+    );
+    try {
+      await sendInvitationEmail({
+        email: args.email,
+        orgName: ctxInfo.orgName,
+        inviterName: ctxInfo.inviterName,
+        role: args.role,
+        token: args.token,
+      });
+    } catch (e) {
+      console.error(
+        `[invitations._sendInvitationEmail] failed for ${args.email} (invitation ${args.invitationId}):`,
+        e,
+      );
+      // Swallow — invitation row exists, user can resend.
+    }
   },
 });
 
@@ -421,13 +474,17 @@ export const resend = action({
     invitationId: v.string(),
   },
   handler: async (ctx, args) => {
-    const updated: { expiresAt: number; updatedAt: number } = await ctx.runMutation(
-      internal.invitations._resendInternal,
-      {
-        organizationId: args.organizationId,
-        invitationId: args.invitationId as any,
-      },
-    );
+    const updated: {
+      expiresAt: number;
+      updatedAt: number;
+      email: string;
+      role: "admin" | "member" | "viewer" | "owner";
+      token: string;
+      invitedBy: string;
+    } = await ctx.runMutation(internal.invitations._resendInternal, {
+      organizationId: args.organizationId,
+      invitationId: args.invitationId as any,
+    });
 
     // Mirror new expiry to Supabase so any consumer reading from there
     // sees the refreshed expiresAt.
@@ -440,6 +497,16 @@ export const resend = action({
     } catch (e) {
       console.error("[invitations.resend] Supabase mirror failed:", e);
     }
+
+    // Re-send the invitation email with the refreshed expiry.
+    await ctx.scheduler.runAfter(0, internal.invitations._sendInvitationEmail, {
+      invitationId: args.invitationId,
+      email: updated.email,
+      role: updated.role,
+      token: updated.token,
+      organizationId: args.organizationId,
+      inviterUserId: updated.invitedBy,
+    });
 
     return args.invitationId;
   },
@@ -465,6 +532,31 @@ export const _resendInternal = internalMutation({
     const updatedAt = Date.now();
     await ctx.db.patch(args.invitationId, { expiresAt, updatedAt });
 
-    return { expiresAt, updatedAt };
+    return {
+      expiresAt,
+      updatedAt,
+      email: invitation.email,
+      role: invitation.role,
+      token: invitation.token,
+      invitedBy: String(invitation.invitedBy),
+    };
+  },
+});
+
+// Lightweight internal query used by _sendInvitationEmail to load the bits of
+// context that the email template needs (org name, inviter name) without
+// re-fetching from a Node action.
+export const _getEmailContext = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    inviterUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    const inviter = await ctx.db.get(args.inviterUserId as Id<"users">);
+    return {
+      orgName: org?.name ?? "your team",
+      inviterName: inviter?.name ?? inviter?.email ?? "A teammate",
+    };
   },
 });

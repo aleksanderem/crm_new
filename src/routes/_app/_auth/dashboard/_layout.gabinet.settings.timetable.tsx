@@ -7,6 +7,7 @@ import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -15,12 +16,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { EMPLOYEE_ROLES } from "@/lib/options";
 import { Pencil } from "@/lib/ez-icons";
 import {
   FlexibleScheduleEditor,
@@ -158,6 +167,9 @@ function TimetablePage() {
   });
   const { data: schedules } = useSupabaseGabinetEmployeeSchedulesList(organizationId);
   const { data: clinicHours } = useSupabaseGabinetWorkingHoursList(organizationId);
+  const { data: locations } = useSupabaseGabinetLocationsList(organizationId, {
+    activeOnly: true,
+  });
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const dayNames = i18n.language === "pl" ? DAY_NAMES_PL : DAY_NAMES_EN;
@@ -172,8 +184,21 @@ function TimetablePage() {
   }, [members]);
 
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [editingEmployee, setEditingEmployee] =
     useState<MappedGabinetEmployee | null>(null);
+
+  const employeeLocationIds = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const s of schedules ?? []) {
+      if (!s.locationId) continue;
+      const set = map.get(s.userId) ?? new Set<string>();
+      set.add(s.locationId);
+      map.set(s.userId, set);
+    }
+    return map;
+  }, [schedules]);
 
   const sortedEmployees = useMemo(() => {
     const list = [...(employees ?? [])];
@@ -188,19 +213,24 @@ function TimetablePage() {
           : userMap.get(b.userId)?.name ?? userMap.get(b.userId)?.email ?? "";
       return aName.localeCompare(bName);
     });
-    if (!search.trim()) return list;
-    const needle = search.toLowerCase();
+    const needle = search.trim().toLowerCase();
     return list.filter((e) => {
+      if (roleFilter !== "all" && e.role !== roleFilter) return false;
+      if (locationFilter !== "all") {
+        const locs = employeeLocationIds.get(e.userId);
+        if (!locs || !locs.has(locationFilter)) return false;
+      }
+      if (!needle) return true;
       const u = userMap.get(e.userId);
       const fullName = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim();
       return (
         fullName.toLowerCase().includes(needle) ||
         u?.name?.toLowerCase().includes(needle) ||
         u?.email?.toLowerCase().includes(needle) ||
-        e.specialization?.toLowerCase().includes(needle)
+        (e.specialization?.toLowerCase().includes(needle) ?? false)
       );
     });
-  }, [employees, userMap, search]);
+  }, [employees, userMap, search, roleFilter, locationFilter, employeeLocationIds]);
 
   const employeeName = (e: MappedGabinetEmployee) => {
     if (e.firstName || e.lastName) {
@@ -252,13 +282,43 @@ function TimetablePage() {
         <UntitledAlert>{t("gabinet.timetable.description")}</UntitledAlert>
       </SectionHeader.Root>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder={t("gabinet.timetable.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t("gabinet.timetable.filterByRole")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+              {t("gabinet.timetable.allRoles")}
+            </SelectItem>
+            {EMPLOYEE_ROLES.map((r) => (
+              <SelectItem key={r} value={r}>
+                {t(`gabinet.employees.roles.${r}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder={t("gabinet.timetable.filterByLocation")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+              {t("gabinet.timetable.allLocations")}
+            </SelectItem>
+            {(locations ?? []).map((loc) => (
+              <SelectItem key={loc._id} value={loc._id}>
+                {loc.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border overflow-x-auto">

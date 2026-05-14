@@ -59,6 +59,7 @@ import type * as documents_seed from "../documents/seed.js";
 import type * as documents_signing from "../documents/signing.js";
 import type * as documents_templates from "../documents/templates.js";
 import type * as email_index from "../email/index.js";
+import type * as email_providers from "../email/providers.js";
 import type * as email_templates_invitationEmail from "../email/templates/invitationEmail.js";
 import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
 import type * as emailAccounts from "../emailAccounts.js";
@@ -276,6 +277,7 @@ declare const fullApi: ApiFromModules<{
   "documents/signing": typeof documents_signing;
   "documents/templates": typeof documents_templates;
   "email/index": typeof email_index;
+  "email/providers": typeof email_providers;
   "email/templates/invitationEmail": typeof email_templates_invitationEmail;
   "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
   emailAccounts: typeof emailAccounts;

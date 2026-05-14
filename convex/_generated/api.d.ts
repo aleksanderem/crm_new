@@ -136,6 +136,7 @@ import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
 import type * as pipelineStageActions from "../pipelineStageActions.js";
 import type * as pipelines from "../pipelines.js";
+import type * as platformAdmins from "../platformAdmins.js";
 import type * as platformSettings from "../platformSettings.js";
 import type * as productSubscriptions from "../productSubscriptions.js";
 import type * as products from "../products.js";
@@ -352,6 +353,7 @@ declare const fullApi: ApiFromModules<{
   permissions: typeof permissions;
   pipelineStageActions: typeof pipelineStageActions;
   pipelines: typeof pipelines;
+  platformAdmins: typeof platformAdmins;
   platformSettings: typeof platformSettings;
   productSubscriptions: typeof productSubscriptions;
   products: typeof products;

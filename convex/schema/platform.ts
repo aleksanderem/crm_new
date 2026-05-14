@@ -272,10 +272,27 @@ export function createPlatformTables({
   // Used for things like the From name/email used on platform-sent emails
   // (invitations, password resets, etc.) so they represent Quera (the
   // platform) rather than any individual tenant gabinet.
+  //
+  // Provider:
+  //   When `provider` is unset the platform falls back to env-based Resend
+  //   (AUTH_RESEND_KEY / AUTH_EMAIL). When set, sends go through the chosen
+  //   provider using the corresponding credential fields below.
+  //   Google/Microsoft are intentionally not supported here yet — they need
+  //   an OAuth flow that doesn't exist for platform-scope credentials.
   platformSettings: defineTable({
     invitationFromName: v.optional(v.string()),
     invitationFromEmail: v.optional(v.string()),
     invitationReplyToEmail: v.optional(v.string()),
+    // Provider selection (optional — unset = env Resend fallback)
+    provider: v.optional(
+      v.union(v.literal("resend"), v.literal("mailgun")),
+    ),
+    resendApiKey: v.optional(v.string()),
+    mailgunApiKey: v.optional(v.string()),
+    mailgunDomain: v.optional(v.string()),
+    mailgunRegion: v.optional(
+      v.union(v.literal("us"), v.literal("eu")),
+    ),
     updatedAt: v.number(),
     updatedBy: v.optional(v.id("users")),
   }),

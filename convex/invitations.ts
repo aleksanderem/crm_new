@@ -9,7 +9,11 @@ import { orgRoleValidator } from "@cvx/schema";
 import { logActivity } from "./_helpers/activities";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
-import { sendInvitationEmail } from "./email/templates/invitationEmail";
+import {
+  sendInvitationEmail,
+  renderInvitationEmail,
+} from "./email/templates/invitationEmail";
+import { sendViaResend, sendViaMailgun } from "./email/providers";
 
 export const listPending = query({
   args: { organizationId: v.id("organizations") },
@@ -145,17 +149,84 @@ export const _sendInvitationEmail = internalAction({
       }),
       ctx.runQuery(internal.platformSettings._getInternal, {}),
     ]);
+
+    const fromName = platformSettings?.invitationFromName;
+    const fromEmail = platformSettings?.invitationFromEmail;
+    const replyTo = platformSettings?.invitationReplyToEmail;
+    const from =
+      fromName && fromEmail ? `${fromName} <${fromEmail}>` : fromEmail || undefined;
+
     try {
-      await sendInvitationEmail({
-        email: args.email,
-        orgName: ctxInfo.orgName,
-        inviterName: ctxInfo.inviterName,
-        role: args.role,
-        token: args.token,
-        fromName: platformSettings?.invitationFromName,
-        fromEmail: platformSettings?.invitationFromEmail,
-        replyTo: platformSettings?.invitationReplyToEmail,
-      });
+      const provider = platformSettings?.provider;
+      // Resend with admin-provided API key (overrides env)
+      if (provider === "resend" && platformSettings?.resendApiKey) {
+        if (!from) {
+          throw new Error(
+            "Provider 'resend' requires invitationFromEmail to be set in /admin/email-config",
+          );
+        }
+        const html = renderInvitationEmail({
+          email: args.email,
+          orgName: ctxInfo.orgName,
+          inviterName: ctxInfo.inviterName,
+          role: args.role,
+          token: args.token,
+        });
+        await sendViaResend(
+          {
+            to: args.email,
+            subject: `You've been invited to join ${ctxInfo.orgName}`,
+            html,
+            from,
+            replyTo,
+          },
+          { apiKey: platformSettings.resendApiKey },
+        );
+      } else if (
+        provider === "mailgun" &&
+        platformSettings?.mailgunApiKey &&
+        platformSettings?.mailgunDomain
+      ) {
+        if (!from) {
+          throw new Error(
+            "Provider 'mailgun' requires invitationFromEmail to be set in /admin/email-config",
+          );
+        }
+        const html = renderInvitationEmail({
+          email: args.email,
+          orgName: ctxInfo.orgName,
+          inviterName: ctxInfo.inviterName,
+          role: args.role,
+          token: args.token,
+        });
+        await sendViaMailgun(
+          {
+            to: args.email,
+            subject: `You've been invited to join ${ctxInfo.orgName}`,
+            html,
+            from,
+            replyTo,
+          },
+          {
+            apiKey: platformSettings.mailgunApiKey,
+            domain: platformSettings.mailgunDomain,
+            region: platformSettings.mailgunRegion ?? "us",
+          },
+        );
+      } else {
+        // Fallback: env-based Resend (AUTH_RESEND_KEY + AUTH_EMAIL) — same
+        // behavior as before any platform provider was configured.
+        await sendInvitationEmail({
+          email: args.email,
+          orgName: ctxInfo.orgName,
+          inviterName: ctxInfo.inviterName,
+          role: args.role,
+          token: args.token,
+          fromName,
+          fromEmail,
+          replyTo,
+        });
+      }
     } catch (e) {
       console.error(
         `[invitations._sendInvitationEmail] failed for ${args.email} (invitation ${args.invitationId}):`,

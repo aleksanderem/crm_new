@@ -54,7 +54,7 @@ import { useTree } from "@headless-tree/react";
 import {
   Plus,
   FileText,
-  MoreHorizontal,
+  Menu,
   Pencil,
   Trash2,
   CopyIcon,
@@ -357,7 +357,7 @@ function TemplateTree({
                           className="h-6 w-6 opacity-0 group-hover/folder:opacity-100 transition-opacity shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          <Menu className="h-3.5 w-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -446,7 +446,7 @@ function TemplateTree({
                       className="h-7 w-7 shrink-0 opacity-0 group-hover/tpl:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
+                      <Menu className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

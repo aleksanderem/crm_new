@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -132,6 +133,7 @@ export function ChangeEmployeeModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateAppointment = useAction(api.gabinet.appointments.update);
+  const queryClient = useQueryClient();
 
   // Fetch all active employees
   const listEmployeesAction = useAction(api.gabinet.employees.listAll);
@@ -256,6 +258,11 @@ export function ChangeEmployeeModal({
           ),
         );
       }
+      // Refresh Supabase-backed appointment lists (calendar, dashboards).
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+      ]);
       onOpenChange(false);
       setSelectedId(null);
       setUseNewSlot(false);

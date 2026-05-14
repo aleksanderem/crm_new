@@ -1,11 +1,12 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWideContent } from "@/hooks/use-wide-content";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { usePermission } from "@/hooks/use-permission";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   useSupabaseScheduledActivitiesByDateRange,
   type CalendarScheduledActivity,
@@ -269,6 +270,7 @@ function UnifiedCalendarPage() {
   const updateAppointment = useAction(
     api.gabinet.appointments.update
   );
+  const queryClient = useQueryClient();
 
   // Navigation
   const navigate = useCallback(
@@ -355,12 +357,19 @@ function UnifiedCalendarPage() {
           });
         }
 
+        // Refresh Supabase-backed reads — Convex actions don't invalidate
+        // the React Query cache automatically.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+          queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
+        ]);
+
         toast.success(t("calendar.eventMoved", "Event moved"));
       } catch (err: any) {
         toast.error(err.message ?? t("calendar.moveFailed", "Failed to move event"));
       }
     },
-    [editPerm.allowed, events, organizationId, updateActivity, updateAppointment, t]
+    [editPerm.allowed, events, organizationId, updateActivity, updateAppointment, queryClient, t]
   );
 
   return (

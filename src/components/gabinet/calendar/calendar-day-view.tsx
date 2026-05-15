@@ -206,7 +206,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
           />
         )}
 
-        {/* Hour lines */}
+        {/* Hour lines with 15-minute subdivisions */}
         {HOURS.map((h) => (
           <DroppableSlot
             key={h}
@@ -215,7 +215,11 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             time={`${String(h).padStart(2, "0")}:00`}
             className="h-[60px] border-b border-dashed border-muted"
           >
-            <div className="h-full w-full cursor-pointer hover:bg-muted/30" />
+            <div className="relative h-full w-full cursor-pointer hover:bg-muted/30">
+              <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
+              <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
+              <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+            </div>
           </DroppableSlot>
         ))}
 

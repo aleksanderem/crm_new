@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 
 interface DroppableSlotProps {
   id: string;
@@ -7,9 +7,10 @@ interface DroppableSlotProps {
   time: string;
   children?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }
 
-export function DroppableSlot({ id, date, time, children, className }: DroppableSlotProps) {
+export function DroppableSlot({ id, date, time, children, className, style }: DroppableSlotProps) {
   const { isOver, setNodeRef } = useDroppable({
     id,
     data: {
@@ -23,6 +24,7 @@ export function DroppableSlot({ id, date, time, children, className }: Droppable
     <div
       ref={setNodeRef}
       className={`${className ?? ""} ${isOver ? "bg-primary/20 ring-2 ring-primary/50" : ""}`}
+      style={style}
     >
       {children}
     </div>

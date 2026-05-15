@@ -26,10 +26,25 @@ interface CalendarWeekViewProps {
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
   employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
+  slotMinutes?: 15 | 30 | 60;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
+const HOUR_HEIGHT = 60; // 1 minute = 1px
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function buildSlots(slotMinutes: number) {
+  const slotsPerHour = 60 / slotMinutes;
+  const slotHeight = HOUR_HEIGHT / slotsPerHour;
+  const totalSlots = HOURS.length * slotsPerHour;
+  return Array.from({ length: totalSlots }, (_, i) => {
+    const minutesFromStart = i * slotMinutes;
+    const h = 7 + Math.floor(minutesFromStart / 60);
+    const m = minutesFromStart % 60;
+    const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return { time, h, m, slotHeight, isHourMark: m === 0 };
+  });
+}
 
 function getWeekDates(start: string): string[] {
   const d = new Date(start + "T00:00:00");
@@ -126,6 +141,8 @@ interface WeekDayColumnProps {
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   onDayHeaderClick?: (date: string) => void;
+  slotMinutes: 15 | 30 | 60;
+  slots: ReturnType<typeof buildSlots>;
 }
 
 function WeekDayColumn({
@@ -140,7 +157,10 @@ function WeekDayColumn({
   onSlotDragSelect,
   onAppointmentResize,
   onDayHeaderClick,
+  slotMinutes,
+  slots,
 }: WeekDayColumnProps) {
+  const showSubdivisions = slotMinutes === 60;
   const handleClick = useCallback(
     (time: string) => onSlotClick?.(date, time),
     [onSlotClick, date],
@@ -154,8 +174,8 @@ function WeekDayColumn({
   const dragHandler = useDragToCreate({
     hoursStart: 7,
     hoursCount: HOURS.length,
-    hourHeight: 60,
-    snapMinutes: 15,
+    hourHeight: HOUR_HEIGHT,
+    snapMinutes: Math.min(15, slotMinutes),
     minDragDistance: 8,
     onClick: handleClick,
     onDragSelect: handleDragSelect,
@@ -239,18 +259,23 @@ function WeekDayColumn({
           </>
         )}
 
-        {HOURS.map((h) => (
+        {slots.map((s) => (
           <DroppableSlot
-            key={h}
-            id={`${date}-${h}`}
+            key={s.time}
+            id={`${date}-${s.time}`}
             date={date}
-            time={`${String(h).padStart(2, "0")}:00`}
-            className="h-[60px] border-b border-dashed border-muted"
+            time={s.time}
+            className={`border-b border-dashed ${s.isHourMark ? "border-muted" : "border-muted/40"}`}
+            style={{ height: `${s.slotHeight}px` }}
           >
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/20">
-              <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-              <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-              <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+              {showSubdivisions && (
+                <>
+                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
+                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
+                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                </>
+              )}
             </div>
           </DroppableSlot>
         ))}
@@ -301,8 +326,8 @@ function WeekDayColumn({
               <DraggableAppointment
                 {...appt}
                 onResize={onAppointmentResize}
-                hourHeight={60}
-                snapMinutes={15}
+                hourHeight={HOUR_HEIGHT}
+                snapMinutes={Math.min(15, slotMinutes)}
               />
             </div>
           );
@@ -312,7 +337,7 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, slotMinutes = 60 }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -321,6 +346,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
   const showCurrentTime = todayInWeek && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
 
   const layoutsByDate = useMemo(() => {
     const map = new Map<string, LayoutedAppointment[]>();
@@ -335,9 +361,17 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
       <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-background pt-8">
-        {HOURS.map((h) => (
-          <div key={h} className="flex h-[60px] items-start justify-end pr-2">
-            <span className="text-xs text-muted-foreground">{String(h).padStart(2, "0")}:00</span>
+        {slots.map((s) => (
+          <div
+            key={s.time}
+            className="flex items-start justify-end pr-2"
+            style={{ height: `${s.slotHeight}px` }}
+          >
+            <span
+              className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+            >
+              {s.time}
+            </span>
           </div>
         ))}
 
@@ -375,6 +409,8 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             onSlotDragSelect={onSlotDragSelect}
             onAppointmentResize={onAppointmentResize}
             onDayHeaderClick={onDayHeaderClick}
+            slotMinutes={slotMinutes}
+            slots={slots}
           />
         );
       })}

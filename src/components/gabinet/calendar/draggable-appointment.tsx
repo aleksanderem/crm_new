@@ -169,6 +169,11 @@ export function DraggableAppointment({
         sideOffset={8}
         collisionPadding={12}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        // Popover content is portaled in the DOM but still part of the React
+        // tree, so React synthetic events bubble through to the calendar grid's
+        // onMouseDown handler and trigger a "create appointment" slot click.
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <AppointmentPreviewContent
           appointmentId={_id}

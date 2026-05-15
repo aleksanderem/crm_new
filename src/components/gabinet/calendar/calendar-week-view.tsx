@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
+import { useCurrentTime } from "@/hooks/use-current-time";
 
 interface Appointment {
   _id: string;
@@ -121,6 +122,7 @@ interface WeekDayColumnProps {
   isSelected: boolean;
   layouts: LayoutedAppointment[];
   schedule?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string };
+  currentTimeTop: number | null;
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentClick?: (id: string) => void;
@@ -135,6 +137,7 @@ function WeekDayColumn({
   isSelected,
   layouts,
   schedule,
+  currentTimeTop,
   onSlotClick,
   onSlotDragSelect,
   onAppointmentClick,
@@ -266,6 +269,16 @@ function WeekDayColumn({
           />
         )}
 
+        {/* Current time line */}
+        {isToday && currentTimeTop !== null && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-20 border-t-2 border-red-500"
+            style={{ top: `${currentTimeTop}px` }}
+          >
+            <div className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
+          </div>
+        )}
+
         {/* Appointments — cascading stack when overlapping */}
         {layouts.map((laid) => {
           const appt = laid.appointment;
@@ -305,8 +318,13 @@ function WeekDayColumn({
 
 export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
-  const now = new Date();
+  const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const todayInWeek = dates.includes(today);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const showCurrentTime = todayInWeek && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
+  const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
   const layoutsByDate = useMemo(() => {
     const map = new Map<string, LayoutedAppointment[]>();
@@ -326,6 +344,18 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             <span className="text-xs text-muted-foreground">{String(h).padStart(2, "0")}:00</span>
           </div>
         ))}
+
+        {/* Current time label in gutter */}
+        {showCurrentTime && (
+          <div
+            className="pointer-events-none absolute right-0 z-30 -translate-y-1/2"
+            style={{ top: `${currentTimeTop + 32}px` }}
+          >
+            <span className="mr-1 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm">
+              {currentTimeLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Day columns */}
@@ -344,6 +374,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             isSelected={isSelected}
             layouts={layouts}
             schedule={schedule}
+            currentTimeTop={isToday ? currentTimeTop : null}
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}
             onAppointmentClick={onAppointmentClick}

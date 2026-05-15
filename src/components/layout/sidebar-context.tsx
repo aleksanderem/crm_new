@@ -36,7 +36,10 @@ export function useSidebarDispatch(actionId: string, handler: () => void) {
   const { lastDispatch } = useSidebarActions();
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
-  const seenRef = useRef(0);
+  // Initialize to the current dispatch seq so that stale dispatches from a
+  // previous page (still sitting in context state) are not replayed when this
+  // component mounts after navigation.
+  const seenRef = useRef(lastDispatch?.seq ?? 0);
 
   useEffect(() => {
     if (lastDispatch && lastDispatch.id === actionId && lastDispatch.seq > seenRef.current) {

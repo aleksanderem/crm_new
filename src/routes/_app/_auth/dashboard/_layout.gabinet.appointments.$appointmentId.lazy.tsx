@@ -373,6 +373,7 @@ function AppointmentDetail() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
       queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.all }),
     ]);
   };
 

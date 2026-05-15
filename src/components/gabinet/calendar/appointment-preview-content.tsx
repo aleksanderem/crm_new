@@ -24,7 +24,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
-  Clock,
   Mail,
   Phone,
   Stethoscope,
@@ -340,7 +339,6 @@ export function AppointmentPreviewContent({
 
         <div className="space-y-1">
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            <Clock className="mr-1 inline size-3" />
             {t("gabinet.appointments.internalNotes")}
           </Label>
           <Textarea

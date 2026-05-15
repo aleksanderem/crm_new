@@ -341,11 +341,8 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const todayInWeek = dates.includes(today);
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
-  const showCurrentTime = todayInWeek && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
-  const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
 
   const layoutsByDate = useMemo(() => {
@@ -374,18 +371,6 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             </span>
           </div>
         ))}
-
-        {/* Current time label in gutter */}
-        {showCurrentTime && (
-          <div
-            className="pointer-events-none absolute right-0 z-30 -translate-y-1/2"
-            style={{ top: `${currentTimeTop + 32}px` }}
-          >
-            <span className="mr-1 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm">
-              {currentTimeLabel}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Day columns */}

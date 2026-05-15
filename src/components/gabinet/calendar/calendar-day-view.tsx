@@ -114,7 +114,6 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
-  const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
   const showSubdivisions = slotMinutes === 60;
@@ -171,18 +170,6 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             </span>
           </div>
         ))}
-
-        {/* Current time label in gutter */}
-        {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60 && (
-          <div
-            className="pointer-events-none absolute right-0 z-30 -translate-y-1/2"
-            style={{ top: `${currentLineTop}px` }}
-          >
-            <span className="mr-1 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm">
-              {currentTimeLabel}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Grid + appointments */}

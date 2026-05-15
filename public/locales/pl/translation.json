@@ -2589,7 +2589,7 @@
         "transfer": "Przelew",
         "other": "Inna"
       },
-      "splitPayment": "Podziel płatność na dwie metody",
+      "splitPayment": "Podziel płatność",
       "firstMethod": "Pierwsza metoda",
       "secondMethod": "Druga metoda",
       "splitSum": "Suma",

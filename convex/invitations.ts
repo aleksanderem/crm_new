@@ -12,6 +12,7 @@ import { createNotificationDirect } from "./notifications";
 import {
   sendInvitationEmail,
   renderInvitationEmail,
+  buildInvitationSubject,
 } from "./email/templates/invitationEmail";
 import { sendViaResend, sendViaMailgun } from "./email/providers";
 
@@ -175,7 +176,7 @@ export const _sendInvitationEmail = internalAction({
         await sendViaResend(
           {
             to: args.email,
-            subject: `You've been invited to join ${ctxInfo.orgName}`,
+            subject: buildInvitationSubject(ctxInfo.orgName),
             html,
             from,
             replyTo,
@@ -202,7 +203,7 @@ export const _sendInvitationEmail = internalAction({
         await sendViaMailgun(
           {
             to: args.email,
-            subject: `You've been invited to join ${ctxInfo.orgName}`,
+            subject: buildInvitationSubject(ctxInfo.orgName),
             html,
             from,
             replyTo,

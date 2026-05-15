@@ -26,6 +26,21 @@ type InvitationEmailOptions = {
   replyTo?: string;
 };
 
+const ROLE_LABELS_PL: Record<string, string> = {
+  owner: "właściciela",
+  admin: "administratora",
+  member: "członka zespołu",
+  viewer: "obserwatora",
+};
+
+function translateRole(role: string): string {
+  return ROLE_LABELS_PL[role] ?? role;
+}
+
+export function buildInvitationSubject(orgName: string) {
+  return `Zaproszenie do ${orgName}`;
+}
+
 /**
  * Templates.
  */
@@ -36,10 +51,11 @@ export function InvitationEmail({
   role,
   token,
 }: InvitationEmailOptions) {
+  const roleLabel = translateRole(role);
   return (
     <Html>
       <Head />
-      <Preview>You've been invited to join {orgName}</Preview>
+      <Preview>Zaproszenie do {orgName}</Preview>
       <Body
         style={{
           backgroundColor: "#ffffff",
@@ -49,14 +65,14 @@ export function InvitationEmail({
       >
         <Container style={{ margin: "0 auto", padding: "20px 0 48px" }}>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            Hello {email}!
+            Cześć {email}!
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            You've been invited to join <strong>{orgName}</strong> as a {role}{" "}
-            by {inviterName}.
+            {inviterName} zaprasza Cię do dołączenia do organizacji{" "}
+            <strong>{orgName}</strong> w roli {roleLabel}.
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            Click the button below to accept the invitation.
+            Kliknij przycisk poniżej, aby zaakceptować zaproszenie.
           </Text>
           <Button
             href={`${SITE_URL}/invite/${token}`}
@@ -71,15 +87,15 @@ export function InvitationEmail({
               fontSize: "14px",
             }}
           >
-            Accept Invitation
+            Zaakceptuj zaproszenie
           </Button>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            If you didn't expect this invitation, you can safely ignore this
-            email.
+            Jeśli nie spodziewałeś się tego zaproszenia, możesz zignorować tę
+            wiadomość.
           </Text>
           <Hr style={{ borderColor: "#cccccc", margin: "20px 0" }} />
           <Text style={{ color: "#8898aa", fontSize: "12px" }}>
-            This invitation was sent to {email}.
+            To zaproszenie zostało wysłane na adres {email}.
           </Text>
         </Container>
       </Body>
@@ -122,7 +138,7 @@ export async function sendInvitationEmail({
 
   await sendEmail({
     to: email,
-    subject: `You've been invited to join ${orgName}`,
+    subject: buildInvitationSubject(orgName),
     html,
     ...(from ? { from } : {}),
     ...(replyTo ? { replyTo } : {}),

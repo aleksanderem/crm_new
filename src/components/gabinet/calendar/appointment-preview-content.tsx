@@ -184,13 +184,20 @@ export function AppointmentPreviewContent({
     return all.filter((tr) => (tr.name ?? "").toLowerCase().includes(q));
   })();
 
-  const dirty =
+  const phoneDirty =
+    isEditingPhone &&
+    phoneInput.trim().length > 0 &&
+    phoneInput.trim() !== (patient?.phone ?? "");
+
+  const apptDirty =
     status !== initialStatus ||
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
     internalNotes !== (appointment.internalNotes ?? "") ||
     treatmentId !== initialTreatmentId;
+
+  const dirty = phoneDirty || apptDirty;
 
   const handleSavePhone = async () => {
     const trimmed = phoneInput.trim();
@@ -229,29 +236,53 @@ export function AppointmentPreviewContent({
     if (!dirty || saving) return;
     setSaving(true);
     try {
-      const args: Parameters<typeof updateAppointment>[0] = {
-        organizationId,
-        appointmentId: appointment._id as Id<"gabinetAppointments">,
-      };
-      if (date !== appointment.date) args.date = date;
-      if (startTime !== appointment.startTime.slice(0, 5))
-        args.startTime = startTime;
-      if (endTime !== appointment.endTime.slice(0, 5)) args.endTime = endTime;
-      if (status && status !== initialStatus) args.status = status;
-      if (internalNotes !== (appointment.internalNotes ?? ""))
-        args.internalNotes = internalNotes;
-      if (treatmentId && treatmentId !== initialTreatmentId)
-        args.treatmentId = treatmentId;
+      if (phoneDirty && patient?._id) {
+        await updatePatient({
+          organizationId,
+          patientId: patient._id,
+          phone: phoneInput.trim(),
+        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetPatients.detail(
+              organizationId,
+              patient._id,
+            ),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+          }),
+        ]);
+        setIsEditingPhone(false);
+        setPhoneInput("");
+      }
 
-      await updateAppointment(args);
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: supabaseKeys.gabinetAppointments.all,
-        }),
-        queryClient.invalidateQueries({
-          queryKey: supabaseKeys.scheduledActivities.all,
-        }),
-      ]);
+      if (apptDirty) {
+        const args: Parameters<typeof updateAppointment>[0] = {
+          organizationId,
+          appointmentId: appointment._id as Id<"gabinetAppointments">,
+        };
+        if (date !== appointment.date) args.date = date;
+        if (startTime !== appointment.startTime.slice(0, 5))
+          args.startTime = startTime;
+        if (endTime !== appointment.endTime.slice(0, 5)) args.endTime = endTime;
+        if (status && status !== initialStatus) args.status = status;
+        if (internalNotes !== (appointment.internalNotes ?? ""))
+          args.internalNotes = internalNotes;
+        if (treatmentId && treatmentId !== initialTreatmentId)
+          args.treatmentId = treatmentId;
+
+        await updateAppointment(args);
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetAppointments.all,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: supabaseKeys.scheduledActivities.all,
+          }),
+        ]);
+      }
+
       await refetch();
       toast.success(t("gabinet.appointments.updated"));
       onClose();

@@ -2467,6 +2467,8 @@
       "time": "Godzina",
       "changeStatus": "Zmień status",
       "statusChanged": "Status wizyty zmieniony",
+      "addPhone": "Dodaj nr telefonu",
+      "phoneAdded": "Numer telefonu dodany",
       "history": {
         "unifiedDescription": "Ujednolicona historia operacyjna tej wizyty, w tym wiadomości i zdarzenia workflow.",
         "metadata": {

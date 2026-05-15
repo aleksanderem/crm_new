@@ -154,10 +154,40 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         className="relative flex-1 select-none"
         onMouseDown={dragHandler.handleMouseDown}
       >
+        {/* Closed hours background — entire day when clinic is closed */}
+        {workStartTop === null && (
+          <div
+            className="pointer-events-none absolute inset-0 bg-muted/60"
+            style={{ height: `${HOURS.length * 60}px` }}
+          />
+        )}
+
+        {/* Closed: before clinic opens */}
+        {workStartTop !== null && workStartTop > 0 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            style={{
+              top: 0,
+              height: `${workStartTop}px`,
+            }}
+          />
+        )}
+
+        {/* Closed: after clinic closes */}
+        {workEndTop !== null && workEndTop < HOURS.length * 60 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            style={{
+              top: `${workEndTop}px`,
+              height: `${HOURS.length * 60 - workEndTop}px`,
+            }}
+          />
+        )}
+
         {/* Working hours background */}
         {workStartTop !== null && workEndTop !== null && (
           <div
-            className="absolute left-0 right-0 bg-primary/5 border-y border-primary/10"
+            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-y border-primary/10"
             style={{
               top: `${workStartTop}px`,
               height: `${workEndTop - workStartTop}px`,
@@ -168,7 +198,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Break time background */}
         {breakStartTop !== null && breakEndTop !== null && (
           <div
-            className="absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50"
+            className="pointer-events-none absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50"
             style={{
               top: `${breakStartTop}px`,
               height: `${breakEndTop - breakStartTop}px`,

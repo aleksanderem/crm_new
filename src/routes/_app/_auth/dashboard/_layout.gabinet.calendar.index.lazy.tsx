@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -80,7 +80,6 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
-  const navigate = useNavigate();
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
@@ -472,17 +471,6 @@ function GabinetCalendarPage() {
     setViewMode("day");
   }, []);
 
-  const handleAppointmentClick = useCallback(
-    (id: string) => {
-      // Navigate to full-page appointment detail
-      navigate({
-        to: "/dashboard/gabinet/appointments/$appointmentId",
-        params: { appointmentId: id },
-      });
-    },
-    [navigate],
-  );
-
   // Resize handler (called when user drags an appointment's bottom edge)
   const handleAppointmentResize = useCallback(
     async (id: string, newEndTime: string) => {
@@ -871,7 +859,6 @@ function GabinetCalendarPage() {
                 handleSlotClick(formatDateStr(currentDate), time)
               }
               onSlotDragSelect={handleSlotDragSelect}
-              onAppointmentClick={handleAppointmentClick}
               onAppointmentResize={handleAppointmentResize}
               workingHours={dayWorkingHours}
             />
@@ -882,7 +869,6 @@ function GabinetCalendarPage() {
               appointments={viewAppointments}
               onSlotClick={handleSlotClick}
               onSlotDragSelect={handleSlotDragSelect}
-              onAppointmentClick={handleAppointmentClick}
               onAppointmentResize={handleAppointmentResize}
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}

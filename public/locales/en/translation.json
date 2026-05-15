@@ -2456,6 +2456,8 @@
       "time": "Time",
       "changeStatus": "Change status",
       "statusChanged": "Appointment status changed",
+      "addPhone": "Add phone number",
+      "phoneAdded": "Phone number added",
       "history": {
         "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
         "metadata": {

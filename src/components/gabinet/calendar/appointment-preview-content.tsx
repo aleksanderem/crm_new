@@ -29,7 +29,7 @@ import {
   Stethoscope,
   User,
 } from "@/lib/ez-icons";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { AlertTriangle, Check, ExternalLink, Plus, X } from "lucide-react";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -75,6 +75,7 @@ export function AppointmentPreviewContent({
 
   const getFullDetail = useAction(api.gabinet.appointments.getFullDetail);
   const updateAppointment = useAction(api.gabinet.appointments.update);
+  const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
 
   const { data: detail, isLoading, refetch } = useQuery({
@@ -104,6 +105,9 @@ export function AppointmentPreviewContent({
   const [endTime, setEndTime] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
 
   useEffect(() => {
     if (!detail) return;
@@ -140,6 +144,39 @@ export function AppointmentPreviewContent({
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
     internalNotes !== (appointment.internalNotes ?? "");
+
+  const handleSavePhone = async () => {
+    const trimmed = phoneInput.trim();
+    if (!trimmed || savingPhone || !patient?._id) return;
+    setSavingPhone(true);
+    try {
+      await updatePatient({
+        organizationId,
+        patientId: patient._id,
+        phone: trimmed,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetPatients.detail(
+            organizationId,
+            patient._id,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+        }),
+      ]);
+      await refetch();
+      setIsEditingPhone(false);
+      setPhoneInput("");
+      toast.success(t("gabinet.appointmentDetail.phoneAdded"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setSavingPhone(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!dirty || saving) return;
@@ -221,9 +258,9 @@ export function AppointmentPreviewContent({
         </div>
 
         {/* Quick contact links */}
-        {(patient?.phone || patient?.email) && (
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            {patient?.phone && (
+        {patient && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {patient.phone ? (
               <a
                 href={`tel:${patient.phone}`}
                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -231,8 +268,61 @@ export function AppointmentPreviewContent({
                 <Phone className="size-3" />
                 {patient.phone}
               </a>
+            ) : isEditingPhone ? (
+              <div className="inline-flex items-center gap-1 rounded-md border px-1 py-0.5">
+                <Phone className="size-3 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  autoFocus
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSavePhone();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setIsEditingPhone(false);
+                      setPhoneInput("");
+                    }
+                  }}
+                  placeholder={t("common.phone")}
+                  className="h-5 w-28 border-0 px-1 py-0 text-xs focus-visible:ring-0"
+                  disabled={savingPhone}
+                />
+                <button
+                  type="button"
+                  className="rounded p-0.5 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
+                  onClick={handleSavePhone}
+                  disabled={savingPhone || !phoneInput.trim()}
+                  aria-label={t("common.save")}
+                >
+                  <Check className="size-3" />
+                </button>
+                <button
+                  type="button"
+                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  onClick={() => {
+                    setIsEditingPhone(false);
+                    setPhoneInput("");
+                  }}
+                  disabled={savingPhone}
+                  aria-label={t("common.cancel")}
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditingPhone(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-dashed px-1.5 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="size-3" />
+                {t("gabinet.appointmentDetail.addPhone")}
+              </button>
             )}
-            {patient?.email && (
+            {patient.email && (
               <a
                 href={`mailto:${patient.email}`}
                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"

@@ -2575,13 +2575,18 @@
       "paymentMethods": {
         "cash": "Cash",
         "card": "Card",
-        "transfer": "Transfer"
+        "transfer": "Transfer",
+        "other": "Other"
       },
-      "splitPayment": "Split payment between cash and card",
+      "splitPayment": "Split payment between two methods",
+      "firstMethod": "First method",
+      "secondMethod": "Second method",
       "splitSum": "Sum",
       "splitMismatch": "Must equal total",
+      "splitSameMethod": "Methods must differ",
       "splitMismatchError": "Split payment amounts must add up to the total price",
       "splitMissingAmount": "Enter at least one payment amount",
+      "splitSameMethodError": "Pick two different payment methods",
       "purchaseButton": "Purchase",
       "usePackage": "Use package",
       "remaining": "remaining",

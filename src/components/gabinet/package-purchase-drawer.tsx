@@ -44,8 +44,10 @@ export function PackagePurchaseDrawer({
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [splitPayment, setSplitPayment] = useState(false);
-  const [cashAmount, setCashAmount] = useState<string>("");
-  const [cardAmount, setCardAmount] = useState<string>("");
+  const [firstSplitMethod, setFirstSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("cash");
+  const [secondSplitMethod, setSecondSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("card");
+  const [firstSplitAmount, setFirstSplitAmount] = useState<string>("");
+  const [secondSplitAmount, setSecondSplitAmount] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
@@ -68,19 +70,22 @@ export function PackagePurchaseDrawer({
 
   const selectedPkg = (activePackages ?? []).find((p) => p._id === selectedPkgId);
 
-  const parsedCash = Number.parseFloat(cashAmount) || 0;
-  const parsedCard = Number.parseFloat(cardAmount) || 0;
-  const splitTotal = Math.round((parsedCash + parsedCard) * 100) / 100;
+  const parsedFirstSplit = Number.parseFloat(firstSplitAmount) || 0;
+  const parsedSecondSplit = Number.parseFloat(secondSplitAmount) || 0;
+  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const expectedTotal = selectedPkg ? Math.round(selectedPkg.totalPrice * 100) / 100 : 0;
   const splitMismatch = splitPayment && selectedPkg && splitTotal !== expectedTotal;
-  const splitMissingMethod = splitPayment && parsedCash <= 0 && parsedCard <= 0;
+  const splitMissingMethod = splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
+  const splitSameMethod = splitPayment && firstSplitMethod === secondSplitMethod;
 
   const resetForm = () => {
     setSelectedPkgId("");
     setPaymentMethod("cash");
     setSplitPayment(false);
-    setCashAmount("");
-    setCardAmount("");
+    setFirstSplitMethod("cash");
+    setSecondSplitMethod("card");
+    setFirstSplitAmount("");
+    setSecondSplitAmount("");
   };
 
   const handlePurchase = async () => {
@@ -104,6 +109,15 @@ export function PackagePurchaseDrawer({
         );
         return;
       }
+      if (splitSameMethod) {
+        toast.error(
+          t(
+            "gabinet.packages.splitSameMethodError",
+            "Pick two different payment methods",
+          ),
+        );
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -118,9 +132,11 @@ export function PackagePurchaseDrawer({
       });
 
       if (splitPayment) {
-        const parts: Array<{ method: "cash" | "card"; amount: number }> = [];
-        if (parsedCash > 0) parts.push({ method: "cash", amount: parsedCash });
-        if (parsedCard > 0) parts.push({ method: "card", amount: parsedCard });
+        const parts: Array<{ method: "cash" | "card" | "transfer" | "other"; amount: number }> = [];
+        if (parsedFirstSplit > 0)
+          parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
+        if (parsedSecondSplit > 0)
+          parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
         for (const part of parts) {
           await createPayment({
             organizationId,
@@ -236,58 +252,94 @@ export function PackagePurchaseDrawer({
               onCheckedChange={(v) => setSplitPayment(v === true)}
             />
             <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
-              {t("gabinet.packages.splitPayment", "Split payment between cash and card")}
+              {t("gabinet.packages.splitPayment", "Split payment between two methods")}
             </Label>
           </div>
 
           {splitPayment && selectedPkg && (
             <div className="rounded-lg border p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="split-cash" className="text-xs">
-                    {t("gabinet.packages.paymentMethods.cash", "Cash")}
+                <div className="rounded-md border p-2 space-y-2">
+                  <Label className="text-xs font-medium">
+                    {t("gabinet.packages.firstMethod", "First method")}
                   </Label>
+                  <Select
+                    value={firstSplitMethod}
+                    onValueChange={(v) =>
+                      setFirstSplitMethod(v as typeof firstSplitMethod)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
+                      <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
+                      <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
+                      <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
-                    id="split-cash"
+                    id="split-first-amount"
                     type="number"
                     inputMode="decimal"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
+                    value={firstSplitAmount}
+                    onChange={(e) => setFirstSplitAmount(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="split-card" className="text-xs">
-                    {t("gabinet.packages.paymentMethods.card", "Card")}
+                <div className="rounded-md border p-2 space-y-2">
+                  <Label className="text-xs font-medium">
+                    {t("gabinet.packages.secondMethod", "Second method")}
                   </Label>
+                  <Select
+                    value={secondSplitMethod}
+                    onValueChange={(v) =>
+                      setSecondSplitMethod(v as typeof secondSplitMethod)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
+                      <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
+                      <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
+                      <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
-                    id="split-card"
+                    id="split-second-amount"
                     type="number"
                     inputMode="decimal"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    value={cardAmount}
-                    onChange={(e) => setCardAmount(e.target.value)}
+                    value={secondSplitAmount}
+                    onChange={(e) => setSecondSplitAmount(e.target.value)}
                   />
                 </div>
               </div>
               <div
                 className={`flex items-center justify-between text-xs ${
-                  splitMismatch ? "text-destructive" : "text-muted-foreground"
+                  splitMismatch || splitSameMethod ? "text-destructive" : "text-muted-foreground"
                 }`}
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
                   {expectedTotal.toFixed(2)} {selectedPkg.currency ?? "PLN"}
                 </span>
-                {splitMismatch && (
+                {splitSameMethod ? (
+                  <span>
+                    {t("gabinet.packages.splitSameMethod", "Methods must differ")}
+                  </span>
+                ) : splitMismatch ? (
                   <span>
                     {t("gabinet.packages.splitMismatch", "Must equal total")}
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -297,7 +349,7 @@ export function PackagePurchaseDrawer({
             disabled={
               !selectedPkg ||
               submitting ||
-              (splitPayment && (splitMissingMethod || !!splitMismatch))
+              (splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
             }
             onClick={handlePurchase}
           >

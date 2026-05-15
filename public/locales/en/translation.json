@@ -2578,7 +2578,7 @@
         "transfer": "Transfer",
         "other": "Other"
       },
-      "splitPayment": "Split payment between two methods",
+      "splitPayment": "Split payment",
       "firstMethod": "First method",
       "secondMethod": "Second method",
       "splitSum": "Sum",

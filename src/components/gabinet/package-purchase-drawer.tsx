@@ -252,7 +252,7 @@ export function PackagePurchaseDrawer({
               onCheckedChange={(v) => setSplitPayment(v === true)}
             />
             <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
-              {t("gabinet.packages.splitPayment", "Split payment between two methods")}
+              {t("gabinet.packages.splitPayment", "Split payment")}
             </Label>
           </div>
 

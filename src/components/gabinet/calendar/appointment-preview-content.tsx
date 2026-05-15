@@ -10,8 +10,21 @@ import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   Calendar,
   Mail,
@@ -29,7 +43,14 @@ import {
   Stethoscope,
   User,
 } from "@/lib/ez-icons";
-import { AlertTriangle, Check, ExternalLink, Plus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronsUpDown,
+  ExternalLink,
+  Plus,
+  X,
+} from "lucide-react";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -77,6 +98,7 @@ export function AppointmentPreviewContent({
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
 
   const { data: detail, isLoading, refetch } = useQuery({
     queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
@@ -99,11 +121,20 @@ export function AppointmentPreviewContent({
   });
   const warnings = warningsData?.warnings ?? [];
 
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: Array<{ _id: string; name: string; duration: number }> | undefined };
+
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
+  const [treatmentId, setTreatmentId] = useState("");
+  const [treatmentOpen, setTreatmentOpen] = useState(false);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
@@ -117,6 +148,7 @@ export function AppointmentPreviewContent({
     setStartTime(appt.startTime.slice(0, 5));
     setEndTime(appt.endTime.slice(0, 5));
     setInternalNotes(appt.internalNotes ?? "");
+    setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
   }, [detail]);
 
   if (isLoading || !detail) {
@@ -132,18 +164,33 @@ export function AppointmentPreviewContent({
 
   const { appointment, patient, treatment, employee } = detail;
   const initialStatus = appointment.status as AppointmentStatus;
+  const initialTreatmentId = appointment.treatmentId
+    ? String(appointment.treatmentId)
+    : "";
   const availableTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
   const employeeName = employee?.name ?? employee?.email ?? "-";
   const patientFullName = patient
     ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
     : "-";
 
+  const selectedTreatment =
+    treatments?.find((tr) => tr._id === treatmentId) ?? null;
+  const treatmentDisplayName =
+    selectedTreatment?.name ?? treatment?.name ?? "";
+  const filteredTreatments = (() => {
+    const all = treatments ?? [];
+    const q = treatmentSearch.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((tr) => (tr.name ?? "").toLowerCase().includes(q));
+  })();
+
   const dirty =
     status !== initialStatus ||
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
-    internalNotes !== (appointment.internalNotes ?? "");
+    internalNotes !== (appointment.internalNotes ?? "") ||
+    treatmentId !== initialTreatmentId;
 
   const handleSavePhone = async () => {
     const trimmed = phoneInput.trim();
@@ -193,6 +240,8 @@ export function AppointmentPreviewContent({
       if (status && status !== initialStatus) args.status = status;
       if (internalNotes !== (appointment.internalNotes ?? ""))
         args.internalNotes = internalNotes;
+      if (treatmentId && treatmentId !== initialTreatmentId)
+        args.treatmentId = treatmentId;
 
       await updateAppointment(args);
       await Promise.all([
@@ -242,12 +291,65 @@ export function AppointmentPreviewContent({
                 {patientFullName}
               </p>
             )}
-            {treatment?.name && (
-              <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                <Stethoscope className="size-3 shrink-0" />
-                {treatment.name}
-              </p>
-            )}
+            <Popover
+              open={treatmentOpen}
+              onOpenChange={(o) => {
+                setTreatmentOpen(o);
+                if (!o) setTreatmentSearch("");
+              }}
+            >
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="mt-0.5 inline-flex max-w-full items-center gap-1 rounded text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  aria-label={t("gabinet.appointments.selectTreatment")}
+                >
+                  <Stethoscope className="size-3 shrink-0" />
+                  <span className="truncate">
+                    {treatmentDisplayName ||
+                      t("gabinet.appointments.selectTreatment")}
+                  </span>
+                  <ChevronsUpDown className="size-3 shrink-0 opacity-60" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder={t("gabinet.appointments.searchTreatment")}
+                    value={treatmentSearch}
+                    onValueChange={setTreatmentSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>{t("common.noResults")}</CommandEmpty>
+                    <CommandGroup>
+                      {filteredTreatments.map((tr) => (
+                        <CommandItem
+                          key={tr._id}
+                          value={tr._id}
+                          onSelect={() => {
+                            setTreatmentId(tr._id);
+                            setTreatmentOpen(false);
+                            setTreatmentSearch("");
+                          }}
+                          className={cn(
+                            "px-3",
+                            treatmentId === tr._id &&
+                              "bg-accent font-medium text-accent-foreground",
+                          )}
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-sm">{tr.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {tr.duration} min
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <Badge variant="outline" className="shrink-0 text-[10px]">
             <span

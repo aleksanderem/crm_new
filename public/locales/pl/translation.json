@@ -2586,13 +2586,18 @@
       "paymentMethods": {
         "cash": "Gotówka",
         "card": "Karta",
-        "transfer": "Przelew"
+        "transfer": "Przelew",
+        "other": "Inna"
       },
-      "splitPayment": "Podziel płatność na kartę i gotówkę",
+      "splitPayment": "Podziel płatność na dwie metody",
+      "firstMethod": "Pierwsza metoda",
+      "secondMethod": "Druga metoda",
       "splitSum": "Suma",
       "splitMismatch": "Musi się zgadzać z ceną",
+      "splitSameMethod": "Metody muszą się różnić",
       "splitMismatchError": "Suma rozdzielonych płatności musi być równa cenie pakietu",
       "splitMissingAmount": "Podaj kwotę co najmniej jednej metody płatności",
+      "splitSameMethodError": "Wybierz dwie różne metody płatności",
       "purchaseButton": "Kup",
       "usePackage": "Użyj pakietu",
       "remaining": "pozostało",

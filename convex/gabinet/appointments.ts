@@ -2520,6 +2520,209 @@ export const getFullDetail = action({
   },
 });
 
+export type AppointmentWarningCode =
+  | "past"
+  | "qualification"
+  | "leave"
+  | "outsideHours"
+  | "conflict";
+
+export const getWarnings = action({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ warnings: AppointmentWarningCode[] }> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = (await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_appointments",
+        action: "view",
+      },
+    )) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const appt = (await db.get(
+      "gabinetAppointments",
+      args.appointmentId,
+    )) as Record<string, unknown> | null;
+    if (!appt || String(appt.organizationId) !== orgIdStr) {
+      return { warnings: [] };
+    }
+
+    const status = String(appt.status);
+    if (status === "cancelled" || status === "no_show") {
+      return { warnings: [] };
+    }
+
+    const date = String(appt.date);
+    const startTime = String(appt.startTime);
+    const endTime = String(appt.endTime);
+    const employeeUserId = String(appt.employeeId);
+    const treatmentId = appt.treatmentId ? String(appt.treatmentId) : null;
+    const roomId = appt.roomId ? String(appt.roomId) : undefined;
+
+    const warnings = new Set<AppointmentWarningCode>();
+
+    // 1. Past appointment — only flag if not yet completed
+    if (status !== "completed") {
+      const now = new Date();
+      const apptEnd = new Date(`${date}T${endTime.slice(0, 8)}`);
+      if (!Number.isNaN(apptEnd.getTime()) && apptEnd.getTime() < now.getTime()) {
+        warnings.add("past");
+      }
+    }
+
+    // 2. Qualification — only if treatment specified
+    if (treatmentId) {
+      const qual = await checkEmployeeQualificationSupabase(db, {
+        organizationId: orgIdStr,
+        userId: employeeUserId,
+        treatmentId,
+      });
+      if (!qual.qualified) warnings.add("qualification");
+    }
+
+    // 3. Leave — overlapping approved leave on this date / time
+    const leaves = (await db
+      .query("gabinetLeaves")
+      .eq("organizationId", orgIdStr)
+      .eq("userId", employeeUserId)
+      .collect()) as Array<Record<string, unknown>>;
+    const toMin = (t: string) => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+    const reqStartMin = toMin(startTime);
+    const reqEndMin = toMin(endTime);
+    for (const leave of leaves) {
+      if (leave.status !== "approved") continue;
+      const ls = String(leave.startDate ?? "");
+      const le = String(leave.endDate ?? "");
+      if (ls > date || le < date) continue;
+      if (!leave.startTime) {
+        warnings.add("leave");
+        break;
+      }
+      if (leave.startTime && leave.endTime) {
+        const lStart = toMin(String(leave.startTime));
+        const lEnd = toMin(String(leave.endTime));
+        if (reqStartMin < lEnd && reqEndMin > lStart) {
+          warnings.add("leave");
+          break;
+        }
+      }
+    }
+
+    // 4. Outside hours — employee schedule or clinic hours
+    const dayOfWeek = new Date(date + "T00:00:00").getDay();
+    const empScheduleCandidates = (await db
+      .query("gabinetEmployeeSchedules")
+      .eq("organizationId", orgIdStr)
+      .eq("userId", employeeUserId)
+      .eq("dayOfWeek", dayOfWeek)
+      .collect()) as Array<Record<string, unknown>>;
+    const matchingSchedule = empScheduleCandidates
+      .filter((c) => {
+        const ef = c.effectiveFrom as string | undefined;
+        const et = c.effectiveTo as string | undefined;
+        if (ef && date < ef) return false;
+        if (et && date > et) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const ea = a.effectiveFrom as string | undefined;
+        const eb = b.effectiveFrom as string | undefined;
+        if (ea && eb) return eb.localeCompare(ea);
+        if (ea) return -1;
+        if (eb) return 1;
+        return 0;
+      })[0];
+
+    if (matchingSchedule) {
+      if (!matchingSchedule.isWorking) {
+        warnings.add("outsideHours");
+      } else {
+        const sStart = toMin(String(matchingSchedule.startTime));
+        const sEnd = toMin(String(matchingSchedule.endTime));
+        if (reqStartMin < sStart || reqEndMin > sEnd) {
+          warnings.add("outsideHours");
+        }
+      }
+    } else {
+      const clinicHoursRows = (await db
+        .query("gabinetWorkingHours")
+        .eq("organizationId", orgIdStr)
+        .eq("dayOfWeek", dayOfWeek)
+        .take(1)
+        .collect()) as Array<Record<string, unknown>>;
+      const clinic = clinicHoursRows[0];
+      if (!clinic || !clinic.isOpen) {
+        warnings.add("outsideHours");
+      } else {
+        const sStart = toMin(String(clinic.startTime));
+        const sEnd = toMin(String(clinic.endTime));
+        if (reqStartMin < sStart || reqEndMin > sEnd) {
+          warnings.add("outsideHours");
+        }
+      }
+    }
+
+    // 5. Conflict with other appointments / room / external activities
+    const sameDayAppointments = (await db
+      .query("gabinetAppointments")
+      .eq("organizationId", orgIdStr)
+      .eq("employeeId", employeeUserId)
+      .eq("date", date)
+      .collect()) as Array<Record<string, unknown>>;
+    for (const other of sameDayAppointments) {
+      const otherId = String(other._id ?? other.id ?? "");
+      if (otherId === String(args.appointmentId)) continue;
+      const oStatus = String(other.status);
+      if (oStatus === "cancelled" || oStatus === "no_show") continue;
+      const oStart = toMin(String(other.startTime));
+      const oEnd = toMin(String(other.endTime));
+      if (reqStartMin < oEnd && reqEndMin > oStart) {
+        warnings.add("conflict");
+        break;
+      }
+    }
+
+    if (!warnings.has("conflict") && roomId) {
+      const roomAppointments = (await db
+        .query("gabinetAppointments")
+        .eq("organizationId", orgIdStr)
+        .eq("roomId", roomId)
+        .eq("date", date)
+        .collect()) as Array<Record<string, unknown>>;
+      for (const other of roomAppointments) {
+        const otherId = String(other._id ?? other.id ?? "");
+        if (otherId === String(args.appointmentId)) continue;
+        const oStatus = String(other.status);
+        if (oStatus === "cancelled" || oStatus === "no_show") continue;
+        if (
+          String(other.startTime) < endTime &&
+          String(other.endTime) > startTime
+        ) {
+          warnings.add("conflict");
+          break;
+        }
+      }
+    }
+
+    return { warnings: Array.from(warnings) };
+  },
+});
+
 export const getPhotoUrls = query({
   args: {
     organizationId: v.id("organizations"),

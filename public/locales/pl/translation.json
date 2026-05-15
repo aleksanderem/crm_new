@@ -2452,7 +2452,15 @@
       "room": "Gabinet",
       "autoLocation": "Auto (z grafiku)",
       "roomConflict": "Gabinet zajęty w tym terminie",
-      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji"
+      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji",
+      "warnings": {
+        "title": "Ostrzeżenie",
+        "past": "Termin w przeszłości",
+        "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
+        "leave": "Pracownik jest na urlopie w tym terminie",
+        "outsideHours": "Termin poza godzinami pracy gabinetu",
+        "conflict": "Kolizja terminów z inną wizytą"
+      }
     },
     "appointmentDetail": {
       "title": "Szczegóły wizyty",

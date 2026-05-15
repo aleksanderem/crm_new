@@ -2156,6 +2156,10 @@ function AppointmentDetail() {
           appointmentId={appointment._id}
           appointment={appointment}
           treatmentParameters={treatment?.parameters as any}
+          onChanged={async () => {
+            await invalidateAppointmentCaches();
+            await refetch();
+          }}
         />
       ),
     },

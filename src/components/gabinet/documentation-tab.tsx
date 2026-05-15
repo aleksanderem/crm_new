@@ -88,6 +88,7 @@ interface DocumentationTabProps {
     photos?: Photo[];
   };
   treatmentParameters?: TreatmentParamDefinition[];
+  onChanged?: () => void | Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,7 @@ export function DocumentationTab({
   appointmentId,
   appointment,
   treatmentParameters,
+  onChanged,
 }: DocumentationTabProps) {
   const { t } = useTranslation();
   const updateAppointment = useAction(api.gabinet.appointments.update);
@@ -152,6 +154,7 @@ export function DocumentationTab({
         treatmentParameterValues: JSON.stringify(paramValues),
       });
       toast.success(t("common.saved"));
+      await onChanged?.();
     } catch (err: any) {
       toast.error(err.message ?? t("common.error"));
     } finally {
@@ -174,6 +177,7 @@ export function DocumentationTab({
         interviewNotes: interview || undefined,
       });
       toast.success(t("common.saved"));
+      await onChanged?.();
     } catch (err: any) {
       toast.error(err.message ?? t("common.error"));
     } finally {
@@ -196,6 +200,7 @@ export function DocumentationTab({
         clinicalRemarks: remarks || undefined,
       });
       toast.success(t("common.saved"));
+      await onChanged?.();
     } catch (err: any) {
       toast.error(err.message ?? t("common.error"));
     } finally {
@@ -266,6 +271,7 @@ export function DocumentationTab({
                   photos: [...photosRef.current, newPhoto],
                 });
                 toast.success(t("common.saved"));
+                await onChanged?.();
                 resolve();
               } catch (err: any) {
                 toast.error(err.message ?? t("common.error"));
@@ -293,7 +299,7 @@ export function DocumentationTab({
         URL.revokeObjectURL(preview);
       }
     },
-    [generateUploadUrl, updateAppointment, organizationId, appointmentId, t],
+    [generateUploadUrl, updateAppointment, organizationId, appointmentId, t, onChanged],
   );
 
   const handleRemovePhoto = async (storageId: Id<"_storage">) => {
@@ -305,6 +311,7 @@ export function DocumentationTab({
         photos: updated,
       });
       toast.success(t("common.saved"));
+      await onChanged?.();
     } catch (err: any) {
       toast.error(err.message ?? t("common.error"));
     }

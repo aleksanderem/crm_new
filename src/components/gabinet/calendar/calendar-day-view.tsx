@@ -114,6 +114,8 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const showCurrentTime = isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60;
 
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
   const showSubdivisions = slotMinutes === 60;
@@ -156,7 +158,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   return (
     <div className="relative flex h-full overflow-y-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-10 w-16 shrink-0 border-r bg-background">
+      <div className="sticky left-0 z-10 w-16 shrink-0 border-r bg-background relative">
         {slots.map((s) => (
           <div
             key={s.time}
@@ -170,6 +172,14 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             </span>
           </div>
         ))}
+        {showCurrentTime && (
+          <div
+            className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
+            style={{ top: `${currentLineTop}px`, transform: "translateY(-50%)" }}
+          >
+            {currentTimeLabel}
+          </div>
+        )}
       </div>
 
       {/* Grid + appointments */}

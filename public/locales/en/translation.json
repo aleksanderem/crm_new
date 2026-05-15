@@ -2441,7 +2441,15 @@
       "room": "Room",
       "autoLocation": "Auto (from schedule)",
       "roomConflict": "Room is occupied at this time",
-      "equipmentWarning": "Required equipment not at this location"
+      "equipmentWarning": "Required equipment not at this location",
+      "warnings": {
+        "title": "Warning",
+        "past": "Appointment is in the past",
+        "qualification": "Employee is not qualified for this treatment",
+        "leave": "Employee is on leave at this time",
+        "outsideHours": "Outside clinic working hours",
+        "conflict": "Conflicts with another appointment"
+      }
     },
     "appointmentDetail": {
       "title": "Appointment Details",

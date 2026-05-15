@@ -30,7 +30,7 @@ import {
   Stethoscope,
   User,
 } from "@/lib/ez-icons";
-import { ExternalLink } from "lucide-react";
+import { AlertTriangle, ExternalLink } from "lucide-react";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -76,6 +76,7 @@ export function AppointmentPreviewContent({
 
   const getFullDetail = useAction(api.gabinet.appointments.getFullDetail);
   const updateAppointment = useAction(api.gabinet.appointments.update);
+  const getWarnings = useAction(api.gabinet.appointments.getWarnings);
 
   const { data: detail, isLoading, refetch } = useQuery({
     queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
@@ -86,6 +87,17 @@ export function AppointmentPreviewContent({
       }),
     enabled: !!organizationId && !!appointmentId,
   });
+
+  const { data: warningsData } = useQuery({
+    queryKey: ["gabinet.appointment.warnings", organizationId, appointmentId],
+    queryFn: () =>
+      getWarnings({
+        organizationId,
+        appointmentId,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  });
+  const warnings = warningsData?.warnings ?? [];
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
@@ -222,6 +234,20 @@ export function AppointmentPreviewContent({
           </div>
         )}
       </div>
+
+      {warnings.length > 0 && (
+        <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <div className="flex items-center gap-1.5 font-medium">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            {t("gabinet.appointments.warnings.title", "Ostrzeżenie")}
+          </div>
+          <ul className="ml-5 list-disc space-y-0.5">
+            {warnings.map((w) => (
+              <li key={w}>{t(`gabinet.appointments.warnings.${w}`)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Separator />
 

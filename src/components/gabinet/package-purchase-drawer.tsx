@@ -6,6 +6,8 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
@@ -41,6 +43,9 @@ export function PackagePurchaseDrawer({
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [cashAmount, setCashAmount] = useState<string>("");
+  const [cardAmount, setCardAmount] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
@@ -63,31 +68,84 @@ export function PackagePurchaseDrawer({
 
   const selectedPkg = (activePackages ?? []).find((p) => p._id === selectedPkgId);
 
+  const parsedCash = Number.parseFloat(cashAmount) || 0;
+  const parsedCard = Number.parseFloat(cardAmount) || 0;
+  const splitTotal = Math.round((parsedCash + parsedCard) * 100) / 100;
+  const expectedTotal = selectedPkg ? Math.round(selectedPkg.totalPrice * 100) / 100 : 0;
+  const splitMismatch = splitPayment && selectedPkg && splitTotal !== expectedTotal;
+  const splitMissingMethod = splitPayment && parsedCash <= 0 && parsedCard <= 0;
+
+  const resetForm = () => {
+    setSelectedPkgId("");
+    setPaymentMethod("cash");
+    setSplitPayment(false);
+    setCashAmount("");
+    setCardAmount("");
+  };
+
   const handlePurchase = async () => {
     if (!selectedPkg) return;
+    if (splitPayment) {
+      if (splitMissingMethod) {
+        toast.error(
+          t(
+            "gabinet.packages.splitMissingAmount",
+            "Enter at least one payment amount",
+          ),
+        );
+        return;
+      }
+      if (splitMismatch) {
+        toast.error(
+          t(
+            "gabinet.packages.splitMismatchError",
+            "Split payment amounts must add up to the total price",
+          ),
+        );
+        return;
+      }
+    }
     setSubmitting(true);
     try {
+      const currency = selectedPkg.currency ?? "PLN";
+      const usagePaymentMethod = splitPayment ? "split" : paymentMethod;
       const usageId = await purchasePackage({
         organizationId,
         patientId,
         packageId: selectedPkg._id,
         paidAmount: selectedPkg.totalPrice,
-        paymentMethod,
+        paymentMethod: usagePaymentMethod,
       });
 
-      await createPayment({
-        organizationId,
-        patientId: patientId as Id<"gabinetPatients">,
-        packageUsageId: usageId,
-        amount: selectedPkg.totalPrice,
-        currency: selectedPkg.currency ?? "PLN",
-        paymentMethod: paymentMethod as "cash" | "card" | "transfer",
-        notes: `Package: ${selectedPkg.name}`,
-      });
+      if (splitPayment) {
+        const parts: Array<{ method: "cash" | "card"; amount: number }> = [];
+        if (parsedCash > 0) parts.push({ method: "cash", amount: parsedCash });
+        if (parsedCard > 0) parts.push({ method: "card", amount: parsedCard });
+        for (const part of parts) {
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            packageUsageId: usageId,
+            amount: part.amount,
+            currency,
+            paymentMethod: part.method,
+            notes: `Package: ${selectedPkg.name} (split: ${part.method})`,
+          });
+        }
+      } else {
+        await createPayment({
+          organizationId,
+          patientId: patientId as Id<"gabinetPatients">,
+          packageUsageId: usageId,
+          amount: selectedPkg.totalPrice,
+          currency,
+          paymentMethod: paymentMethod as "cash" | "card" | "transfer",
+          notes: `Package: ${selectedPkg.name}`,
+        });
+      }
 
       toast.success(t("gabinet.packages.purchased", "Package purchased successfully"));
-      setSelectedPkgId("");
-      setPaymentMethod("cash");
+      resetForm();
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e.message);
@@ -98,8 +156,7 @@ export function PackagePurchaseDrawer({
 
   const handleOpenChange = (v: boolean) => {
     if (!v) {
-      setSelectedPkgId("");
-      setPaymentMethod("cash");
+      resetForm();
     }
     onOpenChange(v);
   };
@@ -156,7 +213,11 @@ export function PackagePurchaseDrawer({
 
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.paymentMethod", "Payment Method")}</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+            <Select
+              value={paymentMethod}
+              onValueChange={setPaymentMethod}
+              disabled={splitPayment}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -168,9 +229,76 @@ export function PackagePurchaseDrawer({
             </Select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="split-payment"
+              checked={splitPayment}
+              onCheckedChange={(v) => setSplitPayment(v === true)}
+            />
+            <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
+              {t("gabinet.packages.splitPayment", "Split payment between cash and card")}
+            </Label>
+          </div>
+
+          {splitPayment && selectedPkg && (
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="split-cash" className="text-xs">
+                    {t("gabinet.packages.paymentMethods.cash", "Cash")}
+                  </Label>
+                  <Input
+                    id="split-cash"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="split-card" className="text-xs">
+                    {t("gabinet.packages.paymentMethods.card", "Card")}
+                  </Label>
+                  <Input
+                    id="split-card"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={cardAmount}
+                    onChange={(e) => setCardAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div
+                className={`flex items-center justify-between text-xs ${
+                  splitMismatch ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                <span>
+                  {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
+                  {expectedTotal.toFixed(2)} {selectedPkg.currency ?? "PLN"}
+                </span>
+                {splitMismatch && (
+                  <span>
+                    {t("gabinet.packages.splitMismatch", "Must equal total")}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <Button
             className="w-full"
-            disabled={!selectedPkg || submitting}
+            disabled={
+              !selectedPkg ||
+              submitting ||
+              (splitPayment && (splitMissingMethod || !!splitMismatch))
+            }
             onClick={handlePurchase}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

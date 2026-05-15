@@ -2575,6 +2575,11 @@
         "card": "Card",
         "transfer": "Transfer"
       },
+      "splitPayment": "Split payment between cash and card",
+      "splitSum": "Sum",
+      "splitMismatch": "Must equal total",
+      "splitMismatchError": "Split payment amounts must add up to the total price",
+      "splitMissingAmount": "Enter at least one payment amount",
       "purchaseButton": "Purchase",
       "usePackage": "Use package",
       "remaining": "remaining",

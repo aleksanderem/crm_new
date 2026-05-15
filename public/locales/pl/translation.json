@@ -2586,6 +2586,11 @@
         "card": "Karta",
         "transfer": "Przelew"
       },
+      "splitPayment": "Podziel płatność na kartę i gotówkę",
+      "splitSum": "Suma",
+      "splitMismatch": "Musi się zgadzać z ceną",
+      "splitMismatchError": "Suma rozdzielonych płatności musi być równa cenie pakietu",
+      "splitMissingAmount": "Podaj kwotę co najmniej jednej metody płatności",
       "purchaseButton": "Kup",
       "usePackage": "Użyj pakietu",
       "remaining": "pozostało",

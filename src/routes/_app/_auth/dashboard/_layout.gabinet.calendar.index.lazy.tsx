@@ -60,6 +60,8 @@ export const Route = createLazyFileRoute(
 });
 
 type ViewMode = "day" | "week" | "month";
+type SlotMinutes = 15 | 30 | 60;
+const SLOT_OPTIONS: SlotMinutes[] = [60, 30, 15];
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -85,6 +87,7 @@ function GabinetCalendarPage() {
   useWideContent(true);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(60);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
@@ -687,6 +690,24 @@ function GabinetCalendarPage() {
                 ))}
               </div>
 
+              {/* Slot size switcher (only meaningful for day/week) */}
+              {viewMode !== "month" && (
+                <div className="flex rounded-md border" aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}>
+                  {SLOT_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={slotMinutes === opt ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-2"
+                      onClick={() => setSlotMinutes(opt)}
+                      title={t("gabinet.calendar.slotSize", "Rozdzielczość")}
+                    >
+                      {opt} min
+                    </Button>
+                  ))}
+                </div>
+              )}
+
               {/* Create button */}
               <Button
                 size="sm"
@@ -861,6 +882,7 @@ function GabinetCalendarPage() {
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
               workingHours={dayWorkingHours}
+              slotMinutes={slotMinutes}
             />
           )}
           {viewMode === "week" && (
@@ -873,6 +895,7 @@ function GabinetCalendarPage() {
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               employeeSchedules={employeeSchedules}
+              slotMinutes={slotMinutes}
             />
           )}
           {viewMode === "month" && (

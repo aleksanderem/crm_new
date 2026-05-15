@@ -40,14 +40,17 @@ export function useDragToCreate({
     [hoursStart, hoursCount, hourHeight, snapMinutes],
   );
 
-  const yToHourTime = useCallback(
+  const yToSlotTime = useCallback(
     (y: number) => {
       const totalHeight = hoursCount * hourHeight;
       const clamped = Math.max(0, Math.min(totalHeight - 1, y));
-      const hour = Math.floor(clamped / hourHeight) + hoursStart;
-      return `${String(hour).padStart(2, "0")}:00`;
+      const totalMinutes =
+        Math.floor((clamped / hourHeight) * 60 / snapMinutes) * snapMinutes;
+      const h = Math.floor(totalMinutes / 60) + hoursStart;
+      const m = totalMinutes % 60;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     },
-    [hoursStart, hoursCount, hourHeight],
+    [hoursStart, hoursCount, hourHeight, snapMinutes],
   );
 
   const handleMouseDown = useCallback(
@@ -85,13 +88,13 @@ export function useDragToCreate({
             return;
           }
         }
-        onClick(yToHourTime(startY));
+        onClick(yToSlotTime(startY));
       };
 
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [minDragDistance, yToSnappedTime, yToHourTime, onClick, onDragSelect],
+    [minDragDistance, yToSnappedTime, yToSlotTime, onClick, onDragSelect],
   );
 
   return {

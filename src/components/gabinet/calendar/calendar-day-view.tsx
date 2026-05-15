@@ -22,13 +22,28 @@ interface CalendarDayViewProps {
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
+  slotMinutes?: 15 | 30 | 60;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
+const HOUR_HEIGHT = 60; // 1 minute = 1px
 
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return ((h - 7) * 60 + m);
+}
+
+function buildSlots(slotMinutes: number) {
+  const slotsPerHour = 60 / slotMinutes;
+  const slotHeight = HOUR_HEIGHT / slotsPerHour;
+  const totalSlots = HOURS.length * slotsPerHour;
+  return Array.from({ length: totalSlots }, (_, i) => {
+    const minutesFromStart = i * slotMinutes;
+    const h = 7 + Math.floor(minutesFromStart / 60);
+    const m = minutesFromStart % 60;
+    const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return { time, h, m, slotHeight, isHourMark: m === 0 };
+  });
 }
 
 // Google Calendar-style cascading layout: each overlapping appointment
@@ -94,12 +109,15 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, slotMinutes = 60 }: CalendarDayViewProps) {
   const now = useCurrentTime();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+  const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
+  const showSubdivisions = slotMinutes === 60;
 
   const layouts = useMemo(() => layoutAppointments(appointments), [appointments]);
 
@@ -122,8 +140,8 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const dragHandler = useDragToCreate({
     hoursStart: 7,
     hoursCount: HOURS.length,
-    hourHeight: 60,
-    snapMinutes: 15,
+    hourHeight: HOUR_HEIGHT,
+    snapMinutes: Math.min(15, slotMinutes),
     minDragDistance: 8,
     onClick: handleClick,
     onDragSelect: handleDragSelect,
@@ -140,10 +158,16 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
     <div className="relative flex h-full overflow-y-auto">
       {/* Time labels */}
       <div className="sticky left-0 z-10 w-16 shrink-0 border-r bg-background">
-        {HOURS.map((h) => (
-          <div key={h} className="flex h-[60px] items-start justify-end pr-2 pt-0">
-            <span className="text-xs text-muted-foreground">
-              {String(h).padStart(2, "0")}:00
+        {slots.map((s) => (
+          <div
+            key={s.time}
+            className="flex items-start justify-end pr-2 pt-0"
+            style={{ height: `${s.slotHeight}px` }}
+          >
+            <span
+              className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+            >
+              {s.time}
             </span>
           </div>
         ))}
@@ -219,19 +243,24 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
           />
         )}
 
-        {/* Hour lines with 15-minute subdivisions */}
-        {HOURS.map((h) => (
+        {/* Slot rows — solid border at hour marks, faded at sub-slot marks */}
+        {slots.map((s) => (
           <DroppableSlot
-            key={h}
-            id={`${date}-${h}`}
+            key={s.time}
+            id={`${date}-${s.time}`}
             date={date}
-            time={`${String(h).padStart(2, "0")}:00`}
-            className="h-[60px] border-b border-dashed border-muted"
+            time={s.time}
+            className={`border-b border-dashed ${s.isHourMark ? "border-muted" : "border-muted/40"}`}
+            style={{ height: `${s.slotHeight}px` }}
           >
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/30">
-              <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-              <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-              <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+              {showSubdivisions && (
+                <>
+                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
+                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
+                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                </>
+              )}
             </div>
           </DroppableSlot>
         ))}
@@ -283,8 +312,8 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
                 {...appt}
                 date={date}
                 onResize={onAppointmentResize}
-                hourHeight={60}
-                snapMinutes={15}
+                hourHeight={HOUR_HEIGHT}
+                snapMinutes={Math.min(15, slotMinutes)}
               />
             </div>
           );

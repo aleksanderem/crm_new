@@ -2384,6 +2384,7 @@
       },
       "created": "Appointment created",
       "updated": "Appointment updated",
+      "openFullView": "Open full view",
       "noAppointments": "No appointments",
       "availableSlots": "Available slots",
       "noAvailableSlots": "No available slots for this employee on this date.",

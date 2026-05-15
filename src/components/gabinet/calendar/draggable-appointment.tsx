@@ -1,6 +1,12 @@
 import { useDraggable } from "@dnd-kit/core";
 import { useCallback, useState } from "react";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { AppointmentCard, type AppointmentTag } from "./appointment-card";
+import { AppointmentPreviewContent } from "./appointment-preview-content";
 
 interface Appointment {
   _id: string;
@@ -15,7 +21,6 @@ interface Appointment {
 }
 
 interface DraggableAppointmentProps extends Appointment {
-  onAppointmentClick?: (id: string) => void;
   onResize?: (id: string, newEndTime: string) => void;
   hourHeight?: number;
   snapMinutes?: number;
@@ -42,7 +47,6 @@ export function DraggableAppointment({
   status,
   color,
   tags,
-  onAppointmentClick,
   onResize,
   hourHeight = 60,
   snapMinutes = 15,
@@ -59,6 +63,10 @@ export function DraggableAppointment({
   });
 
   const [previewEndTime, setPreviewEndTime] = useState<string | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  // Suppress popover open when the click follows a drag — useDraggable triggers
+  // onClick after a successful drop, which would otherwise pop the preview.
+  const isPopoverDisabled = status === "blocked";
 
   const startMinutes = timeToMinutes(startTime);
   const originalEndMinutes = timeToMinutes(endTime);
@@ -108,7 +116,12 @@ export function DraggableAppointment({
       ? (timeToMinutes(previewEndTime) - startMinutes) * pxPerMinute
       : null;
 
-  return (
+  const handleCardClick = () => {
+    if (isDragging || isPopoverDisabled) return;
+    setPopoverOpen((o) => !o);
+  };
+
+  const card = (
     <div
       ref={setNodeRef}
       {...listeners}
@@ -127,7 +140,7 @@ export function DraggableAppointment({
         status={status}
         color={color}
         tags={tags}
-        onClick={() => onAppointmentClick?.(_id)}
+        onClick={handleCardClick}
       />
       {onResize && status !== "blocked" && (
         <div
@@ -142,5 +155,26 @@ export function DraggableAppointment({
         </div>
       )}
     </div>
+  );
+
+  if (isPopoverDisabled) return card;
+
+  return (
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverAnchor asChild>{card}</PopoverAnchor>
+      <PopoverContent
+        className="w-96 p-3"
+        align="start"
+        side="right"
+        sideOffset={8}
+        collisionPadding={12}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <AppointmentPreviewContent
+          appointmentId={_id}
+          onClose={() => setPopoverOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -22,7 +22,6 @@ interface CalendarWeekViewProps {
   appointments: Appointment[];
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
-  onAppointmentClick?: (id: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
@@ -125,7 +124,6 @@ interface WeekDayColumnProps {
   currentTimeTop: number | null;
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
-  onAppointmentClick?: (id: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   onDayHeaderClick?: (date: string) => void;
 }
@@ -140,7 +138,6 @@ function WeekDayColumn({
   currentTimeTop,
   onSlotClick,
   onSlotDragSelect,
-  onAppointmentClick,
   onAppointmentResize,
   onDayHeaderClick,
 }: WeekDayColumnProps) {
@@ -303,7 +300,6 @@ function WeekDayColumn({
             >
               <DraggableAppointment
                 {...appt}
-                onAppointmentClick={onAppointmentClick}
                 onResize={onAppointmentResize}
                 hourHeight={60}
                 snapMinutes={15}
@@ -316,7 +312,7 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentClick, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -377,7 +373,6 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             currentTimeTop={isToday ? currentTimeTop : null}
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}
-            onAppointmentClick={onAppointmentClick}
             onAppointmentResize={onAppointmentResize}
             onDayHeaderClick={onDayHeaderClick}
           />

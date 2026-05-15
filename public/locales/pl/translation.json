@@ -2395,6 +2395,7 @@
       },
       "created": "Wizyta utworzona",
       "updated": "Wizyta zaktualizowana",
+      "openFullView": "Otwórz pełny widok",
       "noAppointments": "Brak wizyt",
       "availableSlots": "Dostępne terminy",
       "noAvailableSlots": "Brak dostępnych terminów dla tego pracownika w tym dniu.",

@@ -189,11 +189,39 @@ function WeekDayColumn({
         className="relative select-none"
         onMouseDown={dragHandler.handleMouseDown}
       >
-        {/* Working hours background for this day */}
+        {/* Closed hours background — entire day when clinic is closed */}
+        {!schedule && (
+          <div
+            className="pointer-events-none absolute inset-0 bg-muted/60 z-0"
+            style={{ height: `${HOURS.length * 60}px` }}
+          />
+        )}
+
+        {/* Working / closed / break hour backgrounds */}
         {schedule && (
           <>
+            {/* Closed: before clinic opens */}
+            {timeToTop(schedule.startTime) > 0 && (
+              <div
+                className="pointer-events-none absolute left-0 right-0 bg-muted/60 z-0"
+                style={{
+                  top: 0,
+                  height: `${timeToTop(schedule.startTime)}px`,
+                }}
+              />
+            )}
+            {/* Closed: after clinic closes */}
+            {timeToTop(schedule.endTime) < HOURS.length * 60 && (
+              <div
+                className="pointer-events-none absolute left-0 right-0 bg-muted/60 z-0"
+                style={{
+                  top: `${timeToTop(schedule.endTime)}px`,
+                  height: `${HOURS.length * 60 - timeToTop(schedule.endTime)}px`,
+                }}
+              />
+            )}
             <div
-              className="absolute left-0 right-0 bg-primary/5 border-y border-primary/10 z-0"
+              className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-y border-primary/10 z-0"
               style={{
                 top: `${timeToTop(schedule.startTime)}px`,
                 height: `${timeToTop(schedule.endTime) - timeToTop(schedule.startTime)}px`,
@@ -201,7 +229,7 @@ function WeekDayColumn({
             />
             {schedule.breakStart && schedule.breakEnd && (
               <div
-                className="absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50 z-0"
+                className="pointer-events-none absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50 z-0"
                 style={{
                   top: `${timeToTop(schedule.breakStart)}px`,
                   height: `${timeToTop(schedule.breakEnd) - timeToTop(schedule.breakStart)}px`,

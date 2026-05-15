@@ -191,9 +191,20 @@ export function AppointmentPreviewContent({
       <div className="space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight">
-              {patientFullName}
-            </p>
+            {patient?._id ? (
+              <Link
+                to="/dashboard/gabinet/patients/$patientId"
+                params={{ patientId: patient._id }}
+                onClick={onClose}
+                className="block truncate text-sm font-semibold leading-tight hover:underline focus:underline focus:outline-none"
+              >
+                {patientFullName}
+              </Link>
+            ) : (
+              <p className="truncate text-sm font-semibold leading-tight">
+                {patientFullName}
+              </p>
+            )}
             {treatment?.name && (
               <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
                 <Stethoscope className="size-3 shrink-0" />

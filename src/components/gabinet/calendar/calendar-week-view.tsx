@@ -343,6 +343,9 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const todayInView = dates.includes(today);
+  const showCurrentTime = todayInView && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
 
   const layoutsByDate = useMemo(() => {
@@ -357,7 +360,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   return (
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-background pt-8">
+      <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-background pt-8 relative">
         {slots.map((s) => (
           <div
             key={s.time}
@@ -371,6 +374,14 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             </span>
           </div>
         ))}
+        {showCurrentTime && (
+          <div
+            className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
+            style={{ top: `${32 + currentTimeTop}px`, transform: "translateY(-50%)" }}
+          >
+            {currentTimeLabel}
+          </div>
+        )}
       </div>
 
       {/* Day columns */}

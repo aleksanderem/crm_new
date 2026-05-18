@@ -433,6 +433,12 @@ export function AppointmentDialog({
       )
     : "";
 
+  const isPastSlot = useMemo(() => {
+    if (!dateStr || !selectedSlot?.start) return false;
+    const slotStart = new Date(`${dateStr}T${selectedSlot.start}:00`);
+    return slotStart.getTime() < Date.now();
+  }, [dateStr, selectedSlot]);
+
   const canSubmit =
     !!patientId &&
     !!treatmentId &&
@@ -1144,6 +1150,18 @@ export function AppointmentDialog({
                           </span>
                         </div>
                       </div>
+
+                      {isPastSlot && (
+                        <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                          <div className="flex items-center gap-1.5 font-medium">
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                            {t("gabinet.appointments.warnings.title")}
+                          </div>
+                          <ul className="ml-5 list-disc space-y-0.5">
+                            <li>{t("gabinet.appointments.warnings.past")}</li>
+                          </ul>
+                        </div>
+                      )}
 
                       <Button
                         className="w-full"

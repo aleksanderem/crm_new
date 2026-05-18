@@ -54,7 +54,7 @@ import {
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
-  scheduled: ["confirmed", "cancelled", "no_show"],
+  scheduled: ["confirmed", "in_progress", "completed", "cancelled", "no_show"],
   confirmed: ["in_progress", "completed", "cancelled", "no_show"],
   in_progress: ["completed", "cancelled"],
   completed: [],

@@ -56,12 +56,15 @@ import {
   Stethoscope,
   StickyNote,
   User,
+  UserPlus,
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
 import { AlertTriangle, CalendarSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SidePanel } from "@/components/crm/side-panel";
+import { PatientForm } from "@/components/forms/patient-form";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,6 +118,7 @@ export function AppointmentDialog({
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
   const createAppointment = useAction(api.gabinet.appointments.create);
+  const createPatient = useAction(api.gabinet.patients.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
   const convex = useConvex();
   const queryClient = useQueryClient();
@@ -189,6 +193,13 @@ export function AppointmentDialog({
   const [patientOpen, setPatientOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const [treatmentSearch, setTreatmentSearch] = useState("");
+
+  // Add-patient sub-panel state
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
+  const [pendingPatientLabel, setPendingPatientLabel] = useState<string | null>(
+    null,
+  );
 
   // -------------------------------------------------------------------------
   // Derived data
@@ -422,6 +433,63 @@ export function AppointmentDialog({
   }, [employeeId, selectedTreatment, organizationId, dateStr, convex, t]);
 
   // -------------------------------------------------------------------------
+  // Create new patient inline
+  // -------------------------------------------------------------------------
+
+  const handleCreatePatient = useCallback(
+    async (formData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      pesel?: string;
+      dateOfBirth?: string;
+      gender?: "male" | "female" | "other";
+      address?: { street?: string; city?: string; postalCode?: string };
+      medicalNotes?: string;
+      allergies?: string;
+      bloodType?: string;
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
+      referralSource?: string;
+    }) => {
+      setCreatingPatient(true);
+      try {
+        const newId = await createPatient({
+          organizationId,
+          ...formData,
+        });
+        setPendingPatientLabel(
+          `${formData.firstName} ${formData.lastName}`.trim(),
+        );
+        setPatientId(String(newId));
+        await queryClient.invalidateQueries({
+          queryKey: ["gabinet.patients.list", organizationId],
+        });
+        setAddPatientOpen(false);
+        toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg);
+      } finally {
+        setCreatingPatient(false);
+      }
+    },
+    [createPatient, organizationId, queryClient, t],
+  );
+
+  // Clear pending label once the new patient appears in the query cache
+  useEffect(() => {
+    if (
+      pendingPatientLabel &&
+      patientId &&
+      (patients?.page ?? []).some((p) => p._id === patientId)
+    ) {
+      setPendingPatientLabel(null);
+    }
+  }, [pendingPatientLabel, patientId, patients]);
+
+  // -------------------------------------------------------------------------
   // Submit
   // -------------------------------------------------------------------------
 
@@ -522,6 +590,8 @@ export function AppointmentDialog({
       setTreatmentSearch("");
       setLocationId("");
       setRoomId("");
+      setAddPatientOpen(false);
+      setPendingPatientLabel(null);
     }
   }, [open, defaultDate, defaultTime, defaultEndTime]);
 
@@ -537,6 +607,7 @@ export function AppointmentDialog({
   // -------------------------------------------------------------------------
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]">
         <DialogTitle className="sr-only">
@@ -720,9 +791,20 @@ export function AppointmentDialog({
 
                 {/* Patient selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t("gabinet.appointments.patient")}
-                  </Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("gabinet.appointments.patient")}
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setAddPatientOpen(true)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+                      data-testid="appointment-add-patient-button"
+                    >
+                      <UserPlus className="size-3.5" />
+                      {t("gabinet.patients.addPatient")}
+                    </button>
+                  </div>
                   <Popover
                     open={patientOpen}
                     onOpenChange={(o) => {
@@ -741,9 +823,11 @@ export function AppointmentDialog({
                         <span className="truncate">
                           {selectedPatient
                             ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
-                            : t(
-                                "gabinet.appointments.selectPatient",
-                              )}
+                            : pendingPatientLabel
+                              ? pendingPatientLabel
+                              : t(
+                                  "gabinet.appointments.selectPatient",
+                                )}
                         </span>
                         <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
                       </Button>
@@ -1108,14 +1192,15 @@ export function AppointmentDialog({
                             </span>
                           </div>
                         )}
-                        {selectedPatient && (
+                        {(selectedPatient || pendingPatientLabel) && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">
                               {t("gabinet.appointments.patient")}
                             </span>
                             <span className="font-medium truncate ml-2 text-right">
-                              {selectedPatient.firstName}{" "}
-                              {selectedPatient.lastName}
+                              {selectedPatient
+                                ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+                                : pendingPatientLabel}
                             </span>
                           </div>
                         )}
@@ -1184,6 +1269,20 @@ export function AppointmentDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <SidePanel
+      open={addPatientOpen}
+      onOpenChange={setAddPatientOpen}
+      title={t("gabinet.patients.createPatient")}
+      description={t("gabinet.patients.createDescription")}
+    >
+      <PatientForm
+        onSubmit={handleCreatePatient}
+        onCancel={() => setAddPatientOpen(false)}
+        isSubmitting={creatingPatient}
+      />
+    </SidePanel>
+    </>
   );
 }
 

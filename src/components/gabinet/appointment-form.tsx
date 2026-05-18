@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
@@ -33,7 +33,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronsUpDown, MapPin, Building2 } from "@/lib/ez-icons";
+import {
+  CalendarIcon,
+  ChevronsUpDown,
+  MapPin,
+  Building2,
+  UserPlus,
+} from "@/lib/ez-icons";
 import { AlertTriangle, CalendarSearch } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -41,6 +47,8 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { SidePanel } from "@/components/crm/side-panel";
+import { PatientForm } from "@/components/forms/patient-form";
 
 function getEmployeeName(emp: {
   firstName?: string;
@@ -108,6 +116,7 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const queryClient = useQueryClient();
 
   // Data queries
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
@@ -171,7 +180,7 @@ export function AppointmentForm({
   }) as { data: any[] | undefined; isLoading: boolean };
   const isCrmSearching = contactsLoading || isDebouncing;
 
-  const createPatientFromContact = useAction(api.gabinet.patients.create);
+  const createPatient = useAction(api.gabinet.patients.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
 
   // Locations query
@@ -200,6 +209,7 @@ export function AppointmentForm({
   const [roomId, setRoomId] = useState("");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>();
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
@@ -364,7 +374,7 @@ export function AppointmentForm({
       setIsCreatingPatient(true);
       setPatientLabel(`${contact.firstName} ${contact.lastName}`);
       try {
-        const newPatientId = await createPatientFromContact({
+        const newPatientId = await createPatient({
           organizationId: organizationId!,
           contactId: contact._id,
           firstName: contact.firstName,
@@ -378,8 +388,59 @@ export function AppointmentForm({
         setPatientLabel("");
       }
     },
-    [createPatientFromContact, organizationId],
+    [createPatient, organizationId],
   );
+
+  const handleCreatePatient = useCallback(
+    async (formData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      pesel?: string;
+      dateOfBirth?: string;
+      gender?: "male" | "female" | "other";
+      address?: { street?: string; city?: string; postalCode?: string };
+      medicalNotes?: string;
+      allergies?: string;
+      bloodType?: string;
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
+      referralSource?: string;
+    }) => {
+      if (!organizationId) return;
+      setIsCreatingPatient(true);
+      setPatientLabel(`${formData.firstName} ${formData.lastName}`.trim());
+      try {
+        const newId = await createPatient({
+          organizationId,
+          ...formData,
+        });
+        setPatientId(String(newId));
+        await queryClient.invalidateQueries({
+          queryKey: ["gabinet.patients.list", organizationId],
+        });
+        setAddPatientOpen(false);
+        toast.success(
+          t("gabinet.patients.created", { defaultValue: "Klient utworzony" }),
+        );
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg);
+        setPatientLabel("");
+      } finally {
+        setIsCreatingPatient(false);
+      }
+    },
+    [createPatient, organizationId, queryClient, t],
+  );
+
+  // Clear the pending label once the newly-created patient appears in the cache
+  useEffect(() => {
+    if (patientLabel && patientId && patients.some((p) => p._id === patientId)) {
+      setPatientLabel("");
+    }
+  }, [patientLabel, patientId, patients]);
 
   // Reset downstream selections when upstream changes
   const handleTreatmentSelect = (id: string) => {
@@ -410,13 +471,25 @@ export function AppointmentForm({
     : patientLabel || null;
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Patient — searchable combobox with CRM contact search */}
       <div className="space-y-1.5">
-        <Label htmlFor="appt-patient">
-          {t("gabinet.appointments.patient")}{" "}
-          <span className="text-destructive">*</span>
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="appt-patient">
+            {t("gabinet.appointments.patient")}{" "}
+            <span className="text-destructive">*</span>
+          </Label>
+          <button
+            type="button"
+            onClick={() => setAddPatientOpen(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+            data-testid="appointment-form-add-patient-button"
+          >
+            <UserPlus className="size-3.5" />
+            {t("gabinet.patients.addPatient")}
+          </button>
+        </div>
         <Popover
           open={patientOpen}
           onOpenChange={(open) => {
@@ -855,5 +928,19 @@ export function AppointmentForm({
         </Button>
       </div>
     </form>
+
+    <SidePanel
+      open={addPatientOpen}
+      onOpenChange={setAddPatientOpen}
+      title={t("gabinet.patients.createPatient")}
+      description={t("gabinet.patients.createDescription")}
+    >
+      <PatientForm
+        onSubmit={handleCreatePatient}
+        onCancel={() => setAddPatientOpen(false)}
+        isSubmitting={isCreatingPatient}
+      />
+    </SidePanel>
+    </>
   );
 }

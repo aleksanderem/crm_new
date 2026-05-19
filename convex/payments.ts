@@ -1,9 +1,8 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logAudit } from "./auditLog";
 import { logActivity } from "./_helpers/activities";
 
@@ -21,43 +20,46 @@ const paymentStatusValidator = v.union(
   v.literal("cancelled"),
 );
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
     status: v.optional(paymentStatusValidator),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    if (args.status) {
-      return await ctx.db
-        .query("payments")
-        .withIndex("by_orgAndStatus", (q) =>
-          q.eq("organizationId", args.organizationId).eq("status", args.status!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts);
-    }
-
-    return await ctx.db
+    const db = createSupabaseDb();
+    let q = db
       .query("payments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+      .eq("organizationId", String(args.organizationId));
+    if (args.status) q = q.eq("status", args.status);
+    const rows = await q
+      .order("createdAt", false)
+      .take(args.paginationOpts.numItems)
+      .collect();
+
+    return { page: rows, isDone: true, continueCursor: "" };
   },
 });
 
-export const getByAppointment = query({
+export const getByAppointment = action({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.id("gabinetAppointments"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    return await db
       .query("payments")
-      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+      .eq("organizationId", String(args.organizationId))
+      .eq("appointmentId", String(args.appointmentId))
       .first();
   },
 });
@@ -308,32 +310,35 @@ export const _refundSideEffects = internalMutation({
 });
 
 /** Revenue summary for a time range */
-export const getRevenueSummary = query({
+export const getRevenueSummary = action({
   args: {
     organizationId: v.id("organizations"),
     startDate: v.number(),
     endDate: v.number(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const payments = await ctx.db
-      .query("payments")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "completed")
-      )
+    const db = createSupabaseDb();
+    const payments = await db
+      .query<{
+        amount: number;
+        paymentMethod: string;
+        paidAt: number | null;
+      }>("payments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("status", "completed")
+      .gte("paidAt", args.startDate)
+      .lte("paidAt", args.endDate)
       .collect();
 
-    const filtered = payments.filter(
-      (p) => p.paidAt && p.paidAt >= args.startDate && p.paidAt <= args.endDate
-    );
+    const total = payments.reduce((sum, p) => sum + p.amount, 0);
+    const count = payments.length;
 
-    const total = filtered.reduce((sum, p) => sum + p.amount, 0);
-    const count = filtered.length;
-
-    // Group by payment method
     const byMethod: Record<string, { count: number; total: number }> = {};
-    for (const p of filtered) {
+    for (const p of payments) {
       if (!byMethod[p.paymentMethod]) {
         byMethod[p.paymentMethod] = { count: 0, total: 0 };
       }

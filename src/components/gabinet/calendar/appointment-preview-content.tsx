@@ -8,6 +8,10 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import {
+  extractActionErrorMessage,
+  formatAppointmentError,
+} from "@/lib/format-action-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -225,8 +229,8 @@ export function AppointmentPreviewContent({
       setPhoneInput("");
       toast.success(t("gabinet.appointmentDetail.phoneAdded"));
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
+      console.error("[appointment-preview] phone save failed", error);
+      toast.error(extractActionErrorMessage(error) || t("common.error"));
     } finally {
       setSavingPhone(false);
     }
@@ -287,8 +291,13 @@ export function AppointmentPreviewContent({
       toast.success(t("gabinet.appointments.updated"));
       onClose();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
+      console.error("[appointment-preview] save failed", error);
+      toast.error(
+        formatAppointmentError(error, t, {
+          key: "gabinet.appointments.updateFailed",
+          defaultValue: "Nie udało się zapisać zmian.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

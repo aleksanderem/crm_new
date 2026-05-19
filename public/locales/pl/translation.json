@@ -2468,6 +2468,7 @@
       "rescheduleFailed": "Nie udało się przenieść wizyty.",
       "resized": "Długość wizyty zmieniona",
       "resizeFailed": "Nie udało się zmienić długości wizyty.",
+      "updateFailed": "Nie udało się zapisać zmian.",
       "errors": {
         "conflict": "Termin koliduje z inną wizytą.",
         "conflictNamed": "Termin koliduje z innym wydarzeniem w kalendarzu.",

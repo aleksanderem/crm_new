@@ -127,6 +127,8 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
   private orderField: string | null = null;
   private orderAsc = true;
   private limitN: number | null = null;
+  private rangeFrom: number | null = null;
+  private rangeTo: number | null = null;
 
   constructor(table: string) {
     this.table = table;
@@ -173,6 +175,17 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  range(from: number, to: number) {
+    this.rangeFrom = from;
+    this.rangeTo = to;
+    return this;
+  }
+
+  offset(n: number) {
+    this.rangeFrom = n;
+    return this;
+  }
+
   private materialize(): T[] {
     let rows = Array.from(getTable(this.table).values());
     for (const f of this.filters) rows = rows.filter(f);
@@ -190,7 +203,18 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
         return 0;
       });
     }
-    if (this.limitN !== null) rows = rows.slice(0, this.limitN);
+    if (this.rangeFrom !== null) {
+      const from = this.rangeFrom;
+      const to =
+        this.rangeTo !== null
+          ? this.rangeTo
+          : this.limitN !== null
+            ? from + this.limitN - 1
+            : rows.length - 1;
+      rows = rows.slice(from, to + 1);
+    } else if (this.limitN !== null) {
+      rows = rows.slice(0, this.limitN);
+    }
     return rows.map((r) => withConvexId({ ...r })) as T[];
   }
 

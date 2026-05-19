@@ -190,6 +190,8 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
   private orderField: string | null = null;
   private orderAsc = true;
   private limitN: number | null = null;
+  private rangeFrom: number | null = null;
+  private rangeTo: number | null = null;
 
   constructor(client: ReturnType<typeof createServiceRoleClient>, table: string) {
     this.client = client;
@@ -237,11 +239,43 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  /**
+   * Inclusive range for offset-based pagination. Mirrors PostgREST's
+   * `.range(from, to)` semantics: both endpoints are inclusive, so
+   * `range(0, 9)` returns up to 10 rows starting at offset 0.
+   */
+  range(from: number, to: number) {
+    this.rangeFrom = from;
+    this.rangeTo = to;
+    return this;
+  }
+
+  /**
+   * Skip the first `n` rows. Combine with `.take(limit)` for paged reads.
+   * Implemented on top of `range`; cannot be combined with an explicit
+   * `.range()` call.
+   */
+  offset(n: number) {
+    this.rangeFrom = n;
+    return this;
+  }
+
   async collect(): Promise<T[]> {
     let q = this.client.from(this.table).select("*");
     for (const f of this.filters) q = f(q);
     if (this.orderField) q = q.order(this.orderField, { ascending: this.orderAsc });
-    if (this.limitN) q = q.limit(this.limitN);
+    if (this.rangeFrom !== null) {
+      const from = this.rangeFrom;
+      const to =
+        this.rangeTo !== null
+          ? this.rangeTo
+          : this.limitN !== null
+            ? from + this.limitN - 1
+            : from + 999;
+      q = q.range(from, to);
+    } else if (this.limitN) {
+      q = q.limit(this.limitN);
+    }
     const { data, error } = await q;
     if (error) throw new Error(`supabaseDb.query(${this.table}).collect(): ${error.message}`);
     return (data ?? []).map(mapRowFromSnake) as T[];

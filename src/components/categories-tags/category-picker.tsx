@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { LayersTwo02, XClose, ChevronRight } from "@untitledui/icons";
+import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { LayersTwo02, XClose, ChevronRight, Plus } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
 import { Badge } from "@untitled/base/badges/badges";
@@ -9,7 +11,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
+import type { EntityType } from "@cvx/schema";
+import { TAG_COLOR_PALETTE } from "./color-palette";
 
 interface CategoryDef {
   _id: Id<"categoryDefinitions">;
@@ -23,6 +28,10 @@ interface CategoryPickerProps {
   selectedId: Id<"categoryDefinitions"> | undefined;
   onChange: (categoryId: Id<"categoryDefinitions"> | undefined) => void;
   placeholder?: string;
+  // When provided, the picker shows an inline "Add new category" affordance
+  // that creates a category via categoryDefinitions.create and auto-selects it.
+  organizationId?: Id<"organizations">;
+  entityType?: EntityType;
 }
 
 interface CategoryNode extends CategoryDef {
@@ -51,10 +60,25 @@ function buildTree(categories: CategoryDef[]): CategoryNode[] {
   return roots;
 }
 
-export function CategoryPicker({ categories, selectedId, onChange, placeholder }: CategoryPickerProps) {
+export function CategoryPicker({
+  categories,
+  selectedId,
+  onChange,
+  placeholder,
+  organizationId,
+  entityType,
+}: CategoryPickerProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const createCategory = useAction(api.categoryDefinitions.create);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState<string>(TAG_COLOR_PALETTE[0]);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const canCreate = !!organizationId && !!entityType;
 
   const tree = useMemo(() => buildTree(categories), [categories]);
 
@@ -73,6 +97,33 @@ export function CategoryPicker({ categories, selectedId, onChange, placeholder }
   const handleSelect = (categoryId: Id<"categoryDefinitions">) => {
     onChange(selectedId === categoryId ? undefined : categoryId);
     setOpen(false);
+  };
+
+  const resetAddForm = () => {
+    setAddingNew(false);
+    setNewName("");
+    setNewColor(TAG_COLOR_PALETTE[0]);
+  };
+
+  const handleCreate = async () => {
+    if (!canCreate || !newName.trim() || isCreating) return;
+    setIsCreating(true);
+    try {
+      const newId = (await createCategory({
+        organizationId: organizationId!,
+        entityType: entityType!,
+        name: newName.trim(),
+        color: newColor,
+      })) as Id<"categoryDefinitions">;
+      await queryClient.invalidateQueries({
+        queryKey: ["categoryDefinitions.list", organizationId, entityType],
+      });
+      onChange(newId);
+      resetAddForm();
+      setOpen(false);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const renderNode = (node: CategoryNode) => (
@@ -163,6 +214,67 @@ export function CategoryPicker({ categories, selectedId, onChange, placeholder }
               </p>
             )}
           </div>
+          {canCreate && (
+            <div className="border-t border-border-secondary p-2">
+              {addingNew ? (
+                <div className="flex flex-col gap-2">
+                  <Input
+                    size="sm"
+                    placeholder={t("categories.newName", { defaultValue: "Nazwa kategorii" })}
+                    value={newName}
+                    onChange={setNewName}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreate();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        resetAddForm();
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {TAG_COLOR_PALETTE.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewColor(color)}
+                        className={`h-5 w-5 rounded-full border-2 transition-all ${
+                          newColor === color ? "border-fg-primary scale-110" : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      onClick={handleCreate}
+                      isDisabled={!newName.trim() || isCreating}
+                    >
+                      {isCreating
+                        ? t("common.saving", { defaultValue: "Zapisywanie..." })
+                        : t("common.add", { defaultValue: "Dodaj" })}
+                    </Button>
+                    <Button size="sm" color="secondary" onClick={resetAddForm}>
+                      {t("common.cancel", { defaultValue: "Anuluj" })}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  color="link-color"
+                  iconLeading={Plus}
+                  onClick={() => setAddingNew(true)}
+                >
+                  {t("categories.addCategory", { defaultValue: "Dodaj kategorię" })}
+                </Button>
+              )}
+            </div>
+          )}
         </PopoverContent>
       </Popover>
     </div>

@@ -22,7 +22,7 @@ interface CalendarDayViewProps {
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
-  slotMinutes?: 15 | 30 | 60;
+  slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
@@ -159,19 +159,25 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
     <div className="relative flex h-full overflow-y-auto">
       {/* Time labels */}
       <div className="sticky left-0 z-10 w-16 shrink-0 border-r bg-background relative">
-        {slots.map((s) => (
-          <div
-            key={s.time}
-            className="flex items-start justify-end pr-2 pt-0"
-            style={{ height: `${s.slotHeight}px` }}
-          >
-            <span
-              className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+        {slots.map((s) => {
+          // For small slot heights, only render the hour label so text doesn't overlap.
+          const showLabel = s.isHourMark || s.slotHeight >= 15;
+          return (
+            <div
+              key={s.time}
+              className="flex items-start justify-end pr-2 pt-0"
+              style={{ height: `${s.slotHeight}px` }}
             >
-              {s.time}
-            </span>
-          </div>
-        ))}
+              {showLabel && (
+                <span
+                  className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+                >
+                  {s.time}
+                </span>
+              )}
+            </div>
+          );
+        })}
         {showCurrentTime && (
           <div
             className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"

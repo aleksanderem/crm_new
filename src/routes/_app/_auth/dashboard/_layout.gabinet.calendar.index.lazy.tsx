@@ -61,8 +61,16 @@ export const Route = createLazyFileRoute(
 });
 
 type ViewMode = "day" | "week" | "month";
-type SlotMinutes = 15 | 30 | 60;
-const SLOT_OPTIONS: SlotMinutes[] = [60, 30, 15];
+type SlotMinutes = 5 | 10 | 15 | 30 | 60;
+const SLOT_OPTIONS: SlotMinutes[] = [60, 30, 15, 10, 5];
+const SLOT_STORAGE_KEY = "gabinet.calendar.slotMinutes";
+
+function readStoredSlotMinutes(): SlotMinutes {
+  if (typeof window === "undefined") return 60;
+  const raw = window.localStorage.getItem(SLOT_STORAGE_KEY);
+  const n = raw ? Number(raw) : NaN;
+  return (SLOT_OPTIONS as number[]).includes(n) ? (n as SlotMinutes) : 60;
+}
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -88,7 +96,13 @@ function GabinetCalendarPage() {
   useWideContent(true);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
-  const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(60);
+  const [slotMinutes, setSlotMinutesState] = useState<SlotMinutes>(readStoredSlotMinutes);
+  const setSlotMinutes = useCallback((next: SlotMinutes) => {
+    setSlotMinutesState(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SLOT_STORAGE_KEY, String(next));
+    }
+  }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");

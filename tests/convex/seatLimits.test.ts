@@ -1,6 +1,37 @@
-import { expect, test, describe } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser, seedSecondUser } from "../../convex/_test_helpers";
+
+// `invitations.create` schedules `_sendInvitationEmail` via
+// `ctx.scheduler.runAfter(0, …)`. convex-test fires those via `setTimeout(0)`
+// against a `global.Convex` reference; once the next test creates a fresh
+// instance, the orphan callbacks from the previous test fire against the new
+// `global.Convex` and surface as "Write outside of transaction" unhandled
+// rejections that flip vitest's exit code even though every assertion passes.
+// Match the per-file filter used by payments.test.ts (#511) — swallow only
+// the known scheduler-noise shape, let everything else through.
+const SCHEDULER_NOISE = [
+  /Write outside of transaction \d+;_scheduled_functions/,
+];
+
+function onUnhandledRejection(reason: unknown) {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  if (SCHEDULER_NOISE.some((re) => re.test(msg))) return;
+}
+
+beforeAll(() => {
+  process.on("unhandledRejection", onUnhandledRejection);
+});
+
+afterAll(() => {
+  process.off("unhandledRejection", onUnhandledRejection);
+});
+
+afterEach(async () => {
+  // Let any pending setTimeout(0) side-effect callbacks from the test fire
+  // against the *current* instance before the next test creates a new one.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
 
 describe("checkSeatLimit via getSeatUsage", () => {
   test("returns 1 seat used for org with only owner (free tier default)", async () => {
@@ -353,7 +384,7 @@ describe("member removal frees seat", () => {
       return membership!._id;
     });
 
-    await t.withIdentity(identity).mutation(api.organizations.removeMember, {
+    await t.withIdentity(identity).action(api.organizations.removeMember, {
       organizationId,
       membershipId,
     });

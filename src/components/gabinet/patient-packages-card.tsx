@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Package, Plus } from "@/lib/ez-icons";
+import { Package, Plus, Loader2 } from "@/lib/ez-icons";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
 
 interface PatientPackagesCardProps {
@@ -125,6 +126,12 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
                         {t("gabinet.packages.expires", "Expires")}: {new Date(usage.expiresAt).toLocaleDateString("pl-PL")}
                       </p>
                     )}
+
+                    <PackageInstallments
+                      organizationId={organizationId}
+                      packageUsageId={String(usage._id)}
+                      currency={pkg?.currency ?? "PLN"}
+                    />
                   </div>
                 );
               })}
@@ -140,5 +147,134 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
         onOpenChange={setPurchaseOpen}
       />
     </>
+  );
+}
+
+interface PackageInstallmentsProps {
+  organizationId: Id<"organizations">;
+  packageUsageId: string;
+  currency: string;
+}
+
+interface PaymentRow {
+  _id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "completed" | "refunded" | "cancelled";
+  notes?: string | null;
+  paidAt?: number | null;
+}
+
+function PackageInstallments({
+  organizationId,
+  packageUsageId,
+  currency,
+}: PackageInstallmentsProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [markingId, setMarkingId] = useState<string | null>(null);
+
+  const listByPackageUsage = useAction(api.payments.listByPackageUsage);
+  const markPaid = useAction(api.payments.markPaid);
+
+  const queryKey = ["payments.listByPackageUsage", organizationId, packageUsageId];
+  const { data: payments } = useQuery({
+    queryKey,
+    queryFn: () =>
+      listByPackageUsage({
+        organizationId,
+        packageUsageId,
+      }) as unknown as Promise<PaymentRow[]>,
+    enabled: !!organizationId && !!packageUsageId,
+  });
+
+  const installments = (payments ?? []).filter((p) =>
+    typeof p.notes === "string" && p.notes.includes("installment"),
+  );
+
+  if (installments.length === 0) return null;
+
+  const paidCount = installments.filter((p) => p.status === "completed").length;
+  const totalCount = installments.length;
+
+  const handleMarkPaid = async (paymentId: string) => {
+    setMarkingId(paymentId);
+    try {
+      await markPaid({
+        organizationId,
+        paymentId,
+      });
+      toast.success(t("gabinet.payments.markedPaid"));
+      await queryClient.invalidateQueries({ queryKey });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
+  return (
+    <div className="border-t pt-2 mt-2 space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium">
+          {t("gabinet.packages.installments", "Installments")}
+        </span>
+        <span className="text-muted-foreground">
+          {paidCount}/{totalCount} {t("gabinet.packages.installmentsPaid", "paid")}
+        </span>
+      </div>
+      <div className="space-y-1">
+        {installments.map((payment, idx) => {
+          const isPending = payment.status === "pending";
+          const isMarking = markingId === payment._id;
+          return (
+            <div
+              key={payment._id}
+              className="flex items-center justify-between gap-2 text-xs"
+            >
+              <span className="text-muted-foreground">
+                {t("gabinet.packages.installmentIndex", "Installment {{n}}", {
+                  n: idx + 1,
+                })}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  {payment.amount.toFixed(2)} {payment.currency ?? currency}
+                </span>
+                {isPending ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    disabled={isMarking}
+                    onClick={() => handleMarkPaid(payment._id)}
+                  >
+                    {isMarking ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      t("gabinet.payments.markPaid")
+                    )}
+                  </Button>
+                ) : (
+                  <Badge
+                    variant={
+                      payment.status === "completed"
+                        ? "secondary"
+                        : payment.status === "refunded"
+                          ? "destructive"
+                          : "outline"
+                    }
+                    className="text-[10px] py-0 px-1.5"
+                  >
+                    {t(`gabinet.payments.status.${payment.status}`)}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

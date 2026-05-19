@@ -180,27 +180,64 @@ export const getMyLoyaltyTransactions = query({
 // ---------------------------------------------------------------------------
 
 /** List active treatments available for booking. */
-export const getBookableTreatments = query({
+export const getBookableTreatments = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { organizationId } = await validatePortalSession(ctx, args.tokenHash);
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
 
-    const treatments = await ctx.db
+    // Validate session via Supabase (matches bookFromPortal — the Convex
+    // gabinetPortalSessions table is no longer the source of truth).
+    const session = await db
+      .query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+    if (
+      !session ||
+      !session.isActive ||
+      Date.now() > (session.expiresAt as number)
+    ) {
+      throw new Error("Invalid or expired session");
+    }
+    const organizationId = String(session.organizationId);
+
+    const treatments = await db
       .query("gabinetTreatments")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", organizationId).eq("isActive", true),
-      )
+      .eq("organizationId", organizationId)
+      .eq("isActive", true)
       .collect();
 
-    return treatments.map((t) => ({
-      _id: t._id,
-      name: t.name,
-      description: t.description,
-      category: t.category,
-      duration: t.duration,
-      price: t.price,
-      currency: t.currency ?? "PLN",
-    }));
+    // Resolve structured `categoryId` → name so newly created treatments
+    // (which only set categoryId) group correctly on the booking page. Fall
+    // back to the legacy free-text `category` string for records created
+    // before structured categories (see #471, #492).
+    const categories = await db
+      .query("categoryDefinitions")
+      .eq("organizationId", organizationId)
+      .eq("entityType", "gabinetTreatment")
+      .collect();
+    const categoryNameById = new Map<string, string>();
+    for (const c of categories) {
+      if (!c.isDeleted) categoryNameById.set(String(c._id), String(c.name));
+    }
+
+    return treatments.map((t) => {
+      let resolvedCategory: string | null = null;
+      if (t.categoryId) {
+        resolvedCategory = categoryNameById.get(String(t.categoryId)) ?? null;
+      }
+      if (!resolvedCategory && typeof t.category === "string") {
+        resolvedCategory = t.category;
+      }
+      return {
+        _id: t._id as string,
+        name: t.name as string,
+        description: (t.description as string | null) ?? undefined,
+        category: resolvedCategory,
+        duration: t.duration as number,
+        price: t.price as number,
+        currency: (t.currency as string | null) ?? "PLN",
+      };
+    });
   },
 });
 

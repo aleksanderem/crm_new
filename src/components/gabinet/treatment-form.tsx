@@ -25,7 +25,6 @@ import type { Id } from "@cvx/_generated/dataModel";
 export interface TreatmentFormData {
   name: string;
   description?: string;
-  category?: string;
   duration: number;
   price: number;
   currency?: string;
@@ -47,6 +46,7 @@ interface TreatmentFormProps {
   onSubmit: (data: TreatmentFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  categorySelector?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -67,12 +67,12 @@ export function TreatmentForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  categorySelector,
   children,
 }: TreatmentFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [category, setCategory] = useState(initialData?.category ?? "");
   const [duration, setDuration] = useState(String(initialData?.duration ?? ""));
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
@@ -120,7 +120,6 @@ export function TreatmentForm({
     onSubmit({
       name,
       description: description || undefined,
-      category: category || undefined,
       duration: parseInt(duration) || 30,
       price: parseFloat(price) || 0,
       currency: currency || undefined,
@@ -198,10 +197,7 @@ export function TreatmentForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.category")}</Label>
-          <Input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
+          {categorySelector}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.sortOrder")}</Label>

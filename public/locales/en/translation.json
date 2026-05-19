@@ -2457,6 +2457,7 @@
       "rescheduleFailed": "Could not reschedule the appointment.",
       "resized": "Appointment duration updated",
       "resizeFailed": "Could not change appointment duration.",
+      "updateFailed": "Could not save the changes.",
       "errors": {
         "conflict": "This time conflicts with another appointment.",
         "conflictNamed": "This time conflicts with another calendar event.",

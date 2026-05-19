@@ -507,40 +507,10 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     });
   }
 
-  // ============================================================
-  // 10. RECENTLY VIEWED
-  // ============================================================
-  // Mark some entities as recently viewed
-  for (let i = 0; i < Math.min(5, contactIds.length); i++) {
-    await ctx.db.insert("recentlyViewed", {
-      organizationId: orgId,
-      userId,
-      entityType: "contacts",
-      entityId: contactIds[i],
-      entityLabel: `${contactData[i].firstName} ${contactData[i].lastName ?? ""}`.trim(),
-      viewedAt: daysAgo(i),
-    });
-  }
-  for (let i = 0; i < Math.min(4, companyIds.length); i++) {
-    await ctx.db.insert("recentlyViewed", {
-      organizationId: orgId,
-      userId,
-      entityType: "companies",
-      entityId: companyIds[i],
-      entityLabel: companyData[i].name,
-      viewedAt: daysAgo(i),
-    });
-  }
-  for (let i = 0; i < Math.min(3, leadIds.length); i++) {
-    await ctx.db.insert("recentlyViewed", {
-      organizationId: orgId,
-      userId,
-      entityType: "leads",
-      entityId: leadIds[i],
-      entityLabel: leadData[i].title,
-      viewedAt: daysAgo(i),
-    });
-  }
+  // Recently viewed is intentionally not seeded: the read path goes through
+  // Supabase (see convex/recentlyViewed.ts) while ctx.db here is Convex, so
+  // any rows written here would never surface in the sidebar. The list fills
+  // naturally as the user navigates seeded entities.
 
   return {
     companies: companyIds.length,
@@ -561,7 +531,6 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 
 async function doClear(ctx: any, orgId: Id<"organizations">) {
   const tables = [
-    "recentlyViewed",
     "scheduledActivities",
     "emails",
     "calls",

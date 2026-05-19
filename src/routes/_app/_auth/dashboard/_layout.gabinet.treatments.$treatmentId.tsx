@@ -12,6 +12,8 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
+import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -102,6 +104,7 @@ function TreatmentDetail() {
   // State
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editCategoryId, setEditCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   // Parameters tab state
   type ParamType = "text" | "number" | "checkbox" | "radio" | "select";
@@ -155,6 +158,8 @@ function TreatmentDetail() {
     organizationId,
     treatmentId,
   );
+
+  const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
 
   const getDetailedStatsAction = useAction(api.gabinet.treatments.getTreatmentDetailedStats);
   const listTreatmentAppointmentsAction = useAction(api.gabinet.treatments.listTreatmentAppointments);
@@ -252,13 +257,22 @@ function TreatmentDetail() {
     return () => setShellSidebarMode("default");
   }, [setShellSidebarMode]);
 
+  const categoryName = useMemo(() => {
+    if (!treatment) return null;
+    if (treatment.categoryId) {
+      const match = categories.find((c) => c._id === treatment.categoryId);
+      if (match) return match.name;
+    }
+    return treatment.category ?? null;
+  }, [treatment, categories]);
+
   // Build fields for EntityDetailLayout sidebar
   const detailFields: DetailField[] = useMemo(() => {
     if (!treatment) return [];
     const fields: DetailField[] = [
       { label: t("gabinet.treatments.price"), value: formatCurrency(treatment.price, treatment.currency ?? undefined), fieldKey: "price" },
       { label: t("gabinet.treatments.duration"), value: `${treatment.duration} min`, fieldKey: "duration" },
-      { label: t("gabinet.treatments.category"), value: treatment.category ?? "—", fieldKey: "category" },
+      { label: t("gabinet.treatments.category"), value: categoryName ?? "—", fieldKey: "category" },
     ];
     if (treatment.taxRate != null) {
       fields.push({ label: t("gabinet.treatments.taxRate"), value: `${treatment.taxRate}%`, fieldKey: "taxRate" });
@@ -276,7 +290,7 @@ function TreatmentDetail() {
       fields.push({ label: t("gabinet.treatments.treatmentCount", "Liczba zabiegów"), value: <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>, fieldKey: "count" });
     }
     return fields;
-  }, [treatment, equipmentList, t]);
+  }, [treatment, equipmentList, t, categoryName]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {
@@ -364,6 +378,7 @@ function TreatmentDetail() {
         organizationId,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
         ...formData,
+        categoryId: editCategoryId,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
@@ -1155,9 +1170,12 @@ function TreatmentDetail() {
         notFound={!treatment && !isLoading}
         onBack={() => navigate({ to: "/dashboard/gabinet/treatments" })}
         title={treatment?.name ?? ""}
-        subtitle={treatment?.category ?? t("gabinet.treatments.treatment")}
+        subtitle={categoryName ?? t("gabinet.treatments.treatment")}
         avatarFallback={treatment?.name?.slice(0, 2).toUpperCase()}
-        onEdit={() => setEditPanelOpen(true)}
+        onEdit={() => {
+          setEditCategoryId(treatment?.categoryId as Id<"categoryDefinitions"> | undefined);
+          setEditPanelOpen(true);
+        }}
         secondaryActions={[
           {
             label: treatment?.isActive
@@ -1186,7 +1204,6 @@ function TreatmentDetail() {
             initialData={{
               name: treatment.name,
               description: treatment.description ?? undefined,
-              category: treatment.category ?? undefined,
               duration: treatment.duration,
               price: treatment.price,
               currency: treatment.currency ?? undefined,
@@ -1204,6 +1221,15 @@ function TreatmentDetail() {
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}
             isSubmitting={isSubmitting}
+            categorySelector={
+              <CategoryPicker
+                categories={categories}
+                selectedId={editCategoryId}
+                onChange={setEditCategoryId}
+                organizationId={organizationId}
+                entityType="gabinetTreatment"
+              />
+            }
           />
         </SidePanel>
       )}

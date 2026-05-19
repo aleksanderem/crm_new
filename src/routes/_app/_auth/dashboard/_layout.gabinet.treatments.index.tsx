@@ -195,6 +195,23 @@ function TreatmentsIndex() {
     return data;
   }, [allTreatments, activeViewId, applyFilters, activeFilters, searchValue]);
 
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cat of categories) map.set(cat._id, cat.name);
+    return map;
+  }, [categories]);
+
+  const getCategoryLabel = useCallback(
+    (item: Treatment) => {
+      if (item.categoryId) {
+        const name = categoryNameById.get(item.categoryId);
+        if (name) return name;
+      }
+      return item.category ?? null;
+    },
+    [categoryNameById],
+  );
+
   const columns: CrmColumn<Treatment>[] = useMemo(
     () => [
       {
@@ -230,8 +247,8 @@ function TreatmentsIndex() {
         id: "category",
         label: t("gabinet.treatments.category"),
         sortable: true,
-        render: (item) => item.category ?? "—",
-        getSortValue: (item) => item.category ?? "",
+        render: (item) => getCategoryLabel(item) ?? "—",
+        getSortValue: (item) => getCategoryLabel(item) ?? "",
       },
       {
         id: "duration",
@@ -264,7 +281,7 @@ function TreatmentsIndex() {
         ),
       },
     ],
-    [t],
+    [t, getCategoryLabel],
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
@@ -479,7 +496,6 @@ function TreatmentsIndex() {
               ? {
                   name: editingTreatment.name,
                   description: editingTreatment.description ?? undefined,
-                  category: editingTreatment.category ?? undefined,
                   duration: editingTreatment.duration,
                   price: editingTreatment.price,
                   currency: editingTreatment.currency ?? undefined,
@@ -508,15 +524,7 @@ function TreatmentsIndex() {
             setEditingTreatment(null);
           }}
           isSubmitting={isSubmitting}
-        >
-          {tags.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+          categorySelector={
             <CategoryPicker
               categories={categories}
               selectedId={categoryId}
@@ -524,7 +532,14 @@ function TreatmentsIndex() {
               organizationId={organizationId}
               entityType="gabinetTreatment"
             />
-          </div>
+          }
+        >
+          {tags.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
+              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+            </div>
+          )}
         </TreatmentForm>
       </SidePanel>
 

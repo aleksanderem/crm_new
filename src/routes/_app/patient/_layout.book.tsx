@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -59,12 +58,21 @@ function PatientBooking() {
     enabled: !!tokenHash,
   });
 
+  const getQualifiedEmployees = useAction(
+    api.gabinet.patientPortal.getQualifiedEmployees,
+  );
   const { data: employees } = useQuery({
-    ...convexQuery(api.gabinet.patientPortal.getQualifiedEmployees, {
+    queryKey: [
+      "gabinet.patientPortal.getQualifiedEmployees",
       tokenHash,
-      treatmentId: selectedTreatment?._id ?? ("" as Id<"gabinetTreatments">),
-    }),
-    enabled: !!selectedTreatment,
+      selectedTreatment?._id,
+    ],
+    queryFn: () =>
+      getQualifiedEmployees({
+        tokenHash,
+        treatmentId: (selectedTreatment?._id as string) ?? "",
+      }),
+    enabled: !!tokenHash && !!selectedTreatment,
   });
 
   const dateStr = selectedDate
@@ -137,7 +145,7 @@ function PatientBooking() {
     employee: NonNullable<typeof employees>[number],
   ) => {
     setSelectedEmployee({
-      userId: employee.userId,
+      userId: employee.userId as Id<"users">,
       firstName: employee.firstName,
       lastName: employee.lastName,
     });
@@ -163,7 +171,7 @@ function PatientBooking() {
     // If "any employee" was chosen, pick the first qualified employee for slot lookup
     if (anyEmployee && employees && employees.length > 0) {
       setSelectedEmployee({
-        userId: employees[0].userId,
+        userId: employees[0].userId as Id<"users">,
         firstName: employees[0].firstName,
         lastName: employees[0].lastName,
       });

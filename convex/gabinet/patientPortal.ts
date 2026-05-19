@@ -242,44 +242,61 @@ export const getBookableTreatments = action({
 });
 
 /** List active employees qualified for a given treatment. */
-export const getQualifiedEmployees = query({
+export const getQualifiedEmployees = action({
   args: {
     tokenHash: v.string(),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { organizationId } = await validatePortalSession(ctx, args.tokenHash);
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
 
-    const employees = await ctx.db
+    // Validate session via Supabase (matches bookFromPortal — the Convex
+    // gabinetPortalSessions table is no longer the source of truth).
+    const session = await db
+      .query("gabinetPortalSessions")
+      .eq("tokenHash", args.tokenHash)
+      .first();
+    if (
+      !session ||
+      !session.isActive ||
+      Date.now() > (session.expiresAt as number)
+    ) {
+      throw new Error("Invalid or expired session");
+    }
+    const organizationId = String(session.organizationId);
+
+    const employees = await db
       .query("gabinetEmployees")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", organizationId).eq("isActive", true),
-      )
+      .eq("organizationId", organizationId)
+      .eq("isActive", true)
       .collect();
 
-    // Filter to those qualified for the treatment
-    const qualified = employees.filter(
-      (e) =>
-        e.qualifiedTreatmentIds.length === 0 ||
-        e.qualifiedTreatmentIds.includes(args.treatmentId),
-    );
+    // Filter to those qualified for the treatment (empty list ⇒ qualified
+    // for everything, matching the original Convex behaviour).
+    const qualified = employees.filter((e) => {
+      const qualifiedIds = (e.qualifiedTreatmentIds as string[] | undefined) ?? [];
+      return qualifiedIds.length === 0 || qualifiedIds.includes(args.treatmentId);
+    });
 
-    // Resolve user names
-    const enriched = await Promise.all(
+    // Resolve user names from Supabase, falling back to names stored on
+    // the employee row itself.
+    return await Promise.all(
       qualified.map(async (e) => {
-        const user = await ctx.db.get(e.userId);
+        const user = await db.get("users", String(e.userId)).catch(() => null);
+        const userName = (user?.name as string | null) ?? null;
         return {
-          _id: e._id,
-          userId: e.userId,
-          firstName: e.firstName ?? user?.name?.split(" ")[0] ?? "",
+          _id: e._id as string,
+          userId: e.userId as string,
+          firstName:
+            (e.firstName as string | null) ?? userName?.split(" ")[0] ?? "",
           lastName:
-            e.lastName ?? user?.name?.split(" ").slice(1).join(" ") ?? "",
-          specialization: e.specialization,
+            (e.lastName as string | null) ??
+            userName?.split(" ").slice(1).join(" ") ??
+            "",
+          specialization: (e.specialization as string | null) ?? undefined,
         };
       }),
     );
-
-    return enriched;
   },
 });
 

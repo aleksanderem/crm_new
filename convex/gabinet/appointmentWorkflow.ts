@@ -161,19 +161,24 @@ export const getWorkflowConfigInternal = internalQuery({
 export const dispatchAppointmentCreated = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
-    patientId: v.id("gabinetPatients"),
-    treatmentId: v.id("gabinetTreatments"),
-    employeeId: v.id("users"),
+    appointmentId: v.string(),
+    patientId: v.string(),
+    treatmentId: v.string(),
+    employeeId: v.string(),
     appointmentDate: v.string(),
     appointmentTime: v.string(),
     triggeredBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
+    const patientId = args.patientId as Id<"gabinetPatients">;
+    const treatmentId = args.treatmentId as Id<"gabinetTreatments">;
+    const employeeId = args.employeeId as Id<"users">;
+
     const [patient, treatment, employee, config] = await Promise.all([
-      ctx.db.get(args.patientId),
-      ctx.db.get(args.treatmentId),
-      ctx.db.get(args.employeeId),
+      ctx.db.get(patientId),
+      ctx.db.get(treatmentId),
+      ctx.db.get(employeeId),
       ctx.runQuery(internal.gabinet.appointmentWorkflow.getWorkflowConfigInternal, {
         organizationId: args.organizationId,
       }),
@@ -195,7 +200,7 @@ export const dispatchAppointmentCreated = internalMutation({
 
       const idempotencyKey = buildIdempotencyKey({
         organizationId: args.organizationId,
-        appointmentId: args.appointmentId,
+        appointmentId,
         workflowEvent: WORKFLOW_EVENT,
         channel: action.channel,
         actionKey: action.key,
@@ -211,7 +216,7 @@ export const dispatchAppointmentCreated = internalMutation({
         if (!patient.email) {
           await upsertHistory(ctx, {
             organizationId: args.organizationId,
-            appointmentId: args.appointmentId,
+            appointmentId,
             channel: "email",
             recipient: "",
             recipientName: patientName,
@@ -233,13 +238,13 @@ export const dispatchAppointmentCreated = internalMutation({
           triggeredBy: args.triggeredBy,
           source: "appointment_workflow",
           relatedEntityType: "gabinetAppointment",
-          relatedEntityId: String(args.appointmentId),
+          relatedEntityId: String(appointmentId),
           idempotencyKey,
         });
 
         await upsertHistory(ctx, {
           organizationId: args.organizationId,
-          appointmentId: args.appointmentId,
+          appointmentId,
           channel: "email",
           recipient: patient.email,
           recipientName: patientName,
@@ -254,7 +259,7 @@ export const dispatchAppointmentCreated = internalMutation({
       if (!patient.phone) {
         await upsertHistory(ctx, {
           organizationId: args.organizationId,
-          appointmentId: args.appointmentId,
+          appointmentId,
           channel: "sms",
           recipient: "",
           recipientName: patientName,
@@ -280,7 +285,7 @@ export const dispatchAppointmentCreated = internalMutation({
 
       await upsertHistory(ctx, {
         organizationId: args.organizationId,
-        appointmentId: args.appointmentId,
+        appointmentId,
         channel: "sms",
         recipient: patient.phone,
         recipientName: patientName,

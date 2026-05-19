@@ -123,10 +123,10 @@ function TeamSettings() {
     try {
       await cancelInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationCancelled"));
+      toast.success(t("team.invitationCancelled"), { position: "top-center", duration: 2000 });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(message);
+      toast.error(message, { position: "top-center", duration: 2000 });
     } finally {
       setCancellingId(null);
     }
@@ -138,10 +138,10 @@ function TeamSettings() {
     try {
       await resendInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationResent"));
+      toast.success(t("team.invitationResent"), { position: "top-center", duration: 2000 });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(message);
+      toast.error(message, { position: "top-center", duration: 2000 });
     } finally {
       setResendingId(null);
     }
@@ -162,18 +162,19 @@ function TeamSettings() {
       setInviteRole("member");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationSent"));
+      toast.success(t("team.invitationSent"), { position: "top-center", duration: 2000 });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("Seat limit reached")) {
         toast.error(t("settings.team.limitReached"), {
+          position: "top-center",
           action: {
             label: t("team.upgrade"),
             onClick: () => navigate({ to: "/dashboard/settings/billing" }),
           },
         });
       } else {
-        toast.error(message);
+        toast.error(message, { position: "top-center", duration: 2000 });
       }
     } finally {
       setIsSending(false);

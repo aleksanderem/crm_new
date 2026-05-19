@@ -19,14 +19,14 @@ describe("recentlyViewed", () => {
     const t = createCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "test-id-1",
       entityLabel: "Jan Kowalski",
     });
 
-    const items = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const items = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "contacts",
       limit: 3,
@@ -41,20 +41,20 @@ describe("recentlyViewed", () => {
     const t = createCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "test-id-1",
       entityLabel: "Jan K.",
     });
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "test-id-1",
       entityLabel: "Jan Kowalski",
     });
 
-    const items = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const items = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "contacts",
       limit: 10,
@@ -68,26 +68,33 @@ describe("recentlyViewed", () => {
     const t = createCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    // Space the calls out so Date.now() advances between them — without a
+    // gap, all three tracks can land on the same millisecond and the
+    // viewedAt-desc ordering becomes a tie.
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "id-1",
       entityLabel: "First",
     });
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await sleep(2);
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "id-2",
       entityLabel: "Second",
     });
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await sleep(2);
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "id-3",
       entityLabel: "Third",
     });
 
-    const items = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const items = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "contacts",
       limit: 3,
@@ -104,7 +111,7 @@ describe("recentlyViewed", () => {
     const { organizationId, identity } = await seedTestUser(t);
 
     for (let i = 0; i < 5; i++) {
-      await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+      await t.withIdentity(identity).action(api.recentlyViewed.track, {
         organizationId,
         entityType: "contacts",
         entityId: `id-${i}`,
@@ -112,7 +119,7 @@ describe("recentlyViewed", () => {
       });
     }
 
-    const items = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const items = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "contacts",
       limit: 2,
@@ -125,25 +132,25 @@ describe("recentlyViewed", () => {
     const t = createCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "contacts",
       entityId: "contact-1",
       entityLabel: "Contact One",
     });
-    await t.withIdentity(identity).mutation(api.recentlyViewed.track, {
+    await t.withIdentity(identity).action(api.recentlyViewed.track, {
       organizationId,
       entityType: "companies",
       entityId: "company-1",
       entityLabel: "Company One",
     });
 
-    const contacts = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const contacts = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "contacts",
       limit: 10,
     });
-    const companies = await t.withIdentity(identity).query(api.recentlyViewed.list, {
+    const companies = await t.withIdentity(identity).action(api.recentlyViewed.list, {
       organizationId,
       entityType: "companies",
       limit: 10,

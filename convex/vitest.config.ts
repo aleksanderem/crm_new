@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@cvx": path.resolve(__dirname),
+      "~": path.resolve(__dirname, ".."),
     },
   },
   test: {

@@ -335,10 +335,16 @@ export function EmployeeForm({
           <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
         </div>
       )}
-      {categoryDefinitions.length > 0 && (
+      {organizationId && (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+          <CategoryPicker
+            categories={categoryDefinitions}
+            selectedId={categoryId}
+            onChange={setCategoryId}
+            organizationId={organizationId}
+            entityType="gabinetEmployee"
+          />
         </div>
       )}
 

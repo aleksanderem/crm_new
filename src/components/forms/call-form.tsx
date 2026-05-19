@@ -52,6 +52,7 @@ interface CallFormProps {
   isSubmitting?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+  organizationId?: Id<"organizations">;
 }
 
 export function CallForm({
@@ -61,6 +62,7 @@ export function CallForm({
   isSubmitting = false,
   tagDefinitions = [],
   categoryDefinitions = [],
+  organizationId,
 }: CallFormProps) {
   const { t } = useTranslation();
   const [outcome, setOutcome] = useState<CallOutcome>(
@@ -115,10 +117,16 @@ export function CallForm({
             <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
           </div>
         )}
-        {categoryDefinitions.length > 0 && (
+        {organizationId && (
           <div className="space-y-1.5">
             <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-            <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+            <CategoryPicker
+              categories={categoryDefinitions}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="call"
+            />
           </div>
         )}
       </div>

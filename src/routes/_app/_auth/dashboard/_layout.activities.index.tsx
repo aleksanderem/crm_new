@@ -490,12 +490,16 @@ function ActivitiesPage() {
               <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
             </div>
           )}
-          {categories.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-              <CategoryPicker categories={categories} selectedId={categoryId} onChange={setCategoryId} />
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
+            <CategoryPicker
+              categories={categories}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="activity"
+            />
+          </div>
         </div>
       </SidePanel>
 

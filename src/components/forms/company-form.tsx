@@ -87,6 +87,7 @@ interface CompanyFormProps {
   onCancel: () => void;
   isSubmitting?: boolean;
   extraFields?: React.ReactNode;
+  organizationId?: Id<"organizations">;
 }
 
 export function CompanyForm({
@@ -99,6 +100,7 @@ export function CompanyForm({
   onCancel,
   isSubmitting = false,
   extraFields,
+  organizationId,
 }: CompanyFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
@@ -270,13 +272,15 @@ export function CompanyForm({
             />
           </div>
         )}
-        {categoryDefinitions.length > 0 && (
+        {organizationId && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
             <CategoryPicker
               categories={categoryDefinitions}
               selectedId={categoryId}
               onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="company"
             />
           </div>
         )}

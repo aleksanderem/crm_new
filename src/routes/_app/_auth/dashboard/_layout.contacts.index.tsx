@@ -425,6 +425,7 @@ function ContactsIndex() {
           customFieldDefinitions={cfDefs}
           tagDefinitions={tags}
           categoryDefinitions={categories}
+          organizationId={organizationId}
         />
       </SidePanel>
 

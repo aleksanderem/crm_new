@@ -2452,6 +2452,25 @@
         "pastConfirm": {
           "message": "The selected time has already passed. Do you want to add the appointment?"
         }
+      },
+      "rescheduled": "Appointment rescheduled",
+      "rescheduleFailed": "Could not reschedule the appointment.",
+      "resized": "Appointment duration updated",
+      "resizeFailed": "Could not change appointment duration.",
+      "errors": {
+        "conflict": "This time conflicts with another appointment.",
+        "conflictNamed": "This time conflicts with another calendar event.",
+        "roomConflict": "The room is occupied at this time.",
+        "employeeLeave": "Employee is on leave at this time.",
+        "employeeNotWorking": "Employee does not work on this day.",
+        "outsideEmployeeHours": "Outside employee working hours.",
+        "clinicClosed": "Clinic is closed on this day.",
+        "outsideClinicHours": "Outside clinic working hours.",
+        "notFound": "Appointment not found. Refresh the calendar and try again.",
+        "permissionDenied": "You do not have permission to edit this appointment.",
+        "invalidStatusTransition": "Cannot change the appointment status from its current value.",
+        "invalidArguments": "Could not save changes — invalid appointment data.",
+        "blockedNotDraggable": "Google events cannot be moved from the calendar."
       }
     },
     "appointmentDetail": {

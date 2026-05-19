@@ -50,9 +50,14 @@ function PatientBooking() {
 
   const bookMutation = useAction(api.gabinet.patientPortal.bookFromPortal);
 
-  const { data: treatments } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getBookableTreatments, { tokenHash }),
+  const getBookableTreatments = useAction(
+    api.gabinet.patientPortal.getBookableTreatments,
   );
+  const { data: treatments } = useQuery({
+    queryKey: ["gabinet.patientPortal.getBookableTreatments", tokenHash],
+    queryFn: () => getBookableTreatments({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const { data: employees } = useQuery({
     ...convexQuery(api.gabinet.patientPortal.getQualifiedEmployees, {
@@ -114,7 +119,13 @@ function PatientBooking() {
   const handleSelectTreatment = (
     treatment: NonNullable<typeof treatments>[number],
   ) => {
-    setSelectedTreatment(treatment);
+    setSelectedTreatment({
+      _id: treatment._id as Id<"gabinetTreatments">,
+      name: treatment.name,
+      duration: treatment.duration,
+      price: treatment.price,
+      currency: treatment.currency,
+    });
     setSelectedEmployee(null);
     setAnyEmployee(false);
     setSelectedDate(undefined);

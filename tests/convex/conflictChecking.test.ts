@@ -1,37 +1,6 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../../convex/_test_helpers";
-
-// Conflict-checking tests assert on the create action's reject/resolve
-// behavior. The action also `runAfter(0, …)` schedules side-effect jobs
-// (SMS, automation events, reminders). convex-test runs those via
-// `setTimeout(0, …)` against a `global.Convex` reference; once the next
-// test creates a fresh test instance, the orphan callbacks from the
-// previous test fire against the new `global.Convex` and surface as
-// "Write outside of transaction" / null-state unhandled rejections that
-// fail the suite (even though every assertion in the test passed).
-//
-// Same pattern as appointmentStateMachine.test.ts: install a per-file
-// unhandledRejection filter that silently consumes ONLY the two known
-// convex-test scheduler error shapes. Unknown rejections fall through.
-const SCHEDULER_NOISE = [
-  /Write outside of transaction \d+;_scheduled_functions/,
-  /Cannot read properties of null \(reading 'state'\)/,
-];
-
-function onUnhandledRejection(reason: unknown) {
-  const msg = reason instanceof Error ? reason.message : String(reason);
-  if (SCHEDULER_NOISE.some((re) => re.test(msg))) return;
-  // Other rejections are left to vitest's own listener.
-}
-
-beforeAll(() => {
-  process.on("unhandledRejection", onUnhandledRejection);
-});
-
-afterAll(() => {
-  process.off("unhandledRejection", onUnhandledRejection);
-});
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -46,7 +15,8 @@ beforeEach(() => {
 afterEach(async () => {
   // Let any pending setTimeout(0) side-effect callbacks from the test fire
   // against the *current* instance before the next test creates a new one.
-  // Anything still queued past this yield is handled by the swallower above.
+  // The process-wide scheduler-noise filter in tests/convex/_setup.ts swallows
+  // any orphan-write/null-state rejections that still escape.
   await new Promise((resolve) => setTimeout(resolve, 0));
   vi.unstubAllGlobals();
 });

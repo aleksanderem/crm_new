@@ -36,6 +36,7 @@ import {
 
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
+import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -347,15 +348,8 @@ function PatientDetail() {
                         </p>
                       </div>
                       <Badge
-                        variant={
-                          apt.status === "completed"
-                            ? "default"
-                            : apt.status === "cancelled"
-                              ? "destructive"
-                              : apt.status === "no_show"
-                                ? "destructive"
-                                : "secondary"
-                        }
+                        variant="outline"
+                        className={appointmentStatusBadgeClass(apt.status)}
                       >
                         {t(
                           `gabinet.appointments.statuses.${apt.status}`,

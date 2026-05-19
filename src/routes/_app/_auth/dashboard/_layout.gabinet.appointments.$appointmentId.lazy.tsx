@@ -100,25 +100,13 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
 )({
   component: AppointmentDetail,
 });
-
-const statusColors: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  pending_confirmation: "outline",
-  scheduled: "secondary",
-  confirmed: "default",
-  in_progress: "default",
-  completed: "default",
-  cancelled: "destructive",
-  no_show: "destructive",
-};
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -1302,7 +1290,10 @@ function AppointmentDetail() {
                 <Badge variant={smsSummary.tone}>
                   {t(smsSummary.labelKey)}
                 </Badge>
-                <Badge variant="outline">
+                <Badge
+                  variant="outline"
+                  className={appointmentStatusBadgeClass(appointment.status)}
+                >
                   {t(`gabinet.appointments.statuses.${appointment.status}`)}
                 </Badge>
               </div>
@@ -1696,9 +1687,8 @@ function AppointmentDetail() {
                             </p>
                           </div>
                           <Badge
-                            variant={
-                              statusColors[appt.status] ?? "secondary"
-                            }
+                            variant="outline"
+                            className={appointmentStatusBadgeClass(appt.status)}
                           >
                             {t(
                               `gabinet.appointments.statuses.${appt.status}`,

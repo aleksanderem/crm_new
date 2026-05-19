@@ -204,6 +204,54 @@ describe("payments", () => {
     expect(summary.byMethod.cash.total).toBe(350);
   });
 
+  test("list paginates results via cursor (offset)", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    // Create 5 payments
+    for (let i = 0; i < 5; i++) {
+      await t.withIdentity(identity).action(api.payments.create, {
+        organizationId,
+        amount: 10 + i,
+        currency: "USD",
+        paymentMethod: "cash",
+      });
+    }
+
+    // First page: 2 items, more remaining
+    const page1 = await t.withIdentity(identity).action(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 2, cursor: null },
+    });
+    expect(page1.page).toHaveLength(2);
+    expect(page1.isDone).toBe(false);
+    expect(page1.continueCursor).toBe("2");
+
+    // Second page using returned cursor
+    const page2 = await t.withIdentity(identity).action(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 2, cursor: page1.continueCursor },
+    });
+    expect(page2.page).toHaveLength(2);
+    expect(page2.isDone).toBe(false);
+    expect(page2.continueCursor).toBe("4");
+
+    // Third (last) page: only one row left
+    const page3 = await t.withIdentity(identity).action(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 2, cursor: page2.continueCursor },
+    });
+    expect(page3.page).toHaveLength(1);
+    expect(page3.isDone).toBe(true);
+    expect(page3.continueCursor).toBe("");
+
+    // No overlap between pages
+    const allIds = [...page1.page, ...page2.page, ...page3.page].map(
+      (p: any) => p._id,
+    );
+    expect(new Set(allIds).size).toBe(5);
+  });
+
   test("markPaid can change payment method", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

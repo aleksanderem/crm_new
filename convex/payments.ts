@@ -31,17 +31,32 @@ export const list = action({
       organizationId: args.organizationId,
     });
 
+    const { numItems, cursor } = args.paginationOpts;
+    const offset = cursor ? Number(cursor) : 0;
+    if (!Number.isFinite(offset) || offset < 0) {
+      throw new Error("Invalid pagination cursor");
+    }
+
     const db = createSupabaseDb();
     let q = db
       .query("payments")
       .eq("organizationId", String(args.organizationId));
     if (args.status) q = q.eq("status", args.status);
+
+    // Fetch numItems + 1 to detect whether more rows remain.
     const rows = await q
       .order("createdAt", false)
-      .take(args.paginationOpts.numItems)
+      .range(offset, offset + numItems)
       .collect();
 
-    return { page: rows, isDone: true, continueCursor: "" };
+    const hasMore = rows.length > numItems;
+    const page = hasMore ? rows.slice(0, numItems) : rows;
+
+    return {
+      page,
+      isDone: !hasMore,
+      continueCursor: hasMore ? String(offset + numItems) : "",
+    };
   },
 });
 

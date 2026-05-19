@@ -45,7 +45,7 @@ async function createAppointment(
     endTime?: string;
   },
 ) {
-  return t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+  return t.withIdentity(identity).action(api.gabinet.appointments.create, {
     organizationId: args.organizationId,
     patientId: args.patientId,
     treatmentId: args.treatmentId,
@@ -82,7 +82,7 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId,
       appointmentId: apptId,
       status: "confirmed",
@@ -108,7 +108,7 @@ describe("appointment state machine", () => {
       });
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId,
       appointmentId: apptId,
       status: "confirmed",
@@ -127,10 +127,10 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "confirmed",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "in_progress",
     });
 
@@ -147,13 +147,13 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "confirmed",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "in_progress",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "completed",
     });
 
@@ -170,7 +170,7 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "cancelled",
     });
 
@@ -187,7 +187,7 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "no_show",
     });
 
@@ -206,7 +206,7 @@ describe("appointment state machine", () => {
     });
 
     await expect(
-      t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
         organizationId, appointmentId: apptId, status: "completed",
       }),
     ).rejects.toThrow("Cannot transition from scheduled to completed");
@@ -222,7 +222,7 @@ describe("appointment state machine", () => {
     });
 
     await expect(
-      t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
         organizationId, appointmentId: apptId, status: "in_progress",
       }),
     ).rejects.toThrow("Cannot transition from scheduled to in_progress");
@@ -238,19 +238,19 @@ describe("appointment state machine", () => {
     });
 
     // Go through full lifecycle
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "confirmed",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "in_progress",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "completed",
     });
 
     // Try any further transition — should fail
     await expect(
-      t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
         organizationId, appointmentId: apptId, status: "cancelled",
       }),
     ).rejects.toThrow("Cannot transition from completed to cancelled");
@@ -265,12 +265,12 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "cancelled",
     });
 
     await expect(
-      t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
         organizationId, appointmentId: apptId, status: "scheduled",
       }),
     ).rejects.toThrow("Cannot transition from cancelled to scheduled");
@@ -307,13 +307,13 @@ describe("appointment state machine", () => {
       organizationId, patientId, treatmentId, employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "confirmed",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "in_progress",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId, appointmentId: apptId, status: "completed",
     });
 

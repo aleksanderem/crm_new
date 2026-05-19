@@ -104,7 +104,7 @@ async function createAppointment(
     endTime?: string;
   },
 ) {
-  return t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+  return t.withIdentity(identity).action(api.gabinet.appointments.create, {
     organizationId: args.organizationId,
     patientId: args.patientId,
     treatmentId: args.treatmentId,
@@ -120,7 +120,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    const ruleId = await t.withIdentity(identity).mutation(api.automation.createRule, {
+    const ruleId = await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Appointment SMS",
       description: "Send patient SMS after appointment creation",
@@ -163,7 +163,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const ruleId = await t.withIdentity(identity).mutation(api.automation.createRule, {
+    const ruleId = await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Initial rule",
       description: "Before update",
@@ -182,7 +182,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).mutation(api.automation.updateRule, {
+    await t.withIdentity(identity).action(api.automation.updateRule, {
       organizationId,
       ruleId,
       name: "Updated rule",
@@ -223,7 +223,7 @@ describe("automation lifecycle", () => {
     const secondUser = await seedSecondUser(t, firstUser.organizationId);
     const otherOrg = await seedTestUser(t);
 
-    const keepRuleId = await t.withIdentity(firstUser.identity).mutation(api.automation.createRule, {
+    const keepRuleId = await t.withIdentity(firstUser.identity).action(api.automation.createRule, {
       organizationId: firstUser.organizationId,
       name: "Keep me",
       module: "gabinet",
@@ -241,7 +241,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    const deleteRuleId = await t.withIdentity(secondUser.identity).mutation(api.automation.createRule, {
+    const deleteRuleId = await t.withIdentity(secondUser.identity).action(api.automation.createRule, {
       organizationId: firstUser.organizationId,
       name: "Delete me",
       module: "gabinet",
@@ -258,7 +258,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    const otherOrgRuleId = await t.withIdentity(otherOrg.identity).mutation(api.automation.createRule, {
+    const otherOrgRuleId = await t.withIdentity(otherOrg.identity).action(api.automation.createRule, {
       organizationId: otherOrg.organizationId,
       name: "Other org",
       module: "gabinet",
@@ -276,13 +276,13 @@ describe("automation lifecycle", () => {
     });
 
     await expect(
-      t.withIdentity(firstUser.identity).mutation(api.automation.deleteRule, {
+      t.withIdentity(firstUser.identity).action(api.automation.deleteRule, {
         organizationId: firstUser.organizationId,
         ruleId: otherOrgRuleId,
       }),
     ).rejects.toThrow("Automation rule not found");
 
-    await t.withIdentity(firstUser.identity).mutation(api.automation.deleteRule, {
+    await t.withIdentity(firstUser.identity).action(api.automation.deleteRule, {
       organizationId: firstUser.organizationId,
       ruleId: deleteRuleId,
     });
@@ -305,7 +305,7 @@ describe("automation lifecycle", () => {
       userId,
     );
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Notify employee",
       module: "gabinet",
@@ -371,7 +371,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Notify patient creator",
       module: "gabinet",
@@ -390,7 +390,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    const patientId = await t.withIdentity(identity).mutation(api.gabinet.patients.create, {
+    const patientId = await t.withIdentity(identity).action(api.gabinet.patients.create, {
       organizationId,
       firstName: "Anna",
       lastName: "Nowak",
@@ -446,7 +446,7 @@ describe("automation lifecycle", () => {
 
     await setPatientPhone(t, patientId, "500600700");
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Send patient SMS",
       module: "gabinet",
@@ -672,7 +672,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Graph rule",
       module: "gabinet",
@@ -716,7 +716,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Legacy triggerless rule",
       module: "gabinet",
@@ -772,7 +772,7 @@ describe("automation lifecycle", () => {
       });
     });
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Send manual email",
       module: "gabinet",
@@ -873,7 +873,7 @@ describe("automation lifecycle", () => {
       });
     });
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Send template email",
       module: "gabinet",
@@ -947,7 +947,7 @@ describe("automation lifecycle", () => {
       userId,
     );
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Tag patient from automation",
       module: "gabinet",
@@ -1008,13 +1008,13 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const leadId = await t.withIdentity(identity).mutation(api.leads.create, {
+    const leadId = await t.withIdentity(identity).action(api.leads.create, {
       organizationId,
       title: "Automation Lead",
       status: "open",
     });
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Annotate lead status changes",
       module: "crm",
@@ -1034,7 +1034,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).mutation(api.leads.update, {
+    await t.withIdentity(identity).action(api.leads.update, {
       organizationId,
       leadId,
       status: "won",
@@ -1072,13 +1072,13 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const leadId = await t.withIdentity(identity).mutation(api.leads.create, {
+    const leadId = await t.withIdentity(identity).action(api.leads.create, {
       organizationId,
       title: "Unsupported lead update",
       status: "open",
     });
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Attempt custom lead field update",
       module: "crm",
@@ -1098,7 +1098,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).mutation(api.leads.update, {
+    await t.withIdentity(identity).action(api.leads.update, {
       organizationId,
       leadId,
       status: "lost",
@@ -1137,14 +1137,14 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "none");
 
-    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC deny lead",
       status: "open",
       assignedTo: member.userId,
     });
 
-    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+    await t.withIdentity(admin.identity).action(api.automation.createRule, {
       organizationId: admin.organizationId,
       name: "Member tries lead update without edit permission",
       module: "crm",
@@ -1205,13 +1205,13 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "own");
 
-    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC own-scope lead",
       status: "open",
     });
 
-    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+    await t.withIdentity(admin.identity).action(api.automation.createRule, {
       organizationId: admin.organizationId,
       name: "Member own-scope check",
       module: "crm",
@@ -1272,13 +1272,13 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "all");
 
-    const leadId = await t.withIdentity(admin.identity).mutation(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC allow lead",
       status: "open",
     });
 
-    await t.withIdentity(admin.identity).mutation(api.automation.createRule, {
+    await t.withIdentity(admin.identity).action(api.automation.createRule, {
       organizationId: admin.organizationId,
       name: "Member can update lead with all scope",
       module: "crm",
@@ -1345,7 +1345,7 @@ describe("automation lifecycle", () => {
 
     await setPatientPhone(t, patientId, "500600700");
 
-    await t.withIdentity(identity).mutation(api.automation.createRule, {
+    await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
       name: "Send request SMS",
       module: "gabinet",

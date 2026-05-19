@@ -9,7 +9,7 @@ describe("conflict checking", () => {
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
     // Create first appointment 09:00-09:30
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
       organizationId,
       patientId,
       treatmentId,
@@ -21,7 +21,7 @@ describe("conflict checking", () => {
 
     // Try to create overlapping appointment for same employee
     await expect(
-      t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+      t.withIdentity(identity).action(api.gabinet.appointments.create, {
         organizationId,
         patientId,
         treatmentId,
@@ -39,7 +39,7 @@ describe("conflict checking", () => {
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
     // 09:00-09:30
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
       organizationId,
       patientId,
       treatmentId,
@@ -50,7 +50,7 @@ describe("conflict checking", () => {
     });
 
     // 09:30-10:00 — immediately after, should be fine
-    const apptId = await t.withIdentity(identity).mutation(
+    const apptId = await t.withIdentity(identity).action(
       api.gabinet.appointments.create,
       {
         organizationId,
@@ -100,7 +100,7 @@ describe("conflict checking", () => {
     });
 
     // Employee 1: 09:00-09:30
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
       organizationId,
       patientId,
       treatmentId,
@@ -111,7 +111,7 @@ describe("conflict checking", () => {
     });
 
     // Employee 2: same time, should be allowed
-    const apptId = await t.withIdentity(identity).mutation(
+    const apptId = await t.withIdentity(identity).action(
       api.gabinet.appointments.create,
       {
         organizationId,
@@ -133,7 +133,7 @@ describe("conflict checking", () => {
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
     // Day 1
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
       organizationId,
       patientId,
       treatmentId,
@@ -144,7 +144,7 @@ describe("conflict checking", () => {
     });
 
     // Day 2 — same time, different date
-    const apptId = await t.withIdentity(identity).mutation(
+    const apptId = await t.withIdentity(identity).action(
       api.gabinet.appointments.create,
       {
         organizationId,
@@ -166,7 +166,7 @@ describe("conflict checking", () => {
     const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
     // Create and cancel appointment
-    const apptId = await t.withIdentity(identity).mutation(
+    const apptId = await t.withIdentity(identity).action(
       api.gabinet.appointments.create,
       {
         organizationId,
@@ -179,13 +179,13 @@ describe("conflict checking", () => {
       },
     );
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.cancel, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.cancel, {
       organizationId,
       appointmentId: apptId,
     });
 
     // Same slot should now be available
-    const newApptId = await t.withIdentity(identity).mutation(
+    const newApptId = await t.withIdentity(identity).action(
       api.gabinet.appointments.create,
       {
         organizationId,

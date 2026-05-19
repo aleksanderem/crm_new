@@ -638,11 +638,109 @@ export function AppointmentDialog({
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="flex flex-col md:flex-row md:h-[600px]">
           {/* ============================================================= */}
-          {/* LEFT PANEL — Treatment, Employee, Patient info                */}
+          {/* LEFT PANEL — Patient, Treatment, Employee info                */}
           {/* ============================================================= */}
           <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r flex flex-col">
             <ScrollShadow className="flex-1 overflow-y-auto">
               <div className="p-5 pb-8 space-y-5">
+                {/* Patient selector */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("gabinet.appointments.patient")}
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setAddPatientOpen(true)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+                      data-testid="appointment-add-patient-button"
+                    >
+                      <UserPlus className="size-3.5" />
+                      {t("gabinet.patients.addPatient")}
+                    </button>
+                  </div>
+                  <Popover
+                    open={patientOpen}
+                    onOpenChange={(o) => {
+                      setPatientOpen(o);
+                      if (!o) setPatientSearch("");
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={patientOpen}
+                        className="w-full justify-between h-11 font-normal"
+                        data-testid="appointment-patient-trigger"
+                      >
+                        <span className="truncate">
+                          {selectedPatient
+                            ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+                            : pendingPatientLabel
+                              ? pendingPatientLabel
+                              : t(
+                                  "gabinet.appointments.selectPatient",
+                                )}
+                        </span>
+                        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="p-0"
+                      align="start"
+                      style={{ width: "var(--radix-popover-trigger-width)" }}
+                    >
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder={t(
+                            "gabinet.appointments.searchPatient",
+                          )}
+                          value={patientSearch}
+                          onValueChange={setPatientSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {t("common.noResults")}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {filteredPatients.map((p) => (
+                              <CommandItem
+                                key={p._id}
+                                value={p._id}
+                                onSelect={() => {
+                                  setPatientId(p._id);
+                                  setPatientOpen(false);
+                                  setPatientSearch("");
+                                }}
+                                className={cn(
+                                  "px-3",
+                                  patientId === p._id &&
+                                    "bg-accent font-medium text-accent-foreground",
+                                )}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm">
+                                    {p.firstName}{" "}
+                                    {p.lastName}
+                                  </span>
+                                  {p.phone && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {p.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <Separator />
+
                 {/* Treatment selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -803,104 +901,6 @@ export function AppointmentDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <Separator />
-
-                {/* Patient selector */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {t("gabinet.appointments.patient")}
-                    </Label>
-                    <button
-                      type="button"
-                      onClick={() => setAddPatientOpen(true)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
-                      data-testid="appointment-add-patient-button"
-                    >
-                      <UserPlus className="size-3.5" />
-                      {t("gabinet.patients.addPatient")}
-                    </button>
-                  </div>
-                  <Popover
-                    open={patientOpen}
-                    onOpenChange={(o) => {
-                      setPatientOpen(o);
-                      if (!o) setPatientSearch("");
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={patientOpen}
-                        className="w-full justify-between h-11 font-normal"
-                        data-testid="appointment-patient-trigger"
-                      >
-                        <span className="truncate">
-                          {selectedPatient
-                            ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
-                            : pendingPatientLabel
-                              ? pendingPatientLabel
-                              : t(
-                                  "gabinet.appointments.selectPatient",
-                                )}
-                        </span>
-                        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="p-0"
-                      align="start"
-                      style={{ width: "var(--radix-popover-trigger-width)" }}
-                    >
-                      <Command shouldFilter={false}>
-                        <CommandInput
-                          placeholder={t(
-                            "gabinet.appointments.searchPatient",
-                          )}
-                          value={patientSearch}
-                          onValueChange={setPatientSearch}
-                        />
-                        <CommandList>
-                          <CommandEmpty>
-                            {t("common.noResults")}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {filteredPatients.map((p) => (
-                              <CommandItem
-                                key={p._id}
-                                value={p._id}
-                                onSelect={() => {
-                                  setPatientId(p._id);
-                                  setPatientOpen(false);
-                                  setPatientSearch("");
-                                }}
-                                className={cn(
-                                  "px-3",
-                                  patientId === p._id &&
-                                    "bg-accent font-medium text-accent-foreground",
-                                )}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="text-sm">
-                                    {p.firstName}{" "}
-                                    {p.lastName}
-                                  </span>
-                                  {p.phone && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {p.phone}
-                                    </span>
-                                  )}
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
                 </div>
 
                 {/* Location and Room */}

@@ -26,7 +26,7 @@ export function SubscriptionSuccessEmail({ email }: SubscriptionEmailOptions) {
   return (
     <Html>
       <Head />
-      <Preview>Successfully Subscribed to PRO</Preview>
+      <Preview>Subskrypcja PRO aktywowana</Preview>
       <Body
         style={{
           backgroundColor: "#ffffff",
@@ -42,15 +42,15 @@ export function SubscriptionSuccessEmail({ email }: SubscriptionEmailOptions) {
             alt=""
           />
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            Hello {email}!
+            Cześć {email}!
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            Your subscription to PRO has been successfully processed.
+            Twoja subskrypcja PRO została pomyślnie aktywowana.
             <br />
-            We hope you enjoy the new features!
+            Życzymy udanego korzystania z nowych funkcji!
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            The <Link href={process.env.SITE_URL ?? "https://app.example.com"}>Unify</Link> team.
+            Zespół <Link href={process.env.SITE_URL ?? "https://app.example.com"}>Unify</Link>.
           </Text>
           <Hr style={{ borderColor: "#cccccc", margin: "20px 0" }} />
           <Text style={{ color: "#8898aa", fontSize: "12px" }}>
@@ -66,7 +66,7 @@ export function SubscriptionErrorEmail({ email }: SubscriptionEmailOptions) {
   return (
     <Html>
       <Head />
-      <Preview>Subscription Issue - Customer Support</Preview>
+      <Preview>Problem z subskrypcją — wsparcie klienta</Preview>
       <Body
         style={{
           backgroundColor: "#ffffff",
@@ -82,15 +82,15 @@ export function SubscriptionErrorEmail({ email }: SubscriptionEmailOptions) {
             alt=""
           />
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            Hello {email}.
+            Cześć {email}.
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            We were unable to process your subscription to PRO tier.
+            Nie udało nam się przetworzyć Twojej subskrypcji planu PRO.
             <br />
-            But don't worry, we'll not charge you anything.
+            Nie martw się — nie pobierzemy od Ciebie żadnej opłaty.
           </Text>
           <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
-            The <Link href={process.env.SITE_URL ?? "https://app.example.com"}>Unify</Link> team.
+            Zespół <Link href={process.env.SITE_URL ?? "https://app.example.com"}>Unify</Link>.
           </Text>
           <Hr style={{ borderColor: "#cccccc", margin: "20px 0" }} />
           <Text style={{ color: "#8898aa", fontSize: "12px" }}>
@@ -124,7 +124,7 @@ export async function sendSubscriptionSuccessEmail({
 
   await sendEmail({
     to: email,
-    subject: "Successfully Subscribed to PRO",
+    subject: "Subskrypcja PRO została aktywowana",
     html,
   });
 }
@@ -137,7 +137,7 @@ export async function sendSubscriptionErrorEmail({
 
   await sendEmail({
     to: email,
-    subject: "Subscription Issue - Customer Support",
+    subject: "Problem z subskrypcją — wsparcie klienta",
     html,
   });
 }

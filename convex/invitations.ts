@@ -630,8 +630,8 @@ export const _getEmailContext = internalQuery({
     const org = await ctx.db.get(args.organizationId);
     const inviter = await ctx.db.get(args.inviterUserId as Id<"users">);
     return {
-      orgName: org?.name ?? "your team",
-      inviterName: inviter?.name ?? inviter?.email ?? "A teammate",
+      orgName: org?.name ?? "Twój zespół",
+      inviterName: inviter?.name ?? inviter?.email ?? "Członek zespołu",
     };
   },
 });

@@ -136,7 +136,6 @@ function TreatmentsIndex() {
   const filterableFields = useMemo(
     (): FieldDef[] => [
       { id: "name", label: t("gabinet.treatments.name"), type: "text" },
-      { id: "category", label: t("gabinet.treatments.category"), type: "text" },
       { id: "price", label: t("gabinet.treatments.price"), type: "number" },
       { id: "duration", label: t("gabinet.treatments.duration"), type: "number" },
       {

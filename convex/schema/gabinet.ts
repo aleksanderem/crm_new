@@ -87,6 +87,9 @@ export function createGabinetTables({
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.optional(v.string()),
+    // Legacy free-text category. Superseded by `categoryId` (see below) which
+    // references `categoryDefinitions`. Read-only fallback for records created
+    // before structured categories — no longer written by the app. See #471.
     category: v.optional(v.string()),
     duration: v.number(),
     price: v.number(),
@@ -140,7 +143,6 @@ export function createGabinetTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndCategory", ["organizationId", "category"])
     .index("by_orgAndActive", ["organizationId", "isActive"])
     .searchIndex("search_treatments", {
       searchField: "name",

@@ -65,19 +65,9 @@ export const updateMyProfile = action({
     emergencyContactPhone: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    // Validate session via Supabase
     const db = createSupabaseDb();
-    const session = await db.query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
+    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
 
-    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
-      throw new Error("Invalid or expired session");
-    }
-
-    const patientId = String(session.patientId);
-
-    // Patch patient in Supabase
     const { tokenHash, ...updates } = args;
     await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
   },
@@ -211,21 +201,10 @@ export const getBookableTreatments = action({
   args: { tokenHash: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-
-    // Validate session via Supabase (matches bookFromPortal — the Convex
-    // gabinetPortalSessions table is no longer the source of truth).
-    const session = await db
-      .query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
-    if (
-      !session ||
-      !session.isActive ||
-      Date.now() > (session.expiresAt as number)
-    ) {
-      throw new Error("Invalid or expired session");
-    }
-    const organizationId = String(session.organizationId);
+    const { organizationId } = await validatePortalSessionSupabase(
+      db,
+      args.tokenHash,
+    );
 
     const treatments = await db
       .query("gabinetTreatments")
@@ -276,21 +255,10 @@ export const getQualifiedEmployees = action({
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-
-    // Validate session via Supabase (matches bookFromPortal — the Convex
-    // gabinetPortalSessions table is no longer the source of truth).
-    const session = await db
-      .query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
-    if (
-      !session ||
-      !session.isActive ||
-      Date.now() > (session.expiresAt as number)
-    ) {
-      throw new Error("Invalid or expired session");
-    }
-    const organizationId = String(session.organizationId);
+    const { organizationId } = await validatePortalSessionSupabase(
+      db,
+      args.tokenHash,
+    );
 
     const employees = await db
       .query("gabinetEmployees")
@@ -337,16 +305,10 @@ export const getPublicAvailableSlots = action({
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-
-    // Validate portal session (read-only — via Supabase)
-    const session = await db
-      .query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
-    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
-      throw new Error("Invalid or expired session");
-    }
-    const organizationId = String(session.organizationId);
+    const { organizationId } = await validatePortalSessionSupabase(
+      db,
+      args.tokenHash,
+    );
 
     return await getAvailableSlotsSupabase(db, {
       organizationId,
@@ -369,18 +331,9 @@ export const bookFromPortal = action({
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
-
-    // Validate session via Supabase
-    const session = await db.query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
-
-    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
-      throw new Error("Invalid or expired session");
-    }
-
-    const patientId = String(session.patientId);
-    const organizationId = String(session.organizationId) as Id<"organizations">;
+    const { patientId, organizationId: orgIdStr } =
+      await validatePortalSessionSupabase(db, args.tokenHash);
+    const organizationId = orgIdStr as Id<"organizations">;
 
     // Read treatment from Supabase
     const treatment = await db.get("gabinetTreatments", args.treatmentId);
@@ -594,18 +547,9 @@ export const requestReschedule = action({
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
-
-    // Validate session via Supabase
-    const session = await db.query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
-      .first();
-
-    if (!session || !session.isActive || Date.now() > (session.expiresAt as number)) {
-      throw new Error("Invalid or expired session");
-    }
-
-    const patientId = String(session.patientId);
-    const organizationId = String(session.organizationId) as Id<"organizations">;
+    const { patientId, organizationId: orgIdStr } =
+      await validatePortalSessionSupabase(db, args.tokenHash);
+    const organizationId = orgIdStr as Id<"organizations">;
 
     // Read appointment from Supabase
     const appt = await db.get("gabinetAppointments", args.appointmentId);

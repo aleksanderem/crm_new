@@ -278,17 +278,6 @@ export function createPlatformTables({
     .index("by_organizationId_ts", ["organizationId", "ts"])
     .index("by_scope_ts", ["scope", "ts"]),
 
-  recentlyViewed: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
-    entityType: v.string(),
-    entityId: v.string(),
-    entityLabel: v.string(),
-    viewedAt: v.number(),
-  })
-    .index("by_user_type", ["organizationId", "userId", "entityType", "viewedAt"])
-    .index("by_entity", ["entityId"]),
-
   // Singleton-style table: holds global platform configuration that is NOT
   // scoped to any organization. There should be at most ONE row here; the
   // queries/mutations in convex/platformSettings.ts enforce that invariant.

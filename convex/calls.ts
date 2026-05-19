@@ -1,17 +1,15 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
-import { checkPermission } from "./_helpers/permissions";
 import { callOutcomeValidator } from "@cvx/schema";
 import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for call writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
@@ -20,90 +18,78 @@ export const list = query({
     dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "calls", "view");
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "calls", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const applyScope = (result: any) => {
-      if (perm.scope === "own") {
-        return { ...result, page: result.page.filter((r: any) => r.createdBy === user._id) };
-      }
-      return result;
-    };
+    const db = createSupabaseDb();
+    let q = db
+      .query<{ createdBy: string }>("calls")
+      .eq("organizationId", String(args.organizationId));
+    if (args.outcome) q = q.eq("outcome", args.outcome);
+    if (args.dateFrom !== undefined) q = q.gte("callDate", args.dateFrom);
+    if (args.dateTo !== undefined) q = q.lte("callDate", args.dateTo);
+    if (perm.scope === "own") q = q.eq("createdBy", String(authResult.userId));
 
-    if (args.outcome) {
-      return applyScope(await ctx.db
-        .query("calls")
-        .withIndex("by_orgAndOutcome", (q) =>
-          q.eq("organizationId", args.organizationId).eq("outcome", args.outcome!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
+    const rows = await q
+      .order("callDate", false)
+      .take(args.paginationOpts.numItems)
+      .collect();
 
-    if (args.dateFrom && args.dateTo) {
-      return applyScope(await ctx.db
-        .query("calls")
-        .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId).gte("callDate", args.dateFrom!).lte("callDate", args.dateTo!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
-
-    if (args.dateFrom) {
-      return applyScope(await ctx.db
-        .query("calls")
-        .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId).gte("callDate", args.dateFrom!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
-
-    if (args.dateTo) {
-      return applyScope(await ctx.db
-        .query("calls")
-        .withIndex("by_orgAndDate", (q) =>
-          q.eq("organizationId", args.organizationId).lte("callDate", args.dateTo!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts));
-    }
-
-    return applyScope(await ctx.db
-      .query("calls")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts));
+    return { page: rows, isDone: true, continueCursor: "" };
   },
 });
 
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    callId: v.id("calls"),
-  },
+export const _getRelationshipsBySource = internalQuery({
+  args: { callId: v.string() },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "calls", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const call = await ctx.db.get(args.callId);
-    if (!call || call.organizationId !== args.organizationId) {
-      throw new Error("Call not found");
-    }
-    if (perm.scope === "own" && call.createdBy !== user._id) {
-      throw new Error("Permission denied");
-    }
-
-    // Fetch linked contacts via objectRelationships
-    const relationships = await ctx.db
+    return await ctx.db
       .query("objectRelationships")
       .withIndex("by_source", (q) =>
         q.eq("sourceType", "call").eq("sourceId", args.callId)
       )
       .collect();
+  },
+});
+
+export const getById = action({
+  args: {
+    organizationId: v.id("organizations"),
+    callId: v.string(),
+  },
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "calls", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const call = await db.get<{ organizationId: string; createdBy: string }>(
+      "calls",
+      args.callId,
+    );
+    if (!call || String(call.organizationId) !== String(args.organizationId)) {
+      throw new Error("Call not found");
+    }
+    if (perm.scope === "own" && String(call.createdBy) !== String(authResult.userId)) {
+      throw new Error("Permission denied");
+    }
+
+    const relationships = await ctx.runQuery(
+      internal.calls._getRelationshipsBySource,
+      { callId: args.callId },
+    );
 
     return { ...call, relationships };
   },

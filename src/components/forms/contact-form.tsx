@@ -62,6 +62,7 @@ interface ContactFormProps {
   extraFields?: React.ReactNode;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+  organizationId?: Id<"organizations">;
 }
 
 export function ContactForm({
@@ -75,6 +76,7 @@ export function ContactForm({
   extraFields,
   tagDefinitions = [],
   categoryDefinitions = [],
+  organizationId,
 }: ContactFormProps) {
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
@@ -218,13 +220,15 @@ export function ContactForm({
             />
           </div>
         )}
-        {categoryDefinitions.length > 0 && (
+        {organizationId && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
             <CategoryPicker
               categories={categoryDefinitions}
               selectedId={categoryId}
               onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="contact"
             />
           </div>
         )}

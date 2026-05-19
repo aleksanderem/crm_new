@@ -901,10 +901,16 @@ export function AppointmentForm({
       )}
 
       {/* Category */}
-      {categoryDefinitions && categoryDefinitions.length > 0 && (
+      {organizationId && (
         <div className="space-y-1.5">
           <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+          <CategoryPicker
+            categories={categoryDefinitions ?? []}
+            selectedId={categoryId}
+            onChange={setCategoryId}
+            organizationId={organizationId}
+            entityType="gabinetAppointment"
+          />
         </div>
       )}
 

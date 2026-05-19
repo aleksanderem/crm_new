@@ -40,6 +40,7 @@ interface ProductFormProps {
   isSubmitting?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+  organizationId?: Id<"organizations">;
 }
 
 export function ProductForm({
@@ -49,6 +50,7 @@ export function ProductForm({
   isSubmitting = false,
   tagDefinitions = [],
   categoryDefinitions = [],
+  organizationId,
 }: ProductFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
@@ -145,13 +147,15 @@ export function ProductForm({
             />
           </div>
         )}
-        {categoryDefinitions.length > 0 && (
+        {organizationId && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
             <CategoryPicker
               categories={categoryDefinitions}
               selectedId={categoryId}
               onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="product"
             />
           </div>
         )}

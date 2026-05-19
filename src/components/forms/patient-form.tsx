@@ -59,6 +59,7 @@ interface PatientFormProps {
   isSubmitting?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+  organizationId?: Id<"organizations">;
 }
 
 export function PatientForm({
@@ -68,6 +69,7 @@ export function PatientForm({
   isSubmitting = false,
   tagDefinitions = [],
   categoryDefinitions = [],
+  organizationId,
 }: PatientFormProps) {
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
@@ -276,10 +278,16 @@ export function PatientForm({
           <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
         </div>
       )}
-      {categoryDefinitions.length > 0 && (
+      {organizationId && (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-          <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+          <CategoryPicker
+            categories={categoryDefinitions}
+            selectedId={categoryId}
+            onChange={setCategoryId}
+            organizationId={organizationId}
+            entityType="gabinetPatient"
+          />
         </div>
       )}
 

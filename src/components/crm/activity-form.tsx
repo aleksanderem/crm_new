@@ -92,6 +92,7 @@ interface ActivityFormProps {
   customFieldDefs?: CustomFieldDef[];
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+  organizationId?: Id<"organizations">;
 }
 
 export function ActivityForm({
@@ -106,6 +107,7 @@ export function ActivityForm({
   customFieldDefs = [],
   tagDefinitions = [],
   categoryDefinitions = [],
+  organizationId,
 }: ActivityFormProps) {
   const { t } = useTranslation();
 
@@ -568,10 +570,16 @@ export function ActivityForm({
         )}
 
         {/* Category */}
-        {categoryDefinitions.length > 0 && (
+        {organizationId && (
           <div className="space-y-1.5">
             <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-            <CategoryPicker categories={categoryDefinitions} selectedId={categoryId} onChange={setCategoryId} />
+            <CategoryPicker
+              categories={categoryDefinitions}
+              selectedId={categoryId}
+              onChange={setCategoryId}
+              organizationId={organizationId}
+              entityType="activity"
+            />
           </div>
         )}
 

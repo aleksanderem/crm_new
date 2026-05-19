@@ -85,7 +85,6 @@ export const create = action({
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.optional(v.string()),
-    category: v.optional(v.string()),
     duration: v.number(),
     price: v.number(),
     currency: v.optional(v.string()),
@@ -124,7 +123,6 @@ export const create = action({
       organizationId: String(args.organizationId),
       name: args.name,
       description: args.description ?? null,
-      category: args.category ?? null,
       duration: args.duration,
       price: args.price,
       currency: args.currency ?? null,
@@ -189,7 +187,6 @@ export const update = action({
     treatmentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    category: v.optional(v.string()),
     duration: v.optional(v.number()),
     price: v.optional(v.number()),
     currency: v.optional(v.string()),
@@ -350,29 +347,6 @@ export const _removeSideEffects = internalMutation({
       description: `Deleted treatment "${args.treatmentName}"`,
       performedBy: deletedByUserId,
     });
-  },
-});
-
-export const listByCategory = query({
-  args: {
-    organizationId: v.id("organizations"),
-    category: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const results = await ctx.db
-      .query("gabinetTreatments")
-      .withIndex("by_orgAndCategory", (q) =>
-        q.eq("organizationId", args.organizationId).eq("category", args.category)
-      )
-      .collect();
-    if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
-    }
-    return results;
   },
 });
 

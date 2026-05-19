@@ -86,7 +86,7 @@ export const updateRun = internalAction({
       .update(row)
       .eq("id", args.runId)
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (error) {
       const msg = `Supabase update failed for automation run ${args.runId}: ${error.message} (code=${error.code})`;
@@ -94,8 +94,13 @@ export const updateRun = internalAction({
       throw new Error(msg);
     }
 
-    if (!data || typeof data.id !== "string") {
-      throw new Error("Supabase update returned malformed response: missing id");
+    if (!data) {
+      // Row doesn't exist in Supabase yet (Convex-primary create hasn't mirrored).
+      // Don't throw — auxiliary audit trail.
+      console.warn(
+        `Automation run ${args.runId} not found in Supabase; skipping update.`,
+      );
+      return { success: false, id: args.runId };
     }
 
     console.info(`Automation run updated in Supabase id=${data.id} org=${args.organizationId}`);

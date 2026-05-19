@@ -22,6 +22,14 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,6 +39,9 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
+import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import {
   Select,
   SelectContent,
@@ -145,6 +156,11 @@ export function AppointmentPreviewContent({
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
+
+  const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
   useEffect(() => {
     if (!detail) return;
@@ -237,8 +253,8 @@ export function AppointmentPreviewContent({
     }
   };
 
-  const handleStatusChange = async (newStatus: AppointmentStatus) => {
-    if (newStatus === initialStatus || savingStatus) return;
+  const performStatusChange = async (newStatus: AppointmentStatus) => {
+    if (savingStatus) return;
     const previous = status;
     setStatus(newStatus);
     setSavingStatus(true);
@@ -261,6 +277,64 @@ export function AppointmentPreviewContent({
     } catch (error: unknown) {
       setStatus(previous);
       console.error("[appointment-preview] status update failed", error);
+      toast.error(
+        formatAppointmentError(error, t, {
+          key: "gabinet.appointments.updateFailed",
+          defaultValue: "Nie udało się zapisać zmian.",
+        }),
+      );
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const handleStatusChange = (newStatus: AppointmentStatus) => {
+    if (newStatus === initialStatus || savingStatus) return;
+
+    if (newStatus === "cancelled") {
+      setCancelDialogOpen(true);
+      return;
+    }
+
+    if (newStatus === "in_progress" && docCounts.missingBefore > 0) {
+      setGateDialogOpen(true);
+      return;
+    }
+
+    void performStatusChange(newStatus);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!cancelReason.trim()) {
+      toast.error(t("gabinet.appointments.cancelReasonRequired"));
+      return;
+    }
+    if (savingStatus) return;
+    const previous = status;
+    setSavingStatus(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id as Id<"gabinetAppointments">,
+        status: "cancelled",
+        cancellationReason: cancelReason.trim(),
+      });
+      setStatus("cancelled");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetAppointments.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.scheduledActivities.all,
+        }),
+      ]);
+      await refetch();
+      setCancelDialogOpen(false);
+      setCancelReason("");
+      toast.success(t("gabinet.appointments.cancelled"));
+    } catch (error: unknown) {
+      setStatus(previous);
+      console.error("[appointment-preview] cancel failed", error);
       toast.error(
         formatAppointmentError(error, t, {
           key: "gabinet.appointments.updateFailed",
@@ -347,6 +421,7 @@ export function AppointmentPreviewContent({
     });
 
   return (
+    <>
     <div className="space-y-3">
       {/* Header — patient + treatment */}
       <div className="space-y-1.5">
@@ -659,5 +734,62 @@ export function AppointmentPreviewContent({
         </div>
       </div>
     </div>
+
+    <Dialog
+      open={cancelDialogOpen}
+      onOpenChange={(o) => {
+        setCancelDialogOpen(o);
+        if (!o) setCancelReason("");
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
+          <DialogDescription>
+            {t("gabinet.appointments.cancelDesc")}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <RichTextEditor
+            placeholder={t("gabinet.appointments.cancelReasonPlaceholder")}
+            value={cancelReason}
+            onChange={(val) => setCancelReason(val ?? "")}
+            minHeight="80px"
+          />
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCancelDialogOpen(false);
+              setCancelReason("");
+            }}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleCancelConfirm}
+            disabled={savingStatus}
+          >
+            {savingStatus
+              ? t("common.processing")
+              : t("gabinet.appointments.actions.cancel")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <DocumentGateDialog
+      open={gateDialogOpen}
+      onOpenChange={setGateDialogOpen}
+      appointmentId={appointmentId}
+      organizationId={organizationId}
+      timing="before_start"
+      targetStatus="in_progress"
+      onProceed={() => performStatusChange("in_progress")}
+      onFillDocument={() => setGateDialogOpen(false)}
+    />
+    </>
   );
 }

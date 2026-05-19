@@ -21,6 +21,7 @@ import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
 import {
   CalendarCheck,
@@ -125,17 +126,6 @@ function GabinetDashboard() {
   const totalPatients = patientsData?.length ?? 0;
   const totalTreatments = treatments?.length ?? 0;
   const todayCount = enrichedAppointments.length;
-
-  const statusColor = (s: string) => {
-    switch (s) {
-      case "scheduled": return "outline" as const;
-      case "confirmed": return "default" as const;
-      case "in_progress": return "default" as const;
-      case "completed": return "secondary" as const;
-      case "cancelled": return "destructive" as const;
-      default: return "secondary" as const;
-    }
-  };
 
   // --- Build sparkline chart data for statistics cards ---
   const appointmentChartData = (weeklyAppointments ?? []).map((d) => ({
@@ -406,7 +396,10 @@ function GabinetDashboard() {
                         {a.startTime}–{a.endTime} · {a.treatmentName}
                       </p>
                     </div>
-                    <Badge variant={statusColor(a.status)}>
+                    <Badge
+                      variant="outline"
+                      className={appointmentStatusBadgeClass(a.status)}
+                    >
                       {t(`gabinet.appointments.statuses.${a.status}`)}
                     </Badge>
                   </div>

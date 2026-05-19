@@ -72,6 +72,7 @@ export const create = action({
     currency: v.string(),
     paymentMethod: paymentMethodValidator,
     notes: v.optional(v.string()),
+    status: v.optional(paymentStatusValidator),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -81,6 +82,7 @@ export const create = action({
 
     const db = createSupabaseDb();
     const now = Date.now();
+    const status = args.status ?? "completed";
 
     const paymentId = await db.insert("payments", {
       organizationId: String(args.organizationId),
@@ -90,8 +92,8 @@ export const create = action({
       amount: args.amount,
       currency: args.currency,
       paymentMethod: args.paymentMethod,
-      status: "completed",
-      paidAt: now,
+      status,
+      paidAt: status === "completed" ? now : null,
       notes: args.notes ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,

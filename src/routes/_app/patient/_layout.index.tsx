@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,17 +24,30 @@ function PatientDashboard() {
   const { t } = useTranslation();
   const { tokenHash } = usePortalToken();
 
-  const { data: profile } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash }),
-  );
+  const getMyProfile = useAction(api.gabinet.patientPortal.getMyProfile);
+  const { data: profile } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyProfile", tokenHash],
+    queryFn: () => getMyProfile({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
-  const { data: appointments } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash }),
+  const getMyAppointments = useAction(
+    api.gabinet.patientPortal.getMyAppointments,
   );
+  const { data: appointments } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyAppointments", tokenHash],
+    queryFn: () => getMyAppointments({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
-  const { data: loyaltyBalance } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyLoyaltyBalance, { tokenHash }),
+  const getMyLoyaltyBalance = useAction(
+    api.gabinet.patientPortal.getMyLoyaltyBalance,
   );
+  const { data: loyaltyBalance } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", tokenHash],
+    queryFn: () => getMyLoyaltyBalance({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const upcoming = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];

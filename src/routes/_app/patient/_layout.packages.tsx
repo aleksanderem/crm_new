@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -14,9 +14,12 @@ function PatientPackages() {
   const { t } = useTranslation();
   const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
-  const { data: packages } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyPackages, { tokenHash })
-  );
+  const getMyPackages = useAction(api.gabinet.patientPortal.getMyPackages);
+  const { data: packages } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyPackages", tokenHash],
+    queryFn: () => getMyPackages({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const statusColor = (s: string) => {
     switch (s) {

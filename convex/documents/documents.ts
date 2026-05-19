@@ -3,7 +3,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { validatePortalSession } from "../_helpers/portalSession";
+import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
 import type { FormDocumentRow } from "../_helpers/supabaseRows";
@@ -579,40 +579,40 @@ export const remove = action({
 });
 
 // ---------------------------------------------------------------------------
-// Patient-portal query (token-based auth, no org context)
+// Patient-portal read (token-based auth, no org context). Reads from
+// Supabase: `gabinetPortalSessions`, `gabinetAppointments`, `formDocuments`
+// and `formTemplates` are all Supabase-only since the dual-write cleanup.
 // ---------------------------------------------------------------------------
 
-export const listByPatientToken = query({
+export const listByPatientToken = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId, organizationId } = await validatePortalSessionSupabase(
+      db,
       args.tokenHash,
     );
 
     // 1. Documents linked directly to the patient
-    const patientDocs = await ctx.db
+    const patientDocs = await db
       .query("formDocuments")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "patient").eq("entityId", patientId),
-      )
+      .eq("entityType", "patient")
+      .eq("entityId", patientId)
       .collect();
 
     // 2. Documents linked to the patient's appointments
-    const appointments = await ctx.db
+    const appointments = await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
+      .eq("organizationId", organizationId)
+      .eq("patientId", patientId)
       .collect();
 
     const appointmentDocArrays = await Promise.all(
       appointments.map((appt) =>
-        ctx.db
+        db
           .query("formDocuments")
-          .withIndex("by_entity", (q) =>
-            q.eq("entityType", "appointment").eq("entityId", appt._id),
-          )
+          .eq("entityType", "appointment")
+          .eq("entityId", String(appt._id))
           .collect(),
       ),
     );
@@ -621,35 +621,48 @@ export const listByPatientToken = query({
     const allDocs = [...patientDocs, ...appointmentDocArrays.flat()];
     const seen = new Set<string>();
     const unique = allDocs.filter((d) => {
-      if (d.organizationId !== organizationId) return false;
-      if (seen.has(d._id)) return false;
-      seen.add(d._id);
+      if (String(d.organizationId) !== organizationId) return false;
+      const id = String(d._id);
+      if (seen.has(id)) return false;
+      seen.add(id);
       return true;
     });
 
-    // Enrich with template info for frontend rendering
-    const enriched = await Promise.all(
-      unique.map(async (doc) => {
-        const template = await ctx.db.get(doc.templateId);
-        return {
-          _id: doc._id,
-          title: doc.title,
-          status: doc.status,
-          entityType: doc.entityType,
-          entityId: doc.entityId,
-          responseData: doc.responseData,
-          signatureData: doc.signatureData,
-          signedAt: doc.signedAt,
-          signingToken: doc.signingToken,
-          createdAt: doc.createdAt,
-          updatedAt: doc.updatedAt,
-          templateName: template?.name ?? "",
-          category: template?.category ?? "custom",
-          formJson: template?.formJson ?? "{}",
-          requiresSignature: template?.requiresSignature ?? false,
-        };
-      }),
+    // Batch-fetch templates to avoid N+1 reads.
+    const templateIds = Array.from(
+      new Set(
+        unique
+          .map((d) => d.templateId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
     );
+    const templates = await db.getMany("formTemplates", templateIds);
+    const templateById = new Map<string, Record<string, unknown>>();
+    for (const t of templates) {
+      templateById.set(String(t._id), t);
+    }
+
+    const enriched = unique.map((doc) => {
+      const template = templateById.get(String(doc.templateId));
+      return {
+        _id: String(doc._id),
+        title: doc.title as string,
+        status: doc.status as string,
+        entityType: doc.entityType as string,
+        entityId: doc.entityId as string,
+        responseData: doc.responseData as string,
+        signatureData: (doc.signatureData as string | null) ?? undefined,
+        signedAt: (doc.signedAt as number | null) ?? undefined,
+        signingToken: (doc.signingToken as string | null) ?? undefined,
+        createdAt: doc.createdAt as number,
+        updatedAt: doc.updatedAt as number,
+        templateName: (template?.name as string | undefined) ?? "",
+        category: (template?.category as string | undefined) ?? "custom",
+        formJson: (template?.formJson as string | undefined) ?? "{}",
+        requiresSignature:
+          (template?.requiresSignature as boolean | undefined) ?? false,
+      };
+    });
 
     return enriched.sort((a, b) => b.createdAt - a.createdAt);
   },

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +28,14 @@ function PatientDocuments() {
       ? (localStorage.getItem("patientPortalToken") ?? "")
       : "";
 
-  const { data: formDocuments } = useQuery(
-    convexQuery(api.documents.documents.listByPatientToken, { tokenHash }),
+  const listByPatientToken = useAction(
+    api.documents.documents.listByPatientToken,
   );
+  const { data: formDocuments } = useQuery({
+    queryKey: ["documents.documents.listByPatientToken", tokenHash],
+    queryFn: () => listByPatientToken({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const recordSignature = useAction(
     api.documents.documents.recordSignature,

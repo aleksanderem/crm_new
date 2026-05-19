@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,9 +42,14 @@ function PatientAppointments() {
       ? (localStorage.getItem("patientPortalToken") ?? "")
       : "";
 
-  const { data: appointments } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyAppointments, { tokenHash }),
+  const getMyAppointments = useAction(
+    api.gabinet.patientPortal.getMyAppointments,
   );
+  const { data: appointments } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyAppointments", tokenHash],
+    queryFn: () => getMyAppointments({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const requestReschedule = useAction(
     api.gabinet.patientPortal.requestReschedule,

@@ -1,9 +1,12 @@
-import { query, action, internalMutation, internalQuery } from "../_generated/server";
+import { action, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { validatePortalSession } from "../_helpers/portalSession";
+import {
+  validatePortalSession,
+  validatePortalSessionSupabase,
+} from "../_helpers/portalSession";
 import { createNotificationDirect } from "../notifications";
 import {
   getAvailableSlotsSupabase,
@@ -23,25 +26,40 @@ export const _validatePortalSessionQuery = internalQuery({
 });
 
 // ---------------------------------------------------------------------------
-// Queries (unchanged — still read from Convex ctx.db)
+// Patient-portal reads (actions — gabinetPortalSessions and all dependent
+// gabinet/* tables are Supabase-only since the dual-write cleanup, so these
+// must hit Supabase rather than Convex ctx.db).
 // ---------------------------------------------------------------------------
 
-export const getMyProfile = query({
+export const getMyProfile = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId } = await validatePortalSession(ctx, args.tokenHash);
-    const patient = await ctx.db.get(patientId);
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
+
+    const patient = await db.get("gabinetPatients", patientId);
     if (!patient) throw new Error("Patient not found");
 
+    const address = patient.address as
+      | {
+          street?: string;
+          city?: string;
+          postalCode?: string;
+        }
+      | null
+      | undefined;
+
     return {
-      firstName: patient.firstName,
-      lastName: patient.lastName,
-      email: patient.email,
-      phone: patient.phone,
-      address: patient.address,
-      emergencyContactName: patient.emergencyContactName,
-      emergencyContactPhone: patient.emergencyContactPhone,
-      dateOfBirth: patient.dateOfBirth,
+      firstName: (patient.firstName as string | null) ?? "",
+      lastName: (patient.lastName as string | null) ?? "",
+      email: (patient.email as string | null) ?? undefined,
+      phone: (patient.phone as string | null) ?? undefined,
+      address: address ?? undefined,
+      emergencyContactName:
+        (patient.emergencyContactName as string | null) ?? undefined,
+      emergencyContactPhone:
+        (patient.emergencyContactPhone as string | null) ?? undefined,
+      dateOfBirth: (patient.dateOfBirth as string | null) ?? undefined,
     };
   },
 });
@@ -79,99 +97,122 @@ export const updateMyProfile = action({
   },
 });
 
-export const getMyAppointments = query({
+export const getMyAppointments = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId, organizationId } = await validatePortalSessionSupabase(
+      db,
       args.tokenHash,
     );
 
-    const appointments = await ctx.db
+    const appointments = await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
+      .eq("organizationId", organizationId)
+      .eq("patientId", patientId)
       .collect();
 
-    // Enrich with treatment names
-    const enriched = await Promise.all(
-      appointments.map(async (appt) => {
-        const treatment = appt.treatmentId ? await ctx.db.get(appt.treatmentId) : null;
-        return {
-          _id: appt._id,
-          date: appt.date,
-          startTime: appt.startTime,
-          endTime: appt.endTime,
-          status: appt.status,
-          treatmentName: treatment?.name ?? "Unknown",
-          notes: appt.notes,
-        };
-      }),
+    // Resolve treatment names in one batch to avoid N+1 reads against Supabase.
+    const treatmentIds = Array.from(
+      new Set(
+        appointments
+          .map((a) => a.treatmentId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
     );
+    const treatments = await db.getMany("gabinetTreatments", treatmentIds);
+    const treatmentNameById = new Map<string, string>();
+    for (const t of treatments) {
+      treatmentNameById.set(String(t._id), String(t.name ?? "Unknown"));
+    }
+
+    const enriched = appointments.map((appt) => ({
+      _id: String(appt._id),
+      date: appt.date as string,
+      startTime: appt.startTime as string,
+      endTime: appt.endTime as string,
+      status: appt.status as string,
+      treatmentName:
+        (appt.treatmentId &&
+          treatmentNameById.get(String(appt.treatmentId))) ??
+        "Unknown",
+      notes: (appt.notes as string | null) ?? undefined,
+    }));
 
     return enriched.sort((a, b) => b.date.localeCompare(a.date));
   },
 });
 
-export const getMyPackages = query({
+export const getMyPackages = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId, organizationId } = await validatePortalSessionSupabase(
+      db,
       args.tokenHash,
     );
 
-    const usages = await ctx.db
+    const usages = await db
       .query("gabinetPackageUsage")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
+      .eq("organizationId", organizationId)
+      .eq("patientId", patientId)
       .collect();
 
-    // Enrich with package names
-    return await Promise.all(
-      usages.map(async (u) => {
-        const pkg = await ctx.db.get(u.packageId);
-        return { ...u, packageName: pkg?.name ?? "Unknown" };
-      }),
+    const packageIds = Array.from(
+      new Set(
+        usages
+          .map((u) => u.packageId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
     );
+    const pkgs = await db.getMany("gabinetTreatmentPackages", packageIds);
+    const packageNameById = new Map<string, string>();
+    for (const p of pkgs) {
+      packageNameById.set(String(p._id), String(p.name ?? "Unknown"));
+    }
+
+    return usages.map((u) => ({
+      ...u,
+      packageName: packageNameById.get(String(u.packageId)) ?? "Unknown",
+    }));
   },
 });
 
-export const getMyLoyaltyBalance = query({
+export const getMyLoyaltyBalance = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId, organizationId } = await validatePortalSessionSupabase(
+      db,
       args.tokenHash,
     );
 
-    return await ctx.db
+    return await db
       .query("gabinetLoyaltyPoints")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
+      .eq("organizationId", organizationId)
+      .eq("patientId", patientId)
       .first();
   },
 });
 
-export const getMyLoyaltyTransactions = query({
+export const getMyLoyaltyTransactions = action({
   args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    const { patientId, organizationId } = await validatePortalSession(
-      ctx,
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const { patientId, organizationId } = await validatePortalSessionSupabase(
+      db,
       args.tokenHash,
     );
 
-    const transactions = await ctx.db
+    const transactions = await db
       .query("gabinetLoyaltyTransactions")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", organizationId).eq("patientId", patientId),
-      )
+      .eq("organizationId", organizationId)
+      .eq("patientId", patientId)
       .collect();
 
-    return transactions.sort((a, b) => b.createdAt - a.createdAt);
+    return transactions.sort(
+      (a, b) => (b.createdAt as number) - (a.createdAt as number),
+    );
   },
 });
 

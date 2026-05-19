@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +18,13 @@ function PatientProfile() {
   const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
   const updateProfile = useAction(api.gabinet.patientPortal.updateMyProfile);
+  const getMyProfile = useAction(api.gabinet.patientPortal.getMyProfile);
 
-  const { data: profile } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyProfile, { tokenHash })
-  );
+  const { data: profile } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyProfile", tokenHash],
+    queryFn: () => getMyProfile({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const [phone, setPhone] = useState("");
   const [street, setStreet] = useState("");

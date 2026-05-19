@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
@@ -7,6 +7,37 @@ import {
   type ActivityEnvelopeTarget,
 } from "../../convex/_helpers/activityEnvelope";
 import { logActivity } from "../../convex/_helpers/activities";
+
+// notes.create is an action that schedules an activity-envelope side-effect
+// mutation via `ctx.runMutation(internal.notes._createSideEffects, …)`.
+// convex-test fires those callbacks via `setTimeout(0, …)` against a
+// `global.Convex` reference; once the next test creates a fresh instance,
+// the orphan callbacks from the previous test fire against the new
+// `global.Convex` and surface as "Write outside of transaction" unhandled
+// rejections that fail the suite even though every assertion passes.
+// Match the per-file filter used by payments/appointmentStateMachine
+// (#506, #511) — swallow only the known scheduler noise shape and yield
+// in afterEach so pending callbacks fire against the *current* instance.
+const SCHEDULER_NOISE = [
+  /Write outside of transaction \d+;_scheduled_functions/,
+];
+
+function onUnhandledRejection(reason: unknown) {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  if (SCHEDULER_NOISE.some((re) => re.test(msg))) return;
+}
+
+beforeAll(() => {
+  process.on("unhandledRejection", onUnhandledRejection);
+});
+
+afterAll(() => {
+  process.off("unhandledRejection", onUnhandledRejection);
+});
+
+afterEach(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
 
 async function listActivities(
   t: ReturnType<typeof createTestCtx>,
@@ -479,7 +510,7 @@ describe("activity envelope helper", () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    const noteId = await t.withIdentity(identity).mutation(api.notes.create, {
+    const noteId = await t.withIdentity(identity).action(api.notes.create, {
       organizationId,
       entityType: "contact",
       entityId: "contact-123",

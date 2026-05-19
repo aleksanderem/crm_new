@@ -30,6 +30,7 @@ export function useSupabaseRecentlyViewed(
 
       const { data, error } = await query
         .order("viewed_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(limit);
 
       if (error) throw error;

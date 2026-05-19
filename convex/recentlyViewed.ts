@@ -87,6 +87,7 @@ export const list = action({
       .eq("userId", String(authResult.userId))
       .eq("entityType", args.entityType)
       .order("viewedAt", false)
+      .order("id", false)
       .take(limit)
       .collect();
 

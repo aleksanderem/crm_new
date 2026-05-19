@@ -187,8 +187,7 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
   private client: ReturnType<typeof createServiceRoleClient>;
   private table: string;
   private filters: Array<(q: any) => any> = [];
-  private orderField: string | null = null;
-  private orderAsc = true;
+  private orderBy: Array<{ field: string; ascending: boolean }> = [];
   private limitN: number | null = null;
   private rangeFrom: number | null = null;
   private rangeTo: number | null = null;
@@ -229,8 +228,7 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
   }
 
   order(field: string, ascending = true) {
-    this.orderField = toSnakeCase(field);
-    this.orderAsc = ascending;
+    this.orderBy.push({ field: toSnakeCase(field), ascending });
     return this;
   }
 
@@ -263,7 +261,9 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
   async collect(): Promise<T[]> {
     let q = this.client.from(this.table).select("*");
     for (const f of this.filters) q = f(q);
-    if (this.orderField) q = q.order(this.orderField, { ascending: this.orderAsc });
+    for (const { field, ascending } of this.orderBy) {
+      q = q.order(field, { ascending });
+    }
     if (this.rangeFrom !== null) {
       const from = this.rangeFrom;
       const to =
@@ -284,7 +284,9 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
   async first(): Promise<T | null> {
     let q = this.client.from(this.table).select("*");
     for (const f of this.filters) q = f(q);
-    if (this.orderField) q = q.order(this.orderField, { ascending: this.orderAsc });
+    for (const { field, ascending } of this.orderBy) {
+      q = q.order(field, { ascending });
+    }
     q = q.limit(1);
     const { data, error } = await q;
     if (error) throw new Error(`supabaseDb.query(${this.table}).first(): ${error.message}`);

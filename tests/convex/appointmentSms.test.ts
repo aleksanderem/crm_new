@@ -6,17 +6,13 @@ import {
   seedSecondUser,
   seedTestUser,
 } from "../../convex/_test_helpers";
-
-const activeContexts = new Set<ReturnType<typeof createTestCtx>>();
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 function createManagedTestCtx() {
-  const t = createTestCtx();
-  activeContexts.add(t);
-  return t;
+  return createTestCtx();
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({
@@ -26,16 +22,28 @@ beforeEach(() => {
   );
 });
 
+// `finishAllScheduledFunctions` is not safe under the in-memory Supabase mock:
+// some side-effect mutations throw (the gabinet completion path inserts into
+// `loyaltyTransactions` with a non-Convex id, which Convex's validator
+// rejects), and the poller crashes on the resulting null state. Instead, let
+// any pending setTimeout(0) callbacks scheduled by the action handler fire
+// against the *current* instance before the next test creates a new one.
+// Anything still queued past this yield is swallowed by the scheduler-noise
+// filter in tests/convex/_setup.ts.
 afterEach(async () => {
-  for (const t of activeContexts) {
-    await t.finishAllScheduledFunctions(() => {
-      vi.runAllTimers();
-    });
-  }
-  activeContexts.clear();
+  await new Promise((resolve) => setTimeout(resolve, 0));
   vi.unstubAllGlobals();
-  vi.useRealTimers();
 });
+
+async function getAppointment(appointmentId: any) {
+  const db = createSupabaseDb();
+  return (await db.get("gabinetAppointments", String(appointmentId))) as
+    | (Record<string, unknown> & {
+        status?: string;
+        cancellationReason?: string;
+      })
+    | null;
+}
 
 async function createAppointment(
   t: ReturnType<typeof import("convex-test").convexTest>,
@@ -66,11 +74,18 @@ async function setPatientPhone(
   patientId: any,
   phone: string,
 ) {
+  const now = Date.now();
   await t.run(async (ctx) => {
     await ctx.db.patch(patientId, {
       phone,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+  });
+  // appointmentSms reads patient phone via createSupabaseDb (Supabase-primary).
+  const db = createSupabaseDb();
+  await db.patch("gabinetPatients", String(patientId), {
+    phone,
+    updatedAt: now,
   });
 }
 
@@ -82,25 +97,36 @@ async function linkPatientToContact(
     userId: any;
   },
 ) {
-  return await t.run(async (ctx) => {
-    const contactId = await ctx.db.insert("contacts", {
+  const now = Date.now();
+  const contactId = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("contacts", {
       organizationId: args.organizationId,
       firstName: "Jan",
       lastName: "Kowalski",
       email: "jan.contact@example.com",
       phone: "+48500600700",
       createdBy: args.userId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
 
     await ctx.db.patch(args.patientId, {
-      contactId,
-      updatedAt: Date.now(),
+      contactId: id,
+      updatedAt: now,
     });
 
-    return contactId;
+    return id;
   });
+
+  // appointmentSms reads patient.contactId via createSupabaseDb to fan out
+  // sms_sent / sms_received activity to the linked contact target.
+  const db = createSupabaseDb();
+  await db.patch("gabinetPatients", String(args.patientId), {
+    contactId: String(contactId),
+    updatedAt: now,
+  });
+
+  return contactId;
 }
 
 async function listActivitiesForEntity(
@@ -297,12 +323,13 @@ describe("appointment SMS flow", () => {
       employeeId: userId,
     });
 
-    await t.run(async (ctx) => {
-      await ctx.db.patch(appointmentId, {
+    {
+      const db = createSupabaseDb();
+      await db.patch("gabinetAppointments", String(appointmentId), {
         status: "pending_confirmation",
         updatedAt: Date.now(),
       });
-    });
+    }
 
     const outboundEventId = await seedOutboundConfirmationEvent(t, {
       organizationId,
@@ -337,7 +364,7 @@ describe("appointment SMS flow", () => {
       },
     );
 
-    const appointment = await t.run(async (ctx) => ctx.db.get(appointmentId));
+    const appointment = await getAppointment(appointmentId);
     const smsEvents = await t.run(async (ctx) =>
       ctx.db
         .query("appointmentSmsEvents")
@@ -409,13 +436,14 @@ describe("appointment SMS flow", () => {
       employeeId: userId,
     });
 
-    await t.run(async (ctx) => {
-      await ctx.db.patch(appointmentId, {
+    {
+      const db = createSupabaseDb();
+      await db.patch("gabinetAppointments", String(appointmentId), {
         status: "pending_confirmation",
-        createdBy: creatorId,
+        createdBy: String(creatorId),
         updatedAt: Date.now(),
       });
-    });
+    }
 
     await seedOutboundConfirmationEvent(t, {
       organizationId,
@@ -437,7 +465,7 @@ describe("appointment SMS flow", () => {
       },
     );
 
-    const appointment = await t.run(async (ctx) => ctx.db.get(appointmentId));
+    const appointment = await getAppointment(appointmentId);
     const inboundEvent = await t.run(async (ctx) =>
       result.eventId ? ctx.db.get(result.eventId) : null,
     );
@@ -517,7 +545,7 @@ describe("appointment SMS flow", () => {
       },
     );
 
-    const appointment = await t.run(async (ctx) => ctx.db.get(appointmentId));
+    const appointment = await getAppointment(appointmentId);
     const inboundEvent = await t.run(async (ctx) =>
       result.eventId ? ctx.db.get(result.eventId) : null,
     );

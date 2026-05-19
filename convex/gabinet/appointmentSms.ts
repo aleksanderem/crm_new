@@ -157,14 +157,16 @@ export const listByAppointment = query({
 export const queueAutomationSms = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     phone: v.string(),
     message: v.string(),
     eventType: v.string(),
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(args.appointmentId);
+    const appointment = await ctx.db.get(
+      args.appointmentId as Id<"gabinetAppointments">,
+    );
     if (!appointment || appointment.organizationId !== args.organizationId) {
       return null;
     }
@@ -236,12 +238,14 @@ export const queueAutomationSms = internalMutation({
 export const queueConfirmationRequest = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     reminderId: v.optional(v.id("appointmentReminders")),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
   },
   handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(args.appointmentId);
+    const appointment = await ctx.db.get(
+      args.appointmentId as Id<"gabinetAppointments">,
+    );
     if (!appointment || appointment.organizationId !== args.organizationId) {
       return null;
     }

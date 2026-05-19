@@ -1652,19 +1652,18 @@ export const _updateStatusSideEffects = internalMutation({
 export const getDocumentGateStatus = query({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
     timing: v.union(v.literal("before_start"), v.literal("after_completion")),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
 
-    const appt = await ctx.db.get(args.appointmentId);
-    if (!appt || appt.organizationId !== args.organizationId) {
-      throw new Error("Appointment not found");
-    }
-
-    return await checkDocumentGate(ctx, args.appointmentId, args.timing);
+    return await checkDocumentGate(
+      ctx,
+      args.appointmentId as Id<"gabinetAppointments">,
+      args.timing,
+    );
   },
 });
 

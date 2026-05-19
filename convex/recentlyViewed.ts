@@ -1,8 +1,7 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 export const track = action({
   args: {
@@ -64,26 +63,32 @@ export const track = action({
   },
 });
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
     const limit = args.limit ?? 3;
 
-    const items = await ctx.db
-      .query("recentlyViewed")
-      .withIndex("by_user_type", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", user._id)
-          .eq("entityType", args.entityType)
-      )
-      .order("desc")
-      .take(limit);
+    const db = createSupabaseDb();
+    const items = await db
+      .query<{
+        entityId: string;
+        entityLabel: string;
+        viewedAt: number;
+      }>("recentlyViewed")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", String(authResult.userId))
+      .eq("entityType", args.entityType)
+      .order("viewedAt", false)
+      .take(limit)
+      .collect();
 
     return items.map((item) => ({
       entityId: item.entityId,

@@ -1,8 +1,15 @@
-import { useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Clock } from "@/lib/ez-icons";
+
+interface RecentItem {
+  entityId: string;
+  entityLabel: string;
+  viewedAt: number;
+}
 
 interface RecentItemsProps {
   organizationId: Id<"organizations">;
@@ -12,10 +19,15 @@ interface RecentItemsProps {
 
 export function RecentItems({ organizationId, entityType, linkPrefix }: RecentItemsProps) {
   const { t } = useTranslation();
-  const items = useQuery(api.recentlyViewed.list, {
-    organizationId,
-    entityType,
-    limit: 3,
+  const listRecentlyViewed = useAction(api.recentlyViewed.list);
+  const { data: items } = useQuery({
+    queryKey: ["recentlyViewed.list", organizationId, entityType],
+    queryFn: () =>
+      listRecentlyViewed({
+        organizationId,
+        entityType,
+        limit: 3,
+      }) as unknown as Promise<RecentItem[]>,
   });
 
   if (!items?.length) return null;

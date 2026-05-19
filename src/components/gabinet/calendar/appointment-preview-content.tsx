@@ -100,6 +100,7 @@ export function AppointmentPreviewContent({
 
   const getFullDetail = useAction(api.gabinet.appointments.getFullDetail);
   const updateAppointment = useAction(api.gabinet.appointments.update);
+  const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
@@ -140,6 +141,7 @@ export function AppointmentPreviewContent({
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
@@ -194,7 +196,6 @@ export function AppointmentPreviewContent({
     phoneInput.trim() !== (patient?.phone ?? "");
 
   const apptDirty =
-    status !== initialStatus ||
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
@@ -236,6 +237,41 @@ export function AppointmentPreviewContent({
     }
   };
 
+  const handleStatusChange = async (newStatus: AppointmentStatus) => {
+    if (newStatus === initialStatus || savingStatus) return;
+    const previous = status;
+    setStatus(newStatus);
+    setSavingStatus(true);
+    try {
+      await updateStatus({
+        organizationId,
+        appointmentId: appointment._id,
+        status: newStatus,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetAppointments.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.scheduledActivities.all,
+        }),
+      ]);
+      await refetch();
+      toast.success(t("gabinet.appointments.statusUpdated"));
+    } catch (error: unknown) {
+      setStatus(previous);
+      console.error("[appointment-preview] status update failed", error);
+      toast.error(
+        formatAppointmentError(error, t, {
+          key: "gabinet.appointments.updateFailed",
+          defaultValue: "Nie udało się zapisać zmian.",
+        }),
+      );
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!dirty || saving) return;
     setSaving(true);
@@ -270,7 +306,6 @@ export function AppointmentPreviewContent({
         if (startTime !== appointment.startTime.slice(0, 5))
           args.startTime = startTime;
         if (endTime !== appointment.endTime.slice(0, 5)) args.endTime = endTime;
-        if (status && status !== initialStatus) args.status = status;
         if (internalNotes !== (appointment.internalNotes ?? ""))
           args.internalNotes = internalNotes;
         if (treatmentId && treatmentId !== initialTreatmentId)
@@ -515,8 +550,8 @@ export function AppointmentPreviewContent({
           </Label>
           <Select
             value={status}
-            onValueChange={(v) => setStatus(v as AppointmentStatus)}
-            disabled={availableTransitions.length === 0}
+            onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}
+            disabled={availableTransitions.length === 0 || savingStatus}
           >
             <SelectTrigger className="h-8 text-sm">
               <SelectValue />

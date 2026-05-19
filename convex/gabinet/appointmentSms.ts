@@ -494,13 +494,25 @@ export const processIncomingMessage = internalMutation({
     const matchingPatientId = matchingOutbound?.patientId as
       | Id<"gabinetPatients">
       | undefined;
+
+    const supabaseDb = createSupabaseDb();
     const matchingAppointment = matchingAppointmentId
-      ? await ctx.db.get(matchingAppointmentId)
+      ? await supabaseDb.get<{
+          organizationId?: string;
+          employeeId?: string;
+        }>("gabinetAppointments", String(matchingAppointmentId))
       : null;
+    const matchingAppointmentBelongsToOrg =
+      !!matchingAppointment &&
+      String(matchingAppointment.organizationId) === String(config.organizationId);
+    const matchingAppointmentEmployeeId =
+      matchingAppointmentBelongsToOrg && matchingAppointment?.employeeId
+        ? (matchingAppointment.employeeId as Id<"users">)
+        : undefined;
 
     if (
-      matchingAppointment &&
-      matchingAppointment.organizationId === config.organizationId &&
+      matchingAppointmentBelongsToOrg &&
+      matchingAppointmentEmployeeId &&
       (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
@@ -509,7 +521,7 @@ export const processIncomingMessage = internalMutation({
         patientId: matchingPatientId,
         action: "sms_received",
         description: `Received appointment confirmation reply: ${normalizedBody}`,
-        performedBy: matchingAppointment.employeeId,
+        performedBy: matchingAppointmentEmployeeId,
         metadata: {
           appointmentSmsEventId: eventId,
           direction: "inbound",
@@ -531,7 +543,7 @@ export const processIncomingMessage = internalMutation({
       entityId: matchingOutbound?.appointmentId
         ? String(matchingOutbound.appointmentId)
         : undefined,
-      actorUserId: matchingAppointment?.employeeId,
+      actorUserId: matchingAppointmentEmployeeId,
       correlationKey: matchingOutbound?.correlationKey,
       eventIdempotencyKey: `automation-event:${config.organizationId}:${args.idempotencyKey}`,
       payload: JSON.stringify({

@@ -42,12 +42,14 @@ export function PackagePurchaseDrawer({
   const createPayment = useAction(api.payments.create);
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
+  const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [splitPayment, setSplitPayment] = useState(false);
   const [firstSplitMethod, setFirstSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("cash");
   const [secondSplitMethod, setSecondSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("card");
   const [firstSplitAmount, setFirstSplitAmount] = useState<string>("");
   const [secondSplitAmount, setSecondSplitAmount] = useState<string>("");
+  const [installmentCount, setInstallmentCount] = useState<string>("2");
   const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
@@ -74,23 +76,35 @@ export function PackagePurchaseDrawer({
   const parsedSecondSplit = Number.parseFloat(secondSplitAmount) || 0;
   const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const expectedTotal = selectedPkg ? Math.round(selectedPkg.totalPrice * 100) / 100 : 0;
-  const splitMismatch = splitPayment && selectedPkg && splitTotal !== expectedTotal;
-  const splitMissingMethod = splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
-  const splitSameMethod = splitPayment && firstSplitMethod === secondSplitMethod;
+  const isOneTime = paymentType === "one_time";
+  const isInstallment = paymentType === "installment";
+  const splitMismatch = isOneTime && splitPayment && selectedPkg && splitTotal !== expectedTotal;
+  const splitMissingMethod = isOneTime && splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
+  const splitSameMethod = isOneTime && splitPayment && firstSplitMethod === secondSplitMethod;
+
+  const parsedInstallmentCount = Math.max(2, Math.min(24, Number.parseInt(installmentCount, 10) || 2));
+  const installmentAmount = selectedPkg
+    ? Math.round((selectedPkg.totalPrice / parsedInstallmentCount) * 100) / 100
+    : 0;
+  const installmentRemainder = selectedPkg
+    ? Math.round((selectedPkg.totalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
+    : 0;
 
   const resetForm = () => {
     setSelectedPkgId("");
+    setPaymentType("one_time");
     setPaymentMethod("cash");
     setSplitPayment(false);
     setFirstSplitMethod("cash");
     setSecondSplitMethod("card");
     setFirstSplitAmount("");
     setSecondSplitAmount("");
+    setInstallmentCount("2");
   };
 
   const handlePurchase = async () => {
     if (!selectedPkg) return;
-    if (splitPayment) {
+    if (isOneTime && splitPayment) {
       if (splitMissingMethod) {
         toast.error(
           t(
@@ -122,7 +136,9 @@ export function PackagePurchaseDrawer({
     setSubmitting(true);
     try {
       const currency = selectedPkg.currency ?? "PLN";
-      const usagePaymentMethod = splitPayment ? "split" : paymentMethod;
+      let usagePaymentMethod = paymentMethod;
+      if (isOneTime && splitPayment) usagePaymentMethod = "split";
+      if (isInstallment) usagePaymentMethod = "installment";
       const usageId = await purchasePackage({
         organizationId,
         patientId,
@@ -131,7 +147,30 @@ export function PackagePurchaseDrawer({
         paymentMethod: usagePaymentMethod,
       });
 
-      if (splitPayment) {
+      if (isInstallment) {
+        const firstAmount = Math.round((installmentAmount + installmentRemainder) * 100) / 100;
+        await createPayment({
+          organizationId,
+          patientId: patientId as Id<"gabinetPatients">,
+          packageUsageId: usageId,
+          amount: firstAmount,
+          currency,
+          paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+          notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount})`,
+        });
+        for (let i = 2; i <= parsedInstallmentCount; i++) {
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            packageUsageId: usageId,
+            amount: installmentAmount,
+            currency,
+            paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+            notes: `Package: ${selectedPkg.name} (installment ${i}/${parsedInstallmentCount})`,
+            status: "pending",
+          });
+        }
+      } else if (splitPayment) {
         const parts: Array<{ method: "cash" | "card" | "transfer" | "other"; amount: number }> = [];
         if (parsedFirstSplit > 0)
           parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
@@ -227,12 +266,55 @@ export function PackagePurchaseDrawer({
             </div>
           )}
 
+          <div
+            role="radiogroup"
+            aria-label={t("gabinet.packages.paymentType", "Payment type")}
+            className="grid grid-cols-2 gap-2"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isOneTime}
+              onClick={() => setPaymentType("one_time")}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                isOneTime
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              <p className="text-sm font-medium">
+                {t("gabinet.packages.paymentTypeOneTime", "One-time payment")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("gabinet.packages.paymentTypeOneTimeHint", "Pay full amount now")}
+              </p>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isInstallment}
+              onClick={() => setPaymentType("installment")}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                isInstallment
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              <p className="text-sm font-medium">
+                {t("gabinet.packages.paymentTypeInstallment", "Installments")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("gabinet.packages.paymentTypeInstallmentHint", "Split into scheduled installments")}
+              </p>
+            </button>
+          </div>
+
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.paymentMethod", "Payment Method")}</Label>
             <Select
               value={paymentMethod}
               onValueChange={setPaymentMethod}
-              disabled={splitPayment}
+              disabled={isOneTime && splitPayment}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -245,18 +327,59 @@ export function PackagePurchaseDrawer({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="split-payment"
-              checked={splitPayment}
-              onCheckedChange={(v) => setSplitPayment(v === true)}
-            />
-            <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
-              {t("gabinet.packages.splitPayment", "Split payment")}
-            </Label>
-          </div>
+          {isOneTime && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="split-payment"
+                checked={splitPayment}
+                onCheckedChange={(v) => setSplitPayment(v === true)}
+              />
+              <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
+                {t("gabinet.packages.splitPayment", "Split payment")}
+              </Label>
+            </div>
+          )}
 
-          {splitPayment && (
+          {isInstallment && selectedPkg && (
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="installment-count" className="text-xs font-medium">
+                  {t("gabinet.packages.installmentCount", "Number of installments")}
+                </Label>
+                <Select
+                  value={installmentCount}
+                  onValueChange={setInstallmentCount}
+                >
+                  <SelectTrigger id="installment-count">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2, 3, 4, 6, 12].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {t("gabinet.packages.installmentAmount", "Per installment")}
+                </span>
+                <span className="font-medium">
+                  {installmentAmount.toFixed(2)} {selectedPkg.currency ?? "PLN"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "gabinet.packages.installmentNote",
+                  "The first installment is collected now; remaining installments are recorded as pending and can be marked paid later.",
+                )}
+              </p>
+            </div>
+          )}
+
+          {isOneTime && splitPayment && (
             <div className="rounded-lg border p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-md border p-2 space-y-2">
@@ -349,7 +472,7 @@ export function PackagePurchaseDrawer({
             disabled={
               !selectedPkg ||
               submitting ||
-              (splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
+              (isOneTime && splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
             }
             onClick={handlePurchase}
           >

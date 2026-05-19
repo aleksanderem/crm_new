@@ -90,6 +90,8 @@ function TeamSettings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("member");
   const [isSending, setIsSending] = useState(false);
+  const [resendingId, setResendingId] = useState<Id<"invitations"> | null>(null);
+  const [cancellingId, setCancellingId] = useState<Id<"invitations"> | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ id: Id<"teamMemberships">; name: string } | null>(null);
 
   const handleChangeRole = async (
@@ -116,13 +118,33 @@ function TeamSettings() {
   };
 
   const handleCancelInvitation = async (invitationId: Id<"invitations">) => {
-    await cancelInvitation({ organizationId, invitationId });
-    void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    if (cancellingId) return;
+    setCancellingId(invitationId);
+    try {
+      await cancelInvitation({ organizationId, invitationId });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+      toast.success(t("team.invitationCancelled"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const handleResendInvitation = async (invitationId: Id<"invitations">) => {
-    await resendInvitation({ organizationId, invitationId });
-    void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    if (resendingId) return;
+    setResendingId(invitationId);
+    try {
+      await resendInvitation({ organizationId, invitationId });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+      toast.success(t("team.invitationResent"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    } finally {
+      setResendingId(null);
+    }
   };
 
   const navigate = useNavigate();
@@ -438,6 +460,7 @@ function TeamSettings() {
                     variant="ghost"
                     size="sm"
                     className="h-8 text-xs"
+                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
                     onClick={() =>
                       handleResendInvitation(
                         invitation._id as Id<"invitations">
@@ -445,12 +468,15 @@ function TeamSettings() {
                     }
                   >
                     <Send className="mr-1 h-4 w-4" variant="stroke" />
-                    {t("team.resendInvitation")}
+                    {resendingId === invitation._id
+                      ? t("team.inviteDialog.sending")
+                      : t("team.resendInvitation")}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 text-xs text-destructive hover:text-destructive"
+                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
                     onClick={() =>
                       handleCancelInvitation(
                         invitation._id as Id<"invitations">

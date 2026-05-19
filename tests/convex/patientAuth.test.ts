@@ -302,10 +302,8 @@ describe("verifyPortalOtp", () => {
 // ---------------------------------------------------------------------------
 // getPortalSession
 //
-// This query still reads from convex-test's ctx.db (see
-// convex/gabinet/patientAuth.ts:getPortalSession). The patientAuth actions
-// write to Supabase, so the query and the action layers do not share state
-// today — these tests therefore seed the session directly into ctx.db.
+// Now an action that reads `gabinetPortalSessions` from Supabase, matching
+// where the OTP flow writes (#540). Seed via `seedPortalSession`.
 // ---------------------------------------------------------------------------
 describe("getPortalSession", () => {
   test("returns session for valid active token", async () => {
@@ -314,25 +312,21 @@ describe("getPortalSession", () => {
     const token = "valid-session-token-for-test";
     const now = Date.now();
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("gabinetPortalSessions", {
-        patientId,
-        organizationId,
-        tokenHash: token,
-        isActive: true,
-        lastAccessedAt: now,
-        createdAt: now,
-        expiresAt: now + 30 * 24 * 60 * 60 * 1000,
-      });
+    await seedPortalSession(String(patientId), String(organizationId), {
+      tokenHash: token,
+      isActive: true,
+      lastAccessedAt: now,
+      createdAt: now,
+      expiresAt: now + 30 * 24 * 60 * 60 * 1000,
     });
 
-    const session = await t.withIdentity(identity).query(
+    const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
       { tokenHash: token },
     );
 
     expect(session).not.toBeNull();
-    expect(session!.patientId).toBe(patientId);
+    expect(session!.patientId).toBe(String(patientId));
   });
 
   test("returns null for inactive session", async () => {
@@ -341,19 +335,15 @@ describe("getPortalSession", () => {
     const token = "inactive-session-token";
     const now = Date.now();
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("gabinetPortalSessions", {
-        patientId,
-        organizationId,
-        tokenHash: token,
-        isActive: false,
-        lastAccessedAt: now,
-        createdAt: now,
-        expiresAt: now + 30 * 24 * 60 * 60 * 1000,
-      });
+    await seedPortalSession(String(patientId), String(organizationId), {
+      tokenHash: token,
+      isActive: false,
+      lastAccessedAt: now,
+      createdAt: now,
+      expiresAt: now + 30 * 24 * 60 * 60 * 1000,
     });
 
-    const session = await t.withIdentity(identity).query(
+    const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
       { tokenHash: token },
     );
@@ -367,19 +357,15 @@ describe("getPortalSession", () => {
     const token = "expired-session-token";
     const now = Date.now();
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("gabinetPortalSessions", {
-        patientId,
-        organizationId,
-        tokenHash: token,
-        isActive: true,
-        lastAccessedAt: now,
-        createdAt: now,
-        expiresAt: now - 1000,
-      });
+    await seedPortalSession(String(patientId), String(organizationId), {
+      tokenHash: token,
+      isActive: true,
+      lastAccessedAt: now,
+      createdAt: now,
+      expiresAt: now - 1000,
     });
 
-    const session = await t.withIdentity(identity).query(
+    const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
       { tokenHash: token },
     );
@@ -392,9 +378,7 @@ describe("getPortalSession", () => {
 // Full auth flow integration
 //
 // Verify against the Supabase store (the action layer's source of truth),
-// not the convex-test ctx.db. The `getPortalSession` Convex query is not
-// exercised here because it reads from a different store than the actions
-// write to.
+// which is also where `getPortalSession` now reads from (#540).
 // ---------------------------------------------------------------------------
 describe("full OTP auth flow", () => {
   test("send → verify → logout flips session active state", async () => {

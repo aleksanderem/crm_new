@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { v } from "convex/values";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY } from "@cvx/env";
@@ -262,28 +263,36 @@ export const getOrgBySlug = query({
   },
 });
 
-export const getPortalSession = query({
+// `gabinetPortalSessions` is Supabase-only since the dual-write cleanup, so
+// this must be an action that reads from Supabase. A Convex `query` over
+// `ctx.db` would never see rows written by the OTP flow (#540).
+export const getPortalSession = action({
   args: {
     tokenHash: v.string(),
   },
-  handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("gabinetPortalSessions")
-      .withIndex("by_token", (q) => q.eq("tokenHash", args.tokenHash))
-      .first();
+  handler: async (_ctx, args): Promise<{
+    patientId: string;
+    organizationId: string;
+    patientName: string;
+    patientEmail: string | undefined;
+  } | null> => {
+    const db = createSupabaseDb();
 
-    if (!session || !session.isActive || Date.now() > session.expiresAt) {
+    let validated: { patientId: string; organizationId: string };
+    try {
+      validated = await validatePortalSessionSupabase(db, args.tokenHash);
+    } catch {
       return null;
     }
 
-    const patient = await ctx.db.get(session.patientId);
+    const patient = await db.get("gabinetPatients", validated.patientId);
     if (!patient) return null;
 
     return {
-      patientId: patient._id,
-      organizationId: session.organizationId,
+      patientId: validated.patientId,
+      organizationId: validated.organizationId,
       patientName: `${patient.firstName} ${patient.lastName}`,
-      patientEmail: patient.email,
+      patientEmail: (patient.email as string | null) ?? undefined,
     };
   },
 });

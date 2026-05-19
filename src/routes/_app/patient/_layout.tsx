@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -16,14 +15,15 @@ function PatientLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const logout = useAction(api.gabinet.patientAuth.logoutPortal);
+  const getPortalSession = useAction(api.gabinet.patientAuth.getPortalSession);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") : null;
 
-  const { data: session, isLoading } = useQuery(
-    convexQuery(api.gabinet.patientAuth.getPortalSession, {
-      tokenHash: token ?? "",
-    })
-  );
+  const { data: session, isLoading } = useQuery({
+    queryKey: ["gabinet.patientAuth.getPortalSession", token ?? ""],
+    queryFn: () => getPortalSession({ tokenHash: token ?? "" }),
+    enabled: !!token,
+  });
 
   useEffect(() => {
     if (!isLoading && !session) {

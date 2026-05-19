@@ -6,7 +6,10 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
-import { formatAppointmentError } from "@/lib/format-action-error";
+import {
+  extractActionErrorMessage,
+  formatAppointmentError,
+} from "@/lib/format-action-error";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -473,8 +476,13 @@ export function AppointmentDialog({
         setAddPatientOpen(false);
         toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error(msg);
+        const inner = extractActionErrorMessage(e);
+        toast.error(
+          inner ||
+            t("gabinet.patients.errors.createFailed", {
+              defaultValue: "Nie udało się utworzyć klienta.",
+            }),
+        );
       } finally {
         setCreatingPatient(false);
       }

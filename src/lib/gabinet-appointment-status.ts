@@ -1,10 +1,10 @@
 /**
  * Shared visual tokens for gabinet appointment statuses.
  *
- * Colors mirror the calendar legend (see
- * `src/components/gabinet/calendar/appointment-card.tsx`) so that status
- * badges across the patient profile, appointment history, and dashboard
- * read with the same color the user sees on the calendar tiles.
+ * Used by status badges (patient profile, appointment history, dashboard,
+ * employee detail) and by the calendar tile in
+ * `src/components/gabinet/calendar/appointment-card.tsx`, so the same color
+ * reads consistently wherever a status is shown.
  */
 
 export const APPOINTMENT_STATUS_BADGE_CLASSES: Record<string, string> = {

@@ -60,7 +60,7 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { AlertTriangle, CalendarSearch } from "lucide-react";
+import { AlertTriangle, CalendarSearch, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -200,6 +200,9 @@ export function AppointmentDialog({
   const [pendingPatientLabel, setPendingPatientLabel] = useState<string | null>(
     null,
   );
+
+  // Past-slot confirmation popup
+  const [pastConfirmOpen, setPastConfirmOpen] = useState(false);
 
   // -------------------------------------------------------------------------
   // Derived data
@@ -515,7 +518,7 @@ export function AppointmentDialog({
     !!selectedSlot &&
     !submitting;
 
-  const handleSubmit = useCallback(async () => {
+  const performCreate = useCallback(async () => {
     if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
     try {
@@ -570,6 +573,15 @@ export function AppointmentDialog({
     t,
   ]);
 
+  const handleSubmit = useCallback(() => {
+    if (!canSubmit || !selectedSlot) return;
+    if (isPastSlot) {
+      setPastConfirmOpen(true);
+      return;
+    }
+    void performCreate();
+  }, [canSubmit, selectedSlot, isPastSlot, performCreate]);
+
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
@@ -592,6 +604,7 @@ export function AppointmentDialog({
       setRoomId("");
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
+      setPastConfirmOpen(false);
     }
   }, [open, defaultDate, defaultTime, defaultEndTime]);
 
@@ -1282,6 +1295,59 @@ export function AppointmentDialog({
         isSubmitting={creatingPatient}
       />
     </SidePanel>
+
+    <Dialog open={pastConfirmOpen} onOpenChange={setPastConfirmOpen}>
+      <DialogContent
+        className="max-w-xs p-0 gap-0 overflow-hidden border-0 rounded-lg shadow-2xl [&>button]:hidden"
+        data-testid="appointment-past-confirm"
+      >
+        <DialogTitle className="sr-only">
+          {t("gabinet.appointments.warnings.title")}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {t("gabinet.appointments.warnings.pastConfirm.message")}
+        </DialogDescription>
+        <div className="flex items-center justify-between bg-slate-800 px-4 py-2.5 text-white">
+          <span className="text-sm font-semibold">
+            {t("gabinet.appointments.warnings.title")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPastConfirmOpen(false)}
+            className="rounded p-0.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            aria-label={t("common.close")}
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="bg-white px-5 py-5 dark:bg-zinc-900">
+          <p className="text-center text-sm text-slate-800 dark:text-zinc-100">
+            {t("gabinet.appointments.warnings.pastConfirm.message")}
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPastConfirmOpen(false)}
+              className="min-w-16 rounded-md bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+              data-testid="appointment-past-confirm-no"
+            >
+              {t("common.no").toUpperCase()}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPastConfirmOpen(false);
+                void performCreate();
+              }}
+              className="min-w-16 rounded-md bg-green-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
+              data-testid="appointment-past-confirm-yes"
+            >
+              {t("common.yes").toUpperCase()}
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

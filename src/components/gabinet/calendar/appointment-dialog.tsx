@@ -6,6 +6,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatAppointmentError } from "@/lib/format-action-error";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -547,8 +548,12 @@ export function AppointmentDialog({
       toast.success(t("gabinet.appointments.created"));
       onOpenChange(false);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast.error(msg);
+      toast.error(
+        formatAppointmentError(e, t, {
+          key: "gabinet.appointments.createFailed",
+          defaultValue: "Nie udało się utworzyć wizyty.",
+        }),
+      );
     } finally {
       setSubmitting(false);
     }

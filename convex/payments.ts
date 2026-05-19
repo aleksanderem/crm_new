@@ -62,6 +62,27 @@ export const getByAppointment = query({
   },
 });
 
+export const listByPackageUsage = action({
+  args: {
+    organizationId: v.id("organizations"),
+    packageUsageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const rows = await db
+      .query("payments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("packageUsageId", args.packageUsageId)
+      .order("createdAt", true)
+      .collect();
+    return rows;
+  },
+});
+
 export const create = action({
   args: {
     organizationId: v.id("organizations"),

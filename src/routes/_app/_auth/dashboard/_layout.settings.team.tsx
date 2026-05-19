@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from "@/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight } from "@/lib/ez-icons";
+import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight, CircleCheck } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -93,6 +93,13 @@ function TeamSettings() {
   const [resendingId, setResendingId] = useState<Id<"invitations"> | null>(null);
   const [cancellingId, setCancellingId] = useState<Id<"invitations"> | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ id: Id<"teamMemberships">; name: string } | null>(null);
+  const [invitationSentPopup, setInvitationSentPopup] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!invitationSentPopup) return;
+    const id = window.setTimeout(() => setInvitationSentPopup(null), 2000);
+    return () => window.clearTimeout(id);
+  }, [invitationSentPopup]);
 
   const handleChangeRole = async (
     membershipId: Id<"teamMemberships">,
@@ -162,7 +169,7 @@ function TeamSettings() {
       setInviteRole("member");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationSent"));
+      setInvitationSentPopup(t("team.invitationSent"));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("Seat limit reached")) {
@@ -496,6 +503,19 @@ function TeamSettings() {
           )}
         </CardContent>
       </Card>
+
+      {invitationSentPopup && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center"
+        >
+          <div className="pointer-events-auto flex items-center gap-3 rounded-lg border bg-background px-6 py-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <CircleCheck className="h-5 w-5 text-green-600" variant="stroke" />
+            <span className="text-sm font-medium">{invitationSentPopup}</span>
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
         <AlertDialogContent>

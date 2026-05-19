@@ -2463,6 +2463,25 @@
         "pastConfirm": {
           "message": "Wybrany termin już minął. Czy chcesz dodać wizytę?"
         }
+      },
+      "rescheduled": "Wizyta przeniesiona",
+      "rescheduleFailed": "Nie udało się przenieść wizyty.",
+      "resized": "Długość wizyty zmieniona",
+      "resizeFailed": "Nie udało się zmienić długości wizyty.",
+      "errors": {
+        "conflict": "Termin koliduje z inną wizytą.",
+        "conflictNamed": "Termin koliduje z innym wydarzeniem w kalendarzu.",
+        "roomConflict": "Gabinet jest zajęty w tym terminie.",
+        "employeeLeave": "Pracownik jest na urlopie w tym terminie.",
+        "employeeNotWorking": "Pracownik nie pracuje w tym dniu.",
+        "outsideEmployeeHours": "Termin poza godzinami pracy pracownika.",
+        "clinicClosed": "Gabinet jest zamknięty w tym dniu.",
+        "outsideClinicHours": "Termin poza godzinami pracy gabinetu.",
+        "notFound": "Nie znaleziono wizyty. Odśwież kalendarz i spróbuj ponownie.",
+        "permissionDenied": "Brak uprawnień do edycji tej wizyty.",
+        "invalidStatusTransition": "Nie można zmienić statusu wizyty z bieżącej wartości.",
+        "invalidArguments": "Nie udało się zapisać zmian — nieprawidłowe dane wizyty.",
+        "blockedNotDraggable": "Wydarzeń z Google nie można przesuwać w kalendarzu."
       }
     },
     "appointmentDetail": {

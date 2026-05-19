@@ -52,6 +52,7 @@ import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatAppointmentError } from "@/lib/format-action-error";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
@@ -489,13 +490,12 @@ function GabinetCalendarPage() {
         void queryClient.invalidateQueries({
           queryKey: supabaseKeys.gabinetAppointments.all,
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         toast.error(
-          e.message ??
-            t(
-              "gabinet.appointments.resizeFailed",
-              "Failed to resize appointment",
-            ),
+          formatAppointmentError(e, t, {
+            key: "gabinet.appointments.resizeFailed",
+            defaultValue: "Nie udało się zmienić długości wizyty.",
+          }),
         );
       }
     },
@@ -534,6 +534,18 @@ function GabinetCalendarPage() {
         );
         if (!originalAppt) return;
 
+        // Google-synced blocked-time entries are not real gabinetAppointments;
+        // attempting to update them would 404 server-side. Reject silently.
+        if (originalAppt.status === "blocked") {
+          toast.error(
+            t(
+              "gabinet.appointments.errors.blockedNotDraggable",
+              "Wydarzeń z Google nie można przesuwać w kalendarzu.",
+            ),
+          );
+          return;
+        }
+
         // Calculate new end time based on original duration
         const [startH, startM] = originalAppt.startTime.split(":").map(Number);
         const [endH, endM] = originalAppt.endTime.split(":").map(Number);
@@ -558,18 +570,17 @@ function GabinetCalendarPage() {
           );
           // Invalidate Supabase appointments cache after Convex mutation
           void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
-        } catch (e: any) {
+        } catch (e: unknown) {
           toast.error(
-            e.message ??
-              t(
-                "gabinet.appointments.rescheduleFailed",
-                "Failed to reschedule",
-              ),
+            formatAppointmentError(e, t, {
+              key: "gabinet.appointments.rescheduleFailed",
+              defaultValue: "Nie udało się przenieść wizyty.",
+            }),
           );
         }
       }
     },
-    [organizationId, updateAppointment, viewAppointments, t],
+    [organizationId, updateAppointment, viewAppointments, queryClient, t],
   );
 
   // Title

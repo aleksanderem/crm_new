@@ -10,6 +10,24 @@ import { buildEmailHtml } from "./mail/emailShell";
 // ---------------------------------------------------------------------------
 
 /**
+ * URL placeholder keys (flat form, after dot-prefix stripping) used by stored
+ * system email templates seeded in convex/emailTemplateSeed.ts. Callers that
+ * emit events for these templates SHOULD pass actual URL values in the
+ * variables payload (e.g. a freshly minted verification or invitation URL).
+ *
+ * When a caller omits one of these, sendTemplateEmail substitutes an empty
+ * string so the placeholder does not render as literal "{{current_user.…_url}}"
+ * text in the recipient's inbox.
+ */
+export const SYSTEM_URL_PLACEHOLDER_KEYS = [
+  "verification_url",
+  "reset_url",
+  "invitation_url",
+  "signing_url",
+  "portal_url",
+] as const;
+
+/**
  * Replace {{key}} placeholders in a string with provided variable values.
  * Supports flat keys ({{patientName}}) and any dot-notation prefixed keys
  * ({{patient.name}}, {{event.patientName}}, {{current_user.email}}).
@@ -145,6 +163,15 @@ export const sendTemplateEmail = internalAction({
       variables = JSON.parse(args.variables) as Record<string, string>;
     } catch {
       // Proceed with empty variables — subject/body placeholders remain visible
+    }
+
+    // Default system URL placeholders to empty string when the caller did not
+    // supply them, so seeded templates referencing e.g. {{current_user.verification_url}}
+    // don't render the literal placeholder text in the recipient's email.
+    for (const key of SYSTEM_URL_PLACEHOLDER_KEYS) {
+      if (variables[key] === undefined) {
+        variables[key] = "";
+      }
     }
 
     const subject = substituteVariables(template.subject, variables);

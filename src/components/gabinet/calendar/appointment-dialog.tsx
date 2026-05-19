@@ -636,7 +636,24 @@ export function AppointmentDialog({
         </DialogDescription>
 
         {/* 3-panel layout: stacks vertically on mobile */}
-        <div className="flex flex-col md:flex-row md:h-[600px]">
+        <div className="relative flex flex-col md:flex-row md:h-[600px]">
+          {/* Centered past-slot warning overlay */}
+          {isPastSlot && selectedSlot && (
+            <div
+              role="alert"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(90%,22rem)] -translate-x-1/2 -translate-y-1/2"
+            >
+              <div className="pointer-events-auto space-y-1 rounded-md border border-red-600 bg-red-600 px-3 py-2.5 text-xs text-white shadow-lg dark:border-red-700 dark:bg-red-700">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  {t("gabinet.appointments.warnings.title")}
+                </div>
+                <ul className="ml-5 list-disc space-y-0.5">
+                  <li>{t("gabinet.appointments.warnings.past")}</li>
+                </ul>
+              </div>
+            </div>
+          )}
           {/* ============================================================= */}
           {/* LEFT PANEL — Patient, Treatment, Employee info                */}
           {/* ============================================================= */}
@@ -1253,18 +1270,6 @@ export function AppointmentDialog({
                           </span>
                         </div>
                       </div>
-
-                      {isPastSlot && (
-                        <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-                          <div className="flex items-center gap-1.5 font-medium">
-                            <AlertTriangle className="size-3.5 shrink-0" />
-                            {t("gabinet.appointments.warnings.title")}
-                          </div>
-                          <ul className="ml-5 list-disc space-y-0.5">
-                            <li>{t("gabinet.appointments.warnings.past")}</li>
-                          </ul>
-                        </div>
-                      )}
 
                       <Button
                         className="w-full"

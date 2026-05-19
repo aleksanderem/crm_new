@@ -256,7 +256,7 @@ export function PackagePurchaseDrawer({
             </Label>
           </div>
 
-          {splitPayment && selectedPkg && (
+          {splitPayment && (
             <div className="rounded-lg border p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-md border p-2 space-y-2">
@@ -329,7 +329,7 @@ export function PackagePurchaseDrawer({
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
-                  {expectedTotal.toFixed(2)} {selectedPkg.currency ?? "PLN"}
+                  {expectedTotal.toFixed(2)} {selectedPkg?.currency ?? "PLN"}
                 </span>
                 {splitSameMethod ? (
                   <span>

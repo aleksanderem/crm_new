@@ -3,11 +3,38 @@ import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 
 describe("payments", () => {
-  test("create a pending payment", async () => {
+  test("create a pending payment when status is explicit", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
+      api.payments.create,
+      {
+        organizationId,
+        amount: 100,
+        currency: "USD",
+        paymentMethod: "cash",
+        status: "pending",
+      },
+    );
+
+    expect(paymentId).toBeTruthy();
+
+    const result = await t.withIdentity(identity).query(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(1);
+    expect(result.page[0].status).toBe("pending");
+    expect(result.page[0].amount).toBe(100);
+  });
+
+  test("create defaults to completed status", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
@@ -19,32 +46,32 @@ describe("payments", () => {
 
     expect(paymentId).toBeTruthy();
 
-    // Verify the payment is in the list with pending status
     const result = await t.withIdentity(identity).query(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
     });
 
     expect(result.page).toHaveLength(1);
-    expect(result.page[0].status).toBe("pending");
-    expect(result.page[0].amount).toBe(100);
+    expect(result.page[0].status).toBe("completed");
+    expect(result.page[0].paidAt).toBeTruthy();
   });
 
   test("mark a pending payment as paid", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
         amount: 200,
         currency: "EUR",
         paymentMethod: "card",
+        status: "pending",
       },
     );
 
-    await t.withIdentity(identity).mutation(api.payments.markPaid, {
+    await t.withIdentity(identity).action(api.payments.markPaid, {
       organizationId,
       paymentId,
     });
@@ -64,7 +91,7 @@ describe("payments", () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
@@ -74,15 +101,9 @@ describe("payments", () => {
       },
     );
 
-    // Mark as paid first
-    await t.withIdentity(identity).mutation(api.payments.markPaid, {
-      organizationId,
-      paymentId,
-    });
-
-    // Try to mark as paid again — should fail
+    // Payment is already completed by default — markPaid should reject it
     await expect(
-      t.withIdentity(identity).mutation(api.payments.markPaid, {
+      t.withIdentity(identity).action(api.payments.markPaid, {
         organizationId,
         paymentId,
       }),
@@ -93,7 +114,7 @@ describe("payments", () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
@@ -103,12 +124,7 @@ describe("payments", () => {
       },
     );
 
-    await t.withIdentity(identity).mutation(api.payments.markPaid, {
-      organizationId,
-      paymentId,
-    });
-
-    await t.withIdentity(identity).mutation(api.payments.refund, {
+    await t.withIdentity(identity).action(api.payments.refund, {
       organizationId,
       paymentId,
       reason: "Patient request",
@@ -127,18 +143,19 @@ describe("payments", () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
         amount: 50,
         currency: "USD",
         paymentMethod: "cash",
+        status: "pending",
       },
     );
 
     await expect(
-      t.withIdentity(identity).mutation(api.payments.refund, {
+      t.withIdentity(identity).action(api.payments.refund, {
         organizationId,
         paymentId,
       }),
@@ -151,9 +168,9 @@ describe("payments", () => {
 
     const now = Date.now();
 
-    // Create and complete two payments
+    // Two completed payments (default status)
     for (const amount of [100, 250]) {
-      const id = await t.withIdentity(identity).mutation(
+      await t.withIdentity(identity).action(
         api.payments.create,
         {
           organizationId,
@@ -162,18 +179,15 @@ describe("payments", () => {
           paymentMethod: "cash",
         },
       );
-      await t.withIdentity(identity).mutation(api.payments.markPaid, {
-        organizationId,
-        paymentId: id,
-      });
     }
 
-    // Create a pending payment (should not be counted)
-    await t.withIdentity(identity).mutation(api.payments.create, {
+    // A pending payment — should not be counted
+    await t.withIdentity(identity).action(api.payments.create, {
       organizationId,
       amount: 999,
       currency: "USD",
       paymentMethod: "card",
+      status: "pending",
     });
 
     const summary = await t.withIdentity(identity).query(
@@ -194,17 +208,18 @@ describe("payments", () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const paymentId = await t.withIdentity(identity).mutation(
+    const paymentId = await t.withIdentity(identity).action(
       api.payments.create,
       {
         organizationId,
         amount: 75,
         currency: "USD",
         paymentMethod: "cash",
+        status: "pending",
       },
     );
 
-    await t.withIdentity(identity).mutation(api.payments.markPaid, {
+    await t.withIdentity(identity).action(api.payments.markPaid, {
       organizationId,
       paymentId,
       paymentMethod: "card",

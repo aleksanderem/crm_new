@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
@@ -13,13 +13,23 @@ function PatientLoyalty() {
   const { t } = useTranslation();
   const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
-  const { data: balance } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyLoyaltyBalance, { tokenHash })
+  const getMyLoyaltyBalance = useAction(
+    api.gabinet.patientPortal.getMyLoyaltyBalance,
   );
+  const { data: balance } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", tokenHash],
+    queryFn: () => getMyLoyaltyBalance({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
-  const { data: transactions } = useQuery(
-    convexQuery(api.gabinet.patientPortal.getMyLoyaltyTransactions, { tokenHash })
+  const getMyLoyaltyTransactions = useAction(
+    api.gabinet.patientPortal.getMyLoyaltyTransactions,
   );
+  const { data: transactions } = useQuery({
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyTransactions", tokenHash],
+    queryFn: () => getMyLoyaltyTransactions({ tokenHash }),
+    enabled: !!tokenHash,
+  });
 
   const tierColor = (tier?: string) => {
     switch (tier) {

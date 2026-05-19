@@ -72,7 +72,10 @@ async function fetchAppointmentScope(
 
   if (appointment.treatmentId) {
     const treatment = await db.get("gabinetTreatments", String(appointment.treatmentId));
-    if (treatment) scope.treatment = flattenEntity(treatment);
+    if (treatment) {
+      scope.treatment = flattenEntity(treatment);
+      await resolveTreatmentCategoryName(db, scope.treatment, treatment.categoryId);
+    }
   }
 
   if (appointment.employeeId) {
@@ -119,7 +122,27 @@ async function fetchTreatmentScope(
 ): Promise<ScopeData> {
   const treatment = await db.get("gabinetTreatments", treatmentId);
   if (!treatment || String(treatment.organizationId) !== orgId) return {};
-  return { treatment: flattenEntity(treatment) };
+  const treatmentScope = flattenEntity(treatment);
+  await resolveTreatmentCategoryName(db, treatmentScope, treatment.categoryId);
+  return { treatment: treatmentScope };
+}
+
+/**
+ * Resolve `treatment.category` from a structured `categoryId` so document
+ * templates using {{treatment.category}} render the linked category name.
+ * Falls back to the legacy free-text `category` field already present on the
+ * flattened entity when no `categoryId` is set (see #471, #495).
+ */
+async function resolveTreatmentCategoryName(
+  db: SupabaseDb,
+  treatmentScope: Record<string, unknown>,
+  categoryId: unknown,
+): Promise<void> {
+  if (!categoryId) return;
+  const category = await db.get("categoryDefinitions", String(categoryId));
+  if (category && !category.isDeleted) {
+    treatmentScope.category = category.name;
+  }
 }
 
 async function fetchContactScope(

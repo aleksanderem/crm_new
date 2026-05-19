@@ -111,6 +111,7 @@ async function fetchAppointment(
     scope.treatment = flattenEntity(
       treatment as unknown as Record<string, unknown>,
     );
+    await resolveTreatmentCategory(ctx, scope.treatment, treatment.categoryId);
   }
 
   // Employee — employeeId is a users ID; look up gabinetEmployees via by_orgAndUser
@@ -196,9 +197,29 @@ async function fetchTreatment(
   const treatment = await ctx.db.get(treatmentId);
   if (!treatment || treatment.organizationId !== orgId) return {};
 
-  return {
-    treatment: flattenEntity(treatment as unknown as Record<string, unknown>),
-  };
+  const treatmentScope = flattenEntity(
+    treatment as unknown as Record<string, unknown>,
+  );
+  await resolveTreatmentCategory(ctx, treatmentScope, treatment.categoryId);
+  return { treatment: treatmentScope };
+}
+
+/**
+ * Resolve `treatment.category` from a structured `categoryId` so document
+ * templates using {{treatment.category}} render the linked category name.
+ * Falls back to the legacy free-text `category` field already present on the
+ * flattened entity when no `categoryId` is set (see #471, #495).
+ */
+async function resolveTreatmentCategory(
+  ctx: QueryCtx,
+  treatmentScope: Record<string, unknown>,
+  categoryId: Id<"categoryDefinitions"> | undefined,
+): Promise<void> {
+  if (!categoryId) return;
+  const category = await ctx.db.get(categoryId);
+  if (category && !category.isDeleted) {
+    treatmentScope.category = category.name;
+  }
 }
 
 async function fetchContact(

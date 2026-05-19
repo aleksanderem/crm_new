@@ -50,7 +50,7 @@ async function createAppointment(
     endTime?: string;
   },
 ) {
-  return t.withIdentity(identity).mutation(api.gabinet.appointments.create, {
+  return t.withIdentity(identity).action(api.gabinet.appointments.create, {
     organizationId: args.organizationId,
     patientId: args.patientId,
     treatmentId: args.treatmentId,
@@ -481,17 +481,17 @@ describe("appointment SMS flow", () => {
       employeeId: userId,
     });
 
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId,
       appointmentId,
       status: "confirmed",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId,
       appointmentId,
       status: "in_progress",
     });
-    await t.withIdentity(identity).mutation(api.gabinet.appointments.updateStatus, {
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
       organizationId,
       appointmentId,
       status: "completed",

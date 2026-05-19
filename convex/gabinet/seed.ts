@@ -132,13 +132,30 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       { name: "Krioterapia miejscowa", category: "Fizjoterapia", duration: 20, price: 90, color: "#0ea5e9" },
     ];
 
+    // Seed root-level treatment categoryDefinitions and map name → id.
+    // Treatments link via `categoryId`; the legacy free-text `category` field
+    // is no longer written (see #471, #493).
+    const categoryNames = Array.from(new Set(treatmentData.map((t) => t.category)));
+    const treatmentCategoryIds = new Map<string, Id<"categoryDefinitions">>();
+    for (let i = 0; i < categoryNames.length; i++) {
+      const id = await ctx.db.insert("categoryDefinitions", {
+        organizationId: orgId,
+        entityType: "gabinetTreatment" as const,
+        name: categoryNames[i],
+        sortOrder: i,
+        createdAt: now,
+        updatedAt: now,
+      });
+      treatmentCategoryIds.set(categoryNames[i], id);
+    }
+
     const treatmentIds: Id<"gabinetTreatments">[] = [];
     for (let i = 0; i < treatmentData.length; i++) {
       const t = treatmentData[i];
       const id = await ctx.db.insert("gabinetTreatments", {
         organizationId: orgId,
         name: t.name,
-        category: t.category,
+        categoryId: treatmentCategoryIds.get(t.category),
         duration: t.duration,
         price: t.price,
         currency: "PLN",

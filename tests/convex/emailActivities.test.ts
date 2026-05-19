@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 import { sendEmail } from "@cvx/email";
 
 vi.mock("@cvx/email", () => ({
@@ -50,19 +51,21 @@ describe("email activities", () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await t.run(async (ctx) => {
-      const now = Date.now();
-      await ctx.db.insert("emailAccounts", {
-        organizationId,
-        fromName: "Support",
-        fromEmail: "support@example.com",
-        isDefault: true,
-        createdAt: now,
-        updatedAt: now,
-      });
+    // `emails.send` is now an action that reads the default email account
+    // through `createSupabaseDb()`. Seed it into the in-memory Supabase
+    // mock (installed by `tests/convex/_setup.ts`) so the action resolves
+    // the sender address instead of throwing "No default email account".
+    const now = Date.now();
+    await createSupabaseDb().insert("emailAccounts", {
+      organizationId: String(organizationId),
+      fromName: "Support",
+      fromEmail: "support@example.com",
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
     });
 
-    const emailId = await t.withIdentity(identity).mutation(api.emails.send, {
+    const emailId = await t.withIdentity(identity).action(api.emails.send, {
       organizationId,
       to: ["client@example.com"],
       subject: "Welcome aboard",

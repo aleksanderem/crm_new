@@ -4,6 +4,7 @@ import { query, internalMutation, internalQuery, MutationCtx } from "../_generat
 import { verifyOrgAccess } from "../_helpers/auth";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { checkPermission } from "../_helpers/permissions";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 
 const CONFIRM_REPLY_KEYWORDS = new Set(["TAK", "T", "YES", "Y"]);
@@ -164,12 +165,18 @@ export const queueAutomationSms = internalMutation({
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(
-      args.appointmentId as Id<"gabinetAppointments">,
-    );
-    if (!appointment || appointment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
+    if (
+      !appointment ||
+      String(appointment.organizationId) !== String(args.organizationId)
+    ) {
       return null;
     }
+
+    const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
+    const patientId = appointment.patientId as Id<"gabinetPatients">;
+    const employeeId = appointment.employeeId as Id<"users">;
 
     const config = await ctx.db
       .query("orgSmsConfig")
@@ -178,7 +185,7 @@ export const queueAutomationSms = internalMutation({
 
     const normalizedPhone = normalizePhoneNumber(args.phone);
     const now = Date.now();
-    const correlationKey = `automation:${args.eventType}:${appointment._id}`;
+    const correlationKey = `automation:${args.eventType}:${appointmentId}`;
 
     const existingEvent = await ctx.db
       .query("appointmentSmsEvents")
@@ -190,8 +197,8 @@ export const queueAutomationSms = internalMutation({
 
     const eventId = await ctx.db.insert("appointmentSmsEvents", {
       organizationId: args.organizationId,
-      appointmentId: appointment._id,
-      patientId: appointment.patientId,
+      appointmentId,
+      patientId,
       normalizedPhone,
       direction: "outbound",
       provider: config?.provider ?? "unconfigured",
@@ -211,11 +218,11 @@ export const queueAutomationSms = internalMutation({
 
     await logSmsSharedActivities(ctx, {
       organizationId: args.organizationId,
-      appointmentId: appointment._id,
-      patientId: appointment.patientId,
+      appointmentId,
+      patientId,
       action: "sms_sent",
       description: `Sent automated SMS for ${args.eventType}`,
-      performedBy: appointment.employeeId,
+      performedBy: employeeId,
       metadata: {
         appointmentSmsEventId: eventId,
         direction: "outbound",
@@ -243,10 +250,12 @@ export const queueConfirmationRequest = internalMutation({
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
   },
   handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(
-      args.appointmentId as Id<"gabinetAppointments">,
-    );
-    if (!appointment || appointment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
+    if (
+      !appointment ||
+      String(appointment.organizationId) !== String(args.organizationId)
+    ) {
       return null;
     }
 
@@ -259,8 +268,13 @@ export const queueConfirmationRequest = internalMutation({
       return null;
     }
 
-    const patient = await ctx.db.get(appointment.patientId);
-    if (!patient?.phone) {
+    const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
+    const patientId = appointment.patientId as Id<"gabinetPatients">;
+    const employeeId = appointment.employeeId as Id<"users">;
+
+    const patient = await db.get("gabinetPatients", String(appointment.patientId));
+    const patientPhone = patient?.phone as string | undefined;
+    if (!patientPhone) {
       return null;
     }
 
@@ -270,14 +284,14 @@ export const queueConfirmationRequest = internalMutation({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .unique();
 
-    const normalizedPhone = normalizePhoneNumber(patient.phone);
+    const normalizedPhone = normalizePhoneNumber(patientPhone);
     const message = buildConfirmationMessage({
-      date: appointment.date,
-      startTime: appointment.startTime,
+      date: appointment.date as string,
+      startTime: appointment.startTime as string,
       organizationName: org?.name,
     });
     const now = Date.now();
-    const correlationKey = `appointment-confirmation:${appointment._id}`;
+    const correlationKey = `appointment-confirmation:${appointmentId}`;
     const idempotencyKey = args.reminderId
       ? `outbound:${args.reminderId}`
       : `${correlationKey}:${now}`;
@@ -297,8 +311,8 @@ export const queueConfirmationRequest = internalMutation({
 
     const eventId = await ctx.db.insert("appointmentSmsEvents", {
       organizationId: args.organizationId,
-      appointmentId: appointment._id,
-      patientId: appointment.patientId,
+      appointmentId,
+      patientId,
       normalizedPhone,
       direction: "outbound",
       provider: config?.provider ?? "unconfigured",
@@ -315,11 +329,11 @@ export const queueConfirmationRequest = internalMutation({
 
     await logSmsSharedActivities(ctx, {
       organizationId: args.organizationId,
-      appointmentId: appointment._id,
-      patientId: appointment.patientId,
+      appointmentId,
+      patientId,
       action: "sms_sent",
       description: `Sent appointment confirmation SMS for ${appointment.date} at ${appointment.startTime}`,
-      performedBy: appointment.employeeId,
+      performedBy: employeeId,
       metadata: {
         appointmentSmsEventId: eventId,
         direction: "outbound",
@@ -331,7 +345,7 @@ export const queueConfirmationRequest = internalMutation({
 
     await ctx.scheduler.runAfter(0, internal.sms.sendAppointmentSms, {
       organizationId: args.organizationId,
-      phone: patient.phone,
+      phone: patientPhone,
       message,
       eventId,
     });

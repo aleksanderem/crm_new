@@ -2459,7 +2459,10 @@
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
         "outsideHours": "Termin poza godzinami pracy gabinetu",
-        "conflict": "Kolizja terminów z inną wizytą"
+        "conflict": "Kolizja terminów z inną wizytą",
+        "pastConfirm": {
+          "message": "Wybrany termin już minął. Czy chcesz dodać wizytę?"
+        }
       }
     },
     "appointmentDetail": {

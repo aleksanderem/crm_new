@@ -2448,7 +2448,10 @@
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
         "outsideHours": "Outside clinic working hours",
-        "conflict": "Conflicts with another appointment"
+        "conflict": "Conflicts with another appointment",
+        "pastConfirm": {
+          "message": "The selected time has already passed. Do you want to add the appointment?"
+        }
       }
     },
     "appointmentDetail": {

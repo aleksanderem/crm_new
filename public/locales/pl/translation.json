@@ -2455,7 +2455,7 @@
       "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji",
       "warnings": {
         "title": "Ostrzeżenie",
-        "past": "Termin w przeszłości",
+        "past": "Termin minął",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
         "outsideHours": "Termin poza godzinami pracy gabinetu",

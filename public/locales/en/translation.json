@@ -2444,7 +2444,7 @@
       "equipmentWarning": "Required equipment not at this location",
       "warnings": {
         "title": "Warning",
-        "past": "Appointment is in the past",
+        "past": "Appointment has passed",
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
         "outsideHours": "Outside clinic working hours",

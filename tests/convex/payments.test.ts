@@ -20,7 +20,7 @@ describe("payments", () => {
 
     expect(paymentId).toBeTruthy();
 
-    const result = await t.withIdentity(identity).query(api.payments.list, {
+    const result = await t.withIdentity(identity).action(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
     });
@@ -46,7 +46,7 @@ describe("payments", () => {
 
     expect(paymentId).toBeTruthy();
 
-    const result = await t.withIdentity(identity).query(api.payments.list, {
+    const result = await t.withIdentity(identity).action(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
     });
@@ -76,7 +76,7 @@ describe("payments", () => {
       paymentId,
     });
 
-    const result = await t.withIdentity(identity).query(api.payments.list, {
+    const result = await t.withIdentity(identity).action(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
       status: "completed",
@@ -130,7 +130,7 @@ describe("payments", () => {
       reason: "Patient request",
     });
 
-    const result = await t.withIdentity(identity).query(api.payments.list, {
+    const result = await t.withIdentity(identity).action(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
     });
@@ -190,7 +190,7 @@ describe("payments", () => {
       status: "pending",
     });
 
-    const summary = await t.withIdentity(identity).query(
+    const summary = await t.withIdentity(identity).action(
       api.payments.getRevenueSummary,
       {
         organizationId,
@@ -225,7 +225,7 @@ describe("payments", () => {
       paymentMethod: "card",
     });
 
-    const result = await t.withIdentity(identity).query(api.payments.list, {
+    const result = await t.withIdentity(identity).action(api.payments.list, {
       organizationId,
       paginationOpts: { numItems: 10, cursor: null },
     });

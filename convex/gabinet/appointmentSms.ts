@@ -89,9 +89,17 @@ async function logSmsSharedActivities(
       entityId: args.patientId,
     });
 
-    const patient = await ctx.db.get(args.patientId);
-    if (patient?.organizationId === args.organizationId && patient.contactId) {
-      patientContactId = patient.contactId;
+    const db = createSupabaseDb();
+    const patient = await db.get<{
+      organizationId?: string;
+      contactId?: string | null;
+    }>("gabinetPatients", String(args.patientId));
+    if (
+      patient &&
+      String(patient.organizationId) === String(args.organizationId) &&
+      patient.contactId
+    ) {
+      patientContactId = patient.contactId as Id<"contacts">;
     }
   }
 

@@ -3,27 +3,13 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import {
-  validatePortalSession,
-  validatePortalSessionSupabase,
-} from "../_helpers/portalSession";
+import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { createNotificationDirect } from "../notifications";
 import {
   getAvailableSlotsSupabase,
   checkEmployeeQualificationSupabase,
   checkConflictSupabase,
 } from "./_availability_supabase";
-
-// ---------------------------------------------------------------------------
-// Internal query: validate portal session via Supabase
-// ---------------------------------------------------------------------------
-
-export const _validatePortalSessionQuery = internalQuery({
-  args: { tokenHash: v.string() },
-  handler: async (ctx, args) => {
-    return await validatePortalSession(ctx, args.tokenHash);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Patient-portal reads (actions — gabinetPortalSessions and all dependent

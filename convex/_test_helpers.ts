@@ -10,6 +10,7 @@
 import { convexTest } from "convex-test";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 /**
  * Create a fresh convex-test instance with our schema.
@@ -111,7 +112,7 @@ export async function seedGabinetPrereqs(
   organizationId: Id<"organizations">,
   userId: Id<"users">,
 ) {
-  return await t.run(async (ctx) => {
+  const ids = await t.run(async (ctx) => {
     const now = Date.now();
 
     const patientId = await ctx.db.insert("gabinetPatients", {
@@ -164,4 +165,57 @@ export async function seedGabinetPrereqs(
 
     return { patientId, treatmentId };
   });
+
+  // Mirror prereqs into the Supabase in-memory mock so action handlers
+  // (which read working hours, employees, etc. through createSupabaseDb)
+  // see consistent state. In production this helper isn't run; under
+  // vitest, `createSupabaseDb` resolves to the in-memory stand-in.
+  const now = Date.now();
+  const db = createSupabaseDb();
+  await db.insert("gabinetPatients", {
+    _id: ids.patientId,
+    organizationId: String(organizationId),
+    firstName: "Jan",
+    lastName: "Kowalski",
+    email: "jan@example.com",
+    isActive: true,
+    createdBy: String(userId),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert("gabinetTreatments", {
+    _id: ids.treatmentId,
+    organizationId: String(organizationId),
+    name: "Consultation",
+    duration: 30,
+    price: 100,
+    isActive: true,
+    createdBy: String(userId),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert("gabinetEmployees", {
+    organizationId: String(organizationId),
+    userId: String(userId),
+    role: "doctor",
+    qualifiedTreatmentIds: [ids.treatmentId],
+    isActive: true,
+    createdBy: String(userId),
+    createdAt: now,
+    updatedAt: now,
+  });
+  for (let day = 0; day <= 6; day++) {
+    await db.insert("gabinetWorkingHours", {
+      organizationId: String(organizationId),
+      dayOfWeek: day,
+      startTime: "08:00",
+      endTime: "18:00",
+      isOpen: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  return ids;
 }

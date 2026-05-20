@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -44,10 +44,20 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+type LeavesNudgeFilter = "pending";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leaves"
 )({
   component: LeavesPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: LeavesNudgeFilter } => ({
+    nudge:
+      search.nudge === "pending"
+        ? (search.nudge as LeavesNudgeFilter)
+        : undefined,
+  }),
 });
 
 const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as const;
@@ -55,6 +65,8 @@ const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as con
 function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const routeNavigate = useNavigate();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
@@ -63,7 +75,9 @@ function LeavesPage() {
   const rejectLeave = useAction(api.gabinet.scheduling.rejectLeave);
   const queryClient = useQueryClient();
 
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    nudgeFilter === "pending" ? "pending" : "all",
+  );
 
   // Fetch leaves from Supabase
   const { data: leaves } = useSupabaseGabinetLeavesList(organizationId, {
@@ -237,6 +251,32 @@ function LeavesPage() {
           </SectionHeader.Group>
           <UntitledAlert>{t("gabinet.leaves.description")}</UntitledAlert>
         </SectionHeader.Root>
+
+        {nudgeFilter === "pending" && (
+          <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <span>
+              {t("gabinet.leaves.nudgeFilter.pending", {
+                defaultValue:
+                  "Pokazywane są wnioski urlopowe oczekujące na zatwierdzenie.",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => {
+                setStatusFilter("all");
+                routeNavigate({
+                  to: "/dashboard/gabinet/settings/leaves",
+                  search: { nudge: undefined },
+                });
+              }}
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>

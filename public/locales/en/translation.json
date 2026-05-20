@@ -2207,6 +2207,9 @@
       "allStatuses": "All Statuses",
       "filterByStatus": "Filter by status",
       "empty": "No leave requests",
+      "nudgeFilter": {
+        "pending": "Showing leave requests awaiting approval."
+      },
       "types": {
         "vacation": "Vacation",
         "sick": "Sick Leave",

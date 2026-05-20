@@ -2217,6 +2217,9 @@
       "allStatuses": "Wszystkie statusy",
       "filterByStatus": "Filtruj wg statusu",
       "empty": "Brak wniosków urlopowych",
+      "nudgeFilter": {
+        "pending": "Pokazywane są wnioski urlopowe oczekujące na zatwierdzenie."
+      },
       "types": {
         "vacation": "Urlop wypoczynkowy",
         "sick": "Zwolnienie lekarskie",

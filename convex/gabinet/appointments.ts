@@ -27,6 +27,7 @@ import type {
   GabinetEmployeeRow,
   GabinetPatientRow,
   GabinetTreatmentRow,
+  GabinetTreatmentPackageRow,
   GabinetPackageUsageRow,
   GabinetLoyaltyTransactionRow,
   AppointmentWorkflowHistoryRow,
@@ -34,6 +35,7 @@ import type {
   PaymentRow,
   NoteRow,
   SupabasePaginationResult,
+  SupabaseRow,
 } from "../_helpers/supabaseRows";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
@@ -2415,8 +2417,8 @@ export const getFullDetail = action({
     );
     const treatmentMap = new Map<string, GabinetTreatmentRow>(
       historyTreatments
-        .filter((t): t is Record<string, unknown> => t !== null)
-        .map((t) => [String(t._id), t as unknown as GabinetTreatmentRow]),
+        .filter((t): t is GabinetTreatmentRow => t !== null)
+        .map((t) => [String(t._id), t]),
     );
 
     // Enrich package usage
@@ -2438,14 +2440,14 @@ export const getFullDetail = action({
       Promise.all(pkgUsagePkgIds.map((id) => db.get("gabinetTreatmentPackages", id))),
       Promise.all(pkgUsageTreatmentIds.map((id) => db.get("gabinetTreatments", id))),
     ]);
-    const pkgDefMap = new Map<string, Record<string, unknown>>(
+    const pkgDefMap = new Map<string, GabinetTreatmentPackageRow>(
       pkgDefs
-        .filter((p): p is Record<string, unknown> => p !== null)
+        .filter((p): p is GabinetTreatmentPackageRow => p !== null)
         .map((p) => [String(p._id), p]),
     );
-    const pkgTreatmentMap = new Map<string, Record<string, unknown>>(
+    const pkgTreatmentMap = new Map<string, GabinetTreatmentRow>(
       pkgTreatmentDefs
-        .filter((t): t is Record<string, unknown> => t !== null)
+        .filter((t): t is GabinetTreatmentRow => t !== null)
         .map((t) => [String(t._id), t]),
     );
 
@@ -2486,11 +2488,8 @@ export const getFullDetail = action({
     );
     const noteAuthorMap = new Map<string, string | null>(
       noteAuthors
-        .filter((u): u is Record<string, unknown> => u !== null)
-        .map((u) => [
-          String(u._id),
-          (u.name as string | null) ?? (u.email as string | null),
-        ]),
+        .filter((u): u is SupabaseRow<"users"> => u !== null)
+        .map((u) => [String(u._id), u.name ?? u.email ?? null]),
     );
     const enrichedNotes: AppointmentFullDetailNote[] = notes.map((n) => ({
       ...n,

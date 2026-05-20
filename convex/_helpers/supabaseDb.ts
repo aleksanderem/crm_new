@@ -131,24 +131,43 @@ function resolveTable(convexTable: string): string {
 // Supabase, like `recentlyViewed` (#544/#567 removed it from the Convex
 // schema but the code still reads/writes the Postgres row).
 //
-// `get` / `getMany` / `insert` / `patch` / `delete` retain their original
-// loose signatures for the same reason — tightening them ripples into
-// `noteAuthors.filter(...)`-style type predicates across dozens of files,
-// which is intentionally out of scope here. They can be tightened in a
-// follow-up.
+// `get` / `getMany` mirror the typed-overload pattern used by `query()`:
+// calling them with a Convex table literal yields a `SupabaseRow<TableName>`
+// instead of `Record<string, unknown>`, so callers don't need per-field
+// `as` casts. A fallback overload with the original loose signature
+// preserves explicit-generic call sites (e.g. `db.get<{ orgId: string }>`)
+// and Supabase-only tables that don't appear in `TableNames`.
+//
+// `insert` / `patch` are intentionally left loose. The typed-overload
+// shape we'd want — `row: Partial<SupabaseRow<TableName>>` — uses
+// `Doc<TableName>` distributively over the full Convex schema union and
+// triggers TS2589 ("type instantiation is excessively deep") in every
+// caller of the `SupabaseDb` interface, not just at the insert/patch
+// call site. `delete` takes no row payload so it stays loose as well.
 export interface SupabaseDb {
+  get<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+  ): Promise<SupabaseRow<TableName> | null>;
   get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null>;
+
+  getMany<TableName extends TableNames>(
+    table: TableName,
+    ids: string[],
+  ): Promise<SupabaseRow<TableName>[]>;
   getMany<T = Record<string, unknown>>(
     table: string,
     ids: string[],
   ): Promise<T[]>;
 
   insert(table: string, row: Record<string, unknown>): Promise<string>;
+
   patch(
     table: string,
     id: string,
     updates: Record<string, unknown>,
   ): Promise<void>;
+
   delete(table: string, id: string): Promise<void>;
 
   query<TableName extends TableNames>(

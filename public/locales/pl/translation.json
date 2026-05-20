@@ -2411,6 +2411,8 @@
       "notes": "Notatki",
       "notesPlaceholder": "Dodatkowe uwagi do wizyty...",
       "recurring": "Wizyta cykliczna",
+      "recurringPreview": "Daty wizyt cyklicznych",
+      "recurringPreviewSelectSlot": "Wybierz datę i godzinę pierwszej wizyty, aby zobaczyć podgląd.",
       "frequency": "Częstotliwość",
       "count": "Powtórzenia",
       "selectPatient": "Wybierz klienta",

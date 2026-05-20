@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -92,11 +92,16 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
+  const routeNavigate = useNavigate();
+  const nudgeFilter = search.nudge;
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    nudgeFilter === "unconfirmed-today" ? "day" : "week",
+  );
   const [slotMinutes, setSlotMinutesState] = useState<SlotMinutes>(readStoredSlotMinutes);
   const setSlotMinutes = useCallback((next: SlotMinutes) => {
     setSlotMinutesState(next);
@@ -107,7 +112,9 @@ function GabinetCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
+  );
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
 
@@ -672,6 +679,32 @@ function GabinetCalendarPage() {
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-[calc(100vh-4rem)] flex-col">
+        {nudgeFilter === "unconfirmed-today" && (
+          <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <span>
+              {t("gabinet.calendar.nudgeFilter.unconfirmedToday", {
+                defaultValue:
+                  "Pokazywane są dzisiejsze wizyty jeszcze niepotwierdzone (status: zaplanowana).",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => {
+                setStatusFilter("all");
+                routeNavigate({
+                  to: "/dashboard/gabinet/calendar",
+                  search: { nudge: undefined },
+                });
+              }}
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-3">
           {/* Row 1: nav arrows + date title + view switcher + actions */}

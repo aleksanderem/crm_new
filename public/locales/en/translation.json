@@ -2590,6 +2590,9 @@
       "allStatuses": "All statuses",
       "clearFilters": "Clear filters",
       "print": "Print",
+      "nudgeFilter": {
+        "unconfirmedToday": "Showing today's appointments not yet confirmed (status: scheduled)."
+      },
       "view": {
         "day": "Day",
         "week": "Week",

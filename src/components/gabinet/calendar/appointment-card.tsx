@@ -35,7 +35,7 @@ export function AppointmentCard({
       className={`w-full h-full overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${cls}${strike}`}
       style={color ? { borderLeftColor: color } : undefined}
     >
-      <div className="flex items-center justify-between gap-1 bg-black/10 px-2 py-0.5 font-semibold dark:bg-black/30">
+      <div className="flex items-center justify-between gap-1 bg-black/30 px-2 py-0.5 font-semibold dark:bg-black/50">
         <span className="truncate">{startTime}–{endTime}</span>
         {tags && tags.length > 0 && (
           <div className="flex shrink-0 items-center gap-0.5">

@@ -9,6 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -40,6 +46,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 export function PatientPackagesCard({ patientId, organizationId }: PatientPackagesCardProps) {
   const { t } = useTranslation();
   const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [detailUsageId, setDetailUsageId] = useState<string | null>(null);
 
   const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
   const { data: usages } = useQuery({
@@ -113,7 +120,19 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
                 const pkgName = pkg?.name ?? t("common.unknown");
 
                 return (
-                  <div key={usage._id} className="rounded-lg border p-3 space-y-2">
+                  <div
+                    key={usage._id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailUsageId(String(usage._id))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setDetailUsageId(String(usage._id));
+                      }
+                    }}
+                    className="rounded-lg border p-3 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-sm font-medium leading-tight">{pkgName}</span>
                       <Badge variant={statusColors[usage.status] ?? "secondary"} className="shrink-0">
@@ -158,6 +177,21 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
         organizationId={organizationId}
         open={purchaseOpen}
         onOpenChange={setPurchaseOpen}
+      />
+
+      <PackageDetailDialog
+        open={detailUsageId !== null}
+        onOpenChange={(o) => !o && setDetailUsageId(null)}
+        organizationId={organizationId}
+        usage={items.find((u) => String(u._id) === detailUsageId) ?? null}
+        pkg={
+          detailUsageId
+            ? packageMap.get(
+                items.find((u) => String(u._id) === detailUsageId)?.packageId as Id<"gabinetTreatmentPackages">,
+              ) ?? null
+            : null
+        }
+        treatmentMap={treatmentMap}
       />
     </>
   );
@@ -377,11 +411,20 @@ function InstallmentPayButton({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="h-6 px-2 text-xs">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
           {t("gabinet.payments.markPaid")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-3">
+      <PopoverContent
+        align="end"
+        className="w-80 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">
             {t("gabinet.packages.paymentMethod", "Payment Method")}
@@ -524,5 +567,209 @@ function InstallmentPayButton({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+interface PackageDetailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organizationId: Id<"organizations">;
+  usage: {
+    _id: string;
+    packageId: Id<"gabinetTreatmentPackages">;
+    purchasedAt: number;
+    expiresAt?: number;
+    status: string;
+    paidAmount: number;
+    paymentMethod?: string | null;
+    treatmentsUsed: Array<{ treatmentId: Id<"gabinetTreatments">; usedCount: number; totalCount: number }>;
+  } | null;
+  pkg: {
+    name: string;
+    description?: string;
+    totalPrice: number;
+    currency?: string;
+  } | null;
+  treatmentMap: Map<Id<"gabinetTreatments">, string>;
+}
+
+function PackageDetailDialog({
+  open,
+  onOpenChange,
+  organizationId,
+  usage,
+  pkg,
+  treatmentMap,
+}: PackageDetailDialogProps) {
+  const { t } = useTranslation();
+
+  const listByPackageUsage = useAction(api.payments.listByPackageUsage);
+  const { data: payments } = useQuery({
+    queryKey: ["payments.listByPackageUsage", organizationId, usage?._id ?? ""],
+    queryFn: () =>
+      listByPackageUsage({
+        organizationId,
+        packageUsageId: usage!._id,
+      }) as unknown as Promise<PaymentRow[]>,
+    enabled: !!organizationId && !!usage && open,
+  });
+
+  if (!usage) return null;
+
+  const currency = pkg?.currency ?? "PLN";
+  const totalPrice = pkg?.totalPrice ?? usage.paidAmount;
+
+  const completedPayments = (payments ?? []).filter((p) => p.status === "completed");
+  const paidSoFar = completedPayments.reduce((sum, p) => sum + p.amount, 0);
+  const outstanding = Math.max(0, Math.round((totalPrice - paidSoFar) * 100) / 100);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="pr-6">
+            <div className="flex items-start justify-between gap-2">
+              <span>{pkg?.name ?? t("common.unknown")}</span>
+              <Badge variant={statusColors[usage.status] ?? "secondary"} className="shrink-0">
+                {t(`gabinet.packages.status.${usage.status}`, usage.status)}
+              </Badge>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {pkg?.description && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("gabinet.packages.description", "Description")}
+              </p>
+              <p className="text-sm whitespace-pre-wrap">{pkg.description}</p>
+            </div>
+          )}
+
+          <div className="rounded-md border p-3 space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {t("gabinet.packages.totalPrice", "Total price")}
+              </span>
+              <span className="font-medium">
+                {totalPrice.toFixed(2)} {currency}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {t("gabinet.packages.paidAmount", "Paid")}
+              </span>
+              <span className="font-medium text-green-600">
+                {paidSoFar.toFixed(2)} {currency}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm border-t pt-1.5">
+              <span className="text-muted-foreground">
+                {t("gabinet.packages.outstanding", "Outstanding")}
+              </span>
+              <span className={`font-semibold ${outstanding > 0 ? "text-orange-600" : ""}`}>
+                {outstanding.toFixed(2)} {currency}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="space-y-0.5">
+              <p className="text-muted-foreground">
+                {t("gabinet.packages.purchasedAt", "Purchased")}
+              </p>
+              <p className="font-medium">
+                {new Date(usage.purchasedAt).toLocaleDateString("pl-PL")}
+              </p>
+            </div>
+            {usage.expiresAt && (
+              <div className="space-y-0.5">
+                <p className="text-muted-foreground">
+                  {t("gabinet.packages.expires", "Expires")}
+                </p>
+                <p className="font-medium">
+                  {new Date(usage.expiresAt).toLocaleDateString("pl-PL")}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {usage.treatmentsUsed.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("gabinet.packages.treatments", "Treatments")}
+              </p>
+              <div className="space-y-2">
+                {usage.treatmentsUsed.map((tu) => {
+                  const pct = tu.totalCount > 0 ? (tu.usedCount / tu.totalCount) * 100 : 0;
+                  return (
+                    <div key={String(tu.treatmentId)} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span>{treatmentMap.get(tu.treatmentId) ?? t("common.unknown")}</span>
+                        <span className="text-muted-foreground">
+                          {tu.usedCount}/{tu.totalCount}
+                        </span>
+                      </div>
+                      <Progress value={pct} className="h-1.5" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t("gabinet.packages.paymentHistory", "Payment history")}
+            </p>
+            {(payments ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">
+                {t("gabinet.packages.noPayments", "No payments recorded")}
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {(payments ?? []).map((p) => (
+                  <div
+                    key={p._id}
+                    className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs"
+                  >
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {p.amount.toFixed(2)} {p.currency ?? currency}
+                        </span>
+                        <Badge
+                          variant={
+                            p.status === "completed"
+                              ? "secondary"
+                              : p.status === "pending"
+                                ? "outline"
+                                : p.status === "refunded"
+                                  ? "destructive"
+                                  : "outline"
+                          }
+                          className="text-[10px] py-0 px-1.5"
+                        >
+                          {t(`gabinet.payments.status.${p.status}`, p.status)}
+                        </Badge>
+                      </div>
+                      {p.notes && (
+                        <p className="text-muted-foreground break-words">{p.notes}</p>
+                      )}
+                    </div>
+                    {p.paidAt && (
+                      <span className="text-muted-foreground shrink-0">
+                        {new Date(p.paidAt).toLocaleDateString("pl-PL")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -116,6 +116,32 @@ function LeavesPage() {
     );
   }, [rangeAppointments]);
 
+  // For the approval confirm dialog: surface the same overlap warning so admins
+  // don't approve a leave that conflicts with already-booked appointments. Issue #694.
+  const confirmLeave = useMemo(
+    () => (confirmLeaveId ? leaves?.find((l) => l._id === confirmLeaveId) : undefined),
+    [leaves, confirmLeaveId],
+  );
+  const { data: confirmRangeAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId,
+    confirmLeave?.startDate ?? "",
+    confirmLeave?.endDate ?? "",
+    {
+      employeeId: confirmLeave?.userId,
+      enabled:
+        confirmAction === "approve" &&
+        !!confirmLeave?.userId &&
+        !!confirmLeave?.startDate &&
+        !!confirmLeave?.endDate,
+    },
+  );
+  const confirmOverlappingAppointments = useMemo(() => {
+    if (!confirmRangeAppointments) return [];
+    return confirmRangeAppointments.filter(
+      (a) => a.status !== "cancelled" && a.status !== "no_show",
+    );
+  }, [confirmRangeAppointments]);
+
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;
     setSubmitting(true);
@@ -401,6 +427,21 @@ function LeavesPage() {
                 : t("gabinet.leaves.confirmRejectDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction === "approve" && confirmOverlappingAppointments.length > 0 && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {t("schedule.warnings.existingAppointments", {
+                  count: confirmOverlappingAppointments.length,
+                  defaultValue:
+                    "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+                })}
+              </span>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction

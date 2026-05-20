@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -39,6 +39,7 @@ import {
   Trash2,
   Check,
   RotateCcw,
+  X,
 } from "@/lib/ez-icons";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
@@ -53,10 +54,16 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
+type ActivityNudgeFilter = "overdue";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/activities/"
 )({
   component: ActivitiesPage,
+  validateSearch: (search: Record<string, unknown>): { nudge?: ActivityNudgeFilter } => {
+    const nudge = search.nudge === "overdue" ? (search.nudge as ActivityNudgeFilter) : undefined;
+    return { nudge };
+  },
 });
 
 type ScheduledActivity = MappedScheduledActivity;
@@ -65,6 +72,8 @@ type ActivityRow = ScheduledActivity & { __cfValues: Record<string, unknown> };
 function ActivitiesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('activities.views.all'), isSystem: true, isDefault: true },
     { id: "open", name: t('activities.views.open'), isSystem: true, isDefault: false },
@@ -160,21 +169,25 @@ function ActivitiesPage() {
 
   const activities = useMemo(() => {
     let data: ScheduledActivity[];
-    switch (activeViewId) {
-      case "open":
-        data = openActivities ?? [];
-        break;
-      case "due-today":
-        data = dueTodayData ?? [];
-        break;
-      case "due-this-week":
-        data = dueThisWeekData ?? [];
-        break;
-      case "overdue":
-        data = overdueData ?? [];
-        break;
-      default:
-        data = allActivities ?? [];
+    if (nudgeFilter === "overdue") {
+      data = overdueData ?? [];
+    } else {
+      switch (activeViewId) {
+        case "open":
+          data = openActivities ?? [];
+          break;
+        case "due-today":
+          data = dueTodayData ?? [];
+          break;
+        case "due-this-week":
+          data = dueThisWeekData ?? [];
+          break;
+        case "overdue":
+          data = overdueData ?? [];
+          break;
+        default:
+          data = allActivities ?? [];
+      }
     }
     let filtered = applyFilters(data);
     filtered = applyFilterConditions(filtered, activeFilters);
@@ -183,7 +196,7 @@ function ActivitiesPage() {
       filtered = filtered.filter((a) => a.title.toLowerCase().includes(q));
     }
     return filtered;
-  }, [activeViewId, allActivities, openActivities, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue]);
+  }, [activeViewId, allActivities, openActivities, dueTodayData, dueThisWeekData, overdueData, applyFilters, activeFilters, searchValue, nudgeFilter]);
 
   const activityIds = useMemo(
     () => activities.map((a) => a._id),
@@ -369,6 +382,31 @@ function ActivitiesPage() {
           </Button>
         }
       />
+
+      {nudgeFilter === "overdue" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("activities.nudgeFilter.overdue", {
+              defaultValue:
+                "Pokazywane są zaległe aktywności (po terminie i nieukończone).",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/activities",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

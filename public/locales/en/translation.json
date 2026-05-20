@@ -514,6 +514,9 @@
     "activityTitle": "Activity title",
     "addNotes": "Add notes or details...",
     "currentUser": "Current User",
+    "nudgeFilter": {
+      "overdue": "Showing overdue activities (past due and not completed)."
+    },
     "views": {
       "all": "All Activities",
       "open": "Open Activities",

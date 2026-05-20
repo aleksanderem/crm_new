@@ -513,6 +513,9 @@
     "activityTitle": "Tytuł aktywności",
     "addNotes": "Dodaj notatki lub szczegóły...",
     "currentUser": "Bieżący użytkownik",
+    "nudgeFilter": {
+      "overdue": "Pokazywane są zaległe aktywności (po terminie i nieukończone)."
+    },
     "views": {
       "all": "Wszystkie aktywności",
       "open": "Otwarte aktywności",

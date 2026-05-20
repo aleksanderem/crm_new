@@ -687,9 +687,18 @@ export function AppointmentDialog({
     void performCreate();
   }, [canSubmit, selectedSlot, isPastSlot, performCreate]);
 
-  // Reset state when dialog closes
+  // Sync date/time from props when dialog opens, reset everything when it closes.
+  // Without the open-branch, clicking a calendar slot would not pre-fill the
+  // dialog because useState initializers only run on first mount (issue #670).
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setSelectedDate(
+        defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
+      );
+      setSelectedSlot(
+        defaultTime ? { start: defaultTime, end: defaultEndTime ?? "" } : null,
+      );
+    } else {
       setTreatmentId("");
       setEmployeeId("");
       setPatientId("");

@@ -2627,6 +2627,7 @@
       "installmentsPaid": "opłaconych",
       "installmentIndex": "Rata {{n}}",
       "splitPayment": "Podziel płatność",
+      "splitFirstInstallment": "Podziel pierwszą ratę",
       "firstMethod": "Pierwsza metoda",
       "secondMethod": "Druga metoda",
       "splitSum": "Suma",

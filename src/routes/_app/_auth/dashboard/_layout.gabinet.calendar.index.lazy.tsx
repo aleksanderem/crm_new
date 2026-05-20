@@ -51,6 +51,7 @@ import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-ga
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 
@@ -112,6 +113,9 @@ function GabinetCalendarPage() {
 
   // Filter dialog
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // Tags manager slideout
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -455,6 +459,7 @@ function GabinetCalendarPage() {
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
   useSidebarDispatch("openFilter", () => setFilterOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
 
   // Click-to-create handler
   const handleSlotClick = useCallback(
@@ -947,6 +952,13 @@ function GabinetCalendarPage() {
 
       {/* Print-only schedule table */}
       <PrintSchedule date={printDate} appointments={printAppointments} />
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tagDefinitions}
+      />
 
       {/* Drag overlay - shows appointment being dragged */}
       <DragOverlay>

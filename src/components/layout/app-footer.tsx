@@ -72,6 +72,7 @@ const gabinetRouteActions: Record<string, FooterAction[]> = {
     { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
     { labelKey: "nav.actions.filters", icon: Filter, action: "openFilter" },
     { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
     { labelKey: "nav.actions.printSchedule", icon: Download, action: "printSchedule" },
   ],
   patients: [

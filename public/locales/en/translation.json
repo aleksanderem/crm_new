@@ -556,6 +556,9 @@
     "changeStatus": "Change Document Status",
     "byStatus": "Documents by status",
     "sentByDay": "Sent documents by day",
+    "nudgeFilter": {
+      "pendingApproval": "Showing documents awaiting signature/approval."
+    },
     "status": {
       "draft": "Draft",
       "sent": "Sent",

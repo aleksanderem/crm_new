@@ -556,6 +556,9 @@
     "changeStatus": "Zmień status dokumentu",
     "byStatus": "Dokumenty wg statusu",
     "sentByDay": "Wysłane dokumenty wg dnia",
+    "nudgeFilter": {
+      "pendingApproval": "Pokazywane są dokumenty oczekujące na podpis / zatwierdzenie."
+    },
     "status": {
       "draft": "Szkic",
       "sent": "Wysłany",

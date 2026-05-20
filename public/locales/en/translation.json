@@ -470,6 +470,10 @@
     "byDay": "Companies by day",
     "byIndustry": "Companies by industry",
     "confirmDelete": "Delete this company?",
+    "nudgeFilter": {
+      "noContacts": "Showing companies with no linked contacts.",
+      "noIndustry": "Showing companies with no industry set."
+    },
     "views": {
       "all": "All Companies",
       "my": "My Companies",

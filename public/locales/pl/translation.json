@@ -469,6 +469,10 @@
     "byDay": "Firmy wg dnia",
     "byIndustry": "Firmy wg branży",
     "confirmDelete": "Czy na pewno chcesz usunąć tę firmę?",
+    "nudgeFilter": {
+      "noContacts": "Pokazywane są firmy bez powiązanych kontaktów.",
+      "noIndustry": "Pokazywane są firmy bez uzupełnionej branży."
+    },
     "views": {
       "all": "Wszystkie firmy",
       "my": "Moje firmy",

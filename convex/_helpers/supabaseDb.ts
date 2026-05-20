@@ -183,70 +183,98 @@ export interface SupabaseDb {
 export function createSupabaseDb(): SupabaseDb {
   const client = createServiceRoleClient();
 
-  const api = {
-    async get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null> {
-      const { data, error } = await client
-        .from(resolveTable(table))
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw new Error(`supabaseDb.get(${table}, ${id}): ${error.message}`);
-      return data ? (mapRowFromSnake(data) as T) : null;
-    },
+  function get<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+  ): Promise<SupabaseRow<TableName> | null>;
+  function get<T = Record<string, unknown>>(
+    table: string,
+    id: string,
+  ): Promise<T | null>;
+  async function get(table: string, id: string): Promise<unknown> {
+    const { data, error } = await client
+      .from(resolveTable(table))
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(`supabaseDb.get(${table}, ${id}): ${error.message}`);
+    return data ? mapRowFromSnake(data) : null;
+  }
 
-    async getMany<T = Record<string, unknown>>(table: string, ids: string[]): Promise<T[]> {
-      if (ids.length === 0) return [];
-      const { data, error } = await client
-        .from(resolveTable(table))
-        .select("*")
-        .in("id", ids);
-      if (error) throw new Error(`supabaseDb.getMany(${table}): ${error.message}`);
-      return (data ?? []).map(mapRowFromSnake) as T[];
-    },
+  function getMany<TableName extends TableNames>(
+    table: TableName,
+    ids: string[],
+  ): Promise<SupabaseRow<TableName>[]>;
+  function getMany<T = Record<string, unknown>>(
+    table: string,
+    ids: string[],
+  ): Promise<T[]>;
+  async function getMany(table: string, ids: string[]): Promise<unknown[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await client
+      .from(resolveTable(table))
+      .select("*")
+      .in("id", ids);
+    if (error) throw new Error(`supabaseDb.getMany(${table}): ${error.message}`);
+    return (data ?? []).map(mapRowFromSnake);
+  }
 
-    async insert(
-      table: string,
-      row: Record<string, unknown>,
-    ): Promise<string> {
-      const id = row._id ? String(row._id) : crypto.randomUUID();
-      const snakeRow = mapRowToSnake(row);
-      snakeRow.id = id;
-      const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
-      return result.id;
-    },
+  async function insert(
+    table: string,
+    row: Record<string, unknown>,
+  ): Promise<string> {
+    const id = row._id ? String(row._id) : crypto.randomUUID();
+    const snakeRow = mapRowToSnake(row);
+    snakeRow.id = id;
+    const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
+    return result.id;
+  }
 
-    async patch(
-      table: string,
-      id: string,
-      updates: Record<string, unknown>,
-    ): Promise<void> {
-      const snakeUpdates = mapRowToSnake(updates);
-      const { error } = await client
-        .from(resolveTable(table))
-        .update(snakeUpdates)
-        .eq("id", id);
-      if (error) throw new Error(`supabaseDb.patch(${table}, ${id}): ${error.message}`);
-    },
+  async function patch(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+  ): Promise<void> {
+    const snakeUpdates = mapRowToSnake(updates);
+    const { error } = await client
+      .from(resolveTable(table))
+      .update(snakeUpdates)
+      .eq("id", id);
+    if (error) throw new Error(`supabaseDb.patch(${table}, ${id}): ${error.message}`);
+  }
 
-    async delete(table: string, id: string): Promise<void> {
-      const { error } = await client
-        .from(resolveTable(table))
-        .delete()
-        .eq("id", id);
-      if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
-    },
+  async function del(table: string, id: string): Promise<void> {
+    const { error } = await client
+      .from(resolveTable(table))
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
+  }
 
-    query(table: string) {
-      const pgTable = resolveTable(table);
-      return new SupabaseQueryBuilder(client, pgTable);
-    },
+  function query<TableName extends TableNames>(
+    table: TableName,
+  ): SupabaseQueryBuilder<SupabaseRow<TableName>>;
+  function query<T = Record<string, unknown>>(
+    table: string,
+  ): SupabaseQueryBuilder<T>;
+  function query(table: string): SupabaseQueryBuilder {
+    const pgTable = resolveTable(table);
+    return new SupabaseQueryBuilder(client, pgTable);
+  }
 
-    raw() {
-      return client;
-    },
+  function raw() {
+    return client;
+  }
+
+  return {
+    get,
+    getMany,
+    insert,
+    patch,
+    delete: del,
+    query,
+    raw,
   };
-
-  return api as unknown as SupabaseDb;
 }
 
 class SupabaseQueryBuilder<T = Record<string, unknown>> {

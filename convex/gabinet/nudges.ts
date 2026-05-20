@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
 import type { NudgeData } from "../nudges";
 
 // All gabinet nudges are Supabase-primary actions now — business tables
@@ -145,8 +146,8 @@ export const getPatientNudges = action({
     );
     const contactById = new Map(
       contacts
-        .filter((c): c is Record<string, any> => c !== null)
-        .map((c) => [String(c._id ?? c.id), c]),
+        .filter((c): c is SupabaseRow<"contacts"> => c !== null)
+        .map((c) => [String(c._id), c]),
     );
 
     const missingContact = patients.filter((patient) => {
@@ -322,8 +323,8 @@ export const getAll = action({
     );
     const contactById = new Map(
       contacts
-        .filter((c): c is Record<string, any> => c !== null)
-        .map((c) => [String(c._id ?? c.id), c]),
+        .filter((c): c is SupabaseRow<"contacts"> => c !== null)
+        .map((c) => [String(c._id), c]),
     );
     const missingContact = (patients as any[]).filter((patient) => {
       if (!patient.contactId) return true;

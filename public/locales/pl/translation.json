@@ -696,6 +696,9 @@
     "callDate": "Data połączenia",
     "note": "Notatka",
     "addCallNotes": "Dodaj notatki z połączenia...",
+    "nudgeFilter": {
+      "noOutcome": "Pokazywane są połączenia bez zapisanego wyniku."
+    },
     "outcomes": {
       "busy": "Zajęty",
       "leftVoiceMessage": "Zostawiono wiadomość głosową",

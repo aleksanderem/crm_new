@@ -1118,12 +1118,7 @@ export function AppointmentDialog({
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   locale={dateFnsLocale}
-                  disabled={(date) => {
-                    if (!calendarEnabled) return true;
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return date < today;
-                  }}
+                  disabled={(_date) => !calendarEnabled}
                   className="w-full rounded-md"
                   classNames={{
                     root: "w-full",

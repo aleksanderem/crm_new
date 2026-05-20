@@ -672,6 +672,7 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
+              step={900}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               className="h-8 w-[88px] text-sm"
@@ -683,6 +684,7 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
+              step={900}
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               className="h-8 w-[88px] text-sm"

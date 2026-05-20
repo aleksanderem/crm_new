@@ -385,6 +385,10 @@
     "byStage": "Deals by stage",
     "wonByDay": "Won deals by day",
     "confirmDelete": "Delete this deal?",
+    "nudgeFilter": {
+      "stale": "Showing open deals with no activity in the last 7 days.",
+      "closingThisWeek": "Showing open deals with a close date within the next 7 days."
+    },
     "views": {
       "all": "All Deals",
       "myDeals": "My Deals",

@@ -9,6 +9,52 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapActivityFromSupabase, type MappedActivity } from "@/lib/supabase/mappers";
 
 // ---------------------------------------------------------------------------
+// Lead IDs with Recent Activity (for nudge=stale filter)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the set of lead IDs that have had at least one activity within the
+ * last `days` window. The leads index page uses the inverse set to apply the
+ * `nudge=stale` filter (leads NOT in this set are "stale").
+ *
+ * Mirrors the backend logic in convex/nudges.ts (getDealsNudges).
+ */
+export function useSupabaseLeadIdsWithRecentActivity(
+  organizationId: string,
+  days: number = 7,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: [
+      ...supabaseKeys.activities.list(organizationId),
+      "leadIdsWithRecentActivity",
+      days,
+    ],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+      const { data, error } = await client
+        .from("activities")
+        .select("entity_id")
+        .eq("organization_id", organizationId)
+        .eq("entity_type", "lead")
+        .gte("created_at", cutoff);
+
+      if (error) throw error;
+      return new Set(
+        ((data ?? []) as { entity_id: string }[]).map((a) => a.entity_id),
+      );
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Activities by Entity
 // ---------------------------------------------------------------------------
 

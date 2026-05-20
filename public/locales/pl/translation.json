@@ -384,6 +384,10 @@
     "byStage": "Transakcje wg etapu",
     "wonByDay": "Wygrane transakcje wg dnia",
     "confirmDelete": "Czy na pewno chcesz usunąć tę transakcję?",
+    "nudgeFilter": {
+      "stale": "Pokazywane są otwarte transakcje bez aktywności w ostatnich 7 dniach.",
+      "closingThisWeek": "Pokazywane są otwarte transakcje z terminem zamknięcia w najbliższych 7 dniach."
+    },
     "views": {
       "all": "Wszystkie transakcje",
       "myDeals": "Moje transakcje",

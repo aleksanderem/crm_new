@@ -1979,7 +1979,8 @@
       "noHistoryDesc": "Klient nie ma wcześniejszych wizyt",
       "patient": "Klient",
       "lastAppointments": "Ostatnie wizyty klienta",
-      "totalAppointments": "Łącznie wizyt"
+      "totalAppointments": "Łącznie wizyt",
+      "added": "Dodano"
     },
     "treatments": {
       "title": "Zabiegi",

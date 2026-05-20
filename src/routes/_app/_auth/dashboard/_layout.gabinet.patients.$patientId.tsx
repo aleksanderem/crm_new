@@ -251,7 +251,7 @@ function PatientDetail() {
                   />
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      {t("common.created")}
+                      {t("gabinet.patients.added")}
                     </p>
                     <p className="font-medium">
                       {patient

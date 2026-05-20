@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -39,7 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Trash2, Package, Pencil, Loader2 } from "@/lib/ez-icons";
+import { Plus, Trash2, Package, Pencil, Loader2, X } from "@/lib/ez-icons";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -58,10 +58,21 @@ import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statisti
 // Type alias for Convex mutation compatibility (Knowledge Pattern #9/#12)
 type TreatmentPackage = MappedGabinetTreatmentPackage;
 
+type PackagesNudgeFilter = "expiring" | "no-usage";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/packages/"
 )({
   component: PackagesIndex,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: PackagesNudgeFilter } => {
+    const nudge =
+      search.nudge === "expiring" || search.nudge === "no-usage"
+        ? (search.nudge as PackagesNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -125,6 +136,8 @@ function PackagesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createPkg = useAction(api.gabinet.packages.create);
@@ -360,9 +373,14 @@ function PackagesIndex() {
     let all = packagesData ?? [];
     if (statusFilter === "active") all = all.filter((p) => p.isActive);
     else if (statusFilter === "inactive") all = all.filter((p) => !p.isActive);
-    if (expiringOnly) all = all.filter((p) => expiringPackageIds.has(p._id));
+    if (expiringOnly || nudgeFilter === "expiring") {
+      all = all.filter((p) => expiringPackageIds.has(p._id));
+    }
+    if (nudgeFilter === "no-usage") {
+      all = all.filter((p) => p.isActive && (activeUsageCounts[p._id] ?? 0) === 0);
+    }
     return all;
-  }, [packagesData, statusFilter, expiringOnly, expiringPackageIds]);
+  }, [packagesData, statusFilter, expiringOnly, expiringPackageIds, nudgeFilter, activeUsageCounts]);
 
   // Build a treatment name lookup from loaded treatments
   const treatmentNameMap = useMemo(() => {
@@ -409,7 +427,7 @@ function PackagesIndex() {
         />
       </div>
 
-      {expiringOnly && (
+      {expiringOnly && !nudgeFilter && (
         <div className="flex items-center justify-between rounded-md border bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm">
           <span>
             {t("gabinet.packages.expiringFilterActive", {
@@ -418,6 +436,36 @@ function PackagesIndex() {
             })}
           </span>
           <Button variant="ghost" size="sm" onClick={() => setExpiringOnly(false)}>
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
+
+      {nudgeFilter && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {nudgeFilter === "expiring"
+              ? t("gabinet.packages.nudgeFilter.expiring", {
+                  defaultValue:
+                    "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
+                })
+              : t("gabinet.packages.nudgeFilter.noUsage", {
+                  defaultValue:
+                    "Pokazywane są aktywne pakiety bez aktywnych użyć.",
+                })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/gabinet/packages",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
             {t("common.clearFilters")}
           </Button>
         </div>

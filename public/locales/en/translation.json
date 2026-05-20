@@ -2708,7 +2708,11 @@
       "noTreatmentsAvailable": "No treatments available to use",
       "allTreatmentsExhausted": "All treatments in this package have been fully used",
       "totalRemaining": "{{remaining}} of {{total}} remaining",
-      "packageCompleted": "Package completed"
+      "packageCompleted": "Package completed",
+      "nudgeFilter": {
+        "expiring": "Showing packages with usages expiring within 30 days.",
+        "noUsage": "Showing active packages with no active usage."
+      }
     },
     "documents": {
       "title": "Medical Documents",

@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import { useSupabaseCompanyIdsLinkedToContact } from "@/hooks/use-supabase-relationships";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -12,7 +13,7 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { companySizeOptions } from "@/lib/options";
-import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
+import { Plus, Trash2, Upload, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { Id } from "@cvx/_generated/dataModel";
@@ -32,10 +33,19 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
 
+type CompanyNudgeFilter = "no-contacts" | "no-industry";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/"
 )({
   component: CompaniesIndex,
+  validateSearch: (search: Record<string, unknown>): { nudge?: CompanyNudgeFilter } => {
+    const nudge =
+      search.nudge === "no-contacts" || search.nudge === "no-industry"
+        ? (search.nudge as CompanyNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Company = MappedCompany;
@@ -45,6 +55,7 @@ function CompaniesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createCompany = useAction(api.companies.create);
   const removeCompany = useAction(api.companies.remove);
   const setCustomFieldValues = useAction(api.customFields.setValues);
@@ -96,6 +107,10 @@ function CompaniesIndex() {
   ], [t, tags, categories]);
 
   const { data: companies = [], isLoading } = useSupabaseCompaniesList(organizationId);
+  const { data: companyIdsLinkedToContact } = useSupabaseCompanyIdsLinkedToContact(
+    organizationId,
+    { enabled: nudgeFilter === "no-contacts" },
+  );
 
   const companyIds = useMemo(() => companies.map((c) => c._id), [companies]);
 
@@ -130,6 +145,12 @@ function CompaniesIndex() {
       default:
         data = companies;
     }
+    if (nudgeFilter === "no-contacts" && companyIdsLinkedToContact) {
+      data = data.filter((c) => !companyIdsLinkedToContact.has(c._id));
+    }
+    if (nudgeFilter === "no-industry") {
+      data = data.filter((c) => !c.industry);
+    }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
     const q = searchValue.trim().toLowerCase();
@@ -137,7 +158,7 @@ function CompaniesIndex() {
       data = data.filter((c) => c.name.toLowerCase().includes(q));
     }
     return data;
-  }, [companies, activeViewId, applyFilters, activeFilters, searchValue]);
+  }, [companies, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, companyIdsLinkedToContact]);
 
   const tableData = mergeCustomFieldValues(filteredCompanies);
 
@@ -367,6 +388,34 @@ function CompaniesIndex() {
           </Button>
         }
       />
+
+      {nudgeFilter && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {nudgeFilter === "no-contacts"
+              ? t("companies.nudgeFilter.noContacts", {
+                  defaultValue: "Pokazywane są firmy bez powiązanych kontaktów.",
+                })
+              : t("companies.nudgeFilter.noIndustry", {
+                  defaultValue: "Pokazywane są firmy bez uzupełnionej branży.",
+                })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/companies",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

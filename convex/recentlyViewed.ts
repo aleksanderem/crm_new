@@ -63,13 +63,19 @@ export const track = action({
   },
 });
 
+type RecentlyViewedItem = {
+  entityId: string;
+  entityLabel: string;
+  viewedAt: number;
+};
+
 export const list = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<RecentlyViewedItem[]> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -78,11 +84,7 @@ export const list = action({
 
     const db = createSupabaseDb();
     const items = await db
-      .query<{
-        entityId: string;
-        entityLabel: string;
-        viewedAt: number;
-      }>("recentlyViewed")
+      .query<RecentlyViewedItem>("recentlyViewed")
       .eq("organizationId", String(args.organizationId))
       .eq("userId", String(authResult.userId))
       .eq("entityType", args.entityType)

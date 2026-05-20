@@ -1922,6 +1922,9 @@
       "emptyTitle": "No clients yet",
       "emptyDescription": "Add your first client to get started",
       "confirmDelete": "Are you sure you want to deactivate this client?",
+      "nudgeFilter": {
+        "missingContact": "Showing clients with no phone or email."
+      },
       "views": {
         "all": "All Clients",
         "active": "Active",

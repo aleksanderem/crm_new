@@ -9,6 +9,9 @@ export interface NudgeData {
   messageValues?: Record<string, string | number>;
   severity: "red" | "yellow" | "green";
   icon?: string;
+  /** Optional destination URL (pathname + optional query string) that opens
+   *  the list of items the nudge refers to. */
+  link?: string;
 }
 
 async function verify(ctx: any, organizationId: string) {
@@ -41,6 +44,7 @@ export const getInsightsNudges = action({
         message: "sidebar.nudges.insights.closingThisWeek",
         messageValues: { count: closingThisWeek.length },
         severity: "red",
+        link: "/dashboard/leads?nudge=closing-this-week",
       });
     }
 
@@ -52,6 +56,7 @@ export const getInsightsNudges = action({
         message: "sidebar.nudges.insights.overdueActivities",
         messageValues: { count: overdue.length },
         severity: "yellow",
+        link: "/dashboard/activities?nudge=overdue",
       });
     }
 
@@ -94,6 +99,7 @@ export const getDealsNudges = action({
           message: "sidebar.nudges.deals.stale",
           messageValues: { count: staleLeads.length },
           severity: "yellow",
+          link: "/dashboard/leads?nudge=stale",
         },
       ];
     }
@@ -129,6 +135,7 @@ export const getContactsNudges = action({
           message: "sidebar.nudges.contacts.unlinkedCompany",
           messageValues: { count: unlinked.length },
           severity: "yellow",
+          link: "/dashboard/contacts?nudge=unlinked-company",
         },
       ];
     }
@@ -159,6 +166,7 @@ export const getInboxNudges = action({
           message: "sidebar.nudges.inbox.unanswered",
           messageValues: { count: unanswered.length },
           severity: "red",
+          link: "/dashboard/inbox?nudge=unanswered",
         },
       ];
     }
@@ -192,6 +200,7 @@ export const getActivitiesNudges = action({
           message: "sidebar.nudges.activities.overdueOldest",
           messageValues: { count: overdue.length, days: daysOld },
           severity: "red",
+          link: "/dashboard/activities?nudge=overdue",
         },
       ];
     }
@@ -218,6 +227,7 @@ export const getDocumentsNudges = action({
           message: "sidebar.nudges.documents.pendingApproval",
           messageValues: { count: pending.length },
           severity: "yellow",
+          link: "/dashboard/documents?nudge=pending-approval",
         },
       ];
     }
@@ -256,6 +266,7 @@ export const getCalendarNudges = action({
           message: "sidebar.nudges.calendar.yesterdayOverdue",
           messageValues: { count: yesterdayOverdue.length },
           severity: "yellow",
+          link: "/dashboard/calendar?nudge=yesterday-overdue",
         },
       ];
     }
@@ -298,6 +309,7 @@ export const getCompaniesNudges = action({
         message: "sidebar.nudges.companies.noContacts",
         messageValues: { count: noContacts.length },
         severity: "yellow",
+        link: "/dashboard/companies?nudge=no-contacts",
       });
     }
 
@@ -307,6 +319,7 @@ export const getCompaniesNudges = action({
         message: "sidebar.nudges.companies.noIndustry",
         messageValues: { count: noIndustry.length },
         severity: "yellow",
+        link: "/dashboard/companies?nudge=no-industry",
       });
     }
 
@@ -337,6 +350,7 @@ export const getCallsNudges = action({
           message: "sidebar.nudges.calls.noOutcome",
           messageValues: { count: noOutcome.length },
           severity: "yellow",
+          link: "/dashboard/calls?nudge=no-outcome",
         },
       ];
     }
@@ -369,6 +383,7 @@ export const getProductsNudges = action({
           message: "sidebar.nudges.products.unused",
           messageValues: { count: unused.length },
           severity: "yellow",
+          link: "/dashboard/products?nudge=unused",
         },
       ];
     }
@@ -431,6 +446,7 @@ export const getAll = action({
         message: "sidebar.nudges.insights.closingThisWeek",
         messageValues: { count: closingThisWeek.length },
         severity: "red",
+        link: "/dashboard/leads?nudge=closing-this-week",
       });
     }
     const overdueActivities = (scheduled as any[]).filter(
@@ -441,6 +457,7 @@ export const getAll = action({
         message: "sidebar.nudges.insights.overdueActivities",
         messageValues: { count: overdueActivities.length },
         severity: "yellow",
+        link: "/dashboard/activities?nudge=overdue",
       });
     }
 
@@ -463,6 +480,7 @@ export const getAll = action({
         message: "sidebar.nudges.deals.stale",
         messageValues: { count: staleLeads.length },
         severity: "yellow",
+        link: "/dashboard/leads?nudge=stale",
       });
     }
 
@@ -480,6 +498,7 @@ export const getAll = action({
         message: "sidebar.nudges.contacts.unlinkedCompany",
         messageValues: { count: unlinkedContacts.length },
         severity: "yellow",
+        link: "/dashboard/contacts?nudge=unlinked-company",
       });
     }
 
@@ -492,6 +511,7 @@ export const getAll = action({
         message: "sidebar.nudges.inbox.unanswered",
         messageValues: { count: unanswered.length },
         severity: "red",
+        link: "/dashboard/inbox?nudge=unanswered",
       });
     }
 
@@ -502,6 +522,7 @@ export const getAll = action({
         message: "sidebar.nudges.documents.pendingApproval",
         messageValues: { count: pendingDocs.length },
         severity: "yellow",
+        link: "/dashboard/documents?nudge=pending-approval",
       });
     }
 
@@ -526,6 +547,7 @@ export const getAll = action({
         message: "sidebar.nudges.companies.noContacts",
         messageValues: { count: noContacts.length },
         severity: "yellow",
+        link: "/dashboard/companies?nudge=no-contacts",
       });
     }
     const noIndustry = (companies as any[]).filter((c) => !c.industry);
@@ -534,6 +556,7 @@ export const getAll = action({
         message: "sidebar.nudges.companies.noIndustry",
         messageValues: { count: noIndustry.length },
         severity: "yellow",
+        link: "/dashboard/companies?nudge=no-industry",
       });
     }
 
@@ -545,6 +568,7 @@ export const getAll = action({
         message: "sidebar.nudges.calls.noOutcome",
         messageValues: { count: noOutcome.length },
         severity: "yellow",
+        link: "/dashboard/calls?nudge=no-outcome",
       });
     }
 
@@ -560,6 +584,7 @@ export const getAll = action({
         message: "sidebar.nudges.products.unused",
         messageValues: { count: unusedProducts.length },
         severity: "yellow",
+        link: "/dashboard/products?nudge=unused",
       });
     }
 
@@ -578,6 +603,7 @@ export const getAll = action({
           message: "sidebar.nudges.activities.overdueOldest",
           messageValues: { count: overdue.length, days: daysOld },
           severity: "red",
+          link: "/dashboard/activities?nudge=overdue",
         });
       }
       const yesterdayOverdue = userScheduled.filter(
@@ -592,6 +618,7 @@ export const getAll = action({
           message: "sidebar.nudges.calendar.yesterdayOverdue",
           messageValues: { count: yesterdayOverdue.length },
           severity: "yellow",
+          link: "/dashboard/calendar?nudge=yesterday-overdue",
         });
       }
     }

@@ -1930,6 +1930,9 @@
       "emptyTitle": "Brak klientów",
       "emptyDescription": "Dodaj pierwszego klienta, aby rozpocząć",
       "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
+      "nudgeFilter": {
+        "missingContact": "Pokazywani są klienci bez telefonu i e-maila."
+      },
       "views": {
         "all": "Wszyscy klienci",
         "active": "Aktywni",

@@ -38,6 +38,7 @@ export const getAppointmentNudges = action({
         message: "sidebar.nudges.gabinet.appointments.unconfirmedSms",
         messageValues: { count },
         severity: "yellow",
+        link: "/dashboard/gabinet/calendar?nudge=unconfirmed-today",
       },
     ];
   },
@@ -64,6 +65,7 @@ export const getLeaveNudges = action({
         message: "sidebar.nudges.gabinet.leave.pendingApproval",
         messageValues: { count },
         severity: "red",
+        link: "/dashboard/gabinet/settings/leaves?nudge=pending",
       },
     ];
   },
@@ -98,6 +100,7 @@ export const getPackageNudges = action({
         message: "sidebar.nudges.gabinet.packages.expiringSoon",
         messageValues: { count: expiring.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=expiring",
       });
     }
 
@@ -112,6 +115,7 @@ export const getPackageNudges = action({
         message: "sidebar.nudges.gabinet.packages.noUsage",
         messageValues: { count: noUsage.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=no-usage",
       });
     }
 
@@ -161,6 +165,7 @@ export const getPatientNudges = action({
         message: "sidebar.nudges.gabinet.patients.missingContact",
         messageValues: { count: missingContact.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=missing-contact",
       });
     }
 
@@ -187,6 +192,7 @@ export const getPatientNudges = action({
         message: "sidebar.nudges.gabinet.patients.noRecentVisit",
         messageValues: { count: noRecentVisit.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=no-recent-visit",
       });
     }
 
@@ -215,6 +221,7 @@ export const getTreatmentNudges = action({
           message: "sidebar.nudges.gabinet.treatments.noPrice",
           messageValues: { count: noPrice.length },
           severity: "yellow",
+          link: "/dashboard/gabinet/treatments?nudge=no-price",
         },
       ];
     }
@@ -269,6 +276,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.appointments.unconfirmedSms",
         messageValues: { count: unconfirmed },
         severity: "yellow",
+        link: "/dashboard/gabinet/calendar?nudge=unconfirmed-today",
       });
     }
 
@@ -278,6 +286,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.leave.pendingApproval",
         messageValues: { count: pendingLeaves.length },
         severity: "red",
+        link: "/dashboard/gabinet/settings/leaves?nudge=pending",
       });
     }
 
@@ -294,6 +303,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.packages.expiringSoon",
         messageValues: { count: expiring.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=expiring",
       });
     }
     const packagesWithUsage = new Set(
@@ -307,6 +317,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.packages.noUsage",
         messageValues: { count: noUsage.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=no-usage",
       });
     }
 
@@ -336,6 +347,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.patients.missingContact",
         messageValues: { count: missingContact.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=missing-contact",
       });
     }
 
@@ -352,6 +364,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.patients.noRecentVisit",
         messageValues: { count: noRecentVisit.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=no-recent-visit",
       });
     }
 
@@ -363,6 +376,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.treatments.noPrice",
         messageValues: { count: noPrice.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/treatments?nudge=no-price",
       });
     }
 

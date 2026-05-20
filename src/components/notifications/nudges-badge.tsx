@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   AlertCircle,
   CheckCircle,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,8 +41,17 @@ const severityConfig = {
 
 export function NudgesBadge() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { nudges, totalCount, isLoading } = useNudges();
   const [open, setOpen] = useState(false);
+
+  const handleNudgeClick = (link: string) => {
+    setOpen(false);
+    // Use the raw URL (path + optional ?search) so we can keep nudge link
+    // definitions co-located in the backend without needing per-route typed
+    // search params here.
+    navigate({ to: link });
+  };
 
   // Auto-refresh nudges every 60 seconds
   useEffect(() => {
@@ -119,11 +130,9 @@ export function NudgesBadge() {
               {nudges.map((nudge, idx) => {
                 const nudgeConfig = severityConfig[nudge.severity];
                 const NudgeIcon = nudgeConfig.Icon;
-                return (
-                  <div
-                    key={`${nudge.message}-${idx}`}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
-                  >
+                const isClickable = !!nudge.link;
+                const content = (
+                  <>
                     <div
                       className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${nudgeConfig.bgClass}`}
                     >
@@ -139,6 +148,29 @@ export function NudgesBadge() {
                         })}
                       </p>
                     </div>
+                    {isClickable && (
+                      <ChevronRight className="mt-1.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                  </>
+                );
+                if (isClickable) {
+                  return (
+                    <button
+                      key={`${nudge.message}-${idx}`}
+                      type="button"
+                      onClick={() => handleNudgeClick(nudge.link!)}
+                      className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                    >
+                      {content}
+                    </button>
+                  );
+                }
+                return (
+                  <div
+                    key={`${nudge.message}-${idx}`}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+                  >
+                    {content}
                   </div>
                 );
               })}

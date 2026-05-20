@@ -93,7 +93,7 @@ export const getMyAppointments = action({
       new Set(
         appointments
           .map((a) => a.treatmentId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
+          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
       ),
     );
     const treatments = await db.getMany("gabinetTreatments", treatmentIds);
@@ -139,7 +139,7 @@ export const getMyPackages = action({
       new Set(
         usages
           .map((u) => u.packageId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
+          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
       ),
     );
     const pkgs = await db.getMany("gabinetTreatmentPackages", packageIds);

@@ -1,4 +1,6 @@
+import type { TableNames } from "../_generated/dataModel";
 import { createServiceRoleClient, upsertWithFkRetry } from "../supabase/client";
+import type { SupabaseRow } from "./supabaseRows";
 
 const TABLE_MAP: Record<string, string> = {
   users: "users",
@@ -116,10 +118,53 @@ function resolveTable(convexTable: string): string {
   return mapped;
 }
 
-export function createSupabaseDb() {
+// Typed surface for `createSupabaseDb()`.
+//
+// `query()` returns a `SupabaseQueryBuilder<SupabaseRow<TableName>>` when
+// called with a Convex table name, so callers like
+// `db.query("gabinetLoyaltyPoints").first()` see real field types and no
+// longer need a `(row.balance as number)` cast per access (root cause of
+// the #585 typecheck breakage).
+//
+// A fallback overload preserves explicit-generic call sites
+// (`db.query<{ order?: number }>("sources")`) and tables that live only in
+// Supabase, like `recentlyViewed` (#544/#567 removed it from the Convex
+// schema but the code still reads/writes the Postgres row).
+//
+// `get` / `getMany` / `insert` / `patch` / `delete` retain their original
+// loose signatures for the same reason — tightening them ripples into
+// `noteAuthors.filter(...)`-style type predicates across dozens of files,
+// which is intentionally out of scope here. They can be tightened in a
+// follow-up.
+export interface SupabaseDb {
+  get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null>;
+  getMany<T = Record<string, unknown>>(
+    table: string,
+    ids: string[],
+  ): Promise<T[]>;
+
+  insert(table: string, row: Record<string, unknown>): Promise<string>;
+  patch(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+  ): Promise<void>;
+  delete(table: string, id: string): Promise<void>;
+
+  query<TableName extends TableNames>(
+    table: TableName,
+  ): SupabaseQueryBuilder<SupabaseRow<TableName>>;
+  query<T = Record<string, unknown>>(
+    table: string,
+  ): SupabaseQueryBuilder<T>;
+
+  raw(): ReturnType<typeof createServiceRoleClient>;
+}
+
+export function createSupabaseDb(): SupabaseDb {
   const client = createServiceRoleClient();
 
-  return {
+  const api = {
     async get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null> {
       const { data, error } = await client
         .from(resolveTable(table))
@@ -172,15 +217,17 @@ export function createSupabaseDb() {
       if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
     },
 
-    query<T = Record<string, unknown>>(table: string) {
+    query(table: string) {
       const pgTable = resolveTable(table);
-      return new SupabaseQueryBuilder<T>(client, pgTable);
+      return new SupabaseQueryBuilder(client, pgTable);
     },
 
     raw() {
       return client;
     },
   };
+
+  return api as unknown as SupabaseDb;
 }
 
 class SupabaseQueryBuilder<T = Record<string, unknown>> {
@@ -297,5 +344,3 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this.first();
   }
 }
-
-export type SupabaseDb = ReturnType<typeof createSupabaseDb>;

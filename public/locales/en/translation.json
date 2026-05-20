@@ -2616,6 +2616,7 @@
       "installmentsPaid": "paid",
       "installmentIndex": "Installment {{n}}",
       "splitPayment": "Split payment",
+      "splitFirstInstallment": "Split first installment",
       "firstMethod": "First method",
       "secondMethod": "Second method",
       "splitSum": "Sum",

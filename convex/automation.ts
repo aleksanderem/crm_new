@@ -1,4 +1,5 @@
 import {
+  internalAction,
   internalMutation,
   internalQuery,
   action,
@@ -19,7 +20,6 @@ import {
 } from "./schema";
 import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
 import { renderTemplateString } from "./emailTemplates";
-import { escapeHtml } from "./_helpers/html";
 import { checkPermission } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
 import {
@@ -259,33 +259,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
   },
 };
 
-async function sendAutomationEmail(args: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}) {
-  const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${AUTH_RESEND_KEY ?? ""}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: args.to,
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to send automation email (${response.status})`);
-  }
-}
-
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, "");
 }
@@ -439,68 +412,213 @@ async function getAutomationEditPermission(
   };
 }
 
-async function insertAutomationEmail(
+async function resolveDefaultEmailFromAddress(
   ctx: MutationCtx,
-  args: {
-    organizationId: Id<"organizations">;
-    recipientEmail: string;
-    subject: string;
-    bodyHtml?: string;
-    bodyText?: string;
-    sentBy?: Id<"users">;
-  },
+  organizationId: Id<"organizations">,
 ) {
   const emailAccounts = await ctx.db
     .query("emailAccounts")
-    .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
     .collect();
   const defaultAccount = emailAccounts.find((account) => account.isDefault);
   if (!defaultAccount) {
     throw new Error("No default email account configured");
   }
-
-  const htmlBody = args.bodyHtml ?? escapeHtml(args.bodyText ?? "").replace(/\n/g, "<br />");
-  await sendAutomationEmail({
-    to: args.recipientEmail,
-    subject: args.subject,
-    html: htmlBody,
-    text: args.bodyText,
-  });
-
-  const now = Date.now();
-  const bodyText = args.bodyText ?? stripHtml(htmlBody);
-  const emailId = await ctx.db.insert("emails", {
-    organizationId: args.organizationId,
-    threadId: `<${crypto.randomUUID()}@crm.app>`,
-    messageId: `<${crypto.randomUUID()}@crm.app>`,
-    direction: "outbound",
-    from: defaultAccount.fromEmail,
-    to: [args.recipientEmail],
-    subject: args.subject,
-    bodyHtml: htmlBody,
-    bodyText,
-    snippet: bodyText.slice(0, 200),
-    isRead: true,
-    isStarred: false,
-    sentBy: args.sentBy,
-    sentAt: now,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  if (args.sentBy) {
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "email",
-      entityId: emailId,
-      action: "email_sent",
-      description: `Sent email \"${args.subject}\" to ${args.recipientEmail}`,
-      performedBy: args.sentBy,
-    });
-  }
-
-  return emailId;
+  return defaultAccount.fromEmail;
 }
+
+// Resend send call extracted to an internalAction so processRun (mutation)
+// does not perform network I/O — Convex mutations cannot use fetch().
+export const _sendAutomationEmail = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    fromEmail: v.string(),
+    recipient: v.string(),
+    recipientName: v.optional(v.string()),
+    subject: v.string(),
+    bodyHtml: v.string(),
+    bodyText: v.string(),
+    sentBy: v.optional(v.id("users")),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    actionType: v.string(),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${AUTH_RESEND_KEY ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: args.recipient,
+          subject: args.subject,
+          html: args.bodyHtml,
+          text: args.bodyText,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to send automation email (${response.status})`);
+      }
+      await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
+        organizationId: args.organizationId,
+        stepId: args.stepId,
+        success: true,
+        fromEmail: args.fromEmail,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        bodyHtml: args.bodyHtml,
+        bodyText: args.bodyText,
+        sentBy: args.sentBy,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        idempotencyKey: args.idempotencyKey,
+      });
+    } catch (error) {
+      await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
+        organizationId: args.organizationId,
+        stepId: args.stepId,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        fromEmail: args.fromEmail,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        bodyHtml: args.bodyHtml,
+        bodyText: args.bodyText,
+        sentBy: args.sentBy,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        idempotencyKey: args.idempotencyKey,
+      });
+    }
+  },
+});
+
+export const _recordAutomationEmailResult = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+    fromEmail: v.string(),
+    recipient: v.string(),
+    recipientName: v.optional(v.string()),
+    subject: v.string(),
+    bodyHtml: v.string(),
+    bodyText: v.string(),
+    sentBy: v.optional(v.id("users")),
+    appointmentId: v.optional(v.id("gabinetAppointments")),
+    actionType: v.string(),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    if (!args.success) {
+      await ctx.db.patch(args.stepId, {
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      await ctx.scheduler.runAfter(0, updateRunStepRef, {
+        stepId: args.stepId as string,
+        organizationId: args.organizationId as string,
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      await patchLegacyAppointmentWorkflowHistory(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        renderedSubject: args.subject,
+        renderedBody: args.bodyHtml,
+        status: "failed",
+        errorMessage: args.errorMessage,
+        idempotencyKey: args.idempotencyKey,
+        processedAt: now,
+      });
+      return;
+    }
+
+    const emailId = await ctx.db.insert("emails", {
+      organizationId: args.organizationId,
+      threadId: `<${crypto.randomUUID()}@crm.app>`,
+      messageId: `<${crypto.randomUUID()}@crm.app>`,
+      direction: "outbound",
+      from: args.fromEmail,
+      to: [args.recipient],
+      subject: args.subject,
+      bodyHtml: args.bodyHtml,
+      bodyText: args.bodyText,
+      snippet: args.bodyText.slice(0, 200),
+      isRead: true,
+      isStarred: false,
+      sentBy: args.sentBy,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (args.sentBy) {
+      await logActivity(ctx, {
+        organizationId: args.organizationId,
+        entityType: "email",
+        entityId: emailId,
+        action: "email_sent",
+        description: `Sent email \"${args.subject}\" to ${args.recipient}`,
+        performedBy: args.sentBy,
+      });
+    }
+
+    await ctx.db.patch(args.stepId, {
+      status: "processed",
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      linkedEntityType: "email",
+      linkedEntityId: String(emailId),
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      processedAt: now,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, updateRunStepRef, {
+      stepId: args.stepId as string,
+      organizationId: args.organizationId as string,
+      status: "processed",
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      linkedEntityType: "email",
+      linkedEntityId: String(emailId),
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      processedAt: now,
+      updatedAt: now,
+    });
+    await patchLegacyAppointmentWorkflowHistory(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: args.appointmentId,
+      actionType: args.actionType,
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      status: "sent",
+      idempotencyKey: args.idempotencyKey,
+      processedAt: now,
+    });
+  },
+});
 
 async function applyUpdateFieldAction(
   ctx: MutationCtx,
@@ -1347,8 +1465,6 @@ export const processRun = internalMutation({
 
             let renderedSubject = "";
             let renderedBody = "";
-            let linkedEntityType: string | undefined;
-            let linkedEntityId: string | undefined;
 
             if (action.mode === "template") {
               const template = await ctx.db.get(action.templateId);
@@ -1379,55 +1495,55 @@ export const processRun = internalMutation({
               renderedBody = applyTemplate(action.bodyTemplate, payload);
             }
 
-            const emailId = await insertAutomationEmail(ctx, {
-              organizationId: run.organizationId,
-              recipientEmail,
-              subject: renderedSubject,
-              bodyHtml: renderedBody,
-              bodyText: stripHtml(renderedBody),
-              sentBy: run.actorUserId,
-            });
-            linkedEntityType = "email";
-            linkedEntityId = String(emailId);
+            const fromEmail = await resolveDefaultEmailFromAddress(
+              ctx,
+              run.organizationId,
+            );
+            const bodyText = stripHtml(renderedBody);
 
+            // Defer the network send to an internalAction. Convex mutations
+            // cannot use fetch(); the action will record the email + patch
+            // step status via _recordAutomationEmailResult once Resend responds.
+            await ctx.scheduler.runAfter(
+              0,
+              internal.automation._sendAutomationEmail,
+              {
+                organizationId: run.organizationId,
+                stepId,
+                fromEmail,
+                recipient: recipientEmail,
+                recipientName,
+                subject: renderedSubject,
+                bodyHtml: renderedBody,
+                bodyText,
+                sentBy: run.actorUserId,
+                appointmentId:
+                  run.entityType === "gabinetAppointment"
+                    ? (run.entityId as Id<"gabinetAppointments">)
+                    : undefined,
+                actionType: action.type,
+                idempotencyKey: stepIdempotencyKey,
+              },
+            );
+
+            // Mark step with rendered content; final status (processed/failed)
+            // is set asynchronously by _recordAutomationEmailResult.
             await ctx.db.patch(stepId, {
-              status: "processed",
               recipient: recipientEmail,
               recipientName,
-              linkedEntityType,
-              linkedEntityId,
               renderedSubject,
               renderedBody,
-              processedAt: now,
               updatedAt: now,
             });
             await ctx.scheduler.runAfter(0, updateRunStepRef, {
               stepId: stepId as string,
               organizationId: run.organizationId as string,
-              status: "processed",
+              status: "pending",
               recipient: recipientEmail,
               recipientName,
-              linkedEntityType,
-              linkedEntityId,
               renderedSubject,
               renderedBody,
-              processedAt: now,
               updatedAt: now,
-            });
-            await patchLegacyAppointmentWorkflowHistory(ctx, {
-              organizationId: run.organizationId,
-              appointmentId:
-                run.entityType === "gabinetAppointment"
-                  ? (run.entityId as Id<"gabinetAppointments">)
-                  : undefined,
-              actionType: action.type,
-              recipient: recipientEmail,
-              recipientName,
-              renderedSubject,
-              renderedBody,
-              status: "sent",
-              idempotencyKey: stepIdempotencyKey,
-              processedAt: now,
             });
             continue;
           }

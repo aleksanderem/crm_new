@@ -633,7 +633,7 @@ export const listByPatientToken = action({
       new Set(
         unique
           .map((d) => d.templateId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
+          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
       ),
     );
     const templates = await db.getMany("formTemplates", templateIds);

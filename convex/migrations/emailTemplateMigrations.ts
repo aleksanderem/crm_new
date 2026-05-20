@@ -1,7 +1,12 @@
+import type { RegisteredMutation } from "convex/server";
 import { internalMutation } from "../_generated/server";
 
 /** Migration 1: Copy emailLayouts data into emailBrandConfig */
-export const migrateLayoutsToBrandConfig = internalMutation({
+export const migrateLayoutsToBrandConfig: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ migrated: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const layouts = await ctx.db.query("emailLayouts").collect();
     let migrated = 0;
@@ -35,7 +40,11 @@ export const migrateLayoutsToBrandConfig = internalMutation({
 });
 
 /** Migration 2: Extract requiredSources from variables array */
-export const migrateVariablesToRequiredSources = internalMutation({
+export const migrateVariablesToRequiredSources: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ migrated: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const templates = await ctx.db.query("emailTemplates").collect();
     let migrated = 0;
@@ -52,7 +61,11 @@ export const migrateVariablesToRequiredSources = internalMutation({
 });
 
 /** Migration 3: Extract renderedHtml from GrapesJS body JSON */
-export const migrateBodyToRenderedHtml = internalMutation({
+export const migrateBodyToRenderedHtml: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ migrated: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const templates = await ctx.db
       .query("emailTemplates")
@@ -76,7 +89,11 @@ export const migrateBodyToRenderedHtml = internalMutation({
 });
 
 /** Migration 4: Add templateSlug to emailEventBindings for locale-aware lookup */
-export const migrateEventBindingsToSlug = internalMutation({
+export const migrateEventBindingsToSlug: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ migrated: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const bindings = await ctx.db.query("emailEventBindings").collect();
     let migrated = 0;

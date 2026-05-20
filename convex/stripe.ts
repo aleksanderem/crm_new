@@ -1,10 +1,12 @@
 import Stripe from "stripe";
+import type { RegisteredQuery } from "convex/server";
 import {
   action,
   internalAction,
   internalMutation,
   internalQuery,
 } from "@cvx/_generated/server";
+import type { Doc } from "@cvx/_generated/dataModel";
 import { v } from "convex/values";
 import { ERRORS } from "~/errors";
 import { auth } from "@cvx/auth";
@@ -94,7 +96,11 @@ export const PREAUTH_createStripeCustomer = internalAction({
   },
 });
 
-export const UNAUTH_getDefaultPlan = internalQuery({
+export const UNAUTH_getDefaultPlan: RegisteredQuery<
+  "internal",
+  Record<string, never>,
+  Promise<Doc<"plans"> | null>
+> = internalQuery({
   handler: async (ctx) => {
     return ctx.db
       .query("plans")

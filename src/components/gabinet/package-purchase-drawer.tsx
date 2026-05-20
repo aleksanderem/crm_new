@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -244,12 +245,12 @@ export function PackagePurchaseDrawer({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="flex flex-col sm:max-w-md">
         <SheetHeader>
           <SheetTitle>{t("gabinet.packages.purchasePackage", "Purchase Package")}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
+        <div className="flex-1 overflow-y-auto py-4 space-y-5">
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.selectPackage", "Package")}</Label>
             <Select value={selectedPkgId} onValueChange={setSelectedPkgId}>
@@ -496,6 +497,9 @@ export function PackagePurchaseDrawer({
             </div>
           )}
 
+        </div>
+
+        <SheetFooter className="border-t pt-4">
           <Button
             className="w-full"
             disabled={
@@ -508,7 +512,7 @@ export function PackagePurchaseDrawer({
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("gabinet.packages.purchaseButton", "Purchase")}
           </Button>
-        </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

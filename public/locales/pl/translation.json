@@ -1931,7 +1931,8 @@
       "emptyDescription": "Dodaj pierwszego klienta, aby rozpocząć",
       "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
       "nudgeFilter": {
-        "missingContact": "Pokazywani są klienci bez telefonu i e-maila."
+        "missingContact": "Pokazywani są klienci bez telefonu i e-maila.",
+        "noRecentVisit": "Pokazywani są klienci bez wizyty w ostatnich 90 dniach."
       },
       "views": {
         "all": "Wszyscy klienci",

@@ -645,11 +645,11 @@ export function AppointmentDialog({
 
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="relative flex flex-col md:flex-row md:h-[600px]">
-          {/* Centered past-slot warning overlay */}
+          {/* Past-slot warning overlay (positioned near bottom so it doesn't cover the calendar grid) */}
           {isPastSlot && selectedSlot && (
             <div
               role="alert"
-              className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(90%,22rem)] -translate-x-1/2 -translate-y-1/2"
+              className="pointer-events-none absolute left-1/2 bottom-4 z-20 w-[min(90%,22rem)] -translate-x-1/2"
             >
               <div className="pointer-events-auto space-y-1 rounded-md border border-red-600 bg-red-600 px-3 py-2.5 text-xs text-white shadow-lg dark:border-red-700 dark:bg-red-700">
                 <div className="flex items-center gap-1.5 font-semibold">

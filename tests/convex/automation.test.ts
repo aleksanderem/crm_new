@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { DEFAULT_PERMISSIONS } from "../../convex/_helpers/permissions";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 import {
   createTestCtx,
   seedGabinetPrereqs,

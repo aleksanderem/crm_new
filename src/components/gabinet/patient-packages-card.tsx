@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Package, Plus, Loader2 } from "@/lib/ez-icons";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
+import { PlateText } from "@/components/plate-text";
 
 type PaymentMethod = "cash" | "card" | "transfer" | "other";
 
@@ -643,7 +644,9 @@ function PackageDetailDialog({
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {t("gabinet.packages.description", "Description")}
               </p>
-              <p className="text-sm whitespace-pre-wrap">{pkg.description}</p>
+              <p className="text-sm whitespace-pre-wrap">
+                <PlateText value={pkg.description} />
+              </p>
             </div>
           )}
 

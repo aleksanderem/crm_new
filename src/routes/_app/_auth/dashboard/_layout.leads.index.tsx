@@ -18,6 +18,7 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
+import { PlateText } from "@/components/plate-text";
 import { leadStatusOptions, leadPriorityOptions } from "@/lib/options";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -440,7 +441,7 @@ function LeadsIndex() {
     {
       id: "notes",
       label: t("common.notes"),
-      render: (item) => item.notes ?? "—",
+      render: (item) => <PlateText value={item.notes} fallback="—" />,
     },
     {
       id: "wonAt",

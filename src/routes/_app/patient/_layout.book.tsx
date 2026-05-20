@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
+import { PlateText } from "@/components/plate-text";
 
 export const Route = createFileRoute("/_app/patient/_layout/book")({
   component: PatientBooking,
@@ -295,7 +296,7 @@ function PatientBooking() {
                           </p>
                           {treatment.description && (
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {treatment.description}
+                              <PlateText value={treatment.description} />
                             </p>
                           )}
                           <p className="mt-1 text-xs text-muted-foreground">

@@ -22,6 +22,7 @@ import {
   NumberedListToolbarButton,
 } from "@/components/ui/list-toolbar-button";
 import { ToolbarGroup } from "@/components/ui/toolbar";
+import { plateJsonToText } from "@/components/plate-text";
 
 // ---------------------------------------------------------------------------
 // Helpers: convert between Plate Value and plain-text string
@@ -136,25 +137,6 @@ export function RichTextEditor({
       </Plate>
     </div>
   );
-}
-
-/** Extract plain text from a stored string (Plate JSON or plain text). */
-function plateJsonToText(raw: string | undefined): string {
-  if (!raw) return "";
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      const extractText = (node: any): string => {
-        if (typeof node.text === "string") return node.text;
-        if (Array.isArray(node.children)) return node.children.map(extractText).join("");
-        return "";
-      };
-      return parsed.map((block: any) => extractText(block)).join("\n");
-    }
-  } catch {
-    // Not JSON — return as-is
-  }
-  return raw;
 }
 
 export { parseValue, serializeValue, isValueEmpty, plateJsonToText };

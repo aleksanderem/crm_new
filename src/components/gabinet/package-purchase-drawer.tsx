@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "@/lib/ez-icons";
+import { PlateText } from "@/components/plate-text";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -271,7 +272,9 @@ export function PackagePurchaseDrawer({
             <div className="rounded-lg border p-3 space-y-2">
               <p className="text-sm font-medium">{selectedPkg.name}</p>
               {selectedPkg.description && (
-                <p className="text-xs text-muted-foreground">{selectedPkg.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  <PlateText value={selectedPkg.description} />
+                </p>
               )}
               <div className="space-y-1">
                 {selectedPkg.treatments.map((tr) => (

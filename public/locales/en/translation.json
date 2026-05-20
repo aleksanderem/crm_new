@@ -696,6 +696,9 @@
     "callDate": "Call Date",
     "note": "Note",
     "addCallNotes": "Add call notes...",
+    "nudgeFilter": {
+      "noOutcome": "Showing calls with no outcome recorded."
+    },
     "outcomes": {
       "busy": "Busy",
       "leftVoiceMessage": "Left Voice Message",

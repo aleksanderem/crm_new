@@ -2489,6 +2489,7 @@
         "past": "Appointment has passed",
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
+        "leavePartial": "Employee is on leave on this day between {{start}}–{{end}}.",
         "outsideHours": "Outside clinic working hours",
         "conflict": "Conflicts with another appointment",
         "pastConfirm": {
@@ -3177,6 +3178,10 @@
       "vacation": "Vacation",
       "sick": "Sick Leave",
       "personal": "Personal Leave"
+    },
+    "warnings": {
+      "existingAppointments_one": "Employee has {{count}} scheduled appointment during this period. Remember to cancel or reschedule it.",
+      "existingAppointments_other": "Employee has {{count}} scheduled appointments during this period. Remember to cancel or reschedule them."
     }
   },
   "permissions": {

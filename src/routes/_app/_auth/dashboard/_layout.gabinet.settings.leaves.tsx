@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText } from "@/components/plate-text";
 import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
 import { AlertTriangle } from "lucide-react";
@@ -370,7 +371,9 @@ function LeavesPage() {
                   <td className="px-4 py-2 text-sm">{t(`gabinet.leaves.types.${leave.type}`)}</td>
                   <td className="px-4 py-2 text-sm">{leave.startDate}</td>
                   <td className="px-4 py-2 text-sm">{leave.endDate}</td>
-                  <td className="px-4 py-2 text-sm text-muted-foreground">{leave.reason ?? "—"}</td>
+                  <td className="px-4 py-2 text-sm text-muted-foreground">
+                    <PlateText value={leave.reason} fallback="—" />
+                  </td>
                   <td className="px-4 py-2">
                     <Badge variant={statusColor(leave.status)}>
                       {leave.status === "pending" ? t("gabinet.leaves.pending") :

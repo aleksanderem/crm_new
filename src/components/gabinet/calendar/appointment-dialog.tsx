@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText } from "@/components/plate-text";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -959,7 +960,7 @@ export function AppointmentDialog({
                         </p>
                         {selectedTreatment.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                            {selectedTreatment.description}
+                            <PlateText value={selectedTreatment.description} />
                           </p>
                         )}
                       </div>

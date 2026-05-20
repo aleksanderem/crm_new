@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText } from "@/components/plate-text";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
@@ -384,7 +385,7 @@ export function ActivityDetailDrawer({
                 <div className="space-y-1.5">
                   <Label className="text-muted-foreground text-xs">{t('activityDetail.description')}</Label>
                   <p className="text-sm whitespace-pre-wrap rounded-lg border p-3">
-                    {activity.description}
+                    <PlateText value={activity.description} />
                   </p>
                 </div>
               )}

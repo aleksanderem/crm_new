@@ -12,6 +12,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
+import { plateJsonToText } from "@/components/plate-text";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import {
@@ -1433,7 +1434,7 @@ function TreatmentDetail() {
                 <p className="text-sm text-muted-foreground/60 italic line-clamp-2">
                   {treatment?.description
                     ? t("gabinet.treatmentDetail.variants.parentValue", {
-                        value: treatment.description,
+                        value: plateJsonToText(treatment.description),
                       })
                     : "—"}
                 </p>

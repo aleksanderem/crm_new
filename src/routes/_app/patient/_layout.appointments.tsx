@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
+import { PlateText } from "@/components/plate-text";
 
 export const Route = createFileRoute("/_app/patient/_layout/appointments")({
   component: PatientAppointments,
@@ -160,7 +161,7 @@ function PatientAppointments() {
               </p>
               {a.notes && (
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {a.notes}
+                  <PlateText value={a.notes} />
                 </p>
               )}
             </div>

@@ -10,6 +10,7 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CompanyForm } from "@/components/forms/company-form";
+import { PlateText } from "@/components/plate-text";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { companySizeOptions } from "@/lib/options";
@@ -267,7 +268,7 @@ function CompaniesIndex() {
     {
       id: "notes",
       label: t('common.notes'),
-      render: (item) => item.notes ?? "—",
+      render: (item) => <PlateText value={item.notes} fallback="—" />,
     },
     {
       id: "createdAt",

@@ -15,6 +15,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { plateJsonToText } from "@/components/plate-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -308,10 +309,11 @@ function CallsPage() {
       id: "note",
       label: t('calls.note'),
       render: (item) => {
-        if (!item.note) return <span className="text-fg-quaternary">—</span>;
+        const text = plateJsonToText(item.note).trim();
+        if (!text) return <span className="text-fg-quaternary">—</span>;
         return (
-          <span className="text-fg-tertiary" title={item.note}>
-            {item.note.length > 60 ? item.note.slice(0, 60) + "..." : item.note}
+          <span className="text-fg-tertiary" title={text}>
+            {text.length > 60 ? text.slice(0, 60) + "..." : text}
           </span>
         );
       },

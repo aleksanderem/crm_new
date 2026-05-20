@@ -33,6 +33,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { applyFilterConditions } from "@/hooks/use-saved-views";
+import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // shadcn/studio statistics blocks
@@ -230,7 +231,7 @@ function EmployeesIndex() {
     {
       id: "notes",
       label: t("gabinet.employees.notes"),
-      render: (item) => item.notes ?? "\u2014",
+      render: (item) => <PlateText value={item.notes} fallback="\u2014" />,
     },
     {
       id: "isActive",

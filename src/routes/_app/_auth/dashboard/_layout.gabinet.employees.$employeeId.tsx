@@ -36,7 +36,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText, plateJsonToText } from "@/components/plate-text";
 import {
   Select,
   SelectContent,
@@ -479,7 +480,7 @@ function EmployeeDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {employee.notes}
+              <PlateText value={employee.notes} />
             </p>
           </CardContent>
         </Card>
@@ -2040,7 +2041,7 @@ function DetailedDataTab({
                   : t("common.inactive"),
               )}
               {employee.notes &&
-                readOnlyField(t("gabinet.employees.detailedData.notesComments"), employee.notes)}
+                readOnlyField(t("gabinet.employees.detailedData.notesComments"), plateJsonToText(employee.notes))}
             </div>
           )}
         </CardContent>

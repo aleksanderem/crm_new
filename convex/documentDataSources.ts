@@ -113,6 +113,7 @@ export const PLATFORM_DATA_SOURCES: DataSourceDefinition[] = [
 // ---------------------------------------------------------------------------
 
 import { CRM_DATA_SOURCES } from "./crm/documentDataSources";
+import { GABINET_DATA_SOURCES } from "./gabinet/documentDataSources";
 
 // ---------------------------------------------------------------------------
 // Aggregate registry
@@ -121,6 +122,7 @@ import { CRM_DATA_SOURCES } from "./crm/documentDataSources";
 export const ALL_DATA_SOURCES: DataSourceDefinition[] = [
   ...PLATFORM_DATA_SOURCES,
   ...CRM_DATA_SOURCES,
+  ...GABINET_DATA_SOURCES,
 ];
 
 // ---------------------------------------------------------------------------

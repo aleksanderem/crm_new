@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { DEFAULT_PERMISSIONS } from "../../convex/_helpers/permissions";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 import {
   createTestCtx,
   seedGabinetPrereqs,
@@ -51,11 +52,19 @@ async function setPatientPhone(
   patientId: any,
   phone: string,
 ) {
+  const now = Date.now();
   await t.run(async (ctx) => {
     await ctx.db.patch(patientId, {
       phone,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+  });
+  // Gabinet appointment + SMS actions read patient via createSupabaseDb
+  // (Supabase-primary), so mirror the update there too.
+  const db = createSupabaseDb();
+  await db.patch("gabinetPatients", String(patientId), {
+    phone,
+    updatedAt: now,
   });
 }
 
@@ -64,11 +73,17 @@ async function setPatientEmail(
   patientId: any,
   email: string,
 ) {
+  const now = Date.now();
   await t.run(async (ctx) => {
     await ctx.db.patch(patientId, {
       email,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+  });
+  const db = createSupabaseDb();
+  await db.patch("gabinetPatients", String(patientId), {
+    email,
+    updatedAt: now,
   });
 }
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Tag01, XClose } from "@untitledui/icons";
-import { Button } from "@untitled/base/buttons/button";
+import { styles as buttonStyles } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
 import { CheckboxBase } from "@untitled/base/checkbox/checkbox";
 import { Badge } from "@untitled/base/badges/badges";
@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cx } from "@/lib/utils/cx";
 import { Id } from "@cvx/_generated/dataModel";
 
 interface TagDef {
@@ -93,9 +94,19 @@ export function TagsPicker({ tags, selectedIds, onChange, placeholder }: TagsPic
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button size="sm" color="secondary" iconLeading={Tag01}>
-            {placeholder ?? t("tags.assign", { defaultValue: "Tagi" })}
-          </Button>
+          <button
+            type="button"
+            className={cx(
+              buttonStyles.common.root,
+              buttonStyles.sizes.sm.root,
+              buttonStyles.colors.secondary.root,
+            )}
+          >
+            <Tag01 data-icon="leading" className={buttonStyles.common.icon} />
+            <span data-text className="transition-inherit-all px-0.5">
+              {placeholder ?? t("tags.assign", { defaultValue: "Tagi" })}
+            </span>
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-0" align="start">
           <div className="p-2">

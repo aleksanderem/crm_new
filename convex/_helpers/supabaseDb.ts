@@ -138,12 +138,24 @@ function resolveTable(convexTable: string): string {
 // preserves explicit-generic call sites (e.g. `db.get<{ orgId: string }>`)
 // and Supabase-only tables that don't appear in `TableNames`.
 //
-// `insert` / `patch` are intentionally left loose. The typed-overload
-// shape we'd want — `row: Partial<SupabaseRow<TableName>>` — uses
-// `Doc<TableName>` distributively over the full Convex schema union and
+// `insert` / `patch` stay loose; typed variants live on `insertRow` /
+// `patchRow`. We can't replicate the `get`/`getMany`/`query` overload
+// pattern here because the row payload sits in parameter position:
+// adding a `row: Partial<SupabaseRow<TableName>>` overload alongside
+// the `row: Record<string, unknown>` fallback forces TS to disambiguate
+// the two for every call, instantiating `Partial<Doc<T>>` across the
+// full 80+ table union. That blows the instantiation budget and
 // triggers TS2589 ("type instantiation is excessively deep") in every
-// caller of the `SupabaseDb` interface, not just at the insert/patch
-// call site. `delete` takes no row payload so it stays loose as well.
+// caller of the `SupabaseDb` interface — not just at the insert/patch
+// call site (verified with both naive overload and non-distributive
+// `[T] extends [TableNames]` wrappers; see #606).
+//
+// Splitting into distinct method names (`insert` vs `insertRow`) sidesteps
+// overload resolution entirely, so callers that want field-level checking
+// can opt in via `db.insertRow(...)` / `db.patchRow(...)` without
+// destabilizing the rest of the program. The runtime is identical:
+// `insertRow` and `patchRow` are just typed aliases of `insert` / `patch`.
+// `delete` takes no row payload so it stays loose as well.
 export interface SupabaseDb {
   get<TableName extends TableNames>(
     table: TableName,
@@ -162,10 +174,21 @@ export interface SupabaseDb {
 
   insert(table: string, row: Record<string, unknown>): Promise<string>;
 
+  insertRow<TableName extends TableNames>(
+    table: TableName,
+    row: Partial<SupabaseRow<TableName>>,
+  ): Promise<string>;
+
   patch(
     table: string,
     id: string,
     updates: Record<string, unknown>,
+  ): Promise<void>;
+
+  patchRow<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+    updates: Partial<SupabaseRow<TableName>>,
   ): Promise<void>;
 
   delete(table: string, id: string): Promise<void>;
@@ -270,7 +293,9 @@ export function createSupabaseDb(): SupabaseDb {
     get,
     getMany,
     insert,
+    insertRow: insert,
     patch,
+    patchRow: patch,
     delete: del,
     query,
     raw,

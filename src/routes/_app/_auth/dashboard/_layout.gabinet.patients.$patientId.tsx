@@ -38,6 +38,7 @@ import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
+import { displayReferralSource } from "@/lib/options";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -118,7 +119,7 @@ function PatientDetail() {
       const addr = [patientAddr.street, patientAddr.postalCode, patientAddr.city].filter(Boolean).join(", ");
       if (addr) fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
     }
-    if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: patient.referralSource, fieldKey: "referral" });
+    if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: displayReferralSource(patient.referralSource, t), fieldKey: "referral" });
     return fields;
   })();
 
@@ -274,7 +275,7 @@ function PatientDetail() {
                       {t("gabinet.patients.referralSource")}
                     </p>
                     <p className="font-medium">
-                      {patient?.referralSource || "—"}
+                      {patient?.referralSource ? displayReferralSource(patient.referralSource, t) : "—"}
                     </p>
                   </div>
                 </div>

@@ -1071,7 +1071,7 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+    const lead = await createSupabaseDb().get<{ notes?: string }>("leads", String(leadId));
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -1340,7 +1340,7 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+    const lead = await createSupabaseDb().get<{ notes?: string }>("leads", String(leadId));
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);

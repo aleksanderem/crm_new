@@ -537,13 +537,14 @@ async function applyUpdateFieldAction(
     throw new Error(permission.reason ?? "Permission denied");
   }
 
-  const entityId = targetId as Id<
-    "gabinetPatients" | "gabinetAppointments" | "gabinetEmployees" | "leads"
-  >;
-  const entity = (await ctx.db.get(entityId as never)) as
-    | ({ organizationId: Id<"organizations">; customFields?: unknown } & Record<string, unknown>)
+  // Read entity from Supabase — leads/patients/appointments/employees are all
+  // Supabase-primary, so ctx.db.get against Convex returns null in prod for
+  // entities written by the new action handlers.
+  const db = createSupabaseDb();
+  const entity = (await db.get(descriptor.table, targetId)) as
+    | ({ organizationId?: string; customFields?: unknown } & Record<string, unknown>)
     | null;
-  if (!entity || entity.organizationId !== args.organizationId) {
+  if (!entity || String(entity.organizationId) !== String(args.organizationId)) {
     throw new Error(descriptor.notFoundMessage);
   }
   if (permission.scope === "own" && !descriptor.canEditOwn(entity, args.actorUserId)) {
@@ -554,6 +555,7 @@ async function applyUpdateFieldAction(
   const coercedValue = coerceAutomationFieldValue(renderedValue, args.action.valueType);
   const now = Date.now();
 
+  let updates: Record<string, unknown>;
   if (args.action.fieldKind === "custom") {
     if (!descriptor.supportsCustom) {
       throw new Error(descriptor.unsupportedCustomFieldMessage);
@@ -563,21 +565,36 @@ async function applyUpdateFieldAction(
       entity.customFields && typeof entity.customFields === "object"
         ? (entity.customFields as Record<string, unknown>)
         : {};
-    await ctx.db.patch(entityId as never, {
+    updates = {
       customFields: {
         ...existingCustomFields,
         [args.action.fieldKey]: coercedValue,
       },
       updatedAt: now,
-    } as never);
+    };
   } else {
     if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.action.fieldKey)) {
       throw new Error(descriptor.unsupportedStandardFieldMessage);
     }
-    await ctx.db.patch(entityId as never, {
+    updates = {
       [args.action.fieldKey]: coercedValue,
       updatedAt: now,
-    } as never);
+    };
+  }
+
+  // Write to Supabase (primary).
+  await db.patch(descriptor.table, targetId, updates);
+
+  // Mirror to Convex if a doc with this id still exists there (gabinet
+  // entities seeded by tests, or legacy data not yet migrated). For
+  // Supabase-only ids (e.g. UUIDs returned by leads.create), normalizeId
+  // returns null and we silently skip the Convex write.
+  const convexId = ctx.db.normalizeId(descriptor.table, targetId);
+  if (convexId) {
+    const convexDoc = await ctx.db.get(convexId);
+    if (convexDoc) {
+      await ctx.db.patch(convexId, updates as never);
+    }
   }
 
   if (args.actorUserId) {
@@ -591,7 +608,7 @@ async function applyUpdateFieldAction(
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: descriptor.linkedEntityType,
-      entityId,
+      entityId: targetId,
       action: "updated",
       description: `Updated ${activityLabelByEntity[descriptor.linkedEntityType]} field ${args.action.fieldKey} via automation`,
       performedBy: args.actorUserId,
@@ -600,7 +617,7 @@ async function applyUpdateFieldAction(
 
   return {
     linkedEntityType: descriptor.linkedEntityType,
-    linkedEntityId: String(entityId),
+    linkedEntityId: targetId,
     renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
   };
 }

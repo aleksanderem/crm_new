@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { SearchLg } from "@untitledui/icons";
 import { cx } from "@/lib/utils/cx";
 
-interface IllustrationProps extends HTMLAttributes<HTMLDivElement> {
+export interface IllustrationProps extends HTMLAttributes<HTMLDivElement> {
     size?: "sm" | "md" | "lg";
     svgClassName?: string;
     childrenClassName?: string;

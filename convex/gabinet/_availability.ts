@@ -14,7 +14,7 @@ function minutesToTime(m: number): string {
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 
-interface TimeSlot {
+export interface TimeSlot {
   start: string; // "HH:MM"
   end: string;
 }

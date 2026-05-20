@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
@@ -22,8 +23,13 @@ interface CalendarDayViewProps {
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
+  /** Approved leave overlapping this date for the filtered employee. */
+  leave?: { startTime?: string; endTime?: string } | null;
   slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
+
+const LEAVE_STRIPE_BG =
+  "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
 const HOUR_HEIGHT = 60; // 1 minute = 1px
@@ -109,7 +115,8 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, slotMinutes = 60 }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, leave, slotMinutes = 60 }: CalendarDayViewProps) {
+  const { t } = useTranslation();
   const now = useCurrentTime();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -127,6 +134,24 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const workEndTop = workingHours ? timeToTop(workingHours.endTime) : null;
   const breakStartTop = workingHours?.breakStart ? timeToTop(workingHours.breakStart) : null;
   const breakEndTop = workingHours?.breakEnd ? timeToTop(workingHours.breakEnd) : null;
+
+  // Leave block — full day if no times set, otherwise the specified range.
+  const leaveTop = leave ? (leave.startTime ? timeToTop(leave.startTime) : 0) : null;
+  const leaveBottom = leave
+    ? leave.endTime
+      ? timeToTop(leave.endTime)
+      : HOURS.length * 60
+    : null;
+  const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
+  const leaveLabel = leave
+    ? leave.startTime && leave.endTime
+      ? t("gabinet.calendar.leaveBadgePartial", {
+          start: leave.startTime,
+          end: leave.endTime,
+          defaultValue: "Urlop {{start}}–{{end}}",
+        })
+      : t("gabinet.calendar.leaveBadge", { defaultValue: "Urlop" })
+    : "";
 
   const handleClick = useCallback(
     (time: string) => onSlotClick?.(time),
@@ -233,6 +258,26 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
               height: `${breakEndTop - breakStartTop}px`,
             }}
           />
+        )}
+
+        {/* Approved leave overlay */}
+        {leave && leaveTop !== null && leaveHeight > 0 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-[5] border-y border-amber-400/70 dark:border-amber-500/60"
+            style={{
+              top: `${leaveTop}px`,
+              height: `${leaveHeight}px`,
+              backgroundImage: LEAVE_STRIPE_BG,
+            }}
+            title={t("gabinet.calendar.leaveOverlayTitle", {
+              defaultValue: "Pracownik ma zatwierdzony urlop",
+            })}
+            aria-label={leaveLabel}
+          >
+            <span className="absolute left-1 top-1 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              {leaveLabel}
+            </span>
+          </div>
         )}
 
         {/* Slot rows — solid border at hour marks, faded at sub-slot marks */}

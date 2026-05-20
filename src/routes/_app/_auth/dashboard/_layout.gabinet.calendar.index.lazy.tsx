@@ -49,6 +49,7 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -346,6 +347,50 @@ function GabinetCalendarPage() {
     const dow = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday = 0
     return employeeSchedules.get(`${dow}`) ?? null;
   }, [viewMode, currentDate, employeeSchedules]);
+
+  // Approved leaves for the filtered employee — used to overlay leave blocks
+  // on the calendar grid so admins can spot conflicts without opening the
+  // appointment dialog. Skipped when "all" employees is selected because the
+  // grid then shows everyone's appointments and a single overlay would be
+  // ambiguous. Issue #693.
+  const employeeLeaveFilter = employeeFilter !== "all" ? employeeFilter : undefined;
+  const { data: employeeLeavesRaw } = useSupabaseGabinetLeavesList(
+    organizationId,
+    {
+      userId: employeeLeaveFilter,
+      status: "approved",
+      enabled: !!employeeLeaveFilter,
+    },
+  );
+
+  // Build date -> leave info map for the visible range. A multi-day leave is
+  // expanded so each covered date carries the same per-day time window.
+  const leavesByDate = useMemo(() => {
+    const map = new Map<string, { startTime?: string; endTime?: string }>();
+    if (!employeeLeaveFilter || !employeeLeavesRaw) return map;
+    for (const leave of employeeLeavesRaw) {
+      if (leave.endDate < startDate || leave.startDate > endDate) continue;
+      const from = leave.startDate < startDate ? startDate : leave.startDate;
+      const to = leave.endDate > endDate ? endDate : leave.endDate;
+      const d = new Date(from + "T00:00:00");
+      const e = new Date(to + "T00:00:00");
+      while (d.getTime() <= e.getTime()) {
+        const ds = formatDateStr(d);
+        // First write wins so an existing partial-day leave isn't overwritten by
+        // a later full-day one.
+        if (!map.has(ds)) {
+          map.set(ds, { startTime: leave.startTime, endTime: leave.endTime });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [employeeLeaveFilter, employeeLeavesRaw, startDate, endDate]);
+
+  const leaveDates = useMemo(
+    () => new Set(leavesByDate.keys()),
+    [leavesByDate],
+  );
 
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
@@ -945,6 +990,7 @@ function GabinetCalendarPage() {
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
               workingHours={dayWorkingHours}
+              leave={leavesByDate.get(formatDateStr(currentDate)) ?? null}
               slotMinutes={slotMinutes}
             />
           )}
@@ -958,6 +1004,7 @@ function GabinetCalendarPage() {
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               employeeSchedules={employeeSchedules}
+              leavesByDate={leavesByDate}
               slotMinutes={slotMinutes}
             />
           )}
@@ -968,6 +1015,7 @@ function GabinetCalendarPage() {
               appointments={viewAppointments}
               onDayClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
+              leaveDates={leaveDates}
             />
           )}
         </div>

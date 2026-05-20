@@ -2046,7 +2046,10 @@
         "inactive": "Nieaktywne"
       },
       "aftercare": "Zalecenia pozabiegowe",
-      "treatment": "Zabieg"
+      "treatment": "Zabieg",
+      "nudgeFilter": {
+        "noPrice": "Pokazywane są aktywne zabiegi bez ceny lub z ceną 0."
+      }
     },
     "treatmentDetail": {
       "info": "Informacje o zabiegu",

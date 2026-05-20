@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -15,7 +15,7 @@ import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Power } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
@@ -36,10 +36,21 @@ import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-or
 import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
 import StatisticsSalesGrowthCard from "@/components/shadcn-studio/blocks/statistics-sales-growth-card";
 
+type TreatmentsNudgeFilter = "no-price";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/",
 )({
   component: TreatmentsIndex,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: TreatmentsNudgeFilter } => {
+    const nudge =
+      search.nudge === "no-price"
+        ? (search.nudge as TreatmentsNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Treatment = MappedGabinetTreatment;
@@ -55,6 +66,7 @@ function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createTreatment = useAction(api.gabinet.treatments.create);
   const updateTreatment = useAction(api.gabinet.treatments.update);
   const removeTreatment = useAction(api.gabinet.treatments.remove);
@@ -181,6 +193,9 @@ function TreatmentsIndex() {
       default:
         data = allTreatments;
     }
+    if (nudgeFilter === "no-price") {
+      data = data.filter((t) => t.isActive !== false && (!t.price || t.price === 0));
+    }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
     if (searchValue.trim()) {
@@ -192,7 +207,7 @@ function TreatmentsIndex() {
       );
     }
     return data;
-  }, [allTreatments, activeViewId, applyFilters, activeFilters, searchValue]);
+  }, [allTreatments, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter]);
 
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -390,6 +405,31 @@ function TreatmentsIndex() {
           </Button>
         }
       />
+
+      {nudgeFilter === "no-price" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("gabinet.treatments.nudgeFilter.noPrice", {
+              defaultValue:
+                "Pokazywane są aktywne zabiegi bez ceny lub z ceną 0.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/gabinet/treatments",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

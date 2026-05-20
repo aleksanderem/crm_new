@@ -668,6 +668,9 @@
     "taxRate": "Stawka podatku (%)",
     "activate": "Aktywuj",
     "deactivate": "Dezaktywuj",
+    "nudgeFilter": {
+      "unused": "Pokazywane są produkty nieużywane w żadnej transakcji."
+    },
     "views": {
       "all": "Wszystkie produkty",
       "active": "Aktywne produkty"

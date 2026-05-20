@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@cvx/_generated/api";
-import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
+import {
+  useSupabaseProductsList,
+  useSupabaseUsedProductIds,
+} from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -14,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Power, Upload, Download } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
@@ -29,10 +32,21 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 
+type ProductsNudgeFilter = "unused";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
 )({
   component: ProductsPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: ProductsNudgeFilter } => {
+    const nudge =
+      search.nudge === "unused"
+        ? (search.nudge as ProductsNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Product = MappedProduct;
@@ -56,6 +70,8 @@ function formatCurrency(amount: number): string {
 function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
     { id: "active", name: t('products.views.active'), isSystem: true, isDefault: false },
@@ -113,11 +129,17 @@ function ProductsPage() {
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
+  const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
+    enabled: nudgeFilter === "unused",
+  });
 
   const products = useMemo(() => {
     let data = allProducts;
     if (activeViewId === "active") {
       data = allProducts.filter((p) => p.isActive);
+    }
+    if (nudgeFilter === "unused" && usedProductIds) {
+      data = data.filter((p) => !usedProductIds.has(p._id));
     }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
@@ -129,7 +151,7 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds]);
 
   const createProduct = useAction(api.products.create);
   const updateProduct = useAction(api.products.update);
@@ -270,6 +292,31 @@ function ProductsPage() {
           </Button>
         }
       />
+
+      {nudgeFilter === "unused" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("products.nudgeFilter.unused", {
+              defaultValue:
+                "Pokazywane są produkty nieużywane w żadnej transakcji.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/products",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

@@ -52,3 +52,40 @@ export function useSupabaseProductsList(
     enabled: enabled && isReady && !!organizationId,
   } satisfies UseQueryOptions<MappedProduct[], Error>);
 }
+
+// ---------------------------------------------------------------------------
+// Used Product IDs (for nudge=unused filter)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the set of product IDs that appear in at least one deal_products row
+ * for the given organization. The products index page uses the inverse set to
+ * apply the `nudge=unused` filter (products NOT in this set are "unused").
+ *
+ * Mirrors the backend logic in convex/nudges.ts (getProductsNudges).
+ */
+export function useSupabaseUsedProductIds(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: ["supabase", "dealProducts", "usedProductIds", organizationId],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("deal_products")
+        .select("product_id")
+        .eq("organization_id", organizationId);
+
+      if (error) throw error;
+      return new Set(
+        ((data ?? []) as { product_id: string }[]).map((dp) => dp.product_id),
+      );
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}

@@ -27,6 +27,20 @@ export const CALL_OUTCOMES = ["busy", "leftVoiceMessage", "movedConversationForw
 
 export const LOYALTY_TIERS = ["bronze", "silver", "gold", "platinum"] as const;
 
+export const PATIENT_REFERRAL_SOURCES = [
+  "facebook",
+  "patientReferral",
+  "passerby",
+  "pressAd",
+  "internetAd",
+  "billboard",
+  "flyerBanner",
+  "groupBuying",
+  "other",
+] as const;
+
+export type PatientReferralSource = (typeof PATIENT_REFERRAL_SOURCES)[number];
+
 // --- Typed option builders ---
 
 type SelectOption = { label: string; value: string };
@@ -70,3 +84,14 @@ export const gabinetDocStatusOptions = (t: TFn): SelectOption[] =>
 
 export const callOutcomeOptions = (t: TFn): SelectOption[] =>
   buildOptions(CALL_OUTCOMES, t, "calls.outcomes");
+
+export const patientReferralSourceOptions = (t: TFn): SelectOption[] =>
+  buildOptions(PATIENT_REFERRAL_SOURCES, t, "gabinet.patients.referralSourceOptions");
+
+export function displayReferralSource(value: string | null | undefined, t: TFn): string {
+  if (!value) return "";
+  if ((PATIENT_REFERRAL_SOURCES as readonly string[]).includes(value)) {
+    return t(`gabinet.patients.referralSourceOptions.${value}`);
+  }
+  return value;
+}

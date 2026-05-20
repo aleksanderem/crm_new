@@ -31,6 +31,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
+import { displayReferralSource } from "@/lib/options";
 
 type PatientNudgeFilter = "missing-contact" | "no-recent-visit";
 
@@ -227,14 +228,14 @@ function PatientsIndex() {
   const patientsBySource = useMemo<MiniChartData[]>(() => {
     const srcMap = new Map<string, number>();
     for (const p of patients) {
-      const src = p.referralSource ?? "Unknown";
+      const src = p.referralSource ? displayReferralSource(p.referralSource, t) : t("common.unknown");
       srcMap.set(src, (srcMap.get(src) ?? 0) + 1);
     }
     return Array.from(srcMap.entries()).map(([label, value]) => ({
       label,
       value,
     }));
-  }, [patients]);
+  }, [patients, t]);
 
   const columns = useMemo(
     (): CrmColumn<Patient>[] => [
@@ -297,7 +298,7 @@ function PatientsIndex() {
       {
         id: "referralSource",
         label: t("gabinet.patients.referralSource"),
-        render: (item) => item.referralSource ?? "—",
+        render: (item) => (item.referralSource ? displayReferralSource(item.referralSource, t) : "—"),
       },
       {
         id: "allergies",

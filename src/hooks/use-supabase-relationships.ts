@@ -167,3 +167,46 @@ export function useSupabaseRelationshipsByEntity(
     enabled: enabled && isReady && !!organizationId && !!entityId,
   } satisfies UseQueryOptions<MappedRelationship[], Error>);
 }
+
+// ---------------------------------------------------------------------------
+// Contact IDs Linked to a Company (for nudge filtering)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the set of contact IDs that have at least one
+ * `contact -> company` relationship row in the org. Used by the contacts page
+ * to apply the `nudge=unlinked-company` filter (the inverse — contacts NOT in
+ * this set are unlinked).
+ *
+ * Mirrors the backend logic in convex/nudges.ts.
+ */
+export function useSupabaseContactIdsLinkedToCompany(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: [
+      ...supabaseKeys.objectRelationships.list(organizationId),
+      "contactIdsLinkedToCompany",
+    ],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("object_relationships")
+        .select("source_id")
+        .eq("organization_id", organizationId)
+        .eq("source_type", "contact")
+        .eq("target_type", "company");
+
+      if (error) throw error;
+      return new Set(
+        ((data ?? []) as { source_id: string }[]).map((r) => r.source_id),
+      );
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}

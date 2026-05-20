@@ -430,6 +430,9 @@
     "byDay": "Kontakty wg dnia",
     "bySource": "Kontakty wg źródła",
     "confirmDelete": "Czy na pewno chcesz usunąć ten kontakt?",
+    "nudgeFilter": {
+      "unlinkedCompany": "Pokazywane są kontakty bez przypisanej firmy."
+    },
     "views": {
       "all": "Wszystkie kontakty",
       "my": "Moje kontakty",

@@ -8,9 +8,22 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Package, Plus, Loader2 } from "@/lib/ez-icons";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
+
+type PaymentMethod = "cash" | "card" | "transfer" | "other";
 
 interface PatientPackagesCardProps {
   patientId: string;
@@ -171,11 +184,8 @@ function PackageInstallments({
   currency,
 }: PackageInstallmentsProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [markingId, setMarkingId] = useState<string | null>(null);
 
   const listByPackageUsage = useAction(api.payments.listByPackageUsage);
-  const markPaid = useAction(api.payments.markPaid);
 
   const queryKey = ["payments.listByPackageUsage", organizationId, packageUsageId];
   const { data: payments } = useQuery({
@@ -197,23 +207,6 @@ function PackageInstallments({
   const paidCount = installments.filter((p) => p.status === "completed").length;
   const totalCount = installments.length;
 
-  const handleMarkPaid = async (paymentId: string) => {
-    setMarkingId(paymentId);
-    try {
-      await markPaid({
-        organizationId,
-        paymentId,
-      });
-      toast.success(t("gabinet.payments.markedPaid"));
-      await queryClient.invalidateQueries({ queryKey });
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setMarkingId(null);
-    }
-  };
-
   return (
     <div className="border-t pt-2 mt-2 space-y-1.5">
       <div className="flex items-center justify-between text-xs">
@@ -227,7 +220,6 @@ function PackageInstallments({
       <div className="space-y-1">
         {installments.map((payment, idx) => {
           const isPending = payment.status === "pending";
-          const isMarking = markingId === payment._id;
           return (
             <div
               key={payment._id}
@@ -243,19 +235,13 @@ function PackageInstallments({
                   {payment.amount.toFixed(2)} {payment.currency ?? currency}
                 </span>
                 {isPending ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-xs"
-                    disabled={isMarking}
-                    onClick={() => handleMarkPaid(payment._id)}
-                  >
-                    {isMarking ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      t("gabinet.payments.markPaid")
-                    )}
-                  </Button>
+                  <InstallmentPayButton
+                    organizationId={organizationId}
+                    paymentId={payment._id}
+                    amount={payment.amount}
+                    currency={payment.currency ?? currency}
+                    queryKey={queryKey}
+                  />
                 ) : (
                   <Badge
                     variant={
@@ -276,5 +262,267 @@ function PackageInstallments({
         })}
       </div>
     </div>
+  );
+}
+
+interface InstallmentPayButtonProps {
+  organizationId: Id<"organizations">;
+  paymentId: string;
+  amount: number;
+  currency: string;
+  queryKey: ReadonlyArray<unknown>;
+}
+
+function InstallmentPayButton({
+  organizationId,
+  paymentId,
+  amount,
+  currency,
+  queryKey,
+}: InstallmentPayButtonProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const markPaid = useAction(api.payments.markPaid);
+  const splitMarkPaid = useAction(api.payments.splitMarkPaid);
+
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [firstMethod, setFirstMethod] = useState<PaymentMethod>("cash");
+  const [secondMethod, setSecondMethod] = useState<PaymentMethod>("card");
+  const [firstAmount, setFirstAmount] = useState<string>("");
+  const [secondAmount, setSecondAmount] = useState<string>("");
+
+  const resetForm = () => {
+    setMethod("cash");
+    setSplitPayment(false);
+    setFirstMethod("cash");
+    setSecondMethod("card");
+    setFirstAmount("");
+    setSecondAmount("");
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) resetForm();
+    setOpen(next);
+  };
+
+  const parsedFirst = Number.parseFloat(firstAmount) || 0;
+  const parsedSecond = Number.parseFloat(secondAmount) || 0;
+  const splitTotal = Math.round((parsedFirst + parsedSecond) * 100) / 100;
+  const expectedTotal = Math.round(amount * 100) / 100;
+  const splitMismatch = splitPayment && splitTotal !== expectedTotal;
+  const splitMissingAmount = splitPayment && parsedFirst <= 0 && parsedSecond <= 0;
+  const splitSameMethod = splitPayment && firstMethod === secondMethod;
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      if (splitPayment) {
+        if (splitMissingAmount) {
+          toast.error(
+            t(
+              "gabinet.packages.splitMissingAmount",
+              "Enter at least one payment amount",
+            ),
+          );
+          return;
+        }
+        if (splitMismatch) {
+          toast.error(
+            t(
+              "gabinet.packages.splitMismatchError",
+              "Split payment amounts must add up to the total price",
+            ),
+          );
+          return;
+        }
+        if (splitSameMethod) {
+          toast.error(
+            t(
+              "gabinet.packages.splitSameMethodError",
+              "Pick two different payment methods",
+            ),
+          );
+          return;
+        }
+        await splitMarkPaid({
+          organizationId,
+          paymentId,
+          firstMethod,
+          firstAmount: parsedFirst,
+          secondMethod,
+          secondAmount: parsedSecond,
+        });
+      } else {
+        await markPaid({
+          organizationId,
+          paymentId,
+          paymentMethod: method,
+        });
+      }
+      toast.success(t("gabinet.payments.markedPaid"));
+      await queryClient.invalidateQueries({ queryKey });
+      setOpen(false);
+      resetForm();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="h-6 px-2 text-xs">
+          {t("gabinet.payments.markPaid")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">
+            {t("gabinet.packages.paymentMethod", "Payment Method")}
+          </Label>
+          <Select
+            value={method}
+            onValueChange={(v) => setMethod(v as PaymentMethod)}
+            disabled={splitPayment}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
+              <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
+              <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
+              <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`split-installment-${paymentId}`}
+            checked={splitPayment}
+            onCheckedChange={(v) => setSplitPayment(v === true)}
+          />
+          <Label
+            htmlFor={`split-installment-${paymentId}`}
+            className="cursor-pointer text-xs font-normal"
+          >
+            {t("gabinet.packages.splitPayment", "Split payment")}
+          </Label>
+        </div>
+
+        {splitPayment && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.firstMethod", "First method")}
+                </Label>
+                <Select
+                  value={firstMethod}
+                  onValueChange={(v) => setFirstMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
+                    <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
+                    <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
+                    <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={firstAmount}
+                  onChange={(e) => setFirstAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.secondMethod", "Second method")}
+                </Label>
+                <Select
+                  value={secondMethod}
+                  onValueChange={(v) => setSecondMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
+                    <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
+                    <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
+                    <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={secondAmount}
+                  onChange={(e) => setSecondAmount(e.target.value)}
+                />
+              </div>
+            </div>
+            <div
+              className={`flex items-center justify-between text-xs ${
+                splitMismatch || splitSameMethod
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <span>
+                {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
+                {expectedTotal.toFixed(2)} {currency}
+              </span>
+              {splitSameMethod ? (
+                <span>
+                  {t("gabinet.packages.splitSameMethod", "Methods must differ")}
+                </span>
+              ) : splitMismatch ? (
+                <span>
+                  {t("gabinet.packages.splitMismatch", "Must equal total")}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenChange(false)}
+            disabled={submitting}
+          >
+            {t("common.cancel", "Cancel")}
+          </Button>
+          <Button
+            size="sm"
+            disabled={
+              submitting ||
+              (splitPayment && (splitMissingAmount || splitMismatch || splitSameMethod))
+            }
+            onClick={handleConfirm}
+          >
+            {submitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+            {t("common.confirm", "Confirm")}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

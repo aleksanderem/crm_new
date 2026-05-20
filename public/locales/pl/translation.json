@@ -2601,6 +2601,9 @@
       "allStatuses": "Wszystkie statusy",
       "clearFilters": "Wyczyść filtry",
       "print": "Drukuj",
+      "nudgeFilter": {
+        "unconfirmedToday": "Pokazywane są dzisiejsze wizyty jeszcze niepotwierdzone (status: zaplanowana)."
+      },
       "view": {
         "day": "Dzień",
         "week": "Tydzień",

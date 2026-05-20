@@ -217,11 +217,11 @@ export const getDocumentsNudges = action({
     const db = createSupabaseDb();
 
     const docs = (await db
-      .query("documents")
+      .query("formDocuments")
       .eq("organizationId", String(args.organizationId))
       .collect()) as any[];
 
-    const pending = docs.filter((d) => d.status === "sent");
+    const pending = docs.filter((d) => d.status === "pending_signature");
     if (pending.length > 0) {
       return [
         {
@@ -431,7 +431,7 @@ export const getAll = action({
       db.query("contacts").eq("organizationId", orgId).collect(),
       db.query("objectRelationships").eq("organizationId", orgId).collect(),
       db.query("emails").eq("organizationId", orgId).collect(),
-      db.query("documents").eq("organizationId", orgId).collect(),
+      db.query("formDocuments").eq("organizationId", orgId).collect(),
       db.query("companies").eq("organizationId", orgId).collect(),
       db.query("calls").eq("organizationId", orgId).collect(),
       db.query("products").eq("organizationId", orgId).collect(),
@@ -517,7 +517,9 @@ export const getAll = action({
     }
 
     // Documents pending
-    const pendingDocs = (documentsList as any[]).filter((d) => d.status === "sent");
+    const pendingDocs = (documentsList as any[]).filter(
+      (d) => d.status === "pending_signature",
+    );
     if (pendingDocs.length > 0) {
       nudges.push({
         message: "sidebar.nudges.documents.pendingApproval",

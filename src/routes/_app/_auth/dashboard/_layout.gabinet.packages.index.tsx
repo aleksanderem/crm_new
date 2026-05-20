@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -500,7 +500,12 @@ function PackagesIndex() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-medium">{pkg.name}</h3>
-                    {pkg.description && <p className="text-sm text-muted-foreground">{pkg.description}</p>}
+                    {pkg.description && (() => {
+                      const descText = plateJsonToText(pkg.description);
+                      return descText ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{descText}</p>
+                      ) : null;
+                    })()}
                   </div>
                   <Badge variant={pkg.isActive ? "default" : "secondary"}>
                     {pkg.isActive ? t("gabinet.packages.active") : t("gabinet.packages.inactive")}

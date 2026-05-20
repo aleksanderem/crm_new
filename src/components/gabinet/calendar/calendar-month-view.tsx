@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Appointment {
   _id: string;
@@ -15,6 +16,8 @@ interface CalendarMonthViewProps {
   appointments: Appointment[];
   onDayClick?: (date: string) => void;
   selectedDate?: string;
+  /** Dates covered by approved leave for the filtered employee. */
+  leaveDates?: Set<string>;
 }
 
 function getMonthGrid(year: number, month: number): (string | null)[][] {
@@ -45,7 +48,8 @@ function getMonthGrid(year: number, month: number): (string | null)[][] {
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate }: CalendarMonthViewProps) {
+export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates }: CalendarMonthViewProps) {
+  const { t } = useTranslation();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -80,16 +84,32 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
 
           const count = countByDate.get(date) ?? 0;
           const isToday = date === today;
+          const isLeave = leaveDates?.has(date) ?? false;
 
           return (
             <div
               key={date}
-              className={`border-b border-r p-1 cursor-pointer hover:bg-muted/30 transition-colors ${date === selectedDate ? "bg-primary/15 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/5" : ""}`}
+              className={`relative border-b border-r p-1 cursor-pointer hover:bg-muted/30 transition-colors ${date === selectedDate ? "bg-primary/15 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/5" : ""}`}
+              style={
+                isLeave
+                  ? {
+                      backgroundImage:
+                        "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0px, rgba(245, 158, 11, 0.15) 6px, rgba(245, 158, 11, 0.04) 6px, rgba(245, 158, 11, 0.04) 12px)",
+                    }
+                  : undefined
+              }
               onClick={() => onDayClick?.(date)}
             >
               <div className={`text-xs ${isToday ? "font-bold text-primary" : "text-muted-foreground"}`}>
                 {parseInt(date.split("-")[2])}
               </div>
+              {isLeave && (
+                <div className="mt-0.5">
+                  <span className="inline-flex items-center rounded-full bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                    {t("gabinet.calendar.leaveBadge", { defaultValue: "Urlop" })}
+                  </span>
+                </div>
+              )}
               {count > 0 && (
                 <div className="mt-0.5">
                   <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">

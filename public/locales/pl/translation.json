@@ -2629,7 +2629,10 @@
         "day": "Dzień",
         "week": "Tydzień",
         "month": "Miesiąc"
-      }
+      },
+      "leaveBadge": "Urlop",
+      "leaveBadgePartial": "Urlop {{start}}–{{end}}",
+      "leaveOverlayTitle": "Pracownik ma zatwierdzony urlop"
     },
     "packages": {
       "title": "Pakiety zabiegów",

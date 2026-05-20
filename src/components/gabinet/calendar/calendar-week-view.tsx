@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
@@ -26,8 +27,13 @@ interface CalendarWeekViewProps {
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
   employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
+  /** Approved leaves by date string (YYYY-MM-DD) for the filtered employee. */
+  leavesByDate?: Map<string, { startTime?: string; endTime?: string }>;
   slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
+
+const LEAVE_STRIPE_BG =
+  "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 const HOUR_HEIGHT = 60; // 1 minute = 1px
@@ -136,6 +142,7 @@ interface WeekDayColumnProps {
   isSelected: boolean;
   layouts: LayoutedAppointment[];
   schedule?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string };
+  leave?: { startTime?: string; endTime?: string } | null;
   currentTimeTop: number | null;
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
@@ -152,6 +159,7 @@ function WeekDayColumn({
   isSelected,
   layouts,
   schedule,
+  leave,
   currentTimeTop,
   onSlotClick,
   onSlotDragSelect,
@@ -160,7 +168,25 @@ function WeekDayColumn({
   slotMinutes,
   slots,
 }: WeekDayColumnProps) {
+  const { t } = useTranslation();
   const showSubdivisions = slotMinutes === 60;
+
+  const leaveTop = leave ? (leave.startTime ? timeToTop(leave.startTime) : 0) : null;
+  const leaveBottom = leave
+    ? leave.endTime
+      ? timeToTop(leave.endTime)
+      : HOURS.length * 60
+    : null;
+  const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
+  const leaveLabel = leave
+    ? leave.startTime && leave.endTime
+      ? t("gabinet.calendar.leaveBadgePartial", {
+          start: leave.startTime,
+          end: leave.endTime,
+          defaultValue: "Urlop {{start}}–{{end}}",
+        })
+      : t("gabinet.calendar.leaveBadge", { defaultValue: "Urlop" })
+    : "";
   const handleClick = useCallback(
     (time: string) => onSlotClick?.(date, time),
     [onSlotClick, date],
@@ -252,6 +278,26 @@ function WeekDayColumn({
           </>
         )}
 
+        {/* Approved leave overlay */}
+        {leave && leaveTop !== null && leaveHeight > 0 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-[5] border-y border-amber-400/70 dark:border-amber-500/60"
+            style={{
+              top: `${leaveTop}px`,
+              height: `${leaveHeight}px`,
+              backgroundImage: LEAVE_STRIPE_BG,
+            }}
+            title={t("gabinet.calendar.leaveOverlayTitle", {
+              defaultValue: "Pracownik ma zatwierdzony urlop",
+            })}
+            aria-label={leaveLabel}
+          >
+            <span className="absolute left-0.5 top-0.5 rounded bg-amber-500/90 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-wide text-white shadow-sm">
+              {leaveLabel}
+            </span>
+          </div>
+        )}
+
         {slots.map((s) => (
           <DroppableSlot
             key={s.time}
@@ -330,7 +376,7 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, slotMinutes = 60 }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, leavesByDate, slotMinutes = 60 }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -399,6 +445,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             isSelected={isSelected}
             layouts={layouts}
             schedule={schedule}
+            leave={leavesByDate?.get(date) ?? null}
             currentTimeTop={isToday ? currentTimeTop : null}
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}

@@ -788,6 +788,29 @@ export const getRunSteps = query({
   },
 });
 
+export const _writeRuleToConvex = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    module: automationModuleValidator,
+    eventType: v.string(),
+    entityType: v.optional(v.string()),
+    trigger: v.optional(automationTriggerDefinitionValidator),
+    graph: v.optional(automationGraphValidator),
+    definitionVersion: v.optional(v.number()),
+    conditions: v.array(automationConditionValidator),
+    actions: v.array(automationRuleActionValidator),
+    enabled: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("automationRules", args);
+  },
+});
+
 export const createRule = action({
   args: {
     organizationId: v.id("organizations"),
@@ -803,16 +826,42 @@ export const createRule = action({
     actions: v.array(automationRuleActionValidator),
     enabled: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"automationRules">> => {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
 
-    const db = createSupabaseDb();
     const now = Date.now();
 
-    const ruleId = await db.insert("automationRules", {
+    // Convex is primary so the in-process rule engine (processRun,
+    // getEnabledRulesForEvent) can find the rule via ctx.db. Supabase mirrors
+    // for frontend reads (useSupabaseAutomationRulesList) and cross-service
+    // analytics. Both rows share the Convex ID.
+    const ruleId: Id<"automationRules"> = await ctx.runMutation(
+      internal.automation._writeRuleToConvex,
+      {
+        organizationId: args.organizationId,
+        name: args.name,
+        description: args.description,
+        module: args.module,
+        eventType: args.eventType,
+        entityType: args.entityType,
+        trigger: args.trigger,
+        graph: args.graph,
+        definitionVersion: args.definitionVersion,
+        conditions: args.conditions,
+        actions: args.actions,
+        enabled: args.enabled,
+        createdBy: authResult.userId,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
+    const db = createSupabaseDb();
+    await db.insert("automationRules", {
+      _id: ruleId,
       organizationId: String(args.organizationId),
       name: args.name,
       description: args.description ?? null,
@@ -834,6 +883,43 @@ export const createRule = action({
   },
 });
 
+export const _patchRuleInConvex = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    ruleId: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    module: v.optional(automationModuleValidator),
+    eventType: v.optional(v.string()),
+    entityType: v.optional(v.string()),
+    trigger: v.optional(automationTriggerDefinitionValidator),
+    graph: v.optional(automationGraphValidator),
+    definitionVersion: v.optional(v.number()),
+    conditions: v.optional(v.array(automationConditionValidator)),
+    actions: v.optional(v.array(automationRuleActionValidator)),
+    enabled: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
+    if (!ruleId) {
+      throw new Error("Automation rule not found");
+    }
+    const rule = await ctx.db.get(ruleId);
+    if (!rule || rule.organizationId !== args.organizationId) {
+      throw new Error("Automation rule not found");
+    }
+
+    const { organizationId: _orgId, ruleId: _rid, ...rest } = args;
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rest)) {
+      if (value !== undefined) updates[key] = value;
+    }
+    await ctx.db.patch(ruleId, updates);
+    return ruleId;
+  },
+});
+
 export const updateRule = action({
   args: {
     organizationId: v.id("organizations"),
@@ -850,32 +936,69 @@ export const updateRule = action({
     actions: v.optional(v.array(automationRuleActionValidator)),
     enabled: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
+    const updatedAt = Date.now();
+
+    // Convex is primary — patch there first (and re-validate org ownership)
+    // so the engine sees the latest definition. Then mirror to Supabase.
+    await ctx.runMutation(internal.automation._patchRuleInConvex, {
+      organizationId: args.organizationId,
+      ruleId: args.ruleId,
+      name: args.name,
+      description: args.description,
+      module: args.module,
+      eventType: args.eventType,
+      entityType: args.entityType,
+      trigger: args.trigger,
+      graph: args.graph,
+      definitionVersion: args.definitionVersion,
+      conditions: args.conditions,
+      actions: args.actions,
+      enabled: args.enabled,
+      updatedAt,
+    });
+
     const db = createSupabaseDb();
-    const rule = await db.get("automationRules", args.ruleId);
-    if (!rule || rule.organizationId !== String(args.organizationId)) {
-      throw new Error("Automation rule not found");
+    const supabaseRule = await db.get("automationRules", args.ruleId);
+    if (supabaseRule && supabaseRule.organizationId === String(args.organizationId)) {
+      const updates: Record<string, unknown> = { updatedAt };
+      if (args.name !== undefined) updates.name = args.name;
+      if (args.description !== undefined) updates.description = args.description;
+      if (args.module !== undefined) updates.module = args.module;
+      if (args.eventType !== undefined) updates.eventType = args.eventType;
+      if (args.entityType !== undefined) updates.entityType = args.entityType;
+      if (args.trigger !== undefined) updates.trigger = args.trigger;
+      if (args.graph !== undefined) updates.graph = args.graph;
+      if (args.definitionVersion !== undefined) updates.definitionVersion = args.definitionVersion;
+      if (args.conditions !== undefined) updates.conditions = args.conditions;
+      if (args.actions !== undefined) updates.actions = args.actions;
+      if (args.enabled !== undefined) updates.enabled = args.enabled;
+      await db.patch("automationRules", args.ruleId, updates);
     }
 
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.module !== undefined) updates.module = args.module;
-    if (args.eventType !== undefined) updates.eventType = args.eventType;
-    if (args.entityType !== undefined) updates.entityType = args.entityType;
-    if (args.trigger !== undefined) updates.trigger = args.trigger;
-    if (args.graph !== undefined) updates.graph = args.graph;
-    if (args.definitionVersion !== undefined) updates.definitionVersion = args.definitionVersion;
-    if (args.conditions !== undefined) updates.conditions = args.conditions;
-    if (args.actions !== undefined) updates.actions = args.actions;
-    if (args.enabled !== undefined) updates.enabled = args.enabled;
-
-    await db.patch("automationRules", args.ruleId, updates);
     return args.ruleId;
+  },
+});
+
+export const _deleteRuleFromConvex = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    ruleId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
+    if (!ruleId) {
+      throw new Error("Automation rule not found");
+    }
+    const rule = await ctx.db.get(ruleId);
+    if (!rule || rule.organizationId !== args.organizationId) {
+      throw new Error("Automation rule not found");
+    }
+    await ctx.db.delete(ruleId);
   },
 });
 
@@ -884,18 +1007,23 @@ export const deleteRule = action({
     organizationId: v.id("organizations"),
     ruleId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
+    // Convex is primary — delete there first (and re-validate org ownership).
+    await ctx.runMutation(internal.automation._deleteRuleFromConvex, {
+      organizationId: args.organizationId,
+      ruleId: args.ruleId,
+    });
+
     const db = createSupabaseDb();
-    const rule = await db.get("automationRules", args.ruleId);
-    if (!rule || rule.organizationId !== String(args.organizationId)) {
-      throw new Error("Automation rule not found");
+    const supabaseRule = await db.get("automationRules", args.ruleId);
+    if (supabaseRule && supabaseRule.organizationId === String(args.organizationId)) {
+      await db.delete("automationRules", args.ruleId);
     }
 
-    await db.delete("automationRules", args.ruleId);
     return args.ruleId;
   },
 });

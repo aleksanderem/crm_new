@@ -1,4 +1,4 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWideContent } from "@/hooks/use-wide-content";
 import { useAction } from "convex/react";
@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCcw,
+  X,
 } from "@/lib/ez-icons";
 import { AlertTriangle } from "lucide-react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
@@ -32,12 +33,21 @@ import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { Loader2 } from "lucide-react";
 
+type CalendarNudgeFilter = "yesterday-overdue";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calendar"
 )({
   component: UnifiedCalendarPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): {
+    filter: string;
+    nudge?: CalendarNudgeFilter;
+  } => ({
     filter: (search.filter as string) ?? "all",
+    nudge:
+      search.nudge === "yesterday-overdue"
+        ? (search.nudge as CalendarNudgeFilter)
+        : undefined,
   }),
 });
 
@@ -180,13 +190,24 @@ function UnifiedCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const search = useSearch({ from: Route.id });
+  const routeNavigate = useNavigate();
+  const nudgeFilter = search.nudge;
   const editPerm = usePermission("activities", "edit");
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
 
-  const [view, setView] = useState<ViewMode>("week");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<ViewMode>(
+    nudgeFilter === "yesterday-overdue" ? "day" : "week"
+  );
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (nudgeFilter === "yesterday-overdue") {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday;
+    }
+    return new Date();
+  });
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>(
     (search.filter as ModuleFilter) || "all"
   );
@@ -264,7 +285,20 @@ function UnifiedCalendarPage() {
     endTs,
     { moduleFilter: moduleFilter === "all" ? undefined : moduleFilter },
   );
-  const events: CalendarEvent[] | undefined = rawEvents;
+  const events: CalendarEvent[] | undefined = useMemo(() => {
+    if (!rawEvents) return rawEvents;
+    if (nudgeFilter !== "yesterday-overdue") return rawEvents;
+    const now = Date.now();
+    const yesterdayStart = new Date();
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    yesterdayStart.setHours(0, 0, 0, 0);
+    return rawEvents.filter(
+      (e) =>
+        e.dueDate >= yesterdayStart.getTime() &&
+        e.dueDate < now &&
+        !e.isCompleted,
+    );
+  }, [rawEvents, nudgeFilter]);
 
   const updateActivity = useAction(api.scheduledActivities.update);
   const updateAppointment = useAction(
@@ -374,6 +408,31 @@ function UnifiedCalendarPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
+      {nudgeFilter === "yesterday-overdue" && (
+        <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("calendar.nudgeFilter.yesterdayOverdue", {
+              defaultValue:
+                "Pokazywane są zaległe aktywności z wczoraj (z wczorajszą datą i nieukończone).",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              routeNavigate({
+                to: "/dashboard/calendar",
+                search: { filter: search.filter, nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
         <div className="flex items-center gap-2">

@@ -727,6 +727,11 @@
     "won": "Won",
     "lost": "Lost"
   },
+  "calendar": {
+    "nudgeFilter": {
+      "yesterdayOverdue": "Showing yesterday's overdue activities (due yesterday and not completed)."
+    }
+  },
   "settings": {
     "team": {
       "currentUsage": "Current Usage",

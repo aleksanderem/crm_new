@@ -727,6 +727,11 @@
     "won": "Wygrano",
     "lost": "Przegrano"
   },
+  "calendar": {
+    "nudgeFilter": {
+      "yesterdayOverdue": "Pokazywane są zaległe aktywności z wczoraj (z wczorajszą datą i nieukończone)."
+    }
+  },
   "settings": {
     "team": {
       "currentUsage": "Aktualne użycie",

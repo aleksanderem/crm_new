@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -21,20 +21,31 @@ import type { FilterTab } from "@/components/email/inbox-list";
 import { ThreadView } from "@/components/email/thread-view";
 import { ComposeDialog } from "@/components/email/compose-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, Mail, RefreshCw } from "@/lib/ez-icons";
+import { Pencil, Mail, RefreshCw, X } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { toast } from "sonner";
+
+type InboxNudgeFilter = "unanswered";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/inbox/"
 )({
   component: InboxPage,
+  validateSearch: (search: Record<string, unknown>): { nudge?: InboxNudgeFilter } => {
+    const nudge =
+      search.nudge === "unanswered"
+        ? (search.nudge as InboxNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 function InboxPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
 
   const { data: googleConnection } = useQuery(
     // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
@@ -196,6 +207,7 @@ function InboxPage() {
             onSelectThread={handleSelectThread}
             filter={filter}
             mailProviderId={selectedMailbox !== "all" ? selectedMailbox as Id<"mailProviders"> : undefined}
+            unansweredOnly={nudgeFilter === "unanswered"}
           />
         </div>
       </div>
@@ -210,6 +222,30 @@ function InboxPage() {
 
       {/* Right panel: thread view */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        {nudgeFilter === "unanswered" && (
+          <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <span>
+              {t("inbox.nudgeFilter.unanswered", {
+                defaultValue:
+                  "Pokazywane są wątki z nieodczytaną wiadomością przychodzącą starszą niż 2 dni.",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() =>
+                navigate({
+                  to: "/dashboard/inbox",
+                  search: { nudge: undefined },
+                })
+              }
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
         {/* Filter tabs */}
         <div className="shrink-0 border-b px-4 py-2">
           <Tabs

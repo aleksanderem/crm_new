@@ -7,6 +7,7 @@ import {
   seedSecondUser,
   seedTestUser,
 } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 const activeContexts = new Set<ReturnType<typeof createTestCtx>>();
 
@@ -1056,7 +1057,9 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
+      | (Record<string, unknown> & { notes?: string })
+      | null;
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -1120,14 +1123,16 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
+      | (Record<string, unknown> & { notes?: string })
+      | null;
 
     expect(run?.status).toBe("failed");
     expect(steps).toHaveLength(1);
     expect(steps[0]?.status).toBe("failed");
     expect(steps[0]?.actionType).toBe("update_field");
     expect(steps[0]?.errorMessage).toContain("Custom lead field updates are not supported");
-    expect(lead?.notes).toBeUndefined();
+    expect(lead?.notes ?? null).toBeNull();
   });
 
   test("lead status changed update_field denies member when leads edit scope is none", async () => {
@@ -1325,7 +1330,9 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
+    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
+      | (Record<string, unknown> & { notes?: string })
+      | null;
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);

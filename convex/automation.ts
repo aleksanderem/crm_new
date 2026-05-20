@@ -166,6 +166,10 @@ type AutomationUpdateFieldDescriptor = {
   unsupportedStandardFieldMessage: string;
   unsupportedCustomFieldMessage: string;
   supportsCustom: boolean;
+  // Where the entity actually lives. "convex" uses ctx.db; "supabase" uses
+  // createSupabaseDb(). Leads were migrated to Supabase-only in #353, so
+  // ctx.db.get(leadId) returns null in the engine.
+  storage: "convex" | "supabase";
   resolveTargetId: (payload: Record<string, unknown>, run: { entityType?: string; entityId?: string }) =>
     | string
     | undefined;
@@ -187,6 +191,7 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported patient field update target",
     unsupportedCustomFieldMessage: "Custom patient field updates are not supported",
     supportsCustom: true,
+    storage: "convex",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "gabinetPatient" && run.entityId) {
         return run.entityId;
@@ -204,6 +209,7 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported appointment field update target",
     unsupportedCustomFieldMessage: "Custom appointment field updates are not supported",
     supportsCustom: false,
+    storage: "convex",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "gabinetAppointment" && run.entityId) {
         return run.entityId;
@@ -222,6 +228,7 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported employee field update target",
     unsupportedCustomFieldMessage: "Custom employee field updates are not supported",
     supportsCustom: false,
+    storage: "convex",
     resolveTargetId: (_payload, run) => {
       if (run.entityType === "gabinetEmployee" && run.entityId) {
         return run.entityId;
@@ -238,6 +245,7 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported lead field update target",
     unsupportedCustomFieldMessage: "Custom lead field updates are not supported",
     supportsCustom: false,
+    storage: "supabase",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "lead" && run.entityId) {
         return run.entityId;
@@ -246,7 +254,8 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
       return leadId || undefined;
     },
     canEditOwn: (entity, actorUserId) =>
-      entity.createdBy === actorUserId || entity.assignedTo === actorUserId,
+      String(entity.createdBy) === String(actorUserId) ||
+      String(entity.assignedTo) === String(actorUserId),
   },
 };
 
@@ -658,10 +667,13 @@ async function applyUpdateFieldAction(
   const entityId = targetId as Id<
     "gabinetPatients" | "gabinetAppointments" | "gabinetEmployees" | "leads"
   >;
-  const entity = (await ctx.db.get(entityId as never)) as
+  const supabaseDb = descriptor.storage === "supabase" ? createSupabaseDb() : null;
+  const entity = (supabaseDb
+    ? await supabaseDb.get(descriptor.table, String(entityId))
+    : await ctx.db.get(entityId as never)) as
     | ({ organizationId: Id<"organizations">; customFields?: unknown } & Record<string, unknown>)
     | null;
-  if (!entity || entity.organizationId !== args.organizationId) {
+  if (!entity || String(entity.organizationId) !== String(args.organizationId)) {
     throw new Error(descriptor.notFoundMessage);
   }
   if (permission.scope === "own" && !descriptor.canEditOwn(entity, args.actorUserId)) {
@@ -681,21 +693,31 @@ async function applyUpdateFieldAction(
       entity.customFields && typeof entity.customFields === "object"
         ? (entity.customFields as Record<string, unknown>)
         : {};
-    await ctx.db.patch(entityId as never, {
+    const customPatch = {
       customFields: {
         ...existingCustomFields,
         [args.action.fieldKey]: coercedValue,
       },
       updatedAt: now,
-    } as never);
+    };
+    if (supabaseDb) {
+      await supabaseDb.patch(descriptor.table, String(entityId), customPatch);
+    } else {
+      await ctx.db.patch(entityId as never, customPatch as never);
+    }
   } else {
     if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.action.fieldKey)) {
       throw new Error(descriptor.unsupportedStandardFieldMessage);
     }
-    await ctx.db.patch(entityId as never, {
+    const standardPatch = {
       [args.action.fieldKey]: coercedValue,
       updatedAt: now,
-    } as never);
+    };
+    if (supabaseDb) {
+      await supabaseDb.patch(descriptor.table, String(entityId), standardPatch);
+    } else {
+      await ctx.db.patch(entityId as never, standardPatch as never);
+    }
   }
 
   if (args.actorUserId) {

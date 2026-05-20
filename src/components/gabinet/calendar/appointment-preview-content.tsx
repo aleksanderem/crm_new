@@ -150,6 +150,25 @@ export function AppointmentPreviewContent({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    if (!newStart || !startTime || !endTime) return;
+    const toMin = (s: string) => {
+      const [h, m] = s.split(":").map(Number);
+      return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+    };
+    const oldStart = toMin(startTime);
+    const oldEnd = toMin(endTime);
+    const next = toMin(newStart);
+    if (oldStart === null || oldEnd === null || next === null) return;
+    const duration = oldEnd - oldStart;
+    if (duration <= 0) return;
+    const newEnd = Math.min(next + duration, 24 * 60 - 1);
+    const eh = Math.floor(newEnd / 60);
+    const em = newEnd % 60;
+    setEndTime(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+  };
   const [internalNotes, setInternalNotes] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
@@ -721,7 +740,7 @@ export function AppointmentPreviewContent({
               type="time"
               step={900}
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
               className="h-8 w-[88px] text-sm"
             />
           </div>

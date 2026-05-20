@@ -668,6 +668,9 @@
     "taxRate": "Tax Rate (%)",
     "activate": "Activate",
     "deactivate": "Deactivate",
+    "nudgeFilter": {
+      "unused": "Showing products not used in any deal."
+    },
     "views": {
       "all": "All Products",
       "active": "Active Products"

@@ -29,6 +29,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
+import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
@@ -290,7 +291,7 @@ function PatientsIndex() {
       {
         id: "medicalNotes",
         label: t("gabinet.patients.medicalNotes"),
-        render: (item) => item.medicalNotes ?? "—",
+        render: (item) => plateJsonToText(item.medicalNotes ?? undefined).trim() || "—",
       },
       {
         id: "createdAt",

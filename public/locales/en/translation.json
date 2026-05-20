@@ -1971,7 +1971,8 @@
       "noHistoryDesc": "Client has no previous appointments",
       "patient": "Client",
       "lastAppointments": "Client's recent appointments",
-      "totalAppointments": "Total Appointments"
+      "totalAppointments": "Total Appointments",
+      "added": "Added"
     },
     "treatments": {
       "title": "Treatments",

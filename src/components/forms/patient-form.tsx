@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -155,10 +156,9 @@ export function PatientForm({
           <Label>
             {t("common.phone")} <span className="text-destructive">*</span>
           </Label>
-          <Input
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
             required
           />
         </div>
@@ -238,10 +238,9 @@ export function PatientForm({
           </div>
           <div className="space-y-1.5">
             <Label>{t("gabinet.patients.emergencyContactPhone")}</Label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={emergencyContactPhone}
-              onChange={(e) => setEmergencyContactPhone(e.target.value)}
+              onChange={setEmergencyContactPhone}
             />
           </div>
         </div>

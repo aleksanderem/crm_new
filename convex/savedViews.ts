@@ -1,39 +1,43 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 
-export const listByEntityType = query({
+export const listByEntityType = action({
   args: {
     organizationId: v.id("organizations"),
     entityType: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const views = await ctx.db
-      .query("savedViews")
-      .withIndex("by_orgAndEntityType", (q) =>
-        q.eq("organizationId", args.organizationId).eq("entityType", args.entityType)
-      )
+    const db = createSupabaseDb();
+    const views = await db
+      .query<{ order?: number }>("savedViews")
+      .eq("organizationId", String(args.organizationId))
+      .eq("entityType", args.entityType)
       .collect();
 
-    views.sort((a, b) => a.order - b.order);
+    views.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return views;
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    viewId: v.id("savedViews"),
+    viewId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const view = await ctx.db.get(args.viewId);
-    if (!view || view.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const view = await db.get<{ organizationId: string }>("savedViews", args.viewId);
+    if (!view || view.organizationId !== String(args.organizationId)) {
       throw new Error("Saved view not found");
     }
 

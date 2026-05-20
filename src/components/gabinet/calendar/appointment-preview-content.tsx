@@ -66,6 +66,9 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useSidebarActions } from "@/components/layout/sidebar-context";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -151,6 +154,7 @@ export function AppointmentPreviewContent({
   const [treatmentId, setTreatmentId] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [tagIds, setTagIds] = useState<Array<Id<"tagDefinitions">>>([]);
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -159,6 +163,9 @@ export function AppointmentPreviewContent({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
+
+  const { tags: tagDefinitions } = useTagDefinitions(organizationId);
+  const { dispatch } = useSidebarActions();
 
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
@@ -171,6 +178,9 @@ export function AppointmentPreviewContent({
     setEndTime(appt.endTime.slice(0, 5));
     setInternalNotes(appt.internalNotes ?? "");
     setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
+    setTagIds(
+      (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
+    );
   }, [detail]);
 
   if (isLoading || !detail) {
@@ -211,12 +221,19 @@ export function AppointmentPreviewContent({
     phoneInput.trim().length > 0 &&
     phoneInput.trim() !== (patient?.phone ?? "");
 
+  const initialTagIds = (appointment.tagIds ?? []).map((id) => String(id));
+  const currentTagIds = tagIds.map((id) => String(id));
+  const tagsDirty =
+    initialTagIds.length !== currentTagIds.length ||
+    initialTagIds.some((id) => !currentTagIds.includes(id));
+
   const apptDirty =
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
     internalNotes !== (appointment.internalNotes ?? "") ||
-    treatmentId !== initialTreatmentId;
+    treatmentId !== initialTreatmentId ||
+    tagsDirty;
 
   const dirty = phoneDirty || apptDirty;
 
@@ -384,6 +401,7 @@ export function AppointmentPreviewContent({
           args.internalNotes = internalNotes;
         if (treatmentId && treatmentId !== initialTreatmentId)
           args.treatmentId = treatmentId;
+        if (tagsDirty) args.tagIds = tagIds.map((id) => String(id));
 
         await updateAppointment(args);
         await Promise.all([
@@ -652,6 +670,35 @@ export function AppointmentPreviewContent({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("gabinet.appointmentDetail.tags", { defaultValue: "Etykiety" })}
+            </Label>
+            <button
+              type="button"
+              onClick={() => dispatch("manageTags")}
+              className="text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              {t("gabinet.appointmentDetail.manageTags", {
+                defaultValue: "Zarządzaj",
+              })}
+            </button>
+          </div>
+          <TagsPicker
+            tags={tagDefinitions}
+            selectedIds={tagIds}
+            onChange={setTagIds}
+            placeholder={
+              tagDefinitions.length === 0
+                ? t("gabinet.appointmentDetail.addFirstTagHint", {
+                    defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
+                  })
+                : t("tags.assign", { defaultValue: "Tagi" })
+            }
+          />
         </div>
 
         <div className="grid grid-cols-[1fr_auto_auto] items-end gap-1.5">

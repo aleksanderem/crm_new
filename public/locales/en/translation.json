@@ -2038,7 +2038,10 @@
         "inactive": "Inactive"
       },
       "aftercare": "Aftercare",
-      "treatment": "Treatment"
+      "treatment": "Treatment",
+      "nudgeFilter": {
+        "noPrice": "Showing active treatments with no price or price 0."
+      }
     },
     "treatmentDetail": {
       "info": "Treatment Info",

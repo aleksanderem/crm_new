@@ -1804,6 +1804,9 @@
       "sent": "Wysłane",
       "starred": "Oznaczone gwiazdką"
     },
+    "nudgeFilter": {
+      "unanswered": "Pokazywane są wątki z nieodczytaną wiadomością przychodzącą starszą niż 2 dni."
+    },
     "thread": {
       "noMessages": "Brak wiadomości w tym wątku.",
       "from": "Od",

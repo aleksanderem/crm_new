@@ -1796,6 +1796,9 @@
       "sent": "Sent",
       "starred": "Starred"
     },
+    "nudgeFilter": {
+      "unanswered": "Showing threads with an unread inbound message older than 2 days."
+    },
     "thread": {
       "noMessages": "No messages in this thread.",
       "from": "From",

@@ -197,7 +197,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed hours background — entire day when clinic is closed */}
         {workStartTop === null && (
           <div
-            className="pointer-events-none absolute inset-0 bg-muted/60"
+            className="pointer-events-none absolute inset-0 bg-primary/5"
             style={{ height: `${HOURS.length * 60}px` }}
           />
         )}
@@ -205,7 +205,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed: before clinic opens */}
         {workStartTop !== null && workStartTop > 0 && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-b border-primary/10"
             style={{
               top: 0,
               height: `${workStartTop}px`,
@@ -216,21 +216,10 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed: after clinic closes */}
         {workEndTop !== null && workEndTop < HOURS.length * 60 && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10"
             style={{
               top: `${workEndTop}px`,
               height: `${HOURS.length * 60 - workEndTop}px`,
-            }}
-          />
-        )}
-
-        {/* Working hours background */}
-        {workStartTop !== null && workEndTop !== null && (
-          <div
-            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-y border-primary/10"
-            style={{
-              top: `${workStartTop}px`,
-              height: `${workEndTop - workStartTop}px`,
             }}
           />
         )}

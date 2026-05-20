@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
@@ -40,7 +41,8 @@ import {
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
-import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -98,6 +100,21 @@ function LeavesPage() {
 
   const [confirmLeaveId, setConfirmLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
   const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
+
+  // Existing appointments overlapping the requested leave range — warn the
+  // user there are bookings they need to deal with before approving. Issue #652.
+  const { data: rangeAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId,
+    startDate,
+    endDate,
+    { employeeId: selectedUserId || undefined, enabled: !!selectedUserId && !!startDate && !!endDate },
+  );
+  const overlappingAppointments = useMemo(() => {
+    if (!rangeAppointments) return [];
+    return rangeAppointments.filter(
+      (a) => a.status !== "cancelled" && a.status !== "no_show",
+    );
+  }, [rangeAppointments]);
 
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;
@@ -238,6 +255,21 @@ function LeavesPage() {
                       <Label>{t("gabinet.leaves.reason")}</Label>
                       <RichTextEditor value={reason} onChange={(val) => setReason(val ?? "")} minHeight="80px" />
                     </div>
+                    {overlappingAppointments.length > 0 && (
+                      <div
+                        role="alert"
+                        className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                      >
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <span>
+                          {t("schedule.warnings.existingAppointments", {
+                            count: overlappingAppointments.length,
+                            defaultValue:
+                              "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+                          })}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
                       <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>

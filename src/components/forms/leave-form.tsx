@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AlertTriangle } from "lucide-react";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 
 type LeaveType = "vacation" | "sick" | "personal";
 
@@ -97,6 +99,21 @@ export function LeaveForm({
       setEndDate(value);
     }
   };
+
+  // Existing scheduled appointments overlapping the requested leave range —
+  // surface a warning so staff know they need to cancel / reschedule. Issue #652.
+  const { data: rangeAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId ?? "",
+    startDate,
+    endDate,
+    { employeeId: userId || undefined, enabled: !!userId && !!startDate && !!endDate },
+  );
+  const overlappingAppointments = useMemo(() => {
+    if (!rangeAppointments) return [];
+    return rangeAppointments.filter(
+      (a) => a.status !== "cancelled" && a.status !== "no_show",
+    );
+  }, [rangeAppointments]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -235,6 +252,22 @@ export function LeaveForm({
           minHeight="80px"
         />
       </div>
+
+      {overlappingAppointments.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            {t("schedule.warnings.existingAppointments", {
+              count: overlappingAppointments.length,
+              defaultValue:
+                "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+            })}
+          </span>
+        </div>
+      )}
 
       <div className="rounded-lg border bg-muted/30 p-3">
         <p className="text-sm text-muted-foreground">

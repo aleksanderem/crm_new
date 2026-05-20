@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -339,6 +340,23 @@ export function AppointmentDialog({
   });
 
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];
+
+  // Approved leaves for the selected employee — flag overlaps with the chosen
+  // date so the user sees an explicit warning. The available-slots backend
+  // already filters leave time but does not tell the user why. Issue #652.
+  const { data: employeeLeaves } = useSupabaseGabinetLeavesList(
+    organizationId,
+    { userId: employeeId || undefined, status: "approved", enabled: !!employeeId },
+  );
+
+  const employeeLeaveOnSelectedDate = useMemo(() => {
+    if (!dateStr || !employeeLeaves || employeeLeaves.length === 0) return null;
+    return (
+      employeeLeaves.find(
+        (l) => l.startDate <= dateStr && l.endDate >= dateStr,
+      ) ?? null
+    );
+  }, [employeeLeaves, dateStr]);
 
   // Equipment warning — advisory only
   const missingEquipmentIds = useMemo(() => {
@@ -1157,6 +1175,29 @@ export function AppointmentDialog({
                     {t("gabinet.appointments.availableSlots")}
                   </p>
                 </div>
+
+                {employeeLeaveOnSelectedDate && (
+                  <div
+                    role="alert"
+                    className="mx-3 mb-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                  >
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                      {employeeLeaveOnSelectedDate.startTime &&
+                      employeeLeaveOnSelectedDate.endTime
+                        ? t("gabinet.appointments.warnings.leavePartial", {
+                            start: employeeLeaveOnSelectedDate.startTime,
+                            end: employeeLeaveOnSelectedDate.endTime,
+                            defaultValue:
+                              "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
+                          })
+                        : t("gabinet.appointments.warnings.leave", {
+                            defaultValue:
+                              "Pracownik jest na urlopie w tym terminie",
+                          })}
+                    </span>
+                  </div>
+                )}
 
                 <Separator />
 

@@ -2500,6 +2500,7 @@
         "past": "Termin minął",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
+        "leavePartial": "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
         "outsideHours": "Termin poza godzinami pracy gabinetu",
         "conflict": "Kolizja terminów z inną wizytą",
         "pastConfirm": {
@@ -3188,6 +3189,12 @@
       "vacation": "Urlop wypoczynkowy",
       "sick": "Zwolnienie lekarskie",
       "personal": "Sprawy prywatne"
+    },
+    "warnings": {
+      "existingAppointments_one": "Pracownik ma {{count}} zaplanowaną wizytę w tym okresie. Pamiętaj o jej anulowaniu lub przeniesieniu.",
+      "existingAppointments_few": "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+      "existingAppointments_many": "Pracownik ma {{count}} zaplanowanych wizyt w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+      "existingAppointments_other": "Pracownik ma {{count}} zaplanowanych wizyt w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu."
     }
   },
   "permissions": {

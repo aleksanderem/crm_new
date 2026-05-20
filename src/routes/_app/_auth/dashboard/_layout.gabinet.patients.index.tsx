@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-r
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -31,14 +32,17 @@ import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 
-type PatientNudgeFilter = "missing-contact";
+type PatientNudgeFilter = "missing-contact" | "no-recent-visit";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
 )({
   component: PatientsIndex,
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
-    const nudge = search.nudge === "missing-contact" ? "missing-contact" : undefined;
+    const nudge =
+      search.nudge === "missing-contact" || search.nudge === "no-recent-visit"
+        ? (search.nudge as PatientNudgeFilter)
+        : undefined;
     return { nudge };
   },
 });
@@ -154,6 +158,11 @@ function PatientsIndex() {
   );
 
   const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: recentVisitPatientIds } = useSupabaseGabinetRecentVisitPatientIds(
+    organizationId,
+    90,
+    { enabled: nudgeFilter === "no-recent-visit" },
+  );
 
   const {
     views,
@@ -185,6 +194,8 @@ function PatientsIndex() {
     data = applyFilterConditions(data, activeFilters);
     if (nudgeFilter === "missing-contact") {
       data = data.filter((p) => !p.phone && !p.email);
+    } else if (nudgeFilter === "no-recent-visit" && recentVisitPatientIds) {
+      data = data.filter((p) => !recentVisitPatientIds.has(p._id));
     }
     const q = searchValue.trim().toLowerCase();
     if (q) {
@@ -197,7 +208,7 @@ function PatientsIndex() {
       );
     }
     return data;
-  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -396,12 +407,17 @@ function PatientsIndex() {
         }
       />
 
-      {nudgeFilter === "missing-contact" && (
+      {nudgeFilter && (
         <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <span>
-            {t("gabinet.patients.nudgeFilter.missingContact", {
-              defaultValue: "Pokazywani są klienci bez telefonu i e-maila.",
-            })}
+            {nudgeFilter === "missing-contact"
+              ? t("gabinet.patients.nudgeFilter.missingContact", {
+                  defaultValue: "Pokazywani są klienci bez telefonu i e-maila.",
+                })
+              : t("gabinet.patients.nudgeFilter.noRecentVisit", {
+                  defaultValue:
+                    "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",
+                })}
           </span>
           <Button
             variant="ghost"

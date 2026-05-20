@@ -151,6 +151,55 @@ export function useSupabaseGabinetAppointmentsByEmployee(
 }
 
 // ---------------------------------------------------------------------------
+// Recent Visit Patient IDs (for nudge filtering)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the set of patient IDs that have at least one non-cancelled,
+ * non-no-show appointment within the last `days` days. Used by the patients
+ * page to apply the `nudge=no-recent-visit` filter (the inverse — patients
+ * NOT in this set have had no recent visit).
+ *
+ * Mirrors the backend logic in convex/gabinet/nudges.ts.
+ */
+export function useSupabaseGabinetRecentVisitPatientIds(
+  organizationId: string,
+  days: number = 90,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "recentVisitPatientIds",
+      days,
+    ],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("patient_id")
+        .eq("organization_id", organizationId)
+        .gte("date", cutoff)
+        .not("status", "in", '("cancelled","no_show")');
+
+      if (error) throw error;
+      return new Set(
+        ((data ?? []) as { patient_id: string }[]).map((a) => a.patient_id),
+      );
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

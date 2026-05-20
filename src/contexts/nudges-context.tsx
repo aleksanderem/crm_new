@@ -36,6 +36,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // CRM nudges (Supabase-primary action)
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const getCrmNudges = useAction(api.nudges.getAll);
   const { data: crmNudges, isLoading: crmLoading } = useQuery({
     queryKey: ["nudges.getAll", organizationId],
@@ -44,6 +45,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Gabinet nudges (Supabase-primary action)
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const getGabinetNudges = useAction(api.gabinet.nudges.getAll);
   const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery({
     queryKey: ["gabinet.nudges.getAll", organizationId],

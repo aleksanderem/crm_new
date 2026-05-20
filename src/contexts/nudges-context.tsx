@@ -10,6 +10,9 @@ export interface NudgeData {
   messageValues?: Record<string, string | number>;
   severity: "red" | "yellow" | "green";
   icon?: string;
+  /** Optional destination URL (pathname + optional query string) that opens
+   *  the list of items the nudge refers to. */
+  link?: string;
 }
 
 interface NudgesContextValue {

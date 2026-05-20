@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
+import { useSupabaseContactIdsLinkedToCompany } from "@/hooks/use-supabase-relationships";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -11,7 +12,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
-import { Plus, Trash2, Upload, Download } from "@/lib/ez-icons";
+import { Plus, Trash2, Upload, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import type { MappedContact } from "@/lib/supabase/mappers/contacts";
@@ -27,10 +28,19 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 
+type ContactNudgeFilter = "unlinked-company";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/"
 )({
   component: ContactsIndex,
+  validateSearch: (search: Record<string, unknown>): { nudge?: ContactNudgeFilter } => {
+    const nudge =
+      search.nudge === "unlinked-company"
+        ? (search.nudge as ContactNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Contact = MappedContact;
@@ -39,6 +49,7 @@ function ContactsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createContact = useAction(api.contacts.create);
   const removeContact = useAction(api.contacts.remove);
   const setCustomFieldValues = useAction(api.customFields.setValues);
@@ -83,6 +94,10 @@ function ContactsIndex() {
   ], [t, tags, categories]);
 
   const { data: contacts = [], isLoading } = useSupabaseContactsList(organizationId);
+  const { data: contactIdsLinkedToCompany } = useSupabaseContactIdsLinkedToCompany(
+    organizationId,
+    { enabled: nudgeFilter === "unlinked-company" },
+  );
 
   const contactIds = useMemo(() => contacts.map((c) => c._id), [contacts]);
 
@@ -117,8 +132,11 @@ function ContactsIndex() {
       default:
         data = contacts;
     }
+    if (nudgeFilter === "unlinked-company" && contactIdsLinkedToCompany) {
+      data = data.filter((c) => !contactIdsLinkedToCompany.has(c._id));
+    }
     return applyFilters(data);
-  }, [contacts, activeViewId, applyFilters]);
+  }, [contacts, activeViewId, applyFilters, nudgeFilter, contactIdsLinkedToCompany]);
 
   const searchedContacts = useMemo(() => {
     let result = filteredContacts;
@@ -345,6 +363,30 @@ function ContactsIndex() {
           </Button>
         }
       />
+
+      {nudgeFilter === "unlinked-company" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("contacts.nudgeFilter.unlinkedCompany", {
+              defaultValue: "Pokazywane są kontakty bez przypisanej firmy.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/contacts",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

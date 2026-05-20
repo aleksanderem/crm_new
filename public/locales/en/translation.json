@@ -431,6 +431,9 @@
     "byDay": "Contacts by day",
     "bySource": "Contacts by source",
     "confirmDelete": "Delete this contact?",
+    "nudgeFilter": {
+      "unlinkedCompany": "Showing contacts not linked to any company."
+    },
     "views": {
       "all": "All Contacts",
       "my": "My Contacts",

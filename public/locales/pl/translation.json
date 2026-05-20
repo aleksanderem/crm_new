@@ -2719,7 +2719,11 @@
       "noTreatmentsAvailable": "Brak dostępnych zabiegów",
       "allTreatmentsExhausted": "Wszystkie zabiegi z tego pakietu zostały w pełni wykorzystane",
       "totalRemaining": "{{remaining}} z {{total}} pozostało",
-      "packageCompleted": "Pakiet ukończony"
+      "packageCompleted": "Pakiet ukończony",
+      "nudgeFilter": {
+        "expiring": "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
+        "noUsage": "Pokazywane są aktywne pakiety bez aktywnych użyć."
+      }
     },
     "documents": {
       "title": "Dokumenty medyczne",

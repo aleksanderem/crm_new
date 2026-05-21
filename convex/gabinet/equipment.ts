@@ -4,7 +4,11 @@ import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
-import type { GabinetEquipmentRow } from "../_helpers/supabaseRows";
+import type {
+  GabinetEquipmentRow,
+  GabinetLocationRow,
+  GabinetRoomRow,
+} from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for equipment writes
 
@@ -26,20 +30,40 @@ export const listEquipment = action({
   },
 });
 
-export const getEquipment = query({
+export const getEquipment = action({
   args: {
     organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
+    equipmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const equipment = await ctx.db.get(args.equipmentId);
-    if (!equipment || equipment.organizationId !== args.organizationId) return null;
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | (GabinetEquipmentRow & {
+        location: GabinetLocationRow | null;
+        room: GabinetRoomRow | null;
+      })
+    | null
+  > => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const equipment = (await db.get("gabinetEquipment", args.equipmentId)) as
+      | GabinetEquipmentRow
+      | null;
+    if (!equipment || String(equipment.organizationId) !== String(args.organizationId)) {
+      return null;
+    }
     const location = equipment.currentLocationId
-      ? await ctx.db.get(equipment.currentLocationId)
+      ? ((await db.get("gabinetLocations", String(equipment.currentLocationId))) as
+          | GabinetLocationRow
+          | null)
       : null;
     const room = equipment.currentRoomId
-      ? await ctx.db.get(equipment.currentRoomId)
+      ? ((await db.get("gabinetRooms", String(equipment.currentRoomId))) as
+          | GabinetRoomRow
+          | null)
       : null;
     return { ...equipment, location, room };
   },

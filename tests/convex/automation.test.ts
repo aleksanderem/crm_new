@@ -18,7 +18,12 @@ function createManagedTestCtx() {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  // Restrict the fake-timer surface: vitest's default toFake (setImmediate /
+  // Date / performance / …) breaks convex-test — `finishAllScheduledFunctions`
+  // never sees jobs transition out of "pending" and afterEach times out (#721).
+  vi.useFakeTimers({
+    toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"],
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({

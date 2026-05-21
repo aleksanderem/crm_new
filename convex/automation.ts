@@ -1,4 +1,5 @@
 import {
+  internalAction,
   internalMutation,
   internalQuery,
   action,
@@ -493,6 +494,201 @@ async function insertAutomationEmail(
   return emailId;
 }
 
+// Resend send call extracted to an internalAction so processRun (mutation)
+// does not perform network I/O — Convex mutations cannot use fetch().
+export const _sendAutomationEmail = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    fromEmail: v.string(),
+    recipient: v.string(),
+    recipientName: v.optional(v.string()),
+    subject: v.string(),
+    bodyHtml: v.string(),
+    bodyText: v.string(),
+    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId: v.optional(v.string()),
+    actionType: v.string(),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${AUTH_RESEND_KEY ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: args.recipient,
+          subject: args.subject,
+          html: args.bodyHtml,
+          text: args.bodyText,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to send automation email (${response.status})`);
+      }
+      await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
+        organizationId: args.organizationId,
+        stepId: args.stepId,
+        success: true,
+        fromEmail: args.fromEmail,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        bodyHtml: args.bodyHtml,
+        bodyText: args.bodyText,
+        sentBy: args.sentBy,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        idempotencyKey: args.idempotencyKey,
+      });
+    } catch (error) {
+      await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
+        organizationId: args.organizationId,
+        stepId: args.stepId,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        fromEmail: args.fromEmail,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        bodyHtml: args.bodyHtml,
+        bodyText: args.bodyText,
+        sentBy: args.sentBy,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        idempotencyKey: args.idempotencyKey,
+      });
+    }
+  },
+});
+
+export const _recordAutomationEmailResult = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+    fromEmail: v.string(),
+    recipient: v.string(),
+    recipientName: v.optional(v.string()),
+    subject: v.string(),
+    bodyHtml: v.string(),
+    bodyText: v.string(),
+    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId: v.optional(v.string()),
+    actionType: v.string(),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    if (!args.success) {
+      await ctx.db.patch(args.stepId, {
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      await ctx.scheduler.runAfter(0, updateRunStepRef, {
+        stepId: args.stepId as string,
+        organizationId: args.organizationId as string,
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      await patchLegacyAppointmentWorkflowHistory(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        renderedSubject: args.subject,
+        renderedBody: args.bodyHtml,
+        status: "failed",
+        errorMessage: args.errorMessage,
+        idempotencyKey: args.idempotencyKey,
+        processedAt: now,
+      });
+      return;
+    }
+
+    const emailId = await ctx.db.insert("emails", {
+      organizationId: args.organizationId,
+      threadId: `<${crypto.randomUUID()}@crm.app>`,
+      messageId: `<${crypto.randomUUID()}@crm.app>`,
+      direction: "outbound",
+      from: args.fromEmail,
+      to: [args.recipient],
+      subject: args.subject,
+      bodyHtml: args.bodyHtml,
+      bodyText: args.bodyText,
+      snippet: args.bodyText.slice(0, 200),
+      isRead: true,
+      isStarred: false,
+      sentBy: args.sentBy,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (args.sentBy) {
+      await logActivity(ctx, {
+        organizationId: args.organizationId,
+        entityType: "email",
+        entityId: emailId,
+        action: "email_sent",
+        description: `Sent email \"${args.subject}\" to ${args.recipient}`,
+        performedBy: args.sentBy,
+      });
+    }
+
+    await ctx.db.patch(args.stepId, {
+      status: "processed",
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      linkedEntityType: "email",
+      linkedEntityId: String(emailId),
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      processedAt: now,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, updateRunStepRef, {
+      stepId: args.stepId as string,
+      organizationId: args.organizationId as string,
+      status: "processed",
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      linkedEntityType: "email",
+      linkedEntityId: String(emailId),
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      processedAt: now,
+      updatedAt: now,
+    });
+    await patchLegacyAppointmentWorkflowHistory(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: args.appointmentId,
+      actionType: args.actionType,
+      recipient: args.recipient,
+      recipientName: args.recipientName,
+      renderedSubject: args.subject,
+      renderedBody: args.bodyHtml,
+      status: "sent",
+      idempotencyKey: args.idempotencyKey,
+      processedAt: now,
+    });
+  },
+});
+
 async function applyUpdateFieldAction(
   ctx: MutationCtx,
   args: {
@@ -663,7 +859,8 @@ async function patchLegacyAppointmentWorkflowHistory(
   ctx: MutationCtx,
   args: {
     organizationId: Id<"organizations">;
-    appointmentId?: Id<"gabinetAppointments">;
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId?: string;
     actionType: string;
     recipient?: string;
     recipientName?: string;

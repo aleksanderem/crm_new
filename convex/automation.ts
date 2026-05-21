@@ -440,7 +440,8 @@ export const _sendAutomationEmail = internalAction({
     bodyHtml: v.string(),
     bodyText: v.string(),
     sentBy: v.optional(v.id("users")),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId: v.optional(v.string()),
     actionType: v.string(),
     idempotencyKey: v.string(),
   },
@@ -513,7 +514,8 @@ export const _recordAutomationEmailResult = internalMutation({
     bodyHtml: v.string(),
     bodyText: v.string(),
     sentBy: v.optional(v.id("users")),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId: v.optional(v.string()),
     actionType: v.string(),
     idempotencyKey: v.string(),
   },
@@ -786,7 +788,8 @@ async function patchLegacyAppointmentWorkflowHistory(
   ctx: MutationCtx,
   args: {
     organizationId: Id<"organizations">;
-    appointmentId?: Id<"gabinetAppointments">;
+    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+    appointmentId?: string;
     actionType: string;
     recipient?: string;
     recipientName?: string;

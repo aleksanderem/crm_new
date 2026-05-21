@@ -392,13 +392,33 @@ export const _acceptInternal = internalMutation({
       );
     }
 
-    await ctx.db.insert("teamMemberships", {
+    const joinedAt = Date.now();
+    const membershipId = await ctx.db.insert("teamMemberships", {
       userId: user._id,
       organizationId: invitation.organizationId,
       role: invitation.role,
       invitedBy: invitation.invitedBy,
-      joinedAt: Date.now(),
+      joinedAt,
     });
+
+    // Mirror to Supabase so the team-settings page (which reads members
+    // via useSupabaseOrganizationMembers) and the RBAC bridge (which
+    // also reads team_memberships from Supabase) both see the new
+    // membership. Without this, an invited admin/member has a row in
+    // Convex teamMemberships but is invisible to the UI's permission
+    // checks — UI shows empty / 403 on protected actions.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.writeTeamMembershipToSupabase,
+      {
+        membershipId: String(membershipId),
+        userId: String(user._id),
+        organizationId: String(invitation.organizationId),
+        role: invitation.role,
+        invitedBy: String(invitation.invitedBy),
+        joinedAt,
+      },
+    );
 
     // If the invitee just signed up via OTP and has no username yet, derive
     // one from the email local-part so they skip the /onboarding/username

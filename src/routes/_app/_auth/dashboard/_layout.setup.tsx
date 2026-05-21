@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexAction } from "@convex-dev/react-query";
+import { useConvexAction } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { Logo } from "@/ui/logo";
@@ -51,10 +52,15 @@ function SetupWizard() {
   ]);
   const [schedule, setSchedule] = useState<Record<string, { start: string; end: string; enabled: boolean }>>({});
 
-  // Fix #2 & #3: Wire up backend mutations and query
-  const { data: setupStatus } = useQuery(
-    convexQuery(api.gabinet.onboarding.getSetupStatus, { organizationId })
-  );
+  // Fix #2 & #3: Wire up backend mutations and query.
+  // `getSetupStatus` is a Supabase-backed action (#770), not a Convex query,
+  // so it's called via `useAction` + react-query rather than `convexQuery`.
+  const getSetupStatus = useAction(api.gabinet.onboarding.getSetupStatus);
+  const { data: setupStatus } = useQuery({
+    queryKey: ["gabinet.onboarding.getSetupStatus", organizationId],
+    queryFn: () => getSetupStatus({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   const { mutateAsync: completeSetup } = useMutation({
     mutationFn: useConvexAction(api.gabinet.onboarding.completeSetup),

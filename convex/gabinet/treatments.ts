@@ -1,10 +1,8 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
@@ -58,21 +56,29 @@ export const list = action({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<GabinetTreatmentRow> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const treatment = (await db.get("gabinetTreatments", args.treatmentId)) as GabinetTreatmentRow | null;
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
-    if (perm.scope === "own" && treatment.createdBy !== user._id) {
+    if (perm.scope === "own" && String(treatment.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
 

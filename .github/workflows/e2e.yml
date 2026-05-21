@@ -48,6 +48,9 @@ jobs:
       - name: Typecheck
         run: npx tsc -p tsconfig.app.json
 
+      - name: Typecheck Convex
+        run: npx tsc -p convex/tsconfig.json
+
       - name: Build
         run: npx vite build
 

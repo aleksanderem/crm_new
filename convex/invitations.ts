@@ -618,6 +618,55 @@ export const _resendInternal = internalMutation({
   },
 });
 
+// Admin tool — bumps expiry on a pending invitation and re-sends the email,
+// bypassing the org-admin auth guard so it can be invoked from `npx convex run`.
+// Useful when an env-level fix (e.g. broken SITE_URL) made an earlier email
+// unusable and the invitation needs to go out fresh.
+export const _adminResendAndSend = internalAction({
+  args: { invitationId: v.id("invitations") },
+  handler: async (ctx, args) => {
+    const r = await ctx.runMutation(
+      internal.invitations._adminResendInternal,
+      { invitationId: args.invitationId },
+    );
+    await ctx.scheduler.runAfter(0, internal.invitations._sendInvitationEmail, {
+      invitationId: r.invitationId,
+      email: r.email,
+      role: r.role,
+      token: r.token,
+      organizationId: r.organizationId,
+      inviterUserId: r.invitedBy,
+    });
+    return { ok: true, ...r };
+  },
+});
+
+export const _adminResendInternal = internalMutation({
+  args: { invitationId: v.id("invitations") },
+  handler: async (ctx, args) => {
+    const inv = await ctx.db.get(args.invitationId);
+    if (!inv) throw new Error("Invitation not found");
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const updatedAt = Date.now();
+    // Also flip back to pending in case it had been marked expired/declined
+    await ctx.db.patch(args.invitationId, {
+      status: "pending",
+      expiresAt,
+      updatedAt,
+    });
+    return {
+      invitationId: String(args.invitationId),
+      email: inv.email,
+      role: inv.role,
+      token: inv.token,
+      organizationId: inv.organizationId,
+      invitedBy: String(inv.invitedBy),
+      expiresAt,
+      updatedAt,
+    };
+  },
+});
+
 // Lightweight internal query used by _sendInvitationEmail to load the bits of
 // context that the email template needs (org name, inviter name) without
 // re-fetching from a Node action.

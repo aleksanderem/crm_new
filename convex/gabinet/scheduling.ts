@@ -1,27 +1,30 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
   GabinetEmployeeScheduleRow,
   GabinetLeaveRow,
+  GabinetWorkingHoursRow,
 } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for scheduling writes
 
 // --- Working Hours (clinic-level defaults) ---
 
-export const getWorkingHours = query({
+export const getWorkingHours = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<GabinetWorkingHoursRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("gabinetWorkingHours")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as GabinetWorkingHoursRow[];
   },
 });
 
@@ -408,14 +411,17 @@ export const removeSchedulePeriod = action({
   },
 });
 
-export const listEmployeeSchedules = query({
+export const listEmployeeSchedules = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("gabinetEmployeeSchedules")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as GabinetEmployeeScheduleRow[];
   },
 });
 
@@ -569,23 +575,23 @@ export const rejectLeave = action({
   },
 });
 
-export const getLeavesByDateRange = query({
+export const getLeavesByDateRange = action({
   args: {
     organizationId: v.id("organizations"),
     startDate: v.string(),
     endDate: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const leaves = await ctx.db
+  handler: async (ctx, args): Promise<GabinetLeaveRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const leaves = (await db
       .query("gabinetLeaves")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId)
-          .gte("startDate", args.startDate)
-          .lte("startDate", args.endDate)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .gte("startDate", args.startDate)
+      .lte("startDate", args.endDate)
+      .collect()) as GabinetLeaveRow[];
 
     return leaves.filter((l) => l.status === "approved");
   },

@@ -81,6 +81,7 @@ function TeamSettings() {
   const isAtLimit = seatUsage ? !seatUsage.canAddMore : false;
 
   const updateRole = useAction(api.organizations.updateMemberRole);
+  const updatePendingRole = useAction(api.invitations.updatePendingRole);
   const removeMember = useAction(api.organizations.removeMember);
   const cancelInvitation = useAction(api.invitations.cancel);
   const resendInvitation = useAction(api.invitations.resend);
@@ -111,6 +112,24 @@ function TeamSettings() {
       role: role as "admin" | "member" | "viewer" | "owner",
     });
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
+  };
+
+  const handleChangePendingRole = async (
+    invitationId: Id<"invitations">,
+    role: string,
+  ) => {
+    try {
+      await updatePendingRole({
+        organizationId,
+        invitationId,
+        role: role as "admin" | "member" | "viewer",
+      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+      toast.success(t("team.invitationRoleUpdated", { defaultValue: "Rola zaproszenia została zmieniona" }));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    }
   };
 
   const handleRemoveMember = (membershipId: Id<"teamMemberships">, memberName: string) => {
@@ -460,9 +479,27 @@ function TeamSettings() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="capitalize">
-                    {t(`team.roles.${invitation.role}`)}
-                  </Badge>
+                  <Select
+                    value={invitation.role}
+                    onValueChange={(role) =>
+                      handleChangePendingRole(
+                        invitation._id as Id<"invitations">,
+                        role,
+                      )
+                    }
+                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
+                  >
+                    <SelectTrigger className="h-8 w-32 capitalize">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((role) => (
+                        <SelectItem key={role} value={role} className="capitalize">
+                          {t(`team.roles.${role}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="ghost"
                     size="sm"

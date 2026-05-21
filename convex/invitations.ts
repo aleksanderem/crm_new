@@ -668,6 +668,70 @@ export const _resendInternal = internalMutation({
   },
 });
 
+// Update the role of a PENDING invitation in place. Org-admin only. Useful
+// when the inviter picked the wrong role and doesn't want to cancel +
+// re-send (which would invalidate the link the invitee already received).
+export const updatePendingRole = action({
+  args: {
+    organizationId: v.id("organizations"),
+    invitationId: v.string(),
+    role: orgRoleValidator,
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const updated: {
+      invitationId: string;
+      role: "admin" | "member" | "viewer" | "owner";
+      updatedAt: number;
+    } = await ctx.runMutation(internal.invitations._updatePendingRoleInternal, {
+      organizationId: args.organizationId,
+      invitationId: args.invitationId as Id<"invitations">,
+      role: args.role,
+    });
+
+    // Mirror to Supabase so the team-settings page reflects the new role.
+    try {
+      const db = createSupabaseDb();
+      await db.patch("invitations", updated.invitationId, {
+        role: updated.role,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (e) {
+      console.error("[invitations.updatePendingRole] Supabase mirror failed:", e);
+    }
+
+    return updated.invitationId;
+  },
+});
+
+export const _updatePendingRoleInternal = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    invitationId: v.id("invitations"),
+    role: orgRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+    const inv = await ctx.db.get(args.invitationId);
+    if (!inv || inv.organizationId !== args.organizationId) {
+      throw new Error("Invitation not found");
+    }
+    if (inv.status !== "pending") {
+      throw new Error("Only pending invitations can have their role changed");
+    }
+    if (args.role === "owner") {
+      // Ownership transfer is a separate flow — never grant via plain invite.
+      throw new Error("Cannot assign owner role via invitation");
+    }
+    const updatedAt = Date.now();
+    await ctx.db.patch(args.invitationId, { role: args.role, updatedAt });
+    return {
+      invitationId: String(args.invitationId),
+      role: args.role,
+      updatedAt,
+    };
+  },
+});
+
 // Admin tool — bumps expiry on a pending invitation and re-sends the email,
 // bypassing the org-admin auth guard so it can be invoked from `npx convex run`.
 // Useful when an env-level fix (e.g. broken SITE_URL) made an earlier email

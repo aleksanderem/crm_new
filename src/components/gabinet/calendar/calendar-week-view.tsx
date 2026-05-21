@@ -6,6 +6,12 @@ import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
 import { useCurrentTime } from "@/hooks/use-current-time";
 
+interface AppointmentIndicator {
+  kind: "firstVisit" | "payment" | "count";
+  label: string;
+  title?: string;
+}
+
 interface Appointment {
   _id: string;
   date: string;
@@ -16,6 +22,7 @@ interface Appointment {
   status: string;
   color?: string;
   tags?: Array<{ name: string; color: string }>;
+  indicators?: AppointmentIndicator[];
 }
 
 interface CalendarWeekViewProps {

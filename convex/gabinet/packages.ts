@@ -1,10 +1,8 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { Id } from "../_generated/dataModel";
@@ -82,19 +80,30 @@ export const listActive = action({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    packageId: v.id("gabinetTreatmentPackages"),
+    packageId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+  handler: async (ctx, args): Promise<GabinetTreatmentPackageRow> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_packages",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const pkg = await ctx.db.get(args.packageId);
-    if (!pkg || pkg.organizationId !== args.organizationId) throw new Error("Package not found");
-    if (perm.scope === "own" && pkg.createdBy !== user._id) {
+    const db = createSupabaseDb();
+
+    const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
+    if (!pkg || String(pkg.organizationId) !== String(args.organizationId)) {
+      throw new Error("Package not found");
+    }
+    if (perm.scope === "own" && String(pkg.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
     return pkg;
@@ -560,23 +569,31 @@ export const _batchUsageSideEffects = internalMutation({
   },
 });
 
-export const getActiveUsageCounts = query({
+export const getActiveUsageCounts = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+  handler: async (ctx, args): Promise<Record<string, number>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_packages",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const activeUsages = await ctx.db
+    const db = createSupabaseDb();
+
+    const activeUsages = (await db
       .query("gabinetPackageUsage")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "active")
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("status", "active")
+      .collect()) as GabinetPackageUsageRow[];
 
     const counts: Record<string, number> = {};
     for (const u of activeUsages) {
-      counts[u.packageId] = (counts[u.packageId] ?? 0) + 1;
+      const key = String(u.packageId);
+      counts[key] = (counts[key] ?? 0) + 1;
     }
     return counts;
   },
@@ -674,19 +691,40 @@ export const getPatientPackagesEnriched = action({
 
 // --- Enriched active usage counts with per-treatment breakdown ---
 
-export const getActiveUsageDetails = query({
+export const getActiveUsageDetails = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    Record<
+      string,
+      {
+        count: number;
+        treatmentProgress: Record<
+          string,
+          { usedCount: number; totalCount: number }
+        >;
+      }
+    >
+  > => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_packages",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const activeUsages = await ctx.db
+    const db = createSupabaseDb();
+
+    const activeUsages = (await db
       .query("gabinetPackageUsage")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "active"),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("status", "active")
+      .collect()) as GabinetPackageUsageRow[];
 
     // Group by packageId with aggregated treatment progress
     const byPackage: Record<
@@ -701,20 +739,21 @@ export const getActiveUsageDetails = query({
     > = {};
 
     for (const u of activeUsages) {
-      if (!byPackage[u.packageId]) {
-        byPackage[u.packageId] = { count: 0, treatmentProgress: {} };
+      const packageKey = String(u.packageId);
+      if (!byPackage[packageKey]) {
+        byPackage[packageKey] = { count: 0, treatmentProgress: {} };
       }
-      byPackage[u.packageId].count += 1;
-      for (const t of u.treatmentsUsed) {
-        const key = t.treatmentId;
-        if (!byPackage[u.packageId].treatmentProgress[key]) {
-          byPackage[u.packageId].treatmentProgress[key] = {
+      byPackage[packageKey].count += 1;
+      for (const t of u.treatmentsUsed ?? []) {
+        const key = String(t.treatmentId);
+        if (!byPackage[packageKey].treatmentProgress[key]) {
+          byPackage[packageKey].treatmentProgress[key] = {
             usedCount: 0,
             totalCount: 0,
           };
         }
-        byPackage[u.packageId].treatmentProgress[key].usedCount += t.usedCount;
-        byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalCount;
+        byPackage[packageKey].treatmentProgress[key].usedCount += t.usedCount;
+        byPackage[packageKey].treatmentProgress[key].totalCount += t.totalCount;
       }
     }
 

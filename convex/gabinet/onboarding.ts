@@ -2,49 +2,82 @@
  * Gabinet onboarding: setup status and completion tracking.
  */
 
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "../_helpers/auth";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+
+/**
+ * Internal: read the organization's `onboardingCompleted` flag from Convex.
+ * Organizations stay in Convex (auth table); `_completeSetupSideEffects`
+ * patches the flag here only, so this is the canonical source.
+ */
+export const _getOnboardingFlag = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const org = await ctx.db.get(args.organizationId);
+    return org?.onboardingCompleted ?? false;
+  },
+});
 
 /**
  * Get onboarding setup status for an organization.
  * Returns which setup steps have been completed.
+ *
+ * Reads `gabinetEmployees` / `gabinetTreatments` / `gabinetWorkingHours`
+ * from Supabase (those tables are Supabase-primary; the Convex copies are
+ * empty). The org's `onboardingCompleted` flag is still patched in Convex
+ * by `_completeSetupSideEffects`, so it's read back via an internal query.
  */
-export const getSetupStatus = query({
+export const getSetupStatus = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    needsSetup: boolean;
+    hasEmployees: boolean;
+    hasTreatments: boolean;
+    hasSchedule: boolean;
+    onboardingCompleted: boolean;
+  }> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    // Check employees exist (gabinetEmployees table uses by_org index)
-    const employees = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const employees = await db
       .query("gabinetEmployees")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
 
-    // Check treatments exist
-    const treatments = await ctx.db
+    const treatments = await db
       .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
 
-    // Check working hours exist
-    const workingHours = await ctx.db
+    const workingHours = await db
       .query("gabinetWorkingHours")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .first();
 
-    // Get organization onboarding status
-    const org = await ctx.db.get(args.organizationId);
+    const onboardingCompleted: boolean = await ctx.runQuery(
+      internal.gabinet.onboarding._getOnboardingFlag,
+      { organizationId: args.organizationId },
+    );
 
     return {
       needsSetup: employees.length === 0 && treatments.length === 0,
       hasEmployees: employees.length > 0,
       hasTreatments: treatments.length > 0,
       hasSchedule: !!workingHours,
-      onboardingCompleted: org?.onboardingCompleted ?? false,
+      onboardingCompleted,
     };
   },
 });

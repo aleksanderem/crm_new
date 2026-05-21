@@ -383,6 +383,57 @@ describe("automation lifecycle", () => {
     ).toBe(true);
   });
 
+  test("appointment notification without linkTemplate defaults to the appointment detail URL", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    await t.withIdentity(identity).action(api.automation.createRule, {
+      organizationId,
+      name: "Notify employee without link",
+      module: "gabinet",
+      eventType: "gabinet.appointment.created",
+      entityType: "gabinetAppointment",
+      conditions: [],
+      actions: [
+        {
+          type: "create_notification",
+          userIdPath: "employeeId",
+          titleTemplate: "Nowa wizyta: {{patientName}}",
+          messageTemplate: "{{patientName}} ma wizytę {{date}} o {{startTime}}.",
+        },
+      ],
+      enabled: true,
+    });
+
+    const appointmentId = await createAppointment(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      employeeId: userId,
+    });
+
+    await flushScheduled(t);
+
+    const notifications = await t.run(async (ctx) =>
+      ctx.db
+        .query("notifications")
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+        .collect(),
+    );
+
+    const automationNotification = notifications.find(
+      (notification) => notification.type === "automation_rule",
+    );
+    expect(automationNotification?.link).toBe(
+      `/dashboard/gabinet/appointments/${appointmentId}`,
+    );
+  });
+
   test("patient created event processes notification preset and records a processed run", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

@@ -1,9 +1,7 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -467,25 +465,32 @@ export const _removeSideEffects = internalMutation({
 });
 
 /** Get employees qualified for a specific treatment */
-export const getQualifiedForTreatment = query({
+export const getQualifiedForTreatment = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+  handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const employees = await ctx.db
+    const db = createSupabaseDb();
+    const employees = (await db
       .query("gabinetEmployees")
-      .withIndex("by_orgAndActive", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isActive", true)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("isActive", true)
+      .collect()) as GabinetEmployeeRow[];
 
     return employees.filter((e) =>
-      e.qualifiedTreatmentIds.includes(args.treatmentId)
+      (e.qualifiedTreatmentIds ?? []).includes(args.treatmentId as Id<"gabinetTreatments">)
     );
   },
 });

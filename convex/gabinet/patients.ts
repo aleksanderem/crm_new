@@ -1,10 +1,8 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { logActivity } from "../_helpers/activities";
 import type { GabinetPatientRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
@@ -480,24 +478,32 @@ export const _removeSideEffects = internalMutation({
   },
 });
 
-export const getByContact = query({
+export const getByContact = action({
   args: {
     organizationId: v.id("organizations"),
-    contactId: v.id("contacts"),
+    contactId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "view");
+  handler: async (ctx, args): Promise<GabinetPatientRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const results = await ctx.db
+    const db = createSupabaseDb();
+    let results = (await db
       .query("gabinetPatients")
-      .withIndex("by_orgAndContact", (q) =>
-        q.eq("organizationId", args.organizationId).eq("contactId", args.contactId)
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("contactId", String(args.contactId))
+      .collect()) as GabinetPatientRow[];
+
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
     return results;
   },

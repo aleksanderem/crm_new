@@ -384,30 +384,43 @@ export const listActive = action({
 
 // --- Treatment Detail Page queries/mutations ---
 
-export const getTreatmentStats = query({
+export const getTreatmentStats = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<{
+    totalAppointments: number;
+    thisMonthAppointments: number;
+    completedAppointments: number;
+    revenue: number;
+  }> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const allAppointments = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const allAppointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndTreatment", (q) =>
-        q.eq("organizationId", args.organizationId).eq("treatmentId", args.treatmentId)
-      )
-      .collect();
+      .eq("organizationId", orgIdStr)
+      .eq("treatmentId", args.treatmentId)
+      .collect()) as GabinetAppointmentRow[];
 
     const now = new Date();
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const thisMonthAppointments = allAppointments.filter((a) => a.date >= monthStart);
     const completedAppointments = allAppointments.filter((a) => a.status === "completed");
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    const revenue = completedAppointments.length * (treatment?.price ?? 0);
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    const revenue = completedAppointments.length * ((treatment?.price as number | null) ?? 0);
 
     return {
       totalAppointments: allAppointments.length,
@@ -790,39 +803,63 @@ export const getTreatmentEmployees = action({
   },
 });
 
-export const getRequiredFormTemplates = query({
+export const getRequiredFormTemplates = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<Array<{
+    templateId: string;
+    timing: "before_start" | "after_completion";
+    templateName: string;
+    templateCategory: string;
+    requiresSignature: boolean;
+    isActive: boolean;
+  }>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
 
-    const entries = treatment.requiredFormTemplates ?? [];
-    const enriched = await Promise.all(
-      entries.map(async (entry) => {
-        const template = await ctx.db.get(entry.templateId);
-        return template
-          ? {
-              templateId: entry.templateId,
-              timing: entry.timing,
-              templateName: template.name,
-              templateCategory: template.category,
-              requiresSignature: template.requiresSignature,
-              isActive: template.isActive,
-            }
-          : null;
-      }),
-    );
+    const entries = (treatment.requiredFormTemplates as Array<{
+      templateId: string;
+      timing: "before_start" | "after_completion";
+    }> | null) ?? [];
+    if (entries.length === 0) return [];
 
-    return enriched.filter((e): e is NonNullable<typeof e> => e !== null);
+    const templateIds = entries.map((e) => String(e.templateId));
+    const templates = await db.getMany("formTemplates", templateIds);
+    const templateById = new Map<string, Record<string, unknown>>();
+    for (const t of templates) {
+      templateById.set(String(t._id), t);
+    }
+
+    return entries
+      .map((entry) => {
+        const template = templateById.get(String(entry.templateId));
+        if (!template) return null;
+        return {
+          templateId: String(entry.templateId),
+          timing: entry.timing,
+          templateName: (template.name as string | null) ?? "",
+          templateCategory: (template.category as string | null) ?? "",
+          requiresSignature: (template.requiresSignature as boolean | null) ?? false,
+          isActive: (template.isActive as boolean | null) ?? false,
+        };
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
   },
 });
 
@@ -999,77 +1036,112 @@ export const migrateParametersToTyped = action({
 
 // --- Treatment Variants ---
 
-export const listVariants = query({
+type ResolvedTreatmentVariant = Record<string, unknown> & {
+  resolvedPrice: number | null;
+  resolvedDuration: number | null;
+  resolvedDescription: string | null;
+  resolvedShortDescription: string | null;
+  resolvedImage: string | null;
+  priceInherited: boolean;
+  durationInherited: boolean;
+  descriptionInherited: boolean;
+  shortDescriptionInherited: boolean;
+  imageInherited: boolean;
+};
+
+function resolveVariantFields(
+  variant: Record<string, unknown>,
+  treatment: Record<string, unknown>,
+): ResolvedTreatmentVariant {
+  const variantPrice = variant.price as number | null | undefined;
+  const variantDuration = variant.duration as number | null | undefined;
+  const variantDescription = variant.description as string | null | undefined;
+  const variantShortDescription = variant.shortDescription as string | null | undefined;
+  const variantImage = variant.image as string | null | undefined;
+
+  return {
+    ...variant,
+    resolvedPrice: variantPrice ?? (treatment.price as number | null) ?? null,
+    resolvedDuration: variantDuration ?? (treatment.duration as number | null) ?? null,
+    resolvedDescription: variantDescription ?? (treatment.description as string | null) ?? null,
+    resolvedShortDescription:
+      variantShortDescription ?? (treatment.shortDescription as string | null) ?? null,
+    resolvedImage: variantImage ?? (treatment.image as string | null) ?? null,
+    priceInherited: variantPrice == null,
+    durationInherited: variantDuration == null,
+    descriptionInherited: variantDescription == null,
+    shortDescriptionInherited: variantShortDescription == null,
+    imageInherited: variantImage == null,
+  };
+}
+
+export const listVariants = action({
   args: {
     organizationId: v.id("organizations"),
-    treatmentId: v.id("gabinetTreatments"),
+    treatmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<ResolvedTreatmentVariant[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const treatment = await ctx.db.get(args.treatmentId);
-    if (!treatment || treatment.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const treatment = await db.get("gabinetTreatments", args.treatmentId);
+    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
       throw new Error("Treatment not found");
     }
 
-    const variants = await ctx.db
+    const variants = (await db
       .query("gabinetTreatmentVariants")
-      .withIndex("by_treatment", (q) => q.eq("treatmentId", args.treatmentId))
-      .collect();
+      .eq("treatmentId", args.treatmentId)
+      .collect()) as Array<Record<string, unknown>>;
 
-    // Sort by sortOrder, then by creation time
-    variants.sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a._creationTime - b._creationTime);
+    // Sort by sortOrder; Array.sort is stable so insertion order is preserved
+    // within the same sortOrder (Supabase rows don't carry _creationTime).
+    variants.sort(
+      (a, b) =>
+        ((a.sortOrder as number | null) ?? 999) -
+        ((b.sortOrder as number | null) ?? 999),
+    );
 
-    // Resolve inherited fields
-    return variants.map((variant) => ({
-      ...variant,
-      resolvedPrice: variant.price ?? treatment.price,
-      resolvedDuration: variant.duration ?? treatment.duration,
-      resolvedDescription: variant.description ?? treatment.description,
-      resolvedShortDescription: variant.shortDescription ?? treatment.shortDescription,
-      resolvedImage: variant.image ?? treatment.image,
-      priceInherited: variant.price === undefined,
-      durationInherited: variant.duration === undefined,
-      descriptionInherited: variant.description === undefined,
-      shortDescriptionInherited: variant.shortDescription === undefined,
-      imageInherited: variant.image === undefined,
-    }));
+    return variants.map((variant) => resolveVariantFields(variant, treatment));
   },
 });
 
-export const getVariant = query({
+export const getVariant = action({
   args: {
     organizationId: v.id("organizations"),
-    variantId: v.id("gabinetTreatmentVariants"),
+    variantId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_treatments", "view");
+  handler: async (ctx, args): Promise<ResolvedTreatmentVariant> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const variant = await ctx.db.get(args.variantId);
-    if (!variant || variant.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+
+    const variant = await db.get("gabinetTreatmentVariants", args.variantId);
+    if (!variant || String(variant.organizationId) !== String(args.organizationId)) {
       throw new Error("Variant not found");
     }
 
-    const treatment = await ctx.db.get(variant.treatmentId);
+    const treatment = await db.get("gabinetTreatments", String(variant.treatmentId));
     if (!treatment) throw new Error("Parent treatment not found");
 
-    return {
-      ...variant,
-      resolvedPrice: variant.price ?? treatment.price,
-      resolvedDuration: variant.duration ?? treatment.duration,
-      resolvedDescription: variant.description ?? treatment.description,
-      resolvedShortDescription: variant.shortDescription ?? treatment.shortDescription,
-      resolvedImage: variant.image ?? treatment.image,
-      priceInherited: variant.price === undefined,
-      durationInherited: variant.duration === undefined,
-      descriptionInherited: variant.description === undefined,
-      shortDescriptionInherited: variant.shortDescription === undefined,
-      imageInherited: variant.image === undefined,
-    };
+    return resolveVariantFields(variant, treatment);
   },
 });
 

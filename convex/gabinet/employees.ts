@@ -137,22 +137,31 @@ export const getById = action({
   },
 });
 
-export const getByUserId = query({
+export const getByUserId = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_employees", "view");
+  handler: async (ctx, args): Promise<GabinetEmployeeRow | null> => {
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    return await ctx.db
+    const db = createSupabaseDb();
+    const results = (await db
       .query("gabinetEmployees")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
-      )
-      .first();
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", String(args.userId))
+      .collect()) as GabinetEmployeeRow[];
+
+    return results[0] ?? null;
   },
 });
 

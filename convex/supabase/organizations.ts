@@ -3,7 +3,8 @@
  */
 
 import { v } from "convex/values";
-import { internalAction } from "@cvx/_generated/server";
+import { internalAction, internalQuery } from "@cvx/_generated/server";
+import { internal } from "@cvx/_generated/api";
 import { createServiceRoleClient, upsertWithFkRetry } from "./client";
 
 // ── Organization ──────────────────────────────────────────────────────────────
@@ -43,6 +44,79 @@ export const writeOrganizationToSupabase = internalAction({
 });
 
 // ── Team Membership ───────────────────────────────────────────────────────────
+
+// One-shot backfill: mirrors EVERY Convex teamMemberships row into Supabase.
+// Safe to re-run — upsert semantics in writeTeamMembershipToSupabase. Used to
+// recover from the historical gap when org.create / invitations._acceptInternal
+// / organizations.addMember wrote to Convex only.
+export const _backfillAllTeamMembershipsToSupabase = internalAction({
+  args: {},
+  returns: v.object({
+    scanned: v.number(),
+    mirrored: v.number(),
+    errors: v.number(),
+  }),
+  handler: async (ctx): Promise<{ scanned: number; mirrored: number; errors: number }> => {
+    const rows: Array<{
+      _id: string;
+      userId: string;
+      organizationId: string;
+      role: string;
+      invitedBy?: string;
+      joinedAt: number;
+    }> = await ctx.runQuery(
+      internal.supabase.organizations._listAllTeamMemberships,
+      {},
+    );
+    let mirrored = 0;
+    let errors = 0;
+    for (const r of rows) {
+      try {
+        await ctx.runAction(
+          internal.supabase.organizations.writeTeamMembershipToSupabase,
+          {
+            membershipId: r._id,
+            userId: r.userId,
+            organizationId: r.organizationId,
+            role: r.role,
+            invitedBy: r.invitedBy,
+            joinedAt: r.joinedAt,
+          },
+        );
+        mirrored += 1;
+      } catch (e) {
+        console.error(`[backfill teamMemberships] ${r._id} failed:`, e);
+        errors += 1;
+      }
+    }
+    return { scanned: rows.length, mirrored, errors };
+  },
+});
+
+export const _listAllTeamMemberships = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      userId: v.string(),
+      organizationId: v.string(),
+      role: v.string(),
+      invitedBy: v.optional(v.string()),
+      joinedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const all = await ctx.db.query("teamMemberships").collect();
+    return all.map((r) => ({
+      _id: String(r._id),
+      userId: String(r.userId),
+      organizationId: String(r.organizationId),
+      role: r.role,
+      invitedBy: r.invitedBy ? String(r.invitedBy) : undefined,
+      joinedAt: r.joinedAt,
+    }));
+  },
+});
 
 export const writeTeamMembershipToSupabase = internalAction({
   args: {

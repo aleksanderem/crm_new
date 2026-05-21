@@ -75,12 +75,28 @@ export const _createOrgInternal = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.db.insert("teamMemberships", {
+    const ownerMembershipId = await ctx.db.insert("teamMemberships", {
       userId: user._id,
       organizationId: orgId,
       role: "owner",
       joinedAt: now,
     });
+
+    // Mirror owner membership to Supabase — same reason as in
+    // invitations._acceptInternal: the UI reads team_memberships from
+    // Supabase, not Convex, so without this the org creator has zero
+    // permissions in their own org.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.writeTeamMembershipToSupabase,
+      {
+        membershipId: String(ownerMembershipId),
+        userId: String(user._id),
+        organizationId: String(orgId),
+        role: "owner",
+        joinedAt: now,
+      },
+    );
 
     await logActivity(ctx, {
       organizationId: orgId,
@@ -273,13 +289,28 @@ export const _inviteMemberInternal = internalMutation({
       .unique();
     if (existing) throw new Error("User is already a member");
 
+    const joinedAt = Date.now();
     const membershipId = await ctx.db.insert("teamMemberships", {
       userId: args.userId,
       organizationId: args.organizationId,
       role: args.role,
       invitedBy: user._id,
-      joinedAt: Date.now(),
+      joinedAt,
     });
+
+    // Mirror to Supabase — UI reads team_memberships from there.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.writeTeamMembershipToSupabase,
+      {
+        membershipId: String(membershipId),
+        userId: String(args.userId),
+        organizationId: String(args.organizationId),
+        role: args.role,
+        invitedBy: String(user._id),
+        joinedAt,
+      },
+    );
 
     await logActivity(ctx, {
       organizationId: args.organizationId,

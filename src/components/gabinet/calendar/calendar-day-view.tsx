@@ -32,11 +32,11 @@ const LEAVE_STRIPE_BG =
   "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
-const HOUR_HEIGHT = 60; // 1 minute = 1px
+const HOUR_HEIGHT = 90; // pixels per hour — taller rows so short appointments still fit patient + treatment lines
 
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
-  return ((h - 7) * 60 + m);
+  return (((h - 7) * 60 + m) * HOUR_HEIGHT) / 60;
 }
 
 function buildSlots(slotMinutes: number) {
@@ -120,9 +120,9 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const now = useCurrentTime();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentLineTop = ((currentMinutes - 7 * 60) / 60) * HOUR_HEIGHT;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const showCurrentTime = isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60;
+  const showCurrentTime = isToday && currentLineTop > 0 && currentLineTop < HOURS.length * HOUR_HEIGHT;
 
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
   const showSubdivisions = slotMinutes === 60;
@@ -140,7 +140,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const leaveBottom = leave
     ? leave.endTime
       ? timeToTop(leave.endTime)
-      : HOURS.length * 60
+      : HOURS.length * HOUR_HEIGHT
     : null;
   const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
   const leaveLabel = leave
@@ -223,7 +223,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {workStartTop === null && (
           <div
             className="pointer-events-none absolute inset-0 bg-primary/5"
-            style={{ height: `${HOURS.length * 60}px` }}
+            style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
 
@@ -239,12 +239,12 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         )}
 
         {/* Closed: after clinic closes */}
-        {workEndTop !== null && workEndTop < HOURS.length * 60 && (
+        {workEndTop !== null && workEndTop < HOURS.length * HOUR_HEIGHT && (
           <div
             className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10"
             style={{
               top: `${workEndTop}px`,
-              height: `${HOURS.length * 60 - workEndTop}px`,
+              height: `${HOURS.length * HOUR_HEIGHT - workEndTop}px`,
             }}
           />
         )}
@@ -293,9 +293,18 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/30">
               {showSubdivisions && (
                 <>
-                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${HOUR_HEIGHT / 4}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/60"
+                    style={{ top: `${HOUR_HEIGHT / 2}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${(HOUR_HEIGHT * 3) / 4}px` }}
+                  />
                 </>
               )}
             </div>
@@ -314,7 +323,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         )}
 
         {/* Current time line */}
-        {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60 && (
+        {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * HOUR_HEIGHT && (
           <div
             className="absolute left-0 right-0 z-20 border-t-2 border-red-500"
             style={{ top: `${currentLineTop}px` }}

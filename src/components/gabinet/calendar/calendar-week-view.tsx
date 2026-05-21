@@ -36,7 +36,7 @@ const LEAVE_STRIPE_BG =
   "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
-const HOUR_HEIGHT = 60; // 1 minute = 1px
+const HOUR_HEIGHT = 90; // pixels per hour — taller rows so short appointments still fit patient + treatment lines
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function buildSlots(slotMinutes: number) {
@@ -63,7 +63,7 @@ function getWeekDates(start: string): string[] {
 
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
-  return ((h - 7) * 60 + m);
+  return (((h - 7) * 60 + m) * HOUR_HEIGHT) / 60;
 }
 
 function getDayOfWeek(date: string): number {
@@ -175,7 +175,7 @@ function WeekDayColumn({
   const leaveBottom = leave
     ? leave.endTime
       ? timeToTop(leave.endTime)
-      : HOURS.length * 60
+      : HOURS.length * HOUR_HEIGHT
     : null;
   const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
   const leaveLabel = leave
@@ -239,7 +239,7 @@ function WeekDayColumn({
         {!schedule && (
           <div
             className="pointer-events-none absolute inset-0 bg-primary/5 z-0"
-            style={{ height: `${HOURS.length * 60}px` }}
+            style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
 
@@ -257,12 +257,12 @@ function WeekDayColumn({
               />
             )}
             {/* Closed: after clinic closes */}
-            {timeToTop(schedule.endTime) < HOURS.length * 60 && (
+            {timeToTop(schedule.endTime) < HOURS.length * HOUR_HEIGHT && (
               <div
                 className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10 z-0"
                 style={{
                   top: `${timeToTop(schedule.endTime)}px`,
-                  height: `${HOURS.length * 60 - timeToTop(schedule.endTime)}px`,
+                  height: `${HOURS.length * HOUR_HEIGHT - timeToTop(schedule.endTime)}px`,
                 }}
               />
             )}
@@ -310,9 +310,18 @@ function WeekDayColumn({
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/20">
               {showSubdivisions && (
                 <>
-                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${HOUR_HEIGHT / 4}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/60"
+                    style={{ top: `${HOUR_HEIGHT / 2}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${(HOUR_HEIGHT * 3) / 4}px` }}
+                  />
                 </>
               )}
             </div>
@@ -331,7 +340,7 @@ function WeekDayColumn({
         )}
 
         {/* Current time line */}
-        {isToday && currentTimeTop !== null && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60 && (
+        {isToday && currentTimeTop !== null && currentTimeTop > 0 && currentTimeTop < HOURS.length * HOUR_HEIGHT && (
           <div
             className="pointer-events-none absolute left-0 right-0 z-20 border-t-2 border-red-500"
             style={{ top: `${currentTimeTop}px` }}
@@ -381,10 +390,10 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * HOUR_HEIGHT;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const todayInView = dates.includes(today);
-  const showCurrentTime = todayInView && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
+  const showCurrentTime = todayInView && currentTimeTop > 0 && currentTimeTop < HOURS.length * HOUR_HEIGHT;
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
 
   const layoutsByDate = useMemo(() => {

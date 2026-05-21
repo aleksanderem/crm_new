@@ -1,8 +1,7 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
 import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
@@ -25,15 +24,20 @@ export const list = action({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    leaveTypeId: v.id("gabinetLeaveTypes"),
+    leaveTypeId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const lt = await ctx.db.get(args.leaveTypeId);
-    if (!lt || lt.organizationId !== args.organizationId) {
+  handler: async (ctx, args): Promise<GabinetLeaveTypeRow> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const lt = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as
+      | GabinetLeaveTypeRow
+      | null;
+    if (!lt || String(lt.organizationId) !== String(args.organizationId)) {
       throw new Error("Leave type not found");
     }
     return lt;
@@ -172,19 +176,22 @@ export const getBalances = action({
   },
 });
 
-export const getAllBalances = query({
+export const getAllBalances = action({
   args: {
     organizationId: v.id("organizations"),
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    return await ctx.db
+    const db = createSupabaseDb();
+    const all = await db
       .query("gabinetLeaveBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect()
-      .then((all) => all.filter((b) => b.year === args.year));
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+    return all.filter((b) => (b as { year?: number }).year === args.year);
   },
 });
 

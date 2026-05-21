@@ -8,7 +8,6 @@ import {
   seedSecondUser,
   seedTestUser,
 } from "../../convex/_test_helpers";
-import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 const activeContexts = new Set<ReturnType<typeof createTestCtx>>();
 

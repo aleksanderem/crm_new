@@ -625,10 +625,21 @@ export const _resendInternal = internalMutation({
 export const _adminResendAndSend = internalAction({
   args: { invitationId: v.id("invitations") },
   handler: async (ctx, args) => {
-    const r = await ctx.runMutation(
-      internal.invitations._adminResendInternal,
-      { invitationId: args.invitationId },
-    );
+    // Explicit type annotation breaks a circular type inference TS hits when
+    // the resolved runMutation result type indirectly references this very
+    // export (TS7022/TS7023).
+    const r: {
+      invitationId: string;
+      email: string;
+      role: "admin" | "member" | "viewer" | "owner";
+      token: string;
+      organizationId: Id<"organizations">;
+      invitedBy: string;
+      expiresAt: number;
+      updatedAt: number;
+    } = await ctx.runMutation(internal.invitations._adminResendInternal, {
+      invitationId: args.invitationId,
+    });
     await ctx.scheduler.runAfter(0, internal.invitations._sendInvitationEmail, {
       invitationId: r.invitationId,
       email: r.email,
@@ -637,7 +648,7 @@ export const _adminResendAndSend = internalAction({
       organizationId: r.organizationId,
       inviterUserId: r.invitedBy,
     });
-    return { ok: true, ...r };
+    return { ok: true as const, ...r };
   },
 });
 

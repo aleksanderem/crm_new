@@ -87,6 +87,7 @@ import type * as gabinet_appointmentReminders from "../gabinet/appointmentRemind
 import type * as gabinet_appointmentSms from "../gabinet/appointmentSms.js";
 import type * as gabinet_appointmentWorkflow from "../gabinet/appointmentWorkflow.js";
 import type * as gabinet_appointments from "../gabinet/appointments.js";
+import type * as gabinet_documentDataSources from "../gabinet/documentDataSources.js";
 import type * as gabinet_employees from "../gabinet/employees.js";
 import type * as gabinet_equipment from "../gabinet/equipment.js";
 import type * as gabinet_leaveTypes from "../gabinet/leaveTypes.js";
@@ -125,6 +126,7 @@ import type * as mail_testConnectionNode from "../mail/testConnectionNode.js";
 import type * as mailProviders from "../mailProviders.js";
 import type * as microsoft_oauth from "../microsoft/oauth.js";
 import type * as migrations_backfillMailProviders from "../migrations/backfillMailProviders.js";
+import type * as migrations_backfillTreatmentCategories from "../migrations/backfillTreatmentCategories.js";
 import type * as migrations_emailTemplateMigrations from "../migrations/emailTemplateMigrations.js";
 import type * as migrations_migrateGabinetDocuments from "../migrations/migrateGabinetDocuments.js";
 import type * as notes from "../notes.js";
@@ -264,6 +266,7 @@ declare const fullApi: ApiFromModules<{
   "gabinet/appointmentSms": typeof gabinet_appointmentSms;
   "gabinet/appointmentWorkflow": typeof gabinet_appointmentWorkflow;
   "gabinet/appointments": typeof gabinet_appointments;
+  "gabinet/documentDataSources": typeof gabinet_documentDataSources;
   "gabinet/employees": typeof gabinet_employees;
   "gabinet/equipment": typeof gabinet_equipment;
   "gabinet/leaveTypes": typeof gabinet_leaveTypes;
@@ -302,6 +305,7 @@ declare const fullApi: ApiFromModules<{
   mailProviders: typeof mailProviders;
   "microsoft/oauth": typeof microsoft_oauth;
   "migrations/backfillMailProviders": typeof migrations_backfillMailProviders;
+  "migrations/backfillTreatmentCategories": typeof migrations_backfillTreatmentCategories;
   "migrations/emailTemplateMigrations": typeof migrations_emailTemplateMigrations;
   "migrations/migrateGabinetDocuments": typeof migrations_migrateGabinetDocuments;
   notes: typeof notes;

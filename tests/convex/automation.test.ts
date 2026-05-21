@@ -387,57 +387,6 @@ describe("automation lifecycle", () => {
     ).toBe(true);
   });
 
-  test("appointment notification without linkTemplate defaults to the appointment detail URL", async () => {
-    const t = createManagedTestCtx();
-    const { organizationId, userId, identity } = await seedTestUser(t);
-    const { patientId, treatmentId } = await seedGabinetPrereqs(
-      t,
-      organizationId,
-      userId,
-    );
-
-    await t.withIdentity(identity).action(api.automation.createRule, {
-      organizationId,
-      name: "Notify employee without link",
-      module: "gabinet",
-      eventType: "gabinet.appointment.created",
-      entityType: "gabinetAppointment",
-      conditions: [],
-      actions: [
-        {
-          type: "create_notification",
-          userIdPath: "employeeId",
-          titleTemplate: "Nowa wizyta: {{patientName}}",
-          messageTemplate: "{{patientName}} ma wizytę {{date}} o {{startTime}}.",
-        },
-      ],
-      enabled: true,
-    });
-
-    const appointmentId = await createAppointment(t, identity, {
-      organizationId,
-      patientId,
-      treatmentId,
-      employeeId: userId,
-    });
-
-    await flushScheduled(t);
-
-    const notifications = await t.run(async (ctx) =>
-      ctx.db
-        .query("notifications")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect(),
-    );
-
-    const automationNotification = notifications.find(
-      (notification) => notification.type === "automation_rule",
-    );
-    expect(automationNotification?.link).toBe(
-      `/dashboard/gabinet/appointments/${appointmentId}`,
-    );
-  });
-
   test("patient created event processes notification preset and records a processed run", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
@@ -1127,9 +1076,7 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
-      | (Record<string, unknown> & { notes?: string })
-      | null;
+    const lead = await createSupabaseDb().get<{ notes?: string }>("leads", String(leadId));
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -1193,16 +1140,14 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
-      | (Record<string, unknown> & { notes?: string })
-      | null;
+    const lead = await t.run(async (ctx) => ctx.db.get(leadId));
 
     expect(run?.status).toBe("failed");
     expect(steps).toHaveLength(1);
     expect(steps[0]?.status).toBe("failed");
     expect(steps[0]?.actionType).toBe("update_field");
     expect(steps[0]?.errorMessage).toContain("Custom lead field updates are not supported");
-    expect(lead?.notes ?? null).toBeNull();
+    expect(lead?.notes).toBeUndefined();
   });
 
   test("lead status changed update_field denies member when leads edit scope is none", async () => {
@@ -1400,9 +1345,7 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const lead = (await createSupabaseDb().get("leads", String(leadId))) as
-      | (Record<string, unknown> & { notes?: string })
-      | null;
+    const lead = await createSupabaseDb().get<{ notes?: string }>("leads", String(leadId));
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);

@@ -20,6 +20,7 @@ import {
 } from "./schema";
 import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
 import { renderTemplateString } from "./emailTemplates";
+import { escapeHtml } from "./_helpers/html";
 import { checkPermission } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
 import {
@@ -166,10 +167,6 @@ type AutomationUpdateFieldDescriptor = {
   unsupportedStandardFieldMessage: string;
   unsupportedCustomFieldMessage: string;
   supportsCustom: boolean;
-  // Where the entity actually lives. "convex" uses ctx.db; "supabase" uses
-  // createSupabaseDb(). Leads were migrated to Supabase-only in #353, so
-  // ctx.db.get(leadId) returns null in the engine.
-  storage: "convex" | "supabase";
   resolveTargetId: (payload: Record<string, unknown>, run: { entityType?: string; entityId?: string }) =>
     | string
     | undefined;
@@ -191,7 +188,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported patient field update target",
     unsupportedCustomFieldMessage: "Custom patient field updates are not supported",
     supportsCustom: true,
-    storage: "convex",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "gabinetPatient" && run.entityId) {
         return run.entityId;
@@ -209,7 +205,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported appointment field update target",
     unsupportedCustomFieldMessage: "Custom appointment field updates are not supported",
     supportsCustom: false,
-    storage: "convex",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "gabinetAppointment" && run.entityId) {
         return run.entityId;
@@ -228,7 +223,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported employee field update target",
     unsupportedCustomFieldMessage: "Custom employee field updates are not supported",
     supportsCustom: false,
-    storage: "convex",
     resolveTargetId: (_payload, run) => {
       if (run.entityType === "gabinetEmployee" && run.entityId) {
         return run.entityId;
@@ -245,7 +239,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
     unsupportedStandardFieldMessage: "Unsupported lead field update target",
     unsupportedCustomFieldMessage: "Custom lead field updates are not supported",
     supportsCustom: false,
-    storage: "supabase",
     resolveTargetId: (payload, run) => {
       if (run.entityType === "lead" && run.entityId) {
         return run.entityId;
@@ -254,10 +247,36 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
       return leadId || undefined;
     },
     canEditOwn: (entity, actorUserId) =>
-      String(entity.createdBy) === String(actorUserId) ||
-      String(entity.assignedTo) === String(actorUserId),
+      entity.createdBy === actorUserId || entity.assignedTo === actorUserId,
   },
 };
+
+async function sendAutomationEmail(args: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+}) {
+  const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${AUTH_RESEND_KEY ?? ""}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: args.to,
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to send automation email (${response.status})`);
+  }
+}
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, "");
@@ -412,19 +431,67 @@ async function getAutomationEditPermission(
   };
 }
 
-async function resolveDefaultEmailFromAddress(
+async function insertAutomationEmail(
   ctx: MutationCtx,
-  organizationId: Id<"organizations">,
+  args: {
+    organizationId: Id<"organizations">;
+    recipientEmail: string;
+    subject: string;
+    bodyHtml?: string;
+    bodyText?: string;
+    sentBy?: Id<"users">;
+  },
 ) {
   const emailAccounts = await ctx.db
     .query("emailAccounts")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
     .collect();
   const defaultAccount = emailAccounts.find((account) => account.isDefault);
   if (!defaultAccount) {
     throw new Error("No default email account configured");
   }
-  return defaultAccount.fromEmail;
+
+  const htmlBody = args.bodyHtml ?? escapeHtml(args.bodyText ?? "").replace(/\n/g, "<br />");
+  await sendAutomationEmail({
+    to: args.recipientEmail,
+    subject: args.subject,
+    html: htmlBody,
+    text: args.bodyText,
+  });
+
+  const now = Date.now();
+  const bodyText = args.bodyText ?? stripHtml(htmlBody);
+  const emailId = await ctx.db.insert("emails", {
+    organizationId: args.organizationId,
+    threadId: `<${crypto.randomUUID()}@crm.app>`,
+    messageId: `<${crypto.randomUUID()}@crm.app>`,
+    direction: "outbound",
+    from: defaultAccount.fromEmail,
+    to: [args.recipientEmail],
+    subject: args.subject,
+    bodyHtml: htmlBody,
+    bodyText,
+    snippet: bodyText.slice(0, 200),
+    isRead: true,
+    isStarred: false,
+    sentBy: args.sentBy,
+    sentAt: now,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  if (args.sentBy) {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "email",
+      entityId: emailId,
+      action: "email_sent",
+      description: `Sent email \"${args.subject}\" to ${args.recipientEmail}`,
+      performedBy: args.sentBy,
+    });
+  }
+
+  return emailId;
 }
 
 // Resend send call extracted to an internalAction so processRun (mutation)
@@ -666,14 +733,12 @@ async function applyUpdateFieldAction(
     throw new Error(permission.reason ?? "Permission denied");
   }
 
-  const entityId = targetId as Id<
-    "gabinetPatients" | "gabinetAppointments" | "gabinetEmployees" | "leads"
-  >;
-  const supabaseDb = descriptor.storage === "supabase" ? createSupabaseDb() : null;
-  const entity = (supabaseDb
-    ? await supabaseDb.get(descriptor.table, String(entityId))
-    : await ctx.db.get(entityId as never)) as
-    | ({ organizationId: Id<"organizations">; customFields?: unknown } & Record<string, unknown>)
+  // Read entity from Supabase — leads/patients/appointments/employees are all
+  // Supabase-primary, so ctx.db.get against Convex returns null in prod for
+  // entities written by the new action handlers.
+  const db = createSupabaseDb();
+  const entity = (await db.get(descriptor.table, targetId)) as
+    | ({ organizationId?: string; customFields?: unknown } & Record<string, unknown>)
     | null;
   if (!entity || String(entity.organizationId) !== String(args.organizationId)) {
     throw new Error(descriptor.notFoundMessage);
@@ -686,6 +751,7 @@ async function applyUpdateFieldAction(
   const coercedValue = coerceAutomationFieldValue(renderedValue, args.action.valueType);
   const now = Date.now();
 
+  let updates: Record<string, unknown>;
   if (args.action.fieldKind === "custom") {
     if (!descriptor.supportsCustom) {
       throw new Error(descriptor.unsupportedCustomFieldMessage);
@@ -695,30 +761,35 @@ async function applyUpdateFieldAction(
       entity.customFields && typeof entity.customFields === "object"
         ? (entity.customFields as Record<string, unknown>)
         : {};
-    const customPatch = {
+    updates = {
       customFields: {
         ...existingCustomFields,
         [args.action.fieldKey]: coercedValue,
       },
       updatedAt: now,
     };
-    if (supabaseDb) {
-      await supabaseDb.patch(descriptor.table, String(entityId), customPatch);
-    } else {
-      await ctx.db.patch(entityId as never, customPatch as never);
-    }
   } else {
     if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.action.fieldKey)) {
       throw new Error(descriptor.unsupportedStandardFieldMessage);
     }
-    const standardPatch = {
+    updates = {
       [args.action.fieldKey]: coercedValue,
       updatedAt: now,
     };
-    if (supabaseDb) {
-      await supabaseDb.patch(descriptor.table, String(entityId), standardPatch);
-    } else {
-      await ctx.db.patch(entityId as never, standardPatch as never);
+  }
+
+  // Write to Supabase (primary).
+  await db.patch(descriptor.table, targetId, updates);
+
+  // Mirror to Convex if a doc with this id still exists there (gabinet
+  // entities seeded by tests, or legacy data not yet migrated). For
+  // Supabase-only ids (e.g. UUIDs returned by leads.create), normalizeId
+  // returns null and we silently skip the Convex write.
+  const convexId = ctx.db.normalizeId(descriptor.table, targetId);
+  if (convexId) {
+    const convexDoc = await ctx.db.get(convexId);
+    if (convexDoc) {
+      await ctx.db.patch(convexId, updates as never);
     }
   }
 
@@ -733,7 +804,7 @@ async function applyUpdateFieldAction(
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: descriptor.linkedEntityType,
-      entityId,
+      entityId: targetId,
       action: "updated",
       description: `Updated ${activityLabelByEntity[descriptor.linkedEntityType]} field ${args.action.fieldKey} via automation`,
       performedBy: args.actorUserId,
@@ -742,7 +813,7 @@ async function applyUpdateFieldAction(
 
   return {
     linkedEntityType: descriptor.linkedEntityType,
-    linkedEntityId: String(entityId),
+    linkedEntityId: targetId,
     renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
   };
 }
@@ -1468,6 +1539,8 @@ export const processRun = internalMutation({
 
             let renderedSubject = "";
             let renderedBody = "";
+            let linkedEntityType: string | undefined;
+            let linkedEntityId: string | undefined;
 
             if (action.mode === "template") {
               const template = await ctx.db.get(action.templateId);
@@ -1498,55 +1571,55 @@ export const processRun = internalMutation({
               renderedBody = applyTemplate(action.bodyTemplate, payload);
             }
 
-            const fromEmail = await resolveDefaultEmailFromAddress(
-              ctx,
-              run.organizationId,
-            );
-            const bodyText = stripHtml(renderedBody);
+            const emailId = await insertAutomationEmail(ctx, {
+              organizationId: run.organizationId,
+              recipientEmail,
+              subject: renderedSubject,
+              bodyHtml: renderedBody,
+              bodyText: stripHtml(renderedBody),
+              sentBy: run.actorUserId,
+            });
+            linkedEntityType = "email";
+            linkedEntityId = String(emailId);
 
-            // Defer the network send to an internalAction. Convex mutations
-            // cannot use fetch(); the action will record the email + patch
-            // step status via _recordAutomationEmailResult once Resend responds.
-            await ctx.scheduler.runAfter(
-              0,
-              internal.automation._sendAutomationEmail,
-              {
-                organizationId: run.organizationId,
-                stepId,
-                fromEmail,
-                recipient: recipientEmail,
-                recipientName,
-                subject: renderedSubject,
-                bodyHtml: renderedBody,
-                bodyText,
-                sentBy: run.actorUserId,
-                appointmentId:
-                  run.entityType === "gabinetAppointment"
-                    ? (run.entityId as Id<"gabinetAppointments">)
-                    : undefined,
-                actionType: action.type,
-                idempotencyKey: stepIdempotencyKey,
-              },
-            );
-
-            // Mark step with rendered content; final status (processed/failed)
-            // is set asynchronously by _recordAutomationEmailResult.
             await ctx.db.patch(stepId, {
+              status: "processed",
               recipient: recipientEmail,
               recipientName,
+              linkedEntityType,
+              linkedEntityId,
               renderedSubject,
               renderedBody,
+              processedAt: now,
               updatedAt: now,
             });
             await ctx.scheduler.runAfter(0, updateRunStepRef, {
               stepId: stepId as string,
               organizationId: run.organizationId as string,
-              status: "pending",
+              status: "processed",
+              recipient: recipientEmail,
+              recipientName,
+              linkedEntityType,
+              linkedEntityId,
+              renderedSubject,
+              renderedBody,
+              processedAt: now,
+              updatedAt: now,
+            });
+            await patchLegacyAppointmentWorkflowHistory(ctx, {
+              organizationId: run.organizationId,
+              appointmentId:
+                run.entityType === "gabinetAppointment"
+                  ? (run.entityId as Id<"gabinetAppointments">)
+                  : undefined,
+              actionType: action.type,
               recipient: recipientEmail,
               recipientName,
               renderedSubject,
               renderedBody,
-              updatedAt: now,
+              status: "sent",
+              idempotencyKey: stepIdempotencyKey,
+              processedAt: now,
             });
             continue;
           }
@@ -1649,9 +1722,7 @@ export const processRun = internalMutation({
             const message = applyTemplate(action.messageTemplate, payload);
             const link = action.linkTemplate
               ? applyTemplate(action.linkTemplate, payload)
-              : run.entityType === "gabinetAppointment" && run.entityId
-                ? `/dashboard/gabinet/appointments/${run.entityId}`
-                : undefined;
+              : undefined;
 
             if (!userId) {
               await ctx.db.patch(stepId, {

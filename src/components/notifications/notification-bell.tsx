@@ -14,19 +14,25 @@ import {
 } from "@/components/ui/popover";
 import type { Id } from "@cvx/_generated/dataModel";
 
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
+function useFormatRelativeTime() {
+  const { t, i18n } = useTranslation();
+  return (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-  if (seconds < 60) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+    if (seconds < 60) return t("notifications.relativeTime.justNow");
+    if (minutes < 60)
+      return t("notifications.relativeTime.minutesAgo", { count: minutes });
+    if (hours < 24)
+      return t("notifications.relativeTime.hoursAgo", { count: hours });
+    if (days < 7)
+      return t("notifications.relativeTime.daysAgo", { count: days });
+    return new Date(timestamp).toLocaleDateString(i18n.language);
+  };
 }
 
 const notificationTypeIcons: Record<string, React.ReactNode> = {
@@ -46,6 +52,7 @@ function getNotificationIcon(type?: string) {
 
 export function NotificationBell() {
   const { t } = useTranslation();
+  const formatRelativeTime = useFormatRelativeTime();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
 

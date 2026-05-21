@@ -10,7 +10,6 @@ import {
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { verifyProductAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
 import { GABINET_PRODUCT_ID } from "./_registry";
@@ -369,76 +368,67 @@ export const getById = action({
   },
 });
 
-export const listByDate = query({
+export const listByDate = action({
   args: {
     organizationId: v.id("organizations"),
     date: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const results = await ctx.db
+    const db = createSupabaseDb();
+    let results = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndDate", (q) =>
-        q.eq("organizationId", args.organizationId).eq("date", args.date),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("date", args.date)
+      .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
     return results;
   },
 });
 
-export const listByDateRange = query({
+export const listByDateRange = action({
   args: {
     organizationId: v.id("organizations"),
     startDate: v.string(),
     endDate: v.string(),
-    employeeId: v.optional(v.id("users")),
+    employeeId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    let results;
+    const db = createSupabaseDb();
+    let builder = db
+      .query("gabinetAppointments")
+      .eq("organizationId", String(args.organizationId))
+      .gte("date", args.startDate)
+      .lte("date", args.endDate);
     if (args.employeeId) {
-      results = await ctx.db
-        .query("gabinetAppointments")
-        .withIndex("by_orgAndEmployeeAndDate", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("employeeId", args.employeeId!)
-            .gte("date", args.startDate)
-            .lte("date", args.endDate),
-        )
-        .collect();
-    } else {
-      results = await ctx.db
-        .query("gabinetAppointments")
-        .withIndex("by_orgAndDate", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .gte("date", args.startDate)
-            .lte("date", args.endDate),
-        )
-        .collect();
+      builder = builder.eq("employeeId", args.employeeId);
     }
+    let results = (await builder.collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
     return results;
   },
@@ -474,68 +464,66 @@ export const listByPatient = action({
   },
 });
 
-export const listByEmployee = query({
+export const listByEmployee = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("users"),
+    employeeId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const results = await ctx.db
+    const db = createSupabaseDb();
+    let results = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndEmployee", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("employeeId", args.employeeId),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("employeeId", args.employeeId)
+      .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
     return results;
   },
 });
 
-export const listPatientsForEmployee = query({
+export const listPatientsForEmployee = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("users"),
+    employeeId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<GabinetPatientRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    let appointments = await ctx.db
+    const db = createSupabaseDb();
+    let appointments = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndEmployee", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("employeeId", args.employeeId),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("employeeId", args.employeeId)
+      .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      appointments = appointments.filter((r) => r.createdBy === user._id);
+      appointments = appointments.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
 
-    const uniquePatientIds = [...new Set(appointments.map((a) => a.patientId))];
-    const patients = await Promise.all(
-      uniquePatientIds.map((pid) => ctx.db.get(pid)),
-    );
-    return patients.filter(Boolean);
+    const uniquePatientIds = [...new Set(appointments.map((a) => String(a.patientId)))];
+    if (uniquePatientIds.length === 0) return [];
+    return await db.getMany("gabinetPatients", uniquePatientIds);
   },
 });
 

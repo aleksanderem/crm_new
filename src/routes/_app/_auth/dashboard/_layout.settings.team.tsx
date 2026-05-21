@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from "@/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight } from "@/lib/ez-icons";
+import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight, CircleCheck, AlertCircle } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -93,6 +93,13 @@ function TeamSettings() {
   const [resendingId, setResendingId] = useState<Id<"invitations"> | null>(null);
   const [cancellingId, setCancellingId] = useState<Id<"invitations"> | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ id: Id<"teamMemberships">; name: string } | null>(null);
+  const [centerPopup, setCenterPopup] = useState<{ message: string; kind: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (!centerPopup) return;
+    const id = window.setTimeout(() => setCenterPopup(null), 2000);
+    return () => window.clearTimeout(id);
+  }, [centerPopup]);
 
   const handleChangeRole = async (
     membershipId: Id<"teamMemberships">,
@@ -123,10 +130,10 @@ function TeamSettings() {
     try {
       await cancelInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationCancelled"), { position: "top-center", duration: 2000 });
+      setCenterPopup({ message: t("team.invitationCancelled"), kind: "success" });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(message, { position: "top-center", duration: 2000 });
+      setCenterPopup({ message, kind: "error" });
     } finally {
       setCancellingId(null);
     }
@@ -138,10 +145,10 @@ function TeamSettings() {
     try {
       await resendInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationResent"), { position: "top-center", duration: 2000 });
+      setCenterPopup({ message: t("team.invitationResent"), kind: "success" });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(message, { position: "top-center", duration: 2000 });
+      setCenterPopup({ message, kind: "error" });
     } finally {
       setResendingId(null);
     }
@@ -162,19 +169,18 @@ function TeamSettings() {
       setInviteRole("member");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
-      toast.success(t("team.invitationSent"), { position: "top-center", duration: 2000 });
+      setCenterPopup({ message: t("team.invitationSent"), kind: "success" });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("Seat limit reached")) {
         toast.error(t("settings.team.limitReached"), {
-          position: "top-center",
           action: {
             label: t("team.upgrade"),
             onClick: () => navigate({ to: "/dashboard/settings/billing" }),
           },
         });
       } else {
-        toast.error(message, { position: "top-center", duration: 2000 });
+        setCenterPopup({ message, kind: "error" });
       }
     } finally {
       setIsSending(false);
@@ -497,6 +503,23 @@ function TeamSettings() {
           )}
         </CardContent>
       </Card>
+
+      {centerPopup && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center"
+        >
+          <div className="pointer-events-auto flex items-center gap-3 rounded-lg border bg-background px-6 py-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {centerPopup.kind === "success" ? (
+              <CircleCheck className="h-5 w-5 text-green-600" variant="stroke" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-destructive" variant="stroke" />
+            )}
+            <span className="text-sm font-medium">{centerPopup.message}</span>
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
         <AlertDialogContent>

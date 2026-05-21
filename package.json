@@ -30,6 +30,7 @@
     "test:e2e": "playwright test",
     "test:unit": "cd convex && vitest run",
     "test:manifests": "vitest run src/modules/manifest-dispatches.test.ts",
+    "check:convex-codegen": "node scripts/check-convex-codegen.mjs",
     "test": "npm run test:unit && npm run test:e2e",
     "verify:jwt": "npx tsx scripts/verify-jwt-bridge.ts",
     "verify:s03": "npx tsx scripts/verify-s03-integration.ts",

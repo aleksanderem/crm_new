@@ -29,6 +29,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Check convex codegen is in sync
+        run: npm run check:convex-codegen
+
       - name: Typecheck
         run: npx tsc -p tsconfig.app.json
 

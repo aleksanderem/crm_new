@@ -32,7 +32,7 @@ export function AppointmentCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full h-full overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${cls}${strike}`}
+      className={`flex w-full h-full flex-col overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${cls}${strike}`}
       style={color ? { borderLeftColor: color } : undefined}
     >
       <div className="flex items-center justify-between gap-1 bg-black/30 px-2 py-0.5 font-semibold dark:bg-black/50">

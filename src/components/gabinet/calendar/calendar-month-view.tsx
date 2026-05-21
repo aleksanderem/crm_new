@@ -18,6 +18,8 @@ interface CalendarMonthViewProps {
   selectedDate?: string;
   /** Dates covered by approved leave for the filtered employee. */
   leaveDates?: Set<string>;
+  /** Dates with at least one non-cancelled appointment whose prepayment is required but unpaid. */
+  paymentDueDates?: Set<string>;
 }
 
 function getMonthGrid(year: number, month: number): (string | null)[][] {
@@ -48,7 +50,7 @@ function getMonthGrid(year: number, month: number): (string | null)[][] {
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates }: CalendarMonthViewProps) {
+export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates }: CalendarMonthViewProps) {
   const { t } = useTranslation();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const now = new Date();
@@ -85,6 +87,7 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
           const count = countByDate.get(date) ?? 0;
           const isToday = date === today;
           const isLeave = leaveDates?.has(date) ?? false;
+          const hasPaymentDue = paymentDueDates?.has(date) ?? false;
 
           return (
             <div
@@ -110,11 +113,26 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
                   </span>
                 </div>
               )}
-              {count > 0 && (
-                <div className="mt-0.5">
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                    {count}
-                  </span>
+              {(count > 0 || hasPaymentDue) && (
+                <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                  {count > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+                      {count}
+                    </span>
+                  )}
+                  {hasPaymentDue && (
+                    <span
+                      title={t("gabinet.calendar.indicators.paymentDue", {
+                        defaultValue: "Wymagana przedpłata",
+                      })}
+                      aria-label={t("gabinet.calendar.indicators.paymentDue", {
+                        defaultValue: "Wymagana przedpłata",
+                      })}
+                      className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-amber-500 px-0.5 text-[10px] font-bold leading-none text-white"
+                    >
+                      $
+                    </span>
+                  )}
                 </div>
               )}
             </div>

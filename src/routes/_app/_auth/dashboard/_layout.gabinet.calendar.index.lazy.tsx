@@ -392,6 +392,21 @@ function GabinetCalendarPage() {
     [leavesByDate],
   );
 
+  // Dates with at least one non-cancelled appointment requiring (but not yet
+  // confirmed) prepayment — surfaces the "$" indicator on the month view so
+  // users can spot unpaid bookings at a glance.
+  const paymentDueDates = useMemo(() => {
+    const set = new Set<string>();
+    if (!rawAppointments) return set;
+    for (const a of rawAppointments) {
+      if (a.status === "cancelled") continue;
+      if (a.prepaymentRequired && a.prepaymentStatus !== "paid") {
+        set.add(a.date);
+      }
+    }
+    return set;
+  }, [rawAppointments]);
+
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
     const items: Array<{
@@ -1016,6 +1031,7 @@ function GabinetCalendarPage() {
               onDayClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               leaveDates={leaveDates}
+              paymentDueDates={paymentDueDates}
             />
           )}
         </div>

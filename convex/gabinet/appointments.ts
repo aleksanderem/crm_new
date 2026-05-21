@@ -444,31 +444,31 @@ export const listByDateRange = query({
   },
 });
 
-export const listByPatient = query({
+export const listByPatient = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
+  handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const results = await ctx.db
+    const db = createSupabaseDb();
+    let results = (await db
       .query("gabinetAppointments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("patientId", args.patientId),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
+      .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
     }
     return results;
   },

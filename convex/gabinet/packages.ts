@@ -609,41 +609,50 @@ export const getPatientPackages = action({
 
 // --- Enriched package usage details (with treatment names, package name, progress) ---
 
-export const getPatientPackagesEnriched = query({
+export const getPatientPackagesEnriched = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_packages", "view");
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_packages",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const usages = await ctx.db
+    const db = createSupabaseDb();
+    const usages = (await db
       .query("gabinetPackageUsage")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
+      .collect()) as GabinetPackageUsageRow[];
 
-    // Collect unique package and treatment IDs
-    const packageIds = [...new Set(usages.map((u) => u.packageId))];
+    const packageIds = [...new Set(usages.map((u) => String(u.packageId)))];
     const treatmentIds = [
-      ...new Set(usages.flatMap((u) => u.treatmentsUsed.map((t) => t.treatmentId))),
+      ...new Set(
+        usages.flatMap((u) =>
+          (u.treatmentsUsed ?? []).map((t) => String(t.treatmentId)),
+        ),
+      ),
     ];
 
     const [packages, treatments] = await Promise.all([
-      Promise.all(packageIds.map((id) => ctx.db.get(id))),
-      Promise.all(treatmentIds.map((id) => ctx.db.get(id))),
+      db.getMany("gabinetTreatmentPackages", packageIds),
+      db.getMany("gabinetTreatments", treatmentIds),
     ]);
 
-    const pkgMap = new Map(packages.filter(Boolean).map((p) => [p!._id, p!]));
-    const treatmentMap = new Map(treatments.filter(Boolean).map((t) => [t!._id, t!]));
+    const pkgMap = new Map(packages.map((p) => [String(p._id), p]));
+    const treatmentMap = new Map(treatments.map((t) => [String(t._id), t]));
 
     return usages.map((u) => {
-      const pkg = pkgMap.get(u.packageId);
-      const enrichedTreatments = u.treatmentsUsed.map((t) => {
-        const tr = treatmentMap.get(t.treatmentId);
+      const pkg = pkgMap.get(String(u.packageId));
+      const enrichedTreatments = (u.treatmentsUsed ?? []).map((t) => {
+        const tr = treatmentMap.get(String(t.treatmentId));
         return {
           ...t,
           treatmentName: tr?.name ?? null,

@@ -63,7 +63,7 @@ export const list = action({
 export const getByAppointment = action({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
@@ -74,7 +74,7 @@ export const getByAppointment = action({
     return await db
       .query("payments")
       .eq("organizationId", String(args.organizationId))
-      .eq("appointmentId", String(args.appointmentId))
+      .eq("appointmentId", args.appointmentId)
       .first();
   },
 });

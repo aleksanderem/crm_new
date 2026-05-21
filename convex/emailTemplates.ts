@@ -146,10 +146,10 @@ export const renderTemplate = query({
     contactId: v.optional(v.id("contacts")),
     companyId: v.optional(v.id("companies")),
     leadId: v.optional(v.id("leads")),
-    // Gabinet entities
-    patientId: v.optional(v.id("gabinetPatients")),
-    employeeId: v.optional(v.id("gabinetEmployees")),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
+    // Gabinet entities (Supabase-primary — strings, not Convex Ids)
+    patientId: v.optional(v.string()),
+    employeeId: v.optional(v.string()),
+    appointmentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);

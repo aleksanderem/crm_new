@@ -5,6 +5,14 @@ export interface AppointmentTag {
   color: string;
 }
 
+export type AppointmentIndicatorKind = "firstVisit" | "payment" | "count";
+
+export interface AppointmentIndicator {
+  kind: AppointmentIndicatorKind;
+  label: string;
+  title?: string;
+}
+
 interface AppointmentCardProps {
   startTime: string;
   endTime: string;
@@ -13,8 +21,15 @@ interface AppointmentCardProps {
   status: string;
   color?: string;
   tags?: AppointmentTag[];
+  indicators?: AppointmentIndicator[];
   onClick?: () => void;
 }
+
+const INDICATOR_CLASS: Record<AppointmentIndicatorKind, string> = {
+  firstVisit: "bg-emerald-500 text-white",
+  payment: "bg-amber-500 text-white",
+  count: "bg-sky-500 text-white",
+};
 
 export function AppointmentCard({
   startTime,
@@ -24,6 +39,7 @@ export function AppointmentCard({
   status,
   color,
   tags,
+  indicators,
   onClick,
 }: AppointmentCardProps) {
   const cls = appointmentStatusBadgeClass(status);
@@ -37,15 +53,24 @@ export function AppointmentCard({
     >
       <div className="flex items-center justify-between gap-1 bg-black/30 px-2 py-0.5 font-semibold dark:bg-black/50">
         <span className="truncate">{startTime}–{endTime}</span>
-        {tags && tags.length > 0 && (
+        {((tags && tags.length > 0) || (indicators && indicators.length > 0)) && (
           <div className="flex shrink-0 items-center gap-0.5">
-            {tags.map((tag, i) => (
+            {tags?.map((tag, i) => (
               <span
-                key={`${tag.name}-${i}`}
+                key={`tag-${tag.name}-${i}`}
                 title={tag.name}
                 className="inline-block h-1.5 w-1.5 rounded-full ring-1 ring-white/60"
                 style={{ backgroundColor: tag.color }}
               />
+            ))}
+            {indicators?.map((ind, i) => (
+              <span
+                key={`ind-${ind.kind}-${i}`}
+                title={ind.title ?? ind.label}
+                className={`inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-sm px-0.5 text-[9px] font-bold leading-none ring-1 ring-white/60 ${INDICATOR_CLASS[ind.kind]}`}
+              >
+                {ind.label}
+              </span>
             ))}
           </div>
         )}

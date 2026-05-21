@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
-import { Users, AlertCircle, CheckCircle2, XCircle, LogIn } from "@/lib/ez-icons";
+import { Users, AlertCircle, CheckCircle2, XCircle } from "@/lib/ez-icons";
 
 export const Route = createFileRoute("/_app/invite/$token")({
   component: InviteAcceptPage,
@@ -110,15 +110,41 @@ function InviteAcceptPage() {
     );
   }
 
-  // Not logged in
+  // Not logged in — redirect to /login with the invite context so we can
+  // pre-fill email, skip the choose-method screen, and come back here after
+  // OTP verification (which transparently creates a new account if needed).
   if (!isAuthenticated) {
     return (
       <CenteredCard>
         <div className="flex flex-col items-center gap-4 text-center">
-          <LogIn className="h-12 w-12 text-muted-foreground" />
-          <p className="text-lg font-medium">{t("invite.signInFirst")}</p>
-          <Button asChild>
-            <Link to="/login">{t("layout.settings").replace("Settings", "Sign In")}</Link>
+          <Users className="h-12 w-12 text-primary" />
+          <div className="space-y-1">
+            <p className="text-lg font-medium">
+              {t("invite.joinOrgTitle", { defaultValue: "Dołącz do {{orgName}}", orgName: orgName ?? "" })}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {inviterName
+                ? t("invite.invitedBy", {
+                    defaultValue: "Zaproszenie od {{inviterName}}",
+                    inviterName,
+                  })
+                : t("invite.youHaveBeenInvited", { defaultValue: "Zostałeś zaproszony" })}
+            </p>
+            <p className="text-xs text-muted-foreground pt-2">
+              {t("invite.continueHint", {
+                defaultValue:
+                  "Wyślemy jednorazowy kod na {{email}}. Jeśli nie masz jeszcze konta, utworzymy je automatycznie.",
+                email: invitation.email,
+              })}
+            </p>
+          </div>
+          <Button asChild className="w-full">
+            <Link
+              to="/login"
+              search={{ inviteToken: token, email: invitation.email }}
+            >
+              {t("invite.continueButton", { defaultValue: "Kontynuuj" })}
+            </Link>
           </Button>
         </div>
       </CenteredCard>

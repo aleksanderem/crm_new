@@ -20,6 +20,13 @@ import Logo from "@/assets/svg/logo";
 
 export const Route = createFileRoute("/_app/login/_layout/")({
   component: Login,
+  // Invite-flow context: when the user lands here from `/invite/<token>`,
+  // we pre-fill the email and route them back to `/invite/<token>` after
+  // auth so the invitation is accepted automatically.
+  validateSearch: z.object({
+    inviteToken: z.string().optional(),
+    email: z.string().optional(),
+  }),
 });
 
 type LoginStep =
@@ -31,18 +38,40 @@ type LoginStep =
   | { resetPassword: string };
 
 function Login() {
-  const [step, setStep] = useState<LoginStep>("choose");
+  const { inviteToken, email: inviteEmail } = Route.useSearch();
+  const isInviteFlow = Boolean(inviteToken);
+
+  // In invite flow we skip the choose-method screen and jump straight to OTP
+  // (passwordless email auth — works equally for new and existing accounts,
+  // so the user doesn't have to know whether they have a password yet).
+  const [step, setStep] = useState<LoginStep>(
+    isInviteFlow ? "otp-email" : "choose",
+  );
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { data: user } = useQuery({
     ...convexQuery(api.app.getCurrentUser, {}),
     enabled: isAuthenticated,
   });
+
+  // Fetch invitation context for the banner shown above the OTP form.
+  const { data: inviteData } = useQuery({
+    ...convexQuery(api.invitations.getByToken, { token: inviteToken ?? "" }),
+    enabled: Boolean(inviteToken),
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
     if (!user) {
+      // No user record yet — let the dashboard's auth gate handle it
       navigate({ to: DashboardRoute.fullPath, replace: true });
+      return;
+    }
+    // If user came from /invite/<token>, send them back so the invitation
+    // gets accepted automatically.
+    if (inviteToken) {
+      navigate({ to: "/invite/$token", params: { token: inviteToken }, replace: true });
       return;
     }
     if (!user.username) {
@@ -50,7 +79,21 @@ function Login() {
       return;
     }
     navigate({ to: DashboardRoute.fullPath, replace: true });
-  }, [isLoading, isAuthenticated, user, navigate]);
+  }, [isLoading, isAuthenticated, user, navigate, inviteToken]);
+
+  // Optional banner rendered above every step when in invite flow
+  const inviteBanner = isInviteFlow && inviteData ? (
+    <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+      <div className="font-medium">
+        {inviteData.inviterName ?? "Ktoś"} zaprasza Cię do{" "}
+        <strong>{inviteData.orgName ?? "zespołu"}</strong>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        Wpisz kod, który wyślemy na {inviteData.invitation.email}. Jeśli nie
+        masz jeszcze konta, utworzymy je automatycznie.
+      </div>
+    </div>
+  ) : null;
 
   if (step === "choose") {
     return (
@@ -61,10 +104,25 @@ function Login() {
     );
   }
   if (step === "otp-email") {
-    return <OtpEmailForm onSubmit={(email) => setStep({ otpVerify: email })} onBack={() => setStep("choose")} />;
+    return (
+      <>
+        {inviteBanner}
+        <OtpEmailForm
+          initialEmail={inviteEmail}
+          lockEmail={isInviteFlow}
+          onSubmit={(email) => setStep({ otpVerify: email })}
+          onBack={isInviteFlow ? undefined : () => setStep("choose")}
+        />
+      </>
+    );
   }
   if (typeof step === "object" && "otpVerify" in step) {
-    return <OtpVerifyForm email={step.otpVerify} onBack={() => setStep("otp-email")} />;
+    return (
+      <>
+        {inviteBanner}
+        <OtpVerifyForm email={step.otpVerify} onBack={() => setStep("otp-email")} />
+      </>
+    );
   }
   if (step === "password") {
     return <PasswordForm onBack={() => setStep("choose")} onForgotPassword={() => setStep("forgot-password")} />;
@@ -321,9 +379,13 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
 function OtpEmailForm({
   onSubmit,
   onBack,
+  initialEmail,
+  lockEmail,
 }: {
   onSubmit: (email: string) => void;
-  onBack: () => void;
+  onBack?: () => void;
+  initialEmail?: string;
+  lockEmail?: boolean;
 }) {
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -331,7 +393,7 @@ function OtpEmailForm({
 
   const form = useForm({
     validatorAdapter: zodValidator(),
-    defaultValues: { email: "" },
+    defaultValues: { email: initialEmail ?? "" },
     onSubmit: async ({ value }) => {
       setIsSubmitting(true);
       setError(null);
@@ -376,6 +438,8 @@ function OtpEmailForm({
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
+                readOnly={lockEmail}
+                disabled={lockEmail}
                 className={field.state.meta?.errors.length > 0 ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {field.state.meta?.errors.length > 0 && (
@@ -392,9 +456,11 @@ function OtpEmailForm({
         </Button>
       </form>
 
-      <Button variant="ghost" className="w-full" onClick={onBack}>
-        Wróć do wyboru metody
-      </Button>
+      {onBack && (
+        <Button variant="ghost" className="w-full" onClick={onBack}>
+          Wróć do wyboru metody
+        </Button>
+      )}
     </>
   );
 }

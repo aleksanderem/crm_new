@@ -200,6 +200,168 @@ export function useSupabaseGabinetRecentVisitPatientIds(
 }
 
 // ---------------------------------------------------------------------------
+// Earliest Appointment IDs per Patient (for first-visit indicator)
+// ---------------------------------------------------------------------------
+
+/**
+ * For a given set of patient IDs, returns the IDs of the chronologically first
+ * non-cancelled, non-no-show appointment for each patient. Used by the gabinet
+ * calendar to render a "first visit" indicator on the appointment card.
+ *
+ * Disabled when `patientIds` is empty.
+ */
+export function useSupabaseGabinetFirstAppointmentIdsByPatient(
+  organizationId: string,
+  patientIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...patientIds].sort();
+
+  return useQuery<Set<string>, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "firstAppointmentIdsByPatient",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return new Set();
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("id, patient_id, date, start_time")
+        .eq("organization_id", organizationId)
+        .in("patient_id", stableIds)
+        .not("status", "in", '("cancelled","no_show")')
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+
+      const firstIds = new Set<string>();
+      const seen = new Set<string>();
+      for (const row of (data ?? []) as {
+        id: string;
+        patient_id: string;
+      }[]) {
+        if (seen.has(row.patient_id)) continue;
+        seen.add(row.patient_id);
+        firstIds.add(row.id);
+      }
+      return firstIds;
+    },
+    enabled:
+      enabled &&
+      isReady &&
+      !!organizationId &&
+      stableIds.length > 0,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}
+
+// ---------------------------------------------------------------------------
+// Appointment Positions Within Package Usages
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns, for each appointment that belongs to one of the given package usage
+ * records, its 1-based position among non-cancelled appointments sharing the
+ * same package usage. Used by the gabinet calendar to render a "visit X / Y"
+ * indicator for package-bound appointments.
+ *
+ * The total Y is computed by summing all `totalCount`/`totalAllowed` values
+ * across the matching `gabinet_package_usage` row's `treatments_used` array.
+ */
+export interface AppointmentPackagePosition {
+  position: number;
+  total: number;
+}
+
+export function useSupabaseGabinetAppointmentPackagePositions(
+  organizationId: string,
+  packageUsageIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...packageUsageIds].sort();
+
+  return useQuery<Map<string, AppointmentPackagePosition>, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "packagePositions",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Map<string, AppointmentPackagePosition>> => {
+      const result = new Map<string, AppointmentPackagePosition>();
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return result;
+
+      const [usageRes, apptRes] = await Promise.all([
+        client
+          .from("gabinet_package_usage")
+          .select("id, treatments_used")
+          .eq("organization_id", organizationId)
+          .in("id", stableIds),
+        client
+          .from("gabinet_appointments")
+          .select("id, package_usage_id, date, start_time")
+          .eq("organization_id", organizationId)
+          .in("package_usage_id", stableIds)
+          .not("status", "in", '("cancelled","no_show")')
+          .order("date", { ascending: true })
+          .order("start_time", { ascending: true }),
+      ]);
+
+      if (usageRes.error) throw usageRes.error;
+      if (apptRes.error) throw apptRes.error;
+
+      // Sum totals per package usage from the treatments_used JSONB.
+      const totalsByUsage = new Map<string, number>();
+      for (const u of (usageRes.data ?? []) as {
+        id: string;
+        treatments_used: unknown;
+      }[]) {
+        const entries = Array.isArray(u.treatments_used)
+          ? (u.treatments_used as Array<{
+              totalCount?: number;
+              totalAllowed?: number;
+            }>)
+          : [];
+        const total = entries.reduce(
+          (s, e) => s + (Number(e.totalCount ?? e.totalAllowed ?? 0) || 0),
+          0,
+        );
+        if (total > 0) totalsByUsage.set(u.id, total);
+      }
+
+      // Walk appointments in chronological order and assign positions.
+      const counter = new Map<string, number>();
+      for (const a of (apptRes.data ?? []) as {
+        id: string;
+        package_usage_id: string;
+      }[]) {
+        const total = totalsByUsage.get(a.package_usage_id);
+        if (!total) continue;
+        const next = (counter.get(a.package_usage_id) ?? 0) + 1;
+        counter.set(a.package_usage_id, next);
+        result.set(a.id, { position: next, total });
+      }
+
+      return result;
+    },
+    enabled:
+      enabled &&
+      isReady &&
+      !!organizationId &&
+      stableIds.length > 0,
+  } satisfies UseQueryOptions<Map<string, AppointmentPackagePosition>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

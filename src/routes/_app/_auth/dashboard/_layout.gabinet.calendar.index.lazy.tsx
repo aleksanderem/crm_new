@@ -42,7 +42,11 @@ import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card"
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
-import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import {
+  useSupabaseGabinetAppointmentsByDateRange,
+  useSupabaseGabinetFirstAppointmentIdsByPatient,
+  useSupabaseGabinetAppointmentPackagePositions,
+} from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
@@ -147,6 +151,11 @@ function GabinetCalendarPage() {
     status: string;
     color?: string;
     tags?: Array<{ name: string; color: string }>;
+    indicators?: Array<{
+      kind: "firstVisit" | "payment" | "count";
+      label: string;
+      title?: string;
+    }>;
   } | null>(null);
 
   // Mutations
@@ -392,8 +401,40 @@ function GabinetCalendarPage() {
     [leavesByDate],
   );
 
+  // Distinct patient + package usage IDs from the rendered range — used to
+  // compute the "first visit" and "visit X/Y" indicators on appointment cards.
+  const indicatorLookupIds = useMemo(() => {
+    const patientIds = new Set<string>();
+    const packageUsageIds = new Set<string>();
+    for (const a of rawAppointments ?? []) {
+      if (a.patientId) patientIds.add(a.patientId);
+      if (a.packageUsageId) packageUsageIds.add(a.packageUsageId);
+    }
+    return {
+      patientIds: Array.from(patientIds),
+      packageUsageIds: Array.from(packageUsageIds),
+    };
+  }, [rawAppointments]);
+
+  const { data: firstAppointmentIds } =
+    useSupabaseGabinetFirstAppointmentIdsByPatient(
+      organizationId,
+      indicatorLookupIds.patientIds,
+    );
+
+  const { data: packagePositions } =
+    useSupabaseGabinetAppointmentPackagePositions(
+      organizationId,
+      indicatorLookupIds.packageUsageIds,
+    );
+
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
+    type Indicator = {
+      kind: "firstVisit" | "payment" | "count";
+      label: string;
+      title?: string;
+    };
     const items: Array<{
       _id: string;
       date: string;
@@ -404,6 +445,7 @@ function GabinetCalendarPage() {
       status: string;
       color?: string;
       tags?: Array<{ name: string; color: string }>;
+      indicators?: Indicator[];
     }> = [];
 
     if (rawAppointments) {
@@ -420,6 +462,68 @@ function GabinetCalendarPage() {
         const tags = a.tagIds
           ?.map((id) => tagMap.get(String(id)))
           .filter((t): t is { name: string; color: string } => !!t);
+
+        const indicators: Indicator[] = [];
+
+        // First-visit badge — only for non-cancelled appointments, and only if
+        // this is the patient's earliest known appointment.
+        if (
+          a.status !== "cancelled" &&
+          a.status !== "no_show" &&
+          firstAppointmentIds?.has(a._id)
+        ) {
+          indicators.push({
+            kind: "firstVisit",
+            label: "1",
+            title: t(
+              "gabinet.calendar.indicators.firstVisit",
+              "Pierwsza wizyta",
+            ),
+          });
+        }
+
+        // Payment-due badge — prepayment required but not yet paid.
+        if (a.prepaymentRequired && a.prepaymentStatus !== "paid") {
+          indicators.push({
+            kind: "payment",
+            label: "$",
+            title: t(
+              "gabinet.calendar.indicators.paymentDue",
+              "Do zapłacenia",
+            ),
+          });
+        }
+
+        // Visit-number badge — package position takes precedence over the
+        // recurring index. Falls back to the recurring rule's count when the
+        // appointment is part of a recurring series.
+        const pkgPos = a.packageUsageId
+          ? packagePositions?.get(a._id)
+          : undefined;
+        if (pkgPos) {
+          indicators.push({
+            kind: "count",
+            label: `${pkgPos.position}/${pkgPos.total}`,
+            title: t(
+              "gabinet.calendar.indicators.packageVisit",
+              "Wizyta pakietowa",
+            ),
+          });
+        } else if (a.isRecurring && a.recurringRule) {
+          const rule = a.recurringRule as { count?: number };
+          if (typeof rule.count === "number" && rule.count > 0) {
+            const pos = (a.recurringIndex ?? 0) + 1;
+            indicators.push({
+              kind: "count",
+              label: `${pos}/${rule.count}`,
+              title: t(
+                "gabinet.calendar.indicators.recurringVisit",
+                "Wizyta cykliczna",
+              ),
+            });
+          }
+        }
+
         items.push({
           _id: a._id,
           date: a.date,
@@ -430,6 +534,7 @@ function GabinetCalendarPage() {
           status: a.status,
           color: a.color ?? treatment?.color,
           tags: tags && tags.length > 0 ? tags : undefined,
+          indicators: indicators.length > 0 ? indicators : undefined,
         });
       }
     }
@@ -465,7 +570,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, firstAppointmentIds, packagePositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -1053,6 +1158,7 @@ function GabinetCalendarPage() {
               status={activeAppointment.status}
               color={activeAppointment.color}
               tags={activeAppointment.tags}
+              indicators={activeAppointment.indicators}
             />
           </div>
         ) : null}

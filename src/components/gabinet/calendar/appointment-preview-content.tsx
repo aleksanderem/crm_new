@@ -69,6 +69,14 @@ import {
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import {
+  useSupabaseGabinetFirstAppointmentIdsByPatient,
+  useSupabaseGabinetAppointmentPackagePositions,
+} from "@/hooks/use-supabase-gabinet-appointments";
+import {
+  AppointmentIndicatorBadge,
+  type AppointmentIndicator,
+} from "./appointment-indicators";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -145,6 +153,29 @@ export function AppointmentPreviewContent({
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   }) as { data: Array<{ _id: string; name: string; duration: number }> | undefined };
+
+  // Mirror the indicator logic from the calendar card so the popover surfaces
+  // the same "first visit", "payment due" and "X/Y" badges. Hook calls happen
+  // unconditionally; the hooks themselves no-op when the input arrays are
+  // empty. Inputs are derived from the loaded `detail` payload below.
+  const indicatorPatientIds = detail?.patient?._id
+    ? [String(detail.patient._id)]
+    : [];
+  const indicatorPackageIds = detail?.appointment?.packageUsageId
+    ? [String(detail.appointment.packageUsageId)]
+    : [];
+
+  const { data: firstAppointmentIds } =
+    useSupabaseGabinetFirstAppointmentIdsByPatient(
+      organizationId,
+      indicatorPatientIds,
+    );
+
+  const { data: packagePositions } =
+    useSupabaseGabinetAppointmentPackagePositions(
+      organizationId,
+      indicatorPackageIds,
+    );
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
@@ -240,6 +271,51 @@ export function AppointmentPreviewContent({
     if (!q) return all;
     return all.filter((tr) => (tr.name ?? "").toLowerCase().includes(q));
   })();
+
+  const indicators: AppointmentIndicator[] = [];
+  // First-visit badge — only for non-cancelled/no-show appointments and only
+  // when this is the patient's earliest known appointment.
+  if (
+    appointment.status !== "cancelled" &&
+    appointment.status !== "no_show" &&
+    firstAppointmentIds?.has(String(appointment._id))
+  ) {
+    indicators.push({
+      kind: "firstVisit",
+      label: "1",
+      title: t("gabinet.calendar.indicators.firstVisit", "Pierwsza wizyta"),
+    });
+  }
+  if (appointment.prepaymentRequired && appointment.prepaymentStatus !== "paid") {
+    indicators.push({
+      kind: "payment",
+      label: "$",
+      title: t("gabinet.calendar.indicators.paymentDue", "Do zapłacenia"),
+    });
+  }
+  const pkgPos = appointment.packageUsageId
+    ? packagePositions?.get(String(appointment._id))
+    : undefined;
+  if (pkgPos) {
+    indicators.push({
+      kind: "count",
+      label: `${pkgPos.position}/${pkgPos.total}`,
+      title: t("gabinet.calendar.indicators.packageVisit", "Wizyta pakietowa"),
+    });
+  } else if (appointment.isRecurring && appointment.recurringRule) {
+    const rule = appointment.recurringRule as { count?: number };
+    if (typeof rule.count === "number" && rule.count > 0) {
+      const pos = (appointment.recurringIndex ?? 0) + 1;
+      indicators.push({
+        kind: "count",
+        label: `${pos}/${rule.count}`,
+        title: t(
+          "gabinet.calendar.indicators.recurringVisit",
+          "Wizyta cykliczna",
+        ),
+      });
+    }
+  }
 
   const phoneDirty =
     isEditingPhone &&
@@ -544,12 +620,21 @@ export function AppointmentPreviewContent({
               </PopoverContent>
             </Popover>
           </div>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
-            <span
-              className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
-            />
-            {t(`gabinet.appointments.statuses.${initialStatus}`)}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-1">
+            {indicators.map((ind, i) => (
+              <AppointmentIndicatorBadge
+                key={`ind-${ind.kind}-${i}`}
+                indicator={ind}
+                className="ring-black/10"
+              />
+            ))}
+            <Badge variant="outline" className="shrink-0 text-[10px]">
+              <span
+                className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
+              />
+              {t(`gabinet.appointments.statuses.${initialStatus}`)}
+            </Badge>
+          </div>
         </div>
 
         {/* Quick contact links */}

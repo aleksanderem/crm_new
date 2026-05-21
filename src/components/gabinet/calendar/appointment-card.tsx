@@ -1,4 +1,11 @@
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
+import {
+  AppointmentIndicatorBadge,
+  type AppointmentIndicator,
+  type AppointmentIndicatorKind,
+} from "./appointment-indicators";
+
+export type { AppointmentIndicator, AppointmentIndicatorKind };
 
 export interface AppointmentTag {
   name: string;
@@ -13,6 +20,7 @@ interface AppointmentCardProps {
   status: string;
   color?: string;
   tags?: AppointmentTag[];
+  indicators?: AppointmentIndicator[];
   onClick?: () => void;
 }
 
@@ -24,6 +32,7 @@ export function AppointmentCard({
   status,
   color,
   tags,
+  indicators,
   onClick,
 }: AppointmentCardProps) {
   const cls = appointmentStatusBadgeClass(status);
@@ -37,14 +46,21 @@ export function AppointmentCard({
     >
       <div className="flex items-center justify-between gap-1 bg-black/30 px-2 py-0.5 font-semibold dark:bg-black/50">
         <span className="truncate">{startTime}–{endTime}</span>
-        {tags && tags.length > 0 && (
+        {((tags && tags.length > 0) || (indicators && indicators.length > 0)) && (
           <div className="flex shrink-0 items-center gap-0.5">
-            {tags.map((tag, i) => (
+            {tags?.map((tag, i) => (
               <span
-                key={`${tag.name}-${i}`}
+                key={`tag-${tag.name}-${i}`}
                 title={tag.name}
                 className="inline-block h-1.5 w-1.5 rounded-full ring-1 ring-white/60"
                 style={{ backgroundColor: tag.color }}
+              />
+            ))}
+            {indicators?.map((ind, i) => (
+              <AppointmentIndicatorBadge
+                key={`ind-${ind.kind}-${i}`}
+                indicator={ind}
+                className="ring-white/60"
               />
             ))}
           </div>

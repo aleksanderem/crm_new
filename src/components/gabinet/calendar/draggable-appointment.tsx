@@ -5,7 +5,11 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@/components/ui/popover";
-import { AppointmentCard, type AppointmentTag } from "./appointment-card";
+import {
+  AppointmentCard,
+  type AppointmentTag,
+  type AppointmentIndicator,
+} from "./appointment-card";
 import { AppointmentPreviewContent } from "./appointment-preview-content";
 
 interface Appointment {
@@ -18,6 +22,7 @@ interface Appointment {
   status: string;
   color?: string;
   tags?: AppointmentTag[];
+  indicators?: AppointmentIndicator[];
 }
 
 interface DraggableAppointmentProps extends Appointment {
@@ -47,6 +52,7 @@ export function DraggableAppointment({
   status,
   color,
   tags,
+  indicators,
   onResize,
   hourHeight = 60,
   snapMinutes = 15,
@@ -140,6 +146,7 @@ export function DraggableAppointment({
         status={status}
         color={color}
         tags={tags}
+        indicators={indicators}
         onClick={handleCardClick}
       />
       {onResize && status !== "blocked" && (

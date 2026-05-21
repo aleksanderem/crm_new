@@ -400,6 +400,36 @@ export const _acceptInternal = internalMutation({
       joinedAt: Date.now(),
     });
 
+    // If the invitee just signed up via OTP and has no username yet, derive
+    // one from the email local-part so they skip the /onboarding/username
+    // screen entirely. The validator there is strict alphanumeric — an
+    // address like "john.doe@x.com" would fail it, leaving the invitee
+    // stuck. Slug derivation downstream tolerates anything (already strips
+    // non-[a-z0-9-]).
+    if (!user.username) {
+      const local = (user.email ?? invitation.email).split("@")[0] ?? "";
+      const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
+      // Guarantee min length and uniqueness — collisions are non-fatal here
+      // (the field is informational; org membership is what matters), but
+      // we still prefer not to clash with an existing username.
+      let candidate = (base || "user").slice(0, 16);
+      let suffix = 0;
+      // Cheap collision walk — schema doesn't have a unique constraint on
+      // `username`, but other code uses it for org slug, so a unique-ish
+      // value is friendlier.
+      while (
+        await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("username"), candidate))
+          .first()
+      ) {
+        suffix += 1;
+        candidate = `${(base || "user").slice(0, 14)}${suffix}`;
+        if (suffix > 50) break; // give up; informational only
+      }
+      await ctx.db.patch(user._id, { username: candidate });
+    }
+
     const acceptedAt = Date.now();
     const updatedAt = acceptedAt;
     await ctx.db.patch(invitation._id, {

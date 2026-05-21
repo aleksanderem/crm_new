@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -188,8 +188,14 @@ export function AppointmentPreviewContent({
 
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
+  // Only seed local form state from `detail` once per appointment. Refetches
+  // triggered by status changes must not clobber the user's other unsaved edits
+  // (notes, date/time, tags, treatment). Issue #620.
+  const initializedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!detail) return;
+    if (initializedRef.current === appointmentId) return;
+    initializedRef.current = appointmentId;
     const appt = detail.appointment;
     setStatus(appt.status as AppointmentStatus);
     setDate(appt.date);
@@ -200,7 +206,7 @@ export function AppointmentPreviewContent({
     setTagIds(
       (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
     );
-  }, [detail]);
+  }, [detail, appointmentId]);
 
   if (isLoading || !detail) {
     return (

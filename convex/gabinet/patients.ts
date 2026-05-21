@@ -64,21 +64,29 @@ export const list = action({
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "gabinet_patients", "view");
+  handler: async (ctx, args): Promise<GabinetPatientRow> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const patient = (await db.get("gabinetPatients", args.patientId)) as GabinetPatientRow | null;
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
       throw new Error("Patient not found");
     }
-    if (perm.scope === "own" && patient.createdBy !== user._id) {
+    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
 

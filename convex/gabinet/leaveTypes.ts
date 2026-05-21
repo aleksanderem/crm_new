@@ -151,22 +151,24 @@ export const remove = action({
 
 // --- Leave Balances ---
 
-export const getBalances = query({
+export const getBalances = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("gabinetEmployees"),
+    employeeId: v.string(),
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    return await ctx.db
+    const db = createSupabaseDb();
+    const all = await db
       .query("gabinetLeaveBalances")
-      .withIndex("by_orgAndEmployee", (q) =>
-        q.eq("organizationId", args.organizationId).eq("employeeId", args.employeeId)
-      )
-      .collect()
-      .then((all) => all.filter((b) => b.year === args.year));
+      .eq("organizationId", String(args.organizationId))
+      .eq("employeeId", args.employeeId)
+      .collect();
+    return all.filter((b) => (b as { year?: number }).year === args.year);
   },
 });
 

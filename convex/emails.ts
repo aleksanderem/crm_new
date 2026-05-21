@@ -391,48 +391,63 @@ export const toggleStar = action({
   },
 });
 
-export const listByPatient = query({
+export const listByPatient = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<EmailRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("emails")
-      .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
-      .order("desc")
-      .take(50);
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
+      .order("sentAt", false)
+      .take(50)
+      .collect()) as EmailRow[];
   },
 });
 
-export const listByAppointment = query({
+export const listByAppointment = action({
   args: {
     organizationId: v.id("organizations"),
-    appointmentId: v.id("gabinetAppointments"),
+    appointmentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<EmailRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("emails")
-      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
-      .order("desc")
-      .take(50);
+      .eq("organizationId", String(args.organizationId))
+      .eq("appointmentId", args.appointmentId)
+      .order("sentAt", false)
+      .take(50)
+      .collect()) as EmailRow[];
   },
 });
 
-export const listByEmployee = query({
+export const listByEmployee = action({
   args: {
     organizationId: v.id("organizations"),
-    employeeId: v.id("gabinetEmployees"),
+    employeeId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<EmailRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("emails")
-      .withIndex("by_employee", (q) => q.eq("employeeId", args.employeeId))
-      .order("desc")
-      .take(50);
+      .eq("organizationId", String(args.organizationId))
+      .eq("employeeId", args.employeeId)
+      .order("sentAt", false)
+      .take(50)
+      .collect()) as EmailRow[];
   },
 });
 

@@ -1,8 +1,7 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
 import type {
   GabinetLocationRow,
   GabinetRoomRow,
@@ -182,19 +181,22 @@ export const deleteLocation = action({
   },
 });
 
-export const listRooms = query({
+export const listRooms = action({
   args: {
     organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const location = await ctx.db.get(args.locationId);
-    if (!location || location.organizationId !== args.organizationId) return [];
-    return await ctx.db
+  handler: async (ctx, args): Promise<GabinetRoomRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const location = await db.get("gabinetLocations", args.locationId);
+    if (!location || String(location.organizationId) !== String(args.organizationId)) return [];
+    return (await db
       .query("gabinetRooms")
-      .withIndex("by_location", (q) => q.eq("locationId", args.locationId))
-      .collect();
+      .eq("locationId", args.locationId)
+      .collect()) as GabinetRoomRow[];
   },
 });
 

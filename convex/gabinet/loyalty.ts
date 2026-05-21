@@ -1,39 +1,42 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "../_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for loyalty writes
 
-export const getBalance = query({
+export const getBalance = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return await db
       .query("gabinetLoyaltyPoints")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
       .first();
   },
 });
 
-export const getTransactions = query({
+export const getTransactions = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return await db
       .query("gabinetLoyaltyTransactions")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId)
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
       .collect();
   },
 });

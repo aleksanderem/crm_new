@@ -1476,7 +1476,7 @@ export const processRun = internalMutation({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
-                    ? (run.entityId as Id<"gabinetAppointments">)
+                    ? run.entityId
                     : undefined,
                 actionType: action.type,
                 recipient: recipientEmail,
@@ -1525,7 +1525,7 @@ export const processRun = internalMutation({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
-                    ? (run.entityId as Id<"gabinetAppointments">)
+                    ? run.entityId
                     : undefined,
                 actionType: action.type,
                 recipient: recipientEmail,
@@ -1610,7 +1610,7 @@ export const processRun = internalMutation({
               organizationId: run.organizationId,
               appointmentId:
                 run.entityType === "gabinetAppointment"
-                  ? (run.entityId as Id<"gabinetAppointments">)
+                  ? run.entityId
                   : undefined,
               actionType: action.type,
               recipient: recipientEmail,
@@ -1647,7 +1647,7 @@ export const processRun = internalMutation({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
-                    ? (run.entityId as Id<"gabinetAppointments">)
+                    ? run.entityId
                     : undefined,
                 actionType: action.type,
                 recipient: phone,
@@ -1664,7 +1664,7 @@ export const processRun = internalMutation({
               run.entityType === "gabinetAppointment"
                 ? await ctx.runMutation(internal.gabinet.appointmentSms.queueAutomationSms, {
                     organizationId: run.organizationId,
-                    appointmentId: run.entityId as Id<"gabinetAppointments">,
+                    appointmentId: run.entityId as string,
                     phone,
                     message: renderedBody,
                     eventType: run.eventType,
@@ -1704,7 +1704,7 @@ export const processRun = internalMutation({
               organizationId: run.organizationId,
               appointmentId:
                 run.entityType === "gabinetAppointment"
-                  ? (run.entityId as Id<"gabinetAppointments">)
+                  ? run.entityId
                   : undefined,
               actionType: action.type,
               recipient: phone,
@@ -1882,7 +1882,7 @@ export const processRun = internalMutation({
             organizationId: run.organizationId,
             appointmentId:
               run.entityType === "gabinetAppointment"
-                ? (run.entityId as Id<"gabinetAppointments">)
+                ? run.entityId
                 : undefined,
             actionType: action.type,
             status: "failed",

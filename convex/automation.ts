@@ -1646,7 +1646,9 @@ export const processRun = internalMutation({
             const message = applyTemplate(action.messageTemplate, payload);
             const link = action.linkTemplate
               ? applyTemplate(action.linkTemplate, payload)
-              : undefined;
+              : run.entityType === "gabinetAppointment" && run.entityId
+                ? `/dashboard/gabinet/appointments/${run.entityId}`
+                : undefined;
 
             if (!userId) {
               await ctx.db.patch(stepId, {

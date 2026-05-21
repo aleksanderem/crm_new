@@ -179,7 +179,14 @@
   },
   "notifications": {
     "title": "Powiadomienia",
-    "empty": "Brak powiadomień"
+    "empty": "Brak powiadomień",
+    "markAllRead": "Oznacz wszystkie jako przeczytane",
+    "relativeTime": {
+      "justNow": "przed chwilą",
+      "minutesAgo": "{{count}} min temu",
+      "hoursAgo": "{{count}} godz. temu",
+      "daysAgo": "{{count}} dni temu"
+    }
   },
   "sidebar": {
     "todayActivities": "Dzisiejsze aktywności ({{count}})",

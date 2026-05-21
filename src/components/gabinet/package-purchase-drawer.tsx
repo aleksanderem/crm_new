@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "@/lib/ez-icons";
+import { PlateText } from "@/components/plate-text";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -72,23 +74,31 @@ export function PackagePurchaseDrawer({
 
   const selectedPkg = (activePackages ?? []).find((p) => p._id === selectedPkgId);
 
-  const parsedFirstSplit = Number.parseFloat(firstSplitAmount) || 0;
-  const parsedSecondSplit = Number.parseFloat(secondSplitAmount) || 0;
-  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
-  const expectedTotal = selectedPkg ? Math.round(selectedPkg.totalPrice * 100) / 100 : 0;
   const isOneTime = paymentType === "one_time";
   const isInstallment = paymentType === "installment";
-  const splitMismatch = isOneTime && splitPayment && selectedPkg && splitTotal !== expectedTotal;
-  const splitMissingMethod = isOneTime && splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
-  const splitSameMethod = isOneTime && splitPayment && firstSplitMethod === secondSplitMethod;
 
-  const parsedInstallmentCount = Math.max(2, Math.min(24, Number.parseInt(installmentCount, 10) || 2));
+  const parsedInstallmentCount = Math.max(2, Math.min(4, Number.parseInt(installmentCount, 10) || 2));
   const installmentAmount = selectedPkg
     ? Math.round((selectedPkg.totalPrice / parsedInstallmentCount) * 100) / 100
     : 0;
   const installmentRemainder = selectedPkg
     ? Math.round((selectedPkg.totalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
     : 0;
+  const firstInstallmentAmount = selectedPkg
+    ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
+    : 0;
+
+  const parsedFirstSplit = Number.parseFloat(firstSplitAmount) || 0;
+  const parsedSecondSplit = Number.parseFloat(secondSplitAmount) || 0;
+  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
+  const splitExpectedTotal = selectedPkg
+    ? isInstallment
+      ? firstInstallmentAmount
+      : Math.round(selectedPkg.totalPrice * 100) / 100
+    : 0;
+  const splitMismatch = splitPayment && selectedPkg && splitTotal !== splitExpectedTotal;
+  const splitMissingMethod = splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
+  const splitSameMethod = splitPayment && firstSplitMethod === secondSplitMethod;
 
   const resetForm = () => {
     setSelectedPkgId("");
@@ -104,7 +114,7 @@ export function PackagePurchaseDrawer({
 
   const handlePurchase = async () => {
     if (!selectedPkg) return;
-    if (isOneTime && splitPayment) {
+    if (splitPayment) {
       if (splitMissingMethod) {
         toast.error(
           t(
@@ -137,7 +147,7 @@ export function PackagePurchaseDrawer({
     try {
       const currency = selectedPkg.currency ?? "PLN";
       let usagePaymentMethod = paymentMethod;
-      if (isOneTime && splitPayment) usagePaymentMethod = "split";
+      if (splitPayment) usagePaymentMethod = "split";
       if (isInstallment) usagePaymentMethod = "installment";
       const usageId = await purchasePackage({
         organizationId,
@@ -148,16 +158,34 @@ export function PackagePurchaseDrawer({
       });
 
       if (isInstallment) {
-        const firstAmount = Math.round((installmentAmount + installmentRemainder) * 100) / 100;
-        await createPayment({
-          organizationId,
-          patientId: patientId as Id<"gabinetPatients">,
-          packageUsageId: usageId,
-          amount: firstAmount,
-          currency,
-          paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
-          notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount})`,
-        });
+        if (splitPayment) {
+          const parts: Array<{ method: "cash" | "card" | "transfer" | "other"; amount: number }> = [];
+          if (parsedFirstSplit > 0)
+            parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
+          if (parsedSecondSplit > 0)
+            parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
+          for (const part of parts) {
+            await createPayment({
+              organizationId,
+              patientId: patientId as Id<"gabinetPatients">,
+              packageUsageId: usageId,
+              amount: part.amount,
+              currency,
+              paymentMethod: part.method,
+              notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount} split: ${part.method})`,
+            });
+          }
+        } else {
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            packageUsageId: usageId,
+            amount: firstInstallmentAmount,
+            currency,
+            paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+            notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount})`,
+          });
+        }
         for (let i = 2; i <= parsedInstallmentCount; i++) {
           await createPayment({
             organizationId,
@@ -218,12 +246,12 @@ export function PackagePurchaseDrawer({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="flex flex-col sm:max-w-md">
         <SheetHeader>
           <SheetTitle>{t("gabinet.packages.purchasePackage", "Purchase Package")}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
+        <div className="flex-1 overflow-y-auto py-4 space-y-5">
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.selectPackage", "Package")}</Label>
             <Select value={selectedPkgId} onValueChange={setSelectedPkgId}>
@@ -244,7 +272,9 @@ export function PackagePurchaseDrawer({
             <div className="rounded-lg border p-3 space-y-2">
               <p className="text-sm font-medium">{selectedPkg.name}</p>
               {selectedPkg.description && (
-                <p className="text-xs text-muted-foreground">{selectedPkg.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  <PlateText value={selectedPkg.description} />
+                </p>
               )}
               <div className="space-y-1">
                 {selectedPkg.treatments.map((tr) => (
@@ -327,18 +357,21 @@ export function PackagePurchaseDrawer({
             </Select>
           </div>
 
-          {isOneTime && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="split-payment"
-                checked={splitPayment}
-                onCheckedChange={(v) => setSplitPayment(v === true)}
-              />
-              <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
-                {t("gabinet.packages.splitPayment", "Split payment")}
-              </Label>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="split-payment"
+              checked={splitPayment}
+              onCheckedChange={(v) => setSplitPayment(v === true)}
+            />
+            <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
+              {isInstallment
+                ? t(
+                    "gabinet.packages.splitFirstInstallment",
+                    "Split first installment",
+                  )
+                : t("gabinet.packages.splitPayment", "Split payment")}
+            </Label>
+          </div>
 
           {isInstallment && selectedPkg && (
             <div className="rounded-lg border p-3 space-y-3">
@@ -354,7 +387,7 @@ export function PackagePurchaseDrawer({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[2, 3, 4, 6, 12].map((n) => (
+                    {[2, 3, 4].map((n) => (
                       <SelectItem key={n} value={String(n)}>
                         {n}
                       </SelectItem>
@@ -379,7 +412,7 @@ export function PackagePurchaseDrawer({
             </div>
           )}
 
-          {isOneTime && splitPayment && (
+          {splitPayment && (
             <div className="rounded-lg border p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-md border p-2 space-y-2">
@@ -452,7 +485,7 @@ export function PackagePurchaseDrawer({
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
-                  {expectedTotal.toFixed(2)} {selectedPkg?.currency ?? "PLN"}
+                  {splitExpectedTotal.toFixed(2)} {selectedPkg?.currency ?? "PLN"}
                 </span>
                 {splitSameMethod ? (
                   <span>
@@ -467,19 +500,22 @@ export function PackagePurchaseDrawer({
             </div>
           )}
 
+        </div>
+
+        <SheetFooter className="border-t pt-4">
           <Button
             className="w-full"
             disabled={
               !selectedPkg ||
               submitting ||
-              (isOneTime && splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
+              (splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
             }
             onClick={handlePurchase}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("gabinet.packages.purchaseButton", "Purchase")}
           </Button>
-        </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

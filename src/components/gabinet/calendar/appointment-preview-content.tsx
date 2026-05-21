@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -66,6 +66,9 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { TagsPicker } from "@/components/categories-tags/tags-picker";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useSidebarActions } from "@/components/layout/sidebar-context";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
@@ -147,10 +150,30 @@ export function AppointmentPreviewContent({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    if (!newStart || !startTime || !endTime) return;
+    const toMin = (s: string) => {
+      const [h, m] = s.split(":").map(Number);
+      return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+    };
+    const oldStart = toMin(startTime);
+    const oldEnd = toMin(endTime);
+    const next = toMin(newStart);
+    if (oldStart === null || oldEnd === null || next === null) return;
+    const duration = oldEnd - oldStart;
+    if (duration <= 0) return;
+    const newEnd = Math.min(next + duration, 24 * 60 - 1);
+    const eh = Math.floor(newEnd / 60);
+    const em = newEnd % 60;
+    setEndTime(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+  };
   const [internalNotes, setInternalNotes] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [tagIds, setTagIds] = useState<Array<Id<"tagDefinitions">>>([]);
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -160,10 +183,19 @@ export function AppointmentPreviewContent({
   const [cancelReason, setCancelReason] = useState("");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
 
+  const { tags: tagDefinitions } = useTagDefinitions(organizationId);
+  const { dispatch } = useSidebarActions();
+
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
 
+  // Only seed local form state from `detail` once per appointment. Refetches
+  // triggered by status changes must not clobber the user's other unsaved edits
+  // (notes, date/time, tags, treatment). Issue #620.
+  const initializedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!detail) return;
+    if (initializedRef.current === appointmentId) return;
+    initializedRef.current = appointmentId;
     const appt = detail.appointment;
     setStatus(appt.status as AppointmentStatus);
     setDate(appt.date);
@@ -171,7 +203,10 @@ export function AppointmentPreviewContent({
     setEndTime(appt.endTime.slice(0, 5));
     setInternalNotes(appt.internalNotes ?? "");
     setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
-  }, [detail]);
+    setTagIds(
+      (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
+    );
+  }, [detail, appointmentId]);
 
   if (isLoading || !detail) {
     return (
@@ -211,12 +246,19 @@ export function AppointmentPreviewContent({
     phoneInput.trim().length > 0 &&
     phoneInput.trim() !== (patient?.phone ?? "");
 
+  const initialTagIds = (appointment.tagIds ?? []).map((id) => String(id));
+  const currentTagIds = tagIds.map((id) => String(id));
+  const tagsDirty =
+    initialTagIds.length !== currentTagIds.length ||
+    initialTagIds.some((id) => !currentTagIds.includes(id));
+
   const apptDirty =
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
     internalNotes !== (appointment.internalNotes ?? "") ||
-    treatmentId !== initialTreatmentId;
+    treatmentId !== initialTreatmentId ||
+    tagsDirty;
 
   const dirty = phoneDirty || apptDirty;
 
@@ -384,6 +426,7 @@ export function AppointmentPreviewContent({
           args.internalNotes = internalNotes;
         if (treatmentId && treatmentId !== initialTreatmentId)
           args.treatmentId = treatmentId;
+        if (tagsDirty) args.tagIds = tagIds.map((id) => String(id));
 
         await updateAppointment(args);
         await Promise.all([
@@ -654,6 +697,35 @@ export function AppointmentPreviewContent({
           </Select>
         </div>
 
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("gabinet.appointmentDetail.tags", { defaultValue: "Etykiety" })}
+            </Label>
+            <button
+              type="button"
+              onClick={() => dispatch("manageTags")}
+              className="text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              {t("gabinet.appointmentDetail.manageTags", {
+                defaultValue: "Zarządzaj",
+              })}
+            </button>
+          </div>
+          <TagsPicker
+            tags={tagDefinitions}
+            selectedIds={tagIds}
+            onChange={setTagIds}
+            placeholder={
+              tagDefinitions.length === 0
+                ? t("gabinet.appointmentDetail.addFirstTagHint", {
+                    defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
+                  })
+                : t("tags.assign", { defaultValue: "Tagi" })
+            }
+          />
+        </div>
+
         <div className="grid grid-cols-[1fr_auto_auto] items-end gap-1.5">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -672,8 +744,9 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
+              step={900}
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
               className="h-8 w-[88px] text-sm"
             />
           </div>
@@ -683,6 +756,7 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
+              step={900}
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               className="h-8 w-[88px] text-sm"

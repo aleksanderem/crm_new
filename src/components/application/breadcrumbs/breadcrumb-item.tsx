@@ -64,7 +64,7 @@ const BreadcrumbBase = ({ href, children, icon: Icon, type = "text", current, cl
     );
 };
 
-interface BreadcrumbItemProps extends AriaBreadcrumbProps {
+export interface BreadcrumbItemProps extends AriaBreadcrumbProps {
     href?: string;
     divider?: "chevron" | "slash";
     type?: BreadcrumbType;

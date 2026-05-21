@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
@@ -22,15 +23,20 @@ interface CalendarDayViewProps {
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
+  /** Approved leave overlapping this date for the filtered employee. */
+  leave?: { startTime?: string; endTime?: string } | null;
   slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
 
+const LEAVE_STRIPE_BG =
+  "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
+
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 – 20:00
-const HOUR_HEIGHT = 60; // 1 minute = 1px
+const HOUR_HEIGHT = 90; // pixels per hour — taller rows so short appointments still fit patient + treatment lines
 
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
-  return ((h - 7) * 60 + m);
+  return (((h - 7) * 60 + m) * HOUR_HEIGHT) / 60;
 }
 
 function buildSlots(slotMinutes: number) {
@@ -109,13 +115,14 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, slotMinutes = 60 }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, leave, slotMinutes = 60 }: CalendarDayViewProps) {
+  const { t } = useTranslation();
   const now = useCurrentTime();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentLineTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentLineTop = ((currentMinutes - 7 * 60) / 60) * HOUR_HEIGHT;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const showCurrentTime = isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60;
+  const showCurrentTime = isToday && currentLineTop > 0 && currentLineTop < HOURS.length * HOUR_HEIGHT;
 
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
   const showSubdivisions = slotMinutes === 60;
@@ -127,6 +134,24 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
   const workEndTop = workingHours ? timeToTop(workingHours.endTime) : null;
   const breakStartTop = workingHours?.breakStart ? timeToTop(workingHours.breakStart) : null;
   const breakEndTop = workingHours?.breakEnd ? timeToTop(workingHours.breakEnd) : null;
+
+  // Leave block — full day if no times set, otherwise the specified range.
+  const leaveTop = leave ? (leave.startTime ? timeToTop(leave.startTime) : 0) : null;
+  const leaveBottom = leave
+    ? leave.endTime
+      ? timeToTop(leave.endTime)
+      : HOURS.length * HOUR_HEIGHT
+    : null;
+  const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
+  const leaveLabel = leave
+    ? leave.startTime && leave.endTime
+      ? t("gabinet.calendar.leaveBadgePartial", {
+          start: leave.startTime,
+          end: leave.endTime,
+          defaultValue: "Urlop {{start}}–{{end}}",
+        })
+      : t("gabinet.calendar.leaveBadge", { defaultValue: "Urlop" })
+    : "";
 
   const handleClick = useCallback(
     (time: string) => onSlotClick?.(time),
@@ -197,15 +222,15 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed hours background — entire day when clinic is closed */}
         {workStartTop === null && (
           <div
-            className="pointer-events-none absolute inset-0 bg-muted/60"
-            style={{ height: `${HOURS.length * 60}px` }}
+            className="pointer-events-none absolute inset-0 bg-primary/5"
+            style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
 
         {/* Closed: before clinic opens */}
         {workStartTop !== null && workStartTop > 0 && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-b border-primary/10"
             style={{
               top: 0,
               height: `${workStartTop}px`,
@@ -214,23 +239,12 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         )}
 
         {/* Closed: after clinic closes */}
-        {workEndTop !== null && workEndTop < HOURS.length * 60 && (
+        {workEndTop !== null && workEndTop < HOURS.length * HOUR_HEIGHT && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-muted/60"
+            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10"
             style={{
               top: `${workEndTop}px`,
-              height: `${HOURS.length * 60 - workEndTop}px`,
-            }}
-          />
-        )}
-
-        {/* Working hours background */}
-        {workStartTop !== null && workEndTop !== null && (
-          <div
-            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-y border-primary/10"
-            style={{
-              top: `${workStartTop}px`,
-              height: `${workEndTop - workStartTop}px`,
+              height: `${HOURS.length * HOUR_HEIGHT - workEndTop}px`,
             }}
           />
         )}
@@ -246,6 +260,26 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
           />
         )}
 
+        {/* Approved leave overlay */}
+        {leave && leaveTop !== null && leaveHeight > 0 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-[5] border-y border-amber-400/70 dark:border-amber-500/60"
+            style={{
+              top: `${leaveTop}px`,
+              height: `${leaveHeight}px`,
+              backgroundImage: LEAVE_STRIPE_BG,
+            }}
+            title={t("gabinet.calendar.leaveOverlayTitle", {
+              defaultValue: "Pracownik ma zatwierdzony urlop",
+            })}
+            aria-label={leaveLabel}
+          >
+            <span className="absolute left-1 top-1 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              {leaveLabel}
+            </span>
+          </div>
+        )}
+
         {/* Slot rows — solid border at hour marks, faded at sub-slot marks */}
         {slots.map((s) => (
           <DroppableSlot
@@ -259,9 +293,18 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/30">
               {showSubdivisions && (
                 <>
-                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${HOUR_HEIGHT / 4}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/60"
+                    style={{ top: `${HOUR_HEIGHT / 2}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${(HOUR_HEIGHT * 3) / 4}px` }}
+                  />
                 </>
               )}
             </div>
@@ -280,7 +323,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         )}
 
         {/* Current time line */}
-        {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * 60 && (
+        {isToday && currentLineTop > 0 && currentLineTop < HOURS.length * HOUR_HEIGHT && (
           <div
             className="absolute left-0 right-0 z-20 border-t-2 border-red-500"
             style={{ top: `${currentLineTop}px` }}

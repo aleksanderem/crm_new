@@ -93,7 +93,7 @@ export const getMyAppointments = action({
       new Set(
         appointments
           .map((a) => a.treatmentId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
+          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
       ),
     );
     const treatments = await db.getMany("gabinetTreatments", treatmentIds);
@@ -102,18 +102,19 @@ export const getMyAppointments = action({
       treatmentNameById.set(String(t._id), String(t.name ?? "Unknown"));
     }
 
-    const enriched = appointments.map((appt) => ({
-      _id: String(appt._id),
-      date: appt.date as string,
-      startTime: appt.startTime as string,
-      endTime: appt.endTime as string,
-      status: appt.status as string,
-      treatmentName:
-        (appt.treatmentId &&
-          treatmentNameById.get(String(appt.treatmentId))) ??
-        "Unknown",
-      notes: (appt.notes as string | null) ?? undefined,
-    }));
+    const enriched = appointments.map((appt) => {
+      const treatmentId = appt.treatmentId as string | null | undefined;
+      return {
+        _id: String(appt._id),
+        date: appt.date as string,
+        startTime: appt.startTime as string,
+        endTime: appt.endTime as string,
+        status: appt.status as string,
+        treatmentName:
+          (treatmentId && treatmentNameById.get(treatmentId)) ?? "Unknown",
+        notes: (appt.notes as string | null) ?? undefined,
+      };
+    });
 
     return enriched.sort((a, b) => b.date.localeCompare(a.date));
   },
@@ -138,7 +139,7 @@ export const getMyPackages = action({
       new Set(
         usages
           .map((u) => u.packageId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
+          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
       ),
     );
     const pkgs = await db.getMany("gabinetTreatmentPackages", packageIds);
@@ -148,8 +149,19 @@ export const getMyPackages = action({
     }
 
     return usages.map((u) => ({
-      ...u,
+      _id: String(u._id),
+      packageId: String(u.packageId),
       packageName: packageNameById.get(String(u.packageId)) ?? "Unknown",
+      status: u.status as string,
+      purchasedAt: (u.purchasedAt as number | null) ?? 0,
+      expiresAt: (u.expiresAt as number | null) ?? null,
+      paidAmount: (u.paidAmount as number | null) ?? 0,
+      treatmentsUsed:
+        (u.treatmentsUsed as Array<{
+          treatmentId: string;
+          usedCount: number;
+          totalCount: number;
+        }> | null) ?? [],
     }));
   },
 });
@@ -163,11 +175,19 @@ export const getMyLoyaltyBalance = action({
       args.tokenHash,
     );
 
-    return await db
+    const row = await db
       .query("gabinetLoyaltyPoints")
       .eq("organizationId", organizationId)
       .eq("patientId", patientId)
       .first();
+    if (!row) return null;
+
+    return {
+      balance: (row.balance as number | null) ?? 0,
+      lifetimeEarned: (row.lifetimeEarned as number | null) ?? 0,
+      lifetimeSpent: (row.lifetimeSpent as number | null) ?? 0,
+      tier: (row.tier as string | null) ?? null,
+    };
   },
 });
 
@@ -186,9 +206,15 @@ export const getMyLoyaltyTransactions = action({
       .eq("patientId", patientId)
       .collect();
 
-    return transactions.sort(
-      (a, b) => (b.createdAt as number) - (a.createdAt as number),
-    );
+    return transactions
+      .map((tx) => ({
+        _id: String(tx._id),
+        type: tx.type as string,
+        points: (tx.points as number | null) ?? 0,
+        reason: (tx.reason as string | null) ?? "",
+        createdAt: (tx.createdAt as number | null) ?? 0,
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 

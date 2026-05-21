@@ -1,4 +1,6 @@
+import type { TableNames } from "../_generated/dataModel";
 import { createServiceRoleClient, upsertWithFkRetry } from "../supabase/client";
+import type { SupabaseRow } from "./supabaseRows";
 
 const TABLE_MAP: Record<string, string> = {
   users: "users",
@@ -116,70 +118,187 @@ function resolveTable(convexTable: string): string {
   return mapped;
 }
 
-export function createSupabaseDb() {
+// Typed surface for `createSupabaseDb()`.
+//
+// `query()` returns a `SupabaseQueryBuilder<SupabaseRow<TableName>>` when
+// called with a Convex table name, so callers like
+// `db.query("gabinetLoyaltyPoints").first()` see real field types and no
+// longer need a `(row.balance as number)` cast per access (root cause of
+// the #585 typecheck breakage).
+//
+// A fallback overload preserves explicit-generic call sites
+// (`db.query<{ order?: number }>("sources")`) and tables that live only in
+// Supabase, like `recentlyViewed` (#544/#567 removed it from the Convex
+// schema but the code still reads/writes the Postgres row).
+//
+// `get` / `getMany` mirror the typed-overload pattern used by `query()`:
+// calling them with a Convex table literal yields a `SupabaseRow<TableName>`
+// instead of `Record<string, unknown>`, so callers don't need per-field
+// `as` casts. A fallback overload with the original loose signature
+// preserves explicit-generic call sites (e.g. `db.get<{ orgId: string }>`)
+// and Supabase-only tables that don't appear in `TableNames`.
+//
+// `insert` / `patch` stay loose; typed variants live on `insertRow` /
+// `patchRow`. We can't replicate the `get`/`getMany`/`query` overload
+// pattern here because the row payload sits in parameter position:
+// adding a `row: Partial<SupabaseRow<TableName>>` overload alongside
+// the `row: Record<string, unknown>` fallback forces TS to disambiguate
+// the two for every call, instantiating `Partial<Doc<T>>` across the
+// full 80+ table union. That blows the instantiation budget and
+// triggers TS2589 ("type instantiation is excessively deep") in every
+// caller of the `SupabaseDb` interface — not just at the insert/patch
+// call site (verified with both naive overload and non-distributive
+// `[T] extends [TableNames]` wrappers; see #606).
+//
+// Splitting into distinct method names (`insert` vs `insertRow`) sidesteps
+// overload resolution entirely, so callers that want field-level checking
+// can opt in via `db.insertRow(...)` / `db.patchRow(...)` without
+// destabilizing the rest of the program. The runtime is identical:
+// `insertRow` and `patchRow` are just typed aliases of `insert` / `patch`.
+// `delete` takes no row payload so it stays loose as well.
+export interface SupabaseDb {
+  get<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+  ): Promise<SupabaseRow<TableName> | null>;
+  get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null>;
+
+  getMany<TableName extends TableNames>(
+    table: TableName,
+    ids: string[],
+  ): Promise<SupabaseRow<TableName>[]>;
+  getMany<T = Record<string, unknown>>(
+    table: string,
+    ids: string[],
+  ): Promise<T[]>;
+
+  insert(table: string, row: Record<string, unknown>): Promise<string>;
+
+  insertRow<TableName extends TableNames>(
+    table: TableName,
+    row: Partial<SupabaseRow<TableName>>,
+  ): Promise<string>;
+
+  patch(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+  ): Promise<void>;
+
+  patchRow<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+    updates: Partial<SupabaseRow<TableName>>,
+  ): Promise<void>;
+
+  delete(table: string, id: string): Promise<void>;
+
+  query<TableName extends TableNames>(
+    table: TableName,
+  ): SupabaseQueryBuilder<SupabaseRow<TableName>>;
+  query<T = Record<string, unknown>>(
+    table: string,
+  ): SupabaseQueryBuilder<T>;
+
+  raw(): ReturnType<typeof createServiceRoleClient>;
+}
+
+export function createSupabaseDb(): SupabaseDb {
   const client = createServiceRoleClient();
 
+  function get<TableName extends TableNames>(
+    table: TableName,
+    id: string,
+  ): Promise<SupabaseRow<TableName> | null>;
+  function get<T = Record<string, unknown>>(
+    table: string,
+    id: string,
+  ): Promise<T | null>;
+  async function get(table: string, id: string): Promise<unknown> {
+    const { data, error } = await client
+      .from(resolveTable(table))
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(`supabaseDb.get(${table}, ${id}): ${error.message}`);
+    return data ? mapRowFromSnake(data) : null;
+  }
+
+  function getMany<TableName extends TableNames>(
+    table: TableName,
+    ids: string[],
+  ): Promise<SupabaseRow<TableName>[]>;
+  function getMany<T = Record<string, unknown>>(
+    table: string,
+    ids: string[],
+  ): Promise<T[]>;
+  async function getMany(table: string, ids: string[]): Promise<unknown[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await client
+      .from(resolveTable(table))
+      .select("*")
+      .in("id", ids);
+    if (error) throw new Error(`supabaseDb.getMany(${table}): ${error.message}`);
+    return (data ?? []).map(mapRowFromSnake);
+  }
+
+  async function insert(
+    table: string,
+    row: Record<string, unknown>,
+  ): Promise<string> {
+    const id = row._id ? String(row._id) : crypto.randomUUID();
+    const snakeRow = mapRowToSnake(row);
+    snakeRow.id = id;
+    const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
+    return result.id;
+  }
+
+  async function patch(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+  ): Promise<void> {
+    const snakeUpdates = mapRowToSnake(updates);
+    const { error } = await client
+      .from(resolveTable(table))
+      .update(snakeUpdates)
+      .eq("id", id);
+    if (error) throw new Error(`supabaseDb.patch(${table}, ${id}): ${error.message}`);
+  }
+
+  async function del(table: string, id: string): Promise<void> {
+    const { error } = await client
+      .from(resolveTable(table))
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
+  }
+
+  function query<TableName extends TableNames>(
+    table: TableName,
+  ): SupabaseQueryBuilder<SupabaseRow<TableName>>;
+  function query<T = Record<string, unknown>>(
+    table: string,
+  ): SupabaseQueryBuilder<T>;
+  function query(table: string): SupabaseQueryBuilder {
+    const pgTable = resolveTable(table);
+    return new SupabaseQueryBuilder(client, pgTable);
+  }
+
+  function raw() {
+    return client;
+  }
+
   return {
-    async get<T = Record<string, unknown>>(table: string, id: string): Promise<T | null> {
-      const { data, error } = await client
-        .from(resolveTable(table))
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw new Error(`supabaseDb.get(${table}, ${id}): ${error.message}`);
-      return data ? (mapRowFromSnake(data) as T) : null;
-    },
-
-    async getMany<T = Record<string, unknown>>(table: string, ids: string[]): Promise<T[]> {
-      if (ids.length === 0) return [];
-      const { data, error } = await client
-        .from(resolveTable(table))
-        .select("*")
-        .in("id", ids);
-      if (error) throw new Error(`supabaseDb.getMany(${table}): ${error.message}`);
-      return (data ?? []).map(mapRowFromSnake) as T[];
-    },
-
-    async insert(
-      table: string,
-      row: Record<string, unknown>,
-    ): Promise<string> {
-      const id = row._id ? String(row._id) : crypto.randomUUID();
-      const snakeRow = mapRowToSnake(row);
-      snakeRow.id = id;
-      const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
-      return result.id;
-    },
-
-    async patch(
-      table: string,
-      id: string,
-      updates: Record<string, unknown>,
-    ): Promise<void> {
-      const snakeUpdates = mapRowToSnake(updates);
-      const { error } = await client
-        .from(resolveTable(table))
-        .update(snakeUpdates)
-        .eq("id", id);
-      if (error) throw new Error(`supabaseDb.patch(${table}, ${id}): ${error.message}`);
-    },
-
-    async delete(table: string, id: string): Promise<void> {
-      const { error } = await client
-        .from(resolveTable(table))
-        .delete()
-        .eq("id", id);
-      if (error) throw new Error(`supabaseDb.delete(${table}, ${id}): ${error.message}`);
-    },
-
-    query<T = Record<string, unknown>>(table: string) {
-      const pgTable = resolveTable(table);
-      return new SupabaseQueryBuilder<T>(client, pgTable);
-    },
-
-    raw() {
-      return client;
-    },
+    get,
+    getMany,
+    insert,
+    insertRow: insert,
+    patch,
+    patchRow: patch,
+    delete: del,
+    query,
+    raw,
   };
 }
 
@@ -297,5 +416,3 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this.first();
   }
 }
-
-export type SupabaseDb = ReturnType<typeof createSupabaseDb>;

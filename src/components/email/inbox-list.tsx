@@ -17,6 +17,7 @@ interface InboxListProps {
   onSelectThread: (threadId: string, emailId: string) => void;
   filter: FilterTab;
   mailProviderId?: Id<"mailProviders">;
+  unansweredOnly?: boolean;
 }
 
 export function InboxList({
@@ -25,6 +26,7 @@ export function InboxList({
   onSelectThread,
   filter,
   mailProviderId,
+  unansweredOnly = false,
 }: InboxListProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -61,8 +63,19 @@ export function InboxList({
     if (filter === "starred") {
       result = result.filter((e) => e.isStarred);
     }
+    // nudge=unanswered: latest thread message is inbound and unread/older than 2 days
+    // (mirrors backend logic in convex/nudges.ts getInboxNudges)
+    if (unansweredOnly) {
+      const twoDaysAgo = Date.now() - 48 * 60 * 60 * 1000;
+      result = result.filter(
+        (e) =>
+          e.direction === "inbound" &&
+          !e.isRead &&
+          (e.sentAt ?? 0) < twoDaysAgo,
+      );
+    }
     return result.sort((a, b) => b.sentAt - a.sentAt);
-  }, [emails, filter]);
+  }, [emails, filter, unansweredOnly]);
 
   const handleToggleStar = async (
     e: React.MouseEvent,

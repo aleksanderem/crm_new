@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
-import { GENDERS } from "@/lib/options";
+import { GENDERS, PATIENT_REFERRAL_SOURCES, patientReferralSourceOptions } from "@/lib/options";
 import type { Id } from "@cvx/_generated/dataModel";
 
 interface TagDef {
@@ -87,7 +88,15 @@ export function PatientForm({
   const [bloodType, setBloodType] = useState(initialData?.bloodType ?? "");
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName ?? "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone ?? "");
-  const [referralSource, setReferralSource] = useState(initialData?.referralSource ?? "");
+  const initialReferral = initialData?.referralSource ?? "";
+  const initialReferralIsKnown = (PATIENT_REFERRAL_SOURCES as readonly string[]).includes(initialReferral);
+  const [referralSourceKey, setReferralSourceKey] = useState<string>(
+    initialReferral ? (initialReferralIsKnown ? initialReferral : "other") : "",
+  );
+  const [referralSourceCustom, setReferralSourceCustom] = useState<string>(
+    initialReferral && !initialReferralIsKnown ? initialReferral : "",
+  );
+  const referralOptions = patientReferralSourceOptions(t);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
@@ -96,6 +105,11 @@ export function PatientForm({
     const address = street || city || postalCode
       ? { street: street || undefined, city: city || undefined, postalCode: postalCode || undefined }
       : undefined;
+
+    const referralSource =
+      referralSourceKey === "other"
+        ? referralSourceCustom.trim() || undefined
+        : referralSourceKey || undefined;
 
     onSubmit({
       firstName,
@@ -111,7 +125,7 @@ export function PatientForm({
       bloodType: bloodType || undefined,
       emergencyContactName: emergencyContactName || undefined,
       emergencyContactPhone: emergencyContactPhone || undefined,
-      referralSource: referralSource || undefined,
+      referralSource,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
     });
@@ -155,10 +169,9 @@ export function PatientForm({
           <Label>
             {t("common.phone")} <span className="text-destructive">*</span>
           </Label>
-          <Input
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
             required
           />
         </div>
@@ -238,10 +251,9 @@ export function PatientForm({
           </div>
           <div className="space-y-1.5">
             <Label>{t("gabinet.patients.emergencyContactPhone")}</Label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={emergencyContactPhone}
-              onChange={(e) => setEmergencyContactPhone(e.target.value)}
+              onChange={setEmergencyContactPhone}
             />
           </div>
         </div>
@@ -250,10 +262,24 @@ export function PatientForm({
       <div className="grid gap-4 sm:grid-cols-2 border-t pt-4">
         <div className="space-y-1.5">
           <Label>{t("gabinet.patients.referralSource")}</Label>
-          <Input
-            value={referralSource}
-            onChange={(e) => setReferralSource(e.target.value)}
-          />
+          <Select value={referralSourceKey} onValueChange={setReferralSourceKey}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {referralOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {referralSourceKey === "other" && (
+            <Input
+              value={referralSourceCustom}
+              onChange={(e) => setReferralSourceCustom(e.target.value)}
+              placeholder={t("gabinet.patients.referralSourceOtherPlaceholder")}
+              className="mt-2"
+            />
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.patients.allergies")}</Label>

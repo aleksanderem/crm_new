@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText } from "@/components/plate-text";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -69,6 +70,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -105,6 +107,42 @@ function computeEndTime(start: string, durationMinutes: number): string {
   const eh = Math.floor(total / 60);
   const em = total % 60;
   return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+/**
+ * Mirror of backend `generateRecurringDates` (convex/gabinet/appointments.ts).
+ * Keep in sync — both compute the list of recurrence dates following the base.
+ */
+function generateRecurringDates(
+  startDate: string,
+  frequency: string,
+  count: number,
+): string[] {
+  const dates: string[] = [];
+  const d = new Date(startDate + "T00:00:00");
+  for (let i = 1; i < count; i++) {
+    switch (frequency) {
+      case "daily":
+        d.setDate(d.getDate() + 1);
+        break;
+      case "weekly":
+        d.setDate(d.getDate() + 7);
+        break;
+      case "biweekly":
+        d.setDate(d.getDate() + 14);
+        break;
+      case "monthly":
+        d.setMonth(d.getMonth() + 1);
+        break;
+      default:
+        return dates;
+    }
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    dates.push(`${yyyy}-${mm}-${dd}`);
+  }
+  return dates;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +225,12 @@ export function AppointmentDialog({
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("weekly");
   const [recurringCount, setRecurringCount] = useState(4);
+  // Per-occurrence start-time overrides, keyed by date (YYYY-MM-DD). Only
+  // includes entries the user actually edited; missing entries fall back to
+  // the base slot's start time. Issue #665.
+  const [recurringStartTimes, setRecurringStartTimes] = useState<
+    Record<string, string>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [searchingSlot, setSearchingSlot] = useState(false);
   const [locationId, setLocationId] = useState("");
@@ -339,6 +383,23 @@ export function AppointmentDialog({
   });
 
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];
+
+  // Approved leaves for the selected employee — flag overlaps with the chosen
+  // date so the user sees an explicit warning. The available-slots backend
+  // already filters leave time but does not tell the user why. Issue #652.
+  const { data: employeeLeaves } = useSupabaseGabinetLeavesList(
+    organizationId,
+    { userId: employeeId || undefined, status: "approved", enabled: !!employeeId },
+  );
+
+  const employeeLeaveOnSelectedDate = useMemo(() => {
+    if (!dateStr || !employeeLeaves || employeeLeaves.length === 0) return null;
+    return (
+      employeeLeaves.find(
+        (l) => l.startDate <= dateStr && l.endDate >= dateStr,
+      ) ?? null
+    );
+  }, [employeeLeaves, dateStr]);
 
   // Equipment warning — advisory only
   const missingEquipmentIds = useMemo(() => {
@@ -519,6 +580,20 @@ export function AppointmentDialog({
     return slotStart.getTime() < Date.now();
   }, [dateStr, selectedSlot]);
 
+  // Recurring occurrences (date + effective start time). The first entry is
+  // the base appointment; the rest are generated. Per-date overrides come
+  // from `recurringStartTimes`. Issue #665.
+  const recurringOccurrences = useMemo(() => {
+    if (!isRecurring || !dateStr || !selectedSlot?.start) return [];
+    const baseStart = selectedSlot.start;
+    const dates = [dateStr, ...generateRecurringDates(dateStr, frequency, recurringCount)];
+    return dates.map((date, index) => ({
+      date,
+      startTime: recurringStartTimes[date] ?? baseStart,
+      index,
+    }));
+  }, [isRecurring, dateStr, selectedSlot, frequency, recurringCount, recurringStartTimes]);
+
   const canSubmit =
     !!patientId &&
     !!treatmentId &&
@@ -531,6 +606,21 @@ export function AppointmentDialog({
     if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
     try {
+      const treatmentDuration = selectedTreatment?.duration ?? 30;
+      // Build per-occurrence overrides for the recurrences (excluding the base
+      // appointment at index 0). Only send if at least one entry has a custom
+      // start time so the backend keeps using the simple rule path otherwise.
+      const recurringOverrides =
+        isRecurring && recurringOccurrences.length > 1
+          ? recurringOccurrences.slice(1).map((occ) => ({
+              date: occ.date,
+              startTime: occ.startTime,
+              endTime: computeEndTime(occ.startTime, treatmentDuration),
+            }))
+          : undefined;
+      const hasCustomTimes = recurringOverrides?.some(
+        (o) => o.startTime !== selectedSlot.start,
+      );
       await createAppointment({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
@@ -544,6 +634,7 @@ export function AppointmentDialog({
         recurringRule: isRecurring
           ? { frequency, count: recurringCount }
           : undefined,
+        recurringOverrides: hasCustomTimes ? recurringOverrides : undefined,
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
       });
@@ -579,6 +670,8 @@ export function AppointmentDialog({
     isRecurring,
     frequency,
     recurringCount,
+    recurringOccurrences,
+    selectedTreatment,
     locationId,
     roomId,
     onOpenChange,
@@ -595,9 +688,18 @@ export function AppointmentDialog({
     void performCreate();
   }, [canSubmit, selectedSlot, isPastSlot, performCreate]);
 
-  // Reset state when dialog closes
+  // Sync date/time from props when dialog opens, reset everything when it closes.
+  // Without the open-branch, clicking a calendar slot would not pre-fill the
+  // dialog because useState initializers only run on first mount (issue #670).
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setSelectedDate(
+        defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
+      );
+      setSelectedSlot(
+        defaultTime ? { start: defaultTime, end: defaultEndTime ?? "" } : null,
+      );
+    } else {
       setTreatmentId("");
       setEmployeeId("");
       setPatientId("");
@@ -611,6 +713,7 @@ export function AppointmentDialog({
       setIsRecurring(false);
       setFrequency("weekly");
       setRecurringCount(4);
+      setRecurringStartTimes({});
       setPatientSearch("");
       setTreatmentSearch("");
       setLocationId("");
@@ -645,11 +748,11 @@ export function AppointmentDialog({
 
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="relative flex flex-col md:flex-row md:h-[600px]">
-          {/* Centered past-slot warning overlay */}
+          {/* Past-slot warning overlay (positioned near bottom so it doesn't cover the calendar grid) */}
           {isPastSlot && selectedSlot && (
             <div
               role="alert"
-              className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(90%,22rem)] -translate-x-1/2 -translate-y-1/2"
+              className="pointer-events-none absolute left-1/2 bottom-4 z-20 w-[min(90%,22rem)] -translate-x-1/2"
             >
               <div className="pointer-events-auto space-y-1 rounded-md border border-red-600 bg-red-600 px-3 py-2.5 text-xs text-white shadow-lg dark:border-red-700 dark:bg-red-700">
                 <div className="flex items-center gap-1.5 font-semibold">
@@ -857,7 +960,7 @@ export function AppointmentDialog({
                         </p>
                         {selectedTreatment.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                            {selectedTreatment.description}
+                            <PlateText value={selectedTreatment.description} />
                           </p>
                         )}
                       </div>
@@ -1100,6 +1203,52 @@ export function AppointmentDialog({
                           )}
                         </SelectContent>
                       </Select>
+
+                      <div className="rounded-md border bg-muted/20 p-2">
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                          {t("gabinet.appointments.recurringPreview")}
+                        </p>
+                        {recurringOccurrences.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t(
+                              "gabinet.appointments.recurringPreviewSelectSlot",
+                            )}
+                          </p>
+                        ) : (
+                          <ScrollShadow className="max-h-44 overflow-y-auto">
+                            <ul className="space-y-1">
+                              {recurringOccurrences.map((occ) => (
+                                <li
+                                  key={occ.date}
+                                  className="flex items-center justify-between gap-2"
+                                >
+                                  <span className="text-xs capitalize tabular-nums">
+                                    {format(
+                                      new Date(occ.date + "T00:00:00"),
+                                      "EEE d MMM yyyy",
+                                      { locale: dateFnsLocale },
+                                    )}
+                                  </span>
+                                  <input
+                                    type="time"
+                                    value={occ.startTime}
+                                    onChange={(e) =>
+                                      setRecurringStartTimes((prev) => ({
+                                        ...prev,
+                                        [occ.date]: e.target.value,
+                                      }))
+                                    }
+                                    className="h-7 w-[88px] rounded-md border border-input bg-background px-2 text-xs tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label={t(
+                                      "gabinet.appointments.calendarDialog.time",
+                                    )}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          </ScrollShadow>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1118,12 +1267,7 @@ export function AppointmentDialog({
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   locale={dateFnsLocale}
-                  disabled={(date) => {
-                    if (!calendarEnabled) return true;
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return date < today;
-                  }}
+                  disabled={(_date) => !calendarEnabled}
                   className="w-full rounded-md"
                   classNames={{
                     root: "w-full",
@@ -1162,6 +1306,29 @@ export function AppointmentDialog({
                     {t("gabinet.appointments.availableSlots")}
                   </p>
                 </div>
+
+                {employeeLeaveOnSelectedDate && (
+                  <div
+                    role="alert"
+                    className="mx-3 mb-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                  >
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                      {employeeLeaveOnSelectedDate.startTime &&
+                      employeeLeaveOnSelectedDate.endTime
+                        ? t("gabinet.appointments.warnings.leavePartial", {
+                            start: employeeLeaveOnSelectedDate.startTime,
+                            end: employeeLeaveOnSelectedDate.endTime,
+                            defaultValue:
+                              "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
+                          })
+                        : t("gabinet.appointments.warnings.leave", {
+                            defaultValue:
+                              "Pracownik jest na urlopie w tym terminie",
+                          })}
+                    </span>
+                  </div>
+                )}
 
                 <Separator />
 

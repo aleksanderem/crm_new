@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -49,8 +49,10 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
+import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 
@@ -91,11 +93,16 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
+  const routeNavigate = useNavigate();
+  const nudgeFilter = search.nudge;
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    nudgeFilter === "unconfirmed-today" ? "day" : "week",
+  );
   const [slotMinutes, setSlotMinutesState] = useState<SlotMinutes>(readStoredSlotMinutes);
   const setSlotMinutes = useCallback((next: SlotMinutes) => {
     setSlotMinutesState(next);
@@ -106,12 +113,17 @@ function GabinetCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
+  );
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
 
   // Filter dialog
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // Tags manager slideout
+  const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -336,6 +348,50 @@ function GabinetCalendarPage() {
     return employeeSchedules.get(`${dow}`) ?? null;
   }, [viewMode, currentDate, employeeSchedules]);
 
+  // Approved leaves for the filtered employee — used to overlay leave blocks
+  // on the calendar grid so admins can spot conflicts without opening the
+  // appointment dialog. Skipped when "all" employees is selected because the
+  // grid then shows everyone's appointments and a single overlay would be
+  // ambiguous. Issue #693.
+  const employeeLeaveFilter = employeeFilter !== "all" ? employeeFilter : undefined;
+  const { data: employeeLeavesRaw } = useSupabaseGabinetLeavesList(
+    organizationId,
+    {
+      userId: employeeLeaveFilter,
+      status: "approved",
+      enabled: !!employeeLeaveFilter,
+    },
+  );
+
+  // Build date -> leave info map for the visible range. A multi-day leave is
+  // expanded so each covered date carries the same per-day time window.
+  const leavesByDate = useMemo(() => {
+    const map = new Map<string, { startTime?: string; endTime?: string }>();
+    if (!employeeLeaveFilter || !employeeLeavesRaw) return map;
+    for (const leave of employeeLeavesRaw) {
+      if (leave.endDate < startDate || leave.startDate > endDate) continue;
+      const from = leave.startDate < startDate ? startDate : leave.startDate;
+      const to = leave.endDate > endDate ? endDate : leave.endDate;
+      const d = new Date(from + "T00:00:00");
+      const e = new Date(to + "T00:00:00");
+      while (d.getTime() <= e.getTime()) {
+        const ds = formatDateStr(d);
+        // First write wins so an existing partial-day leave isn't overwritten by
+        // a later full-day one.
+        if (!map.has(ds)) {
+          map.set(ds, { startTime: leave.startTime, endTime: leave.endTime });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [employeeLeaveFilter, employeeLeavesRaw, startDate, endDate]);
+
+  const leaveDates = useMemo(
+    () => new Set(leavesByDate.keys()),
+    [leavesByDate],
+  );
+
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
     const items: Array<{
@@ -455,6 +511,7 @@ function GabinetCalendarPage() {
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
   useSidebarDispatch("openFilter", () => setFilterOpen(true));
+  useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
 
   // Click-to-create handler
   const handleSlotClick = useCallback(
@@ -667,6 +724,32 @@ function GabinetCalendarPage() {
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-[calc(100vh-4rem)] flex-col">
+        {nudgeFilter === "unconfirmed-today" && (
+          <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <span>
+              {t("gabinet.calendar.nudgeFilter.unconfirmedToday", {
+                defaultValue:
+                  "Pokazywane są dzisiejsze wizyty jeszcze niepotwierdzone (status: zaplanowana).",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => {
+                setStatusFilter("all");
+                routeNavigate({
+                  to: "/dashboard/gabinet/calendar",
+                  search: { nudge: undefined },
+                });
+              }}
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-3">
           {/* Row 1: nav arrows + date title + view switcher + actions */}
@@ -907,6 +990,7 @@ function GabinetCalendarPage() {
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
               workingHours={dayWorkingHours}
+              leave={leavesByDate.get(formatDateStr(currentDate)) ?? null}
               slotMinutes={slotMinutes}
             />
           )}
@@ -920,6 +1004,7 @@ function GabinetCalendarPage() {
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               employeeSchedules={employeeSchedules}
+              leavesByDate={leavesByDate}
               slotMinutes={slotMinutes}
             />
           )}
@@ -930,6 +1015,7 @@ function GabinetCalendarPage() {
               appointments={viewAppointments}
               onDayClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
+              leaveDates={leaveDates}
             />
           )}
         </div>
@@ -947,6 +1033,13 @@ function GabinetCalendarPage() {
 
       {/* Print-only schedule table */}
       <PrintSchedule date={printDate} appointments={printAppointments} />
+
+      <TagsManagerSlideout
+        isOpen={tagsSlideoutOpen}
+        onOpenChange={setTagsSlideoutOpen}
+        organizationId={organizationId}
+        tags={tagDefinitions}
+      />
 
       {/* Drag overlay - shows appointment being dragged */}
       <DragOverlay>

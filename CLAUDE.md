@@ -639,6 +639,10 @@ The project mixes shadcn/ui (Radix) and Untitled UI (react-aria) components. The
 
 4. When reverting changes, use `git checkout -- <file>` per file. NEVER use `git stash drop` without showing the user what's being discarded.
 
+## Running Tests
+
+Convex unit tests MUST be run via `npm run test:unit` (which does `cd convex && vitest run`). Running bare `vitest` from the repo root used to silently skip the setup file; #578 added a root `vitest.config.ts` that pins `test.root` to `./convex` so `npx vitest` from root now works too. If you ever see `Error: SUPABASE_URL not configured` from a test, that is the diagnostic that vitest was invoked from the wrong cwd / wrong config and `tests/convex/_setup.ts` (which installs the in-memory Supabase stubs) never ran. See `TESTING.md` for details.
+
 ## Key Files
 
 - `convex/schema.ts` — full database schema (~1290 lines)

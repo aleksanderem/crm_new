@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { plateJsonToText } from "@/components/plate-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { callOutcomeOptions } from "@/lib/options";
-import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, X } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
@@ -39,10 +40,21 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 
+type CallsNudgeFilter = "no-outcome";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/calls/"
 )({
   component: CallsPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: CallsNudgeFilter } => {
+    const nudge =
+      search.nudge === "no-outcome"
+        ? (search.nudge as CallsNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Call = MappedCall;
@@ -59,6 +71,8 @@ const OUTCOME_CONFIG: Record<CallOutcome, { color: string; labelKey: string }> =
 function CallsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('calls.views.all'), isSystem: true, isDefault: true },
   ], [t]);
@@ -132,12 +146,16 @@ function CallsPage() {
     enabled: callIds.length > 0,
   });
   const calls = useMemo(() => {
-    const withConditions = applyFilterConditions(allCalls, activeFilters);
+    let data = allCalls;
+    if (nudgeFilter === "no-outcome") {
+      data = data.filter((c: any) => !c.outcome);
+    }
+    const withConditions = applyFilterConditions(data, activeFilters);
     const filtered = applyFilters(withConditions) as typeof allCalls;
     if (!searchValue.trim()) return filtered;
     const q = searchValue.toLowerCase();
     return filtered.filter((c: any) => c.note?.toLowerCase().includes(q));
-  }, [allCalls, activeFilters, applyFilters, searchValue]);
+  }, [allCalls, activeFilters, applyFilters, searchValue, nudgeFilter]);
 
   const createCall = useAction(api.calls.create);
   const updateCall = useAction(api.calls.update);
@@ -291,10 +309,11 @@ function CallsPage() {
       id: "note",
       label: t('calls.note'),
       render: (item) => {
-        if (!item.note) return <span className="text-fg-quaternary">—</span>;
+        const text = plateJsonToText(item.note).trim();
+        if (!text) return <span className="text-fg-quaternary">—</span>;
         return (
-          <span className="text-fg-tertiary" title={item.note}>
-            {item.note.length > 60 ? item.note.slice(0, 60) + "..." : item.note}
+          <span className="text-fg-tertiary" title={text}>
+            {text.length > 60 ? text.slice(0, 60) + "..." : text}
           </span>
         );
       },
@@ -336,6 +355,30 @@ function CallsPage() {
           </Button>
         }
       />
+
+      {nudgeFilter === "no-outcome" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("calls.nudgeFilter.noOutcome", {
+              defaultValue: "Pokazywane są połączenia bez zapisanego wyniku.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/calls",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

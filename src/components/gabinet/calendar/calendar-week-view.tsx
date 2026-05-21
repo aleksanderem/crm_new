@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
@@ -26,11 +27,16 @@ interface CalendarWeekViewProps {
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
   employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
+  /** Approved leaves by date string (YYYY-MM-DD) for the filtered employee. */
+  leavesByDate?: Map<string, { startTime?: string; endTime?: string }>;
   slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
 
+const LEAVE_STRIPE_BG =
+  "repeating-linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0px, rgba(245, 158, 11, 0.18) 6px, rgba(245, 158, 11, 0.06) 6px, rgba(245, 158, 11, 0.06) 12px)";
+
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
-const HOUR_HEIGHT = 60; // 1 minute = 1px
+const HOUR_HEIGHT = 90; // pixels per hour — taller rows so short appointments still fit patient + treatment lines
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function buildSlots(slotMinutes: number) {
@@ -57,7 +63,7 @@ function getWeekDates(start: string): string[] {
 
 function timeToTop(time: string): number {
   const [h, m] = time.split(":").map(Number);
-  return ((h - 7) * 60 + m);
+  return (((h - 7) * 60 + m) * HOUR_HEIGHT) / 60;
 }
 
 function getDayOfWeek(date: string): number {
@@ -136,6 +142,7 @@ interface WeekDayColumnProps {
   isSelected: boolean;
   layouts: LayoutedAppointment[];
   schedule?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string };
+  leave?: { startTime?: string; endTime?: string } | null;
   currentTimeTop: number | null;
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
@@ -152,6 +159,7 @@ function WeekDayColumn({
   isSelected,
   layouts,
   schedule,
+  leave,
   currentTimeTop,
   onSlotClick,
   onSlotDragSelect,
@@ -160,7 +168,25 @@ function WeekDayColumn({
   slotMinutes,
   slots,
 }: WeekDayColumnProps) {
+  const { t } = useTranslation();
   const showSubdivisions = slotMinutes === 60;
+
+  const leaveTop = leave ? (leave.startTime ? timeToTop(leave.startTime) : 0) : null;
+  const leaveBottom = leave
+    ? leave.endTime
+      ? timeToTop(leave.endTime)
+      : HOURS.length * HOUR_HEIGHT
+    : null;
+  const leaveHeight = leaveTop !== null && leaveBottom !== null ? leaveBottom - leaveTop : 0;
+  const leaveLabel = leave
+    ? leave.startTime && leave.endTime
+      ? t("gabinet.calendar.leaveBadgePartial", {
+          start: leave.startTime,
+          end: leave.endTime,
+          defaultValue: "Urlop {{start}}–{{end}}",
+        })
+      : t("gabinet.calendar.leaveBadge", { defaultValue: "Urlop" })
+    : "";
   const handleClick = useCallback(
     (time: string) => onSlotClick?.(date, time),
     [onSlotClick, date],
@@ -212,8 +238,8 @@ function WeekDayColumn({
         {/* Closed hours background — entire day when clinic is closed */}
         {!schedule && (
           <div
-            className="pointer-events-none absolute inset-0 bg-muted/60 z-0"
-            style={{ height: `${HOURS.length * 60}px` }}
+            className="pointer-events-none absolute inset-0 bg-primary/5 z-0"
+            style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
 
@@ -223,7 +249,7 @@ function WeekDayColumn({
             {/* Closed: before clinic opens */}
             {timeToTop(schedule.startTime) > 0 && (
               <div
-                className="pointer-events-none absolute left-0 right-0 bg-muted/60 z-0"
+                className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-b border-primary/10 z-0"
                 style={{
                   top: 0,
                   height: `${timeToTop(schedule.startTime)}px`,
@@ -231,22 +257,15 @@ function WeekDayColumn({
               />
             )}
             {/* Closed: after clinic closes */}
-            {timeToTop(schedule.endTime) < HOURS.length * 60 && (
+            {timeToTop(schedule.endTime) < HOURS.length * HOUR_HEIGHT && (
               <div
-                className="pointer-events-none absolute left-0 right-0 bg-muted/60 z-0"
+                className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10 z-0"
                 style={{
                   top: `${timeToTop(schedule.endTime)}px`,
-                  height: `${HOURS.length * 60 - timeToTop(schedule.endTime)}px`,
+                  height: `${HOURS.length * HOUR_HEIGHT - timeToTop(schedule.endTime)}px`,
                 }}
               />
             )}
-            <div
-              className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-y border-primary/10 z-0"
-              style={{
-                top: `${timeToTop(schedule.startTime)}px`,
-                height: `${timeToTop(schedule.endTime) - timeToTop(schedule.startTime)}px`,
-              }}
-            />
             {schedule.breakStart && schedule.breakEnd && (
               <div
                 className="pointer-events-none absolute left-0 right-0 bg-orange-100/50 border-y border-orange-200/50 z-0"
@@ -257,6 +276,26 @@ function WeekDayColumn({
               />
             )}
           </>
+        )}
+
+        {/* Approved leave overlay */}
+        {leave && leaveTop !== null && leaveHeight > 0 && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-[5] border-y border-amber-400/70 dark:border-amber-500/60"
+            style={{
+              top: `${leaveTop}px`,
+              height: `${leaveHeight}px`,
+              backgroundImage: LEAVE_STRIPE_BG,
+            }}
+            title={t("gabinet.calendar.leaveOverlayTitle", {
+              defaultValue: "Pracownik ma zatwierdzony urlop",
+            })}
+            aria-label={leaveLabel}
+          >
+            <span className="absolute left-0.5 top-0.5 rounded bg-amber-500/90 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-wide text-white shadow-sm">
+              {leaveLabel}
+            </span>
+          </div>
         )}
 
         {slots.map((s) => (
@@ -271,9 +310,18 @@ function WeekDayColumn({
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/20">
               {showSubdivisions && (
                 <>
-                  <div className="pointer-events-none absolute left-0 right-0 top-[15px] border-t border-dashed border-muted/40" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[30px] border-t border-dashed border-muted/60" />
-                  <div className="pointer-events-none absolute left-0 right-0 top-[45px] border-t border-dashed border-muted/40" />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${HOUR_HEIGHT / 4}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/60"
+                    style={{ top: `${HOUR_HEIGHT / 2}px` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    style={{ top: `${(HOUR_HEIGHT * 3) / 4}px` }}
+                  />
                 </>
               )}
             </div>
@@ -292,7 +340,7 @@ function WeekDayColumn({
         )}
 
         {/* Current time line */}
-        {isToday && currentTimeTop !== null && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60 && (
+        {isToday && currentTimeTop !== null && currentTimeTop > 0 && currentTimeTop < HOURS.length * HOUR_HEIGHT && (
           <div
             className="pointer-events-none absolute left-0 right-0 z-20 border-t-2 border-red-500"
             style={{ top: `${currentTimeTop}px` }}
@@ -337,15 +385,15 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, slotMinutes = 60 }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, leavesByDate, slotMinutes = 60 }: CalendarWeekViewProps) {
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * 60;
+  const currentTimeTop = ((currentMinutes - 7 * 60) / 60) * HOUR_HEIGHT;
   const currentTimeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const todayInView = dates.includes(today);
-  const showCurrentTime = todayInView && currentTimeTop > 0 && currentTimeTop < HOURS.length * 60;
+  const showCurrentTime = todayInView && currentTimeTop > 0 && currentTimeTop < HOURS.length * HOUR_HEIGHT;
   const slots = useMemo(() => buildSlots(slotMinutes), [slotMinutes]);
 
   const layoutsByDate = useMemo(() => {
@@ -406,6 +454,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
             isSelected={isSelected}
             layouts={layouts}
             schedule={schedule}
+            leave={leavesByDate?.get(date) ?? null}
             currentTimeTop={isToday ? currentTimeTop : null}
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}

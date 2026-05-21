@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { MappedCompany } from "@/lib/supabase/mappers/companies";
+import { PlateText } from "@/components/plate-text";
 
 // Studio statistics cards
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -275,7 +276,9 @@ export function CompanyOverviewTab({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">{company.notes}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+              <PlateText value={company.notes} />
+            </p>
           </CardContent>
         </Card>
       )}

@@ -1,10 +1,15 @@
+import type { RegisteredMutation } from "convex/server";
 import { internalMutation } from "../_generated/server";
 
 /**
  * Appointment reminder cron — finds tomorrow's appointments and logs reminders.
  * In production, integrate with Resend to send email reminders.
  */
-export const sendDailyReminders = internalMutation({
+export const sendDailyReminders: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ sent: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);

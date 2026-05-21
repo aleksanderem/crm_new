@@ -1,3 +1,4 @@
+import type { RegisteredMutation } from "convex/server";
 import { internalMutation } from "../_generated/server";
 
 /**
@@ -5,7 +6,11 @@ import { internalMutation } from "../_generated/server";
  * then match emails to mailProviders by org + fromEmail.
  * Run in batches until processed === 0.
  */
-export const backfillEmailProviders = internalMutation({
+export const backfillEmailProviders: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ processed: number }>
+> = internalMutation({
   handler: async (ctx) => {
     // 1. Rename provider "gmail" -> "google"
     const gmailEmails = await ctx.db
@@ -45,7 +50,11 @@ export const backfillEmailProviders = internalMutation({
  * Migration: Convert existing emailAccounts to mailProviders.
  * Run once after deploying the new schema.
  */
-export const migrateEmailAccounts = internalMutation({
+export const migrateEmailAccounts: RegisteredMutation<
+  "internal",
+  Record<string, never>,
+  Promise<{ migrated: number }>
+> = internalMutation({
   handler: async (ctx) => {
     const accounts = await ctx.db.query("emailAccounts").collect();
     let migrated = 0;

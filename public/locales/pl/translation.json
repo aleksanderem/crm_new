@@ -179,7 +179,14 @@
   },
   "notifications": {
     "title": "Powiadomienia",
-    "empty": "Brak powiadomień"
+    "empty": "Brak powiadomień",
+    "markAllRead": "Oznacz wszystkie jako przeczytane",
+    "relativeTime": {
+      "justNow": "przed chwilą",
+      "minutesAgo": "{{count}} min temu",
+      "hoursAgo": "{{count}} godz. temu",
+      "daysAgo": "{{count}} dni temu"
+    }
   },
   "sidebar": {
     "todayActivities": "Dzisiejsze aktywności ({{count}})",
@@ -384,6 +391,10 @@
     "byStage": "Transakcje wg etapu",
     "wonByDay": "Wygrane transakcje wg dnia",
     "confirmDelete": "Czy na pewno chcesz usunąć tę transakcję?",
+    "nudgeFilter": {
+      "stale": "Pokazywane są otwarte transakcje bez aktywności w ostatnich 7 dniach.",
+      "closingThisWeek": "Pokazywane są otwarte transakcje z terminem zamknięcia w najbliższych 7 dniach."
+    },
     "views": {
       "all": "Wszystkie transakcje",
       "myDeals": "Moje transakcje",
@@ -426,6 +437,9 @@
     "byDay": "Kontakty wg dnia",
     "bySource": "Kontakty wg źródła",
     "confirmDelete": "Czy na pewno chcesz usunąć ten kontakt?",
+    "nudgeFilter": {
+      "unlinkedCompany": "Pokazywane są kontakty bez przypisanej firmy."
+    },
     "views": {
       "all": "Wszystkie kontakty",
       "my": "Moje kontakty",
@@ -462,6 +476,10 @@
     "byDay": "Firmy wg dnia",
     "byIndustry": "Firmy wg branży",
     "confirmDelete": "Czy na pewno chcesz usunąć tę firmę?",
+    "nudgeFilter": {
+      "noContacts": "Pokazywane są firmy bez powiązanych kontaktów.",
+      "noIndustry": "Pokazywane są firmy bez uzupełnionej branży."
+    },
     "views": {
       "all": "Wszystkie firmy",
       "my": "Moje firmy",
@@ -509,6 +527,9 @@
     "activityTitle": "Tytuł aktywności",
     "addNotes": "Dodaj notatki lub szczegóły...",
     "currentUser": "Bieżący użytkownik",
+    "nudgeFilter": {
+      "overdue": "Pokazywane są zaległe aktywności (po terminie i nieukończone)."
+    },
     "views": {
       "all": "Wszystkie aktywności",
       "open": "Otwarte aktywności",
@@ -542,6 +563,9 @@
     "changeStatus": "Zmień status dokumentu",
     "byStatus": "Dokumenty wg statusu",
     "sentByDay": "Wysłane dokumenty wg dnia",
+    "nudgeFilter": {
+      "pendingApproval": "Pokazywane są dokumenty oczekujące na podpis / zatwierdzenie."
+    },
     "status": {
       "draft": "Szkic",
       "sent": "Wysłany",
@@ -651,6 +675,9 @@
     "taxRate": "Stawka podatku (%)",
     "activate": "Aktywuj",
     "deactivate": "Dezaktywuj",
+    "nudgeFilter": {
+      "unused": "Pokazywane są produkty nieużywane w żadnej transakcji."
+    },
     "views": {
       "all": "Wszystkie produkty",
       "active": "Aktywne produkty"
@@ -679,6 +706,9 @@
     "callDate": "Data połączenia",
     "note": "Notatka",
     "addCallNotes": "Dodaj notatki z połączenia...",
+    "nudgeFilter": {
+      "noOutcome": "Pokazywane są połączenia bez zapisanego wyniku."
+    },
     "outcomes": {
       "busy": "Zajęty",
       "leftVoiceMessage": "Zostawiono wiadomość głosową",
@@ -703,6 +733,11 @@
     "emptyDescription": "Utwórz pipeline w Ustawieniach aby wizualnie zarządzać transakcjami.",
     "won": "Wygrano",
     "lost": "Przegrano"
+  },
+  "calendar": {
+    "nudgeFilter": {
+      "yesterdayOverdue": "Pokazywane są zaległe aktywności z wczoraj (z wczorajszą datą i nieukończone)."
+    }
   },
   "settings": {
     "team": {
@@ -1790,6 +1825,9 @@
       "sent": "Wysłane",
       "starred": "Oznaczone gwiazdką"
     },
+    "nudgeFilter": {
+      "unanswered": "Pokazywane są wątki z nieodczytaną wiadomością przychodzącą starszą niż 2 dni."
+    },
     "thread": {
       "noMessages": "Brak wiadomości w tym wątku.",
       "from": "Od",
@@ -1930,6 +1968,10 @@
       "emptyTitle": "Brak klientów",
       "emptyDescription": "Dodaj pierwszego klienta, aby rozpocząć",
       "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
+      "nudgeFilter": {
+        "missingContact": "Pokazywani są klienci bez telefonu i e-maila.",
+        "noRecentVisit": "Pokazywani są klienci bez wizyty w ostatnich 90 dniach."
+      },
       "views": {
         "all": "Wszyscy klienci",
         "active": "Aktywni",
@@ -1954,7 +1996,19 @@
       "emergencyContact": "Kontakt awaryjny",
       "emergencyContactName": "Imię kontaktu awaryjnego",
       "emergencyContactPhone": "Telefon kontaktu awaryjnego",
-      "referralSource": "Źródło skierowania",
+      "referralSource": "Pochodzenie klienta",
+      "referralSourceOptions": {
+        "facebook": "Facebook",
+        "patientReferral": "Polecenie przez innego klienta",
+        "passerby": "Przechodzień",
+        "pressAd": "Reklama w prasie",
+        "internetAd": "Reklama w internecie",
+        "billboard": "Tablica reklamowa",
+        "flyerBanner": "Ulotki/baner",
+        "groupBuying": "Zakupy grupowe",
+        "other": "Inne"
+      },
+      "referralSourceOtherPlaceholder": "Wpisz źródło",
       "referredBy": "Skierowany przez",
       "linkedContact": "Powiązany kontakt CRM",
       "address": "Adres",
@@ -1976,7 +2030,8 @@
       "noHistoryDesc": "Klient nie ma wcześniejszych wizyt",
       "patient": "Klient",
       "lastAppointments": "Ostatnie wizyty klienta",
-      "totalAppointments": "Łącznie wizyt"
+      "totalAppointments": "Łącznie wizyt",
+      "added": "Dodano"
     },
     "treatments": {
       "title": "Zabiegi",
@@ -2010,7 +2065,10 @@
         "inactive": "Nieaktywne"
       },
       "aftercare": "Zalecenia pozabiegowe",
-      "treatment": "Zabieg"
+      "treatment": "Zabieg",
+      "nudgeFilter": {
+        "noPrice": "Pokazywane są aktywne zabiegi bez ceny lub z ceną 0."
+      }
     },
     "treatmentDetail": {
       "info": "Informacje o zabiegu",
@@ -2181,6 +2239,9 @@
       "allStatuses": "Wszystkie statusy",
       "filterByStatus": "Filtruj wg statusu",
       "empty": "Brak wniosków urlopowych",
+      "nudgeFilter": {
+        "pending": "Pokazywane są wnioski urlopowe oczekujące na zatwierdzenie."
+      },
       "types": {
         "vacation": "Urlop wypoczynkowy",
         "sick": "Zwolnienie lekarskie",
@@ -2369,6 +2430,8 @@
       "notes": "Notatki",
       "notesPlaceholder": "Dodatkowe uwagi do wizyty...",
       "recurring": "Wizyta cykliczna",
+      "recurringPreview": "Daty wizyt cyklicznych",
+      "recurringPreviewSelectSlot": "Wybierz datę i godzinę pierwszej wizyty, aby zobaczyć podgląd.",
       "frequency": "Częstotliwość",
       "count": "Powtórzenia",
       "selectPatient": "Wybierz klienta",
@@ -2458,6 +2521,7 @@
         "past": "Termin minął",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
+        "leavePartial": "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
         "outsideHours": "Termin poza godzinami pracy gabinetu",
         "conflict": "Kolizja terminów z inną wizytą",
         "pastConfirm": {
@@ -2565,11 +2629,17 @@
       "allStatuses": "Wszystkie statusy",
       "clearFilters": "Wyczyść filtry",
       "print": "Drukuj",
+      "nudgeFilter": {
+        "unconfirmedToday": "Pokazywane są dzisiejsze wizyty jeszcze niepotwierdzone (status: zaplanowana)."
+      },
       "view": {
         "day": "Dzień",
         "week": "Tydzień",
         "month": "Miesiąc"
-      }
+      },
+      "leaveBadge": "Urlop",
+      "leaveBadgePartial": "Urlop {{start}}–{{end}}",
+      "leaveOverlayTitle": "Pracownik ma zatwierdzony urlop"
     },
     "packages": {
       "title": "Pakiety zabiegów",
@@ -2624,6 +2694,7 @@
       "installmentsPaid": "opłaconych",
       "installmentIndex": "Rata {{n}}",
       "splitPayment": "Podziel płatność",
+      "splitFirstInstallment": "Podziel pierwszą ratę",
       "firstMethod": "Pierwsza metoda",
       "secondMethod": "Druga metoda",
       "splitSum": "Suma",
@@ -2676,7 +2747,11 @@
       "noTreatmentsAvailable": "Brak dostępnych zabiegów",
       "allTreatmentsExhausted": "Wszystkie zabiegi z tego pakietu zostały w pełni wykorzystane",
       "totalRemaining": "{{remaining}} z {{total}} pozostało",
-      "packageCompleted": "Pakiet ukończony"
+      "packageCompleted": "Pakiet ukończony",
+      "nudgeFilter": {
+        "expiring": "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
+        "noUsage": "Pokazywane są aktywne pakiety bez aktywnych użyć."
+      }
     },
     "documents": {
       "title": "Dokumenty medyczne",
@@ -3138,6 +3213,12 @@
       "vacation": "Urlop wypoczynkowy",
       "sick": "Zwolnienie lekarskie",
       "personal": "Sprawy prywatne"
+    },
+    "warnings": {
+      "existingAppointments_one": "Pracownik ma {{count}} zaplanowaną wizytę w tym okresie. Pamiętaj o jej anulowaniu lub przeniesieniu.",
+      "existingAppointments_few": "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+      "existingAppointments_many": "Pracownik ma {{count}} zaplanowanych wizyt w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+      "existingAppointments_other": "Pracownik ma {{count}} zaplanowanych wizyt w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu."
     }
   },
   "permissions": {

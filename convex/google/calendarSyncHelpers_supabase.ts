@@ -25,7 +25,7 @@ export async function findPatientByEmailSupabase(
     .take(1)
     .collect();
   const first = rows[0];
-  return first ? { id: String(first.id ?? first._id) } : null;
+  return first ? { id: String(first._id) } : null;
 }
 
 export async function createSkeletonPatientSupabase(
@@ -65,7 +65,7 @@ export async function findTreatmentByNameSupabase(
     const name = ((t.name as string) ?? "").toLowerCase();
     return name && (name === term || term.includes(name) || name.includes(term));
   });
-  return match ? { id: String(match.id ?? match._id), name: String(match.name) } : null;
+  return match ? { id: String(match._id), name: String(match.name) } : null;
 }
 
 export async function findEmployeeByUserIdSupabase(
@@ -81,7 +81,7 @@ export async function findEmployeeByUserIdSupabase(
     .collect();
   const first = rows[0];
   return first
-    ? { id: String(first.id ?? first._id), userId: String(first.userId) }
+    ? { id: String(first._id), userId: String(first.userId) }
     : null;
 }
 

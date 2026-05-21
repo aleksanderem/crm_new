@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabasePipelinesList, useSupabaseAllPipelineStages } from "@/hooks/use-supabase-pipelines";
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
+import { useSupabaseLeadIdsWithRecentActivity } from "@/hooks/use-supabase-activities";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useOrganization } from "@/components/org-context";
@@ -17,6 +18,7 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { LeadForm } from "@/components/forms/lead-form";
+import { PlateText } from "@/components/plate-text";
 import { leadStatusOptions, leadPriorityOptions } from "@/lib/options";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +37,7 @@ import {
   XCircle,
   Trash2,
   Upload,
+  X,
 } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { Download } from "@/lib/ez-icons";
@@ -56,8 +59,17 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
 
+type LeadNudgeFilter = "stale" | "closing-this-week";
+
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/leads/")({
   component: LeadsIndex,
+  validateSearch: (search: Record<string, unknown>): { nudge?: LeadNudgeFilter } => {
+    const nudge =
+      search.nudge === "stale" || search.nudge === "closing-this-week"
+        ? (search.nudge as LeadNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Lead = MappedLead;
@@ -85,6 +97,7 @@ function LeadsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const updateLead = useAction(api.leads.update);
   const removeLead = useAction(api.leads.remove);
   const createLead = useAction(api.leads.create);
@@ -205,6 +218,12 @@ function LeadsIndex() {
     { limit: 100 },
   );
 
+  const { data: leadIdsWithRecentActivity } = useSupabaseLeadIdsWithRecentActivity(
+    organizationId,
+    7,
+    { enabled: nudgeFilter === "stale" },
+  );
+
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
   const { data: companiesRaw } = useSupabaseCompaniesList(
@@ -249,8 +268,21 @@ function LeadsIndex() {
         data = data.filter((l) => l.status === "won");
         break;
     }
+    if (nudgeFilter === "closing-this-week") {
+      const weekEnd = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      data = data.filter(
+        (l) =>
+          l.status === "open" &&
+          l.expectedCloseDate !== undefined &&
+          l.expectedCloseDate <= weekEnd,
+      );
+    } else if (nudgeFilter === "stale" && leadIdsWithRecentActivity) {
+      data = data.filter(
+        (l) => l.status === "open" && !leadIdsWithRecentActivity.has(l._id),
+      );
+    }
     return applyFilters(data);
-  }, [leads, activeViewId, applyFilters, activeFilters]);
+  }, [leads, activeViewId, applyFilters, activeFilters, nudgeFilter, leadIdsWithRecentActivity]);
 
   const leadIds = useMemo(
     () => filteredLeads.map((l) => l._id),
@@ -409,7 +441,7 @@ function LeadsIndex() {
     {
       id: "notes",
       label: t("common.notes"),
-      render: (item) => item.notes ?? "—",
+      render: (item) => <PlateText value={item.notes} fallback="—" />,
     },
     {
       id: "wonAt",
@@ -547,6 +579,36 @@ function LeadsIndex() {
           </div>
         }
       />
+
+      {nudgeFilter && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {nudgeFilter === "stale"
+              ? t("deals.nudgeFilter.stale", {
+                  defaultValue:
+                    "Pokazywane są otwarte transakcje bez aktywności w ostatnich 7 dniach.",
+                })
+              : t("deals.nudgeFilter.closingThisWeek", {
+                  defaultValue:
+                    "Pokazywane są otwarte transakcje z terminem zamknięcia w najbliższych 7 dniach.",
+                })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/leads",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

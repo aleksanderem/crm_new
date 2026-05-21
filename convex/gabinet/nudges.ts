@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
 import type { NudgeData } from "../nudges";
 
 // All gabinet nudges are Supabase-primary actions now — business tables
@@ -37,6 +38,7 @@ export const getAppointmentNudges = action({
         message: "sidebar.nudges.gabinet.appointments.unconfirmedSms",
         messageValues: { count },
         severity: "yellow",
+        link: "/dashboard/gabinet/calendar?nudge=unconfirmed-today",
       },
     ];
   },
@@ -63,6 +65,7 @@ export const getLeaveNudges = action({
         message: "sidebar.nudges.gabinet.leave.pendingApproval",
         messageValues: { count },
         severity: "red",
+        link: "/dashboard/gabinet/settings/leaves?nudge=pending",
       },
     ];
   },
@@ -97,6 +100,7 @@ export const getPackageNudges = action({
         message: "sidebar.nudges.gabinet.packages.expiringSoon",
         messageValues: { count: expiring.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=expiring",
       });
     }
 
@@ -111,6 +115,7 @@ export const getPackageNudges = action({
         message: "sidebar.nudges.gabinet.packages.noUsage",
         messageValues: { count: noUsage.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=no-usage",
       });
     }
 
@@ -145,8 +150,8 @@ export const getPatientNudges = action({
     );
     const contactById = new Map(
       contacts
-        .filter((c): c is Record<string, any> => c !== null)
-        .map((c) => [String(c._id ?? c.id), c]),
+        .filter((c): c is SupabaseRow<"contacts"> => c !== null)
+        .map((c) => [String(c._id), c]),
     );
 
     const missingContact = patients.filter((patient) => {
@@ -160,6 +165,7 @@ export const getPatientNudges = action({
         message: "sidebar.nudges.gabinet.patients.missingContact",
         messageValues: { count: missingContact.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=missing-contact",
       });
     }
 
@@ -186,6 +192,7 @@ export const getPatientNudges = action({
         message: "sidebar.nudges.gabinet.patients.noRecentVisit",
         messageValues: { count: noRecentVisit.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=no-recent-visit",
       });
     }
 
@@ -214,6 +221,7 @@ export const getTreatmentNudges = action({
           message: "sidebar.nudges.gabinet.treatments.noPrice",
           messageValues: { count: noPrice.length },
           severity: "yellow",
+          link: "/dashboard/gabinet/treatments?nudge=no-price",
         },
       ];
     }
@@ -268,6 +276,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.appointments.unconfirmedSms",
         messageValues: { count: unconfirmed },
         severity: "yellow",
+        link: "/dashboard/gabinet/calendar?nudge=unconfirmed-today",
       });
     }
 
@@ -277,6 +286,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.leave.pendingApproval",
         messageValues: { count: pendingLeaves.length },
         severity: "red",
+        link: "/dashboard/gabinet/settings/leaves?nudge=pending",
       });
     }
 
@@ -293,6 +303,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.packages.expiringSoon",
         messageValues: { count: expiring.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=expiring",
       });
     }
     const packagesWithUsage = new Set(
@@ -306,6 +317,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.packages.noUsage",
         messageValues: { count: noUsage.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/packages?nudge=no-usage",
       });
     }
 
@@ -322,8 +334,8 @@ export const getAll = action({
     );
     const contactById = new Map(
       contacts
-        .filter((c): c is Record<string, any> => c !== null)
-        .map((c) => [String(c._id ?? c.id), c]),
+        .filter((c): c is SupabaseRow<"contacts"> => c !== null)
+        .map((c) => [String(c._id), c]),
     );
     const missingContact = (patients as any[]).filter((patient) => {
       if (!patient.contactId) return true;
@@ -335,6 +347,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.patients.missingContact",
         messageValues: { count: missingContact.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=missing-contact",
       });
     }
 
@@ -351,6 +364,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.patients.noRecentVisit",
         messageValues: { count: noRecentVisit.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/patients?nudge=no-recent-visit",
       });
     }
 
@@ -362,6 +376,7 @@ export const getAll = action({
         message: "sidebar.nudges.gabinet.treatments.noPrice",
         messageValues: { count: noPrice.length },
         severity: "yellow",
+        link: "/dashboard/gabinet/treatments?nudge=no-price",
       });
     }
 

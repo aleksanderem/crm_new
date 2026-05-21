@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LayersTwo02, XClose, ChevronRight, Plus } from "@untitledui/icons";
-import { Button } from "@untitled/base/buttons/button";
+import { Button, styles as buttonStyles } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
 import { Badge } from "@untitled/base/badges/badges";
 import {
@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cx } from "@/lib/utils/cx";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EntityType } from "@cvx/schema";
@@ -176,9 +177,19 @@ export function CategoryPicker({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button size="sm" color="secondary" iconLeading={LayersTwo02}>
-            {placeholder ?? t("categories.assign", { defaultValue: "Kategoria" })}
-          </Button>
+          <button
+            type="button"
+            className={cx(
+              buttonStyles.common.root,
+              buttonStyles.sizes.sm.root,
+              buttonStyles.colors.secondary.root,
+            )}
+          >
+            <LayersTwo02 data-icon="leading" className={buttonStyles.common.icon} />
+            <span data-text className="transition-inherit-all px-0.5">
+              {placeholder ?? t("categories.assign", { defaultValue: "Kategoria" })}
+            </span>
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-0" align="start">
           <div className="p-2">

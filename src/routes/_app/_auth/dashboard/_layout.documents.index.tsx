@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -19,7 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { FileText, Eye, Trash2 } from "@/lib/ez-icons";
+import { FileText, Eye, Trash2, X } from "@/lib/ez-icons";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,10 +44,21 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 // Route
 // ---------------------------------------------------------------------------
 
+type DocumentsNudgeFilter = "pending-approval";
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/documents/",
 )({
   component: DocumentsPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: DocumentsNudgeFilter } => {
+    const nudge =
+      search.nudge === "pending-approval"
+        ? (search.nudge as DocumentsNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -95,6 +106,7 @@ function DocumentsPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const lang = i18n.language === "en" ? "en" : "pl";
 
   // --- Tags & Categories ---
@@ -293,8 +305,11 @@ function DocumentsPage() {
       (doc) => ({ ...doc, category: getCategoryKey(doc.templateId) }),
     );
 
-    // System view filter (status-based)
-    if (activeViewId && activeViewId !== "all") {
+    // nudge=pending-approval: documents awaiting signature/approval
+    if (nudgeFilter === "pending-approval") {
+      data = data.filter((d) => d.status === "pending_signature");
+    } else if (activeViewId && activeViewId !== "all") {
+      // System view filter (status-based)
       if (STATUS_OPTIONS.includes(activeViewId as FormDocumentStatus)) {
         data = data.filter((d) => d.status === activeViewId);
       }
@@ -309,7 +324,7 @@ function DocumentsPage() {
     }
 
     return data;
-  }, [documents, activeViewId, applyFilters, activeFilters, searchValue, getCategoryKey]);
+  }, [documents, activeViewId, applyFilters, activeFilters, searchValue, getCategoryKey, nudgeFilter]);
 
   // --- Selected document for viewer ---
   const selectedDoc = useMemo(() => {
@@ -459,6 +474,31 @@ function DocumentsPage() {
           </Button>
         }
       />
+
+      {nudgeFilter === "pending-approval" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {t("documents.nudgeFilter.pendingApproval", {
+              defaultValue:
+                "Pokazywane są dokumenty oczekujące na podpis / zatwierdzenie.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/documents",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

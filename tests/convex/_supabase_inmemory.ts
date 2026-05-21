@@ -124,8 +124,7 @@ export function createInMemorySupabaseDb() {
 class InMemoryQueryBuilder<T = Record<string, unknown>> {
   private table: string;
   private filters: Array<(row: Row) => boolean> = [];
-  private orderField: string | null = null;
-  private orderAsc = true;
+  private orderBy: Array<{ field: string; ascending: boolean }> = [];
   private limitN: number | null = null;
   private rangeFrom: number | null = null;
   private rangeTo: number | null = null;
@@ -165,8 +164,7 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
   }
 
   order(field: string, ascending = true) {
-    this.orderField = field;
-    this.orderAsc = ascending;
+    this.orderBy.push({ field, ascending });
     return this;
   }
 
@@ -189,17 +187,19 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
   private materialize(): T[] {
     let rows = Array.from(getTable(this.table).values());
     for (const f of this.filters) rows = rows.filter(f);
-    if (this.orderField) {
-      const field = this.orderField;
-      const dir = this.orderAsc ? 1 : -1;
+    if (this.orderBy.length > 0) {
+      const orderBy = this.orderBy;
       rows = rows.slice().sort((a, b) => {
-        const va = a[field] as any;
-        const vb = b[field] as any;
-        if (va === vb) return 0;
-        if (va == null) return 1;
-        if (vb == null) return -1;
-        if (va < vb) return -1 * dir;
-        if (va > vb) return 1 * dir;
+        for (const { field, ascending } of orderBy) {
+          const va = a[field] as any;
+          const vb = b[field] as any;
+          if (va === vb) continue;
+          const dir = ascending ? 1 : -1;
+          if (va == null) return 1;
+          if (vb == null) return -1;
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+        }
         return 0;
       });
     }

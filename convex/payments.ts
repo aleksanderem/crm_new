@@ -205,6 +205,101 @@ export const markPaid = action({
   },
 });
 
+export const splitMarkPaid = action({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.string(),
+    firstMethod: paymentMethodValidator,
+    firstAmount: v.number(),
+    secondMethod: paymentMethodValidator,
+    secondAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    if (args.firstMethod === args.secondMethod) {
+      throw new Error("Split methods must differ");
+    }
+    if (args.firstAmount <= 0 || args.secondAmount <= 0) {
+      throw new Error("Split amounts must be positive");
+    }
+
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || payment.organizationId !== String(args.organizationId)) {
+      throw new Error("Payment not found");
+    }
+    if (payment.status !== "pending") {
+      throw new Error(`Cannot mark ${payment.status} payment as paid`);
+    }
+
+    const expected = Math.round((payment.amount as number) * 100) / 100;
+    const sum = Math.round((args.firstAmount + args.secondAmount) * 100) / 100;
+    if (sum !== expected) {
+      throw new Error(`Split amounts must sum to ${expected}`);
+    }
+
+    const now = Date.now();
+    const baseNotes = (payment.notes as string | null) ?? "";
+    const appendSplit = (method: string) => {
+      if (!baseNotes) return `split: ${method}`;
+      return baseNotes.endsWith(")")
+        ? `${baseNotes.slice(0, -1)} split: ${method})`
+        : `${baseNotes} split: ${method}`;
+    };
+
+    await db.patch("payments", args.paymentId, {
+      status: "completed",
+      paidAt: now,
+      amount: args.firstAmount,
+      paymentMethod: args.firstMethod,
+      notes: appendSplit(args.firstMethod),
+      updatedAt: now,
+    });
+
+    const newPaymentId = await db.insert("payments", {
+      organizationId: String(args.organizationId),
+      patientId: (payment.patientId as string | null) ?? null,
+      appointmentId: (payment.appointmentId as string | null) ?? null,
+      packageUsageId: (payment.packageUsageId as string | null) ?? null,
+      amount: args.secondAmount,
+      currency: payment.currency as string,
+      paymentMethod: args.secondMethod,
+      status: "completed",
+      paidAt: now,
+      notes: appendSplit(args.secondMethod),
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    try {
+      await ctx.runMutation(internal.payments._markPaidSideEffects, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: args.firstAmount,
+        currency: payment.currency as string,
+        appointmentId: (payment.appointmentId as string) ?? null,
+      });
+      await ctx.runMutation(internal.payments._createPaymentSideEffects, {
+        paymentId: newPaymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: args.secondAmount,
+        currency: payment.currency as string,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return { firstPaymentId: args.paymentId, secondPaymentId: newPaymentId };
+  },
+});
+
 export const refund = action({
   args: {
     organizationId: v.id("organizations"),

@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -12,7 +13,7 @@ import { PatientForm } from "@/components/forms/patient-form";
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Download } from "@/lib/ez-icons";
+import { Plus, Trash2, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
@@ -29,11 +30,22 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
+import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
+import { displayReferralSource } from "@/lib/options";
+
+type PatientNudgeFilter = "missing-contact" | "no-recent-visit";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
 )({
   component: PatientsIndex,
+  validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
+    const nudge =
+      search.nudge === "missing-contact" || search.nudge === "no-recent-visit"
+        ? (search.nudge as PatientNudgeFilter)
+        : undefined;
+    return { nudge };
+  },
 });
 
 type Patient = MappedGabinetPatient;
@@ -42,6 +54,7 @@ function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createPatient = useAction(api.gabinet.patients.create);
   const removePatient = useAction(api.gabinet.patients.remove);
 
@@ -146,6 +159,11 @@ function PatientsIndex() {
   );
 
   const { data: patients = [], isLoading } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: recentVisitPatientIds } = useSupabaseGabinetRecentVisitPatientIds(
+    organizationId,
+    90,
+    { enabled: nudgeFilter === "no-recent-visit" },
+  );
 
   const {
     views,
@@ -175,6 +193,11 @@ function PatientsIndex() {
     }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
+    if (nudgeFilter === "missing-contact") {
+      data = data.filter((p) => !p.phone && !p.email);
+    } else if (nudgeFilter === "no-recent-visit" && recentVisitPatientIds) {
+      data = data.filter((p) => !recentVisitPatientIds.has(p._id));
+    }
     const q = searchValue.trim().toLowerCase();
     if (q) {
       data = data.filter(
@@ -186,7 +209,7 @@ function PatientsIndex() {
       );
     }
     return data;
-  }, [patients, activeViewId, applyFilters, activeFilters, searchValue]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -205,14 +228,14 @@ function PatientsIndex() {
   const patientsBySource = useMemo<MiniChartData[]>(() => {
     const srcMap = new Map<string, number>();
     for (const p of patients) {
-      const src = p.referralSource ?? "Unknown";
+      const src = p.referralSource ? displayReferralSource(p.referralSource, t) : t("common.unknown");
       srcMap.set(src, (srcMap.get(src) ?? 0) + 1);
     }
     return Array.from(srcMap.entries()).map(([label, value]) => ({
       label,
       value,
     }));
-  }, [patients]);
+  }, [patients, t]);
 
   const columns = useMemo(
     (): CrmColumn<Patient>[] => [
@@ -275,7 +298,7 @@ function PatientsIndex() {
       {
         id: "referralSource",
         label: t("gabinet.patients.referralSource"),
-        render: (item) => item.referralSource ?? "—",
+        render: (item) => (item.referralSource ? displayReferralSource(item.referralSource, t) : "—"),
       },
       {
         id: "allergies",
@@ -290,7 +313,7 @@ function PatientsIndex() {
       {
         id: "medicalNotes",
         label: t("gabinet.patients.medicalNotes"),
-        render: (item) => item.medicalNotes ?? "—",
+        render: (item) => plateJsonToText(item.medicalNotes ?? undefined).trim() || "—",
       },
       {
         id: "createdAt",
@@ -384,6 +407,35 @@ function PatientsIndex() {
           </Button>
         }
       />
+
+      {nudgeFilter && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>
+            {nudgeFilter === "missing-contact"
+              ? t("gabinet.patients.nudgeFilter.missingContact", {
+                  defaultValue: "Pokazywani są klienci bez telefonu i e-maila.",
+                })
+              : t("gabinet.patients.nudgeFilter.noRecentVisit", {
+                  defaultValue:
+                    "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",
+                })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/gabinet/patients",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
 
       <DataListFilterBar
         views={views}

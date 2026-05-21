@@ -27,6 +27,7 @@ import type {
   GabinetEmployeeRow,
   GabinetPatientRow,
   GabinetTreatmentRow,
+  GabinetTreatmentPackageRow,
   GabinetPackageUsageRow,
   GabinetLoyaltyTransactionRow,
   AppointmentWorkflowHistoryRow,
@@ -34,6 +35,7 @@ import type {
   PaymentRow,
   NoteRow,
   SupabasePaginationResult,
+  SupabaseRow,
 } from "../_helpers/supabaseRows";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
@@ -810,11 +812,14 @@ export const _createSideEffects = internalMutation({
     // Patient contact info for automation event
     patientEmail: v.optional(v.string()),
     patientPhone: v.optional(v.string()),
-    // Recurring series: list of {appointmentId, date, recurringIndex} for each item
+    // Recurring series: per-occurrence appointment ID, date, index and times
+    // (times may differ from the base when the user customizes them — #665).
     recurringAppointments: v.optional(v.array(v.object({
       appointmentId: v.string(),
       date: v.string(),
       recurringIndex: v.number(),
+      startTime: v.optional(v.string()),
+      endTime: v.optional(v.string()),
     }))),
     // Package usage (already resolved by action)
     packageUsageId: v.optional(v.string()),
@@ -894,8 +899,12 @@ export const _createSideEffects = internalMutation({
           .unique();
         const reminderHours = (orgSettings as any)?.reminderHoursBefore ?? 24;
 
-        const scheduleReminderFor = async (apptId: string, apptDate: string) => {
-          const appointmentMs = new Date(`${apptDate}T${args.startTime}:00`).getTime();
+        const scheduleReminderFor = async (
+          apptId: string,
+          apptDate: string,
+          apptStartTime: string,
+        ) => {
+          const appointmentMs = new Date(`${apptDate}T${apptStartTime}:00`).getTime();
           const reminderMs = appointmentMs - reminderHours * 60 * 60 * 1000;
           if (reminderMs <= Date.now()) return;
           const reminderId = await ctx.db.insert("appointmentReminders", {
@@ -913,9 +922,13 @@ export const _createSideEffects = internalMutation({
           );
         };
 
-        await scheduleReminderFor(args.appointmentId, args.date);
+        await scheduleReminderFor(args.appointmentId, args.date, args.startTime);
         for (const recur of recurringAppointments) {
-          await scheduleReminderFor(recur.appointmentId, recur.date);
+          await scheduleReminderFor(
+            recur.appointmentId,
+            recur.date,
+            recur.startTime ?? args.startTime,
+          );
         }
       } catch (e) {
         console.warn("Reminder scheduling failed (non-fatal):", e);
@@ -949,6 +962,19 @@ export const create = action({
         count: v.optional(v.number()),
         until: v.optional(v.string()),
       }),
+    ),
+    // Per-occurrence overrides for the recurring series (excludes the base
+    // appointment at index 0). When present, used instead of generating from
+    // `recurringRule` — lets the user pick a different time for each date.
+    // Issue #665.
+    recurringOverrides: v.optional(
+      v.array(
+        v.object({
+          date: v.string(),
+          startTime: v.string(),
+          endTime: v.string(),
+        }),
+      ),
     ),
     prepaymentRequired: v.optional(v.boolean()),
     prepaymentAmount: v.optional(v.number()),
@@ -1085,19 +1111,40 @@ export const create = action({
     console.info("[create] appointment inserted:", firstId);
 
     // --- INSERT recurring appointments to Supabase ---
-    const recurringAppointments: Array<{ appointmentId: string; date: string; recurringIndex: number }> = [];
+    // If recurringOverrides are provided (issue #665), use them as the source
+    // of truth — they let the user pick a different time per occurrence.
+    // Otherwise fall back to generating dates from the rule with the base time.
+    const recurringAppointments: Array<{
+      appointmentId: string;
+      date: string;
+      recurringIndex: number;
+      startTime: string;
+      endTime: string;
+    }> = [];
     if (isRecurring && args.recurringRule) {
-      const dates = generateRecurringDates(args.date, args.recurringRule);
-      for (let i = 0; i < dates.length; i++) {
+      const occurrences: Array<{ date: string; startTime: string; endTime: string }> =
+        args.recurringOverrides && args.recurringOverrides.length > 0
+          ? args.recurringOverrides
+          : generateRecurringDates(args.date, args.recurringRule).map((d) => ({
+              date: d,
+              startTime: args.startTime,
+              endTime: args.endTime,
+            }));
+      for (let i = 0; i < occurrences.length; i++) {
+        const occ = occurrences[i];
         const recurId = await db.insert("gabinetAppointments", {
           ...baseRow,
-          date: dates[i],
+          date: occ.date,
+          startTime: occ.startTime,
+          endTime: occ.endTime,
           recurringIndex: i + 1,
         });
         recurringAppointments.push({
           appointmentId: recurId,
-          date: dates[i],
+          date: occ.date,
           recurringIndex: i + 1,
+          startTime: occ.startTime,
+          endTime: occ.endTime,
         });
       }
     }
@@ -1131,8 +1178,8 @@ export const create = action({
 
     const recurActivityIds: Array<{ appointmentId: string; activityId: string }> = [];
     for (const recur of recurringAppointments) {
-      const recurDueMs = new Date(`${recur.date}T${args.startTime}:00`).getTime();
-      const recurEndMs = new Date(`${recur.date}T${args.endTime}:00`).getTime();
+      const recurDueMs = new Date(`${recur.date}T${recur.startTime}:00`).getTime();
+      const recurEndMs = new Date(`${recur.date}T${recur.endTime}:00`).getTime();
       const recurActivityId = await db.insert("scheduledActivities", {
         organizationId: String(args.organizationId),
         title: calendarTitle,
@@ -2415,8 +2462,8 @@ export const getFullDetail = action({
     );
     const treatmentMap = new Map<string, GabinetTreatmentRow>(
       historyTreatments
-        .filter((t): t is Record<string, unknown> => t !== null)
-        .map((t) => [String(t._id), t as unknown as GabinetTreatmentRow]),
+        .filter((t): t is GabinetTreatmentRow => t !== null)
+        .map((t) => [String(t._id), t]),
     );
 
     // Enrich package usage
@@ -2438,14 +2485,14 @@ export const getFullDetail = action({
       Promise.all(pkgUsagePkgIds.map((id) => db.get("gabinetTreatmentPackages", id))),
       Promise.all(pkgUsageTreatmentIds.map((id) => db.get("gabinetTreatments", id))),
     ]);
-    const pkgDefMap = new Map<string, Record<string, unknown>>(
+    const pkgDefMap = new Map<string, GabinetTreatmentPackageRow>(
       pkgDefs
-        .filter((p): p is Record<string, unknown> => p !== null)
+        .filter((p): p is GabinetTreatmentPackageRow => p !== null)
         .map((p) => [String(p._id), p]),
     );
-    const pkgTreatmentMap = new Map<string, Record<string, unknown>>(
+    const pkgTreatmentMap = new Map<string, GabinetTreatmentRow>(
       pkgTreatmentDefs
-        .filter((t): t is Record<string, unknown> => t !== null)
+        .filter((t): t is GabinetTreatmentRow => t !== null)
         .map((t) => [String(t._id), t]),
     );
 
@@ -2486,11 +2533,8 @@ export const getFullDetail = action({
     );
     const noteAuthorMap = new Map<string, string | null>(
       noteAuthors
-        .filter((u): u is Record<string, unknown> => u !== null)
-        .map((u) => [
-          String(u._id),
-          (u.name as string | null) ?? (u.email as string | null),
-        ]),
+        .filter((u): u is SupabaseRow<"users"> => u !== null)
+        .map((u) => [String(u._id), u.name ?? u.email ?? null]),
     );
     const enrichedNotes: AppointmentFullDetailNote[] = notes.map((n) => ({
       ...n,

@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
@@ -38,16 +39,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { PlateText } from "@/components/plate-text";
 import { Id } from "@cvx/_generated/dataModel";
 import { Plus, Check, X } from "@/lib/ez-icons";
-import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+
+type LeavesNudgeFilter = "pending";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leaves"
 )({
   component: LeavesPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { nudge?: LeavesNudgeFilter } => ({
+    nudge:
+      search.nudge === "pending"
+        ? (search.nudge as LeavesNudgeFilter)
+        : undefined,
+  }),
 });
 
 const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as const;
@@ -55,6 +68,8 @@ const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as con
 function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const routeNavigate = useNavigate();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
@@ -63,7 +78,9 @@ function LeavesPage() {
   const rejectLeave = useAction(api.gabinet.scheduling.rejectLeave);
   const queryClient = useQueryClient();
 
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    nudgeFilter === "pending" ? "pending" : "all",
+  );
 
   // Fetch leaves from Supabase
   const { data: leaves } = useSupabaseGabinetLeavesList(organizationId, {
@@ -84,6 +101,47 @@ function LeavesPage() {
 
   const [confirmLeaveId, setConfirmLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
   const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
+
+  // Existing appointments overlapping the requested leave range — warn the
+  // user there are bookings they need to deal with before approving. Issue #652.
+  const { data: rangeAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId,
+    startDate,
+    endDate,
+    { employeeId: selectedUserId || undefined, enabled: !!selectedUserId && !!startDate && !!endDate },
+  );
+  const overlappingAppointments = useMemo(() => {
+    if (!rangeAppointments) return [];
+    return rangeAppointments.filter(
+      (a) => a.status !== "cancelled" && a.status !== "no_show",
+    );
+  }, [rangeAppointments]);
+
+  // For the approval confirm dialog: surface the same overlap warning so admins
+  // don't approve a leave that conflicts with already-booked appointments. Issue #694.
+  const confirmLeave = useMemo(
+    () => (confirmLeaveId ? leaves?.find((l) => l._id === confirmLeaveId) : undefined),
+    [leaves, confirmLeaveId],
+  );
+  const { data: confirmRangeAppointments } = useSupabaseGabinetAppointmentsByDateRange(
+    organizationId,
+    confirmLeave?.startDate ?? "",
+    confirmLeave?.endDate ?? "",
+    {
+      employeeId: confirmLeave?.userId,
+      enabled:
+        confirmAction === "approve" &&
+        !!confirmLeave?.userId &&
+        !!confirmLeave?.startDate &&
+        !!confirmLeave?.endDate,
+    },
+  );
+  const confirmOverlappingAppointments = useMemo(() => {
+    if (!confirmRangeAppointments) return [];
+    return confirmRangeAppointments.filter(
+      (a) => a.status !== "cancelled" && a.status !== "no_show",
+    );
+  }, [confirmRangeAppointments]);
 
   const handleCreate = async () => {
     if (!startDate || !endDate || !selectedUserId) return;
@@ -224,6 +282,21 @@ function LeavesPage() {
                       <Label>{t("gabinet.leaves.reason")}</Label>
                       <RichTextEditor value={reason} onChange={(val) => setReason(val ?? "")} minHeight="80px" />
                     </div>
+                    {overlappingAppointments.length > 0 && (
+                      <div
+                        role="alert"
+                        className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                      >
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <span>
+                          {t("schedule.warnings.existingAppointments", {
+                            count: overlappingAppointments.length,
+                            defaultValue:
+                              "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+                          })}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
                       <Button onClick={handleCreate} disabled={submitting || !startDate || !endDate || !selectedUserId}>
@@ -237,6 +310,32 @@ function LeavesPage() {
           </SectionHeader.Group>
           <UntitledAlert>{t("gabinet.leaves.description")}</UntitledAlert>
         </SectionHeader.Root>
+
+        {nudgeFilter === "pending" && (
+          <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <span>
+              {t("gabinet.leaves.nudgeFilter.pending", {
+                defaultValue:
+                  "Pokazywane są wnioski urlopowe oczekujące na zatwierdzenie.",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => {
+                setStatusFilter("all");
+                routeNavigate({
+                  to: "/dashboard/gabinet/settings/leaves",
+                  search: { nudge: undefined },
+                });
+              }}
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -272,7 +371,9 @@ function LeavesPage() {
                   <td className="px-4 py-2 text-sm">{t(`gabinet.leaves.types.${leave.type}`)}</td>
                   <td className="px-4 py-2 text-sm">{leave.startDate}</td>
                   <td className="px-4 py-2 text-sm">{leave.endDate}</td>
-                  <td className="px-4 py-2 text-sm text-muted-foreground">{leave.reason ?? "—"}</td>
+                  <td className="px-4 py-2 text-sm text-muted-foreground">
+                    <PlateText value={leave.reason} fallback="—" />
+                  </td>
                   <td className="px-4 py-2">
                     <Badge variant={statusColor(leave.status)}>
                       {leave.status === "pending" ? t("gabinet.leaves.pending") :
@@ -329,6 +430,21 @@ function LeavesPage() {
                 : t("gabinet.leaves.confirmRejectDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction === "approve" && confirmOverlappingAppointments.length > 0 && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {t("schedule.warnings.existingAppointments", {
+                  count: confirmOverlappingAppointments.length,
+                  defaultValue:
+                    "Pracownik ma {{count}} zaplanowane wizyty w tym okresie. Pamiętaj o ich anulowaniu lub przeniesieniu.",
+                })}
+              </span>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction

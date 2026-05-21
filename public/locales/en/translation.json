@@ -180,7 +180,14 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "No notifications"
+    "empty": "No notifications",
+    "markAllRead": "Mark all read",
+    "relativeTime": {
+      "justNow": "just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    }
   },
   "sidebar": {
     "todayActivities": "Today's Activities ({{count}})",
@@ -385,6 +392,10 @@
     "byStage": "Deals by stage",
     "wonByDay": "Won deals by day",
     "confirmDelete": "Delete this deal?",
+    "nudgeFilter": {
+      "stale": "Showing open deals with no activity in the last 7 days.",
+      "closingThisWeek": "Showing open deals with a close date within the next 7 days."
+    },
     "views": {
       "all": "All Deals",
       "myDeals": "My Deals",
@@ -427,6 +438,9 @@
     "byDay": "Contacts by day",
     "bySource": "Contacts by source",
     "confirmDelete": "Delete this contact?",
+    "nudgeFilter": {
+      "unlinkedCompany": "Showing contacts not linked to any company."
+    },
     "views": {
       "all": "All Contacts",
       "my": "My Contacts",
@@ -463,6 +477,10 @@
     "byDay": "Companies by day",
     "byIndustry": "Companies by industry",
     "confirmDelete": "Delete this company?",
+    "nudgeFilter": {
+      "noContacts": "Showing companies with no linked contacts.",
+      "noIndustry": "Showing companies with no industry set."
+    },
     "views": {
       "all": "All Companies",
       "my": "My Companies",
@@ -510,6 +528,9 @@
     "activityTitle": "Activity title",
     "addNotes": "Add notes or details...",
     "currentUser": "Current User",
+    "nudgeFilter": {
+      "overdue": "Showing overdue activities (past due and not completed)."
+    },
     "views": {
       "all": "All Activities",
       "open": "Open Activities",
@@ -542,6 +563,9 @@
     "changeStatus": "Change Document Status",
     "byStatus": "Documents by status",
     "sentByDay": "Sent documents by day",
+    "nudgeFilter": {
+      "pendingApproval": "Showing documents awaiting signature/approval."
+    },
     "status": {
       "draft": "Draft",
       "sent": "Sent",
@@ -651,6 +675,9 @@
     "taxRate": "Tax Rate (%)",
     "activate": "Activate",
     "deactivate": "Deactivate",
+    "nudgeFilter": {
+      "unused": "Showing products not used in any deal."
+    },
     "views": {
       "all": "All Products",
       "active": "Active Products"
@@ -679,6 +706,9 @@
     "callDate": "Call Date",
     "note": "Note",
     "addCallNotes": "Add call notes...",
+    "nudgeFilter": {
+      "noOutcome": "Showing calls with no outcome recorded."
+    },
     "outcomes": {
       "busy": "Busy",
       "leftVoiceMessage": "Left Voice Message",
@@ -703,6 +733,11 @@
     "emptyDescription": "Create a pipeline in Settings to start managing your deals visually.",
     "won": "Won",
     "lost": "Lost"
+  },
+  "calendar": {
+    "nudgeFilter": {
+      "yesterdayOverdue": "Showing yesterday's overdue activities (due yesterday and not completed)."
+    }
   },
   "settings": {
     "team": {
@@ -1782,6 +1817,9 @@
       "sent": "Sent",
       "starred": "Starred"
     },
+    "nudgeFilter": {
+      "unanswered": "Showing threads with an unread inbound message older than 2 days."
+    },
     "thread": {
       "noMessages": "No messages in this thread.",
       "from": "From",
@@ -1922,6 +1960,10 @@
       "emptyTitle": "No clients yet",
       "emptyDescription": "Add your first client to get started",
       "confirmDelete": "Are you sure you want to deactivate this client?",
+      "nudgeFilter": {
+        "missingContact": "Showing clients with no phone or email.",
+        "noRecentVisit": "Showing clients with no visit in the last 90 days."
+      },
       "views": {
         "all": "All Clients",
         "active": "Active",
@@ -1946,7 +1988,19 @@
       "emergencyContact": "Emergency Contact",
       "emergencyContactName": "Emergency Contact Name",
       "emergencyContactPhone": "Emergency Contact Phone",
-      "referralSource": "Referral Source",
+      "referralSource": "Customer Origin",
+      "referralSourceOptions": {
+        "facebook": "Facebook",
+        "patientReferral": "Referral from another customer",
+        "passerby": "Passerby",
+        "pressAd": "Press advertisement",
+        "internetAd": "Online advertisement",
+        "billboard": "Billboard",
+        "flyerBanner": "Flyer/banner",
+        "groupBuying": "Group buying",
+        "other": "Other"
+      },
+      "referralSourceOtherPlaceholder": "Enter source",
       "referredBy": "Referred By",
       "linkedContact": "Linked CRM Contact",
       "address": "Address",
@@ -1968,7 +2022,8 @@
       "noHistoryDesc": "Client has no previous appointments",
       "patient": "Client",
       "lastAppointments": "Client's recent appointments",
-      "totalAppointments": "Total Appointments"
+      "totalAppointments": "Total Appointments",
+      "added": "Added"
     },
     "treatments": {
       "title": "Treatments",
@@ -2002,7 +2057,10 @@
         "inactive": "Inactive"
       },
       "aftercare": "Aftercare",
-      "treatment": "Treatment"
+      "treatment": "Treatment",
+      "nudgeFilter": {
+        "noPrice": "Showing active treatments with no price or price 0."
+      }
     },
     "treatmentDetail": {
       "info": "Treatment Info",
@@ -2171,6 +2229,9 @@
       "allStatuses": "All Statuses",
       "filterByStatus": "Filter by status",
       "empty": "No leave requests",
+      "nudgeFilter": {
+        "pending": "Showing leave requests awaiting approval."
+      },
       "types": {
         "vacation": "Vacation",
         "sick": "Sick Leave",
@@ -2358,6 +2419,8 @@
       "notes": "Notes",
       "notesPlaceholder": "Additional notes for the appointment...",
       "recurring": "Recurring appointment",
+      "recurringPreview": "Recurring appointment dates",
+      "recurringPreviewSelectSlot": "Pick the date and time of the first appointment to see the preview.",
       "frequency": "Frequency",
       "count": "Occurrences",
       "selectPatient": "Select client",
@@ -2447,6 +2510,7 @@
         "past": "Appointment has passed",
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
+        "leavePartial": "Employee is on leave on this day between {{start}}–{{end}}.",
         "outsideHours": "Outside clinic working hours",
         "conflict": "Conflicts with another appointment",
         "pastConfirm": {
@@ -2554,11 +2618,17 @@
       "allStatuses": "All statuses",
       "clearFilters": "Clear filters",
       "print": "Print",
+      "nudgeFilter": {
+        "unconfirmedToday": "Showing today's appointments not yet confirmed (status: scheduled)."
+      },
       "view": {
         "day": "Day",
         "week": "Week",
         "month": "Month"
-      }
+      },
+      "leaveBadge": "On leave",
+      "leaveBadgePartial": "On leave {{start}}–{{end}}",
+      "leaveOverlayTitle": "Employee is on approved leave"
     },
     "packages": {
       "title": "Treatment Packages",
@@ -2613,6 +2683,7 @@
       "installmentsPaid": "paid",
       "installmentIndex": "Installment {{n}}",
       "splitPayment": "Split payment",
+      "splitFirstInstallment": "Split first installment",
       "firstMethod": "First method",
       "secondMethod": "Second method",
       "splitSum": "Sum",
@@ -2665,7 +2736,11 @@
       "noTreatmentsAvailable": "No treatments available to use",
       "allTreatmentsExhausted": "All treatments in this package have been fully used",
       "totalRemaining": "{{remaining}} of {{total}} remaining",
-      "packageCompleted": "Package completed"
+      "packageCompleted": "Package completed",
+      "nudgeFilter": {
+        "expiring": "Showing packages with usages expiring within 30 days.",
+        "noUsage": "Showing active packages with no active usage."
+      }
     },
     "documents": {
       "title": "Medical Documents",
@@ -3127,6 +3202,10 @@
       "vacation": "Vacation",
       "sick": "Sick Leave",
       "personal": "Personal Leave"
+    },
+    "warnings": {
+      "existingAppointments_one": "Employee has {{count}} scheduled appointment during this period. Remember to cancel or reschedule it.",
+      "existingAppointments_other": "Employee has {{count}} scheduled appointments during this period. Remember to cancel or reschedule them."
     }
   },
   "permissions": {

@@ -10,6 +10,9 @@ export interface NudgeData {
   messageValues?: Record<string, string | number>;
   severity: "red" | "yellow" | "green";
   icon?: string;
+  /** Optional destination URL (pathname + optional query string) that opens
+   *  the list of items the nudge refers to. */
+  link?: string;
 }
 
 interface NudgesContextValue {
@@ -33,6 +36,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // CRM nudges (Supabase-primary action)
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const getCrmNudges = useAction(api.nudges.getAll);
   const { data: crmNudges, isLoading: crmLoading } = useQuery({
     queryKey: ["nudges.getAll", organizationId],
@@ -41,6 +45,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Gabinet nudges (Supabase-primary action)
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const getGabinetNudges = useAction(api.gabinet.nudges.getAll);
   const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery({
     queryKey: ["gabinet.nudges.getAll", organizationId],

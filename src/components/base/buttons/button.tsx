@@ -1,5 +1,5 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, DetailedHTMLProps, FC, ReactNode } from "react";
-import { isValidElement } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, DetailedHTMLProps, FC, ForwardedRef, ReactNode, Ref } from "react";
+import { forwardRef, isValidElement } from "react";
 import type { ButtonProps as AriaButtonProps, LinkProps as AriaLinkProps } from "react-aria-components";
 import { Button as AriaButton, Link as AriaLink } from "react-aria-components";
 import { cx, sortCx } from "@/lib/utils/cx";
@@ -169,19 +169,22 @@ interface LinkProps extends CommonProps, DetailedHTMLProps<Omit<AnchorHTMLAttrib
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const Button = ({
-    size = "sm",
-    color = "primary",
-    children,
-    className,
-    noTextPadding,
-    iconLeading: IconLeading,
-    iconTrailing: IconTrailing,
-    isDisabled: disabled,
-    isLoading: loading,
-    showTextWhileLoading,
-    ...otherProps
-}: Props) => {
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(function Button(
+    {
+        size = "sm",
+        color = "primary",
+        children,
+        className,
+        noTextPadding,
+        iconLeading: IconLeading,
+        iconTrailing: IconTrailing,
+        isDisabled: disabled,
+        isLoading: loading,
+        showTextWhileLoading,
+        ...otherProps
+    },
+    ref: ForwardedRef<HTMLButtonElement | HTMLAnchorElement>,
+) {
     const href = "href" in otherProps ? otherProps.href : undefined;
     const Component = href ? AriaLink : AriaButton;
 
@@ -209,6 +212,7 @@ export const Button = ({
 
     return (
         <Component
+            ref={ref as Ref<HTMLButtonElement> & Ref<HTMLAnchorElement>}
             data-loading={loading ? true : undefined}
             data-icon-only={isIcon ? true : undefined}
             {...props}
@@ -262,4 +266,4 @@ export const Button = ({
             {isReactComponent(IconTrailing) && <IconTrailing data-icon="trailing" className={styles.common.icon} />}
         </Component>
     );
-};
+});

@@ -1347,8 +1347,32 @@ export function AppointmentDialog({
           {/* ============================================================= */}
           <div className="w-full md:w-[280px] flex flex-col">
             {!slotsEnabled ? (
-              <div className="flex flex-col items-center justify-center flex-1 px-5 py-8">
-                <UntitledAlert>{t("gabinet.appointments.calendarDialog.selectDateForSlots")}</UntitledAlert>
+              <div className="flex flex-col items-center justify-center flex-1 px-5 py-8 gap-3">
+                {selectedSlot?.start && (
+                  <div className="w-full rounded-md border bg-muted/30 px-3 py-2.5 text-center">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("gabinet.appointments.calendarDialog.time")}
+                    </p>
+                    <p className="text-base font-semibold tabular-nums">
+                      {selectedSlot.start}
+                      {selectedSlot.end ? ` – ${selectedSlot.end}` : ""}
+                    </p>
+                    {selectedDate && (
+                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                        {format(selectedDate, "EEEE, d MMMM", {
+                          locale: dateFnsLocale,
+                        })}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <UntitledAlert>
+                  {t(
+                    calendarEnabled
+                      ? "gabinet.appointments.calendarDialog.selectDateForSlots"
+                      : "gabinet.appointments.calendarDialog.selectTreatmentAndEmployee",
+                  )}
+                </UntitledAlert>
               </div>
             ) : (
               <>

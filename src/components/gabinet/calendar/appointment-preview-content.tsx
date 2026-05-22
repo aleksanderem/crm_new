@@ -697,35 +697,32 @@ export function AppointmentPreviewContent({
           </Select>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("gabinet.appointmentDetail.tags", { defaultValue: "Etykiety" })}
-            </Label>
-            <button
-              type="button"
-              onClick={() => dispatch("manageTags")}
-              className="text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
-            >
-              {t("gabinet.appointmentDetail.manageTags", {
-                defaultValue: "Zarządzaj",
-              })}
-            </button>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <TagsPicker
+              tags={tagDefinitions}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+              placeholder={
+                tagDefinitions.length === 0
+                  ? t("gabinet.appointmentDetail.addFirstTagHint", {
+                      defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
+                    })
+                  : t("gabinet.appointmentDetail.addTagsPlaceholder", {
+                      defaultValue: "Etykiety",
+                    })
+              }
+            />
           </div>
-          <TagsPicker
-            tags={tagDefinitions}
-            selectedIds={tagIds}
-            onChange={setTagIds}
-            placeholder={
-              tagDefinitions.length === 0
-                ? t("gabinet.appointmentDetail.addFirstTagHint", {
-                    defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
-                  })
-                : t("gabinet.appointmentDetail.addTagsPlaceholder", {
-                    defaultValue: "Etykiety",
-                  })
-            }
-          />
+          <button
+            type="button"
+            onClick={() => dispatch("manageTags")}
+            className="shrink-0 self-center text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+          >
+            {t("gabinet.appointmentDetail.manageTags", {
+              defaultValue: "Zarządzaj",
+            })}
+          </button>
         </div>
 
         <div className="grid grid-cols-[1fr_auto_auto] items-end gap-1.5">

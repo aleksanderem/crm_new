@@ -24,9 +24,16 @@ interface TagsPickerProps {
   selectedIds: Id<"tagDefinitions">[];
   onChange: (tagIds: Id<"tagDefinitions">[]) => void;
   placeholder?: string;
+  selectedTagsBelow?: boolean;
 }
 
-export function TagsPicker({ tags, selectedIds, onChange, placeholder }: TagsPickerProps) {
+export function TagsPicker({
+  tags,
+  selectedIds,
+  onChange,
+  placeholder,
+  selectedTagsBelow = false,
+}: TagsPickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -62,35 +69,37 @@ export function TagsPicker({ tags, selectedIds, onChange, placeholder }: TagsPic
     [tags, selectedSet],
   );
 
+  const selectedBadges = selectedTags.length > 0 && (
+    <div className="flex flex-wrap gap-1">
+      {selectedTags.map((tag) => (
+        <Badge
+          key={tag._id}
+          size="sm"
+          type="pill-color"
+          color="gray"
+        >
+          <span className="flex items-center gap-1">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: tag.color }}
+            />
+            {tag.name}
+            <button
+              type="button"
+              onClick={() => removeTag(tag._id)}
+              className="ml-0.5 text-fg-quaternary hover:text-fg-secondary"
+            >
+              <XClose className="h-3 w-3" />
+            </button>
+          </span>
+        </Badge>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-1.5">
-      {selectedTags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {selectedTags.map((tag) => (
-            <Badge
-              key={tag._id}
-              size="sm"
-              type="pill-color"
-              color="gray"
-            >
-              <span className="flex items-center gap-1">
-                <span
-                  className="inline-block h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: tag.color }}
-                />
-                {tag.name}
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag._id)}
-                  className="ml-0.5 text-fg-quaternary hover:text-fg-secondary"
-                >
-                  <XClose className="h-3 w-3" />
-                </button>
-              </span>
-            </Badge>
-          ))}
-        </div>
-      )}
+      {!selectedTagsBelow && selectedBadges}
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -142,6 +151,8 @@ export function TagsPicker({ tags, selectedIds, onChange, placeholder }: TagsPic
           </div>
         </PopoverContent>
       </Popover>
+
+      {selectedTagsBelow && selectedBadges}
     </div>
   );
 }

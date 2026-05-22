@@ -112,12 +112,17 @@ function computeEndTime(start: string, durationMinutes: number): string {
 /**
  * Mirror of backend `generateRecurringDates` (convex/gabinet/appointments.ts).
  * Keep in sync — both compute the list of recurrence dates following the base.
+ * For "custom" frequency there is no cycle: every occurrence defaults to the
+ * base date so the user has a starting row to edit. Issue #817.
  */
 function generateRecurringDates(
   startDate: string,
   frequency: string,
   count: number,
 ): string[] {
+  if (frequency === "custom") {
+    return Array.from({ length: Math.max(0, count - 1) }, () => startDate);
+  }
   const dates: string[] = [];
   const d = new Date(startDate + "T00:00:00");
   for (let i = 1; i < count; i++) {
@@ -642,10 +647,15 @@ export function AppointmentDialog({
               endTime: computeEndTime(occ.startTime, treatmentDuration),
             }))
           : undefined;
-      const hasCustomizations = recurringOverridesPayload?.some(
-        (o, i) =>
-          o.startTime !== selectedSlot.start || o.date !== cycleDates[i],
-      );
+      // For "custom" frequency every occurrence is by definition user-chosen,
+      // so always send overrides — otherwise the backend's rule-based
+      // generator returns nothing for the unknown "custom" cycle. Issue #817.
+      const hasCustomizations =
+        frequency === "custom" ||
+        recurringOverridesPayload?.some(
+          (o, i) =>
+            o.startTime !== selectedSlot.start || o.date !== cycleDates[i],
+        );
       await createAppointment({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
@@ -1202,6 +1212,11 @@ export function AppointmentDialog({
                           <SelectItem value="monthly">
                             {t(
                               "gabinet.appointments.frequencies.monthly",
+                            )}
+                          </SelectItem>
+                          <SelectItem value="custom">
+                            {t(
+                              "gabinet.appointments.frequencies.custom",
                             )}
                           </SelectItem>
                         </SelectContent>

@@ -25,6 +25,8 @@ interface TagsPickerProps {
   onChange: (tagIds: Id<"tagDefinitions">[]) => void;
   placeholder?: string;
   selectedTagsBelow?: boolean;
+  direction?: "vertical" | "horizontal";
+  size?: "sm" | "md";
 }
 
 export function TagsPicker({
@@ -33,6 +35,8 @@ export function TagsPicker({
   onChange,
   placeholder,
   selectedTagsBelow = false,
+  direction = "vertical",
+  size = "sm",
 }: TagsPickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -74,7 +78,7 @@ export function TagsPicker({
       {selectedTags.map((tag) => (
         <Badge
           key={tag._id}
-          size="sm"
+          size={size}
           type="pill-color"
           color="gray"
         >
@@ -98,7 +102,14 @@ export function TagsPicker({
   );
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div
+      className={cx(
+        "gap-1.5",
+        direction === "horizontal"
+          ? "flex flex-wrap items-center"
+          : "flex flex-col",
+      )}
+    >
       {!selectedTagsBelow && selectedBadges}
 
       <Popover open={open} onOpenChange={setOpen}>
@@ -107,7 +118,7 @@ export function TagsPicker({
             type="button"
             className={cx(
               buttonStyles.common.root,
-              buttonStyles.sizes.sm.root,
+              buttonStyles.sizes[size].root,
               buttonStyles.colors.secondary.root,
             )}
           >

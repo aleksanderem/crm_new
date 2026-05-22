@@ -638,6 +638,7 @@ function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const showDatePicker = /^\/(dashboard)\/?$/.test(pathname)
     || /^\/dashboard\/(activities|calls|leads|pipelines)/.test(pathname);
+  const showAgendaStrip = !pathname.startsWith("/dashboard/gabinet");
 
   const [lastDispatch, setLastDispatch] = useState<{ id: string; seq: number } | null>(null);
   const dispatchSeqRef = useRef(0);
@@ -794,7 +795,7 @@ function DashboardLayout() {
                 </div>
               </header>
 
-              {firstOrg && user && (
+              {showAgendaStrip && firstOrg && user && (
                 <AgendaStrip organizationId={firstOrg._id} userId={user._id} />
               )}
 

@@ -443,6 +443,7 @@ function DashboardLayout() {
               }}
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
+              organizationId={orgId}
             />
           );
         case "appointment":

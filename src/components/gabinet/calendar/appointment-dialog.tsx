@@ -1492,6 +1492,7 @@ export function AppointmentDialog({
         onSubmit={handleCreatePatient}
         onCancel={() => setAddPatientOpen(false)}
         isSubmitting={creatingPatient}
+        organizationId={organizationId}
       />
     </SidePanel>
 

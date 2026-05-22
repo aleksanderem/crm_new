@@ -518,6 +518,7 @@ function PatientsIndex() {
           onSubmit={handleCreate}
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
+          organizationId={organizationId}
         />
         {tags.length > 0 && (
           <div className="space-y-1.5">

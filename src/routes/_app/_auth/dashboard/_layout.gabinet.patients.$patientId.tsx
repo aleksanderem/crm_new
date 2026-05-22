@@ -601,6 +601,7 @@ function PatientDetail() {
             onSubmit={handleEditSubmit}
             onCancel={() => setEditDrawerOpen(false)}
             isSubmitting={isSubmitting}
+            organizationId={organizationId}
           />
         </SidePanel>
       )}

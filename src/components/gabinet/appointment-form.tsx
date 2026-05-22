@@ -984,6 +984,7 @@ export function AppointmentForm({
         onSubmit={handleCreatePatient}
         onCancel={() => setAddPatientOpen(false)}
         isSubmitting={isCreatingPatient}
+        organizationId={organizationId}
       />
     </SidePanel>
     </>

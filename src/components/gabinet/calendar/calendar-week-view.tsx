@@ -218,16 +218,21 @@ function WeekDayColumn({
 
   return (
     <div className="flex-1 min-w-[120px] border-r last:border-r-0">
-      {/* Day header */}
+      {/* Day header — wrapped in opaque sticky shell so appointments scrolling
+          past don't bleed through the semi-transparent tint. */}
       <div
-        className={`sticky top-0 z-10 border-b px-2 py-1 text-center text-xs font-medium ${
-          isSelected ? "bg-primary/20 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/10" : "bg-muted/50"
-        } ${onDayHeaderClick ? "cursor-pointer hover:bg-primary/15" : ""}`}
+        className={`sticky top-0 z-30 bg-background ${onDayHeaderClick ? "cursor-pointer" : ""}`}
         onClick={() => onDayHeaderClick?.(date)}
       >
-        <div>{DAY_LABELS[dayIndex]}</div>
-        <div className={isToday ? "font-bold text-primary" : isSelected ? "font-semibold text-primary" : "text-muted-foreground"}>
-          {date.split("-")[2]}
+        <div
+          className={`border-b px-2 py-1 text-center text-xs font-medium ${
+            isSelected ? "bg-primary/20 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/10" : "bg-muted/50"
+          } ${onDayHeaderClick ? "hover:bg-primary/15" : ""}`}
+        >
+          <div>{DAY_LABELS[dayIndex]}</div>
+          <div className={isToday ? "font-bold text-primary" : isSelected ? "font-semibold text-primary" : "text-muted-foreground"}>
+            {date.split("-")[2]}
+          </div>
         </div>
       </div>
 
@@ -410,7 +415,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   return (
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-background pt-8 relative">
+      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background pt-8 relative">
         {slots.map((s) => {
           // For small slot heights, only render the hour label so text doesn't overlap.
           const showLabel = s.isHourMark || s.slotHeight >= 15;

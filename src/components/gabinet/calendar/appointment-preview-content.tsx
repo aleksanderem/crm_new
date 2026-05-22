@@ -735,13 +735,14 @@ export function AppointmentPreviewContent({
           </div>
         </div>
 
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <div className="min-w-0 flex-1">
             <TagsPicker
               tags={tagDefinitions}
               selectedIds={tagIds}
               onChange={setTagIds}
-              selectedTagsBelow
+              direction="horizontal"
+              size="md"
               placeholder={
                 tagDefinitions.length === 0
                   ? t("gabinet.appointmentDetail.addFirstTagHint", {
@@ -756,7 +757,7 @@ export function AppointmentPreviewContent({
           <button
             type="button"
             onClick={() => dispatch("manageTags")}
-            className="shrink-0 self-center text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+            className="shrink-0 self-center text-[10px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
             {t("gabinet.appointmentDetail.manageTags", {
               defaultValue: "Zarządzaj",

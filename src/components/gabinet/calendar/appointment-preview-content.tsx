@@ -721,7 +721,9 @@ export function AppointmentPreviewContent({
                 ? t("gabinet.appointmentDetail.addFirstTagHint", {
                     defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
                   })
-                : t("tags.assign", { defaultValue: "Tagi" })
+                : t("gabinet.appointmentDetail.addTagsPlaceholder", {
+                    defaultValue: "Etykiety",
+                  })
             }
           />
         </div>

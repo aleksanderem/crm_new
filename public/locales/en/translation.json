@@ -2446,7 +2446,8 @@
         "daily": "Daily",
         "weekly": "Weekly",
         "biweekly": "Biweekly",
-        "monthly": "Monthly"
+        "monthly": "Monthly",
+        "custom": "Custom"
       },
       "created": "Appointment created",
       "updated": "Appointment updated",

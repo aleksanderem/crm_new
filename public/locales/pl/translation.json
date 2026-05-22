@@ -2457,7 +2457,8 @@
         "daily": "Codziennie",
         "weekly": "Tygodniowo",
         "biweekly": "Co dwa tygodnie",
-        "monthly": "Miesięcznie"
+        "monthly": "Miesięcznie",
+        "custom": "Dowolnie"
       },
       "created": "Wizyta utworzona",
       "updated": "Wizyta zaktualizowana",

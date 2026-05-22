@@ -494,15 +494,15 @@ export function AppointmentPreviewContent({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="mt-0.5 inline-flex max-w-full items-center gap-1 rounded text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded text-sm font-medium text-foreground hover:text-primary focus:outline-none focus:ring-1 focus:ring-ring"
                   aria-label={t("gabinet.appointments.selectTreatment")}
                 >
-                  <Stethoscope className="size-3 shrink-0" />
+                  <Stethoscope className="size-3.5 shrink-0 text-primary" />
                   <span className="truncate">
                     {treatmentDisplayName ||
                       t("gabinet.appointments.selectTreatment")}
                   </span>
-                  <ChevronsUpDown className="size-3 shrink-0 opacity-60" />
+                  <ChevronsUpDown className="size-3.5 shrink-0 opacity-60" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0" align="start">

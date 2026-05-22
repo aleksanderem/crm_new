@@ -2001,6 +2001,8 @@
         "other": "Other"
       },
       "referralSourceOtherPlaceholder": "Enter source",
+      "referralSourceAddNew": "+ Add new source...",
+      "referralSourceCustomGroup": "Custom sources",
       "referredBy": "Referred By",
       "linkedContact": "Linked CRM Contact",
       "address": "Address",

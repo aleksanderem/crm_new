@@ -252,6 +252,15 @@ export function AppointmentDialog({
   // Past-slot confirmation popup
   const [pastConfirmOpen, setPastConfirmOpen] = useState(false);
 
+  // Auto-scroll the currently-selected slot button into view so the user
+  // doesn't have to scroll through the full day's slot list to find a time
+  // pre-filled from a calendar click or "Find nearest slot". Issue #786.
+  const selectedSlotButtonRef = useCallback((node: HTMLButtonElement | null) => {
+    if (node) {
+      node.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
+
   // -------------------------------------------------------------------------
   // Derived data
   // -------------------------------------------------------------------------
@@ -1347,6 +1356,11 @@ export function AppointmentDialog({
                       availableSlots.map((slot) => (
                         <button
                           key={slot.start}
+                          ref={
+                            selectedSlot?.start === slot.start
+                              ? selectedSlotButtonRef
+                              : undefined
+                          }
                           type="button"
                           onClick={() => handleSlotSelect(slot)}
                           className={cn(

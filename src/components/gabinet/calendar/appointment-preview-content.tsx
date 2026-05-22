@@ -703,6 +703,7 @@ export function AppointmentPreviewContent({
               tags={tagDefinitions}
               selectedIds={tagIds}
               onChange={setTagIds}
+              selectedTagsBelow
               placeholder={
                 tagDefinitions.length === 0
                   ? t("gabinet.appointmentDetail.addFirstTagHint", {

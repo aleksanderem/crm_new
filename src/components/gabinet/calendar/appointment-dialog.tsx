@@ -1513,7 +1513,7 @@ export function AppointmentDialog({
             <button
               type="button"
               onClick={() => setPastConfirmOpen(false)}
-              className="min-w-16 rounded-md bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+              className="min-w-16 rounded-md bg-rose-400 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
               data-testid="appointment-past-confirm-no"
             >
               {t("common.no").toUpperCase()}
@@ -1524,7 +1524,7 @@ export function AppointmentDialog({
                 setPastConfirmOpen(false);
                 void performCreate();
               }}
-              className="min-w-16 rounded-md bg-green-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
+              className="min-w-16 rounded-md bg-emerald-400 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
               data-testid="appointment-past-confirm-yes"
             >
               {t("common.yes").toUpperCase()}

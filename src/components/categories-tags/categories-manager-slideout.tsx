@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
 import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { LayersTwo02, Plus, Pencil01, Trash01 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
@@ -71,9 +73,18 @@ export function CategoriesManagerSlideout({
   canDelete = true,
 }: CategoriesManagerSlideoutProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const createCategory = useAction(api.categoryDefinitions.create);
   const updateCategory = useAction(api.categoryDefinitions.update);
   const removeCategory = useAction(api.categoryDefinitions.remove);
+
+  const invalidateCategories = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ["categoryDefinitions.list", organizationId, entityType],
+      }),
+    [queryClient, organizationId, entityType],
+  );
 
   const [addingParentId, setAddingParentId] = useState<Id<"categoryDefinitions"> | "root" | null>(null);
   const [newName, setNewName] = useState("");
@@ -86,32 +97,50 @@ export function CategoriesManagerSlideout({
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim() || !addingParentId) return;
-    await createCategory({
-      organizationId,
-      entityType,
-      name: newName.trim(),
-      parentId: addingParentId === "root" ? undefined : addingParentId,
-      color: newColor,
-    });
-    setNewName("");
-    setNewColor(TAG_COLOR_PALETTE[0]);
-    setAddingParentId(null);
-  }, [createCategory, organizationId, entityType, newName, newColor, addingParentId]);
+    try {
+      await createCategory({
+        organizationId,
+        entityType,
+        name: newName.trim(),
+        parentId: addingParentId === "root" ? undefined : addingParentId,
+        color: newColor,
+      });
+      await invalidateCategories();
+      toast.success(t("common.created", { defaultValue: "Dodano" }));
+      setNewName("");
+      setNewColor(TAG_COLOR_PALETTE[0]);
+      setAddingParentId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [createCategory, organizationId, entityType, newName, newColor, addingParentId, invalidateCategories, t]);
 
   const handleUpdate = useCallback(async () => {
     if (!editingId || !editName.trim()) return;
-    await updateCategory({
-      organizationId,
-      categoryId: editingId,
-      name: editName.trim(),
-      color: editColor || undefined,
-    });
-    setEditingId(null);
-  }, [updateCategory, organizationId, editingId, editName, editColor]);
+    try {
+      await updateCategory({
+        organizationId,
+        categoryId: editingId,
+        name: editName.trim(),
+        color: editColor || undefined,
+      });
+      await invalidateCategories();
+      toast.success(t("common.saved", { defaultValue: "Zapisano" }));
+      setEditingId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [updateCategory, organizationId, editingId, editName, editColor, invalidateCategories, t]);
 
   const handleRemove = useCallback(async (categoryId: Id<"categoryDefinitions">) => {
-    await removeCategory({ organizationId, categoryId });
-  }, [removeCategory, organizationId]);
+    try {
+      await removeCategory({ organizationId, categoryId });
+      await invalidateCategories();
+      toast.success(t("common.deleted", { defaultValue: "Usunięto" }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [removeCategory, organizationId, invalidateCategories, t]);
 
   const startEdit = (cat: CategoryDef) => {
     setEditingId(cat._id);

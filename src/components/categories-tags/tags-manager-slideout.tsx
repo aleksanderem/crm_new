@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Tag01, Plus, Pencil01, Trash01 } from "@untitledui/icons";
 import { Button } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
@@ -37,6 +39,7 @@ export function TagsManagerSlideout({
   canDelete = true,
 }: TagsManagerSlideoutProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const createTag = useAction(api.tagDefinitions.create);
   const updateTag = useAction(api.tagDefinitions.update);
   const removeTag = useAction(api.tagDefinitions.remove);
@@ -49,6 +52,14 @@ export function TagsManagerSlideout({
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
 
+  const invalidateTags = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ["tagDefinitions.list", organizationId],
+      }),
+    [queryClient, organizationId],
+  );
+
   const filteredTags = searchQuery.trim()
     ? tags.filter((tag) =>
         tag.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,21 +68,39 @@ export function TagsManagerSlideout({
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim()) return;
-    await createTag({ organizationId, name: newName.trim(), color: newColor });
-    setNewName("");
-    setNewColor(TAG_COLOR_PALETTE[0]);
-    setIsAdding(false);
-  }, [createTag, organizationId, newName, newColor]);
+    try {
+      await createTag({ organizationId, name: newName.trim(), color: newColor });
+      await invalidateTags();
+      toast.success(t("common.created", { defaultValue: "Dodano" }));
+      setNewName("");
+      setNewColor(TAG_COLOR_PALETTE[0]);
+      setIsAdding(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [createTag, organizationId, newName, newColor, invalidateTags, t]);
 
   const handleUpdate = useCallback(async () => {
     if (!editingId || !editName.trim()) return;
-    await updateTag({ organizationId, tagId: editingId, name: editName.trim(), color: editColor });
-    setEditingId(null);
-  }, [updateTag, organizationId, editingId, editName, editColor]);
+    try {
+      await updateTag({ organizationId, tagId: editingId, name: editName.trim(), color: editColor });
+      await invalidateTags();
+      toast.success(t("common.saved", { defaultValue: "Zapisano" }));
+      setEditingId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [updateTag, organizationId, editingId, editName, editColor, invalidateTags, t]);
 
   const handleRemove = useCallback(async (tagId: Id<"tagDefinitions">) => {
-    await removeTag({ organizationId, tagId });
-  }, [removeTag, organizationId]);
+    try {
+      await removeTag({ organizationId, tagId });
+      await invalidateTags();
+      toast.success(t("common.deleted", { defaultValue: "Usunięto" }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [removeTag, organizationId, invalidateTags, t]);
 
   const startEdit = (tag: TagDef) => {
     setEditingId(tag._id);

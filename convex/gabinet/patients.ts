@@ -62,6 +62,57 @@ export const list = action({
   },
 });
 
+const PREDEFINED_REFERRAL_SOURCES = new Set([
+  "facebook",
+  "patientReferral",
+  "passerby",
+  "pressAd",
+  "internetAd",
+  "billboard",
+  "flyerBanner",
+  "groupBuying",
+  "other",
+]);
+
+export const listCustomReferralSources = action({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args): Promise<string[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
+    if (!perm.allowed) return [];
+
+    const db = createSupabaseDb();
+    const patients = (await db
+      .query("gabinetPatients")
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as GabinetPatientRow[];
+
+    const seen = new Set<string>();
+    const custom: string[] = [];
+    for (const p of patients) {
+      const raw = p.referralSource;
+      if (typeof raw !== "string") continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (PREDEFINED_REFERRAL_SOURCES.has(trimmed)) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      custom.push(trimmed);
+    }
+    custom.sort((a, b) => a.localeCompare(b));
+    return custom;
+  },
+});
+
 export const getById = action({
   args: {
     organizationId: v.id("organizations"),

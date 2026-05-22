@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAction } from "convex/react";
+import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +10,10 @@ import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -63,6 +68,8 @@ interface PatientFormProps {
   organizationId?: Id<"organizations">;
 }
 
+const ADD_NEW_REFERRAL_SOURCE = "__add_new__";
+
 export function PatientForm({
   initialData,
   onSubmit,
@@ -89,16 +96,65 @@ export function PatientForm({
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName ?? "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone ?? "");
   const initialReferral = initialData?.referralSource ?? "";
-  const initialReferralIsKnown = (PATIENT_REFERRAL_SOURCES as readonly string[]).includes(initialReferral);
-  const [referralSourceKey, setReferralSourceKey] = useState<string>(
-    initialReferral ? (initialReferralIsKnown ? initialReferral : "other") : "",
+  const initialReferralIsPredefined = (PATIENT_REFERRAL_SOURCES as readonly string[]).includes(initialReferral);
+  const [customReferralSources, setCustomReferralSources] = useState<string[]>(
+    initialReferral && !initialReferralIsPredefined ? [initialReferral] : [],
   );
-  const [referralSourceCustom, setReferralSourceCustom] = useState<string>(
-    initialReferral && !initialReferralIsKnown ? initialReferral : "",
-  );
-  const referralOptions = patientReferralSourceOptions(t);
+  const [referralSourceKey, setReferralSourceKey] = useState<string>(initialReferral);
+  const [isAddingReferralSource, setIsAddingReferralSource] = useState(false);
+  const [newReferralSource, setNewReferralSource] = useState("");
+  const referralOptions = patientReferralSourceOptions(t).filter((opt) => opt.value !== "other");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+
+  const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let cancelled = false;
+    listCustomReferralSources({ organizationId })
+      .then((sources) => {
+        if (cancelled) return;
+        setCustomReferralSources((prev) => {
+          const merged = new Set<string>(sources);
+          for (const s of prev) merged.add(s);
+          return Array.from(merged).sort((a, b) => a.localeCompare(b));
+        });
+      })
+      .catch(() => {
+        /* non-fatal: fall back to predefined options only */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId, listCustomReferralSources]);
+
+  const handleReferralSourceChange = (value: string) => {
+    if (value === ADD_NEW_REFERRAL_SOURCE) {
+      setIsAddingReferralSource(true);
+      setNewReferralSource("");
+      return;
+    }
+    setReferralSourceKey(value);
+  };
+
+  const handleConfirmNewReferralSource = () => {
+    const trimmed = newReferralSource.trim();
+    if (!trimmed) return;
+    setCustomReferralSources((prev) =>
+      prev.some((s) => s.toLowerCase() === trimmed.toLowerCase())
+        ? prev
+        : [...prev, trimmed].sort((a, b) => a.localeCompare(b)),
+    );
+    setReferralSourceKey(trimmed);
+    setIsAddingReferralSource(false);
+    setNewReferralSource("");
+  };
+
+  const handleCancelNewReferralSource = () => {
+    setIsAddingReferralSource(false);
+    setNewReferralSource("");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,10 +162,7 @@ export function PatientForm({
       ? { street: street || undefined, city: city || undefined, postalCode: postalCode || undefined }
       : undefined;
 
-    const referralSource =
-      referralSourceKey === "other"
-        ? referralSourceCustom.trim() || undefined
-        : referralSourceKey || undefined;
+    const referralSource = referralSourceKey || undefined;
 
     onSubmit({
       firstName,
@@ -262,7 +315,7 @@ export function PatientForm({
       <div className="grid gap-4 sm:grid-cols-2 border-t pt-4">
         <div className="space-y-1.5">
           <Label>{t("gabinet.patients.referralSource")}</Label>
-          <Select value={referralSourceKey} onValueChange={setReferralSourceKey}>
+          <Select value={referralSourceKey} onValueChange={handleReferralSourceChange}>
             <SelectTrigger className="h-9">
               <SelectValue />
             </SelectTrigger>
@@ -270,15 +323,55 @@ export function PatientForm({
               {referralOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
+              {customReferralSources.length > 0 && (
+                <SelectGroup>
+                  <SelectSeparator />
+                  <SelectLabel>{t("gabinet.patients.referralSourceCustomGroup")}</SelectLabel>
+                  {customReferralSources.map((src) => (
+                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              <SelectSeparator />
+              <SelectItem value={ADD_NEW_REFERRAL_SOURCE}>
+                {t("gabinet.patients.referralSourceAddNew")}
+              </SelectItem>
             </SelectContent>
           </Select>
-          {referralSourceKey === "other" && (
-            <Input
-              value={referralSourceCustom}
-              onChange={(e) => setReferralSourceCustom(e.target.value)}
-              placeholder={t("gabinet.patients.referralSourceOtherPlaceholder")}
-              className="mt-2"
-            />
+          {isAddingReferralSource && (
+            <div className="mt-2 flex items-center gap-2">
+              <Input
+                autoFocus
+                value={newReferralSource}
+                onChange={(e) => setNewReferralSource(e.target.value)}
+                placeholder={t("gabinet.patients.referralSourceOtherPlaceholder")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirmNewReferralSource();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    handleCancelNewReferralSource();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleConfirmNewReferralSource}
+                disabled={!newReferralSource.trim()}
+              >
+                {t("common.add")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCancelNewReferralSource}
+              >
+                {t("common.cancel")}
+              </Button>
+            </div>
           )}
         </div>
         <div className="space-y-1.5">

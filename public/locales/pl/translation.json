@@ -2009,6 +2009,8 @@
         "other": "Inne"
       },
       "referralSourceOtherPlaceholder": "Wpisz źródło",
+      "referralSourceAddNew": "+ Dodaj inne źródło...",
+      "referralSourceCustomGroup": "Własne źródła",
       "referredBy": "Skierowany przez",
       "linkedContact": "Powiązany kontakt CRM",
       "address": "Adres",

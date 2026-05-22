@@ -225,11 +225,13 @@ export function AppointmentDialog({
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("weekly");
   const [recurringCount, setRecurringCount] = useState(4);
-  // Per-occurrence start-time overrides, keyed by date (YYYY-MM-DD). Only
-  // includes entries the user actually edited; missing entries fall back to
-  // the base slot's start time. Issue #665.
-  const [recurringStartTimes, setRecurringStartTimes] = useState<
-    Record<string, string>
+  // Per-occurrence date/start-time overrides, keyed by occurrence index (1+
+  // since index 0 is the base appointment tied to calendar selection). Letting
+  // the user customize the DATE — not only the time — supports series that
+  // don't follow a fixed cycle (issue #790). Index-based keying keeps
+  // overrides stable when the cycle frequency/count changes.
+  const [recurringOverrides, setRecurringOverrides] = useState<
+    Record<number, { date?: string; startTime?: string }>
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [searchingSlot, setSearchingSlot] = useState(false);
@@ -590,18 +592,27 @@ export function AppointmentDialog({
   }, [dateStr, selectedSlot]);
 
   // Recurring occurrences (date + effective start time). The first entry is
-  // the base appointment; the rest are generated. Per-date overrides come
-  // from `recurringStartTimes`. Issue #665.
+  // the base appointment (tied to calendar selection, read-only). The rest
+  // are generated from the cycle, with optional per-index date/time overrides
+  // — overrides let the user move occurrences to dates that don't follow the
+  // cycle (issue #790).
   const recurringOccurrences = useMemo(() => {
     if (!isRecurring || !dateStr || !selectedSlot?.start) return [];
     const baseStart = selectedSlot.start;
-    const dates = [dateStr, ...generateRecurringDates(dateStr, frequency, recurringCount)];
-    return dates.map((date, index) => ({
-      date,
-      startTime: recurringStartTimes[date] ?? baseStart,
-      index,
-    }));
-  }, [isRecurring, dateStr, selectedSlot, frequency, recurringCount, recurringStartTimes]);
+    const cycleDates = generateRecurringDates(dateStr, frequency, recurringCount);
+    return [
+      { date: dateStr, startTime: baseStart, index: 0 },
+      ...cycleDates.map((cycleDate, i) => {
+        const index = i + 1;
+        const override = recurringOverrides[index];
+        return {
+          date: override?.date ?? cycleDate,
+          startTime: override?.startTime ?? baseStart,
+          index,
+        };
+      }),
+    ];
+  }, [isRecurring, dateStr, selectedSlot, frequency, recurringCount, recurringOverrides]);
 
   const canSubmit =
     !!patientId &&
@@ -618,8 +629,12 @@ export function AppointmentDialog({
       const treatmentDuration = selectedTreatment?.duration ?? 30;
       // Build per-occurrence overrides for the recurrences (excluding the base
       // appointment at index 0). Only send if at least one entry has a custom
-      // start time so the backend keeps using the simple rule path otherwise.
-      const recurringOverrides =
+      // date or start time so the backend keeps using the simple rule path
+      // otherwise.
+      const cycleDates = isRecurring
+        ? generateRecurringDates(dateStr, frequency, recurringCount)
+        : [];
+      const recurringOverridesPayload =
         isRecurring && recurringOccurrences.length > 1
           ? recurringOccurrences.slice(1).map((occ) => ({
               date: occ.date,
@@ -627,8 +642,9 @@ export function AppointmentDialog({
               endTime: computeEndTime(occ.startTime, treatmentDuration),
             }))
           : undefined;
-      const hasCustomTimes = recurringOverrides?.some(
-        (o) => o.startTime !== selectedSlot.start,
+      const hasCustomizations = recurringOverridesPayload?.some(
+        (o, i) =>
+          o.startTime !== selectedSlot.start || o.date !== cycleDates[i],
       );
       await createAppointment({
         organizationId,
@@ -643,7 +659,7 @@ export function AppointmentDialog({
         recurringRule: isRecurring
           ? { frequency, count: recurringCount }
           : undefined,
-        recurringOverrides: hasCustomTimes ? recurringOverrides : undefined,
+        recurringOverrides: hasCustomizations ? recurringOverridesPayload : undefined,
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
       });
@@ -722,7 +738,7 @@ export function AppointmentDialog({
       setIsRecurring(false);
       setFrequency("weekly");
       setRecurringCount(4);
-      setRecurringStartTimes({});
+      setRecurringOverrides({});
       setPatientSearch("");
       setTreatmentSearch("");
       setLocationId("");
@@ -1224,38 +1240,71 @@ export function AppointmentDialog({
                             )}
                           </p>
                         ) : (
-                          <ScrollShadow className="max-h-44 overflow-y-auto">
-                            <ul className="space-y-1">
-                              {recurringOccurrences.map((occ) => (
-                                <li
-                                  key={occ.date}
-                                  className="flex items-center justify-between gap-2"
-                                >
-                                  <span className="text-xs capitalize tabular-nums">
-                                    {format(
-                                      new Date(occ.date + "T00:00:00"),
-                                      "EEE d MMM yyyy",
-                                      { locale: dateFnsLocale },
+                          <>
+                            <p className="text-[10px] text-muted-foreground mb-1.5">
+                              {t(
+                                "gabinet.appointments.recurringPreviewHint",
+                              )}
+                            </p>
+                            <ScrollShadow className="max-h-44 overflow-y-auto">
+                              <ul className="space-y-1">
+                                {recurringOccurrences.map((occ) => (
+                                  <li
+                                    key={occ.index}
+                                    className="flex items-center justify-between gap-1.5"
+                                  >
+                                    {occ.index === 0 ? (
+                                      <span className="text-xs capitalize tabular-nums flex-1">
+                                        {format(
+                                          new Date(occ.date + "T00:00:00"),
+                                          "EEE d MMM yyyy",
+                                          { locale: dateFnsLocale },
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <input
+                                        type="date"
+                                        value={occ.date}
+                                        onChange={(e) => {
+                                          const next = e.target.value;
+                                          if (!next) return;
+                                          setRecurringOverrides((prev) => ({
+                                            ...prev,
+                                            [occ.index]: {
+                                              ...prev[occ.index],
+                                              date: next,
+                                            },
+                                          }));
+                                        }}
+                                        className="h-7 flex-1 min-w-0 rounded-md border border-input bg-background px-2 text-xs tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                        aria-label={t(
+                                          "gabinet.appointments.date",
+                                        )}
+                                      />
                                     )}
-                                  </span>
-                                  <input
-                                    type="time"
-                                    value={occ.startTime}
-                                    onChange={(e) =>
-                                      setRecurringStartTimes((prev) => ({
-                                        ...prev,
-                                        [occ.date]: e.target.value,
-                                      }))
-                                    }
-                                    className="h-7 w-[88px] rounded-md border border-input bg-background px-2 text-xs tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                                    aria-label={t(
-                                      "gabinet.appointments.calendarDialog.time",
-                                    )}
-                                  />
-                                </li>
-                              ))}
-                            </ul>
-                          </ScrollShadow>
+                                    <input
+                                      type="time"
+                                      value={occ.startTime}
+                                      disabled={occ.index === 0}
+                                      onChange={(e) =>
+                                        setRecurringOverrides((prev) => ({
+                                          ...prev,
+                                          [occ.index]: {
+                                            ...prev[occ.index],
+                                            startTime: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      className="h-7 w-[88px] rounded-md border border-input bg-background px-2 text-xs tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
+                                      aria-label={t(
+                                        "gabinet.appointments.calendarDialog.time",
+                                      )}
+                                    />
+                                  </li>
+                                ))}
+                              </ul>
+                            </ScrollShadow>
+                          </>
                         )}
                       </div>
                     </div>

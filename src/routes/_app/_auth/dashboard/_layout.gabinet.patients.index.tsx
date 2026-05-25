@@ -27,6 +27,7 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { formatPhoneNumber } from "@/lib/phone";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
@@ -256,7 +257,7 @@ function PatientsIndex() {
                 src={["/images/avatars/blue.jpg", "/images/avatars/purple.jpg", "/images/avatars/red.jpg"][item._id.charCodeAt(item._id.length - 1) % 3]}
                 initials={item.firstName[0] + item.lastName[0]}
                 title={`${item.firstName} ${item.lastName}`}
-                subtitle={item.email ?? item.phone ?? "—"}
+                subtitle={item.email ?? (item.phone ? formatPhoneNumber(item.phone) : "—")}
               />
             </Link>
             {!item.isActive && (
@@ -278,7 +279,7 @@ function PatientsIndex() {
       {
         id: "phone",
         label: t("common.phone"),
-        render: (item) => item.phone ?? "—",
+        render: (item) => item.phone ? formatPhoneNumber(item.phone) : "—",
       },
       {
         id: "pesel",

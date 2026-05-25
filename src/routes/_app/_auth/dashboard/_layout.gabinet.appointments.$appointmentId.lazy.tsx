@@ -6,6 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatPhoneNumber } from "@/lib/phone";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { Button } from "@/components/ui/button";
 import {
@@ -526,7 +527,7 @@ function AppointmentDetail() {
           <ItemContent>
             <ItemTitle>{pat?.firstName} {pat?.lastName}</ItemTitle>
             <ItemDescription className="text-xs">
-              {[pat?.phone, pat?.email].filter(Boolean).join(" · ")}
+              {[pat?.phone ? formatPhoneNumber(pat.phone) : undefined, pat?.email].filter(Boolean).join(" · ")}
             </ItemDescription>
             {loyBal > 0 && (
               <Badge variant="outline" className="mt-0.5 w-fit text-[10px]">

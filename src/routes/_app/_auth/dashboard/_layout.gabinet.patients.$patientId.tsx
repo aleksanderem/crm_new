@@ -39,6 +39,7 @@ import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card"
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
+import { formatPhoneNumber } from "@/lib/phone";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -108,7 +109,7 @@ function PatientDetail() {
     if (!patient) return [];
     const fields: DetailField[] = [];
     if (patient.email) fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
-    if (patient.phone) fields.push({ label: t("common.phone"), value: patient.phone, fieldKey: "phone" });
+    if (patient.phone) fields.push({ label: t("common.phone"), value: formatPhoneNumber(patient.phone), fieldKey: "phone" });
     if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: patient.dateOfBirth, fieldKey: "dob" });
     if (patient.gender) fields.push({ label: t("gabinet.patients.gender"), value: t(`gabinet.patients.genderOptions.${patient.gender}`), fieldKey: "gender" });
     if (patient.pesel) fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });

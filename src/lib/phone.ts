@@ -55,7 +55,7 @@ export function detectDialCode(
   raw: string,
 ): { dialCode: string; rest: string } | null {
   let v = raw.trim();
-  if (v.startsWith("00")) v = "+" + v.slice(2);
+  if (v.startsWith("00")) v = "+" + v.slice(2).trimStart();
   if (!v.startsWith("+")) return null;
   for (const c of SORTED_CODES) {
     if (v.startsWith(c.code)) {

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "@/lib/ez-icons";
+import { Check, ChevronsUpDown, Plus } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -121,12 +123,19 @@ export function TreatmentForm({
   const [color, setColor] = useState(initialData?.color ?? "");
   const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
 
+  const queryClient = useQueryClient();
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
+  const createEquipmentAction = useAction(api.gabinet.equipment.createEquipment);
+  const equipmentQueryKey = ["gabinet.equipment.listEquipment", organizationId];
   const { data: equipmentList } = useQuery({
-    queryKey: ["gabinet.equipment.listEquipment", organizationId],
+    queryKey: equipmentQueryKey,
     queryFn: () => listEquipmentAction({ organizationId }),
     enabled: !!organizationId,
   });
+
+  const [addingNewEquipment, setAddingNewEquipment] = useState(false);
+  const [newEquipmentName, setNewEquipmentName] = useState("");
+  const [creatingEquipment, setCreatingEquipment] = useState(false);
 
   const legacyEquipment = initialData?.requiredEquipment ?? [];
   const hasLegacyEquipment =
@@ -140,6 +149,32 @@ export function TreatmentForm({
 
   const getEquipmentName = (id: Id<"gabinetEquipment">) => {
     return equipmentList?.find((e) => e._id === id)?.name ?? id;
+  };
+
+  const resetAddEquipmentForm = () => {
+    setAddingNewEquipment(false);
+    setNewEquipmentName("");
+  };
+
+  const handleCreateEquipment = async () => {
+    const trimmed = newEquipmentName.trim();
+    if (!trimmed || creatingEquipment) return;
+    setCreatingEquipment(true);
+    try {
+      const newId = (await createEquipmentAction({
+        organizationId,
+        name: trimmed,
+      })) as Id<"gabinetEquipment">;
+      await queryClient.invalidateQueries({ queryKey: equipmentQueryKey });
+      setSelectedEquipmentIds((prev) =>
+        prev.includes(newId) ? prev : [...prev, newId]
+      );
+      resetAddEquipmentForm();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setCreatingEquipment(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -276,7 +311,13 @@ export function TreatmentForm({
       <div className="space-y-4 border-t pt-4">
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.requiredEquipment")}</Label>
-          <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+          <Popover
+            open={equipmentOpen}
+            onOpenChange={(open) => {
+              setEquipmentOpen(open);
+              if (!open) resetAddEquipmentForm();
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -308,36 +349,89 @@ export function TreatmentForm({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-              <Command>
-                <CommandInput placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")} />
-                <CommandList>
-                  <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
-                  <CommandGroup>
-                    {(equipmentList ?? []).map((eq) => {
-                      const isSelected = selectedEquipmentIds.includes(eq._id as Id<"gabinetEquipment">);
-                      return (
-                        <CommandItem
-                          key={eq._id}
-                          value={eq.name}
-                          onSelect={() => toggleEquipment(eq._id as Id<"gabinetEquipment">)}
-                        >
-                          <div
-                            className={cn(
-                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                              isSelected
-                                ? "bg-primary text-primary-foreground"
-                                : "opacity-50 [&_svg]:invisible"
-                            )}
+              {addingNewEquipment ? (
+                <div className="p-2 space-y-2">
+                  <Label className="text-xs">
+                    {t("gabinet.equipment.addEquipment")}
+                  </Label>
+                  <Input
+                    autoFocus
+                    value={newEquipmentName}
+                    onChange={(e) => setNewEquipmentName(e.target.value)}
+                    placeholder={t("gabinet.equipment.name")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleCreateEquipment();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        resetAddEquipmentForm();
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={resetAddEquipmentForm}
+                      disabled={creatingEquipment}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void handleCreateEquipment()}
+                      disabled={!newEquipmentName.trim() || creatingEquipment}
+                    >
+                      {creatingEquipment ? t("common.saving") : t("common.create")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Command>
+                  <CommandInput placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")} />
+                  <CommandList>
+                    <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
+                    <CommandGroup>
+                      {(equipmentList ?? []).map((eq) => {
+                        const isSelected = selectedEquipmentIds.includes(eq._id as Id<"gabinetEquipment">);
+                        return (
+                          <CommandItem
+                            key={eq._id}
+                            value={eq.name}
+                            onSelect={() => toggleEquipment(eq._id as Id<"gabinetEquipment">)}
                           >
-                            <Check className="h-4 w-4" />
-                          </div>
-                          <span>{eq.name}</span>
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+                            <div
+                              className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "opacity-50 [&_svg]:invisible"
+                              )}
+                            >
+                              <Check className="h-4 w-4" />
+                            </div>
+                            <span>{eq.name}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup>
+                      <CommandItem
+                        value="__add_new_equipment__"
+                        onSelect={() => setAddingNewEquipment(true)}
+                        className="text-primary"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        <span>{t("gabinet.equipment.addEquipment")}</span>
+                      </CommandItem>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              )}
             </PopoverContent>
           </Popover>
           {hasLegacyEquipment && (

@@ -240,10 +240,12 @@ export function TreatmentForm({
             type="number"
             step="0.01"
             min="0"
+            inputMode="decimal"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="0.00"
             required
+            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
         <div className="space-y-1.5">

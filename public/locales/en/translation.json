@@ -2025,7 +2025,10 @@
       "patient": "Client",
       "lastAppointments": "Client's recent appointments",
       "totalAppointments": "Total Appointments",
-      "added": "Added"
+      "added": "Added",
+      "upcomingAppointments": "Upcoming appointments",
+      "noUpcomingAppointments": "No upcoming appointments",
+      "noMedicalInfo": "No medical information"
     },
     "treatments": {
       "title": "Treatments",

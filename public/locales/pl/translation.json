@@ -2033,7 +2033,10 @@
       "patient": "Klient",
       "lastAppointments": "Ostatnie wizyty klienta",
       "totalAppointments": "Łącznie wizyt",
-      "added": "Dodano"
+      "added": "Dodano",
+      "upcomingAppointments": "Nadchodzące wizyty",
+      "noUpcomingAppointments": "Brak nadchodzących wizyt",
+      "noMedicalInfo": "Brak informacji medycznych"
     },
     "treatments": {
       "title": "Zabiegi",

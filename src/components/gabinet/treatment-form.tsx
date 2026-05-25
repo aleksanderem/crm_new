@@ -76,7 +76,7 @@ export function TreatmentForm({
   const [duration, setDuration] = useState(String(initialData?.duration ?? ""));
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
-  const [taxRate, setTaxRate] = useState(String(initialData?.taxRate ?? "23"));
+  const [taxRate, setTaxRate] = useState(String(initialData?.taxRate ?? "8"));
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Id<"gabinetEquipment">[]>(
     initialData?.requiredEquipmentIds ?? []
   );
@@ -192,7 +192,7 @@ export function TreatmentForm({
             max="100"
             value={taxRate}
             onChange={(e) => setTaxRate(e.target.value)}
-            placeholder="23"
+            placeholder="8"
           />
         </div>
         <div className="space-y-1.5">

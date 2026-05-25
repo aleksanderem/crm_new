@@ -2549,6 +2549,9 @@
       "statusChanged": "Appointment status changed",
       "addPhone": "Add phone number",
       "phoneAdded": "Phone number added",
+      "edit": "Edit",
+      "close": "Close",
+      "closeAndSettle": "Close and settle",
       "history": {
         "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
         "metadata": {

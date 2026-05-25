@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -111,6 +111,7 @@ export function AppointmentPreviewContent({
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const getFullDetail = useAction(api.gabinet.appointments.getFullDetail);
   const updateAppointment = useAction(api.gabinet.appointments.update);
@@ -455,6 +456,19 @@ export function AppointmentPreviewContent({
     }
   };
 
+  const handleCloseAndSettle = async () => {
+    if (saving) return;
+    if (dirty) {
+      await handleSave();
+    } else {
+      onClose();
+    }
+    void navigate({
+      to: "/dashboard/gabinet/appointments/$appointmentId",
+      params: { appointmentId: appointment._id },
+    });
+  };
+
   const formatDateLabel = (d: string) =>
     new Date(d + "T00:00:00").toLocaleDateString(i18n.language, {
       weekday: "short",
@@ -465,9 +479,9 @@ export function AppointmentPreviewContent({
 
   return (
     <>
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Header — patient + treatment */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {patient?._id ? (
@@ -661,7 +675,7 @@ export function AppointmentPreviewContent({
       <Separator />
 
       {/* Edit fields */}
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         <div className="space-y-1">
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {t("gabinet.appointmentDetail.changeStatus")}
@@ -773,40 +787,46 @@ export function AppointmentPreviewContent({
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
-            className="min-h-[60px] text-sm"
+            className="min-h-[80px] text-sm"
           />
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+        >
           <Link
             to="/dashboard/gabinet/appointments/$appointmentId"
             params={{ appointmentId: appointment._id }}
           >
             <ExternalLink className="mr-1 size-3" />
-            {t("gabinet.appointments.openFullView", "Otwórz pełny widok")}
+            {t("gabinet.appointmentDetail.edit", "Edytuj")}
           </Link>
         </Button>
-        <div className="flex gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={onClose}
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 text-xs"
-            disabled={!dirty || saving}
-            onClick={handleSave}
-          >
-            {saving ? t("common.saving") : t("common.save")}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onClose}
+          disabled={saving}
+        >
+          {t("gabinet.appointmentDetail.close", "Zamknij")}
+        </Button>
+        <Button
+          size="sm"
+          className="h-8 text-xs"
+          onClick={handleCloseAndSettle}
+          disabled={saving}
+        >
+          {saving
+            ? t("common.saving")
+            : t("gabinet.appointmentDetail.closeAndSettle", "Zamknij i rozlicz")}
+        </Button>
       </div>
     </div>
 

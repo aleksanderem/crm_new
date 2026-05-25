@@ -3,23 +3,28 @@ export type Country = {
   iso: string;
   flag: string;
   name: string;
+  // Optional digit-grouping pattern applied to the national part (digits after
+  // the dial code) when formatting for display. Each entry is the size of one
+  // group; the last group absorbs any remaining digits. When omitted, the
+  // default 3-3-3-... grouping is used.
+  grouping?: number[];
 };
 
 export const COUNTRIES: Country[] = [
   { code: "+48", iso: "PL", flag: "🇵🇱", name: "Polska" },
   { code: "+49", iso: "DE", flag: "🇩🇪", name: "Niemcy" },
-  { code: "+44", iso: "GB", flag: "🇬🇧", name: "Wielka Brytania" },
-  { code: "+1", iso: "US", flag: "🇺🇸", name: "USA / Kanada" },
-  { code: "+33", iso: "FR", flag: "🇫🇷", name: "Francja" },
-  { code: "+39", iso: "IT", flag: "🇮🇹", name: "Włochy" },
+  { code: "+44", iso: "GB", flag: "🇬🇧", name: "Wielka Brytania", grouping: [4, 3, 3] },
+  { code: "+1", iso: "US", flag: "🇺🇸", name: "USA / Kanada", grouping: [3, 3, 4] },
+  { code: "+33", iso: "FR", flag: "🇫🇷", name: "Francja", grouping: [1, 2, 2, 2, 2] },
+  { code: "+39", iso: "IT", flag: "🇮🇹", name: "Włochy", grouping: [3, 3, 4] },
   { code: "+34", iso: "ES", flag: "🇪🇸", name: "Hiszpania" },
-  { code: "+31", iso: "NL", flag: "🇳🇱", name: "Holandia" },
-  { code: "+32", iso: "BE", flag: "🇧🇪", name: "Belgia" },
+  { code: "+31", iso: "NL", flag: "🇳🇱", name: "Holandia", grouping: [2, 4, 4] },
+  { code: "+32", iso: "BE", flag: "🇧🇪", name: "Belgia", grouping: [3, 2, 2, 2] },
   { code: "+43", iso: "AT", flag: "🇦🇹", name: "Austria" },
-  { code: "+41", iso: "CH", flag: "🇨🇭", name: "Szwajcaria" },
+  { code: "+41", iso: "CH", flag: "🇨🇭", name: "Szwajcaria", grouping: [2, 3, 2, 2] },
   { code: "+420", iso: "CZ", flag: "🇨🇿", name: "Czechy" },
   { code: "+421", iso: "SK", flag: "🇸🇰", name: "Słowacja" },
-  { code: "+380", iso: "UA", flag: "🇺🇦", name: "Ukraina" },
+  { code: "+380", iso: "UA", flag: "🇺🇦", name: "Ukraina", grouping: [2, 3, 2, 2] },
   { code: "+375", iso: "BY", flag: "🇧🇾", name: "Białoruś" },
   { code: "+370", iso: "LT", flag: "🇱🇹", name: "Litwa" },
   { code: "+371", iso: "LV", flag: "🇱🇻", name: "Łotwa" },
@@ -36,8 +41,8 @@ export const COUNTRIES: Country[] = [
   { code: "+359", iso: "BG", flag: "🇧🇬", name: "Bułgaria" },
   { code: "+385", iso: "HR", flag: "🇭🇷", name: "Chorwacja" },
   { code: "+386", iso: "SI", flag: "🇸🇮", name: "Słowenia" },
-  { code: "+7", iso: "RU", flag: "🇷🇺", name: "Rosja / Kazachstan" },
-  { code: "+90", iso: "TR", flag: "🇹🇷", name: "Turcja" },
+  { code: "+7", iso: "RU", flag: "🇷🇺", name: "Rosja / Kazachstan", grouping: [3, 3, 2, 2] },
+  { code: "+90", iso: "TR", flag: "🇹🇷", name: "Turcja", grouping: [3, 3, 4] },
 ];
 
 export const DEFAULT_DIAL_CODE = "+48";
@@ -69,8 +74,36 @@ function groupDigitsByThree(digits: string): string {
   return parts.join(" ");
 }
 
-// Formats a phone number for display: inserts a space every 3 digits after
-// the international dial code, e.g. "+48793904950" → "+48 793 904 950".
+// Applies a country-specific grouping pattern. Each pattern entry is a group
+// size; the final group absorbs any remaining digits. If the digit count is
+// far off the expected total (more than one digit short of the first group
+// or wildly longer than the pattern sum), we fall back to default 3-3-3
+// grouping so malformed numbers are not split into misleading chunks.
+function applyGrouping(digits: string, pattern: number[]): string {
+  if (!digits || pattern.length === 0) return groupDigitsByThree(digits);
+  const expected = pattern.reduce((a, b) => a + b, 0);
+  // Only honor the pattern when the digit count is plausible for it.
+  // Allow up to one trailing digit of slack so partial inputs still group nicely.
+  if (digits.length < pattern[0] || digits.length > expected + 1) {
+    return groupDigitsByThree(digits);
+  }
+  const parts: string[] = [];
+  let i = 0;
+  for (let p = 0; p < pattern.length - 1; p++) {
+    if (i >= digits.length) break;
+    const size = pattern[p];
+    parts.push(digits.slice(i, i + size));
+    i += size;
+  }
+  if (i < digits.length) parts.push(digits.slice(i));
+  return parts.join(" ");
+}
+
+// Formats a phone number for display. By default, digits after the
+// international dial code are grouped in chunks of 3 (e.g. "+48793904950" →
+// "+48 793 904 950"). When the detected country defines a `grouping` pattern
+// in COUNTRIES, that pattern is used instead — e.g. "+15551234567" →
+// "+1 555 123 4567" for the US convention.
 // Falls back to the original input when no dial code is detected and no
 // digits are present.
 export function formatPhoneNumber(value: string | null | undefined): string {
@@ -80,7 +113,10 @@ export function formatPhoneNumber(value: string | null | undefined): string {
   const detected = detectDialCode(trimmed);
   if (detected) {
     const digits = detected.rest.replace(/\D/g, "");
-    const grouped = groupDigitsByThree(digits);
+    const country = COUNTRIES.find((c) => c.code === detected.dialCode);
+    const grouped = country?.grouping
+      ? applyGrouping(digits, country.grouping)
+      : groupDigitsByThree(digits);
     return grouped ? `${detected.dialCode} ${grouped}` : detected.dialCode;
   }
   const digits = trimmed.replace(/\D/g, "");

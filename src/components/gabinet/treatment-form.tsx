@@ -185,15 +185,21 @@ export function TreatmentForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.taxRate")}</Label>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            max="100"
-            value={taxRate}
-            onChange={(e) => setTaxRate(e.target.value)}
-            placeholder="8"
-          />
+          <div className="relative">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={taxRate}
+              onChange={(e) => setTaxRate(e.target.value)}
+              placeholder="8"
+              className="pr-8"
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+              %
+            </span>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.category")}</Label>

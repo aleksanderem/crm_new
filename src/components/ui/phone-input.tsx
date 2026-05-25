@@ -129,7 +129,7 @@ export function PhoneInput({
   return (
     <div className={`flex gap-2 ${className ?? ""}`}>
       <Select value={isKnown ? dialCode : DEFAULT_DIAL_CODE} onValueChange={handleDialChange}>
-        <SelectTrigger className="w-[110px] shrink-0" size="sm">
+        <SelectTrigger className="w-[90px] shrink-0" size="sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

@@ -27,6 +27,7 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { formatPhoneNumber } from "@/lib/phone";
 
 type ContactNudgeFilter = "unlinked-company";
 
@@ -254,7 +255,7 @@ function ContactsIndex() {
     {
       id: "phone",
       label: t('common.phone'),
-      render: (item) => item.phone ?? "—",
+      render: (item) => item.phone ? formatPhoneNumber(item.phone) : "—",
     },
     {
       id: "title",

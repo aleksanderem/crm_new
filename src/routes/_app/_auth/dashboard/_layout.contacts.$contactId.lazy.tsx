@@ -18,6 +18,7 @@ import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useSupabaseCustomFieldDefinitions, useSupabaseCustomFieldValues } from "@/hooks/use-supabase-custom-fields";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatPhoneNumber } from "@/lib/phone";
 import { SidePanel } from "@/components/crm/side-panel";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
@@ -684,7 +685,7 @@ function ContactDetail() {
   const allFields = contact
     ? [
         { label: t('detail.fields.email'), value: contact.email, fieldKey: "email" },
-        { label: t('detail.fields.phone'), value: contact.phone, fieldKey: "phone" },
+        { label: t('detail.fields.phone'), value: contact.phone ? formatPhoneNumber(contact.phone) : undefined, fieldKey: "phone" },
         { label: t('detail.fields.source'), value: contactAny?.source, fieldKey: "source" },
         { label: t('detail.fields.jobTitle'), value: contact.title, fieldKey: "title" },
         { label: t('detail.fields.tags'), value: contactAny?.tags?.join(", "), fieldKey: "tags" },

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { MappedCompany } from "@/lib/supabase/mappers/companies";
 import { PlateText } from "@/components/plate-text";
+import { formatPhoneNumber } from "@/lib/phone";
 
 // Studio statistics cards
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -194,7 +195,7 @@ export function CompanyOverviewTab({
           <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <InfoField label={t("detail.fields.industry", "Branża")} value={company.industry} icon={<Building2 className="h-3.5 w-3.5" />} />
             <InfoField label={t("detail.fields.size", "Wielkość")} value={company.size} icon={<UsersIcon className="h-3.5 w-3.5" />} />
-            <InfoField label={t("detail.fields.phone", "Telefon")} value={company.phone} icon={<Phone className="h-3.5 w-3.5" />} />
+            <InfoField label={t("detail.fields.phone", "Telefon")} value={company.phone ? formatPhoneNumber(company.phone) : undefined} icon={<Phone className="h-3.5 w-3.5" />} />
             <InfoField
               label={t("detail.fields.website", "Strona WWW")}
               value={company.website}

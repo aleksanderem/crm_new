@@ -18,6 +18,7 @@ import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-sch
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
 import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatPhoneNumber } from "@/lib/phone";
 import { SidePanel } from "@/components/crm/side-panel";
 import { CompanyForm } from "@/components/forms/company-form";
 import { ContactForm } from "@/components/forms/contact-form";
@@ -658,7 +659,7 @@ function CompanyDetail() {
       ) : "—",
       fieldKey: "domain",
     },
-    { label: t('detail.fields.phone'), value: company.phone ?? "—", fieldKey: "phone" },
+    { label: t('detail.fields.phone'), value: company.phone ? formatPhoneNumber(company.phone) : "—", fieldKey: "phone" },
     { label: t('detail.fields.industry'), value: company.industry ?? "—", fieldKey: "industry" },
     { label: t('detail.fields.size'), value: company.size ?? "—", fieldKey: "size" },
     {

@@ -14,6 +14,7 @@ import { PlateText } from "@/components/plate-text";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { companySizeOptions } from "@/lib/options";
+import { formatPhoneNumber } from "@/lib/phone";
 import { Plus, Trash2, Upload, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -221,7 +222,7 @@ function CompaniesIndex() {
     {
       id: "phone",
       label: t('common.phone'),
-      render: (item) => item.phone ?? "—",
+      render: (item) => item.phone ? formatPhoneNumber(item.phone) : "—",
     },
     {
       id: "industry",

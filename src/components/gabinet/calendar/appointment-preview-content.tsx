@@ -8,6 +8,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatPhoneNumber } from "@/lib/phone";
 import {
   extractActionErrorMessage,
   formatAppointmentError,
@@ -575,7 +576,7 @@ export function AppointmentPreviewContent({
                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <Phone className="size-3" />
-                {patient.phone}
+                {formatPhoneNumber(patient.phone)}
               </a>
             ) : isEditingPhone ? (
               <div className="inline-flex items-center gap-1 rounded-md border px-1 py-0.5">

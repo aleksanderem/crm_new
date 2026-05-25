@@ -20,6 +20,7 @@ import {
   groupSchedulesIntoPeriods,
 } from "@/components/gabinet/flexible-schedule-editor";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import { formatPhoneNumber } from "@/lib/phone";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -1109,7 +1110,7 @@ function PatientsTabContent({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {pat.email}
-                  {pat.phone && ` · ${pat.phone}`}
+                  {pat.phone && ` · ${formatPhoneNumber(pat.phone)}`}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1894,7 +1895,7 @@ function DetailedDataTab({
               {readOnlyField(t("gabinet.employees.lastName"), employee.lastName)}
               {readOnlyField(
                 t("gabinet.employees.detailedData.phone"),
-                employee.phone,
+                employee.phone ? formatPhoneNumber(employee.phone) : undefined,
                 <Phone className="h-3.5 w-3.5" />,
               )}
               {readOnlyField(

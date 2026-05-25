@@ -44,6 +44,7 @@ import { AlertTriangle, CalendarSearch } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatPhoneNumber } from "@/lib/phone";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -576,7 +577,7 @@ export function AppointmentForm({
                         </span>
                         {p.phone && (
                           <span className="text-muted-foreground ml-auto text-xs">
-                            {p.phone}
+                            {formatPhoneNumber(p.phone)}
                           </span>
                         )}
                       </CommandItem>
@@ -615,7 +616,7 @@ export function AppointmentForm({
                             </Badge>
                             {(c.phone || c.email) && (
                               <span className="text-muted-foreground ml-auto text-xs">
-                                {c.phone || c.email}
+                                {c.phone ? formatPhoneNumber(c.phone) : c.email}
                               </span>
                             )}
                           </CommandItem>

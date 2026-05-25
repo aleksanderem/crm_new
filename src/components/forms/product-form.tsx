@@ -115,14 +115,20 @@ export function ProductForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("products.form.taxRate")}</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            value={taxRate}
-            onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-          />
+          <div className="relative">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={taxRate}
+              onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+              className="pr-8"
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+              %
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />

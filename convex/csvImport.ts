@@ -224,6 +224,7 @@ export const batchCreateProducts = action({
         sku: v.string(),
         unitPrice: v.number(),
         taxRate: v.optional(v.number()),
+        taxExempt: v.optional(v.boolean()),
         isActive: v.optional(v.boolean()),
         description: v.optional(v.string()),
       })
@@ -255,7 +256,8 @@ export const batchCreateProducts = action({
           name: record.name.trim(),
           sku: record.sku.trim(),
           unitPrice: record.unitPrice,
-          taxRate: record.taxRate ?? 0,
+          taxRate: record.taxExempt ? null : record.taxRate ?? null,
+          taxExempt: record.taxExempt ?? null,
           isActive: record.isActive ?? true,
           description: record.description?.trim() ?? null,
           createdBy: String(authResult.userId),

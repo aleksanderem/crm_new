@@ -2063,6 +2063,9 @@
       "requiresApproval": "Wymaga zatwierdzenia",
       "treatmentCount": "Liczba zabiegów",
       "treatmentCountHint": "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.",
+      "package": "Pakiet",
+      "isPackageTooltip": "Pakiet — {{count}} zabiegów w cyklu",
+      "isRegularTooltip": "Zwykły zabieg",
       "views": {
         "all": "Wszystkie zabiegi",
         "active": "Aktywne",

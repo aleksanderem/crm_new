@@ -7,6 +7,7 @@ import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetAppointmentsByPatient } from "@/hooks/use-supabase-gabinet-appointments";
+import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -218,6 +219,63 @@ function PatientDetail() {
   };
 
   // --- Tabs ---
+  const today = new Date().toISOString().split("T")[0];
+  const upcomingAppointments = (patientAppointments ?? [])
+    .filter(
+      (apt) =>
+        apt.date >= today &&
+        apt.status !== "cancelled" &&
+        apt.status !== "no_show",
+    )
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
+    .slice(0, 3);
+  const pastAppointments = (patientAppointments ?? [])
+    .filter((apt) => apt.date < today)
+    .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))
+    .slice(0, 3);
+  const hasMedicalInfo = Boolean(
+    patient?.allergies ||
+      patient?.bloodType ||
+      patient?.emergencyContactName ||
+      patient?.emergencyContactPhone,
+  );
+
+  const renderAppointmentRow = (apt: MappedGabinetAppointment) => {
+    const treatmentName = treatmentsData?.find(
+      (tr) => tr._id === apt.treatmentId,
+    )?.name;
+    return (
+      <div
+        key={apt._id}
+        className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() =>
+          navigate({
+            to: "/dashboard/gabinet/appointments/$appointmentId",
+            params: { appointmentId: apt._id },
+          })
+        }
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+          <Calendar className="h-4 w-4 text-primary" variant="stroke" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">
+            {treatmentName ?? t("common.unknown")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {apt.date} &middot; {apt.startTime}–{apt.endTime}
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className={appointmentStatusBadgeClass(apt.status)}
+        >
+          {t(`gabinet.appointments.statuses.${apt.status}`)}
+        </Badge>
+      </div>
+    );
+  };
+
   const tabs = [
     {
       label: t("gabinet.patients.tabs.overview"),
@@ -283,6 +341,106 @@ function PatientDetail() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Calendar
+                  className="h-4 w-4 text-muted-foreground"
+                  variant="stroke"
+                />
+                {t("gabinet.patients.upcomingAppointments")}
+              </h3>
+              {upcomingAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("gabinet.patients.noUpcomingAppointments")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingAppointments.map(renderAppointmentRow)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Calendar
+                  className="h-4 w-4 text-muted-foreground"
+                  variant="stroke"
+                />
+                {t("gabinet.patients.lastAppointments")}
+              </h3>
+              {pastAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("gabinet.patients.noHistoryDesc")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pastAppointments.map(renderAppointmentRow)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Heart
+                  className="h-4 w-4 text-muted-foreground"
+                  variant="stroke"
+                />
+                {t("gabinet.patients.medicalInfo")}
+              </h3>
+              {!hasMedicalInfo ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("gabinet.patients.noMedicalInfo")}
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {patient?.allergies && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.patients.allergies")}
+                      </p>
+                      <p className="text-sm font-medium">{patient.allergies}</p>
+                    </div>
+                  )}
+                  {patient?.bloodType && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.patients.bloodType")}
+                      </p>
+                      <p className="text-sm font-medium">
+                        <Badge variant="outline" className="text-[10px]">
+                          {patient.bloodType}
+                        </Badge>
+                      </p>
+                    </div>
+                  )}
+                  {(patient?.emergencyContactName ||
+                    patient?.emergencyContactPhone) && (
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.patients.emergencyContact")}
+                      </p>
+                      <p className="text-sm font-medium">
+                        {[
+                          patient.emergencyContactName,
+                          patient.emergencyContactPhone
+                            ? formatPhoneNumber(patient.emergencyContactPhone)
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       ),
     },

@@ -95,6 +95,9 @@ export function createGabinetTables({
     price: v.number(),
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
+    // True when the treatment is VAT-exempt ("zwolniony" / ZW). When set, the
+    // numeric taxRate is ignored. Replaces a legacy -1 sentinel in taxRate.
+    taxExempt: v.optional(v.boolean()),
     requiredEquipment: v.optional(v.array(v.string())),
     requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
     contraindications: v.optional(v.string()),

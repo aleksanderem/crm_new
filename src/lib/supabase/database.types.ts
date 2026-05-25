@@ -9,6 +9,7 @@
  *   • 00002_rls_policies.sql
  *   • 00003_add_selected_id_to_saved_views.sql
  *   • 00004_document_components.sql
+ *   • 00005_gabinet_treatment_tax_exempt.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -2634,6 +2635,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          tax_exempt: boolean | null;
         };
         Insert: {
           id?: string;
@@ -2665,6 +2667,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          tax_exempt?: boolean | null;
         };
         Update: {
           id?: string;
@@ -2696,6 +2699,7 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          tax_exempt?: boolean | null;
         };
       };
       gabinet_treatment_variants: {

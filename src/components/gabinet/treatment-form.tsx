@@ -38,6 +38,7 @@ export interface TreatmentFormData {
   price: number;
   currency?: string;
   taxRate?: number;
+  taxExempt?: boolean;
   requiredEquipment?: string[];
   requiredEquipmentIds?: Id<"gabinetEquipment">[];
   contraindications?: string;
@@ -69,9 +70,9 @@ const COLOR_OPTIONS = [
   { value: "#6b7280", label: "Gray" },
 ];
 
-// VAT-exempt ("zwolniony") is stored as -1 since the DB column is numeric.
-export const TAX_RATE_ZW_SENTINEL = -1;
-
+// VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
+// treatment. The "zw" option is selected when the boolean is true; otherwise
+// the numeric percentage is used.
 const TAX_RATE_OPTIONS = [
   { value: "zw", label: "ZW" },
   { value: "0", label: "0%" },
@@ -80,16 +81,14 @@ const TAX_RATE_OPTIONS = [
   { value: "23", label: "23%" },
 ];
 
-function taxRateToFormValue(value: number | undefined): string {
-  if (value === TAX_RATE_ZW_SENTINEL) return "zw";
-  if (value == null) return "8";
-  return String(value);
-}
-
-function formValueToTaxRate(value: string): number | undefined {
-  if (value === "zw") return TAX_RATE_ZW_SENTINEL;
-  const num = parseFloat(value);
-  return Number.isFinite(num) ? num : undefined;
+function initialTaxRateFormValue(
+  taxRate: number | undefined,
+  taxExempt: boolean | undefined,
+): string {
+  if (taxExempt) return "zw";
+  if (taxRate === -1) return "zw"; // legacy sentinel still in flight
+  if (taxRate == null) return "8";
+  return String(taxRate);
 }
 
 export function TreatmentForm({
@@ -107,7 +106,9 @@ export function TreatmentForm({
   const [duration, setDuration] = useState(String(initialData?.duration ?? ""));
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
-  const [taxRate, setTaxRate] = useState(taxRateToFormValue(initialData?.taxRate));
+  const [taxRate, setTaxRate] = useState(
+    initialTaxRateFormValue(initialData?.taxRate, initialData?.taxExempt),
+  );
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Id<"gabinetEquipment">[]>(
     initialData?.requiredEquipmentIds ?? []
   );
@@ -180,13 +181,21 @@ export function TreatmentForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const isExempt = taxRate === "zw";
+    const numericTaxRate = !isExempt && taxRate !== ""
+      ? Number.isFinite(parseFloat(taxRate))
+        ? parseFloat(taxRate)
+        : undefined
+      : undefined;
+
     onSubmit({
       name,
       description: description || undefined,
       duration: parseInt(duration) || 30,
       price: parseFloat(price) || 0,
       currency: currency || undefined,
-      taxRate: formValueToTaxRate(taxRate),
+      taxRate: numericTaxRate,
+      taxExempt: isExempt ? true : false,
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       contraindications: contraindications || undefined,
       preparationInstructions: preparationInstructions || undefined,

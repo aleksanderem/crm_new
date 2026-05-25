@@ -95,6 +95,7 @@ export const create = action({
     price: v.number(),
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
+    taxExempt: v.optional(v.boolean()),
     requiredEquipment: v.optional(v.array(v.string())),
     requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
@@ -132,7 +133,8 @@ export const create = action({
       duration: args.duration,
       price: args.price,
       currency: args.currency ?? null,
-      taxRate: args.taxRate ?? null,
+      taxRate: args.taxExempt ? null : args.taxRate ?? null,
+      taxExempt: args.taxExempt ?? null,
       requiredEquipment: args.requiredEquipment ?? null,
       requiredEquipmentIds: args.requiredEquipmentIds ?? null,
       contraindications: args.contraindications ?? null,
@@ -197,6 +199,7 @@ export const update = action({
     price: v.optional(v.number()),
     currency: v.optional(v.string()),
     taxRate: v.optional(v.number()),
+    taxExempt: v.optional(v.boolean()),
     requiredEquipment: v.optional(v.array(v.string())),
     requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
@@ -242,7 +245,13 @@ export const update = action({
 
     // --- Build updates and PATCH to Supabase ---
     const { organizationId, treatmentId, ...updates } = args;
-    await db.patch("gabinetTreatments", treatmentId, { ...updates, updatedAt: Date.now() });
+    // ZW (VAT-exempt) is now tracked via the dedicated taxExempt flag; ensure
+    // taxRate is cleared whenever the caller marks the treatment exempt.
+    const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+    if (updates.taxExempt === true) {
+      patchPayload.taxRate = null;
+    }
+    await db.patch("gabinetTreatments", treatmentId, patchPayload);
 
     // --- Delegate Convex-only side effects ---
     try {

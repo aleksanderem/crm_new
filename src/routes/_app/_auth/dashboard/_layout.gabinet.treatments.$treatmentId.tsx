@@ -10,7 +10,7 @@ import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-em
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
-import { TreatmentForm, TAX_RATE_ZW_SENTINEL } from "@/components/gabinet/treatment-form";
+import { TreatmentForm } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { plateJsonToText } from "@/components/plate-text";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
@@ -275,9 +275,10 @@ function TreatmentDetail() {
       { label: t("gabinet.treatments.duration"), value: `${treatment.duration} min`, fieldKey: "duration" },
       { label: t("gabinet.treatments.category"), value: categoryName ?? "—", fieldKey: "category" },
     ];
-    if (treatment.taxRate != null) {
-      const taxLabel = treatment.taxRate === TAX_RATE_ZW_SENTINEL ? "ZW" : `${treatment.taxRate}%`;
-      fields.push({ label: t("gabinet.treatments.taxRate"), value: taxLabel, fieldKey: "taxRate" });
+    if (treatment.taxExempt || treatment.taxRate === -1) {
+      fields.push({ label: t("gabinet.treatments.taxRate"), value: "ZW", fieldKey: "taxRate" });
+    } else if (treatment.taxRate != null) {
+      fields.push({ label: t("gabinet.treatments.taxRate"), value: `${treatment.taxRate}%`, fieldKey: "taxRate" });
     }
     if (treatment.requiredEquipmentIds?.length || treatment.requiredEquipment?.length) {
       const equipmentNames = treatment.requiredEquipmentIds?.length
@@ -1210,6 +1211,7 @@ function TreatmentDetail() {
               price: treatment.price,
               currency: treatment.currency ?? undefined,
               taxRate: treatment.taxRate ?? undefined,
+              taxExempt: treatment.taxExempt ?? undefined,
               requiredEquipment: treatment.requiredEquipment ?? undefined,
               requiredEquipmentIds: (treatment.requiredEquipmentIds as Id<"gabinetEquipment">[] | undefined) ?? undefined,
               contraindications: treatment.contraindications ?? undefined,

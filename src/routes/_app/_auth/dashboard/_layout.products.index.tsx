@@ -17,6 +17,13 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -50,6 +57,26 @@ export const Route = createFileRoute(
 });
 
 type Product = MappedProduct;
+
+// VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
+// product. The "zw" option is selected when the boolean is true; otherwise the
+// numeric percentage is used.
+const TAX_RATE_OPTIONS = [
+  { value: "zw", label: "ZW" },
+  { value: "0", label: "0%" },
+  { value: "5", label: "5%" },
+  { value: "8", label: "8%" },
+  { value: "23", label: "23%" },
+];
+
+function initialTaxRateFormValue(
+  taxRate: number | undefined | null,
+  taxExempt: boolean | undefined | null,
+): string {
+  if (taxExempt) return "zw";
+  if (taxRate == null) return "23";
+  return String(taxRate);
+}
 
 function generateSku(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -122,7 +149,7 @@ function ProductsPage() {
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
-  const [taxRate, setTaxRate] = useState("0");
+  const [taxRate, setTaxRate] = useState("23");
   const [isActive, setIsActive] = useState(true);
   const [description, setDescription] = useState("");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
@@ -162,7 +189,7 @@ function ProductsPage() {
     setName("");
     setSku(generateSku());
     setUnitPrice("");
-    setTaxRate("0");
+    setTaxRate("23");
     setIsActive(true);
     setDescription("");
     setTagIds([]);
@@ -180,7 +207,7 @@ function ProductsPage() {
     setName(product.name);
     setSku(product.sku);
     setUnitPrice(String(product.unitPrice));
-    setTaxRate(String(product.taxRate));
+    setTaxRate(initialTaxRateFormValue(product.taxRate, product.taxExempt));
     setIsActive(product.isActive);
     setDescription(product.description ?? "");
     setTagIds((product.tagIds as Id<"tagDefinitions">[]) ?? []);
@@ -193,6 +220,12 @@ function ProductsPage() {
   const handleSubmit = async () => {
     if (!name.trim() || !sku.trim() || !unitPrice) return;
     setIsSubmitting(true);
+    const isExempt = taxRate === "zw";
+    const numericTaxRate = !isExempt
+      ? Number.isFinite(parseFloat(taxRate))
+        ? parseFloat(taxRate)
+        : undefined
+      : undefined;
     try {
       if (editingProduct) {
         await updateProduct({
@@ -201,7 +234,8 @@ function ProductsPage() {
           name: name.trim(),
           sku: sku.trim(),
           unitPrice: parseFloat(unitPrice),
-          taxRate: parseFloat(taxRate) || 0,
+          taxRate: numericTaxRate,
+          taxExempt: isExempt,
           description: description.trim() || undefined,
           tagIds,
           categoryId,
@@ -212,7 +246,8 @@ function ProductsPage() {
           name: name.trim(),
           sku: sku.trim(),
           unitPrice: parseFloat(unitPrice),
-          taxRate: parseFloat(taxRate) || 0,
+          taxRate: numericTaxRate,
+          taxExempt: isExempt,
           isActive,
           description: description.trim() || undefined,
           tagIds,
@@ -250,7 +285,11 @@ function ProductsPage() {
     {
       id: "taxRate",
       label: t('products.taxRate'),
-      render: (item) => item.taxRate != null ? `${item.taxRate}%` : "\u2014",
+      render: (item) => {
+        if (item.taxExempt) return "ZW";
+        if (item.taxRate == null) return "\u2014";
+        return `${item.taxRate}%`;
+      },
     },
     {
       id: "isActive",
@@ -412,15 +451,18 @@ function ProductsPage() {
 
             <div className="space-y-1.5">
               <Label>{t('products.taxRate')}</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                placeholder="0"
-              />
+              <Select value={taxRate} onValueChange={setTaxRate}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TAX_RATE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

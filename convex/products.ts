@@ -82,7 +82,8 @@ export const create = action({
     name: v.string(),
     sku: v.string(),
     unitPrice: v.number(),
-    taxRate: v.number(),
+    taxRate: v.optional(v.number()),
+    taxExempt: v.optional(v.boolean()),
     isActive: v.boolean(),
     description: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
@@ -107,7 +108,8 @@ export const create = action({
       name: args.name,
       sku: args.sku,
       unitPrice: args.unitPrice,
-      taxRate: args.taxRate,
+      taxRate: args.taxExempt ? null : args.taxRate ?? null,
+      taxExempt: args.taxExempt ?? null,
       isActive: args.isActive,
       description: args.description ?? null,
       tagIds: args.tagIds ?? null,
@@ -159,6 +161,7 @@ export const update = action({
     sku: v.optional(v.string()),
     unitPrice: v.optional(v.number()),
     taxRate: v.optional(v.number()),
+    taxExempt: v.optional(v.boolean()),
     description: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.string()),
@@ -185,7 +188,11 @@ export const update = action({
     }
 
     const { organizationId, productId, ...updates } = args;
-    await db.patch("products", productId, { ...updates, updatedAt: Date.now() });
+    const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+    if (updates.taxExempt === true) {
+      patchPayload.taxRate = null;
+    }
+    await db.patch("products", productId, patchPayload);
 
     try {
       await ctx.runMutation(internal.products._updateSideEffects, {

@@ -10,6 +10,7 @@
  *   • 00003_add_selected_id_to_saved_views.sql
  *   • 00004_document_components.sql
  *   • 00005_gabinet_treatment_tax_exempt.sql
+ *   • 00006_products_tax_exempt.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -146,7 +147,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   object_relationships: new Set(["id", "organization_id", "source_type", "source_id", "target_type", "target_id", "relationship_type", "created_by", "created_at"]),
   activities: new Set(["id", "organization_id", "entity_type", "entity_id", "action", "description", "metadata", "performed_by", "created_at"]),
   notes: new Set(["id", "organization_id", "entity_type", "entity_id", "content", "created_by", "is_pinned", "parent_note_id", "created_at", "updated_at"]),
-  products: new Set(["id", "organization_id", "name", "sku", "unit_price", "tax_rate", "is_active", "description", "tag_ids", "category_id", "created_by", "created_at", "updated_at"]),
+  products: new Set(["id", "organization_id", "name", "sku", "unit_price", "tax_rate", "is_active", "description", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "tax_exempt"]),
   deal_products: new Set(["id", "organization_id", "deal_id", "product_id", "quantity", "unit_price", "discount", "created_at"]),
   calls: new Set(["id", "organization_id", "outcome", "call_date", "note", "duration", "tag_ids", "category_id", "created_by", "created_at", "updated_at"]),
   lost_reasons: new Set(["id", "organization_id", "label", "order", "is_active", "created_by", "created_at", "updated_at"]),

@@ -5,9 +5,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import type { Id } from "@cvx/_generated/dataModel";
+
+// VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
+// product. The "zw" option is selected when the boolean is true; otherwise the
+// numeric percentage is used. Mirrors the gabinet treatment form.
+const TAX_RATE_OPTIONS = [
+  { value: "zw", label: "ZW" },
+  { value: "0", label: "0%" },
+  { value: "5", label: "5%" },
+  { value: "8", label: "8%" },
+  { value: "23", label: "23%" },
+];
+
+function initialTaxRateFormValue(
+  taxRate: number | undefined,
+  taxExempt: boolean | undefined,
+): string {
+  if (taxExempt) return "zw";
+  if (taxRate == null) return "23";
+  return String(taxRate);
+}
 
 interface TagDef {
   _id: Id<"tagDefinitions">;
@@ -27,7 +54,8 @@ export interface ProductFormData {
   description?: string;
   sku: string;
   unitPrice: number;
-  taxRate: number;
+  taxRate?: number;
+  taxExempt?: boolean;
   isActive: boolean;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
@@ -57,19 +85,28 @@ export function ProductForm({
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [sku, setSku] = useState(initialData?.sku ?? "");
   const [unitPrice, setUnitPrice] = useState(initialData?.unitPrice ?? 0);
-  const [taxRate, setTaxRate] = useState(initialData?.taxRate ?? 23);
+  const [taxRate, setTaxRate] = useState(
+    initialTaxRateFormValue(initialData?.taxRate, initialData?.taxExempt),
+  );
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isExempt = taxRate === "zw";
+    const numericTaxRate = !isExempt
+      ? Number.isFinite(parseFloat(taxRate))
+        ? parseFloat(taxRate)
+        : undefined
+      : undefined;
     onSubmit({
       name,
       description: description || undefined,
       sku,
       unitPrice,
-      taxRate,
+      taxRate: numericTaxRate,
+      taxExempt: isExempt,
       isActive,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
@@ -115,20 +152,18 @@ export function ProductForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("products.form.taxRate")}</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={taxRate}
-              onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-              className="pr-8"
-            />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
-              %
-            </span>
-          </div>
+          <Select value={taxRate} onValueChange={setTaxRate}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TAX_RATE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />

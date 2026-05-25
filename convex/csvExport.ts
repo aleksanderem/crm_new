@@ -123,7 +123,7 @@ export const exportProducts = query({
       name: p.name,
       sku: p.sku,
       unitPrice: p.unitPrice.toString(),
-      taxRate: p.taxRate.toString(),
+      taxRate: p.taxExempt ? "ZW" : p.taxRate != null ? p.taxRate.toString() : "",
       isActive: p.isActive ? "Yes" : "No",
       description: p.description ?? "",
       createdAt: new Date(p.createdAt).toISOString(),

@@ -2053,7 +2053,7 @@
       "durationMinutes": "Czas trwania (minuty)",
       "price": "Cena",
       "currency": "Waluta",
-      "taxRate": "Vat",
+      "taxRate": "Stawka podatku VAT",
       "category": "Kategoria",
       "color": "Kolor",
       "requiredEquipment": "Wymagany sprzęt",

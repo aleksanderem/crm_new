@@ -15,6 +15,12 @@ import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Plus, Pencil, Trash2, Power, X } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
@@ -256,6 +262,36 @@ function TreatmentsIndex() {
           </div>
         ),
         getSortValue: (item) => item.name,
+      },
+      {
+        id: "isPackage",
+        label: t("gabinet.treatments.package", "Pakiet"),
+        sortable: true,
+        render: (item) => {
+          const isPackage = (item.treatmentCount ?? 1) > 1;
+          const tooltipLabel = isPackage
+            ? t("gabinet.treatments.isPackageTooltip", {
+                count: item.treatmentCount ?? 0,
+                defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
+              })
+            : t("gabinet.treatments.isRegularTooltip", "Zwykły zabieg");
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      isPackage ? "bg-violet-500" : "bg-slate-300"
+                    }`}
+                    aria-label={tooltipLabel}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>{tooltipLabel}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        getSortValue: (item) => ((item.treatmentCount ?? 1) > 1 ? 1 : 0),
       },
       {
         id: "category",

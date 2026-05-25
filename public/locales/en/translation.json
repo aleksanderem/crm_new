@@ -2055,6 +2055,9 @@
       "requiresApproval": "Requires Approval",
       "treatmentCount": "Sessions per course",
       "treatmentCountHint": "Number of sessions in a course (e.g. 20). Auto-creates a package on first booking.",
+      "package": "Package",
+      "isPackageTooltip": "Package — {{count}} sessions in a course",
+      "isRegularTooltip": "Regular treatment",
       "views": {
         "all": "All Treatments",
         "active": "Active",

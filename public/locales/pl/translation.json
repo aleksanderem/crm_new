@@ -2056,7 +2056,6 @@
       "taxRate": "Vat",
       "category": "Kategoria",
       "color": "Kolor",
-      "sortOrder": "Kolejność",
       "requiredEquipment": "Wymagany sprzęt",
       "contraindications": "Przeciwwskazania",
       "preparationInstructions": "Instrukcje przygotowania",

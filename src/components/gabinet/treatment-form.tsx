@@ -43,7 +43,6 @@ export interface TreatmentFormData {
   aftercareInstructions?: string;
   requiresApproval?: boolean;
   color?: string;
-  sortOrder?: number;
   treatmentCount?: number;
 }
 
@@ -120,7 +119,6 @@ export function TreatmentForm({
   );
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const [color, setColor] = useState(initialData?.color ?? "");
-  const [sortOrder, setSortOrder] = useState(String(initialData?.sortOrder ?? "0"));
   const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
 
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
@@ -160,7 +158,6 @@ export function TreatmentForm({
       aftercareInstructions: aftercareInstructions || undefined,
       requiresApproval: requiresApproval || undefined,
       color: color || undefined,
-      sortOrder: parseInt(sortOrder) || undefined,
       treatmentCount: parseInt(treatmentCount) > 1 ? parseInt(treatmentCount) : undefined,
     });
   };
@@ -231,15 +228,6 @@ export function TreatmentForm({
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.category")}</Label>
           {categorySelector}
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.sortOrder")}</Label>
-          <Input
-            type="number"
-            min="0"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-          />
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}</Label>

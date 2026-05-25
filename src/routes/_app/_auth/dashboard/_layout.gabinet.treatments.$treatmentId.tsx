@@ -1217,7 +1217,6 @@ function TreatmentDetail() {
               aftercareInstructions: treatment.aftercareInstructions ?? undefined,
               requiresApproval: treatment.requiresApproval ?? undefined,
               color: treatment.color ?? undefined,
-              sortOrder: treatment.sortOrder ?? undefined,
               treatmentCount: treatment.treatmentCount ?? undefined,
             }}
             onSubmit={handleEditSubmit}

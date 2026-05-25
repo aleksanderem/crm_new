@@ -16,6 +16,7 @@ export interface MappedGabinetTreatment {
   price: number;
   currency?: string;
   taxRate?: number;
+  taxExempt?: boolean;
   requiredEquipment?: string[];
   requiredEquipmentIds?: string[];
   contraindications?: string;

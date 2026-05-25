@@ -136,6 +136,8 @@ export function CsvImportDialog({
 
       if (crmField === "tags") {
         mapped[crmField] = value.split(";").map((t: string) => t.trim()).filter(Boolean);
+      } else if (crmField === "taxRate" && value.trim().toUpperCase() === "ZW") {
+        mapped.taxExempt = true;
       } else if (crmField === "value" || crmField === "unitPrice" || crmField === "taxRate") {
         const num = parseFloat(value);
         if (!isNaN(num)) mapped[crmField] = num;

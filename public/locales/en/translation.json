@@ -2045,7 +2045,7 @@
       "durationMinutes": "Duration (minutes)",
       "price": "Price",
       "currency": "Currency",
-      "taxRate": "Tax Rate",
+      "taxRate": "VAT Rate",
       "category": "Category",
       "color": "Color",
       "sortOrder": "Sort Order",

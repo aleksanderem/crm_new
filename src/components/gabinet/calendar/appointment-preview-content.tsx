@@ -559,9 +559,9 @@ export function AppointmentPreviewContent({
               </PopoverContent>
             </Popover>
           </div>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
+          <Badge variant="outline" className="shrink-0 text-xs">
             <span
-              className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
+              className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
             />
             {t(`gabinet.appointments.statuses.${initialStatus}`)}
           </Badge>

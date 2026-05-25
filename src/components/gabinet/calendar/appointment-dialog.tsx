@@ -71,6 +71,7 @@ import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -889,7 +890,7 @@ export function AppointmentDialog({
                                   </span>
                                   {p.phone && (
                                     <span className="text-xs text-muted-foreground">
-                                      {p.phone}
+                                      {formatPhoneNumber(p.phone)}
                                     </span>
                                   )}
                                 </div>

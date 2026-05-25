@@ -313,7 +313,10 @@ export function createCrmTables({
     name: v.string(),
     sku: v.string(),
     unitPrice: v.number(),
-    taxRate: v.number(),
+    taxRate: v.optional(v.number()),
+    // True when the product is VAT-exempt ("zwolniony" / ZW). When set, the
+    // numeric taxRate is ignored. Mirrors gabinetTreatments.taxExempt.
+    taxExempt: v.optional(v.boolean()),
     isActive: v.boolean(),
     description: v.optional(v.string()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),

@@ -10,6 +10,7 @@
  *   • 00003_add_selected_id_to_saved_views.sql
  *   • 00004_document_components.sql
  *   • 00005_gabinet_treatment_tax_exempt.sql
+ *   • 00006_products_tax_exempt.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -1330,7 +1331,7 @@ export interface Database {
           name: string;
           sku: string;
           unit_price: number;
-          tax_rate: number;
+          tax_rate: number | null;
           is_active: boolean;
           description: string | null;
           tag_ids: string[] | null;
@@ -1338,6 +1339,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          tax_exempt: boolean | null;
         };
         Insert: {
           id?: string;
@@ -1345,7 +1347,7 @@ export interface Database {
           name: string;
           sku: string;
           unit_price: number;
-          tax_rate: number;
+          tax_rate?: number | null;
           is_active: boolean;
           description?: string | null;
           tag_ids?: string[] | null;
@@ -1353,6 +1355,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          tax_exempt?: boolean | null;
         };
         Update: {
           id?: string;
@@ -1360,7 +1363,7 @@ export interface Database {
           name?: string;
           sku?: string;
           unit_price?: number;
-          tax_rate?: number;
+          tax_rate?: number | null;
           is_active?: boolean;
           description?: string | null;
           tag_ids?: string[] | null;
@@ -1368,6 +1371,7 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          tax_exempt?: boolean | null;
         };
       };
       deal_products: {

@@ -12,7 +12,8 @@ export interface MappedProduct {
   name: string;
   sku: string;
   unitPrice: number;
-  taxRate: number;
+  taxRate?: number;
+  taxExempt?: boolean;
   isActive: boolean;
   description?: string;
   tagIds?: string[];

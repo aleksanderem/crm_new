@@ -15,6 +15,7 @@
  *   • CREATE TYPE ... AS ENUM (...)
  *   • CREATE TABLE [IF NOT EXISTS] <name> ( ... )
  *   • ALTER TABLE [IF EXISTS] <name> ADD COLUMN [IF NOT EXISTS] <col> <type> ...
+ *   • ALTER TABLE [IF EXISTS] <name> ALTER COLUMN <col> DROP NOT NULL
  *
  * SQL column → TypeScript mapping rules:
  *   TEXT                → string
@@ -164,6 +165,13 @@ function applyMigration(sql) {
       if (col && !table.columns.some((c) => c.name === col.name)) {
         table.columns.push(col);
       }
+    }
+
+    const dropNotNullRe = /ALTER\s+COLUMN\s+"?(\w+)"?\s+DROP\s+NOT\s+NULL/gi;
+    for (const a of actions.matchAll(dropNotNullRe)) {
+      const colName = a[1];
+      const col = table.columns.find((c) => c.name === colName);
+      if (col) col.nullable = true;
     }
   }
 }

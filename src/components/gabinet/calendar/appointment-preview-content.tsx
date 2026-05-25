@@ -787,7 +787,7 @@ export function AppointmentPreviewContent({
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
-            className="min-h-[80px] text-sm"
+            className="min-h-[104px] text-sm"
           />
         </div>
       </div>

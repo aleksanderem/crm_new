@@ -11,6 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -61,6 +68,29 @@ const COLOR_OPTIONS = [
   { value: "#6b7280", label: "Gray" },
 ];
 
+// VAT-exempt ("zwolniony") is stored as -1 since the DB column is numeric.
+export const TAX_RATE_ZW_SENTINEL = -1;
+
+const TAX_RATE_OPTIONS = [
+  { value: "zw", label: "ZW" },
+  { value: "0", label: "0%" },
+  { value: "5", label: "5%" },
+  { value: "8", label: "8%" },
+  { value: "23", label: "23%" },
+];
+
+function taxRateToFormValue(value: number | undefined): string {
+  if (value === TAX_RATE_ZW_SENTINEL) return "zw";
+  if (value == null) return "8";
+  return String(value);
+}
+
+function formValueToTaxRate(value: string): number | undefined {
+  if (value === "zw") return TAX_RATE_ZW_SENTINEL;
+  const num = parseFloat(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
 export function TreatmentForm({
   organizationId,
   initialData,
@@ -76,7 +106,7 @@ export function TreatmentForm({
   const [duration, setDuration] = useState(String(initialData?.duration ?? ""));
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
-  const [taxRate, setTaxRate] = useState(String(initialData?.taxRate ?? "8"));
+  const [taxRate, setTaxRate] = useState(taxRateToFormValue(initialData?.taxRate));
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Id<"gabinetEquipment">[]>(
     initialData?.requiredEquipmentIds ?? []
   );
@@ -123,7 +153,7 @@ export function TreatmentForm({
       duration: parseInt(duration) || 30,
       price: parseFloat(price) || 0,
       currency: currency || undefined,
-      taxRate: parseFloat(taxRate) || undefined,
+      taxRate: formValueToTaxRate(taxRate),
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       contraindications: contraindications || undefined,
       preparationInstructions: preparationInstructions || undefined,
@@ -185,21 +215,18 @@ export function TreatmentForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.taxRate")}</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              max="100"
-              value={taxRate}
-              onChange={(e) => setTaxRate(e.target.value)}
-              placeholder="8"
-              className="pr-8"
-            />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
-              %
-            </span>
-          </div>
+          <Select value={taxRate} onValueChange={setTaxRate}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TAX_RATE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.category")}</Label>

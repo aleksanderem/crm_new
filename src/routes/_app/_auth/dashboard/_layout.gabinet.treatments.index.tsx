@@ -10,7 +10,7 @@ import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/c
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
-import { TreatmentForm } from "@/components/gabinet/treatment-form";
+import { TreatmentForm, TAX_RATE_ZW_SENTINEL } from "@/components/gabinet/treatment-form";
 import type { TreatmentFormData } from "@/components/gabinet/treatment-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -281,7 +281,12 @@ function TreatmentsIndex() {
       {
         id: "taxRate",
         label: t("gabinet.treatments.taxRate"),
-        render: (item) => (item.taxRate != null ? `${item.taxRate}%` : "—"),
+        render: (item) =>
+          item.taxRate == null
+            ? "—"
+            : item.taxRate === TAX_RATE_ZW_SENTINEL
+              ? "ZW"
+              : `${item.taxRate}%`,
       },
       {
         id: "isActive",

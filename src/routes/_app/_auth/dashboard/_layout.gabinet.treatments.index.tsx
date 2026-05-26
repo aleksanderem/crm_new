@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useOrganization } from "@/components/org-context";
@@ -387,6 +388,8 @@ function TreatmentsIndex() {
         setEditingTreatment(null);
         setTagIds([]);
         setCategoryId(undefined);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
       } finally {
         setIsSubmitting(false);
       }

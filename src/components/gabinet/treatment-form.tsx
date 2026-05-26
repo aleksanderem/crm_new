@@ -283,10 +283,6 @@ export function TreatmentForm({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.category")}</Label>
-          {categorySelector}
-        </div>
-        <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.package", "Pakiet")}</Label>
           <div className="flex h-9 items-center gap-2">
             <Checkbox
@@ -324,6 +320,10 @@ export function TreatmentForm({
             </p>
           </div>
         )}
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.treatments.category")}</Label>
+          {categorySelector}
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("common.description")}</Label>
           <RichTextEditor

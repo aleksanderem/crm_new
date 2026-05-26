@@ -23,7 +23,6 @@ import { CalendarMiniMonth } from "@untitled/app/calendar/base-components/calend
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
-import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
 
@@ -234,8 +233,6 @@ export function AppSidebar() {
               )}
             </>
           )}
-
-          {activeWorkspace === "gabinet" && !isSettingsRoute && <GabinetQuickActionsDropdown />}
 
           {miniCalState.visible &&
             miniCalState.selectedDate &&

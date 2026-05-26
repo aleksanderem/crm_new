@@ -67,7 +67,9 @@
     "actionCannotBeUndone": "This action cannot be undone",
     "module": "Module",
     "optional": "optional",
-    "continue": "Continue"
+    "continue": "Continue",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all"
   },
   "nav": {
     "deals": "Deals",

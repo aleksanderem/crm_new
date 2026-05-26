@@ -325,38 +325,6 @@ export function TreatmentForm({
           {categorySelector}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>{t("common.description")}</Label>
-          <RichTextEditor
-            value={description}
-            onChange={(v) => setDescription(v ?? "")}
-            minHeight="80px"
-          />
-        </div>
-      </div>
-
-      {/* Color picker */}
-      <div className="space-y-2">
-        <Label>{t("gabinet.treatments.color")}</Label>
-        <div className="flex gap-2">
-          {COLOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`h-7 w-7 rounded-full border-2 transition-all ${
-                color === opt.value
-                  ? "border-foreground scale-110"
-                  : "border-transparent hover:border-muted-foreground/40"
-              }`}
-              style={{ backgroundColor: opt.value }}
-              onClick={() => setColor(color === opt.value ? "" : opt.value)}
-              title={opt.label}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4 border-t pt-4">
-        <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.requiredEquipment")}</Label>
           <Popover
             open={equipmentOpen}
@@ -487,6 +455,38 @@ export function TreatmentForm({
             </p>
           )}
         </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t("common.description")}</Label>
+          <RichTextEditor
+            value={description}
+            onChange={(v) => setDescription(v ?? "")}
+            minHeight="80px"
+          />
+        </div>
+      </div>
+
+      {/* Color picker */}
+      <div className="space-y-2">
+        <Label>{t("gabinet.treatments.color")}</Label>
+        <div className="flex gap-2">
+          {COLOR_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`h-7 w-7 rounded-full border-2 transition-all ${
+                color === opt.value
+                  ? "border-foreground scale-110"
+                  : "border-transparent hover:border-muted-foreground/40"
+              }`}
+              style={{ backgroundColor: opt.value }}
+              onClick={() => setColor(color === opt.value ? "" : opt.value)}
+              title={opt.label}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4 border-t pt-4">
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.contraindications")}</Label>
           <RichTextEditor

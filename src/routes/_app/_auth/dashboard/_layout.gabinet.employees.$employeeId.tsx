@@ -403,6 +403,8 @@ function EmployeeDetail() {
         content: newNote.trim(),
       });
       setNewNote("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setIsAddingNote(false);
     }

@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from "@/lib/ez-icons";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
 
 interface FooterAction {
   labelKey: string;
@@ -108,6 +109,8 @@ export function AppFooter() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
 
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
+  const isGabinetSettingsRoute = !!matchRoute({ to: "/dashboard/gabinet/settings", fuzzy: true });
+  const showGabinetQuickActions = isGabinetRoute && !isGabinetSettingsRoute;
 
   let actions: FooterAction[] = [];
 
@@ -155,6 +158,7 @@ export function AppFooter() {
               {t(action.labelKey)}
             </Button>
           ))}
+          {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
         </div>
       </div>
     </footer>

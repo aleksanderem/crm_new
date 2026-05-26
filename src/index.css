@@ -334,6 +334,15 @@ body {
   height: 100dvh;
 }
 
+/* The dashboard layout's <main> is the actual scroll container (body itself has
+   overflow:hidden). Radix's body-scroll-lock therefore has no effect, and wheel
+   events over non-scrollable parts of a modal (overlay, header, footer) leak
+   through and scroll <main> behind the dialog. Lock <main> while any modal
+   dialog/sheet is open. */
+body:has([role="dialog"][aria-modal="true"][data-state="open"]) main {
+  overflow: hidden;
+}
+
 body {
   font-size: 14px;
   font-weight: 400;

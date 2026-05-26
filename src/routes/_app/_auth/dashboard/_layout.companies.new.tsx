@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
@@ -61,6 +62,8 @@ function NewCompany() {
                 });
                 navigate({ to: `/dashboard/companies/${id}` });
                 void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : String(e));
               } finally {
                 setIsSubmitting(false);
               }

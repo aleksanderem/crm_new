@@ -122,7 +122,15 @@ export function TreatmentForm({
   );
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const [color, setColor] = useState(initialData?.color ?? "");
-  const [treatmentCount, setTreatmentCount] = useState(String(initialData?.treatmentCount ?? ""));
+  const initialTreatmentCount = initialData?.treatmentCount;
+  const [isPackage, setIsPackage] = useState(
+    initialTreatmentCount != null && initialTreatmentCount > 1,
+  );
+  const [treatmentCount, setTreatmentCount] = useState(
+    initialTreatmentCount != null && initialTreatmentCount > 1
+      ? String(initialTreatmentCount)
+      : "",
+  );
 
   const queryClient = useQueryClient();
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
@@ -202,7 +210,10 @@ export function TreatmentForm({
       aftercareInstructions: aftercareInstructions || undefined,
       requiresApproval: requiresApproval || undefined,
       color: color || undefined,
-      treatmentCount: parseInt(treatmentCount) > 1 ? parseInt(treatmentCount) : undefined,
+      treatmentCount:
+        isPackage && parseInt(treatmentCount) > 1
+          ? parseInt(treatmentCount)
+          : undefined,
     });
   };
 
@@ -276,18 +287,43 @@ export function TreatmentForm({
           {categorySelector}
         </div>
         <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}</Label>
-          <Input
-            type="number"
-            min="1"
-            value={treatmentCount}
-            onChange={(e) => setTreatmentCount(e.target.value)}
-            placeholder="1"
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("gabinet.treatments.treatmentCountHint", "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.")}
-          </p>
+          <Label>{t("gabinet.treatments.package", "Pakiet")}</Label>
+          <div className="flex h-9 items-center gap-2">
+            <Checkbox
+              id="treatment-is-package"
+              checked={isPackage}
+              onCheckedChange={(checked) => {
+                const next = !!checked;
+                setIsPackage(next);
+                if (next) {
+                  if (!treatmentCount || parseInt(treatmentCount) < 2) {
+                    setTreatmentCount("2");
+                  }
+                } else {
+                  setTreatmentCount("");
+                }
+              }}
+            />
+            <Label htmlFor="treatment-is-package" className="cursor-pointer font-normal">
+              {t("gabinet.treatments.isPackageLabel", "Ten zabieg to pakiet")}
+            </Label>
+          </div>
         </div>
+        {isPackage && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}</Label>
+            <Input
+              type="number"
+              min="2"
+              value={treatmentCount}
+              onChange={(e) => setTreatmentCount(e.target.value)}
+              placeholder="2"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.treatments.treatmentCountHint", "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.")}
+            </p>
+          </div>
+        )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("common.description")}</Label>
           <RichTextEditor

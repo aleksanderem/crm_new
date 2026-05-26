@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
@@ -358,6 +359,8 @@ function PatientsIndex() {
         setPanelOpen(false);
         setTagIds([]);
         setCategoryId(undefined);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
       } finally {
         setIsCreating(false);
       }

@@ -387,6 +387,8 @@ function TreatmentDetail() {
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       setEditPanelOpen(false);
       toast.success(t("common.saved"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setIsSubmitting(false);
     }

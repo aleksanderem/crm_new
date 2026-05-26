@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronLeftDouble, ChevronRight, ChevronRightDouble } from "@untitledui/icons";
+import { useTranslation } from "react-i18next";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
@@ -43,10 +44,11 @@ interface MobilePaginationProps {
 }
 
 const MobilePagination = ({ page = 1, total = 10, className, onPageChange }: MobilePaginationProps) => {
+    const { t } = useTranslation();
     return (
-        <nav aria-label="Pagination" className={cx("flex items-center justify-between md:hidden", className)}>
+        <nav aria-label={t("pagination.page", { current: page, total })} className={cx("flex items-center justify-between md:hidden", className)}>
             <Button
-                aria-label="Go to previous page"
+                aria-label={t("pagination.goToPreviousPage")}
                 iconLeading={ArrowLeft}
                 color="secondary"
                 size="sm"
@@ -54,11 +56,11 @@ const MobilePagination = ({ page = 1, total = 10, className, onPageChange }: Mob
             />
 
             <span className="text-sm text-fg-secondary">
-                Page <span className="font-medium">{page}</span> of <span className="font-medium">{total}</span>
+                {t("pagination.page", { current: page, total })}
             </span>
 
             <Button
-                aria-label="Go to next page"
+                aria-label={t("pagination.goToNextPage")}
                 iconLeading={ArrowRight}
                 color="secondary"
                 size="sm"
@@ -258,14 +260,15 @@ export const PaginationCardMinimal = ({
     className,
     onPageSizeChange,
 }: PaginationCardMinimalProps) => {
+    const { t } = useTranslation();
     return (
         <div className={cx("border-t border-border-secondary px-4 py-3 md:px-6 md:pt-3 md:pb-4", className)}>
             <MobilePagination page={page} total={total} onPageChange={onPageChange} />
 
-            <nav aria-label="Pagination" className={cx("hidden items-center gap-3 md:flex", align === "center" && "justify-between")}>
+            <nav aria-label={t("pagination.page", { current: page, total })} className={cx("hidden items-center gap-3 md:flex", align === "center" && "justify-between")}>
                 <div className={cx(align === "center" && "flex flex-1 justify-start")}>
                     <Button isDisabled={page === 1} color="secondary" size="sm" onClick={() => onPageChange?.(Math.max(0, page - 1))}>
-                        Previous
+                        {t("pagination.previous")}
                     </Button>
                 </div>
 
@@ -277,30 +280,30 @@ export const PaginationCardMinimal = ({
                     )}
                 >
                     <span className="text-sm font-medium text-fg-secondary">
-                        Page {page} of {total}
+                        {t("pagination.page", { current: page, total })}
                     </span>
                     <Select
-                        aria-label="Page Size"
+                        aria-label={t("pagination.pageSize")}
                         value={pageSize}
                         onChange={(value) => onPageSizeChange?.(value as number)}
                         size="sm"
                         items={[
-                            { label: "10 per page", id: 10 },
-                            { label: "25 per page", id: 25 },
-                            { label: "50 per page", id: 50 },
-                            { label: "100 per page", id: 100 },
+                            { label: t("pagination.perPage", { count: 10 }), id: 10 },
+                            { label: t("pagination.perPage", { count: 25 }), id: 25 },
+                            { label: t("pagination.perPage", { count: 50 }), id: 50 },
+                            { label: t("pagination.perPage", { count: 100 }), id: 100 },
                         ]}
                     >
                         {(item) => (
                             <Select.Item id={item.id} key={item.id}>
-                                {item.label?.split(" ")[0]}
+                                {String(item.id)}
                             </Select.Item>
                         )}
                     </Select>
                 </div>
                 <div className={cx(align === "center" && "flex flex-1 justify-end")}>
                     <Button isDisabled={page === total} color="secondary" size="sm" onClick={() => onPageChange?.(Math.min(total, page + 1))}>
-                        Next
+                        {t("pagination.next")}
                     </Button>
                 </div>
             </nav>

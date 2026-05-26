@@ -327,7 +327,11 @@
     "goToPreviousPage": "Przejdź do poprzedniej strony",
     "goToNextPage": "Przejdź do następnej strony",
     "goToLastPage": "Przejdź do ostatniej strony",
-    "rowsSelected": "{{selected}} z {{total}} wierszy zaznaczono"
+    "rowsSelected": "{{selected}} z {{total}} wierszy zaznaczono",
+    "previous": "Poprzednia",
+    "next": "Następna",
+    "perPage": "{{count}} na stronę",
+    "pageSize": "Rozmiar strony"
   },
   "table": {
     "columns": "Kolumny",

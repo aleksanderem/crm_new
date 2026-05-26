@@ -491,7 +491,7 @@ export function TreatmentForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        <Button type="submit" disabled={!name.trim() || !duration || !price || isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
             ? t("common.saving")
             : initialData

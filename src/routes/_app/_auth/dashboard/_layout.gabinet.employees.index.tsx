@@ -574,7 +574,7 @@ function CreateEmployeeSheet({
             )}
             <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
               {filteredTreatments.length > 0 && (
-                <label className="-mx-2 -mt-2 mb-1 flex items-center gap-2 rounded-t bg-muted/60 px-3 py-2 text-sm font-medium cursor-pointer border-b">
+                <label className="-mx-2 -mt-2 mb-1 flex items-center gap-2 rounded-t bg-muted/60 px-2 py-2 text-sm font-medium cursor-pointer border-b">
                   <Checkbox
                     checked={
                       filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))

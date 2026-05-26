@@ -126,7 +126,7 @@ export function GoogleCalendarSyncSettings({
         connectionId: myConnection._id,
       });
       setAvailableCalendars(calendars as GoogleCalendarInfo[]);
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(t("googleCalendar.settings.fetchCalendarsError") + ": " + message);
       setShowPicker(false);
@@ -153,7 +153,7 @@ export function GoogleCalendarSyncSettings({
           count: results.length,
         })
       );
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(
         t("googleCalendar.settings.syncError", { error: message })
@@ -176,7 +176,7 @@ export function GoogleCalendarSyncSettings({
         visibility: "full",
       });
       toast.success(t("googleCalendar.settings.calendarAdded"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {
@@ -196,7 +196,7 @@ export function GoogleCalendarSyncSettings({
   ) => {
     try {
       await updateConfig({ configId, ...patch });
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     }
@@ -207,7 +207,7 @@ export function GoogleCalendarSyncSettings({
   ) => {
     try {
       await removeConfig({ configId });
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     }

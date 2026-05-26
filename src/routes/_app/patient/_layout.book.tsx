@@ -199,7 +199,7 @@ function PatientBooking() {
       });
       toast.success(t("patientPortal.booking.success"));
       navigate({ to: "/patient/appointments" });
-    } catch (err: unknown) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : "Booking failed";
       toast.error(message);
     } finally {

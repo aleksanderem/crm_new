@@ -90,8 +90,8 @@ function DocumentComponentsListPage() {
     try {
       await removeMutation({ organizationId, componentId: deleteTarget });
       toast.success("Komponent usunięty");
-    } catch (err: any) {
-      toast.error(err.message ?? "Błąd");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Błąd");
     }
     setDeleteTarget(null);
   };
@@ -100,8 +100,8 @@ function DocumentComponentsListPage() {
     try {
       await duplicateMutation({ organizationId, componentId: id });
       toast.success("Komponent skopiowany");
-    } catch (err: any) {
-      toast.error(err.message ?? "Błąd");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Błąd");
     }
   };
 

@@ -215,7 +215,7 @@ export function AfterCompletionDocumentsDialog({
         setActiveDocId(next?._id ?? null);
 
         refetch();
-      } catch (err: unknown) {
+      } catch (err) {
         const message =
           err instanceof Error ? err.message : t("common.error");
         toast.error(message);
@@ -271,7 +271,7 @@ export function AfterCompletionDocumentsDialog({
       setActiveDocId(next?._id ?? null);
 
       refetch();
-    } catch (err: unknown) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : t("common.error");
       toast.error(message);
     } finally {

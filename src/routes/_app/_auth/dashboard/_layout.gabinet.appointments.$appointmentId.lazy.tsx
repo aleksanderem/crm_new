@@ -473,7 +473,7 @@ function AppointmentDetail() {
       });
       await invalidateAppointmentCaches();
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
       setTagIds((detail.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
@@ -769,7 +769,7 @@ function AppointmentDetail() {
         // Small delay so Convex reactive query picks up the new documents
         setTimeout(() => setAfterCompletionDialogOpen(true), 500);
       }
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -815,7 +815,7 @@ function AppointmentDetail() {
       setCancelReason("");
       await invalidateAppointmentCaches();
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -833,7 +833,7 @@ function AppointmentDetail() {
       });
       toast.success(t("common.saved"));
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -865,7 +865,7 @@ function AppointmentDetail() {
       setPaymentAmount("");
       setPaymentNote("");
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -881,7 +881,7 @@ function AppointmentDetail() {
       });
       toast.success(t("gabinet.payments.markedPaid"));
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     }
@@ -895,7 +895,7 @@ function AppointmentDetail() {
       });
       toast.success(t("gabinet.payments.refunded"));
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     }
@@ -920,7 +920,7 @@ function AppointmentDetail() {
       setNewNoteContent("");
       setReplyToNoteId(null);
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -942,7 +942,7 @@ function AppointmentDetail() {
       setEditingNoteId(null);
       setEditNoteContent("");
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -957,7 +957,7 @@ function AppointmentDetail() {
       await deleteNote({ organizationId, noteId });
       toast.success(t("common.deleted"));
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     }
@@ -967,7 +967,7 @@ function AppointmentDetail() {
     try {
       await togglePinNote({ organizationId, noteId });
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     }
@@ -994,7 +994,7 @@ function AppointmentDetail() {
       });
       toast.success(t("common.saved"));
       refetch();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {
@@ -2512,7 +2512,7 @@ function AppointmentDetail() {
                   toast.success(t("gabinet.packages.usageRecorded"));
                   setUsageDialogOpen(false);
                   refetch();
-                } catch (e: unknown) {
+                } catch (e) {
                   const msg = e instanceof Error ? e.message : String(e);
                   toast.error(msg);
                 } finally {

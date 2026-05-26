@@ -65,8 +65,8 @@ export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
       toast.success("Konfiguracja SMS zapisana");
       setApiToken("");
       setApiSecret("");
-    } catch (err: any) {
-      toast.error(err.message ?? "Nie udało się zapisać konfiguracji");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Nie udało się zapisać konfiguracji");
     } finally {
       setSaving(false);
     }

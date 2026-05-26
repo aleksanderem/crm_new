@@ -230,8 +230,8 @@ export function PackagePurchaseDrawer({
       toast.success(t("gabinet.packages.purchased", "Package purchased successfully"));
       resetForm();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }

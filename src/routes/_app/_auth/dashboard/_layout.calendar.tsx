@@ -244,8 +244,8 @@ function UnifiedCalendarPage() {
           updated: result.updated,
         })
       );
-    } catch (e: any) {
-      toast.error(e.message ?? t("calendar.googleImportFailed", "Import failed"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("calendar.googleImportFailed", "Import failed"));
     } finally {
       setIsImporting(false);
     }
@@ -399,8 +399,8 @@ function UnifiedCalendarPage() {
         ]);
 
         toast.success(t("calendar.eventMoved", "Event moved"));
-      } catch (err: any) {
-        toast.error(err.message ?? t("calendar.moveFailed", "Failed to move event"));
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("calendar.moveFailed", "Failed to move event"));
       }
     },
     [editPerm.allowed, events, organizationId, updateActivity, updateAppointment, queryClient, t]

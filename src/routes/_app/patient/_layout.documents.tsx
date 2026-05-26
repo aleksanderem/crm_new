@@ -58,8 +58,8 @@ function PatientDocuments() {
       });
       toast.success(t("patientPortal.documents.signed"));
       setSignDocId(null);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 

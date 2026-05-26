@@ -163,8 +163,8 @@ function LeavesPage() {
       setStartDate("");
       setEndDate("");
       setReason("");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +192,7 @@ function LeavesPage() {
       }
       // Invalidate Supabase leaves cache after status change
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setConfirmLeaveId(null);

@@ -65,8 +65,8 @@ function InboxPage() {
     try {
       const result = await syncGmail({ organizationId });
       toast.success(`${t("integrations.syncing")} — ${result.synced} emails`);
-    } catch (e: any) {
-      toast.error(e.message ?? "Sync failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setIsSyncing(false);
     }

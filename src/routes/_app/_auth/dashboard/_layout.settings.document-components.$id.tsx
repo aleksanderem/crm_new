@@ -91,8 +91,8 @@ function EditDocumentComponentPage() {
       });
       toast.success("Komponent zaktualizowany");
       navigate({ to: "/dashboard/settings/document-components" });
-    } catch (err: any) {
-      toast.error(err.message ?? "Błąd podczas zapisu");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Błąd podczas zapisu");
     } finally {
       setSaving(false);
     }

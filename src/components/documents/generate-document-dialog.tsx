@@ -772,7 +772,7 @@ export function GenerateDocumentDialog({
         });
         setMissingDataHandled(true);
         setStep("fill_form");
-      } catch (e: unknown) {
+      } catch (e) {
         const message = e instanceof Error ? e.message : "Error saving data";
         toast.error(message);
       } finally {
@@ -802,7 +802,7 @@ export function GenerateDocumentDialog({
         );
         handleOpenChange(false);
         onDocumentCreated?.(docId.documentId as Id<"formDocuments">);
-      } catch (e: unknown) {
+      } catch (e) {
         const message =
           e instanceof Error ? e.message : "Wystapil blad";
         toast.error(message);

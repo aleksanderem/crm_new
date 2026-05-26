@@ -1295,8 +1295,8 @@ function EditEmployeeDrawer({
       });
       toast.success(t("common.saved"));
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -1722,8 +1722,8 @@ function DetailedDataTab({
       await onUpdate(updatePayload);
       toast.success(t("common.saved"));
       setEditing(null);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

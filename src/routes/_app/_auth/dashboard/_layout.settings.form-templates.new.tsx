@@ -168,7 +168,7 @@ function NewFormTemplatePage() {
         to: "/dashboard/settings/form-templates/$id",
         params: { id: templateId },
       });
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {

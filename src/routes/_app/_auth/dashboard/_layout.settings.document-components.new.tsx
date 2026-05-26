@@ -70,8 +70,8 @@ function NewDocumentComponentPage() {
       });
       toast.success("Komponent utworzony");
       navigate({ to: "/dashboard/settings/document-components" });
-    } catch (err: any) {
-      toast.error(err.message ?? "Błąd podczas tworzenia");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Błąd podczas tworzenia");
     } finally {
       setSaving(false);
     }

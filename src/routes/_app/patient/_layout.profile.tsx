@@ -56,8 +56,8 @@ function PatientProfile() {
         emergencyContactPhone: emergencyContactPhone || undefined,
       });
       toast.success(t("common.saved"));
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

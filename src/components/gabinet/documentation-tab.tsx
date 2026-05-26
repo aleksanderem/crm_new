@@ -155,8 +155,8 @@ export function DocumentationTab({
       });
       toast.success(t("common.saved"));
       await onChanged?.();
-    } catch (err: any) {
-      toast.error(err.message ?? t("common.error"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsSavingParams(false);
     }
@@ -178,8 +178,8 @@ export function DocumentationTab({
       });
       toast.success(t("common.saved"));
       await onChanged?.();
-    } catch (err: any) {
-      toast.error(err.message ?? t("common.error"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsSavingInterview(false);
     }
@@ -201,8 +201,8 @@ export function DocumentationTab({
       });
       toast.success(t("common.saved"));
       await onChanged?.();
-    } catch (err: any) {
-      toast.error(err.message ?? t("common.error"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsSavingRemarks(false);
     }
@@ -273,8 +273,8 @@ export function DocumentationTab({
                 toast.success(t("common.saved"));
                 await onChanged?.();
                 resolve();
-              } catch (err: any) {
-                toast.error(err.message ?? t("common.error"));
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : t("common.error"));
                 reject(err);
               }
             } else {
@@ -312,8 +312,8 @@ export function DocumentationTab({
       });
       toast.success(t("common.saved"));
       await onChanged?.();
-    } catch (err: any) {
-      toast.error(err.message ?? t("common.error"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
     }
   };
 

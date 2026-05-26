@@ -442,7 +442,7 @@ export function AppointmentForm({
         toast.success(
           t("gabinet.patients.created", { defaultValue: "Klient utworzony" }),
         );
-      } catch (e: unknown) {
+      } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         toast.error(msg);
         setPatientLabel("");

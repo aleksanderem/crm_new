@@ -269,8 +269,8 @@ export function FlexibleScheduleEditor({
       }
       toast.success(t("common.saved"));
       cancelEdit();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -286,8 +286,8 @@ export function FlexibleScheduleEditor({
         effectiveFrom: effectiveFrom || undefined,
       });
       toast.success(t("common.deleted"));
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 

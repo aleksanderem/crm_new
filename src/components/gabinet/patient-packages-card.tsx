@@ -401,7 +401,7 @@ function InstallmentPayButton({
       await queryClient.invalidateQueries({ queryKey });
       setOpen(false);
       resetForm();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     } finally {

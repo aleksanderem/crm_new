@@ -167,7 +167,7 @@ function EditEmailTemplatePage() {
         isActive,
       });
       toast.success("Szablon został zapisany");
-    } catch (e: unknown) {
+    } catch (e) {
       const msg = e instanceof Error ? e.message : "Błąd podczas zapisywania";
       toast.error(msg);
     } finally {
@@ -180,7 +180,7 @@ function EditEmailTemplatePage() {
       await removeTemplate({ organizationId, templateId });
       toast.success("Szablon został usunięty");
       navigate({ to: "/dashboard/email-templates" });
-    } catch (e: unknown) {
+    } catch (e) {
       const msg = e instanceof Error ? e.message : "Błąd podczas usuwania";
       toast.error(msg);
     }

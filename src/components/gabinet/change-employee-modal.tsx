@@ -266,8 +266,8 @@ export function ChangeEmployeeModal({
       onOpenChange(false);
       setSelectedId(null);
       setUseNewSlot(false);
-    } catch (err: any) {
-      toast.error(err.message ?? t("common.error"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsSubmitting(false);
     }

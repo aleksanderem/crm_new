@@ -332,7 +332,9 @@
     "previous": "Previous",
     "next": "Next",
     "perPage": "{{count}} per page",
-    "pageSize": "Page Size"
+    "pageSize": "Page Size",
+    "pageLabel": "Page",
+    "ofTotal": "of {{total}}"
   },
   "table": {
     "columns": "Columns",

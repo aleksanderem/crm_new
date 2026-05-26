@@ -67,7 +67,9 @@
     "actionCannotBeUndone": "Tej operacji nie można cofnąć",
     "module": "Moduł",
     "optional": "opcjonalnie",
-    "continue": "Dalej"
+    "continue": "Dalej",
+    "selectAll": "Zaznacz wszystkie",
+    "deselectAll": "Odznacz wszystkie"
   },
   "nav": {
     "deals": "Transakcje",

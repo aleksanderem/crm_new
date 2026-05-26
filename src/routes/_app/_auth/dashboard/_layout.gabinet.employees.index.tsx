@@ -573,6 +573,33 @@ function CreateEmployeeSheet({
               </div>
             )}
             <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+              {filteredTreatments.length > 0 && (
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer border-b pb-1 mb-1">
+                  <Checkbox
+                    checked={
+                      filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))
+                        ? true
+                        : filteredTreatments.some((tr) => selectedTreatments.includes(tr._id))
+                          ? "indeterminate"
+                          : false
+                    }
+                    onCheckedChange={(checked) => {
+                      const visibleIds = filteredTreatments.map((tr) => tr._id);
+                      if (checked === true) {
+                        setSelectedTreatments(
+                          Array.from(new Set([...selectedTreatments, ...visibleIds])),
+                        );
+                      } else {
+                        const visibleSet = new Set(visibleIds);
+                        setSelectedTreatments(
+                          selectedTreatments.filter((id) => !visibleSet.has(id)),
+                        );
+                      }
+                    }}
+                  />
+                  {t("common.selectAll")}
+                </label>
+              )}
               {filteredTreatments.map((tr) => (
                 <label key={tr._id} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox

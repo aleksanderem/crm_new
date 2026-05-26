@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabasePipelinesList, useSupabasePipelineStages } from "@/hooks/use-supabase-pipelines";
@@ -72,6 +73,8 @@ function NewLead() {
                 });
                 queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
                 navigate({ to: `/dashboard/leads/${id}` });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : String(e));
               } finally {
                 setIsSubmitting(false);
               }

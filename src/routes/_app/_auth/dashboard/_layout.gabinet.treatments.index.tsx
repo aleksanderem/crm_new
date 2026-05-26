@@ -265,30 +265,38 @@ function TreatmentsIndex() {
       },
       {
         id: "isPackage",
-        label: t("gabinet.treatments.package", "Pakiet"),
+        label: t("gabinet.treatments.type", "Typ"),
         sortable: true,
         render: (item) => {
           const isPackage = (item.treatmentCount ?? 1) > 1;
-          const tooltipLabel = isPackage
-            ? t("gabinet.treatments.isPackageTooltip", {
-                count: item.treatmentCount ?? 0,
-                defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
-              })
-            : t("gabinet.treatments.isRegularTooltip", "Zwykły zabieg");
+          if (isPackage) {
+            const tooltipLabel = t("gabinet.treatments.isPackageTooltip", {
+              count: item.treatmentCount ?? 0,
+              defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
+            });
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="secondary"
+                      className="border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-900 dark:bg-violet-950/60 dark:text-violet-200"
+                    >
+                      {t("gabinet.treatments.packageBadge", {
+                        count: item.treatmentCount ?? 0,
+                        defaultValue: "Pakiet · {{count}}x",
+                      })}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>{tooltipLabel}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          }
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      isPackage ? "bg-violet-500" : "bg-slate-300"
-                    }`}
-                    aria-label={tooltipLabel}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>{tooltipLabel}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Badge variant="outline" className="text-fg-quaternary">
+              {t("gabinet.treatments.singleBadge", "Pojedynczy")}
+            </Badge>
           );
         },
         getSortValue: (item) => ((item.treatmentCount ?? 1) > 1 ? 1 : 0),

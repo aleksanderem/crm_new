@@ -2064,6 +2064,9 @@
       "treatmentCount": "Liczba zabiegów",
       "treatmentCountHint": "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.",
       "package": "Pakiet",
+      "type": "Typ",
+      "packageBadge": "Pakiet · {{count}}x",
+      "singleBadge": "Pojedynczy",
       "isPackageTooltip": "Pakiet — {{count}} zabiegów w cyklu",
       "isRegularTooltip": "Zwykły zabieg",
       "views": {

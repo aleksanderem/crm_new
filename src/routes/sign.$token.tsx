@@ -148,8 +148,8 @@ function SigningFlow({
     try {
       await requestOtp({ token });
       setOtpSent(true);
-    } catch (err: any) {
-      setError(err.message ?? "Nie udało się wysłać kodu");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nie udało się wysłać kodu");
     } finally {
       setLoading(false);
     }
@@ -162,8 +162,8 @@ function SigningFlow({
       await verifyOtp({ token, code: otpCode });
       setOtpVerified(true);
       setStep("sign");
-    } catch (err: any) {
-      setError(err.message ?? "Nieprawidłowy kod");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nieprawidłowy kod");
     } finally {
       setLoading(false);
     }
@@ -176,8 +176,8 @@ function SigningFlow({
       try {
         await signExternal({ token, signatureData });
         setStep("done");
-      } catch (err: any) {
-        setError(err.message ?? "Nie udało się podpisać dokumentu");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Nie udało się podpisać dokumentu");
       } finally {
         setLoading(false);
       }

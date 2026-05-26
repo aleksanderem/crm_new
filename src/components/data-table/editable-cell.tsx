@@ -95,8 +95,8 @@ export function EditableCell({
       await onChange(v);
       setErrorMessage(null);
       setActive(false);
-    } catch (e: any) {
-      setErrorMessage(e.message || "Save failed");
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }

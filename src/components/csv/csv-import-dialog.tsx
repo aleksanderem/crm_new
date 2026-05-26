@@ -196,8 +196,8 @@ export function CsvImportDialog({
         allErrors.push(
           ...result.errors.map((e) => ({ ...e, row: e.row + i }))
         );
-      } catch (e: any) {
-        allErrors.push({ row: i, error: e.message ?? "Batch failed" });
+      } catch (e) {
+        allErrors.push({ row: i, error: e instanceof Error ? e.message : "Batch failed" });
       }
       setProgress(Math.min(i + BATCH_SIZE, records.length));
     }

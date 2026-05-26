@@ -2056,6 +2056,9 @@
       "treatmentCount": "Sessions per course",
       "treatmentCountHint": "Number of sessions in a course (e.g. 20). Auto-creates a package on first booking.",
       "package": "Package",
+      "type": "Type",
+      "packageBadge": "Package · {{count}}x",
+      "singleBadge": "Single",
       "isPackageTooltip": "Package — {{count}} sessions in a course",
       "isRegularTooltip": "Regular treatment",
       "views": {

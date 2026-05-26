@@ -749,7 +749,7 @@ function FormTemplatesListPage() {
                     try {
                       const result = await seedTemplates({ organizationId });
                       toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
-                    } catch (e: unknown) {
+                    } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : t("common.error"),
                       );
@@ -765,7 +765,7 @@ function FormTemplatesListPage() {
                       toast.success(
                         t("settings.formTemplates.migrateSuccess", { count: result.patched }),
                       );
-                    } catch (e: unknown) {
+                    } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : t("common.error"),
                       );

@@ -50,7 +50,7 @@ function ReminderSettings() {
         reminderHoursBefore: hoursBefore,
       });
       toast.success(t("gabinet.reminders.saved"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {

@@ -126,7 +126,7 @@ function TeamSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       toast.success(t("team.invitationRoleUpdated", { defaultValue: "Rola zaproszenia została zmieniona" }));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     }
@@ -150,7 +150,7 @@ function TeamSettings() {
       await cancelInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       toast.success(t("team.invitationCancelled"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {
@@ -165,7 +165,7 @@ function TeamSettings() {
       await resendInvitation({ organizationId, invitationId });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       toast.success(t("team.invitationResent"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {
@@ -189,7 +189,7 @@ function TeamSettings() {
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       setInvitationSentPopup(t("team.invitationSent"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("Seat limit reached")) {
         toast.error(t("settings.team.limitReached"), {

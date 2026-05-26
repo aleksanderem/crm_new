@@ -118,7 +118,7 @@ function NewEmailTemplatePage() {
         to: "/dashboard/email-templates/$templateId",
         params: { templateId: templateId as string },
       });
-    } catch (e: unknown) {
+    } catch (e) {
       const msg = e instanceof Error ? e.message : "Błąd podczas zapisywania";
       toast.error(msg);
     } finally {

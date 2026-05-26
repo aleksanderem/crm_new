@@ -108,7 +108,7 @@ function EmailEventsSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
@@ -125,7 +125,7 @@ function EmailEventsSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);
@@ -146,7 +146,7 @@ function EmailEventsSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingDeleted"));
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBindingInProgress(null);

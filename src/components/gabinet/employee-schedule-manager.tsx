@@ -93,8 +93,8 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
       toast.success(t("common.saved"));
       setEditingId(null);
       setFormData({});
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -115,8 +115,8 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
       toast.success(t("common.saved"));
       setEditingId(null);
       setFormData({});
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -127,8 +127,8 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
         scheduleId: scheduleId as Id<"gabinetEmployeeSchedules">,
       });
       toast.success(t("common.delete"));
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 

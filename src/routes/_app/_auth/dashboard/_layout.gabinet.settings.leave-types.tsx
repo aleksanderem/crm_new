@@ -50,8 +50,8 @@ function LeaveTypesSettings() {
     try {
       const result = await initAllBalances({ organizationId, year: currentYear });
       toast.success(t("gabinet.leaveTypes.balancesInitialized", { count: result.created }));
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -235,8 +235,8 @@ function LeaveTypeDialog({
         requiresApproval,
         ...(initial ? { isActive } : {}),
       });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

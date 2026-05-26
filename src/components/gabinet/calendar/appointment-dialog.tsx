@@ -553,7 +553,7 @@ export function AppointmentDialog({
         });
         setAddPatientOpen(false);
         toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
-      } catch (e: unknown) {
+      } catch (e) {
         const inner = extractActionErrorMessage(e);
         toast.error(
           inner ||
@@ -682,7 +682,7 @@ export function AppointmentDialog({
       ]);
       toast.success(t("gabinet.appointments.created"));
       onOpenChange(false);
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(
         formatAppointmentError(e, t, {
           key: "gabinet.appointments.createFailed",

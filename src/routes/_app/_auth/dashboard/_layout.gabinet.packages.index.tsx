@@ -292,8 +292,8 @@ function PackagesIndex() {
       invalidatePackages();
       setPanelOpen(false);
       resetForm();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
@@ -310,8 +310,8 @@ function PackagesIndex() {
       await removePkg({ organizationId, packageId: deletingId });
       toast.success(t("common.deleted"));
       invalidatePackages();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setDeleteDialogOpen(false);
       setDeletingId(null);
@@ -350,8 +350,8 @@ function PackagesIndex() {
       invalidatePackages();
       setAssignPanelOpen(false);
       resetAssignForm();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setAssignSubmitting(false);
     }

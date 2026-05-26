@@ -179,7 +179,7 @@ export function TreatmentForm({
         prev.includes(newId) ? prev : [...prev, newId]
       );
       resetAddEquipmentForm();
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setCreatingEquipment(false);

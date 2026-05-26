@@ -138,7 +138,7 @@ export function TreatmentRequiredDocuments({
       setAddDialogOpen(false);
       setSelectedTemplateId(null);
       setSearch("");
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
     }
@@ -167,7 +167,7 @@ export function TreatmentRequiredDocuments({
         toast.success(
           t("documents.requiredDocs.removed", "Usunieto wymagany dokument"),
         );
-      } catch (error: unknown) {
+      } catch (error) {
         const msg =
           error instanceof Error ? error.message : t("common.error");
         toast.error(msg);
@@ -191,7 +191,7 @@ export function TreatmentRequiredDocuments({
           treatmentId,
           requiredFormTemplates: updated,
         });
-      } catch (error: unknown) {
+      } catch (error) {
         const msg =
           error instanceof Error ? error.message : t("common.error");
         toast.error(msg);

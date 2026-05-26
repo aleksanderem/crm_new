@@ -79,7 +79,7 @@ function PatientLogin() {
       await sendOtp({ email, organizationId });
       setStep("otp");
       toast.success(t("patientPortal.login.otpSent"));
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ function PatientLogin() {
       localStorage.setItem("patientPortalToken", result.sessionToken);
       localStorage.setItem("patientPortalPatientId", result.patientId);
       navigate({ to: "/patient" });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : t("patientPortal.login.errorGeneric"));
     } finally {
       setLoading(false);

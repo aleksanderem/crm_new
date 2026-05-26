@@ -207,7 +207,7 @@ function EquipmentCard({
       });
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setSaving(false);
@@ -230,7 +230,7 @@ function EquipmentCard({
       setTransferLocationId("");
       setTransferRoomId("");
       setTransferNotes("");
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setTransferring(false);
@@ -535,7 +535,7 @@ function EquipmentSettingsPage() {
       setNewSerial("");
       setNewStatus("available");
       setNewLocationId("");
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setCreating(false);

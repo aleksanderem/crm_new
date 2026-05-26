@@ -159,7 +159,7 @@ function LocationCard({
       });
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setSaving(false);
@@ -172,7 +172,7 @@ function LocationCard({
       toast.success(t("common.deleted"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
       onDeleted();
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     }
   };
@@ -191,7 +191,7 @@ function LocationCard({
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetRooms.list(organizationId) });
       setNewRoomFloor("");
       setAddRoomOpen(false);
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setAddingRoom(false);
@@ -201,7 +201,7 @@ function LocationCard({
   const handleDeleteRoom = async (roomId: Id<"gabinetRooms">) => {
     try {
       await deleteRoom({ organizationId, roomId });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     }
   };
@@ -209,7 +209,7 @@ function LocationCard({
   const handleToggleRoom = async (roomId: Id<"gabinetRooms">, isActive: boolean) => {
     try {
       await updateRoom({ organizationId, roomId, isActive: !isActive });
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     }
   };
@@ -512,7 +512,7 @@ function LocationsSettingsPage() {
       setNewPhone("");
       setNewEmail("");
       setNewCity("");
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setCreating(false);

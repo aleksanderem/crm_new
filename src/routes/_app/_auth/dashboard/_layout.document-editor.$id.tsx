@@ -145,7 +145,7 @@ function EditDocumentEditorPage() {
       });
 
       toast.success(t("settings.formTemplates.saved"));
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     } finally {
@@ -175,7 +175,7 @@ function EditDocumentEditorPage() {
         to: "/dashboard/document-editor/$id",
         params: { id: newId },
       });
-    } catch (e: unknown) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     }

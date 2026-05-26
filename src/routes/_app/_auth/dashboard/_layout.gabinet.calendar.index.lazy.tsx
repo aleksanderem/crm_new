@@ -681,7 +681,7 @@ function GabinetCalendarPage() {
         void queryClient.invalidateQueries({
           queryKey: supabaseKeys.gabinetAppointments.all,
         });
-      } catch (e: unknown) {
+      } catch (e) {
         toast.error(
           formatAppointmentError(e, t, {
             key: "gabinet.appointments.resizeFailed",
@@ -761,7 +761,7 @@ function GabinetCalendarPage() {
           );
           // Invalidate Supabase appointments cache after Convex mutation
           void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
-        } catch (e: unknown) {
+        } catch (e) {
           toast.error(
             formatAppointmentError(e, t, {
               key: "gabinet.appointments.rescheduleFailed",

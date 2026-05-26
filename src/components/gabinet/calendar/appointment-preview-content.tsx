@@ -289,7 +289,7 @@ export function AppointmentPreviewContent({
       setIsEditingPhone(false);
       setPhoneInput("");
       toast.success(t("gabinet.appointmentDetail.phoneAdded"));
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("[appointment-preview] phone save failed", error);
       toast.error(extractActionErrorMessage(error) || t("common.error"));
     } finally {
@@ -318,7 +318,7 @@ export function AppointmentPreviewContent({
       ]);
       await refetch();
       toast.success(t("gabinet.appointments.statusUpdated"));
-    } catch (error: unknown) {
+    } catch (error) {
       setStatus(previous);
       console.error("[appointment-preview] status update failed", error);
       toast.error(
@@ -376,7 +376,7 @@ export function AppointmentPreviewContent({
       setCancelDialogOpen(false);
       setCancelReason("");
       toast.success(t("gabinet.appointments.cancelled"));
-    } catch (error: unknown) {
+    } catch (error) {
       setStatus(previous);
       console.error("[appointment-preview] cancel failed", error);
       toast.error(
@@ -444,7 +444,7 @@ export function AppointmentPreviewContent({
       await refetch();
       toast.success(t("gabinet.appointments.updated"));
       onClose();
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("[appointment-preview] save failed", error);
       toast.error(
         formatAppointmentError(error, t, {

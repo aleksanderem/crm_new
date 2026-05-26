@@ -469,8 +469,8 @@ function CreateEmployeeSheet({
       setTagIds([]);
       setCategoryId(undefined);
       setTreatmentSearch("");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

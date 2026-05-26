@@ -77,7 +77,7 @@ function SmsSettings() {
       setApiToken("");
       setApiSecret("");
       toast.success(t("sms.saved"));
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
@@ -91,7 +91,7 @@ function SmsSettings() {
       toast.success(
         isActive ? t("sms.activatedSuccess") : t("sms.deactivatedSuccess")
       );
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setToggling(false);

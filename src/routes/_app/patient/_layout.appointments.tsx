@@ -114,7 +114,7 @@ function PatientAppointments() {
       });
       toast.success(t("patientPortal.appointments.rescheduleSuccess"));
       closeReschedule();
-    } catch (e: unknown) {
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);

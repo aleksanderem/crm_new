@@ -328,7 +328,11 @@
     "goToPreviousPage": "Go to previous page",
     "goToNextPage": "Go to next page",
     "goToLastPage": "Go to last page",
-    "rowsSelected": "{{selected}} of {{total}} row(s) selected"
+    "rowsSelected": "{{selected}} of {{total}} row(s) selected",
+    "previous": "Previous",
+    "next": "Next",
+    "perPage": "{{count}} per page",
+    "pageSize": "Page Size"
   },
   "table": {
     "columns": "Columns",

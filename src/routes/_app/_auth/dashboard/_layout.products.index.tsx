@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import {
   useSupabaseProductsList,
@@ -256,6 +257,8 @@ function ProductsPage() {
       }
       setPanelOpen(false);
       resetForm();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setIsSubmitting(false);
     }

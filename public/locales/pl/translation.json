@@ -2279,7 +2279,8 @@
       "validationEndAfterStart": "Godzina końca musi być po godzinie początku: {{days}}",
       "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}",
       "errors": {
-        "saveFailed": "Nie udało się zapisać godzin pracy."
+        "saveFailed": "Nie udało się zapisać godzin pracy.",
+        "deleteFailed": "Nie udało się usunąć harmonogramu."
       }
     },
     "reminders": {
@@ -2632,7 +2633,8 @@
         "permissionDenied": "Brak uprawnień do edycji tej wizyty.",
         "invalidStatusTransition": "Nie można zmienić statusu wizyty z bieżącej wartości.",
         "invalidArguments": "Nie udało się zapisać zmian — nieprawidłowe dane wizyty.",
-        "blockedNotDraggable": "Wydarzeń z Google nie można przesuwać w kalendarzu."
+        "blockedNotDraggable": "Wydarzeń z Google nie można przesuwać w kalendarzu.",
+        "changeEmployeeFailed": "Nie udało się zmienić pracownika dla wizyty."
       }
     },
     "appointmentDetail": {
@@ -2700,6 +2702,15 @@
           "ignored": "Zignorowano",
           "failed": "Błąd"
         }
+      }
+    },
+    "documentation": {
+      "errors": {
+        "saveParamsFailed": "Nie udało się zapisać parametrów zabiegowych.",
+        "saveInterviewFailed": "Nie udało się zapisać wywiadu.",
+        "saveRemarksFailed": "Nie udało się zapisać uwag klinicznych.",
+        "photoUploadFailed": "Nie udało się dodać zdjęcia.",
+        "photoRemoveFailed": "Nie udało się usunąć zdjęcia."
       }
     },
     "calendar": {
@@ -3619,7 +3630,12 @@
     "addTag": "Dodaj tag",
     "newName": "Nazwa tagu",
     "assign": "Tagi",
-    "noResults": "Brak wyników"
+    "noResults": "Brak wyników",
+    "errors": {
+      "createFailed": "Nie udało się dodać tagu.",
+      "saveFailed": "Nie udało się zapisać tagu.",
+      "deleteFailed": "Nie udało się usunąć tagu."
+    }
   },
   "categories": {
     "manage": "Kategorie",
@@ -3631,7 +3647,12 @@
     "tree": "Drzewo kategorii",
     "assign": "Kategoria",
     "search": "Szukaj...",
-    "noResults": "Brak wyników"
+    "noResults": "Brak wyników",
+    "errors": {
+      "createFailed": "Nie udało się dodać kategorii.",
+      "saveFailed": "Nie udało się zapisać kategorii.",
+      "deleteFailed": "Nie udało się usunąć kategorii."
+    }
   },
   "billing": {
     "title": "Rozliczenia",

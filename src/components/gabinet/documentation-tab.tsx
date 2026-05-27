@@ -37,6 +37,7 @@ import {
 } from "@/lib/ez-icons";
 import { XIcon } from "lucide-react";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { formatBytes } from "@/hooks/use-file-upload";
 import {
   Dialog,
@@ -156,7 +157,12 @@ export function DocumentationTab({
       toast.success(t("common.saved"));
       await onChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      toast.error(
+        formatActionError(err, t, {
+          key: "gabinet.documentation.errors.saveParamsFailed",
+          defaultValue: "Nie udało się zapisać parametrów zabiegowych.",
+        }),
+      );
     } finally {
       setIsSavingParams(false);
     }
@@ -179,7 +185,12 @@ export function DocumentationTab({
       toast.success(t("common.saved"));
       await onChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      toast.error(
+        formatActionError(err, t, {
+          key: "gabinet.documentation.errors.saveInterviewFailed",
+          defaultValue: "Nie udało się zapisać wywiadu.",
+        }),
+      );
     } finally {
       setIsSavingInterview(false);
     }
@@ -202,7 +213,12 @@ export function DocumentationTab({
       toast.success(t("common.saved"));
       await onChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      toast.error(
+        formatActionError(err, t, {
+          key: "gabinet.documentation.errors.saveRemarksFailed",
+          defaultValue: "Nie udało się zapisać uwag klinicznych.",
+        }),
+      );
     } finally {
       setIsSavingRemarks(false);
     }
@@ -274,7 +290,12 @@ export function DocumentationTab({
                 await onChanged?.();
                 resolve();
               } catch (err) {
-                toast.error(err instanceof Error ? err.message : t("common.error"));
+                toast.error(
+                  formatActionError(err, t, {
+                    key: "gabinet.documentation.errors.photoUploadFailed",
+                    defaultValue: "Nie udało się dodać zdjęcia.",
+                  }),
+                );
                 reject(err);
               }
             } else {
@@ -313,7 +334,12 @@ export function DocumentationTab({
       toast.success(t("common.saved"));
       await onChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      toast.error(
+        formatActionError(err, t, {
+          key: "gabinet.documentation.errors.photoRemoveFailed",
+          defaultValue: "Nie udało się usunąć zdjęcia.",
+        }),
+      );
     }
   };
 

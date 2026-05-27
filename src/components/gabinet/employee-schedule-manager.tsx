@@ -21,6 +21,7 @@ import {
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { formatActionError } from "@/lib/format-action-error";
 
 const DAYS_OF_WEEK = [
   { value: 1, label: "Poniedziałek" },
@@ -94,7 +95,12 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
       setEditingId(null);
       setFormData({});
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.scheduling.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać godzin pracy.",
+        }),
+      );
     }
   };
 
@@ -116,7 +122,12 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
       setEditingId(null);
       setFormData({});
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.scheduling.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać godzin pracy.",
+        }),
+      );
     }
   };
 
@@ -128,7 +139,12 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
       });
       toast.success(t("common.delete"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.scheduling.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć harmonogramu.",
+        }),
+      );
     }
   };
 

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "@/lib/ez-icons";
 import { PlateText } from "@/components/plate-text";
+import { formatActionError } from "@/lib/format-action-error";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -231,7 +232,12 @@ export function PackagePurchaseDrawer({
       resetForm();
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.packages.errors.purchaseFailed",
+          defaultValue: "Nie udało się sprzedać pakietu.",
+        }),
+      );
     } finally {
       setSubmitting(false);
     }

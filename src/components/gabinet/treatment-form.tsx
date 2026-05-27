@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Plus } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
+import { formatActionError } from "@/lib/format-action-error";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export interface TreatmentFormData {
@@ -180,7 +181,12 @@ export function TreatmentForm({
       );
       resetAddEquipmentForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.equipment.errors.createFailed",
+          defaultValue: "Nie udało się dodać sprzętu.",
+        }),
+      );
     } finally {
       setCreatingEquipment(false);
     }

@@ -2269,7 +2269,8 @@
       "validationEndAfterStart": "End time must be after start time: {{days}}",
       "validationBreakEndAfterStart": "Break end must be after break start: {{days}}",
       "errors": {
-        "saveFailed": "Could not save working hours."
+        "saveFailed": "Could not save working hours.",
+        "deleteFailed": "Could not delete the schedule."
       }
     },
     "reminders": {
@@ -2621,7 +2622,8 @@
         "permissionDenied": "You do not have permission to edit this appointment.",
         "invalidStatusTransition": "Cannot change the appointment status from its current value.",
         "invalidArguments": "Could not save changes — invalid appointment data.",
-        "blockedNotDraggable": "Google events cannot be moved from the calendar."
+        "blockedNotDraggable": "Google events cannot be moved from the calendar.",
+        "changeEmployeeFailed": "Could not change the appointment's employee."
       }
     },
     "appointmentDetail": {
@@ -2689,6 +2691,15 @@
           "ignored": "Ignored",
           "failed": "Failed"
         }
+      }
+    },
+    "documentation": {
+      "errors": {
+        "saveParamsFailed": "Could not save treatment parameters.",
+        "saveInterviewFailed": "Could not save the interview.",
+        "saveRemarksFailed": "Could not save clinical remarks.",
+        "photoUploadFailed": "Could not upload the photo.",
+        "photoRemoveFailed": "Could not remove the photo."
       }
     },
     "calendar": {
@@ -3604,7 +3615,12 @@
     "addTag": "Add tag",
     "newName": "Tag name",
     "assign": "Tags",
-    "noResults": "No results"
+    "noResults": "No results",
+    "errors": {
+      "createFailed": "Could not add the tag.",
+      "saveFailed": "Could not save the tag.",
+      "deleteFailed": "Could not delete the tag."
+    }
   },
   "categories": {
     "manage": "Categories",
@@ -3616,7 +3632,12 @@
     "tree": "Category tree",
     "assign": "Category",
     "search": "Search...",
-    "noResults": "No results"
+    "noResults": "No results",
+    "errors": {
+      "createFailed": "Could not add the category.",
+      "saveFailed": "Could not save the category.",
+      "deleteFailed": "Could not delete the category."
+    }
   },
   "billing": {
     "title": "Billing",

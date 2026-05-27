@@ -3729,5 +3729,17 @@
       "sourceSystem": "System",
       "incompleteSidebarKpi": "Do uzupełnienia"
     }
+  },
+  "admin": {
+    "email": {
+      "errors": {
+        "saveFailed": "Nie udało się zapisać ustawień e-mail."
+      }
+    },
+    "users": {
+      "errors": {
+        "roleUpdateFailed": "Nie udało się zmienić roli użytkownika."
+      }
+    }
   }
 }

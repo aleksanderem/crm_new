@@ -16,8 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
+import { formatActionError } from "@/lib/format-action-error";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -40,6 +42,7 @@ const CATEGORY_OPTIONS: { value: ComponentCategory; label: string }[] = [
 ];
 
 function EditDocumentComponentPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = Route.useParams();
   const { organizationId } = useOrganization();
@@ -92,7 +95,12 @@ function EditDocumentComponentPage() {
       toast.success("Komponent zaktualizowany");
       navigate({ to: "/dashboard/settings/document-components" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Błąd podczas zapisu");
+      toast.error(
+        formatActionError(err, t, {
+          key: "settings.documentComponents.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać komponentu.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

@@ -39,6 +39,7 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { formatActionError } from "@/lib/format-action-error";
 
 type ProductsNudgeFilter = "unused";
 
@@ -258,7 +259,12 @@ function ProductsPage() {
       setPanelOpen(false);
       resetForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "products.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać produktu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

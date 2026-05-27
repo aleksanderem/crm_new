@@ -69,7 +69,12 @@
     "optional": "opcjonalnie",
     "continue": "Dalej",
     "selectAll": "Zaznacz wszystkie",
-    "deselectAll": "Odznacz wszystkie"
+    "deselectAll": "Odznacz wszystkie",
+    "errors": {
+      "permissionDenied": "Brak uprawnień do tej operacji.",
+      "invalidArguments": "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
+      "storage": "Błąd magazynu danych. Spróbuj ponownie."
+    }
   },
   "nav": {
     "deals": "Transakcje",
@@ -426,6 +431,9 @@
       "won": "Wygrana",
       "lost": "Przegrana",
       "archived": "Zarchiwizowana"
+    },
+    "errors": {
+      "createFailed": "Nie udało się utworzyć transakcji."
     }
   },
   "contacts": {
@@ -700,6 +708,9 @@
       "isActive": "Aktywny",
       "description": "Opis",
       "descriptionPlaceholder": "Opis produktu..."
+    },
+    "errors": {
+      "saveFailed": "Nie udało się zapisać produktu."
     }
   },
   "calls": {
@@ -1309,6 +1320,14 @@
       "seedSuccess": "Załadowano {{count}} szablonów",
       "migrateFolders": "Migruj foldery",
       "migrateSuccess": "Przypisano foldery do {{count}} szablonów"
+    },
+    "documentComponents": {
+      "errors": {
+        "createFailed": "Nie udało się utworzyć komponentu.",
+        "updateFailed": "Nie udało się zapisać komponentu.",
+        "deleteFailed": "Nie udało się usunąć komponentu.",
+        "duplicateFailed": "Nie udało się zduplikować komponentu."
+      }
     }
   },
   "leadForm": {
@@ -1855,7 +1874,10 @@
     "unreadCount": "{{count}} nieprzeczytanych",
     "allMailboxes": "Wszystkie skrzynki",
     "sendFrom": "Wyślij z",
-    "mailbox": "Skrzynka"
+    "mailbox": "Skrzynka",
+    "errors": {
+      "syncFailed": "Nie udało się zsynchronizować skrzynki."
+    }
   },
   "team": {
     "title": "Zespół",
@@ -3132,7 +3154,8 @@
       "changeEmail": "Użyj innego e-maila",
       "invalidPortalLink": "Nieprawidłowy link do portalu",
       "invalidPortalLinkDescription": "Ten link jest nieprawidłowy lub wygasł. Skontaktuj się z gabinetem, aby otrzymać nowy link.",
-      "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie."
+      "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie.",
+      "sendOtpFailed": "Nie udało się wysłać kodu. Spróbuj ponownie."
     },
     "dashboard": {
       "welcome": "Witaj, {{name}}",
@@ -3158,13 +3181,15 @@
       "rescheduleReasonPlaceholder": "Opcjonalnie — daj nam znać, dlaczego musisz przełożyć wizytę",
       "rescheduleSubmit": "Wyślij prośbę",
       "rescheduleSuccess": "Prośba o zmianę terminu wysłana. Klinika skontaktuje się z Tobą w celu potwierdzenia.",
-      "reschedulePendingNote": "To jest tylko prośba. Twoja wizyta pozostanie bez zmian do momentu potwierdzenia przez klinikę."
+      "reschedulePendingNote": "To jest tylko prośba. Twoja wizyta pozostanie bez zmian do momentu potwierdzenia przez klinikę.",
+      "rescheduleFailed": "Nie udało się wysłać prośby o zmianę terminu."
     },
     "documents": {
       "title": "Moje dokumenty",
       "empty": "Brak dostępnych dokumentów",
       "signDocument": "Podpisz dokument",
       "signed": "Dokument podpisany pomyślnie",
+      "signFailed": "Nie udało się podpisać dokumentu.",
       "formDocuments": "Dokumenty formularzy",
       "legacyDocuments": "Inne dokumenty",
       "signPrompt": "Zapoznaj się z dokumentem i złóż podpis poniżej.",
@@ -3173,7 +3198,8 @@
     "profile": {
       "title": "Mój profil",
       "name": "Imię i nazwisko",
-      "editableFields": "Edytowalne informacje"
+      "editableFields": "Edytowalne informacje",
+      "updateFailed": "Nie udało się zaktualizować profilu."
     },
     "packages": {
       "title": "Moje pakiety",

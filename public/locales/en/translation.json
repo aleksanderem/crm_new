@@ -69,7 +69,12 @@
     "optional": "optional",
     "continue": "Continue",
     "selectAll": "Select all",
-    "deselectAll": "Deselect all"
+    "deselectAll": "Deselect all",
+    "errors": {
+      "permissionDenied": "You don't have permission to perform this action.",
+      "invalidArguments": "Invalid data. Please check the form and try again.",
+      "storage": "Storage error. Please try again."
+    }
   },
   "nav": {
     "deals": "Deals",
@@ -427,6 +432,9 @@
       "won": "Won",
       "lost": "Lost",
       "archived": "Archived"
+    },
+    "errors": {
+      "createFailed": "Could not create the deal."
     }
   },
   "contacts": {
@@ -700,6 +708,9 @@
       "isActive": "Active",
       "description": "Description",
       "descriptionPlaceholder": "Product description..."
+    },
+    "errors": {
+      "saveFailed": "Could not save the product."
     }
   },
   "calls": {
@@ -1307,6 +1318,14 @@
       "seedSuccess": "Loaded {{count}} templates",
       "migrateFolders": "Migrate folders",
       "migrateSuccess": "Assigned folders to {{count}} templates"
+    },
+    "documentComponents": {
+      "errors": {
+        "createFailed": "Could not create the component.",
+        "updateFailed": "Could not save the component.",
+        "deleteFailed": "Could not delete the component.",
+        "duplicateFailed": "Could not duplicate the component."
+      }
     }
   },
   "leadForm": {
@@ -1847,7 +1866,10 @@
     "unreadCount": "{{count}} unread",
     "allMailboxes": "All mailboxes",
     "sendFrom": "Send from",
-    "mailbox": "Mailbox"
+    "mailbox": "Mailbox",
+    "errors": {
+      "syncFailed": "Could not sync the inbox."
+    }
   },
   "team": {
     "title": "Team",
@@ -3121,7 +3143,8 @@
       "changeEmail": "Use a different email",
       "invalidPortalLink": "Invalid Portal Link",
       "invalidPortalLinkDescription": "This link is invalid or expired. Please contact your clinic for a new portal link.",
-      "errorGeneric": "Something went wrong. Please try again."
+      "errorGeneric": "Something went wrong. Please try again.",
+      "sendOtpFailed": "Could not send the code. Please try again."
     },
     "dashboard": {
       "welcome": "Welcome, {{name}}",
@@ -3147,13 +3170,15 @@
       "rescheduleReasonPlaceholder": "Optional — let us know why you need to reschedule",
       "rescheduleSubmit": "Send Request",
       "rescheduleSuccess": "Reschedule request sent. The clinic will contact you to confirm.",
-      "reschedulePendingNote": "This is a request only. Your appointment will remain unchanged until the clinic confirms the new time."
+      "reschedulePendingNote": "This is a request only. Your appointment will remain unchanged until the clinic confirms the new time.",
+      "rescheduleFailed": "Could not send the reschedule request."
     },
     "documents": {
       "title": "My Documents",
       "empty": "No documents available",
       "signDocument": "Sign Document",
       "signed": "Document signed successfully",
+      "signFailed": "Could not sign the document.",
       "formDocuments": "Form Documents",
       "legacyDocuments": "Other Documents",
       "signPrompt": "Please review the document and provide your signature below.",
@@ -3162,7 +3187,8 @@
     "profile": {
       "title": "My Profile",
       "name": "Name",
-      "editableFields": "Editable Information"
+      "editableFields": "Editable Information",
+      "updateFailed": "Could not update your profile."
     },
     "packages": {
       "title": "My Packages",

@@ -16,6 +16,7 @@ import { Eye, PenTool, FileText } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/patient/_layout/documents")({
   component: PatientDocuments,
@@ -59,7 +60,12 @@ function PatientDocuments() {
       toast.success(t("patientPortal.documents.signed"));
       setSignDocId(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "patientPortal.documents.signFailed",
+          defaultValue: "Nie udało się podpisać dokumentu.",
+        }),
+      );
     }
   };
 

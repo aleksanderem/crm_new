@@ -1,0 +1,66 @@
+name: Supabase Migrations
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/supabase-migrations.mjs"
+      - ".github/workflows/supabase-migrations.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/supabase-migrations.mjs"
+      - ".github/workflows/supabase-migrations.yml"
+
+jobs:
+  # On PR: verify that the migrations already on main are applied to the
+  # deployed database. This is a soft check — it surfaces drift without
+  # blocking the PR, because the PR may be the one introducing the migration.
+  check:
+    name: Check deployed migrations
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify base-branch migrations are applied
+        run: node scripts/supabase-migrations.mjs check
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+  # On push to main: apply any pending migrations to the deployed database
+  # before the rest of the deploy (Netlify build + convex deploy) runs.
+  # Fails the workflow if migrations can't be applied, so the deploy is not
+  # silently left in a broken state.
+  apply:
+    name: Apply pending migrations
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply pending migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::SUPABASE_DB_URL repository secret is not set."
+            echo "::error::Configure it in Settings -> Secrets and variables -> Actions"
+            echo "::error::so this workflow can apply migrations to the deployed database."
+            exit 1
+          fi
+          node scripts/supabase-migrations.mjs apply

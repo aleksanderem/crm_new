@@ -2087,6 +2087,15 @@
       "treatment": "Zabieg",
       "nudgeFilter": {
         "noPrice": "Pokazywane są aktywne zabiegi bez ceny lub z ceną 0."
+      },
+      "errors": {
+        "createFailed": "Nie udało się utworzyć zabiegu.",
+        "updateFailed": "Nie udało się zaktualizować zabiegu.",
+        "notFound": "Nie znaleziono zabiegu. Odśwież listę i spróbuj ponownie.",
+        "variantNotFound": "Nie znaleziono wariantu zabiegu.",
+        "permissionDenied": "Brak uprawnień do tej operacji na zabiegu.",
+        "invalidArguments": "Nie udało się zapisać zabiegu — nieprawidłowe dane.",
+        "storage": "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie."
       }
     },
     "treatmentDetail": {

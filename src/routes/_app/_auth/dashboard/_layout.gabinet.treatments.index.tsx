@@ -37,6 +37,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { formatTreatmentError } from "@/lib/format-action-error";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -389,12 +390,21 @@ function TreatmentsIndex() {
         setTagIds([]);
         setCategoryId(undefined);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toast.error(
+          formatTreatmentError(e, t, {
+            key: editingTreatment
+              ? "gabinet.treatments.errors.updateFailed"
+              : "gabinet.treatments.errors.createFailed",
+            defaultValue: editingTreatment
+              ? "Nie udało się zaktualizować zabiegu."
+              : "Nie udało się utworzyć zabiegu.",
+          }),
+        );
       } finally {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, organizationId, tagIds, categoryId],
+    [editingTreatment, createTreatment, updateTreatment, organizationId, tagIds, categoryId, t],
   );
 
   const handleBulkAction = useCallback(

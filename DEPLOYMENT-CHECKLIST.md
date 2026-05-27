@@ -106,6 +106,30 @@ npm run build
 # - Custom: rsync -avz dist/ user@server:/path
 ```
 
+### 2a. Apply Supabase Migrations
+On every push to `main`, the `Supabase Migrations` GitHub Actions workflow
+(`.github/workflows/supabase-migrations.yml`) applies any pending SQL files
+from `supabase/migrations/` against the deployed database and notifies
+PostgREST to reload its schema cache.
+
+Requires the `SUPABASE_DB_URL` repository secret to be set. If the workflow
+fails or the secret is missing, run the migrations manually before the
+frontend deploy completes:
+```bash
+export SUPABASE_DB_URL='postgresql://...'
+npm run migrations:apply
+```
+
+First-time bootstrap (one-off): the deployed database already has some
+migrations applied manually but no tracking table yet. Record those as
+applied before the first automated run so they aren't re-executed:
+```bash
+export SUPABASE_DB_URL='postgresql://...'
+node scripts/supabase-migrations.mjs mark 00001 00002 00003 00004
+# then apply whatever is actually pending:
+npm run migrations:apply
+```
+
 ### 3. Post-Deploy Verification
 - [ ] Login works on production
 - [ ] All pages load

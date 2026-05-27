@@ -3714,5 +3714,17 @@
       "sourceSystem": "System",
       "incompleteSidebarKpi": "To complete"
     }
+  },
+  "admin": {
+    "email": {
+      "errors": {
+        "saveFailed": "Could not save the email settings."
+      }
+    },
+    "users": {
+      "errors": {
+        "roleUpdateFailed": "Could not update the user's role."
+      }
+    }
   }
 }

@@ -4,15 +4,18 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/_auth/admin/users")({
   component: AdminUsers,
 });
 
 function AdminUsers() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data: viewer, isLoading: viewerLoading } = useQuery(
@@ -31,7 +34,12 @@ function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ["convexQuery"] });
     },
     onError: (e: Error) => {
-      toast.error(e.message || "Failed to update role");
+      toast.error(
+        formatActionError(e, t, {
+          key: "admin.users.errors.roleUpdateFailed",
+          defaultValue: "Nie udało się zmienić roli użytkownika.",
+        }),
+      );
     },
   });
 

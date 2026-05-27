@@ -5,6 +5,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/_auth/admin/email-config")({
   component: AdminEmailConfig,
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/_app/_auth/admin/email-config")({
 type ProviderChoice = "env" | "resend" | "mailgun";
 
 function AdminEmailConfig() {
+  const { t } = useTranslation();
   const { data: user, isLoading: userLoading } = useQuery(
     convexQuery(api.app.getCurrentUser, {}),
   );
@@ -61,7 +64,12 @@ function AdminEmailConfig() {
       toast.success("Platform email settings saved");
     },
     onError: (e: Error) => {
-      toast.error(e.message || "Failed to save settings");
+      toast.error(
+        formatActionError(e, t, {
+          key: "admin.email.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać ustawień e-mail.",
+        }),
+      );
     },
   });
 

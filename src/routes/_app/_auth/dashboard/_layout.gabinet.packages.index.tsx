@@ -43,6 +43,7 @@ import { Plus, Trash2, Package, Pencil, Loader2, X } from "@/lib/ez-icons";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
@@ -293,7 +294,12 @@ function PackagesIndex() {
       setPanelOpen(false);
       resetForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.packages.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać pakietu.",
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -311,7 +317,12 @@ function PackagesIndex() {
       toast.success(t("common.deleted"));
       invalidatePackages();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.packages.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć pakietu.",
+        }),
+      );
     } finally {
       setDeleteDialogOpen(false);
       setDeletingId(null);
@@ -351,7 +362,12 @@ function PackagesIndex() {
       setAssignPanelOpen(false);
       resetAssignForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.packages.errors.purchaseFailed",
+          defaultValue: "Nie udało się sprzedać pakietu.",
+        }),
+      );
     } finally {
       setAssignSubmitting(false);
     }

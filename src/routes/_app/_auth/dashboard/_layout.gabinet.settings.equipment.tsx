@@ -39,6 +39,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/equipment"
@@ -208,7 +209,12 @@ function EquipmentCard({
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.equipment.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać sprzętu.",
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -231,7 +237,12 @@ function EquipmentCard({
       setTransferRoomId("");
       setTransferNotes("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.equipment.errors.transferFailed",
+          defaultValue: "Nie udało się przenieść sprzętu.",
+        }),
+      );
     } finally {
       setTransferring(false);
     }
@@ -536,7 +547,12 @@ function EquipmentSettingsPage() {
       setNewStatus("available");
       setNewLocationId("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.equipment.errors.createFailed",
+          defaultValue: "Nie udało się dodać sprzętu.",
+        }),
+      );
     } finally {
       setCreating(false);
     }

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
@@ -360,12 +361,17 @@ function PatientsIndex() {
         setTagIds([]);
         setCategoryId(undefined);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toast.error(
+          formatActionError(e, t, {
+            key: "gabinet.patients.errors.createFailed",
+            defaultValue: "Nie udało się dodać klienta.",
+          }),
+        );
       } finally {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId, tagIds, categoryId],
+    [createPatient, organizationId, tagIds, categoryId, t],
   );
 
   const handleBulkAction = useCallback(

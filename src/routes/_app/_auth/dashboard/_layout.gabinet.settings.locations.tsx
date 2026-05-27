@@ -33,6 +33,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight, MapPin, Phone } from "@/lib/ez
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/locations"
@@ -160,7 +161,12 @@ function LocationCard({
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać lokalizacji.",
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -173,7 +179,12 @@ function LocationCard({
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
       onDeleted();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć lokalizacji.",
+        }),
+      );
     }
   };
 
@@ -192,7 +203,12 @@ function LocationCard({
       setNewRoomFloor("");
       setAddRoomOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.roomCreateFailed",
+          defaultValue: "Nie udało się dodać gabinetu.",
+        }),
+      );
     } finally {
       setAddingRoom(false);
     }
@@ -202,7 +218,12 @@ function LocationCard({
     try {
       await deleteRoom({ organizationId, roomId });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.roomDeleteFailed",
+          defaultValue: "Nie udało się usunąć gabinetu.",
+        }),
+      );
     }
   };
 
@@ -210,7 +231,12 @@ function LocationCard({
     try {
       await updateRoom({ organizationId, roomId, isActive: !isActive });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.roomUpdateFailed",
+          defaultValue: "Nie udało się zaktualizować gabinetu.",
+        }),
+      );
     }
   };
 
@@ -513,7 +539,12 @@ function LocationsSettingsPage() {
       setNewEmail("");
       setNewCity("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.locations.errors.createFailed",
+          defaultValue: "Nie udało się dodać lokalizacji.",
+        }),
+      );
     } finally {
       setCreating(false);
     }

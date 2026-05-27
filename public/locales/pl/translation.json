@@ -2066,7 +2066,11 @@
       "added": "Dodano",
       "upcomingAppointments": "Nadchodzące wizyty",
       "noUpcomingAppointments": "Brak nadchodzących wizyt",
-      "noMedicalInfo": "Brak informacji medycznych"
+      "noMedicalInfo": "Brak informacji medycznych",
+      "errors": {
+        "createFailed": "Nie udało się dodać klienta.",
+        "saveFailed": "Nie udało się zapisać zmian klienta."
+      }
     },
     "treatments": {
       "title": "Zabiegi",
@@ -2263,7 +2267,10 @@
       "addBreak": "Dodaj przerwę",
       "removeBreak": "Usuń przerwę",
       "validationEndAfterStart": "Godzina końca musi być po godzinie początku: {{days}}",
-      "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}"
+      "validationBreakEndAfterStart": "Koniec przerwy musi być po początku przerwy: {{days}}",
+      "errors": {
+        "saveFailed": "Nie udało się zapisać godzin pracy."
+      }
     },
     "reminders": {
       "title": "Przypomnienia o wizytach",
@@ -2308,7 +2315,11 @@
       "confirmApproveTitle": "Zatwierdź wniosek urlopowy",
       "confirmApproveDesc": "Czy na pewno chcesz zatwierdzić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
       "confirmRejectTitle": "Odrzuć wniosek urlopowy",
-      "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony."
+      "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
+      "errors": {
+        "createFailed": "Nie udało się utworzyć wniosku urlopowego.",
+        "statusChangeFailed": "Nie udało się zaktualizować statusu wniosku urlopowego."
+      }
     },
     "employees": {
       "title": "Pracownicy",
@@ -2446,7 +2457,12 @@
       "employee": "Pracownik",
       "active": "Aktywny",
       "confirmDelete": "Czy na pewno chcesz usunąć tego pracownika?",
-      "searchPlaceholder": "Szukaj pracowników..."
+      "searchPlaceholder": "Szukaj pracowników...",
+      "errors": {
+        "createFailed": "Nie udało się dodać pracownika.",
+        "saveFailed": "Nie udało się zapisać zmian pracownika.",
+        "noteFailed": "Nie udało się dodać notatki."
+      }
     },
     "leaveTypes": {
       "title": "Typy urlopów",
@@ -2463,7 +2479,11 @@
       "unlimited": "Bez limitu",
       "confirmDelete": "Czy na pewno chcesz dezaktywować ten typ urlopu?",
       "initBalances": "Inicjalizuj salda {{year}}",
-      "balancesInitialized": "Zainicjalizowano {{count}} saldo(a)"
+      "balancesInitialized": "Zainicjalizowano {{count}} saldo(a)",
+      "errors": {
+        "saveFailed": "Nie udało się zapisać typu urlopu.",
+        "initBalancesFailed": "Nie udało się zainicjalizować sald urlopowych."
+      }
     },
     "leaveBalances": {
       "title": "Salda urlopów",
@@ -2810,6 +2830,11 @@
       "nudgeFilter": {
         "expiring": "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
         "noUsage": "Pokazywane są aktywne pakiety bez aktywnych użyć."
+      },
+      "errors": {
+        "saveFailed": "Nie udało się zapisać pakietu.",
+        "deleteFailed": "Nie udało się usunąć pakietu.",
+        "purchaseFailed": "Nie udało się sprzedać pakietu."
       }
     },
     "documents": {
@@ -3083,7 +3108,15 @@
       "postalCode": "Kod pocztowy",
       "country": "Kraj",
       "room": "Gabinet",
-      "selectRoom": "Wybierz gabinet..."
+      "selectRoom": "Wybierz gabinet...",
+      "errors": {
+        "createFailed": "Nie udało się dodać lokalizacji.",
+        "saveFailed": "Nie udało się zapisać lokalizacji.",
+        "deleteFailed": "Nie udało się usunąć lokalizacji.",
+        "roomCreateFailed": "Nie udało się dodać gabinetu.",
+        "roomDeleteFailed": "Nie udało się usunąć gabinetu.",
+        "roomUpdateFailed": "Nie udało się zaktualizować gabinetu."
+      }
     },
     "equipment": {
       "title": "Sprzęt",
@@ -3103,6 +3136,11 @@
         "in_use": "W użyciu",
         "maintenance": "Serwis",
         "retired": "Wycofany"
+      },
+      "errors": {
+        "createFailed": "Nie udało się dodać sprzętu.",
+        "saveFailed": "Nie udało się zapisać sprzętu.",
+        "transferFailed": "Nie udało się przenieść sprzętu."
       }
     }
   },

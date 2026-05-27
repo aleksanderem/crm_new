@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import type { FieldDef, FilterCondition } from "@/components/crm/types";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
@@ -470,7 +471,12 @@ function CreateEmployeeSheet({
       setCategoryId(undefined);
       setTreatmentSearch("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.createFailed",
+          defaultValue: "Nie udało się dodać pracownika.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

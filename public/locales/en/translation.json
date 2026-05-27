@@ -473,6 +473,9 @@
       "tags": "Tags",
       "tagsPlaceholder": "Type and press Enter",
       "notes": "Notes"
+    },
+    "errors": {
+      "createFailed": "Could not create the contact."
     }
   },
   "companies": {
@@ -518,6 +521,9 @@
       "zip": "Zip",
       "country": "Country",
       "notes": "Notes"
+    },
+    "errors": {
+      "createFailed": "Could not create the company."
     }
   },
   "activities": {
@@ -756,6 +762,10 @@
   "calendar": {
     "nudgeFilter": {
       "yesterdayOverdue": "Showing yesterday's overdue activities (due yesterday and not completed)."
+    },
+    "errors": {
+      "googleImportFailed": "Could not import Google Calendar events.",
+      "moveFailed": "Could not move the event."
     }
   },
   "settings": {
@@ -3421,7 +3431,12 @@
     "all": "All",
     "crm": "CRM",
     "gabinet": "Gabinet",
-    "platform": "Platform"
+    "platform": "Platform",
+    "errors": {
+      "bindFailed": "Could not bind the template to the event.",
+      "toggleFailed": "Could not change the binding state.",
+      "unbindFailed": "Could not remove the binding."
+    }
   },
   "sms": {
     "title": "SMS Settings",
@@ -3443,7 +3458,11 @@
     "deactivatedSuccess": "SMS notifications deactivated.",
     "apiTokenRequired": "API token is required.",
     "apiTokenPlaceholder": "Enter API token",
-    "apiSecretPlaceholder": "Enter Auth Token (Twilio)"
+    "apiSecretPlaceholder": "Enter Auth Token (Twilio)",
+    "errors": {
+      "saveFailed": "Could not save the SMS configuration.",
+      "toggleFailed": "Could not change the SMS notifications state."
+    }
   },
   "emailSequences": {
     "title": "Email Sequences",

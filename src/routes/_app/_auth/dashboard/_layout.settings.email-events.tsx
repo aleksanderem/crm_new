@@ -25,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -109,7 +110,12 @@ function EmailEventsSettings() {
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "emailEvents.errors.bindFailed",
+          defaultValue: "Nie udało się przypisać szablonu do zdarzenia.",
+        }),
+      );
     } finally {
       setBindingInProgress(null);
     }
@@ -126,7 +132,12 @@ function EmailEventsSettings() {
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingSaved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "emailEvents.errors.toggleFailed",
+          defaultValue: "Nie udało się zmienić stanu powiązania.",
+        }),
+      );
     } finally {
       setBindingInProgress(null);
     }
@@ -147,7 +158,12 @@ function EmailEventsSettings() {
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.emailEventBindings.list(organizationId) });
       toast.success(t("emailEvents.bindingDeleted"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "emailEvents.errors.unbindFailed",
+          defaultValue: "Nie udało się usunąć powiązania.",
+        }),
+      );
     } finally {
       setBindingInProgress(null);
       setUnbindTarget(null);

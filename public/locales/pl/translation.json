@@ -472,6 +472,9 @@
       "tags": "Tagi",
       "tagsPlaceholder": "Wpisz i naciśnij Enter",
       "notes": "Notatki"
+    },
+    "errors": {
+      "createFailed": "Nie udało się utworzyć kontaktu."
     }
   },
   "companies": {
@@ -517,6 +520,9 @@
       "zip": "Kod pocztowy",
       "country": "Kraj",
       "notes": "Notatki"
+    },
+    "errors": {
+      "createFailed": "Nie udało się utworzyć firmy."
     }
   },
   "activities": {
@@ -756,6 +762,10 @@
   "calendar": {
     "nudgeFilter": {
       "yesterdayOverdue": "Pokazywane są zaległe aktywności z wczoraj (z wczorajszą datą i nieukończone)."
+    },
+    "errors": {
+      "googleImportFailed": "Nie udało się zaimportować kalendarza Google.",
+      "moveFailed": "Nie udało się przenieść wydarzenia."
     }
   },
   "settings": {
@@ -3436,7 +3446,12 @@
     "all": "Wszystkie",
     "crm": "CRM",
     "gabinet": "Gabinet",
-    "platform": "Platforma"
+    "platform": "Platforma",
+    "errors": {
+      "bindFailed": "Nie udało się przypisać szablonu do zdarzenia.",
+      "toggleFailed": "Nie udało się zmienić stanu powiązania.",
+      "unbindFailed": "Nie udało się usunąć powiązania."
+    }
   },
   "sms": {
     "title": "Ustawienia SMS",
@@ -3458,7 +3473,11 @@
     "deactivatedSuccess": "Powiadomienia SMS dezaktywowane.",
     "apiTokenRequired": "Token API jest wymagany.",
     "apiTokenPlaceholder": "Wprowadź token API",
-    "apiSecretPlaceholder": "Wprowadź Auth Token (Twilio)"
+    "apiSecretPlaceholder": "Wprowadź Auth Token (Twilio)",
+    "errors": {
+      "saveFailed": "Nie udało się zapisać konfiguracji SMS.",
+      "toggleFailed": "Nie udało się zmienić stanu powiadomień SMS."
+    }
   },
   "emailSequences": {
     "title": "Sekwencje email",

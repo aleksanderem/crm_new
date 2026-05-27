@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -9,6 +10,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { CompanyForm } from "@/components/forms/company-form";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatActionError } from "@/lib/format-action-error";
 import { useState, type ComponentProps } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 
@@ -19,6 +21,7 @@ export const Route = createFileRoute(
 });
 
 function NewCompany() {
+  const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -63,7 +66,12 @@ function NewCompany() {
                 navigate({ to: `/dashboard/companies/${id}` });
                 void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(organizationId) });
               } catch (e) {
-                toast.error(e instanceof Error ? e.message : String(e));
+                toast.error(
+                  formatActionError(e, t, {
+                    key: "companies.errors.createFailed",
+                    defaultValue: "Nie udało się utworzyć firmy.",
+                  }),
+                );
               } finally {
                 setIsSubmitting(false);
               }

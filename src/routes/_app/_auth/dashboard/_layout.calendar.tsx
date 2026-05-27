@@ -30,6 +30,7 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 import { Loader2 } from "lucide-react";
 
@@ -245,7 +246,12 @@ function UnifiedCalendarPage() {
         })
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("calendar.googleImportFailed", "Import failed"));
+      toast.error(
+        formatActionError(e, t, {
+          key: "calendar.errors.googleImportFailed",
+          defaultValue: "Nie udało się zaimportować kalendarza Google.",
+        }),
+      );
     } finally {
       setIsImporting(false);
     }
@@ -400,7 +406,12 @@ function UnifiedCalendarPage() {
 
         toast.success(t("calendar.eventMoved", "Event moved"));
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t("calendar.moveFailed", "Failed to move event"));
+        toast.error(
+          formatActionError(err, t, {
+            key: "calendar.errors.moveFailed",
+            defaultValue: "Nie udało się przenieść wydarzenia.",
+          }),
+        );
       }
     },
     [editPerm.allowed, events, organizationId, updateActivity, updateAppointment, queryClient, t]

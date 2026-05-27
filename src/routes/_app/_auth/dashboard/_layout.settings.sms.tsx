@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/sms"
@@ -78,7 +79,12 @@ function SmsSettings() {
       setApiSecret("");
       toast.success(t("sms.saved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "sms.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać konfiguracji SMS.",
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -92,7 +98,12 @@ function SmsSettings() {
         isActive ? t("sms.activatedSuccess") : t("sms.deactivatedSuccess")
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "sms.errors.toggleFailed",
+          defaultValue: "Nie udało się zmienić stanu powiadomień SMS.",
+        }),
+      );
     } finally {
       setToggling(false);
     }

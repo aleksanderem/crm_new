@@ -160,16 +160,43 @@ npm run migrations:apply
 
 ## Environment Variables Required
 
-**Check for:**
-- Database connection strings
-- API keys
-- Authentication secrets
-- Feature flags
+Production env vars are split across two surfaces — Netlify (build-time +
+frontend bundle) and Convex (runtime backend). See `.env.example` for the
+full list with per-var `# [netlify]` / `# [convex]` annotations.
 
-**Verify:**
-- All env vars documented
-- Production values set
-- Secrets secured
+### Netlify (Site settings → Environment variables)
+
+Required for the production build command in `netlify.toml`
+(`npm run migrations:apply && npx convex deploy --cmd 'npm run build'`):
+
+- `CONVEX_DEPLOY_KEY` — production deploy key from the Convex dashboard;
+  without it `convex deploy` fails.
+- `SUPABASE_DB_URL` — Postgres connection string used by
+  `scripts/supabase-migrations.mjs` to apply pending SQL before the
+  frontend goes live. Without it the migration step exits 0 (fail-open)
+  and only the GitHub Actions workflow gates schema drift — see #942.
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — baked into the
+  static bundle by Vite; the runtime supabase-js client cannot start
+  without them.
+- `VITE_CONVEX_URL` — only set manually if you are not running
+  `convex deploy` in the build command. With the current `netlify.toml`
+  the Convex CLI injects this for you.
+
+### Convex (`npx convex env set NAME value` against the prod deployment)
+
+Backend runtime secrets — NOT set in Netlify:
+
+- Auth: `AUTH_RESEND_KEY`, `AUTH_EMAIL`, `HOST_URL`, `SITE_URL`, `CONVEX_SITE_URL`
+- Email: `RESEND_API_KEY`, `RESEND_FROM`
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- Google OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
+- Supabase server-side: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+- `APP_URL`
+
+`SUPABASE_URL` is the one var that must be set in BOTH Netlify (so the
+migration script can find the DB host) and Convex (so functions can read
+from it at runtime).
 
 ---
 

@@ -4,4 +4,9 @@
   status = 200
 
 [context.production]
-  command = "npx convex deploy --cmd 'npm run build'"
+  # Apply pending Supabase migrations before the frontend goes live so the
+  # newly-deployed UI never hits a DB that's missing columns it expects.
+  # Requires SUPABASE_DB_URL to be configured in Netlify env; without it the
+  # script exits 0 (fail-open) and the parallel GitHub Actions workflow
+  # (.github/workflows/supabase-migrations.yml) remains the only gate.
+  command = "npm run migrations:apply && npx convex deploy --cmd 'npm run build'"

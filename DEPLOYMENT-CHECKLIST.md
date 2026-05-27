@@ -107,14 +107,27 @@ npm run build
 ```
 
 ### 2a. Apply Supabase Migrations
-On every push to `main`, the `Supabase Migrations` GitHub Actions workflow
-(`.github/workflows/supabase-migrations.yml`) applies any pending SQL files
-from `supabase/migrations/` against the deployed database and notifies
-PostgREST to reload its schema cache.
+Migrations are applied in two places so the frontend never goes live
+against a DB that's missing the columns it expects (issue #942):
 
-Requires the `SUPABASE_DB_URL` repository secret to be set. If the workflow
-fails or the secret is missing, run the migrations manually before the
-frontend deploy completes:
+1. The Netlify production build command (`netlify.toml`) runs
+   `npm run migrations:apply` before `convex deploy` + `npm run build`,
+   so a failed migration aborts the frontend deploy.
+2. The `Supabase Migrations` GitHub Actions workflow
+   (`.github/workflows/supabase-migrations.yml`) applies pending SQL on
+   every push to `main` as a secondary signal (surfaces failures in PR
+   checks even if Netlify is misconfigured).
+
+Both paths require the `SUPABASE_DB_URL` secret:
+- Netlify: set it under Site settings → Environment variables.
+- GitHub Actions: set it under Settings → Secrets and variables → Actions.
+
+If the secret is missing in Netlify, `npm run migrations:apply` exits 0
+(fail-open) and the Netlify gating becomes a no-op — set the env var to
+get the gating behavior.
+
+If both fail, run the migrations manually before the frontend deploy
+completes:
 ```bash
 export SUPABASE_DB_URL='postgresql://...'
 npm run migrations:apply

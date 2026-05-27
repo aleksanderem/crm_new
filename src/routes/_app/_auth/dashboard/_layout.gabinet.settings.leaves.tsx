@@ -46,6 +46,7 @@ import { AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type LeavesNudgeFilter = "pending";
 
@@ -164,7 +165,12 @@ function LeavesPage() {
       setEndDate("");
       setReason("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaves.errors.createFailed",
+          defaultValue: "Nie udało się utworzyć wniosku urlopowego.",
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +199,12 @@ function LeavesPage() {
       // Invalidate Supabase leaves cache after status change
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unknown error");
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaves.errors.statusChangeFailed",
+          defaultValue: "Nie udało się zaktualizować statusu wniosku urlopowego.",
+        }),
+      );
     } finally {
       setConfirmLeaveId(null);
       setConfirmAction(null);

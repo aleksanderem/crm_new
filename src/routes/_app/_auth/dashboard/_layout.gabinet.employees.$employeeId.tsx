@@ -77,7 +77,9 @@ import type { GabinetEmployeeRole } from "@cvx/schema";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
@@ -404,7 +406,12 @@ function EmployeeDetail() {
       });
       setNewNote("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.noteFailed",
+          defaultValue: "Nie udało się dodać notatki.",
+        }),
+      );
     } finally {
       setIsAddingNote(false);
     }
@@ -1253,7 +1260,7 @@ function EditEmployeeDrawer({
   onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   isSubmitting: boolean;
   setIsSubmitting: (v: boolean) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: TFunction;
 }) {
   const [firstName, setFirstName] = useState(employee.firstName ?? "");
   const [lastName, setLastName] = useState(employee.lastName ?? "");
@@ -1296,7 +1303,12 @@ function EditEmployeeDrawer({
       toast.success(t("common.saved"));
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać zmian pracownika.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -1558,7 +1570,7 @@ function DetailedDataTab({
   organizationId: Id<"organizations">;
   onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   onSetTreatments: (args: FunctionArgs<typeof api.gabinet.employees.setQualifiedTreatments>) => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: TFunction;
   i18nLanguage: string;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
@@ -1723,7 +1735,12 @@ function DetailedDataTab({
       toast.success(t("common.saved"));
       setEditing(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać zmian pracownika.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

@@ -2058,7 +2058,11 @@
       "added": "Added",
       "upcomingAppointments": "Upcoming appointments",
       "noUpcomingAppointments": "No upcoming appointments",
-      "noMedicalInfo": "No medical information"
+      "noMedicalInfo": "No medical information",
+      "errors": {
+        "createFailed": "Could not add the client.",
+        "saveFailed": "Could not save client changes."
+      }
     },
     "treatments": {
       "title": "Treatments",
@@ -2253,7 +2257,10 @@
       "addBreak": "Add break",
       "removeBreak": "Remove break",
       "validationEndAfterStart": "End time must be after start time: {{days}}",
-      "validationBreakEndAfterStart": "Break end must be after break start: {{days}}"
+      "validationBreakEndAfterStart": "Break end must be after break start: {{days}}",
+      "errors": {
+        "saveFailed": "Could not save working hours."
+      }
     },
     "reminders": {
       "title": "Appointment Reminders",
@@ -2298,7 +2305,11 @@
       "confirmApproveTitle": "Approve Leave Request",
       "confirmApproveDesc": "Are you sure you want to approve this leave request? The employee will be notified.",
       "confirmRejectTitle": "Reject Leave Request",
-      "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified."
+      "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified.",
+      "errors": {
+        "createFailed": "Could not create the leave request.",
+        "statusChangeFailed": "Could not update the leave request status."
+      }
     },
     "employees": {
       "title": "Employees",
@@ -2436,7 +2447,12 @@
       "employee": "Employee",
       "active": "Active",
       "confirmDelete": "Are you sure you want to delete this employee?",
-      "searchPlaceholder": "Search employees..."
+      "searchPlaceholder": "Search employees...",
+      "errors": {
+        "createFailed": "Could not add the employee.",
+        "saveFailed": "Could not save employee changes.",
+        "noteFailed": "Could not add the note."
+      }
     },
     "leaveTypes": {
       "title": "Leave Types",
@@ -2453,7 +2469,11 @@
       "unlimited": "Unlimited",
       "confirmDelete": "Are you sure you want to deactivate this leave type?",
       "initBalances": "Initialize Balances {{year}}",
-      "balancesInitialized": "Initialized {{count}} balance(s)"
+      "balancesInitialized": "Initialized {{count}} balance(s)",
+      "errors": {
+        "saveFailed": "Could not save the leave type.",
+        "initBalancesFailed": "Could not initialize leave balances."
+      }
     },
     "leaveBalances": {
       "title": "Leave Balances",
@@ -2799,6 +2819,11 @@
       "nudgeFilter": {
         "expiring": "Showing packages with usages expiring within 30 days.",
         "noUsage": "Showing active packages with no active usage."
+      },
+      "errors": {
+        "saveFailed": "Could not save the package.",
+        "deleteFailed": "Could not delete the package.",
+        "purchaseFailed": "Could not sell the package."
       }
     },
     "documents": {
@@ -3072,7 +3097,15 @@
       "postalCode": "Postal code",
       "country": "Country",
       "room": "Room",
-      "selectRoom": "Select room..."
+      "selectRoom": "Select room...",
+      "errors": {
+        "createFailed": "Could not add the location.",
+        "saveFailed": "Could not save the location.",
+        "deleteFailed": "Could not delete the location.",
+        "roomCreateFailed": "Could not add the room.",
+        "roomDeleteFailed": "Could not delete the room.",
+        "roomUpdateFailed": "Could not update the room."
+      }
     },
     "equipment": {
       "title": "Equipment",
@@ -3092,6 +3125,11 @@
         "in_use": "In use",
         "maintenance": "Maintenance",
         "retired": "Retired"
+      },
+      "errors": {
+        "createFailed": "Could not add the equipment.",
+        "saveFailed": "Could not save the equipment.",
+        "transferFailed": "Could not transfer the equipment."
       }
     }
   },

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
@@ -204,7 +205,12 @@ function PatientDetail() {
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       setEditDrawerOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.patients.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać zmian klienta.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

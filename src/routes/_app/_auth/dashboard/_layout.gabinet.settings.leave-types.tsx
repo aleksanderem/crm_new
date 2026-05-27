@@ -20,6 +20,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-types"
@@ -51,7 +52,12 @@ function LeaveTypesSettings() {
       const result = await initAllBalances({ organizationId, year: currentYear });
       toast.success(t("gabinet.leaveTypes.balancesInitialized", { count: result.created }));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaveTypes.errors.initBalancesFailed",
+          defaultValue: "Nie udało się zainicjalizować sald urlopowych.",
+        }),
+      );
     }
   };
 
@@ -236,7 +242,12 @@ function LeaveTypeDialog({
         ...(initial ? { isActive } : {}),
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaveTypes.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać typu urlopu.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

@@ -128,10 +128,20 @@ export function CrmDataTable<TData>({
   const { t } = useTranslation();
 
   // --- Visible columns ---
-  const visibleColumns = useMemo(
-    () => (hiddenColumnIds?.size ? columns.filter((c) => !hiddenColumnIds.has(c.id)) : columns),
-    [columns, hiddenColumnIds],
-  );
+  const visibleColumns = useMemo(() => {
+    const filtered = hiddenColumnIds?.size
+      ? columns.filter((c) => !hiddenColumnIds.has(c.id))
+      : columns;
+    if (filtered.length === 0) return filtered;
+    // React Aria's Table throws "A table must have at least one Column with
+    // isRowHeader" if the user hides the column originally marked as
+    // row-header (typically "name"). Promote the first remaining column so
+    // the table keeps working with any visibility subset.
+    if (!filtered.some((c) => c.isRowHeader)) {
+      return filtered.map((c, i) => (i === 0 ? { ...c, isRowHeader: true } : c));
+    }
+    return filtered;
+  }, [columns, hiddenColumnIds]);
 
   // --- Sorting ---
   const [internalSort, setInternalSort] = useState<SortDescriptor | undefined>(undefined);

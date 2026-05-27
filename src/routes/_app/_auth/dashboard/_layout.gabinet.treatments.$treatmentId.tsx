@@ -63,6 +63,7 @@ import {
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatTreatmentError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId",
@@ -388,7 +389,12 @@ function TreatmentDetail() {
       setEditPanelOpen(false);
       toast.success(t("common.saved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatTreatmentError(e, t, {
+          key: "gabinet.treatments.errors.updateFailed",
+          defaultValue: "Nie udało się zaktualizować zabiegu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

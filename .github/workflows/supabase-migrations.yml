@@ -9,10 +9,10 @@ on:
       - ".github/workflows/supabase-migrations.yml"
   push:
     branches: [main]
-    paths:
-      - "supabase/migrations/**"
-      - "scripts/supabase-migrations.mjs"
-      - ".github/workflows/supabase-migrations.yml"
+    # No path filter on purpose: every push to main must apply pending
+    # migrations AND trigger the Netlify deploy. Path-filtering would let
+    # pushes that touch only the frontend skip the deploy gate, defeating
+    # the ordering this workflow exists to enforce (#951).
 
 jobs:
   # On PR: verify that the migrations already on main are applied to the
@@ -38,9 +38,8 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
   # On push to main: apply any pending migrations to the deployed database
-  # before the rest of the deploy (Netlify build + convex deploy) runs.
-  # Fails the workflow if migrations can't be applied, so the deploy is not
-  # silently left in a broken state.
+  # before the deploy job triggers Netlify. Fails the workflow if migrations
+  # can't be applied, so a broken schema does not get a frontend in front of it.
   apply:
     name: Apply pending migrations
     if: github.event_name == 'push'
@@ -64,3 +63,41 @@ jobs:
             exit 1
           fi
           node scripts/supabase-migrations.mjs apply
+
+  # On push to main: trigger Netlify production build via build hook, but
+  # only after `apply` has succeeded. This is the gating fix from #951:
+  # Netlify auto-deploy must be turned OFF in the UI and the build hook URL
+  # stored as a repo secret so this workflow is the single entrypoint into
+  # a production deploy. If the secret is missing, we exit 0 with a warning
+  # so existing setups (Netlify auto-deploy still on) keep working — the
+  # gating only activates once the Netlify-side migration is done.
+  deploy:
+    name: Trigger Netlify deploy
+    if: github.event_name == 'push'
+    needs: apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Netlify build hook
+        env:
+          NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+        run: |
+          if [ -z "${NETLIFY_BUILD_HOOK_URL:-}" ]; then
+            echo "::warning::NETLIFY_BUILD_HOOK_URL is not set — skipping deploy trigger."
+            echo "::warning::Netlify auto-deploy (if still enabled in the Netlify UI) handles"
+            echo "::warning::the deploy in parallel, but the migrations -> deploy ordering is"
+            echo "::warning::NOT enforced. To activate gating (issue #951):"
+            echo "::warning::  1. Create a build hook in Netlify"
+            echo "::warning::     (Site settings -> Build & deploy -> Build hooks)."
+            echo "::warning::  2. Disable auto-publishing / continuous deployment in Netlify"
+            echo "::warning::     (Site settings -> Build & deploy -> Continuous deployment)."
+            echo "::warning::  3. Add the hook URL as NETLIFY_BUILD_HOOK_URL repo secret."
+            exit 0
+          fi
+          curl -fsSL --retry 3 --retry-delay 5 \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${NETLIFY_BUILD_HOOK_URL}"
+          echo
+          echo "Triggered Netlify production build."

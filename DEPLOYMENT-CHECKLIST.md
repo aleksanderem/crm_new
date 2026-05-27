@@ -107,24 +107,41 @@ npm run build
 ```
 
 ### 2a. Apply Supabase Migrations
-Migrations are applied in two places so the frontend never goes live
-against a DB that's missing the columns it expects (issue #942):
+Production deploys are gated through the `Supabase Migrations` GitHub
+Actions workflow (`.github/workflows/supabase-migrations.yml`). On push
+to `main` it runs two jobs in order (#951):
 
-1. The Netlify production build command (`netlify.toml`) runs
-   `npm run migrations:apply` before `convex deploy` + `npm run build`,
-   so a failed migration aborts the frontend deploy.
-2. The `Supabase Migrations` GitHub Actions workflow
-   (`.github/workflows/supabase-migrations.yml`) applies pending SQL on
-   every push to `main` as a secondary signal (surfaces failures in PR
-   checks even if Netlify is misconfigured).
+1. `apply` — runs `node scripts/supabase-migrations.mjs apply` against
+   the deployed Postgres, failing the workflow if any migration can't
+   be applied.
+2. `deploy` — `needs: apply`, POSTs to the Netlify build hook so the
+   frontend deploy only starts after migrations succeed.
 
-Both paths require the `SUPABASE_DB_URL` secret:
-- Netlify: set it under Site settings → Environment variables.
-- GitHub Actions: set it under Settings → Secrets and variables → Actions.
+The Netlify production build command (`netlify.toml`) also runs
+`npm run migrations:apply` before `convex deploy` + `npm run build`,
+as defense-in-depth — if a deploy is triggered some other way (manual
+re-deploy in Netlify UI, build hook fired by hand), the build will
+still abort on a failed migration.
 
-If the secret is missing in Netlify, `npm run migrations:apply` exits 0
-(fail-open) and the Netlify gating becomes a no-op — set the env var to
-get the gating behavior.
+Required secrets:
+- `SUPABASE_DB_URL` — set in BOTH GitHub Actions
+  (Settings → Secrets and variables → Actions) and Netlify
+  (Site settings → Environment variables).
+- `NETLIFY_BUILD_HOOK_URL` — set as a GitHub Actions secret; the URL
+  comes from Netlify (Site settings → Build & deploy → Build hooks →
+  Add build hook, branch = `main`).
+
+Required Netlify UI setup (one-time, do this when adding the hook):
+- Disable continuous deployment / auto-publish in Netlify
+  (Site settings → Build & deploy → Continuous deployment). Otherwise
+  Netlify keeps deploying in parallel on every push and the gating in
+  GitHub Actions becomes advisory only.
+
+If `NETLIFY_BUILD_HOOK_URL` is missing the `deploy` job exits 0 with a
+warning, so the workflow is safe to run before the Netlify-side setup
+is complete. If `SUPABASE_DB_URL` is missing in Netlify, the in-build
+migration step exits 0 (fail-open) and only the GHA workflow gates
+schema drift.
 
 If both fail, run the migrations manually before the frontend deploy
 completes:
@@ -197,6 +214,15 @@ Backend runtime secrets — NOT set in Netlify:
 `SUPABASE_URL` is the one var that must be set in BOTH Netlify (so the
 migration script can find the DB host) and Convex (so functions can read
 from it at runtime).
+
+### GitHub Actions (Settings → Secrets and variables → Actions)
+
+- `SUPABASE_DB_URL` — same Postgres connection string as in Netlify;
+  used by the `apply` job in `supabase-migrations.yml` to run pending
+  migrations against the deployed DB on every push to `main`.
+- `NETLIFY_BUILD_HOOK_URL` — Netlify build hook URL (`main` branch);
+  the workflow POSTs to this after migrations succeed, gating the
+  Netlify deploy on the migration step. See #951.
 
 ---
 

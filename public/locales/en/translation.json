@@ -2079,6 +2079,15 @@
       "treatment": "Treatment",
       "nudgeFilter": {
         "noPrice": "Showing active treatments with no price or price 0."
+      },
+      "errors": {
+        "createFailed": "Could not create the treatment.",
+        "updateFailed": "Could not update the treatment.",
+        "notFound": "Treatment not found. Refresh the list and try again.",
+        "variantNotFound": "Treatment variant not found.",
+        "permissionDenied": "You don't have permission for this treatment action.",
+        "invalidArguments": "Could not save the treatment — invalid data.",
+        "storage": "Could not save the treatment — storage error. Please try again."
       }
     },
     "treatmentDetail": {

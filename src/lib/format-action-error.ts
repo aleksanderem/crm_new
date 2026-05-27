@@ -126,3 +126,56 @@ export function formatAppointmentError(
   }
   return t(fallback.key, { defaultValue: fallback.defaultValue });
 }
+
+const TREATMENT_ERROR_MAP: Array<{
+  test: (msg: string) => boolean;
+  key: string;
+  fallback: string;
+}> = [
+  {
+    test: (m) => /treatment not found/i.test(m),
+    key: "gabinet.treatments.errors.notFound",
+    fallback: "Nie znaleziono zabiegu. Odśwież listę i spróbuj ponownie.",
+  },
+  {
+    test: (m) => /variant not found|parent treatment not found/i.test(m),
+    key: "gabinet.treatments.errors.variantNotFound",
+    fallback: "Nie znaleziono wariantu zabiegu.",
+  },
+  {
+    test: (m) => /permission denied/i.test(m),
+    key: "gabinet.treatments.errors.permissionDenied",
+    fallback: "Brak uprawnień do tej operacji na zabiegu.",
+  },
+  {
+    test: (m) =>
+      /argumentvalidationerror|value does not match validator|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
+        m,
+      ),
+    key: "gabinet.treatments.errors.invalidArguments",
+    fallback: "Nie udało się zapisać zabiegu — nieprawidłowe dane.",
+  },
+  {
+    test: (m) => /supabasedb\.(get|getmany|patch|delete|insert|query)/i.test(m),
+    key: "gabinet.treatments.errors.storage",
+    fallback: "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie.",
+  },
+];
+
+// Convert a Convex action error from the treatments domain into a
+// user-friendly toast message. Falls back to a provided generic message when
+// nothing matches so raw English Supabase/validator output never reaches end
+// users.
+export function formatTreatmentError(
+  err: unknown,
+  t: TFunction,
+  fallback: { key: string; defaultValue: string },
+): string {
+  const inner = extractActionErrorMessage(err);
+  for (const entry of TREATMENT_ERROR_MAP) {
+    if (entry.test(inner)) {
+      return t(entry.key, { defaultValue: entry.fallback });
+    }
+  }
+  return t(fallback.key, { defaultValue: fallback.defaultValue });
+}

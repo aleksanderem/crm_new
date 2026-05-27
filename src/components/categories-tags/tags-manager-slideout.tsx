@@ -11,6 +11,7 @@ import { FeaturedIcon } from "@untitled/foundations/featured-icon/featured-icon"
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { TAG_COLOR_PALETTE } from "./color-palette";
+import { formatActionError } from "@/lib/format-action-error";
 
 interface TagDef {
   _id: Id<"tagDefinitions">;
@@ -76,7 +77,12 @@ export function TagsManagerSlideout({
       setNewColor(TAG_COLOR_PALETTE[0]);
       setIsAdding(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "tags.errors.createFailed",
+          defaultValue: "Nie udało się dodać tagu.",
+        }),
+      );
     }
   }, [createTag, organizationId, newName, newColor, invalidateTags, t]);
 
@@ -88,7 +94,12 @@ export function TagsManagerSlideout({
       toast.success(t("common.saved", { defaultValue: "Zapisano" }));
       setEditingId(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "tags.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać tagu.",
+        }),
+      );
     }
   }, [updateTag, organizationId, editingId, editName, editColor, invalidateTags, t]);
 
@@ -98,7 +109,12 @@ export function TagsManagerSlideout({
       await invalidateTags();
       toast.success(t("common.deleted", { defaultValue: "Usunięto" }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "tags.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć tagu.",
+        }),
+      );
     }
   }, [removeTag, organizationId, invalidateTags, t]);
 

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatAppointmentError } from "@/lib/format-action-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -267,7 +268,12 @@ export function ChangeEmployeeModal({
       setSelectedId(null);
       setUseNewSlot(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      toast.error(
+        formatAppointmentError(err, t, {
+          key: "gabinet.appointments.errors.changeEmployeeFailed",
+          defaultValue: "Nie udało się zmienić pracownika dla wizyty.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

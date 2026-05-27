@@ -23,12 +23,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Phone } from "@/lib/ez-icons";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import { formatActionError } from "@/lib/format-action-error";
 
 interface SmsConfigCardProps {
   organizationId: Id<"organizations">;
 }
 
 export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
+  const { t } = useTranslation();
   const config = useQuery(api.sms.getConfig, { organizationId });
   const saveConfig = useAction(api.sms.saveConfig);
 
@@ -66,7 +69,12 @@ export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
       setApiToken("");
       setApiSecret("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Nie udało się zapisać konfiguracji");
+      toast.error(
+        formatActionError(err, t, {
+          key: "sms.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać konfiguracji SMS.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

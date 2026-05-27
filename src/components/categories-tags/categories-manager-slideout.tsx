@@ -13,6 +13,7 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EntityType } from "@cvx/schema";
 import { TAG_COLOR_PALETTE } from "./color-palette";
+import { formatActionError } from "@/lib/format-action-error";
 
 interface CategoryDef {
   _id: Id<"categoryDefinitions">;
@@ -111,7 +112,12 @@ export function CategoriesManagerSlideout({
       setNewColor(TAG_COLOR_PALETTE[0]);
       setAddingParentId(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "categories.errors.createFailed",
+          defaultValue: "Nie udało się dodać kategorii.",
+        }),
+      );
     }
   }, [createCategory, organizationId, entityType, newName, newColor, addingParentId, invalidateCategories, t]);
 
@@ -128,7 +134,12 @@ export function CategoriesManagerSlideout({
       toast.success(t("common.saved", { defaultValue: "Zapisano" }));
       setEditingId(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "categories.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać kategorii.",
+        }),
+      );
     }
   }, [updateCategory, organizationId, editingId, editName, editColor, invalidateCategories, t]);
 
@@ -138,7 +149,12 @@ export function CategoriesManagerSlideout({
       await invalidateCategories();
       toast.success(t("common.deleted", { defaultValue: "Usunięto" }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(
+        formatActionError(err, t, {
+          key: "categories.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć kategorii.",
+        }),
+      );
     }
   }, [removeCategory, organizationId, invalidateCategories, t]);
 

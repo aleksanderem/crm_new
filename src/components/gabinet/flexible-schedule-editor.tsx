@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Clock, Pencil, Plus, Trash2 } from "@/lib/ez-icons";
+import { formatActionError } from "@/lib/format-action-error";
 
 export interface FlexibleClinicHours {
   dayOfWeek: number;
@@ -270,7 +271,12 @@ export function FlexibleScheduleEditor({
       toast.success(t("common.saved"));
       cancelEdit();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.scheduling.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać godzin pracy.",
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -287,7 +293,12 @@ export function FlexibleScheduleEditor({
       });
       toast.success(t("common.deleted"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.scheduling.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć harmonogramu.",
+        }),
+      );
     }
   };
 

@@ -179,3 +179,46 @@ export function formatTreatmentError(
   }
   return t(fallback.key, { defaultValue: fallback.defaultValue });
 }
+
+const GENERIC_ERROR_MAP: Array<{
+  test: (msg: string) => boolean;
+  key: string;
+  fallback: string;
+}> = [
+  {
+    test: (m) => /permission denied/i.test(m),
+    key: "common.errors.permissionDenied",
+    fallback: "Brak uprawnień do tej operacji.",
+  },
+  {
+    test: (m) =>
+      /argumentvalidationerror|value does not match validator|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
+        m,
+      ),
+    key: "common.errors.invalidArguments",
+    fallback: "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
+  },
+  {
+    test: (m) => /supabasedb\.(get|getmany|patch|delete|insert|query)/i.test(m),
+    key: "common.errors.storage",
+    fallback: "Błąd magazynu danych. Spróbuj ponownie.",
+  },
+];
+
+// Generic translator for raw Convex action errors. Recognises universal
+// patterns (permission denied, validator errors, raw Supabase storage errors)
+// and otherwise returns a caller-provided fallback message, so raw English
+// backend output never leaks to end users.
+export function formatActionError(
+  err: unknown,
+  t: TFunction,
+  fallback: { key: string; defaultValue: string },
+): string {
+  const inner = extractActionErrorMessage(err);
+  for (const entry of GENERIC_ERROR_MAP) {
+    if (entry.test(inner)) {
+      return t(entry.key, { defaultValue: entry.fallback });
+    }
+  }
+  return t(fallback.key, { defaultValue: fallback.defaultValue });
+}

@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { PlateText } from "@/components/plate-text";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/patient/_layout/appointments")({
   component: PatientAppointments,
@@ -115,7 +116,12 @@ function PatientAppointments() {
       toast.success(t("patientPortal.appointments.rescheduleSuccess"));
       closeReschedule();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "patientPortal.appointments.rescheduleFailed",
+          defaultValue: "Nie udało się wysłać prośby o zmianę terminu.",
+        }),
+      );
     } finally {
       setSubmitting(false);
     }

@@ -25,6 +25,7 @@ import { Pencil, Mail, RefreshCw, X } from "@/lib/ez-icons";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type InboxNudgeFilter = "unanswered";
 
@@ -66,7 +67,12 @@ function InboxPage() {
       const result = await syncGmail({ organizationId });
       toast.success(`${t("integrations.syncing")} — ${result.synced} emails`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Sync failed");
+      toast.error(
+        formatActionError(e, t, {
+          key: "inbox.errors.syncFailed",
+          defaultValue: "Nie udało się zsynchronizować skrzynki.",
+        }),
+      );
     } finally {
       setIsSyncing(false);
     }

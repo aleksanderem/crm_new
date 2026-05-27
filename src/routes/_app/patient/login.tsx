@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { z } from "zod";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/patient/login")({
   validateSearch: z.object({
@@ -80,7 +81,12 @@ function PatientLogin() {
       setStep("otp");
       toast.success(t("patientPortal.login.otpSent"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "patientPortal.login.sendOtpFailed",
+          defaultValue: "Nie udało się wysłać kodu. Spróbuj ponownie.",
+        }),
+      );
     } finally {
       setLoading(false);
     }
@@ -99,7 +105,12 @@ function PatientLogin() {
       localStorage.setItem("patientPortalPatientId", result.patientId);
       navigate({ to: "/patient" });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("patientPortal.login.errorGeneric"));
+      toast.error(
+        formatActionError(e, t, {
+          key: "patientPortal.login.errorGeneric",
+          defaultValue: "Coś poszło nie tak. Spróbuj ponownie.",
+        }),
+      );
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/patient/_layout/profile")({
   component: PatientProfile,
@@ -57,7 +58,12 @@ function PatientProfile() {
       });
       toast.success(t("common.saved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(
+        formatActionError(e, t, {
+          key: "patientPortal.profile.updateFailed",
+          defaultValue: "Nie udało się zaktualizować profilu.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

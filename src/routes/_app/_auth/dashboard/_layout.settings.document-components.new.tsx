@@ -18,6 +18,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/document-components/new",
@@ -71,7 +72,12 @@ function NewDocumentComponentPage() {
       toast.success("Komponent utworzony");
       navigate({ to: "/dashboard/settings/document-components" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Błąd podczas tworzenia");
+      toast.error(
+        formatActionError(err, t, {
+          key: "settings.documentComponents.errors.createFailed",
+          defaultValue: "Nie udało się utworzyć komponentu.",
+        }),
+      );
     } finally {
       setSaving(false);
     }

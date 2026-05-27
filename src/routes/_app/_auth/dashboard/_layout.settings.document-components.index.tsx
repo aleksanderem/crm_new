@@ -36,6 +36,7 @@ import {
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export const Route = createFileRoute(
@@ -91,7 +92,12 @@ function DocumentComponentsListPage() {
       await removeMutation({ organizationId, componentId: deleteTarget });
       toast.success("Komponent usunięty");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Błąd");
+      toast.error(
+        formatActionError(err, t, {
+          key: "settings.documentComponents.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć komponentu.",
+        }),
+      );
     }
     setDeleteTarget(null);
   };
@@ -101,7 +107,12 @@ function DocumentComponentsListPage() {
       await duplicateMutation({ organizationId, componentId: id });
       toast.success("Komponent skopiowany");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Błąd");
+      toast.error(
+        formatActionError(err, t, {
+          key: "settings.documentComponents.errors.duplicateFailed",
+          defaultValue: "Nie udało się zduplikować komponentu.",
+        }),
+      );
     }
   };
 

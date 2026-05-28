@@ -97,7 +97,8 @@
       "treatments": "Zabiegi",
       "packages": "Pakiety",
       "documents": "Dokumenty",
-      "employees": "Pracownicy"
+      "employees": "Pracownicy",
+      "reports": "Raporty"
     },
     "sections": {
       "main": "Główne",

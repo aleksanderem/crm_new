@@ -260,6 +260,7 @@ export function TreatmentForm({
             inputMode="decimal"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
             placeholder="0.00"
             required
             className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"

@@ -2496,6 +2496,7 @@
     },
     "appointments": {
       "createAppointment": "New Appointment",
+      "dragToMove": "Drag to move",
       "patient": "Client",
       "treatment": "Treatment",
       "employee": "Employee",

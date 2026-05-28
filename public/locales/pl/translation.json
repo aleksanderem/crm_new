@@ -2506,6 +2506,7 @@
     },
     "appointments": {
       "createAppointment": "Nowa wizyta",
+      "dragToMove": "Przeciągnij, aby przesunąć",
       "patient": "Klient",
       "treatment": "Zabieg",
       "package": "Pakiet",

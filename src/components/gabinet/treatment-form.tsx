@@ -245,6 +245,7 @@ export function TreatmentForm({
             min="1"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
+            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
             placeholder="30"
             required
           />
@@ -320,6 +321,7 @@ export function TreatmentForm({
               min="2"
               value={treatmentCount}
               onChange={(e) => setTreatmentCount(e.target.value)}
+              onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
               placeholder="2"
             />
             <p className="text-xs text-muted-foreground">

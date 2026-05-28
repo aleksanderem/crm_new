@@ -269,6 +269,7 @@ export const update = action({
   args: {
     organizationId: v.id("organizations"),
     employeeId: v.string(),
+    userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: v.optional(gabinetEmployeeRoleValidator),
@@ -348,6 +349,21 @@ export const update = action({
     }
     if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
+    }
+
+    // --- If re-linking to a different user, ensure target user is not already an employee ---
+    if (args.userId && String(args.userId) !== String(emp.userId)) {
+      const conflict = await db
+        .query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("userId", String(args.userId))
+        .collect();
+      const otherEmployee = conflict.find(
+        (e) => String(e._id) !== String(args.employeeId),
+      );
+      if (otherEmployee) {
+        throw new Error("Employee profile already exists for this user");
+      }
     }
 
     // --- Build updates and PATCH to Supabase ---

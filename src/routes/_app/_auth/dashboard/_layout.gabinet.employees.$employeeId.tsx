@@ -5,7 +5,10 @@ import { useAction } from "convex/react";
 import type { FunctionArgs } from "convex/server";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetEmployee } from "@/hooks/use-supabase-gabinet-employees";
+import {
+  useSupabaseGabinetEmployee,
+  useSupabaseGabinetEmployeesList,
+} from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
@@ -156,6 +159,8 @@ function EmployeeDetail() {
   );
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
+
+  const { data: allEmployees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: treatments } = useSupabaseGabinetTreatmentsList(organizationId);
 
@@ -729,6 +734,8 @@ function EmployeeDetail() {
           onOpenChange={setEditDrawerOpen}
           employee={employee}
           organizationId={organizationId}
+          members={members ?? []}
+          allEmployees={allEmployees ?? []}
           onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
@@ -1248,6 +1255,8 @@ function EditEmployeeDrawer({
   onOpenChange,
   employee,
   organizationId,
+  members,
+  allEmployees,
   onUpdate,
   isSubmitting,
   setIsSubmitting,
@@ -1257,11 +1266,14 @@ function EditEmployeeDrawer({
   onOpenChange: (open: boolean) => void;
   employee: MappedGabinetEmployee;
   organizationId: Id<"organizations">;
+  members: Array<{ userId: string; user: { name?: string | null; email?: string | null } | null }>;
+  allEmployees: MappedGabinetEmployee[];
   onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   isSubmitting: boolean;
   setIsSubmitting: (v: boolean) => void;
   t: TFunction;
 }) {
+  const [userId, setUserId] = useState<string>(employee.userId);
   const [firstName, setFirstName] = useState(employee.firstName ?? "");
   const [lastName, setLastName] = useState(employee.lastName ?? "");
   const [role, setRole] = useState<GabinetEmployeeRole>(employee.role as GabinetEmployeeRole);
@@ -1274,6 +1286,7 @@ function EditEmployeeDrawer({
   // Re-sync form state when drawer opens
   useEffect(() => {
     if (open) {
+      setUserId(employee.userId);
       setFirstName(employee.firstName ?? "");
       setLastName(employee.lastName ?? "");
       setRole(employee.role as GabinetEmployeeRole);
@@ -1285,12 +1298,28 @@ function EditEmployeeDrawer({
     }
   }, [open, employee]);
 
+  // Org members eligible for linking: current user + any user not linked to another employee
+  const availableUsers = useMemo(() => {
+    const takenUserIds = new Set(
+      allEmployees
+        .filter((e) => e._id !== employee._id)
+        .map((e) => e.userId),
+    );
+    return members
+      .filter((m) => m.user && (m.userId === employee.userId || !takenUserIds.has(m.userId)))
+      .map((m) => ({
+        userId: m.userId,
+        label: m.user!.name || m.user!.email || m.userId,
+      }));
+  }, [members, allEmployees, employee._id, employee.userId]);
+
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
       await onUpdate({
         organizationId,
         employeeId: employee._id,
+        userId: userId !== employee.userId ? userId : undefined,
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         role,
@@ -1324,6 +1353,22 @@ function EditEmployeeDrawer({
       isSubmitting={isSubmitting}
     >
       <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.employees.selectUser")}</Label>
+          <Select value={userId} onValueChange={setUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder={t("gabinet.employees.selectUserPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableUsers.map((u) => (
+                <SelectItem key={u.userId} value={u.userId}>
+                  {u.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>{t("gabinet.employees.firstName")}</Label>

@@ -73,6 +73,7 @@
     "errors": {
       "permissionDenied": "Brak uprawnień do tej operacji.",
       "invalidArguments": "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
+      "schemaCache": "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
       "storage": "Błąd magazynu danych. Spróbuj ponownie."
     }
   },
@@ -2135,6 +2136,7 @@
         "variantNotFound": "Nie znaleziono wariantu zabiegu.",
         "permissionDenied": "Brak uprawnień do tej operacji na zabiegu.",
         "invalidArguments": "Nie udało się zapisać zabiegu — nieprawidłowe dane.",
+        "schemaCache": "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
         "storage": "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie."
       }
     },

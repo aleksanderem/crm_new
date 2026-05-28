@@ -467,6 +467,7 @@ export function AppointmentPreviewContent({
     void navigate({
       to: "/dashboard/gabinet/appointments/$appointmentId",
       params: { appointmentId: appointment._id },
+      search: { tab: "payments" },
     });
   };
 

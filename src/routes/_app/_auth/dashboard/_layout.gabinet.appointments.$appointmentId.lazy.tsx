@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -301,6 +301,9 @@ function NoteItem({
 
 function AppointmentDetail() {
   const { appointmentId } = Route.useParams();
+  const { tab: tabSearch } = useSearch({
+    from: "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
+  });
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -2284,6 +2287,9 @@ function AppointmentDetail() {
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}
         tabs={tabs}
+        defaultTab={
+          tabSearch === "payments" ? t("gabinet.payments.payments") : undefined
+        }
       />
 
       {/* Change Employee Modal */}

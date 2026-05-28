@@ -148,6 +148,12 @@ const TREATMENT_ERROR_MAP: Array<{
     fallback: "Brak uprawnień do tej operacji na zabiegu.",
   },
   {
+    test: (m) => /pgrst204|schema cache/i.test(m),
+    key: "gabinet.treatments.errors.schemaCache",
+    fallback:
+      "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
+  },
+  {
     test: (m) =>
       /argumentvalidationerror|value does not match validator|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
         m,
@@ -189,6 +195,12 @@ const GENERIC_ERROR_MAP: Array<{
     test: (m) => /permission denied/i.test(m),
     key: "common.errors.permissionDenied",
     fallback: "Brak uprawnień do tej operacji.",
+  },
+  {
+    test: (m) => /pgrst204|schema cache/i.test(m),
+    key: "common.errors.schemaCache",
+    fallback:
+      "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
   },
   {
     test: (m) =>

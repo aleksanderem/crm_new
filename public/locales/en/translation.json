@@ -73,6 +73,7 @@
     "errors": {
       "permissionDenied": "You don't have permission to perform this action.",
       "invalidArguments": "Invalid data. Please check the form and try again.",
+      "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
       "storage": "Storage error. Please try again."
     }
   },
@@ -2127,6 +2128,7 @@
         "variantNotFound": "Treatment variant not found.",
         "permissionDenied": "You don't have permission for this treatment action.",
         "invalidArguments": "Could not save the treatment — invalid data.",
+        "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
         "storage": "Could not save the treatment — storage error. Please try again."
       }
     },

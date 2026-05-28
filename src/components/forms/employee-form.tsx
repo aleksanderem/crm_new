@@ -94,14 +94,14 @@ export function EmployeeForm({
     queryKey: ["gabinet.employees.listAll", organizationId],
     queryFn: () => listEmployees({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: any[] | undefined };
+  });
 
   // Users not yet registered as employees (for create mode)
   const availableUsers = useMemo(() => {
@@ -313,7 +313,7 @@ export function EmployeeForm({
                         : false
                   }
                   onCheckedChange={(checked) => {
-                    const visibleIds = filteredTreatments.map((tr) => tr._id);
+                    const visibleIds = filteredTreatments.map((tr) => tr._id as string);
                     if (checked === true) {
                       setSelectedTreatments(
                         Array.from(new Set([...selectedTreatments, ...visibleIds])),

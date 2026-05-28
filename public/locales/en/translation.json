@@ -97,7 +97,10 @@
       "packages": "Packages",
       "employees": "Employees",
       "documents": "Documents",
-      "reports": "Reports"
+      "reports": "Reports",
+      "scheduling": "Working Hours",
+      "leaves": "Leaves",
+      "documentTemplates": "Document Templates"
     },
     "sections": {
       "main": "Main",

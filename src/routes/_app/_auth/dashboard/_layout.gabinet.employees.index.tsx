@@ -493,15 +493,31 @@ function CreateEmployeeSheet({
           <div className="space-y-1.5">
             <Label>{t("gabinet.employees.selectUser")}</Label>
             <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger><SelectValue placeholder={t("gabinet.employees.selectUser")} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("gabinet.employees.selectUserPlaceholder")} /></SelectTrigger>
               <SelectContent>
                 {availableUsers.map((u) => (
                   <SelectItem key={u._id} value={u._id}>
                     {u.name || u.email}
                   </SelectItem>
                 ))}
+                {availableUsers.length === 0 && (
+                  <SelectItem value="_none" disabled>
+                    {t("gabinet.employees.noAvailableUsers")}
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {availableUsers.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t("gabinet.employees.allUsersRegistered")}{" "}
+                <Link
+                  to="/dashboard/settings/team"
+                  className="text-brand-secondary underline hover:no-underline"
+                >
+                  {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
+                </Link>
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

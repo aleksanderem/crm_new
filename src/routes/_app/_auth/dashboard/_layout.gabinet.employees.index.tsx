@@ -1,23 +1,19 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
-import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
-import { EMPLOYEE_ROLES, employeeRoleOptions } from "@/lib/options";
-import { Plus, Search, Trash2 } from "@/lib/ez-icons";
+import { employeeRoleOptions } from "@/lib/options";
+import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -26,16 +22,14 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
-import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
-import { TagsPicker } from "@/components/categories-tags/tags-picker";
-import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { applyFilterConditions } from "@/hooks/use-saved-views";
 import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+import { EmployeeForm } from "@/components/forms/employee-form";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -92,18 +86,11 @@ function EmployeesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
-  const createEmployee = useAction(api.gabinet.employees.create);
   const removeEmployee = useAction(api.gabinet.employees.remove);
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
-
-  const { data: allTreatmentsRaw } = useSupabaseGabinetTreatmentsList(organizationId);
-  const treatments: MappedGabinetTreatment[] = useMemo(
-    () => (allTreatmentsRaw ?? []).filter((t) => t.isActive),
-    [allTreatmentsRaw],
-  );
 
   const getEmployeesKpis = useAction(api.gabinet.sidebarWidgets.getEmployeesKpis);
   const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
@@ -126,15 +113,6 @@ function EmployeesIndex() {
       orders: s.appointmentCount,
     }));
   }, [staffLoad]);
-
-  // Users not yet registered as employees
-  const availableUsers = useMemo(() => {
-    if (!members || !employees) return [] as Array<{ _id: Id<"users">; name?: string | null; email?: string | null }>;
-    const empUserIds = new Set<string>(employees.map((e) => e.userId as string));
-    return members
-      .filter((m) => m.user && !empUserIds.has(m.userId))
-      .map((m) => ({ _id: m.user!._id as Id<"users">, name: m.user!.name, email: m.user!.email }));
-  }, [members, employees]);
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name?: string | null; email?: string | null }>();
@@ -385,17 +363,12 @@ function EmployeesIndex() {
         categories={categories}
       />
 
-      {/* Create dialog */}
       <CreateEmployeeSheet
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        availableUsers={availableUsers}
-        treatments={treatments ?? []}
         organizationId={organizationId}
-        onCreate={createEmployee}
-        tags={tags}
-        categories={categories}
-        t={t}
+        tagDefinitions={tags}
+        categoryDefinitions={categories}
       />
     </div>
   );
@@ -404,83 +377,20 @@ function EmployeesIndex() {
 function CreateEmployeeSheet({
   open,
   onClose,
-  availableUsers,
-  treatments,
   organizationId,
-  onCreate,
-  tags,
-  categories,
-  t,
+  tagDefinitions,
+  categoryDefinitions,
 }: {
   open: boolean;
   onClose: () => void;
-  availableUsers: Array<{ _id: Id<"users">; name?: string | null; email?: string | null }>;
-  treatments: Array<{ _id: string; name: string }>;
   organizationId: Id<"organizations">;
-  onCreate: any;
-  tags: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
-  categories: Array<{ _id: Id<"categoryDefinitions">; name: string; parentId?: Id<"categoryDefinitions">; color?: string }>;
-  t: any;
+  tagDefinitions: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
+  categoryDefinitions: Array<{ _id: Id<"categoryDefinitions">; name: string; parentId?: Id<"categoryDefinitions">; color?: string }>;
 }) {
-  const [userId, setUserId] = useState<string>("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState<string>("doctor");
-  const [specialization, setSpecialization] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [color, setColor] = useState("#3b82f6");
-  const [selectedTreatments, setSelectedTreatments] = useState<string[]>([]);
-  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const createEmployee = useAction(api.gabinet.employees.create);
   const [saving, setSaving] = useState(false);
-  const [treatmentSearch, setTreatmentSearch] = useState("");
-
-  const filteredTreatments = useMemo(() => {
-    const q = treatmentSearch.trim().toLowerCase();
-    if (!q) return treatments;
-    return treatments.filter((tr) => tr.name?.toLowerCase().includes(q));
-  }, [treatments, treatmentSearch]);
-
-  const handleCreate = async () => {
-    if (!userId) return;
-    setSaving(true);
-    try {
-      await onCreate({
-        organizationId,
-        userId: userId as Id<"users">,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        role: role as any,
-        specialization: specialization || undefined,
-        licenseNumber: licenseNumber || undefined,
-        color: color || undefined,
-        qualifiedTreatmentIds: selectedTreatments as Id<"gabinetTreatments">[],
-        tagIds: tagIds.length > 0 ? tagIds : undefined,
-        categoryId,
-      });
-      toast.success(t("common.created"));
-      onClose();
-      setUserId("");
-      setFirstName("");
-      setLastName("");
-      setRole("doctor");
-      setSpecialization("");
-      setLicenseNumber("");
-      setSelectedTreatments([]);
-      setTagIds([]);
-      setCategoryId(undefined);
-      setTreatmentSearch("");
-    } catch (e) {
-      toast.error(
-        formatActionError(e, t, {
-          key: "gabinet.employees.errors.createFailed",
-          defaultValue: "Nie udało się dodać pracownika.",
-        }),
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -489,187 +399,40 @@ function CreateEmployeeSheet({
           <SheetTitle>{t("gabinet.employees.add")}</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.selectUser")}</Label>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger><SelectValue placeholder={t("gabinet.employees.selectUserPlaceholder")} /></SelectTrigger>
-              <SelectContent>
-                {availableUsers.map((u) => (
-                  <SelectItem key={u._id} value={u._id}>
-                    {u.name || u.email}
-                  </SelectItem>
-                ))}
-                {availableUsers.length === 0 && (
-                  <SelectItem value="_none" disabled>
-                    {t("gabinet.employees.noAvailableUsers")}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {availableUsers.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                {t("gabinet.employees.allUsersRegistered")}{" "}
-                <Link
-                  to="/dashboard/settings/team"
-                  className="text-brand-secondary underline hover:no-underline"
-                >
-                  {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
-                </Link>
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.employees.firstName")}</Label>
-              <Input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.employees.lastName")}</Label>
-              <Input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.role")}</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {EMPLOYEE_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {t(`gabinet.employees.roles.${r}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.specialization")}</Label>
-            <Input
-              value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.license")}</Label>
-            <Input
-              value={licenseNumber}
-              onChange={(e) => setLicenseNumber(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.color")}</Label>
-            <input
-              type="color"
-              className="h-9 w-16 cursor-pointer rounded border bg-transparent"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
-            {treatments.length > 0 && (
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-                  variant="stroke"
-                />
-                <Input
-                  type="search"
-                  value={treatmentSearch}
-                  onChange={(e) => setTreatmentSearch(e.target.value)}
-                  placeholder={t("gabinet.treatments.searchPlaceholder")}
-                  className="pl-8"
-                />
-              </div>
-            )}
-            <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-              {filteredTreatments.length > 0 && (
-                <label className="-mx-2 -mt-2 mb-1 flex items-center gap-2 rounded-t bg-muted/60 px-2 py-2 text-sm font-medium cursor-pointer border-b">
-                  <Checkbox
-                    checked={
-                      filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))
-                        ? true
-                        : filteredTreatments.some((tr) => selectedTreatments.includes(tr._id))
-                          ? "indeterminate"
-                          : false
-                    }
-                    onCheckedChange={(checked) => {
-                      const visibleIds = filteredTreatments.map((tr) => tr._id);
-                      if (checked === true) {
-                        setSelectedTreatments(
-                          Array.from(new Set([...selectedTreatments, ...visibleIds])),
-                        );
-                      } else {
-                        const visibleSet = new Set(visibleIds);
-                        setSelectedTreatments(
-                          selectedTreatments.filter((id) => !visibleSet.has(id)),
-                        );
-                      }
-                    }}
-                  />
-                  {t("common.selectAll")}
-                </label>
-              )}
-              {filteredTreatments.map((tr) => (
-                <label key={tr._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={selectedTreatments.includes(tr._id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedTreatments([...selectedTreatments, tr._id]);
-                      } else {
-                        setSelectedTreatments(selectedTreatments.filter((id) => id !== tr._id));
-                      }
-                    }}
-                  />
-                  {tr.name}
-                </label>
-              ))}
-              {treatments.length === 0 && (
-                <p className="text-xs text-muted-foreground py-2">{t("gabinet.employees.noTreatments")}</p>
-              )}
-              {treatments.length > 0 && filteredTreatments.length === 0 && (
-                <p className="text-xs text-muted-foreground py-2">{t("detail.relationships.noResults")}</p>
-              )}
-            </div>
-          </div>
-
-          {tags.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-            <CategoryPicker
-              categories={categories}
-              selectedId={categoryId}
-              onChange={setCategoryId}
-              organizationId={organizationId}
-              entityType="gabinetEmployee"
-            />
-          </div>
+        <div className="py-4">
+          <EmployeeForm
+            key={open ? "open" : "closed"}
+            tagDefinitions={tagDefinitions}
+            categoryDefinitions={categoryDefinitions}
+            isSubmitting={saving}
+            onCancel={onClose}
+            onSubmit={async (data) => {
+              if (!data.userId) return;
+              setSaving(true);
+              try {
+                await createEmployee({
+                  organizationId,
+                  ...data,
+                  userId: data.userId,
+                });
+                toast.success(t("common.created"));
+                void queryClient.invalidateQueries({
+                  queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                });
+                onClose();
+              } catch (e) {
+                toast.error(
+                  formatActionError(e, t, {
+                    key: "gabinet.employees.errors.createFailed",
+                    defaultValue: "Nie udało się dodać pracownika.",
+                  }),
+                );
+              } finally {
+                setSaving(false);
+              }
+            }}
+          />
         </div>
-
-        <SheetFooter>
-          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button onClick={handleCreate} disabled={!userId || saving}>
-            {saving ? t("common.saving") : t("common.create")}
-          </Button>
-        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

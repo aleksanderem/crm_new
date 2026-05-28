@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
+import { Link } from "@tanstack/react-router";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -189,7 +190,13 @@ export function EmployeeForm({
           </Select>
           {availableUsers.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              {t("gabinet.employees.allUsersRegistered")}
+              {t("gabinet.employees.allUsersRegistered")}{" "}
+              <Link
+                to="/dashboard/settings/team"
+                className="text-brand-secondary underline hover:no-underline"
+              >
+                {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
+              </Link>
             </p>
           )}
         </div>
@@ -295,6 +302,33 @@ export function EmployeeForm({
             </div>
           )}
           <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+            {filteredTreatments.length > 0 && (
+              <label className="-mx-2 -mt-2 mb-1 flex items-center gap-2 rounded-t bg-muted/60 px-2 py-2 text-sm font-medium cursor-pointer border-b">
+                <Checkbox
+                  checked={
+                    filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))
+                      ? true
+                      : filteredTreatments.some((tr) => selectedTreatments.includes(tr._id))
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(checked) => {
+                    const visibleIds = filteredTreatments.map((tr) => tr._id);
+                    if (checked === true) {
+                      setSelectedTreatments(
+                        Array.from(new Set([...selectedTreatments, ...visibleIds])),
+                      );
+                    } else {
+                      const visibleSet = new Set(visibleIds);
+                      setSelectedTreatments(
+                        selectedTreatments.filter((id) => !visibleSet.has(id)),
+                      );
+                    }
+                  }}
+                />
+                {t("common.selectAll")}
+              </label>
+            )}
             {filteredTreatments.map((tr) => (
               <label
                 key={tr._id}

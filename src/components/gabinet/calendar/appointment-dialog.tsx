@@ -65,7 +65,7 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { AlertTriangle, CalendarSearch, X } from "lucide-react";
+import { AlertTriangle, CalendarSearch, GripHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -259,6 +259,46 @@ export function AppointmentDialog({
 
   // Past-slot confirmation popup
   const [pastConfirmOpen, setPastConfirmOpen] = useState(false);
+
+  // Drag-to-reposition state — users want to peek at the calendar underneath
+  // without closing the dialog (issue #977). Offset resets when the dialog
+  // closes so the next open starts centered.
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
+    }
+  }, [open]);
+
+  const handleDragStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startOffset = dragOffset;
+      setIsDragging(true);
+
+      const handleMove = (ev: PointerEvent) => {
+        setDragOffset({
+          x: startOffset.x + (ev.clientX - startX),
+          y: startOffset.y + (ev.clientY - startY),
+        });
+      };
+
+      const handleUp = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+        setIsDragging(false);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    },
+    [dragOffset],
+  );
 
   // Auto-scroll the currently-selected slot button into view so the user
   // doesn't have to scroll through the full day's slot list to find a time
@@ -774,13 +814,38 @@ export function AppointmentDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]">
+      <DialogContent
+        className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]"
+        overlayClassName="bg-black/40"
+        style={
+          dragOffset.x !== 0 || dragOffset.y !== 0
+            ? {
+                transform: `translate(calc(-50% + ${dragOffset.x}px), calc(-50% + ${dragOffset.y}px))`,
+              }
+            : undefined
+        }
+      >
         <DialogTitle className="sr-only">
           {t("gabinet.appointments.createAppointment")}
         </DialogTitle>
         <DialogDescription className="sr-only">
           {t("gabinet.appointments.createAppointment")}
         </DialogDescription>
+
+        {/* Drag handle bar — lets the user move the dialog aside to peek at the
+            calendar underneath (issue #977). */}
+        <div
+          onPointerDown={handleDragStart}
+          className={cn(
+            "flex items-center justify-center gap-1.5 border-b bg-muted/40 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground select-none touch-none",
+            isDragging ? "cursor-grabbing" : "cursor-grab",
+          )}
+          title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+          aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+        >
+          <GripHorizontal className="size-3 opacity-60" />
+          <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
+        </div>
 
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="relative flex flex-col md:flex-row md:h-[600px]">

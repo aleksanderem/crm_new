@@ -74,6 +74,39 @@ const DAY_NAMES_PL = [
   "Sobota",
 ];
 
+function parseIsoDate(iso: string): Date | null {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  return new Date(Number(y), Number(mo) - 1, Number(d));
+}
+
+function getDatesForDayOfWeek(
+  from: string,
+  to: string,
+  dayOfWeek: number,
+): Date[] {
+  const start = parseIsoDate(from);
+  const end = parseIsoDate(to);
+  if (!start || !end || start > end) return [];
+  const result: Date[] = [];
+  const cursor = new Date(start);
+  while (cursor.getDay() !== dayOfWeek && cursor <= end) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  while (cursor <= end) {
+    result.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return result;
+}
+
+function formatShortDate(d: Date, lang: string): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return lang === "pl" ? `${day}.${month}` : `${month}/${day}`;
+}
+
 export function groupSchedulesIntoPeriods(
   schedules: MappedGabinetEmployeeSchedule[] | undefined,
 ): SchedulePeriod[] {
@@ -458,7 +491,7 @@ export function FlexibleScheduleEditor({
             </div>
 
             <div className="rounded-lg border">
-              <div className="grid grid-cols-[140px_50px_1fr_1fr_2fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.scheduling.day")}</span>
                 <span>{t("gabinet.scheduling.open")}</span>
                 <span>{t("gabinet.scheduling.start")}</span>
@@ -469,14 +502,32 @@ export function FlexibleScheduleEditor({
 
               {periodHours.map((h) => {
                 const hasBreak = Boolean(h.breakStart || h.breakEnd);
+                const dayDates =
+                  h.isWorking && periodFrom && periodTo
+                    ? getDatesForDayOfWeek(periodFrom, periodTo, h.dayOfWeek)
+                    : [];
                 return (
                   <div
                     key={h.dayOfWeek}
-                    className="grid grid-cols-[140px_50px_1fr_1fr_2fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
+                    className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
                   >
-                    <span className="text-sm font-medium">
-                      {dayNames[h.dayOfWeek]}
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium">
+                        {dayNames[h.dayOfWeek]}
+                      </span>
+                      {dayDates.length > 0 && (
+                        <span
+                          className="text-[10px] leading-tight text-muted-foreground"
+                          title={dayDates
+                            .map((d) => formatShortDate(d, i18n.language))
+                            .join(", ")}
+                        >
+                          {dayDates
+                            .map((d) => formatShortDate(d, i18n.language))
+                            .join(", ")}
+                        </span>
+                      )}
+                    </div>
                     <Checkbox
                       checked={h.isWorking}
                       onCheckedChange={(checked) =>

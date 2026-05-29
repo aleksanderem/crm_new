@@ -159,6 +159,13 @@ function getWeekDates(today: string): Map<number, string> {
   return map;
 }
 
+function formatShortDate(iso: string | undefined, lang: string): string {
+  if (!iso) return "";
+  const [, month, day] = iso.split("-");
+  if (!month || !day) return "";
+  return lang === "pl" ? `${day}.${month}` : `${month}/${day}`;
+}
+
 function findLeaveForDate(
   leaves: MappedGabinetLeave[] | undefined,
   userId: string,
@@ -388,14 +395,27 @@ function TimetablePage() {
               <th className="px-4 py-2 text-left min-w-[200px]">
                 {t("gabinet.timetable.employee")}
               </th>
-              {DISPLAY_ORDER.map((dayIdx, i) => (
-                <th
-                  key={dayIdx}
-                  className="px-2 py-2 text-center min-w-[90px]"
-                >
-                  {dayNames[i]}
-                </th>
-              ))}
+              {DISPLAY_ORDER.map((dayIdx, i) => {
+                const dateLabel = formatShortDate(
+                  weekDates.get(dayIdx),
+                  i18n.language,
+                );
+                return (
+                  <th
+                    key={dayIdx}
+                    className="px-2 py-2 text-center min-w-[90px]"
+                  >
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>{dayNames[i]}</span>
+                      {dateLabel && (
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {dateLabel}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
               <th className="px-2 py-2 w-[80px]"></th>
             </tr>
           </thead>

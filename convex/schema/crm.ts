@@ -512,6 +512,57 @@ export function createCrmTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndRole", ["organizationId", "role"]),
 
+  // --- RBAC: Gabinet Role Definitions ---
+  // Per-org registry of gabinet roles. Ships with system rows (doctor / nurse
+  // / therapist / receptionist / admin / other — isSystem=true) seeded on
+  // first use; tenants can add custom roles on top (isSystem=false).
+  gabinetRoleDefinitions: defineTable({
+    organizationId: v.id("organizations"),
+    key: v.string(), // stable identifier used in gabinetEmployees.role
+    labelPl: v.string(),
+    labelEn: v.string(),
+    color: v.optional(v.string()),
+    isSystem: v.boolean(),
+    isClinical: v.optional(v.boolean()), // hint: render treatment qualifications
+    order: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndKey", ["organizationId", "key"]),
+
+  // --- RBAC: Gabinet Role Permissions ---
+  // Overrides for the MAX-merge with org-role permissions. When a feature is
+  // gabinet_*, the user's effective scope per action is max(orgRoleScope,
+  // gabinetRoleScope). An absent row means use the baked-in default for the
+  // role key (or "none" for custom roles, until the admin fills it in).
+  gabinetRolePermissions: defineTable({
+    organizationId: v.id("organizations"),
+    gabinetRole: v.string(), // FK to gabinetRoleDefinitions.key (per org)
+    permissions: v.any(), // FeaturePermissions JSON
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndRole", ["organizationId", "gabinetRole"]),
+
+  // --- RBAC: Gabinet Membership Mirror ---
+  // Slim Convex mirror of gabinet_employees.{userId, role, isActive} so that
+  // checkPermission (which runs in QueryCtx and can't reach Supabase) can
+  // resolve the gabinet-role for the current user. Maintained alongside the
+  // Supabase row writes in convex/gabinet/employees.ts.
+  gabinetMemberships: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    gabinetRole: v.string(),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_user", ["userId"]),
+
   // --- RBAC: Resource Invites (External Guests) ---
 
   resourceInvites: defineTable({

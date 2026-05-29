@@ -272,14 +272,13 @@ function computeWeeklyMinutes(
   return total;
 }
 
-function formatMinutesAsHours(minutes: number, lang: string): string {
-  if (minutes <= 0) return lang === "pl" ? "0 godz." : "0 h";
+function formatMinutesAsHours(minutes: number): string {
+  if (minutes <= 0) return "0";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  const suffix = lang === "pl" ? "godz." : "h";
-  if (mins === 0) return `${hours} ${suffix}`;
+  if (mins === 0) return `${hours}`;
   const minutesPart = mins.toString().padStart(2, "0");
-  return `${hours}:${minutesPart} ${suffix}`;
+  return `${hours}:${minutesPart}`;
 }
 
 function TimetablePage() {
@@ -498,21 +497,21 @@ function TimetablePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">
-                      <th className="px-4 py-2 text-left min-w-[200px]">
+                      <th className="px-3 py-2 text-left min-w-[180px]">
                         {t("gabinet.timetable.employee")}
                       </th>
                       {DISPLAY_ORDER.map((dayIdx, i) => (
                         <th
                           key={dayIdx}
-                          className="px-2 py-2 text-center min-w-[90px]"
+                          className="px-1.5 py-2 text-center min-w-[72px]"
                         >
                           <span>{dayNames[i]}</span>
                         </th>
                       ))}
-                      <th className="px-2 py-2 text-center min-w-[90px]">
+                      <th className="px-1.5 py-2 text-center min-w-[64px] whitespace-nowrap">
                         {t("gabinet.timetable.totalHours")}
                       </th>
-                      <th className="px-2 py-2 w-[110px]"></th>
+                      <th className="px-1.5 py-2 w-[88px]"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -570,7 +569,7 @@ function TimetablePage() {
                           key={`${emp._id}-${week.monday}`}
                           className="border-b last:border-b-0"
                         >
-                          <td className="px-4 py-2 align-top">
+                          <td className="px-3 py-2 align-top">
                             <div className="flex flex-col">
                               <span className="font-medium">
                                 {employeeName(emp)}
@@ -642,7 +641,7 @@ function TimetablePage() {
                             return (
                               <td
                                 key={dayIdx}
-                                className="px-2 py-2 text-center align-middle"
+                                className="px-1.5 py-2 text-center align-middle"
                               >
                                 <div className="flex flex-col items-center leading-tight">
                                   {dateLabel && (
@@ -692,18 +691,15 @@ function TimetablePage() {
                               </td>
                             );
                           })}
-                          <td className="px-2 py-2 text-center align-middle">
+                          <td className="px-1.5 py-2 text-center align-middle">
                             <span
                               className="text-xs font-medium tabular-nums"
                               title={t("gabinet.timetable.totalHoursHint")}
                             >
-                              {formatMinutesAsHours(
-                                totalWeeklyMinutes,
-                                i18n.language,
-                              )}
+                              {formatMinutesAsHours(totalWeeklyMinutes)}
                             </span>
                           </td>
-                          <td className="px-2 py-2 text-right align-top">
+                          <td className="px-1.5 py-2 text-right align-top">
                             <Button
                               size="sm"
                               variant="outline"

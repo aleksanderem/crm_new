@@ -2378,7 +2378,7 @@
       "upcomingLeaveBadge": "Urlop: {{start}} — {{end}}",
       "onLeaveCell": "Urlop",
       "leaveBadgeHint": "Zatwierdzony urlop pokrywający ten zakres dat.",
-      "totalHours": "Razem",
+      "totalHours": "Ilość godzin",
       "totalHoursHint": "Łączna liczba godzin pracy w tygodniu (bez przerw i urlopów)."
     },
     "scheduling": {

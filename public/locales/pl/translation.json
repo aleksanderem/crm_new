@@ -199,6 +199,16 @@
       "minutesAgo": "{{count}} min temu",
       "hoursAgo": "{{count}} godz. temu",
       "daysAgo": "{{count}} dni temu"
+    },
+    "descriptions": {
+      "appointmentStatusChangedTitle": "Zmiana statusu wizyty",
+      "appointmentStatusChangedMessage": "Status wizyty zmieniony na „{{status}}”",
+      "appointmentConfirmedViaSmsTitle": "Wizyta potwierdzona przez SMS",
+      "appointmentCancelledViaSmsTitle": "Wizyta odwołana przez SMS",
+      "appointmentStatusChangedViaSmsMessage": "Status wizyty zmieniony na „{{status}}” po odpowiedzi SMS pacjenta",
+      "appointmentCancelledTitle": "Wizyta odwołana",
+      "appointmentCancelledMessage": "Wizyta została odwołana",
+      "appointmentCancelledMessageWithReason": "Wizyta została odwołana: {{reason}}"
     }
   },
   "sidebar": {

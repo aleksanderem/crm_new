@@ -12,6 +12,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  translateNotificationMessage,
+  translateNotificationTitle,
+} from "@/components/notifications/translate-notification";
 import type { Id } from "@cvx/_generated/dataModel";
 
 function useFormatRelativeTime() {
@@ -150,11 +154,11 @@ export function NotificationBell() {
                         : "truncate text-sm font-medium text-foreground"
                     }
                   >
-                    {notification.title}
+                    {translateNotificationTitle(notification.title, t)}
                   </p>
                   {notification.message && (
                     <p className="truncate text-xs text-muted-foreground">
-                      {notification.message}
+                      {translateNotificationMessage(notification.message, t)}
                     </p>
                   )}
                   <p className="mt-0.5 text-xs text-muted-foreground">

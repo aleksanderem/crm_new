@@ -186,6 +186,16 @@
       "minutesAgo": "{{count}}m ago",
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
+    },
+    "descriptions": {
+      "appointmentStatusChangedTitle": "Appointment status changed",
+      "appointmentStatusChangedMessage": "Appointment status changed to \"{{status}}\"",
+      "appointmentConfirmedViaSmsTitle": "Appointment confirmed via SMS",
+      "appointmentCancelledViaSmsTitle": "Appointment cancelled via SMS",
+      "appointmentStatusChangedViaSmsMessage": "Appointment status changed to \"{{status}}\" from patient SMS reply",
+      "appointmentCancelledTitle": "Appointment cancelled",
+      "appointmentCancelledMessage": "An appointment has been cancelled",
+      "appointmentCancelledMessageWithReason": "An appointment has been cancelled: {{reason}}"
     }
   },
   "sidebar": {

@@ -233,6 +233,55 @@ function addDays(date: string, days: number): string {
   return d.toISOString().split("T")[0];
 }
 
+function parseTimeToMinutes(time: string): number | null {
+  const [h, m] = time.split(":");
+  const hours = Number(h);
+  const minutes = Number(m);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function computeEntryMinutes(entry: DisplayEntry): number {
+  if (!entry.isWorking) return 0;
+  const start = parseTimeToMinutes(entry.startTime);
+  const end = parseTimeToMinutes(entry.endTime);
+  if (start === null || end === null || end <= start) return 0;
+  let total = end - start;
+  if (entry.breakStart && entry.breakEnd) {
+    const bStart = parseTimeToMinutes(entry.breakStart);
+    const bEnd = parseTimeToMinutes(entry.breakEnd);
+    if (bStart !== null && bEnd !== null && bEnd > bStart) {
+      total -= bEnd - bStart;
+    }
+  }
+  return Math.max(0, total);
+}
+
+function computeWeeklyMinutes(
+  entries: DisplayEntry[],
+  weekDates: Map<number, string>,
+  leaves: MappedGabinetLeave[] | undefined,
+  userId: string,
+): number {
+  let total = 0;
+  for (const entry of entries) {
+    const date = weekDates.get(entry.dayOfWeek);
+    if (date && findLeaveForDate(leaves, userId, date)) continue;
+    total += computeEntryMinutes(entry);
+  }
+  return total;
+}
+
+function formatMinutesAsHours(minutes: number, lang: string): string {
+  if (minutes <= 0) return lang === "pl" ? "0 godz." : "0 h";
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const suffix = lang === "pl" ? "godz." : "h";
+  if (mins === 0) return `${hours} ${suffix}`;
+  const minutesPart = mins.toString().padStart(2, "0");
+  return `${hours}:${minutesPart} ${suffix}`;
+}
+
 function TimetablePage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
@@ -448,6 +497,9 @@ function TimetablePage() {
                   <span>{dayNames[i]}</span>
                 </th>
               ))}
+              <th className="px-2 py-2 text-center min-w-[90px]">
+                {t("gabinet.timetable.totalHours")}
+              </th>
               <th className="px-2 py-2 w-[110px]"></th>
             </tr>
           </thead>
@@ -455,7 +507,7 @@ function TimetablePage() {
             {sortedEmployees.length === 0 && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   {t("gabinet.timetable.empty")}
@@ -498,6 +550,12 @@ function TimetablePage() {
                 const rowBorder = isLastWeekRow
                   ? "border-b last:border-b-0"
                   : "";
+                const totalWeeklyMinutes = computeWeeklyMinutes(
+                  entries,
+                  week.dates,
+                  leaves,
+                  emp.userId,
+                );
                 return (
                   <tr
                     key={`${emp._id}-${week.monday}`}
@@ -631,6 +689,17 @@ function TimetablePage() {
                         </td>
                       );
                     })}
+                    <td className="px-2 py-2 text-center align-middle">
+                      <span
+                        className="text-xs font-medium tabular-nums"
+                        title={t("gabinet.timetable.totalHoursHint")}
+                      >
+                        {formatMinutesAsHours(
+                          totalWeeklyMinutes,
+                          i18n.language,
+                        )}
+                      </span>
+                    </td>
                     {isFirstWeekRow && (
                       <td
                         className="px-2 py-2 text-right align-top"

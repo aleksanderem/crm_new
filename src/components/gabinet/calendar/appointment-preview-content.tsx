@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,6 +69,7 @@ import {
   OctagonX,
   Phone,
   PlayCircle,
+  RefreshCcw,
   Stethoscope,
   User,
   XCircle,
@@ -248,6 +250,7 @@ export function AppointmentPreviewContent({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
+  const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
 
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
   const [settleAmount, setSettleAmount] = useState("");
@@ -830,10 +833,26 @@ export function AppointmentPreviewContent({
 
       {/* Employee + Date summary */}
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <User className="size-3" />
-          <span className="truncate">{employeeName}</span>
-        </div>
+        {appointment.treatmentId ? (
+          <button
+            type="button"
+            onClick={() => setChangeEmployeeOpen(true)}
+            className="group inline-flex min-w-0 items-center gap-1.5 rounded text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label={t(
+              "gabinet.appointments.changeEmployee",
+              "Zmień pracownika",
+            )}
+          >
+            <User className="size-3 shrink-0" />
+            <span className="truncate">{employeeName}</span>
+            <RefreshCcw className="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60 group-focus-visible:opacity-60" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <User className="size-3" />
+            <span className="truncate">{employeeName}</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Calendar className="size-3" />
           <span className="truncate">{formatDateLabel(appointment.date)}</span>
@@ -1062,6 +1081,24 @@ export function AppointmentPreviewContent({
       onProceed={() => performStatusChange("in_progress")}
       onFillDocument={() => setGateDialogOpen(false)}
     />
+
+    {appointment.treatmentId && (
+      <ChangeEmployeeModal
+        open={changeEmployeeOpen}
+        onOpenChange={(o) => {
+          setChangeEmployeeOpen(o);
+          if (!o) void refetch();
+        }}
+        organizationId={organizationId}
+        appointmentId={appointment._id as Id<"gabinetAppointments">}
+        treatmentId={appointment.treatmentId as Id<"gabinetTreatments">}
+        currentEmployeeId={appointment.employeeId as Id<"users">}
+        appointmentDate={appointment.date}
+        startTime={appointment.startTime.slice(0, 5)}
+        endTime={appointment.endTime.slice(0, 5)}
+        durationMinutes={treatment?.duration ?? 30}
+      />
+    )}
 
     <Dialog
       open={settleDialogOpen}

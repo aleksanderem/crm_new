@@ -88,6 +88,9 @@ export const supabaseKeys = {
   gabinetLoyaltyPoints: entityKeys("gabinetLoyaltyPoints"),
   gabinetLoyaltyTransactions: entityKeys("gabinetLoyaltyTransactions"),
 
+  // ── Payments ─────────────────────────────────────────────────────────────
+  payments: entityKeys("payments"),
+
   // ── Platform Entities ───────────────────────────────────────────────────
   organizations: entityKeys("organizations"),
   teamMemberships: entityKeys("teamMemberships"),

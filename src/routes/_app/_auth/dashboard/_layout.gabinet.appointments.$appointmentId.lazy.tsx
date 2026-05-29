@@ -398,11 +398,14 @@ function AppointmentDetail() {
   // Refresh the Supabase-backed appointment lists (calendar, dashboards, etc.)
   // after a Convex action mutates the appointment — Convex actions do not
   // automatically invalidate the React Query cache for Supabase reads.
+  // Payments are included so the calendar's per-tile paid/unpaid indicator
+  // (issue #1040) reflects new receipts immediately.
   const invalidateAppointmentCaches = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
       queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
       queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.all }),
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all }),
     ]);
   };
 

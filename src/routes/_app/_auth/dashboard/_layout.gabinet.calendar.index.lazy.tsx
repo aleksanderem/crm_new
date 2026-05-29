@@ -54,6 +54,7 @@ import {
   useSupabaseGabinetFirstAppointmentIdsByPatient,
   useSupabaseGabinetAppointmentPackagePositions,
   useSupabaseGabinetAppointmentRecurringPositions,
+  useSupabaseGabinetAppointmentPaymentTotals,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -164,7 +165,13 @@ function GabinetCalendarPage() {
     color?: string;
     tags?: Array<{ name: string; color: string }>;
     indicators?: Array<{
-      kind: "firstVisit" | "payment" | "count";
+      kind:
+        | "firstVisit"
+        | "payment"
+        | "count"
+        | "paid"
+        | "partial"
+        | "unpaid";
       label: string;
       title?: string;
     }>;
@@ -283,10 +290,14 @@ function GabinetCalendarPage() {
   }, [patients]);
 
   const treatmentMap = useMemo(() => {
-    const map = new Map<string, { name: string; color?: string }>();
+    const map = new Map<string, { name: string; color?: string; price: number }>();
     if (treatments) {
       for (const tr of treatments) {
-        map.set(tr._id, { name: tr.name, color: tr.color });
+        map.set(tr._id, {
+          name: tr.name,
+          color: tr.color,
+          price: typeof tr.price === "number" ? tr.price : 0,
+        });
       }
     }
     return map;
@@ -469,22 +480,27 @@ function GabinetCalendarPage() {
     return set;
   }, [rawAppointments]);
 
-  // Distinct patient + package usage + recurring group IDs from the rendered
-  // range — used to compute the "first visit" and "visit X/Y" indicators on
-  // appointment cards.
+  // Distinct patient + package usage + recurring group + appointment IDs
+  // from the rendered range — used to compute the "first visit", "visit X/Y",
+  // and paid/partial/unpaid indicators on appointment cards.
   const indicatorLookupIds = useMemo(() => {
     const patientIds = new Set<string>();
     const packageUsageIds = new Set<string>();
     const recurringGroupIds = new Set<string>();
+    const appointmentIds = new Set<string>();
     for (const a of rawAppointments ?? []) {
       if (a.patientId) patientIds.add(a.patientId);
       if (a.packageUsageId) packageUsageIds.add(a.packageUsageId);
       if (a.recurringGroupId) recurringGroupIds.add(a.recurringGroupId);
+      // Only payable appointments contribute to the paid/unpaid indicator
+      // lookup. Cancelled appointments can't be paid by definition.
+      if (a.status !== "cancelled" && a.treatmentId) appointmentIds.add(a._id);
     }
     return {
       patientIds: Array.from(patientIds),
       packageUsageIds: Array.from(packageUsageIds),
       recurringGroupIds: Array.from(recurringGroupIds),
+      appointmentIds: Array.from(appointmentIds),
     };
   }, [rawAppointments]);
 
@@ -506,10 +522,24 @@ function GabinetCalendarPage() {
       indicatorLookupIds.recurringGroupIds,
     );
 
+  // Aggregated completed-payment totals per appointment — drives the
+  // paid/partial/unpaid tile indicator (issue #1040).
+  const { data: appointmentPaymentTotals } =
+    useSupabaseGabinetAppointmentPaymentTotals(
+      organizationId,
+      indicatorLookupIds.appointmentIds,
+    );
+
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
     type Indicator = {
-      kind: "firstVisit" | "payment" | "count";
+      kind:
+        | "firstVisit"
+        | "payment"
+        | "count"
+        | "paid"
+        | "partial"
+        | "unpaid";
       label: string;
       title?: string;
     };
@@ -611,6 +641,46 @@ function GabinetCalendarPage() {
           }
         }
 
+        // Paid / partial / unpaid indicator — surfaces the visit's payment
+        // settlement state directly on the tile so staff can spot unpaid
+        // completed visits without opening each one (issue #1040). Mirrors
+        // the badge logic in appointment-preview-content.tsx: only counts
+        // completed payments (pending ones are auto-created at booking and
+        // mustn't be treated as receipts). Skipped for cancelled visits and
+        // visits whose treatment has no price.
+        const treatmentPrice = treatment?.price ?? 0;
+        if (a.status !== "cancelled" && treatmentPrice > 0) {
+          const paid = appointmentPaymentTotals?.get(a._id) ?? 0;
+          if (paid >= treatmentPrice) {
+            indicators.push({
+              kind: "paid",
+              label: "✓",
+              title: t(
+                "gabinet.calendar.indicators.paid",
+                "Wizyta opłacona",
+              ),
+            });
+          } else if (paid > 0) {
+            indicators.push({
+              kind: "partial",
+              label: "½",
+              title: t(
+                "gabinet.calendar.indicators.partial",
+                "Częściowo opłacona",
+              ),
+            });
+          } else {
+            indicators.push({
+              kind: "unpaid",
+              label: "!",
+              title: t(
+                "gabinet.calendar.indicators.unpaid",
+                "Wizyta nieopłacona",
+              ),
+            });
+          }
+        }
+
         items.push({
           _id: a._id,
           date: a.date,
@@ -663,7 +733,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);

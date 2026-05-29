@@ -635,6 +635,11 @@ export function AppointmentPreviewContent({
         queryClient.invalidateQueries({
           queryKey: supabaseKeys.scheduledActivities.all,
         }),
+        // Refresh the per-tile paid/unpaid indicator on the calendar
+        // (issue #1040) after a settle action records a new payment.
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.payments.all,
+        }),
       ]);
       await refetch();
       setSettleDialogOpen(false);

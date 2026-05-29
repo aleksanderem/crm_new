@@ -38,8 +38,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
@@ -175,6 +183,7 @@ export function AppointmentPreviewContent({
   const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const createPaymentAction = useAction(api.payments.create);
 
   const { data: detail, isLoading, refetch } = useQuery({
     queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
@@ -239,6 +248,15 @@ export function AppointmentPreviewContent({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
+
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [settleAmount, setSettleAmount] = useState("");
+  const [settleMethod, setSettleMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("cash");
+  const [settleNotes, setSettleNotes] = useState("");
+  const [settleMarkCompleted, setSettleMarkCompleted] = useState(true);
+  const [settleSubmitting, setSettleSubmitting] = useState(false);
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
   const { dispatch } = useSidebarActions();
@@ -512,13 +530,95 @@ export function AppointmentPreviewContent({
     }
   };
 
-  const handleCloseAndSettle = async () => {
-    if (saving) return;
-    if (dirty) {
-      await handleSave();
-    } else {
-      onClose();
+  const treatmentPrice = treatment?.price ?? 0;
+  const totalPaid = (detail.payments ?? [])
+    .filter(
+      (p) => p.status === "completed" || p.status === "pending",
+    )
+    .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const outstanding = Math.max(0, treatmentPrice - totalPaid);
+  const canMarkCompleted = availableTransitions.includes("completed");
+
+  const handleOpenSettleDialog = () => {
+    if (saving || settleSubmitting) return;
+    setSettleAmount(outstanding > 0 ? outstanding.toFixed(2) : "");
+    setSettleMethod("cash");
+    setSettleNotes("");
+    setSettleMarkCompleted(canMarkCompleted);
+    setSettleDialogOpen(true);
+  };
+
+  const handleConfirmSettle = async () => {
+    if (settleSubmitting) return;
+    const parsedAmount = parseFloat(settleAmount);
+    const hasAmount = settleAmount.trim().length > 0 && !isNaN(parsedAmount);
+    if (hasAmount && parsedAmount < 0) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
     }
+    if (!hasAmount && !settleMarkCompleted) {
+      toast.error(
+        t("gabinet.appointmentDetail.settleNothingToDo", {
+          defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
+        }),
+      );
+      return;
+    }
+    setSettleSubmitting(true);
+    try {
+      if (dirty) {
+        await handleSave();
+      }
+      if (hasAmount && parsedAmount > 0 && patient?._id) {
+        await createPaymentAction({
+          organizationId,
+          patientId: patient._id,
+          appointmentId: appointment._id,
+          amount: parsedAmount,
+          currency: "PLN",
+          paymentMethod: settleMethod,
+          notes: settleNotes.trim() || undefined,
+        });
+      }
+      if (settleMarkCompleted && canMarkCompleted) {
+        await updateStatus({
+          organizationId,
+          appointmentId: appointment._id,
+          status: "completed",
+        });
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetAppointments.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: supabaseKeys.scheduledActivities.all,
+        }),
+      ]);
+      await refetch();
+      setSettleDialogOpen(false);
+      toast.success(
+        t("gabinet.appointmentDetail.settleSuccess", {
+          defaultValue: "Wizyta rozliczona",
+        }),
+      );
+      onClose();
+    } catch (error) {
+      console.error("[appointment-preview] settle failed", error);
+      toast.error(
+        formatAppointmentError(error, t, {
+          key: "gabinet.appointments.updateFailed",
+          defaultValue: "Nie udało się rozliczyć wizyty.",
+        }),
+      );
+    } finally {
+      setSettleSubmitting(false);
+    }
+  };
+
+  const handleNavigateToPayments = () => {
+    setSettleDialogOpen(false);
+    onClose();
     void navigate({
       to: "/dashboard/gabinet/appointments/$appointmentId",
       params: { appointmentId: appointment._id },
@@ -897,8 +997,8 @@ export function AppointmentPreviewContent({
         <Button
           size="sm"
           className="h-8 text-xs"
-          onClick={handleCloseAndSettle}
-          disabled={saving}
+          onClick={handleOpenSettleDialog}
+          disabled={saving || settleSubmitting}
         >
           {saving
             ? t("common.saving")
@@ -962,6 +1062,176 @@ export function AppointmentPreviewContent({
       onProceed={() => performStatusChange("in_progress")}
       onFillDocument={() => setGateDialogOpen(false)}
     />
+
+    <Dialog
+      open={settleDialogOpen}
+      onOpenChange={(o) => {
+        if (settleSubmitting) return;
+        setSettleDialogOpen(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("gabinet.appointmentDetail.settleDesc", {
+              defaultValue:
+                "Zarejestruj płatność i opcjonalnie zamknij wizytę jako zakończoną.",
+            })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+            {treatment?.name && (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">
+                  {t("gabinet.appointments.treatment")}
+                </span>
+                <span className="font-medium truncate">{treatment.name}</span>
+              </div>
+            )}
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">
+                {t("gabinet.payments.treatmentPrice")}
+              </span>
+              <span className="font-medium tabular-nums">
+                {treatmentPrice.toFixed(2)} PLN
+              </span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">
+                {t("gabinet.payments.totalPaid")}
+              </span>
+              <span className="font-medium tabular-nums">
+                {totalPaid.toFixed(2)} PLN
+              </span>
+            </div>
+            <div className="flex justify-between gap-3 border-t pt-1">
+              <span className="text-muted-foreground">
+                {t("gabinet.payments.outstanding")}
+              </span>
+              <span className="font-semibold tabular-nums">
+                {outstanding.toFixed(2)} PLN
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("gabinet.payments.amount")}
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={settleAmount}
+              onChange={(e) => setSettleAmount(e.target.value)}
+              placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
+              disabled={!patient?._id}
+            />
+            {!patient?._id && (
+              <p className="text-[11px] text-muted-foreground">
+                {t("gabinet.payments.noPaymentsDesc")}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("gabinet.payments.method")}
+            </Label>
+            <Select
+              value={settleMethod}
+              onValueChange={(v) =>
+                setSettleMethod(v as typeof settleMethod)
+              }
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">
+                  {t("gabinet.payments.methods.cash")}
+                </SelectItem>
+                <SelectItem value="card">
+                  {t("gabinet.payments.methods.card")}
+                </SelectItem>
+                <SelectItem value="transfer">
+                  {t("gabinet.payments.methods.transfer")}
+                </SelectItem>
+                <SelectItem value="other">
+                  {t("gabinet.payments.methods.other")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("common.notes")}
+            </Label>
+            <Textarea
+              value={settleNotes}
+              onChange={(e) => setSettleNotes(e.target.value)}
+              placeholder={t("gabinet.payments.notePlaceholder")}
+              className="min-h-[72px] text-sm"
+            />
+          </div>
+
+          {canMarkCompleted && (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                id="settle-mark-completed"
+                checked={settleMarkCompleted}
+                onCheckedChange={(c) =>
+                  setSettleMarkCompleted(c === true)
+                }
+              />
+              <span className="leading-tight">
+                {t("gabinet.appointmentDetail.settleMarkCompleted", {
+                  defaultValue: "Oznacz wizytę jako zakończoną",
+                })}
+              </span>
+            </label>
+          )}
+        </div>
+
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleNavigateToPayments}
+            disabled={settleSubmitting}
+          >
+            <ExternalLink className="mr-1 size-3" />
+            {t("gabinet.payments.paymentHistory")}
+          </Button>
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSettleDialogOpen(false)}
+              disabled={settleSubmitting}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSettle}
+              disabled={settleSubmitting}
+            >
+              {settleSubmitting
+                ? t("common.processing")
+                : t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

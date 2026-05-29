@@ -2333,7 +2333,6 @@
       "title": "Employee timetable",
       "description": "Edit schedules for all employees in one place. Each employee shows the current week plus upcoming weeks stacked below — hours can vary if you have dated schedule periods.",
       "employee": "Employee",
-      "week": "Week",
       "currentWeek": "Current week",
       "searchPlaceholder": "Search employee...",
       "filterByRole": "Filter by role",

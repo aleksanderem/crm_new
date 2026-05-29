@@ -564,8 +564,8 @@ function TimetablePage() {
                         )}
                         {activeDatedLabel && (
                           <Badge
-                            variant="default"
-                            className="text-[10px] h-4 px-1 mt-0.5 self-start"
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 mt-0.5 self-start whitespace-nowrap"
                             title={t("gabinet.timetable.activePeriodHint")}
                           >
                             {activeDatedLabel}

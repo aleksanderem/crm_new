@@ -2835,7 +2835,16 @@
       "leaveBadge": "On leave",
       "leaveBadgePartial": "On leave {{start}}–{{end}}",
       "leaveOverlayTitle": "Employee is on approved leave",
-      "dayOff": "day off"
+      "dayOff": "day off",
+      "weekdaysShort": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
     },
     "packages": {
       "title": "Treatment Packages",

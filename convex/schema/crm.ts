@@ -771,6 +771,14 @@ export function createCrmTables({
     invitedBy: v.id("users"),
     expiresAt: v.number(),
     acceptedAt: v.optional(v.number()),
+    // Optional module to provision on accept. "gabinet" auto-creates a
+    // gabinet_employees row using `moduleData`. Free-form so future modules
+    // (crm, billing, …) can be added without a schema migration.
+    module: v.optional(v.string()),
+    // Module-specific payload captured at invite time and applied on accept.
+    // For module="gabinet": { firstName, lastName, role, specialization,
+    //   color, qualifiedTreatmentIds[], tagIds[], categoryId, customFields }.
+    moduleData: v.optional(v.any()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

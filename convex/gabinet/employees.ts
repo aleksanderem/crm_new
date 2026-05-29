@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
@@ -242,6 +242,115 @@ export const create = action({
     }
 
     return employeeId;
+  },
+});
+
+/**
+ * System-internal: create a gabinet_employees row from an invitation's
+ * `moduleData` payload. Called by `invitations._acceptInternal` after the
+ * invitee's user row is mirrored. Bypasses the role-based permission check
+ * the public `create` action enforces — the inviting admin already vetted
+ * this assignment when they created the invitation.
+ *
+ * `data` is the free-form payload the invite UI persisted; treated as
+ * untrusted JSON and field-by-field validated here before insert.
+ */
+export const _createFromInvitation = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    invitedBy: v.string(),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+
+    // Idempotency: bail if an employee row already exists for this user/org.
+    const existing = await db
+      .query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", args.userId)
+      .collect();
+    if (existing.length > 0) {
+      console.log(
+        `[gabinet.employees._createFromInvitation] skip — employee already exists for user=${args.userId}`,
+      );
+      return { skipped: true, employeeId: String(existing[0]._id) };
+    }
+
+    const d = (args.data ?? {}) as Record<string, unknown>;
+
+    const asString = (v: unknown) =>
+      typeof v === "string" && v.length > 0 ? v : null;
+    const asStringArray = (v: unknown) =>
+      Array.isArray(v) ? (v.filter((x) => typeof x === "string") as string[]) : null;
+
+    const role = asString(d.role) ?? "doctor";
+    const allowedRoles = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"];
+    const safeRole = allowedRoles.includes(role) ? role : "doctor";
+
+    const now = Date.now();
+    const employeeId = await db.insert("gabinetEmployees", {
+      organizationId: String(args.organizationId),
+      userId: args.userId,
+      firstName: asString(d.firstName),
+      lastName: asString(d.lastName),
+      role: safeRole,
+      specialization: asString(d.specialization),
+      qualifiedTreatmentIds: asStringArray(d.qualifiedTreatmentIds) ?? [],
+      licenseNumber: null,
+      hireDate: null,
+      isActive: true,
+      color: asString(d.color),
+      notes: null,
+      tagIds: asStringArray(d.tagIds),
+      categoryId: asString(d.categoryId),
+      createdBy: args.invitedBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Custom fields (free-form per-org definitions) — moduleData.customFields
+    // is expected to be an array of { fieldDefinitionId, value }. Matches the
+    // shape `customFields.setValues` produces and what the renderer emits.
+    const cfs = Array.isArray(d.customFields) ? d.customFields : null;
+    if (cfs) {
+      for (const f of cfs) {
+        if (!f || typeof f !== "object") continue;
+        const defId = (f as Record<string, unknown>).fieldDefinitionId;
+        const val = (f as Record<string, unknown>).value;
+        if (typeof defId !== "string" || defId.length === 0) continue;
+        try {
+          await db.insert("customFieldValues", {
+            organizationId: String(args.organizationId),
+            fieldDefinitionId: defId,
+            entityType: "gabinetEmployee",
+            entityId: String(employeeId),
+            value: val ?? null,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (e) {
+          console.error(
+            `[gabinet.employees._createFromInvitation] custom field ${defId} insert failed:`,
+            e,
+          );
+        }
+      }
+    }
+
+    // Activity log + audit, fire-and-forget.
+    try {
+      await ctx.runMutation(internal.gabinet.employees._createSideEffects, {
+        employeeId: String(employeeId),
+        organizationId: args.organizationId,
+        createdBy: args.invitedBy,
+      });
+    } catch (e) {
+      console.error("[gabinet.employees._createFromInvitation] side effects failed:", e);
+    }
+
+    return { skipped: false, employeeId: String(employeeId) };
   },
 });
 

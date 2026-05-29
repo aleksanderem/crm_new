@@ -74,6 +74,10 @@ export const create = action({
     organizationId: v.id("organizations"),
     email: v.string(),
     role: orgRoleValidator,
+    // Optional module provisioning. module="gabinet" + moduleData triggers
+    // auto-create of gabinet_employees row when the invitee accepts.
+    module: v.optional(v.string()),
+    moduleData: v.optional(v.any()),
   },
   handler: async (ctx, args): Promise<string> => {
     const created: {
@@ -86,10 +90,14 @@ export const create = action({
       expiresAt: number;
       createdAt: number;
       updatedAt: number;
+      module?: string;
+      moduleData?: unknown;
     } = await ctx.runMutation(internal.invitations._createInternal, {
       organizationId: args.organizationId,
       email: args.email,
       role: args.role,
+      module: args.module,
+      moduleData: args.moduleData,
     });
 
     // Mirror to Supabase so the team-settings page (which reads from
@@ -108,6 +116,8 @@ export const create = action({
         expiresAt: created.expiresAt,
         createdAt: created.createdAt,
         updatedAt: created.updatedAt,
+        module: created.module ?? null,
+        moduleData: created.moduleData ?? null,
       });
     } catch (e) {
       console.error("[invitations.create] Supabase mirror failed:", e);
@@ -243,6 +253,8 @@ export const _createInternal = internalMutation({
     organizationId: v.id("organizations"),
     email: v.string(),
     role: orgRoleValidator,
+    module: v.optional(v.string()),
+    moduleData: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
@@ -300,6 +312,8 @@ export const _createInternal = internalMutation({
       expiresAt,
       createdAt: now,
       updatedAt: now,
+      module: args.module,
+      moduleData: args.moduleData,
     });
 
     await logActivity(ctx, {
@@ -330,6 +344,8 @@ export const _createInternal = internalMutation({
       expiresAt,
       createdAt: now,
       updatedAt: now,
+      module: args.module,
+      moduleData: args.moduleData,
     };
   },
 });
@@ -470,6 +486,25 @@ export const _acceptInternal = internalMutation({
       createdAt: Math.floor(user._creationTime),
       updatedAt: Date.now(),
     });
+
+    // Module provisioning: if the invite carried a module="gabinet" payload,
+    // auto-create the gabinet_employees row using the data captured at invite
+    // time. Runs AFTER the user mirror so the FK on gabinet_employees.user_id
+    // resolves. Scheduled (not awaited) so any failure here doesn't roll back
+    // the membership — the inviter can re-create the employee manually if
+    // needed.
+    if (invitation.module === "gabinet" && invitation.moduleData) {
+      await ctx.scheduler.runAfter(
+        500, // small delay so the user mirror lands first
+        internal.gabinet.employees._createFromInvitation,
+        {
+          organizationId: invitation.organizationId,
+          userId: String(user._id),
+          invitedBy: String(invitation.invitedBy),
+          data: invitation.moduleData,
+        },
+      );
+    }
 
     const acceptedAt = Date.now();
     const updatedAt = acceptedAt;

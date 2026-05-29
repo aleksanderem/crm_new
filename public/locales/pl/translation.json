@@ -1721,6 +1721,12 @@
       "daysAgo_many": "{{count}} d temu",
       "daysAgo_other": "{{count}} d temu"
     },
+    "entityLabels": {
+      "patient": "Pacjent",
+      "appointment": "Wizyta",
+      "employee": "Pracownik",
+      "lead": "Lead"
+    },
     "descriptions": {
       "updatedAppointment": "Zaktualizowano wizytę",
       "createdAppointment": "Utworzono wizytę na {{date}} o {{time}}",

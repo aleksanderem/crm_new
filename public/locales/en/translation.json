@@ -1699,6 +1699,12 @@
       "daysAgo_one": "{{count}}d ago",
       "daysAgo_other": "{{count}}d ago"
     },
+    "entityLabels": {
+      "patient": "patient",
+      "appointment": "appointment",
+      "employee": "employee",
+      "lead": "lead"
+    },
     "descriptions": {
       "updatedAppointment": "Updated appointment",
       "createdAppointment": "Created appointment for {{date}} at {{time}}",

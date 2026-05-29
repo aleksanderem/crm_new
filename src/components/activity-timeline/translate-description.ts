@@ -23,6 +23,17 @@ interface Rule {
   build: (match: RegExpMatchArray, t: Translator) => string;
 }
 
+// Maps the raw English entity tokens written by `convex/automation.ts`
+// (`patient`, `appointment`, `employee`, `lead`) to a localized label so the
+// rendered "Updated <entity> field … via automation" line does not leak
+// English nouns into Polish UI. Falls back to the original token for
+// unknown entity types.
+function translateAutomationEntityToken(token: string, t: Translator): string {
+  const key = `activityTimeline.entityLabels.${token}`;
+  const translated = t(key, { defaultValue: token });
+  return typeof translated === "string" ? translated : token;
+}
+
 const rules: Rule[] = [
   // ----- Appointments (existing) -----
   {
@@ -456,7 +467,7 @@ const rules: Rule[] = [
     build: (m, t) =>
       t("activityTimeline.descriptions.updatedFieldViaAutomation", {
         defaultValue: "Updated {{entity}} field {{field}} via automation",
-        entity: m[1],
+        entity: translateAutomationEntityToken(m[1], t),
         field: m[2],
       }),
   },

@@ -541,6 +541,39 @@ export function AppointmentPreviewContent({
   const outstanding = Math.max(0, treatmentPrice - totalPaid);
   const canMarkCompleted = availableTransitions.includes("completed");
 
+  // Completed-only total drives the visible "Paid / Partial / Unpaid" badge —
+  // pending payments are auto-created when an appointment is booked, so they
+  // mustn't count as actually paid. Issue #1031.
+  const completedPaid = (detail.payments ?? [])
+    .filter((p) => p.status === "completed")
+    .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const paymentBadge: { kind: "paid" | "partial" | "unpaid"; label: string } | null =
+    treatmentPrice > 0
+      ? completedPaid >= treatmentPrice
+        ? {
+            kind: "paid",
+            label: t("gabinet.appointmentDetail.paymentBadge.paid", {
+              defaultValue: "Zapłacona",
+            }),
+          }
+        : completedPaid > 0
+          ? {
+              kind: "partial",
+              label: t("gabinet.appointmentDetail.paymentBadge.partial", {
+                defaultValue: "Częściowo opłacona",
+              }),
+            }
+          : {
+              kind: "unpaid",
+              label: t("gabinet.appointmentDetail.paymentBadge.unpaid", {
+                defaultValue: "Niezapłacona",
+              }),
+            }
+      : null;
+  const paymentBadgeTooltip = paymentBadge
+    ? `${t("gabinet.payments.totalPaid")}: ${completedPaid.toFixed(2)} PLN / ${treatmentPrice.toFixed(2)} PLN`
+    : null;
+
   const handleOpenSettleDialog = () => {
     if (saving || settleSubmitting) return;
     setSettleAmount(outstanding > 0 ? outstanding.toFixed(2) : "");
@@ -717,7 +750,24 @@ export function AppointmentPreviewContent({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            {paymentBadge && (
+              <Badge
+                variant="outline"
+                title={paymentBadgeTooltip ?? undefined}
+                className={cn(
+                  "text-xs",
+                  paymentBadge.kind === "paid" &&
+                    "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+                  paymentBadge.kind === "partial" &&
+                    "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+                  paymentBadge.kind === "unpaid" &&
+                    "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
+                )}
+              >
+                {paymentBadge.label}
+              </Badge>
+            )}
             <Badge variant="outline" className="text-xs">
               <span
                 className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}

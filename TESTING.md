@@ -2,31 +2,44 @@
 
 ## Canonical command
 
-Run the Convex unit-test suite via the npm script:
+Run the full unit-test suite (Convex + frontend) via the npm script:
 
 ```sh
 npm run test:unit
 ```
 
-That script is `cd convex && vitest run` (see `package.json`). The `cd convex` matters — `convex/vitest.config.ts` resolves `include`, `setupFiles`, and the `@cvx` / `~` aliases relative to the `convex/` directory.
+That script runs `test:unit:convex` then `test:unit:frontend` via `npm-run-all --serial --continue-on-error`, so a failure in one suite still surfaces failures in the other and the overall exit code is non-zero if either fails.
+
+## Suite layout
+
+The repo has two independent vitest suites with separate configs:
+
+- **Convex** (`convex/vitest.config.ts`) — `convex/**/*.test.ts` plus `tests/convex/**/*.test.ts`. Loads `tests/convex/_setup.ts`, which installs the in-memory Supabase stubs and convex-test wiring.
+- **Frontend** (`vitest.frontend.config.ts` at repo root) — `src/**/*.test.ts`. Plain node environment, no setup files, aliases `@`, `@cvx`, `~` mirror `vite.config.ts`. Added in #1034 — before that, `cd convex && vitest run` pinned the test root to `convex/` so the `src/**/*.test.ts` files were silently uncollected.
+
+Run a single suite directly:
+
+```sh
+npm run test:unit:convex     # cd convex && vitest run
+npm run test:unit:frontend   # vitest run --config ./vitest.frontend.config.ts
+```
 
 ## Running vitest directly
 
-If you need to run vitest yourself (e.g. with a `--filter`, `--reporter`, or `-t` flag), pick ONE of:
+If you need to run vitest yourself (e.g. with a `--filter`, `--reporter`, or `-t` flag), point `--config` at the suite you want:
 
 ```sh
-# From the repo root — uses ./vitest.config.ts, which re-exports the convex
-# config with test.root pinned to ./convex (added in #578).
+# Convex suite — what `npm run test:unit:convex` does.
+cd convex && npx vitest run
+# Equivalent from repo root (loads ./vitest.config.ts, which re-exports the convex
+# config with test.root pinned to ./convex; added in #578):
 npx vitest run
 
-# From the repo root — explicit config flag, identical effect.
-npx vitest run --config convex/vitest.config.ts
-
-# From convex/ — what `npm run test:unit` does.
-cd convex && npx vitest run
+# Frontend suite — what `npm run test:unit:frontend` does.
+npx vitest run --config ./vitest.frontend.config.ts
 ```
 
-All three discover the same files and load `tests/convex/_setup.ts`, which installs the in-memory Supabase stubs.
+The convex invocations all discover the same files and load `tests/convex/_setup.ts`. The frontend invocation only sees `src/**/*.test.ts` and does not load the Supabase stub setup.
 
 ## Diagnostic: `SUPABASE_URL not configured`
 

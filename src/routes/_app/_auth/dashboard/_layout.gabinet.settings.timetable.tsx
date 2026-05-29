@@ -448,7 +448,7 @@ function TimetablePage() {
                   <span>{dayNames[i]}</span>
                 </th>
               ))}
-              <th className="px-2 py-2 w-[80px]"></th>
+              <th className="px-2 py-2 w-[110px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -638,11 +638,12 @@ function TimetablePage() {
                       >
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setEditingEmployee(emp)}
                           aria-label={t("common.edit")}
                         >
-                          <Pencil className="h-4 w-4" variant="stroke" />
+                          <Pencil className="mr-1 h-4 w-4" variant="stroke" />
+                          {t("common.edit")}
                         </Button>
                       </td>
                     )}

@@ -16,6 +16,7 @@ import {
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabasePaymentsByPatient } from "@/hooks/use-supabase-payments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
@@ -39,6 +40,7 @@ import {
   Minus,
   ArrowUpRight,
   ArrowDownRight,
+  CreditCard,
 } from "@/lib/ez-icons";
 
 import { useTranslation } from "react-i18next";
@@ -110,6 +112,11 @@ function PatientDetail() {
   );
 
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+
+  const { data: patientPayments } = useSupabasePaymentsByPatient(
+    organizationId,
+    patientId,
+  );
 
   // Treatment-number indicator IDs ("X/Y" like in the calendar — issue #1086).
   // Package usage takes precedence; recurring series is the fallback.
@@ -213,6 +220,19 @@ function PatientDetail() {
               {t("gabinet.loyalty.balance")}
             </span>
             <span className="text-xs font-semibold tabular-nums">{loyaltyBalance?.balance ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CreditCard size={12} variant="stroke" />
+              {t("gabinet.payments.totalSpent")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">
+              {(patientPayments ?? [])
+                .filter((p) => p.status === "completed")
+                .reduce((sum, p) => sum + (p.amount ?? 0), 0)
+                .toFixed(2)}{" "}
+              PLN
+            </span>
           </div>
         </div>
       </div>
@@ -793,6 +813,192 @@ function PatientDetail() {
           </div>
         </div>
       ),
+    },
+    {
+      label: t("gabinet.payments.payments"),
+      count: patientPayments?.length ?? 0,
+      content: (() => {
+        const completedPayments = (patientPayments ?? []).filter(
+          (p) => p.status === "completed",
+        );
+        const totalSpent = completedPayments.reduce(
+          (sum, p) => sum + (p.amount ?? 0),
+          0,
+        );
+        const pendingPayments = (patientPayments ?? []).filter(
+          (p) => p.status === "pending",
+        );
+        const outstanding = pendingPayments.reduce(
+          (sum, p) => sum + (p.amount ?? 0),
+          0,
+        );
+        const lastPayment = patientPayments?.[0];
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <CreditCard
+                      className="h-4 w-4 text-green-600"
+                      variant="stroke"
+                    />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.totalSpent")}
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {totalSpent.toFixed(2)} PLN
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <CreditCard
+                      className="h-4 w-4 text-amber-600"
+                      variant="stroke"
+                    />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.outstanding")}
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {outstanding.toFixed(2)} PLN
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <Calendar
+                      className="h-4 w-4 text-muted-foreground"
+                      variant="stroke"
+                    />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.lastPayment")}
+                      </p>
+                      <p className="font-medium">
+                        {lastPayment
+                          ? new Date(lastPayment.createdAt).toLocaleDateString(
+                              "pl-PL",
+                            )
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <CreditCard
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  {t("gabinet.payments.paymentHistory")}
+                </h3>
+                {!patientPayments || patientPayments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.payments.noPayments")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.amount")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.method")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("common.date")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("common.status")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {patientPayments.map((payment) => (
+                          <tr
+                            key={payment._id}
+                            className={`border-b last:border-0 hover:bg-muted/30 ${
+                              payment.appointmentId
+                                ? "cursor-pointer"
+                                : ""
+                            }`}
+                            onClick={() => {
+                              if (payment.appointmentId) {
+                                navigate({
+                                  to: "/dashboard/gabinet/appointments/$appointmentId",
+                                  params: {
+                                    appointmentId: payment.appointmentId,
+                                  },
+                                });
+                              }
+                            }}
+                          >
+                            <td className="p-3 font-medium">
+                              {payment.amount.toFixed(2)}{" "}
+                              {payment.currency ?? "PLN"}
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline">
+                                {t(
+                                  `gabinet.payments.methods.${payment.paymentMethod}`,
+                                )}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">
+                              {new Date(
+                                payment.createdAt,
+                              ).toLocaleDateString("pl-PL")}
+                            </td>
+                            <td className="p-3">
+                              <Badge
+                                variant={
+                                  payment.status === "completed"
+                                    ? "default"
+                                    : payment.status === "refunded"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                              >
+                                {t(
+                                  `gabinet.payments.status.${payment.status}`,
+                                )}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-xs text-muted-foreground">
+                              {payment.appointmentId
+                                ? t("gabinet.payments.linkedToAppointment")
+                                : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })(),
     },
     {
       label: t("gabinet.patients.tabs.activity"),

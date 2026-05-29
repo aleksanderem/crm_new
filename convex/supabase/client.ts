@@ -1,6 +1,25 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from "@cvx/env";
 
+// Stub WebSocket transport for the Convex action runtime, which doesn't
+// expose a global `WebSocket`. supabase-js 2.105+ eagerly constructs a
+// RealtimeClient inside `createClient`, and that constructor throws
+// "Unknown JavaScript runtime without WebSocket support" if no transport
+// is supplied. We never use realtime server-side, so we hand it a no-op
+// constructor; if anything ever calls `connect()` it will fail loudly
+// instead of silently subscribing.
+class NoopWebSocketTransport {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+  constructor() {
+    throw new Error(
+      "Realtime is not supported in the Convex action runtime",
+    );
+  }
+}
+
 export function createServiceRoleClient() {
   if (!SUPABASE_URL) {
     throw new Error("SUPABASE_URL not configured");
@@ -11,6 +30,9 @@ export function createServiceRoleClient() {
 
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    realtime: {
+      transport: NoopWebSocketTransport as unknown as typeof WebSocket,
+    },
   });
 }
 

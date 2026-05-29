@@ -787,7 +787,16 @@
       "role": "Rola",
       "roleHint": "Administratorzy mogą zarządzać ustawieniami i zespołem",
       "sendInvite": "Wyślij zaproszenie",
-      "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie."
+      "invitationInfo": "Zaproszenie wyślemy e-mailem. Odbiorca będzie miał 7 dni na jego przyjęcie.",
+      "roles": {
+        "admin": "Administrator",
+        "member": "Członek"
+      },
+      "module": "Moduł",
+      "moduleNone": "Brak (tylko zaproszenie)",
+      "moduleGabinet": "Gabinet — utwórz profil pracownika",
+      "moduleHint": "Wybierz moduł, aby od razu wypełnić dane potrzebne do utworzenia profilu po akceptacji zaproszenia.",
+      "gabinetSectionTitle": "Dane pracownika Gabinetu"
     },
     "pipelines": {
       "title": "Pipeline",

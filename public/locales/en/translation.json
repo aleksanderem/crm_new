@@ -89,19 +89,7 @@
     "insights": "Insights",
     "products": "Products",
     "calls": "Calls",
-    "gabinet": {
-      "dashboard": "Dashboard",
-      "calendar": "Calendar",
-      "patients": "Patients",
-      "treatments": "Treatments",
-      "packages": "Packages",
-      "employees": "Employees",
-      "documents": "Documents",
-      "reports": "Reports",
-      "scheduling": "Working Hours",
-      "leaves": "Leaves",
-      "documentTemplates": "Document Templates"
-    },
+    "gabinet": "Cabinet",
     "sections": {
       "main": "Main",
       "database": "Database",
@@ -185,7 +173,6 @@
       "gabinet": "Gabinet",
       "gabinetDesc": "Clinic & clients"
     },
-    "gabinet": "Cabinet",
     "settings": "Settings",
     "home": "Home"
   },
@@ -786,7 +773,16 @@
       "role": "Role",
       "roleHint": "Admins can manage settings and team",
       "sendInvite": "Send Invitation",
-      "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept."
+      "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept.",
+      "roles": {
+        "admin": "Administrator",
+        "member": "Member"
+      },
+      "module": "Module",
+      "moduleNone": "None (invitation only)",
+      "moduleGabinet": "Gabinet — create employee profile",
+      "moduleHint": "Pick a module to pre-fill the fields needed to provision a profile once the invitation is accepted.",
+      "gabinetSectionTitle": "Gabinet employee details"
     },
     "pipelines": {
       "title": "Pipelines",

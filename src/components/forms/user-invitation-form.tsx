@@ -266,82 +266,73 @@ export function UserInvitationForm({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label>
-          {t("settings.team.email")} <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          type="email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (emailError) validateEmail(e.target.value);
-          }}
-          placeholder={t("settings.team.emailPlaceholder")}
-          disabled={isAtLimit}
-          required
-        />
-        {emailError && <p className="text-xs text-destructive">{emailError}</p>}
-      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>
+            {t("settings.team.email")} <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) validateEmail(e.target.value);
+            }}
+            placeholder={t("settings.team.emailPlaceholder")}
+            disabled={isAtLimit}
+            required
+          />
+          {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+        </div>
 
-      <div className="space-y-1.5">
-        <Label>
-          {t("settings.team.role")} <span className="text-destructive">*</span>
-        </Label>
-        <Select
-          value={role}
-          onValueChange={(v) => setRole(v as OrgRole)}
-          disabled={isAtLimit}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ROLES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
-                {t(r.labelKey)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">{t("settings.team.roleHint")}</p>
-      </div>
+        <div className="space-y-1.5">
+          <Label>
+            {t("settings.team.role")} <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={role}
+            onValueChange={(v) => setRole(v as OrgRole)}
+            disabled={isAtLimit}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {t(r.labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("settings.team.roleHint")}</p>
+        </div>
 
-      {/* Module picker — when Gabinet is chosen, pre-fill module fields so a
-          gabinet_employees row is auto-provisioned on invite-accept. */}
-      <div className="space-y-1.5">
-        <Label>
-          {t("settings.team.module", { defaultValue: "Moduł" })}
-        </Label>
-        <Select
-          value={module}
-          onValueChange={(v) => setModule(v as InviteModule)}
-          disabled={isAtLimit}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">
-              {t("settings.team.moduleNone", { defaultValue: "Brak (tylko zaproszenie)" })}
-            </SelectItem>
-            <SelectItem value="gabinet">
-              {t("settings.team.moduleGabinet", { defaultValue: "Gabinet — utwórz profil pracownika" })}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          {t("settings.team.moduleHint", {
-            defaultValue:
-              "Wybierz moduł, aby od razu wypełnić dane potrzebne do utworzenia profilu po akceptacji zaproszenia.",
-          })}
-        </p>
+        {/* Module picker — when Gabinet is chosen, pre-fill module fields so a
+            gabinet_employees row is auto-provisioned on invite-accept. */}
+        <div className="space-y-1.5">
+          <Label>{t("settings.team.module")}</Label>
+          <Select
+            value={module}
+            onValueChange={(v) => setModule(v as InviteModule)}
+            disabled={isAtLimit}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("settings.team.moduleNone")}</SelectItem>
+              <SelectItem value="gabinet">{t("settings.team.moduleGabinet")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("settings.team.moduleHint")}</p>
+        </div>
       </div>
 
       {module === "gabinet" && (
         <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
           <h3 className="text-sm font-medium">
-            {t("settings.team.gabinetSectionTitle", { defaultValue: "Dane pracownika Gabinetu" })}
+            {t("settings.team.gabinetSectionTitle")}
           </h3>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -353,48 +344,48 @@ export function UserInvitationForm({
               <Label>{t("gabinet.employees.lastName")}</Label>
               <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>
-              {t("gabinet.employees.role")} <span className="text-destructive">*</span>
-            </Label>
-            <Select value={gabinetRole} onValueChange={(v) => setGabinetRole(v as GabinetRole)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {GABINET_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {t(`gabinet.employees.roles.${r}`)}
-                  </SelectItem>
+            <div className="space-y-1.5">
+              <Label>
+                {t("gabinet.employees.role")} <span className="text-destructive">*</span>
+              </Label>
+              <Select value={gabinetRole} onValueChange={(v) => setGabinetRole(v as GabinetRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GABINET_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {t(`gabinet.employees.roles.${r}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.specialization")}</Label>
+              <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label>{t("gabinet.employees.color")}</Label>
+              <div className="flex gap-2">
+                {COLOR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                      color === opt.value
+                        ? "border-foreground scale-110"
+                        : "border-transparent hover:border-muted-foreground/40"
+                    }`}
+                    style={{ backgroundColor: opt.value }}
+                    onClick={() => setColor(color === opt.value ? "" : opt.value)}
+                    title={opt.label}
+                  />
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.specialization")}</Label>
-            <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("gabinet.employees.color")}</Label>
-            <div className="flex gap-2">
-              {COLOR_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`h-7 w-7 rounded-full border-2 transition-all ${
-                    color === opt.value
-                      ? "border-foreground scale-110"
-                      : "border-transparent hover:border-muted-foreground/40"
-                  }`}
-                  style={{ backgroundColor: opt.value }}
-                  onClick={() => setColor(color === opt.value ? "" : opt.value)}
-                  title={opt.label}
-                />
-              ))}
+              </div>
             </div>
           </div>
 
@@ -449,25 +440,27 @@ export function UserInvitationForm({
             </div>
           )}
 
-          {tagDefinitions && tagDefinitions.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t("common.tags", { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
-            </div>
-          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {tagDefinitions && tagDefinitions.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>{t("common.tags", { defaultValue: "Tagi" })}</Label>
+                <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
+              </div>
+            )}
 
-          {organizationId && (
-            <div className="space-y-1.5">
-              <Label>{t("common.category", { defaultValue: "Kategoria" })}</Label>
-              <CategoryPicker
-                categories={categoryDefinitions ?? []}
-                selectedId={categoryId}
-                onChange={setCategoryId}
-                organizationId={organizationId}
-                entityType="gabinetEmployee"
-              />
-            </div>
-          )}
+            {organizationId && (
+              <div className="space-y-1.5">
+                <Label>{t("common.category", { defaultValue: "Kategoria" })}</Label>
+                <CategoryPicker
+                  categories={categoryDefinitions ?? []}
+                  selectedId={categoryId}
+                  onChange={setCategoryId}
+                  organizationId={organizationId}
+                  entityType="gabinetEmployee"
+                />
+              </div>
+            )}
+          </div>
 
           {customFieldDefs && customFieldDefs.length > 0 && (
             <div className="space-y-2 pt-2 border-t">

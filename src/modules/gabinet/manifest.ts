@@ -114,7 +114,7 @@ export const gabinetManifest: ModuleManifest = {
         {
           labelKey: "nav.actions.addPatient",
           icon: UserPlus,
-          quickCreate: "patient",
+          dispatch: "openAddPatient",
           permissionFeature: "gabinet_patients",
         },
         { labelKey: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },

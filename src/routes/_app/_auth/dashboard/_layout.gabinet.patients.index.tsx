@@ -79,6 +79,7 @@ function PatientsIndex() {
   const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
 
   // Sidebar dispatch handlers
+  useSidebarDispatch("openAddPatient", () => setPanelOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
   useSidebarDispatch("importCsv", () => {
     // Could open import dialog - for now show toast

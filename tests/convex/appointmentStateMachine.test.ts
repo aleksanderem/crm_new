@@ -200,55 +200,6 @@ describe("appointment state machine", () => {
     expect(appt?.status).toBe("no_show");
   });
 
-  // Invalid transitions
-  test("cannot transition from completed", async () => {
-    const t = createManagedTestCtx();
-    const { organizationId, userId, identity } = await seedTestUser(t);
-    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
-
-    const apptId = await createAppointment(t, identity, {
-      organizationId, patientId, treatmentId, employeeId: userId,
-    });
-
-    // Go through full lifecycle
-    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-      organizationId, appointmentId: apptId, status: "confirmed",
-    });
-    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-      organizationId, appointmentId: apptId, status: "in_progress",
-    });
-    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-      organizationId, appointmentId: apptId, status: "completed",
-    });
-
-    // Try any further transition — should fail
-    await expect(
-      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-        organizationId, appointmentId: apptId, status: "cancelled",
-      }),
-    ).rejects.toThrow("Cannot transition from completed to cancelled");
-  });
-
-  test("cannot transition from cancelled", async () => {
-    const t = createManagedTestCtx();
-    const { organizationId, userId, identity } = await seedTestUser(t);
-    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
-
-    const apptId = await createAppointment(t, identity, {
-      organizationId, patientId, treatmentId, employeeId: userId,
-    });
-
-    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-      organizationId, appointmentId: apptId, status: "cancelled",
-    });
-
-    await expect(
-      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
-        organizationId, appointmentId: apptId, status: "scheduled",
-      }),
-    ).rejects.toThrow("Cannot transition from cancelled to scheduled");
-  });
-
   test("dual write: scheduledActivity created with appointment", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

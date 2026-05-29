@@ -2572,7 +2572,9 @@
         "effectiveFrom": "Data rozpoczęcia",
         "effectiveTo": "Data zakończenia",
         "effectiveFromHint": "Pozostaw puste dla grafiku domyślnego",
-        "effectiveToHint": "Pozostaw puste dla grafiku bezterminowego"
+        "effectiveToHint": "Pozostaw puste dla grafiku bezterminowego",
+        "calendarPreview": "Podgląd tydzień po tygodniu",
+        "weeklyPattern": "Wzorzec tygodniowy"
       },
       "roles": {
         "doctor": "Lekarz",

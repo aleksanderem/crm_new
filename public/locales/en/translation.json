@@ -2642,7 +2642,7 @@
       "phoneAdded": "Phone number added",
       "edit": "Edit",
       "close": "Close",
-      "closeAndSettle": "Close and settle",
+      "closeAndSettle": "Settle visit",
       "history": {
         "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
         "metadata": {

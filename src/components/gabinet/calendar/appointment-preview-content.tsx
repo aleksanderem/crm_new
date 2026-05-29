@@ -902,7 +902,7 @@ export function AppointmentPreviewContent({
         >
           {saving
             ? t("common.saving")
-            : t("gabinet.appointmentDetail.closeAndSettle", "Zamknij i rozlicz")}
+            : t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
         </Button>
       </div>
     </div>

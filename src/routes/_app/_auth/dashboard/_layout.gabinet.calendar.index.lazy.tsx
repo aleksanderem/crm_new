@@ -314,6 +314,19 @@ function GabinetCalendarPage() {
     return map;
   }, [members]);
 
+  // userId -> per-employee color (hex). Drives the calendar's per-employee
+  // shading so every appointment for the same employee reads as a variation
+  // of one hue (issue #1019). Employees without an assigned color are simply
+  // omitted; the appointment then falls back to its treatment color or the
+  // status-only palette.
+  const employeeColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const emp of employees ?? []) {
+      if (emp.color) map.set(emp.userId, emp.color);
+    }
+    return map;
+  }, [employees]);
+
   // Build schedule map for the filtered employee (or all employees)
   const employeeSchedules = useMemo(() => {
     const map = new Map<
@@ -585,7 +598,12 @@ function GabinetCalendarPage() {
           patientName: patientMap.get(a.patientId) ?? "",
           treatmentName: treatment?.name ?? "",
           status: a.status,
-          color: a.color ?? treatment?.color,
+          // Per-appointment override wins, then the employee's assigned color
+          // (issue #1019), then treatment color as a final fallback.
+          color:
+            a.color ??
+            employeeColorMap.get(a.employeeId) ??
+            treatment?.color,
           employeeId: a.employeeId,
           tags: tags && tags.length > 0 ? tags : undefined,
           indicators: indicators.length > 0 ? indicators : undefined,
@@ -624,7 +642,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, firstAppointmentIds, packagePositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);

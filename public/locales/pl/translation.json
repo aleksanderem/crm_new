@@ -1710,6 +1710,17 @@
       "daysAgo_few": "{{count}} d temu",
       "daysAgo_many": "{{count}} d temu",
       "daysAgo_other": "{{count}} d temu"
+    },
+    "descriptions": {
+      "updatedAppointment": "Zaktualizowano wizytę",
+      "createdAppointment": "Utworzono wizytę na {{date}} o {{time}}",
+      "cancelledAppointment": "Anulowano wizytę",
+      "cancelledAppointmentWithReason": "Anulowano wizytę: {{reason}}",
+      "statusChanged": "Status zmieniony z „{{from}}” na „{{to}}”",
+      "appointmentConfirmedViaSms": "Wizyta potwierdzona przez SMS",
+      "appointmentCancelledViaSms": "Wizyta anulowana przez SMS",
+      "automationRun": "Uruchomienie automatyzacji",
+      "automationNamed": "Automatyzacja: {{name}}"
     }
   },
   "lostReasons": {

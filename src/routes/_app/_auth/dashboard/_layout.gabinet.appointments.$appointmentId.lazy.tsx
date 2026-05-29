@@ -127,15 +127,21 @@ export const Route = createLazyFileRoute(
   component: AppointmentDetail,
 });
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  pending_confirmation: ["scheduled", "confirmed", "cancelled"],
-  scheduled: ["confirmed", "in_progress", "completed", "cancelled", "no_show"],
-  confirmed: ["in_progress", "completed", "cancelled", "no_show"],
-  in_progress: ["completed", "cancelled"],
-  completed: [],
-  cancelled: [],
-  no_show: [],
-};
+// All statuses can transition to any other status. Lets staff correct mistakes
+// after a visit was already marked completed/cancelled/no_show (issue #1027).
+const ALL_STATUSES = [
+  "pending_confirmation",
+  "scheduled",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+
+const VALID_TRANSITIONS: Record<string, string[]> = Object.fromEntries(
+  ALL_STATUSES.map((s) => [s, ALL_STATUSES.filter((t) => t !== s)]),
+);
 
 function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus: string) {
   const latestOutbound = events.find(

@@ -43,7 +43,9 @@ import { checkDocumentGate } from "./_helpers/documentGate";
 
 // Dual-write refs removed — Supabase is now primary for appointment writes
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
+// Restrictive map used for automated SMS-driven transitions only — a late
+// patient reply must not overwrite a status that staff already set manually.
+const AUTOMATED_TRANSITIONS: Record<string, string[]> = {
   pending_confirmation: ["scheduled", "confirmed", "cancelled"],
   scheduled: ["confirmed", "in_progress", "completed", "cancelled", "no_show"],
   confirmed: ["in_progress", "completed", "cancelled", "no_show"],
@@ -52,6 +54,26 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   no_show: [],
 };
+
+// Manual transitions are unrestricted (any → any other) so staff can correct
+// mistakes after a visit was already marked completed/cancelled/no_show.
+// Issue #1027.
+const ALL_APPOINTMENT_STATUSES = [
+  "pending_confirmation",
+  "scheduled",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+
+const MANUAL_TRANSITIONS: Record<string, string[]> = Object.fromEntries(
+  ALL_APPOINTMENT_STATUSES.map((s) => [
+    s,
+    ALL_APPOINTMENT_STATUSES.filter((t) => t !== s),
+  ]),
+);
 
 function getSmsTargetStatus(intent: "confirm" | "cancel") {
   return intent === "confirm" ? "confirmed" : "cancelled";
@@ -1338,7 +1360,7 @@ export const update = action({
 
     // Handle status change with cancellation support
     if (status) {
-      const allowed = VALID_TRANSITIONS[appt.status as string];
+      const allowed = MANUAL_TRANSITIONS[appt.status as string];
       if (!allowed?.includes(status)) {
         throw new Error(`Cannot transition from ${appt.status} to ${status}`);
       }
@@ -1518,7 +1540,7 @@ export const updateStatus = action({
       throw new Error("Permission denied: you can only edit your own records");
     }
 
-    const allowed = VALID_TRANSITIONS[appt.status as string];
+    const allowed = MANUAL_TRANSITIONS[appt.status as string];
     if (!allowed?.includes(args.status)) {
       throw new Error(
         `Cannot transition from ${appt.status} to ${args.status}`,
@@ -1722,7 +1744,7 @@ export const applySmsReplyTransition = internalMutation({
     }
 
     const targetStatus = getSmsTargetStatus(args.intent);
-    const allowed = VALID_TRANSITIONS[appointment.status as string];
+    const allowed = AUTOMATED_TRANSITIONS[appointment.status as string];
     if (!allowed?.includes(targetStatus)) {
       return {
         processingStatus: "ignored" as const,

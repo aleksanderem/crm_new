@@ -362,6 +362,70 @@ export function useSupabaseGabinetAppointmentPackagePositions(
 }
 
 // ---------------------------------------------------------------------------
+// Appointment Positions Within Recurring Series
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns, for each appointment that belongs to one of the given recurring
+ * groups, its 1-based position in chronological order among non-cancelled
+ * siblings sharing the same `recurringGroupId`. Used by the gabinet calendar
+ * so that the "visit X / Y" indicator reflects the actual order after a
+ * recurring occurrence has been rescheduled — the stored `recurringIndex`
+ * does not update on move (issue #1032).
+ */
+export function useSupabaseGabinetAppointmentRecurringPositions(
+  organizationId: string,
+  recurringGroupIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...recurringGroupIds].sort();
+
+  return useQuery<Map<string, number>, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "recurringPositions",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const result = new Map<string, number>();
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return result;
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("id, recurring_group_id, date, start_time")
+        .eq("organization_id", organizationId)
+        .in("recurring_group_id", stableIds)
+        .not("status", "in", '("cancelled","no_show")')
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+
+      const counter = new Map<string, number>();
+      for (const a of (data ?? []) as {
+        id: string;
+        recurring_group_id: string;
+      }[]) {
+        const next = (counter.get(a.recurring_group_id) ?? 0) + 1;
+        counter.set(a.recurring_group_id, next);
+        result.set(a.id, next);
+      }
+
+      return result;
+    },
+    enabled:
+      enabled &&
+      isReady &&
+      !!organizationId &&
+      stableIds.length > 0,
+  } satisfies UseQueryOptions<Map<string, number>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

@@ -52,6 +52,7 @@ import {
   useSupabaseGabinetAppointmentsByDateRange,
   useSupabaseGabinetFirstAppointmentIdsByPatient,
   useSupabaseGabinetAppointmentPackagePositions,
+  useSupabaseGabinetAppointmentRecurringPositions,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -466,18 +467,22 @@ function GabinetCalendarPage() {
     return set;
   }, [rawAppointments]);
 
-  // Distinct patient + package usage IDs from the rendered range — used to
-  // compute the "first visit" and "visit X/Y" indicators on appointment cards.
+  // Distinct patient + package usage + recurring group IDs from the rendered
+  // range — used to compute the "first visit" and "visit X/Y" indicators on
+  // appointment cards.
   const indicatorLookupIds = useMemo(() => {
     const patientIds = new Set<string>();
     const packageUsageIds = new Set<string>();
+    const recurringGroupIds = new Set<string>();
     for (const a of rawAppointments ?? []) {
       if (a.patientId) patientIds.add(a.patientId);
       if (a.packageUsageId) packageUsageIds.add(a.packageUsageId);
+      if (a.recurringGroupId) recurringGroupIds.add(a.recurringGroupId);
     }
     return {
       patientIds: Array.from(patientIds),
       packageUsageIds: Array.from(packageUsageIds),
+      recurringGroupIds: Array.from(recurringGroupIds),
     };
   }, [rawAppointments]);
 
@@ -491,6 +496,12 @@ function GabinetCalendarPage() {
     useSupabaseGabinetAppointmentPackagePositions(
       organizationId,
       indicatorLookupIds.packageUsageIds,
+    );
+
+  const { data: recurringPositions } =
+    useSupabaseGabinetAppointmentRecurringPositions(
+      organizationId,
+      indicatorLookupIds.recurringGroupIds,
     );
 
   // Transform and filter appointments for view components
@@ -578,7 +589,15 @@ function GabinetCalendarPage() {
         } else if (a.isRecurring && a.recurringRule) {
           const rule = a.recurringRule as { count?: number };
           if (typeof rule.count === "number" && rule.count > 0) {
-            const pos = (a.recurringIndex ?? 0) + 1;
+            // Prefer the dynamically-computed chronological position so the
+            // "X/Y" indicator reflects the current order after a recurring
+            // occurrence is rescheduled (issue #1032). Fall back to the
+            // stored `recurringIndex` when the group has no live position
+            // (e.g. cancelled, no recurringGroupId, or hook not loaded).
+            const dynamicPos = a.recurringGroupId
+              ? recurringPositions?.get(a._id)
+              : undefined;
+            const pos = dynamicPos ?? (a.recurringIndex ?? 0) + 1;
             indicators.push({
               kind: "count",
               label: `${pos}/${rule.count}`,
@@ -642,7 +661,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);

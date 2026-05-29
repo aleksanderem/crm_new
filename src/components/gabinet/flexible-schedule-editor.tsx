@@ -413,6 +413,19 @@ export function FlexibleScheduleEditor({
                     const entry = period.entries.find(
                       (e) => e.dayOfWeek === i,
                     );
+                    const dayDates =
+                      entry?.isWorking &&
+                      period.effectiveFrom &&
+                      period.effectiveTo
+                        ? getDatesForDayOfWeek(
+                            period.effectiveFrom,
+                            period.effectiveTo,
+                            i,
+                          )
+                        : [];
+                    const dayDatesLabel = dayDates
+                      .map((d) => formatShortDate(d, i18n.language))
+                      .join(", ");
                     return (
                       <div
                         key={i}
@@ -421,6 +434,14 @@ export function FlexibleScheduleEditor({
                         <div className="font-medium">
                           {dayNames[i].substring(0, 3)}
                         </div>
+                        {dayDatesLabel && (
+                          <div
+                            className="text-[9px] leading-tight text-muted-foreground break-words"
+                            title={dayDatesLabel}
+                          >
+                            {dayDatesLabel}
+                          </div>
+                        )}
                         {entry?.isWorking ? (
                           <div>
                             {entry.startTime}–{entry.endTime}

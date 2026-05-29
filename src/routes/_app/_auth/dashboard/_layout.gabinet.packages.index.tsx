@@ -5,7 +5,6 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatmentPackagesList, useSupabaseGabinetPackageUsageActive } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
-import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -39,7 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Trash2, Package, Pencil, Loader2, X } from "@/lib/ez-icons";
+import { Plus, Trash2, Package, Pencil, X } from "@/lib/ez-icons";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -47,6 +46,7 @@ import { formatActionError } from "@/lib/format-action-error";
 
 import { EmptyState } from "@/components/layout/empty-state";
 import { QuickActionBar } from "@/components/crm/quick-action-bar";
+import { SellPackagePanel } from "@/components/gabinet/sell-package-panel";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
@@ -146,16 +146,11 @@ function PackagesIndex() {
   const updatePkg = useAction(api.gabinet.packages.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const removePkg = useAction(api.gabinet.packages.remove);
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const purchasePackage = useAction(api.gabinet.packages.purchasePackage);
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const createPayment = useAction(api.payments.create);
 
   // Supabase-backed queries (replacing convexQuery)
   const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: activeUsagesData } = useSupabaseGabinetPackageUsageActive(organizationId);
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
 
   // Filter treatments to active-only (original Convex query was listActive)
   const treatments = useMemo(
@@ -183,10 +178,6 @@ function PackagesIndex() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [expiringOnly, setExpiringOnly] = useState(false);
   const [assignPanelOpen, setAssignPanelOpen] = useState(false);
-  const [assignPatientId, setAssignPatientId] = useState<string>("");
-  const [assignPackageId, setAssignPackageId] = useState<string>("");
-  const [assignPaymentMethod, setAssignPaymentMethod] = useState<string>("cash");
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
 
   useSidebarDispatch("openFilter", () => setFilterPanelOpen(true));
   useSidebarDispatch("viewExpiring", () => setExpiringOnly(true));
@@ -326,50 +317,6 @@ function PackagesIndex() {
     } finally {
       setDeleteDialogOpen(false);
       setDeletingId(null);
-    }
-  };
-
-  const resetAssignForm = useCallback(() => {
-    setAssignPatientId("");
-    setAssignPackageId("");
-    setAssignPaymentMethod("cash");
-  }, []);
-
-  const handleAssignPackage = async () => {
-    if (!assignPatientId || !assignPackageId) return;
-    const pkg = (packagesData ?? []).find((p) => p._id === assignPackageId);
-    if (!pkg) return;
-    setAssignSubmitting(true);
-    try {
-      const usageId = await purchasePackage({
-        organizationId,
-        patientId: assignPatientId,
-        packageId: assignPackageId,
-        paidAmount: pkg.totalPrice,
-        paymentMethod: assignPaymentMethod,
-      });
-      await createPayment({
-        organizationId,
-        patientId: assignPatientId,
-        packageUsageId: usageId,
-        amount: pkg.totalPrice,
-        currency: pkg.currency ?? "PLN",
-        paymentMethod: assignPaymentMethod as "cash" | "card" | "transfer",
-        notes: `Package: ${pkg.name}`,
-      });
-      toast.success(t("gabinet.packages.purchased"));
-      invalidatePackages();
-      setAssignPanelOpen(false);
-      resetAssignForm();
-    } catch (e) {
-      toast.error(
-        formatActionError(e, t, {
-          key: "gabinet.packages.errors.purchaseFailed",
-          defaultValue: "Nie udało się sprzedać pakietu.",
-        }),
-      );
-    } finally {
-      setAssignSubmitting(false);
     }
   };
 
@@ -746,73 +693,11 @@ function PackagesIndex() {
         </div>
       </SidePanel>
 
-      <SidePanel
+      <SellPackagePanel
+        organizationId={organizationId}
         open={assignPanelOpen}
-        onOpenChange={(open) => {
-          setAssignPanelOpen(open);
-          if (!open) resetAssignForm();
-        }}
-        title={t("nav.actions.assignPackage")}
-      >
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.packages.selectPatient", "Patient")}</Label>
-            <Select value={assignPatientId} onValueChange={setAssignPatientId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("gabinet.packages.selectPatientPlaceholder", "Select a patient...")} />
-              </SelectTrigger>
-              <SelectContent>
-                {(patientsData ?? []).map((p) => (
-                  <SelectItem key={p._id} value={p._id}>
-                    {p.firstName} {p.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.packages.selectPackage")}</Label>
-            <Select value={assignPackageId} onValueChange={setAssignPackageId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {(packagesData ?? [])
-                  .filter((p) => p.isActive)
-                  .map((pkg) => (
-                    <SelectItem key={pkg._id} value={pkg._id}>
-                      {pkg.name} — {pkg.totalPrice} {pkg.currency ?? "PLN"}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.packages.paymentMethod")}</Label>
-            <Select value={assignPaymentMethod} onValueChange={setAssignPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash")}</SelectItem>
-                <SelectItem value="card">{t("gabinet.packages.paymentMethods.card")}</SelectItem>
-                <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button
-            className="w-full"
-            disabled={!assignPatientId || !assignPackageId || assignSubmitting}
-            onClick={handleAssignPackage}
-          >
-            {assignSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
-            {t("gabinet.packages.purchaseButton")}
-          </Button>
-        </div>
-      </SidePanel>
+        onOpenChange={setAssignPanelOpen}
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

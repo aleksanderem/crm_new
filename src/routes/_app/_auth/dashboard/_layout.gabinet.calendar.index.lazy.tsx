@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Plus, Search, Users, X } from "@/lib/ez-icons";
+import { ChevronLeft, ChevronRight, Gift, Plus, Search, Users, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-vi
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
 import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
+import { SellPackagePanel } from "@/components/gabinet/sell-package-panel";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -138,6 +139,7 @@ function GabinetCalendarPage() {
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [sellPackageOpen, setSellPackageOpen] = useState(false);
   const [createDefaultDate, setCreateDefaultDate] = useState<
     string | undefined
   >();
@@ -1116,6 +1118,18 @@ function GabinetCalendarPage() {
                 <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
                 {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
               </Button>
+
+              {/* Sell package button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                data-testid="calendar-sell-package-button"
+                onClick={() => setSellPackageOpen(true)}
+              >
+                <Gift className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                {t("gabinet.packages.purchaseButton")}
+              </Button>
             </div>
           </div>
 
@@ -1385,6 +1399,13 @@ function GabinetCalendarPage() {
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
           defaultEmployeeId={createDefaultEmployeeId}
+        />
+
+        {/* Sell package side panel */}
+        <SellPackagePanel
+          organizationId={organizationId}
+          open={sellPackageOpen}
+          onOpenChange={setSellPackageOpen}
         />
       </div>
 

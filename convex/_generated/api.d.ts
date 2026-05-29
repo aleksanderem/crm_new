@@ -178,6 +178,8 @@ import type * as supabase_jwt from "../supabase/jwt.js";
 import type * as supabase_organizations from "../supabase/organizations.js";
 import type * as supabase_subscriptions from "../supabase/subscriptions.js";
 import type * as supabase_syncAudit from "../supabase/syncAudit.js";
+import type * as supabase_users from "../supabase/users.js";
+import type * as supabase_usersHelpers from "../supabase/usersHelpers.js";
 import type * as tagDefinitions from "../tagDefinitions.js";
 
 import type {
@@ -357,6 +359,8 @@ declare const fullApi: ApiFromModules<{
   "supabase/organizations": typeof supabase_organizations;
   "supabase/subscriptions": typeof supabase_subscriptions;
   "supabase/syncAudit": typeof supabase_syncAudit;
+  "supabase/users": typeof supabase_users;
+  "supabase/usersHelpers": typeof supabase_usersHelpers;
   tagDefinitions: typeof tagDefinitions;
 }>;
 

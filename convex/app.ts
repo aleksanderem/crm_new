@@ -88,6 +88,25 @@ export const _completeOnboardingInternal = internalMutation({
     }
     await ctx.db.patch(userId, { username: args.username });
 
+    // Mirror user to Supabase so subsequent FK references (gabinet_employees,
+    // team_memberships, etc.) resolve. Fire-and-forget; upsert-safe.
+    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+      userId: String(userId),
+      email: user.email,
+      name: user.name,
+      username: args.username,
+      image: user.image,
+      imageStorageId: user.imageId ? String(user.imageId) : undefined,
+      phone: user.phone,
+      isAnonymous: user.isAnonymous,
+      customerId: user.customerId,
+      language: user.language,
+      theme: user.theme,
+      timezone: user.timezone,
+      createdAt: Math.floor(user._creationTime),
+      updatedAt: Date.now(),
+    });
+
     // Auto-create a default organization for new users
     const existingMemberships = await ctx.db
       .query("teamMemberships")

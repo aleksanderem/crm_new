@@ -68,6 +68,11 @@ const routeActions: Record<string, FooterAction[]> = {
   ],
 };
 
+const defaultGabinetActions: FooterAction[] = [
+  { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+  { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
+];
+
 const gabinetRouteActions: Record<string, FooterAction[]> = {
   calendar: [
     { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
@@ -109,8 +114,7 @@ export function AppFooter() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
 
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
-  const isGabinetSettingsRoute = !!matchRoute({ to: "/dashboard/gabinet/settings", fuzzy: true });
-  const showGabinetQuickActions = isGabinetRoute && !isGabinetSettingsRoute;
+  const showGabinetQuickActions = isGabinetRoute;
 
   let actions: FooterAction[] = [];
 
@@ -118,7 +122,7 @@ export function AppFooter() {
     const key = gabinetRouteKeys.find((k) =>
       matchRoute({ to: `/dashboard/gabinet/${k}`, fuzzy: true })
     );
-    if (key) actions = gabinetRouteActions[key] ?? [];
+    actions = key ? (gabinetRouteActions[key] ?? defaultGabinetActions) : defaultGabinetActions;
   } else {
     const key = crmRouteKeys.find((k) =>
       matchRoute({ to: `/dashboard/${k}`, fuzzy: true })

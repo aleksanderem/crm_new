@@ -709,7 +709,7 @@ function PatientDetail() {
       label: t("gabinet.patients.tabs.activity"),
       content: (
         <ActivityFeed
-          entries={activitiesToFeedEntries((activities ?? []) as any[])}
+          entries={activitiesToFeedEntries((activities ?? []) as any[], t)}
           maxHeight="600px"
         />
       ),

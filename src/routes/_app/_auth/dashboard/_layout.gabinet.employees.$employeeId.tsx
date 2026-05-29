@@ -701,7 +701,7 @@ function EmployeeDetail() {
       label: t("gabinet.employees.activity"),
       content: (
         <ActivityFeed
-          entries={activitiesToFeedEntries(activities ?? [])}
+          entries={activitiesToFeedEntries(activities ?? [], t)}
           maxHeight="600px"
         />
       ),

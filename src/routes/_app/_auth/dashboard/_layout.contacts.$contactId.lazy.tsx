@@ -767,7 +767,7 @@ function ContactDetail() {
             </Button>
           </div>
           <ActivityFeed
-            entries={activitiesToFeedEntries((activities ?? []) as any[])}
+            entries={activitiesToFeedEntries((activities ?? []) as any[], t)}
             maxHeight="600px"
           />
         </>

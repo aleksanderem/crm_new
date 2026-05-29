@@ -43,21 +43,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
+  BadgeCheck,
   Calendar,
+  CircleCheck,
+  Clock,
   Mail,
+  OctagonX,
   Phone,
+  PlayCircle,
   Stethoscope,
   User,
+  XCircle,
 } from "@/lib/ez-icons";
 import {
   AlertTriangle,
@@ -99,6 +104,56 @@ type AppointmentStatus =
   | "completed"
   | "cancelled"
   | "no_show";
+
+const STATUS_ORDER: AppointmentStatus[] = [
+  "pending_confirmation",
+  "scheduled",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "no_show",
+];
+
+const STATUS_ICONS: Record<
+  AppointmentStatus,
+  React.ComponentType<{ className?: string }>
+> = {
+  pending_confirmation: Clock,
+  scheduled: Calendar,
+  confirmed: BadgeCheck,
+  in_progress: PlayCircle,
+  completed: CircleCheck,
+  cancelled: XCircle,
+  no_show: OctagonX,
+};
+
+const STATUS_ACTIVE_CLASSES: Record<AppointmentStatus, string> = {
+  pending_confirmation:
+    "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  scheduled:
+    "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+  confirmed:
+    "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  in_progress:
+    "border-yellow-300 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300",
+  completed:
+    "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
+  cancelled:
+    "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
+  no_show:
+    "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300",
+};
+
+const STATUS_HOVER_CLASSES: Record<AppointmentStatus, string> = {
+  pending_confirmation: "hover:border-amber-300 hover:text-amber-700 dark:hover:text-amber-300",
+  scheduled: "hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300",
+  confirmed: "hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-300",
+  in_progress: "hover:border-yellow-300 hover:text-yellow-700 dark:hover:text-yellow-300",
+  completed: "hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-300",
+  cancelled: "hover:border-red-300 hover:text-red-700 dark:hover:text-red-300",
+  no_show: "hover:border-orange-300 hover:text-orange-700 dark:hover:text-orange-300",
+};
 
 interface AppointmentPreviewContentProps {
   appointmentId: string;
@@ -682,35 +737,53 @@ export function AppointmentPreviewContent({
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {t("gabinet.appointmentDetail.changeStatus")}
           </Label>
-          <Select
-            value={status}
-            onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}
-            disabled={availableTransitions.length === 0 || savingStatus}
-          >
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={initialStatus} disabled>
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
-                  />
-                  {t(`gabinet.appointments.statuses.${initialStatus}`)}
-                </span>
-              </SelectItem>
-              {availableTransitions.map((s) => (
-                <SelectItem key={s} value={s}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[s] ?? "bg-muted-foreground"}`}
-                    />
-                    {t(`gabinet.appointments.statuses.${s}`)}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TooltipProvider delayDuration={200}>
+            <div
+              role="radiogroup"
+              aria-label={t("gabinet.appointmentDetail.changeStatus")}
+              className="flex flex-wrap items-center gap-1"
+            >
+              {STATUS_ORDER.map((s) => {
+                const Icon = STATUS_ICONS[s];
+                const isCurrent = s === initialStatus;
+                const isAvailable =
+                  !isCurrent && availableTransitions.includes(s);
+                const isDisabled =
+                  !isCurrent && (!isAvailable || savingStatus);
+                const label = t(`gabinet.appointments.statuses.${s}`);
+                return (
+                  <Tooltip key={s}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={isCurrent}
+                        aria-label={label}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          if (!isAvailable) return;
+                          handleStatusChange(s);
+                        }}
+                        className={cn(
+                          "inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isCurrent && STATUS_ACTIVE_CLASSES[s],
+                          isCurrent && "cursor-default",
+                          isAvailable && STATUS_HOVER_CLASSES[s],
+                          isAvailable && "cursor-pointer hover:bg-accent",
+                          isDisabled && !isCurrent && "cursor-not-allowed opacity-40",
+                        )}
+                      >
+                        <Icon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         </div>
 
         <div className="grid grid-cols-[1fr_auto_auto] items-end gap-1.5">

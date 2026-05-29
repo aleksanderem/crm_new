@@ -69,7 +69,6 @@ import {
   OctagonX,
   Phone,
   PlayCircle,
-  RefreshCcw,
   Stethoscope,
   User,
   XCircle,
@@ -834,19 +833,21 @@ export function AppointmentPreviewContent({
       {/* Employee + Date summary */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         {appointment.treatmentId ? (
-          <button
-            type="button"
-            onClick={() => setChangeEmployeeOpen(true)}
-            className="group inline-flex min-w-0 items-center gap-1.5 rounded text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label={t(
-              "gabinet.appointments.changeEmployee",
-              "Zmień pracownika",
-            )}
-          >
+          <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
             <User className="size-3 shrink-0" />
             <span className="truncate">{employeeName}</span>
-            <RefreshCcw className="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60 group-focus-visible:opacity-60" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setChangeEmployeeOpen(true)}
+              className="shrink-0 rounded text-[10px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={t(
+                "gabinet.appointments.changeEmployee",
+                "Zmień pracownika",
+              )}
+            >
+              {t("common.change", "Zmień")}
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <User className="size-3" />

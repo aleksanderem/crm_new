@@ -18,6 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  UserInvitationForm,
+  type UserInvitationFormData,
+} from "@/components/forms/user-invitation-form";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
@@ -175,14 +179,15 @@ function TeamSettings() {
 
   const navigate = useNavigate();
 
-  const handleSendInvitation = async () => {
-    if (!inviteEmail.trim()) return;
+  const handleSendInvitation = async (data: UserInvitationFormData) => {
     setIsSending(true);
     try {
       await createInvitation({
         organizationId,
-        email: inviteEmail.trim(),
-        role: inviteRole as "admin" | "member" | "viewer" | "owner",
+        email: data.email,
+        role: data.role as "admin" | "member" | "viewer" | "owner",
+        module: data.module,
+        moduleData: data.moduleData,
       });
       setInviteEmail("");
       setInviteRole("member");
@@ -387,63 +392,18 @@ function TeamSettings() {
                 {t("team.inviteMember")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
                 <DialogDescription>
                   {t("team.inviteDialog.description")}
                 </DialogDescription>
               </DialogHeader>
-              {seatUsage && (
-                <p className="text-xs text-muted-foreground">
-                  {t("team.remainingSeats", {
-                    count: Math.max(0, seatUsage.seatLimit - seatUsage.currentSeats),
-                  })}
-                </p>
-              )}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendInvitation();
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label>{t("team.inviteDialog.email")}</Label>
-                  <Input
-                    type="email"
-                    placeholder={t("team.inviteDialog.emailPlaceholder")}
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("team.inviteDialog.role")}</Label>
-                  <Select value={inviteRole} onValueChange={setInviteRole}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          <span className="capitalize">
-                            {t(`team.roles.${role}`)}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={!inviteEmail.trim() || isSending}>
-                    <Send className="mr-2 h-4 w-4" variant="stroke" />
-                    {isSending
-                      ? t("team.inviteDialog.sending")
-                      : t("team.inviteDialog.send")}
-                  </Button>
-                </DialogFooter>
-              </form>
+              <UserInvitationForm
+                onSubmit={handleSendInvitation}
+                onCancel={() => setInviteOpen(false)}
+                isSubmitting={isSending}
+              />
             </DialogContent>
           </Dialog>
         </CardHeader>

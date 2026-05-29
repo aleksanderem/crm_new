@@ -8,7 +8,11 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
-import { useSupabaseGabinetAppointmentsByPatient } from "@/hooks/use-supabase-gabinet-appointments";
+import {
+  useSupabaseGabinetAppointmentsByPatient,
+  useSupabaseGabinetAppointmentPackagePositions,
+  useSupabaseGabinetAppointmentRecurringPositions,
+} from "@/hooks/use-supabase-gabinet-appointments";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
@@ -106,6 +110,67 @@ function PatientDetail() {
   );
 
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+
+  // Treatment-number indicator IDs ("X/Y" like in the calendar — issue #1086).
+  // Package usage takes precedence; recurring series is the fallback.
+  const packageUsageIds = Array.from(
+    new Set(
+      (patientAppointments ?? [])
+        .map((a) => a.packageUsageId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const recurringGroupIds = Array.from(
+    new Set(
+      (patientAppointments ?? [])
+        .map((a) => a.recurringGroupId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const { data: packagePositions } =
+    useSupabaseGabinetAppointmentPackagePositions(
+      organizationId,
+      packageUsageIds,
+    );
+  const { data: recurringPositions } =
+    useSupabaseGabinetAppointmentRecurringPositions(
+      organizationId,
+      recurringGroupIds,
+    );
+
+  const getVisitCountLabel = (
+    apt: MappedGabinetAppointment,
+  ): { label: string; title: string } | null => {
+    const pkgPos = apt.packageUsageId
+      ? packagePositions?.get(apt._id)
+      : undefined;
+    if (pkgPos) {
+      return {
+        label: `${pkgPos.position}/${pkgPos.total}`,
+        title: t(
+          "gabinet.calendar.indicators.packageVisit",
+          "Wizyta pakietowa",
+        ),
+      };
+    }
+    if (apt.isRecurring && apt.recurringRule) {
+      const rule = apt.recurringRule as { count?: number };
+      if (typeof rule.count === "number" && rule.count > 0) {
+        const dynamicPos = apt.recurringGroupId
+          ? recurringPositions?.get(apt._id)
+          : undefined;
+        const pos = dynamicPos ?? (apt.recurringIndex ?? 0) + 1;
+        return {
+          label: `${pos}/${rule.count}`,
+          title: t(
+            "gabinet.calendar.indicators.recurringVisit",
+            "Wizyta cykliczna",
+          ),
+        };
+      }
+    }
+    return null;
+  };
 
   // Build fields for EntityDetailLayout sidebar
   const detailFields: DetailField[] = (() => {
@@ -253,6 +318,7 @@ function PatientDetail() {
     const treatmentName = treatmentsData?.find(
       (tr) => tr._id === apt.treatmentId,
     )?.name;
+    const visitCount = getVisitCountLabel(apt);
     return (
       <div
         key={apt._id}
@@ -268,9 +334,20 @@ function PatientDetail() {
           <Calendar className="h-4 w-4 text-primary" variant="stroke" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">
-            {treatmentName ?? t("common.unknown")}
-          </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {treatmentName ?? t("common.unknown")}
+            </p>
+            {visitCount && (
+              <Badge
+                variant="outline"
+                title={visitCount.title}
+                className="shrink-0 border-sky-500/40 bg-sky-500/10 px-1.5 py-0 text-[10px] font-semibold tabular-nums text-sky-700 dark:text-sky-300"
+              >
+                {visitCount.label}
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {apt.date} &middot; {apt.startTime}–{apt.endTime}
           </p>
@@ -495,6 +572,7 @@ function PatientDetail() {
                   )?.name;
                   const isPast =
                     apt.date < new Date().toISOString().split("T")[0];
+                  const visitCount = getVisitCountLabel(apt);
                   return (
                     <div
                       key={apt._id}
@@ -513,9 +591,20 @@ function PatientDetail() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {treatmentName ?? t("common.unknown")}
-                        </p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {treatmentName ?? t("common.unknown")}
+                          </p>
+                          {visitCount && (
+                            <Badge
+                              variant="outline"
+                              title={visitCount.title}
+                              className="shrink-0 border-sky-500/40 bg-sky-500/10 px-1.5 py-0 text-[10px] font-semibold tabular-nums text-sky-700 dark:text-sky-300"
+                            >
+                              {visitCount.label}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {apt.date} &middot; {apt.startTime}–
                           {apt.endTime}

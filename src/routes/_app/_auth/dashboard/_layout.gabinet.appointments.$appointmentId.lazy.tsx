@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -55,6 +55,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import {
   EntityDetailLayout,
   type DetailField,
 } from "@/components/crm/entity-detail-layout";
@@ -93,7 +107,11 @@ import {
   MessageSquare,
   Send,
   Inbox,
+  Stethoscope,
+  MapPin,
+  Building2,
 } from "@/lib/ez-icons";
+import { ChevronsUpDown } from "lucide-react";
 import { Id } from "@cvx/_generated/dataModel";
 import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
@@ -316,6 +334,19 @@ function AppointmentDetail() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [isSavingTags, setIsSavingTags] = useState(false);
 
+  // Editable scheduling/treatment state — backs the inline-editable Treatment
+  // and Scheduling cards on the Details tab. Issue #995: users want the
+  // "Edytuj" entry point to allow changing anything on the appointment.
+  const [editTreatmentId, setEditTreatmentId] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
+  const [editLocationId, setEditLocationId] = useState("");
+  const [editRoomId, setEditRoomId] = useState("");
+  const [treatmentPickerOpen, setTreatmentPickerOpen] = useState(false);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [isSavingScheduling, setIsSavingScheduling] = useState(false);
+
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
 
@@ -405,6 +436,28 @@ function AppointmentDetail() {
     enabled: !!organizationId && !!appointmentId,
   });
 
+  // Treatments + locations for the inline edit controls on the Details tab
+  const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const { data: treatmentsList } = useQuery({
+    queryKey: ["gabinet.treatments.listActive", organizationId],
+    queryFn: () => listActiveTreatments({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: Array<{ _id: string; name: string; duration: number; price?: number; currency?: string }> | undefined };
+
+  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
+  const { data: locationsList } = useQuery({
+    queryKey: ["gabinet.locations.listLocations", organizationId],
+    queryFn: () => listLocationsAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
+
+  const getLocationAction = useAction(api.gabinet.locations.getLocation);
+  const { data: locationWithRooms } = useQuery({
+    queryKey: ["gabinet.locations.getLocation", organizationId, editLocationId],
+    queryFn: () => getLocationAction({ organizationId, locationId: editLocationId }),
+    enabled: !!organizationId && !!editLocationId,
+  }) as { data: { rooms?: Array<{ _id: string; name: string; isActive: boolean }> } | undefined };
+
   const { data: smsEvents = [] } = useQuery(
     convexQuery(api.gabinet.appointmentSms.listByAppointment, {
       organizationId,
@@ -432,6 +485,23 @@ function AppointmentDetail() {
       setInternalNotes(detail.appointment.internalNotes);
     }
   }, [detail?.appointment.internalNotes]);
+
+  // Seed editable scheduling state once per appointment so a refetch after
+  // status/notes changes does not clobber an in-progress edit. Same pattern as
+  // the calendar appointment preview (issue #620).
+  const schedulingInitRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail) return;
+    if (schedulingInitRef.current === detail.appointment._id) return;
+    schedulingInitRef.current = detail.appointment._id;
+    const appt = detail.appointment as Record<string, unknown>;
+    setEditTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
+    setEditDate((appt.date as string) ?? "");
+    setEditStartTime(((appt.startTime as string) ?? "").slice(0, 5));
+    setEditEndTime(((appt.endTime as string) ?? "").slice(0, 5));
+    setEditLocationId(appt.locationId ? String(appt.locationId) : "");
+    setEditRoomId(appt.roomId ? String(appt.roomId) : "");
+  }, [detail]);
 
   // Initialize tagIds from appointment data
   useEffect(() => {
@@ -844,6 +914,47 @@ function AppointmentDetail() {
     }
   };
 
+  const handleSaveScheduling = async () => {
+    if (!detail) return;
+    setIsSavingScheduling(true);
+    try {
+      const apptRaw = detail.appointment as Record<string, unknown>;
+      const currentTreatmentId = apptRaw.treatmentId ? String(apptRaw.treatmentId) : "";
+      const currentDate = (apptRaw.date as string) ?? "";
+      const currentStart = ((apptRaw.startTime as string) ?? "").slice(0, 5);
+      const currentEnd = ((apptRaw.endTime as string) ?? "").slice(0, 5);
+      const currentLocation = apptRaw.locationId ? String(apptRaw.locationId) : "";
+      const currentRoom = apptRaw.roomId ? String(apptRaw.roomId) : "";
+
+      const args: Parameters<typeof updateAppointment>[0] = {
+        organizationId,
+        appointmentId: detail.appointment._id,
+      };
+      if (editTreatmentId && editTreatmentId !== currentTreatmentId) {
+        args.treatmentId = editTreatmentId;
+      }
+      if (editDate && editDate !== currentDate) args.date = editDate;
+      if (editStartTime && editStartTime !== currentStart) args.startTime = editStartTime;
+      if (editEndTime && editEndTime !== currentEnd) args.endTime = editEndTime;
+      if (editLocationId !== currentLocation) {
+        args.locationId = editLocationId || undefined;
+      }
+      if (editRoomId !== currentRoom) {
+        args.roomId = editRoomId || undefined;
+      }
+
+      await updateAppointment(args);
+      toast.success(t("common.saved"));
+      await invalidateAppointmentCaches();
+      refetch();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsSavingScheduling(false);
+    }
+  };
+
   // Payment handlers
   const handleCreatePayment = async () => {
     if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
@@ -1144,13 +1255,84 @@ function AppointmentDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   {t("common.name")}
-                </span>
-                <span className="font-medium">
-                  {treatment?.name ?? "-"}
-                </span>
+                </Label>
+                <Popover
+                  open={treatmentPickerOpen}
+                  onOpenChange={(o) => {
+                    setTreatmentPickerOpen(o);
+                    if (!o) setTreatmentSearch("");
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={treatmentPickerOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <Stethoscope className="size-4 shrink-0 text-primary" />
+                        <span className="truncate">
+                          {treatmentsList?.find((tr) => tr._id === editTreatmentId)?.name
+                            ?? treatment?.name
+                            ?? t("gabinet.appointments.selectTreatment")}
+                        </span>
+                      </span>
+                      <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="p-0"
+                    align="start"
+                    style={{ width: "var(--radix-popover-trigger-width)" }}
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder={t("gabinet.appointments.searchTreatment")}
+                        value={treatmentSearch}
+                        onValueChange={setTreatmentSearch}
+                      />
+                      <CommandList>
+                        <CommandEmpty>{t("common.noResults")}</CommandEmpty>
+                        <CommandGroup>
+                          {(treatmentsList ?? [])
+                            .filter((tr) => {
+                              const q = treatmentSearch.trim().toLowerCase();
+                              if (!q) return true;
+                              return tr.name.toLowerCase().includes(q);
+                            })
+                            .map((tr) => (
+                              <CommandItem
+                                key={tr._id}
+                                value={tr._id}
+                                onSelect={() => {
+                                  setEditTreatmentId(tr._id);
+                                  setTreatmentPickerOpen(false);
+                                  setTreatmentSearch("");
+                                }}
+                                className={cn(
+                                  "px-3",
+                                  editTreatmentId === tr._id &&
+                                    "bg-accent font-medium text-accent-foreground",
+                                )}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{tr.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {tr.duration} min
+                                    {tr.price != null && ` · ${tr.price.toFixed(2)} ${tr.currency ?? "PLN"}`}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">
@@ -1235,25 +1417,98 @@ function AppointmentDetail() {
                 {t("gabinet.appointments.scheduling")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("common.date")}
-                </span>
-                <span className="font-medium">
-                  {formatDate(appointment.date)}
-                </span>
+            <CardContent className="space-y-4 px-6 py-4">
+              <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("common.date")}
+                  </Label>
+                  <Input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("common.from", "Od")}
+                  </Label>
+                  <Input
+                    type="time"
+                    step={900}
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="h-9 w-[110px]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("common.to", "Do")}
+                  </Label>
+                  <Input
+                    type="time"
+                    step={900}
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="h-9 w-[110px]"
+                  />
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("common.time")}
-                </span>
-                <span className="font-medium">
-                  {formatTime(appointment.startTime)} -{" "}
-                  {formatTime(appointment.endTime)} ({calculateDuration()}{" "}
-                  min)
-                </span>
-              </div>
+
+              {(locationsList?.filter((l) => l.isActive).length ?? 0) > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <MapPin className="size-3" />
+                      {t("gabinet.appointments.location")}
+                    </Label>
+                    <Select
+                      value={editLocationId}
+                      onValueChange={(v) => {
+                        setEditLocationId(v);
+                        setEditRoomId("");
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={t("gabinet.appointments.location")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(locationsList ?? [])
+                          .filter((l) => l.isActive)
+                          .map((loc) => (
+                            <SelectItem key={loc._id} value={loc._id}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editLocationId && (locationWithRooms?.rooms?.filter((r) => r.isActive).length ?? 0) > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <Building2 className="size-3" />
+                        {t("gabinet.appointments.room")}
+                      </Label>
+                      <Select value={editRoomId} onValueChange={setEditRoomId}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("gabinet.appointments.room")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(locationWithRooms?.rooms ?? [])
+                            .filter((r) => r.isActive)
+                            .map((room) => (
+                              <SelectItem key={room._id} value={room._id}>
+                                {room.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {appointment.isRecurring &&
                 appointment.recurringGroupId && (
                   <div className="flex items-center justify-between">
@@ -1275,6 +1530,34 @@ function AppointmentDetail() {
                   {formatDateTime(appointment.createdAt)}
                 </span>
               </div>
+              {(() => {
+                const apptRaw = appointment as Record<string, unknown>;
+                const currentTreatmentId = apptRaw.treatmentId ? String(apptRaw.treatmentId) : "";
+                const currentDate = (apptRaw.date as string) ?? "";
+                const currentStart = ((apptRaw.startTime as string) ?? "").slice(0, 5);
+                const currentEnd = ((apptRaw.endTime as string) ?? "").slice(0, 5);
+                const currentLocation = apptRaw.locationId ? String(apptRaw.locationId) : "";
+                const currentRoom = apptRaw.roomId ? String(apptRaw.roomId) : "";
+                const dirty =
+                  editTreatmentId !== currentTreatmentId ||
+                  editDate !== currentDate ||
+                  editStartTime !== currentStart ||
+                  editEndTime !== currentEnd ||
+                  editLocationId !== currentLocation ||
+                  editRoomId !== currentRoom;
+                if (!dirty) return null;
+                return (
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveScheduling}
+                      disabled={isSavingScheduling}
+                    >
+                      {isSavingScheduling ? t("common.saving") : t("common.save")}
+                    </Button>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

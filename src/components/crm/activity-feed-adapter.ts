@@ -8,6 +8,10 @@
 
 import type { FeedEntry } from "@/components/crm/activity-feed";
 import type { ActivityAction } from "@cvx/schema";
+import {
+  translateActivityDescription,
+  type Translator,
+} from "@/components/activity-timeline/translate-description";
 
 function readEnvelopeActorLabel(metadata: unknown): string | undefined {
   if (!metadata || typeof metadata !== "object") return undefined;
@@ -64,9 +68,13 @@ function extractMetadata(meta: unknown): Record<string, unknown> {
 
 /**
  * Convert an array of MappedActivity-like objects to FeedEntry[] for ActivityFeed.
+ *
+ * Pass `t` to translate known stored English description templates (e.g.
+ * `Updated appointment`, `Automation: <name>`) into the current language.
  */
 export function activitiesToFeedEntries(
   activities: MappedActivityLike[],
+  t?: Translator,
 ): FeedEntry[] {
   return activities.map((a): FeedEntry => {
     const meta = extractMetadata(a.metadata);
@@ -75,12 +83,17 @@ export function activitiesToFeedEntries(
     const actorLabel = a.performedByName ?? readEnvelopeActorLabel(a.metadata);
     const safeLegacyActor = looksLikeOpaqueId(a.performedBy) ? undefined : a.performedBy;
 
+    const translatedDescription = translateActivityDescription(a.description, t) ?? a.description;
+    const translatedBody = a.contentSnapshot
+      ? a.contentSnapshot
+      : translatedDescription;
+
     const entry: FeedEntry = {
       _id: a._id,
       type: feedType,
       action: a.action as ActivityAction,
-      title: a.description,
-      body: a.contentSnapshot ?? a.description,
+      title: translatedDescription,
+      body: translatedBody,
       createdAt: a.createdAt,
       performedBy: actorLabel ?? safeLegacyActor
         ? { name: actorLabel ?? safeLegacyActor! }

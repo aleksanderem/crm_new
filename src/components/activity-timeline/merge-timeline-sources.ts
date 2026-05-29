@@ -1,4 +1,5 @@
 import type { ActivityWithMetadata } from "./presenter/activity-presenter";
+import type { Translator } from "./translate-description";
 
 export interface TimelineSourceEntry {
   _id: string;
@@ -39,8 +40,9 @@ export function mergeTimelineSources(opts: {
   activities?: TimelineSourceEntry[];
   smsEvents?: SmsEventEntry[];
   automationRuns?: AutomationRunEntry[];
+  t?: Translator;
 }): ActivityWithMetadata[] {
-  const { activities = [], smsEvents = [], automationRuns = [] } = opts;
+  const { activities = [], smsEvents = [], automationRuns = [], t } = opts;
 
   const seen = new Set<string>();
 
@@ -69,18 +71,28 @@ export function mergeTimelineSources(opts: {
   });
 
   const automationEntries: ActivityWithMetadata[] = automationRuns.map(
-    (run) => ({
-      _id: `automation-${run._id}`,
-      action: "updated" as const,
-      description: run.ruleName
-        ? `Automation: ${run.ruleName}`
-        : "Automation run",
-      createdAt: run.createdAt,
-      metadata: {
-        automationStatus: run.status,
-        actionsSummary: run.actionsSummary,
-      },
-    }),
+    (run) => {
+      const description = run.ruleName
+        ? t
+          ? t("activityTimeline.descriptions.automationNamed", {
+              defaultValue: "Automation: {{name}}",
+              name: run.ruleName,
+            })
+          : `Automation: ${run.ruleName}`
+        : t
+          ? t("activityTimeline.descriptions.automationRun", "Automation run")
+          : "Automation run";
+      return {
+        _id: `automation-${run._id}`,
+        action: "updated" as const,
+        description,
+        createdAt: run.createdAt,
+        metadata: {
+          automationStatus: run.status,
+          actionsSummary: run.actionsSummary,
+        },
+      };
+    },
   );
 
   const merged = [

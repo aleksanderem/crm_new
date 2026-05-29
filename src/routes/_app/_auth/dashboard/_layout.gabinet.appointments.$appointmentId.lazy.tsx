@@ -1166,6 +1166,7 @@ function AppointmentDetail() {
       createdAt: r.createdAt as number,
       actionsSummary: r.actionsSummary as string | undefined,
     })) as AutomationRunEntry[],
+    t,
   });
 
   // Header title and subtitle
@@ -1923,7 +1924,7 @@ function AppointmentDetail() {
             </CardHeader>
             <CardContent className="px-6 py-4">
               <ActivityFeed
-                entries={activitiesToFeedEntries(mergedTimeline as any[])}
+                entries={activitiesToFeedEntries(mergedTimeline as any[], t)}
                 maxHeight="400px"
               />
             </CardContent>

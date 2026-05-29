@@ -84,6 +84,9 @@ interface AppointmentDialogProps {
   defaultDate?: string;
   defaultTime?: string;
   defaultEndTime?: string;
+  /** Pre-select an employee when opening — used by the day-by-employee
+   *  calendar view so clicking inside a column carries the column owner. */
+  defaultEmployeeId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +165,7 @@ export function AppointmentDialog({
   defaultDate,
   defaultTime,
   defaultEndTime,
+  defaultEmployeeId,
 }: AppointmentDialogProps) {
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
@@ -216,7 +220,7 @@ export function AppointmentDialog({
   // -------------------------------------------------------------------------
 
   const [treatmentId, setTreatmentId] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
+  const [employeeId, setEmployeeId] = useState(defaultEmployeeId ?? "");
   const [patientId, setPatientId] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
@@ -775,9 +779,15 @@ export function AppointmentDialog({
       setSelectedSlot(
         defaultTime ? { start: defaultTime, end: defaultEndTime ?? "" } : null,
       );
+      // Seed employee from prop when opening so the day-by-employee view's
+      // column selection survives even though the auto-select effect below
+      // would otherwise overwrite it once treatments load.
+      if (defaultEmployeeId) {
+        setEmployeeId(defaultEmployeeId);
+      }
     } else {
       setTreatmentId("");
-      setEmployeeId("");
+      setEmployeeId(defaultEmployeeId ?? "");
       setPatientId("");
       setSelectedDate(
         defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
@@ -798,7 +808,7 @@ export function AppointmentDialog({
       setPendingPatientLabel(null);
       setPastConfirmOpen(false);
     }
-  }, [open, defaultDate, defaultTime, defaultEndTime]);
+  }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId]);
 
   // -------------------------------------------------------------------------
   // Determine which panels are active

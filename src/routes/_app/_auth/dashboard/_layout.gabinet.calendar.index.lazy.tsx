@@ -37,6 +37,10 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CalendarDayView } from "@/components/gabinet/calendar/calendar-day-view";
+import {
+  CalendarDayByEmployeeView,
+  type DayByEmployeeColumn,
+} from "@/components/gabinet/calendar/calendar-day-by-employee-view";
 import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
@@ -140,6 +144,9 @@ function GabinetCalendarPage() {
     string | undefined
   >();
   const [createDefaultEndTime, setCreateDefaultEndTime] = useState<
+    string | undefined
+  >();
+  const [createDefaultEmployeeId, setCreateDefaultEmployeeId] = useState<
     string | undefined
   >();
 
@@ -374,6 +381,15 @@ function GabinetCalendarPage() {
     },
   );
 
+  // The "day by employee" view (day view + Wszyscy pracownicy) shows a column
+  // per employee, so we need leaves for every employee on the visible day.
+  // Issue #1013.
+  const isDayByEmployeeView = viewMode === "day" && employeeFilter === "all";
+  const { data: allLeavesRaw } = useSupabaseGabinetLeavesList(organizationId, {
+    status: "approved",
+    enabled: isDayByEmployeeView,
+  });
+
   // Build date -> leave info map for the visible range. A multi-day leave is
   // expanded so each covered date carries the same per-day time window.
   const leavesByDate = useMemo(() => {
@@ -402,6 +418,25 @@ function GabinetCalendarPage() {
     () => new Set(leavesByDate.keys()),
     [leavesByDate],
   );
+
+  // For the day-by-employee view: map userId -> leave window covering the
+  // selected day (or null if none). Computed only when this view is active.
+  const dayLeaveByEmployee = useMemo(() => {
+    const map = new Map<string, { startTime?: string; endTime?: string }>();
+    if (!isDayByEmployeeView || !allLeavesRaw) return map;
+    const target = formatDateStr(currentDate);
+    for (const leave of allLeavesRaw) {
+      if (leave.endDate < target || leave.startDate > target) continue;
+      // First write wins to preserve a partial-day window over a full-day one.
+      if (!map.has(leave.userId)) {
+        map.set(leave.userId, {
+          startTime: leave.startTime,
+          endTime: leave.endTime,
+        });
+      }
+    }
+    return map;
+  }, [isDayByEmployeeView, allLeavesRaw, currentDate]);
 
   // Dates with at least one non-cancelled appointment requiring (but not yet
   // confirmed) prepayment — surfaces the "$" indicator on the month view so
@@ -461,6 +496,7 @@ function GabinetCalendarPage() {
       treatmentName: string;
       status: string;
       color?: string;
+      employeeId?: string;
       tags?: Array<{ name: string; color: string }>;
       indicators?: Indicator[];
     }> = [];
@@ -550,6 +586,7 @@ function GabinetCalendarPage() {
           treatmentName: treatment?.name ?? "",
           status: a.status,
           color: a.color ?? treatment?.color,
+          employeeId: a.employeeId,
           tags: tags && tags.length > 0 ? tags : undefined,
           indicators: indicators.length > 0 ? indicators : undefined,
         });
@@ -647,6 +684,7 @@ function GabinetCalendarPage() {
         setCreateDefaultTime(dateOrTime);
       }
       setCreateDefaultEndTime(undefined);
+      setCreateDefaultEmployeeId(undefined);
       setCreateDialogOpen(true);
     },
     [currentDate],
@@ -658,6 +696,31 @@ function GabinetCalendarPage() {
       setCreateDefaultDate(date);
       setCreateDefaultTime(startTime);
       setCreateDefaultEndTime(endTime);
+      setCreateDefaultEmployeeId(undefined);
+      setCreateDialogOpen(true);
+    },
+    [],
+  );
+
+  // Click-to-create for the day-by-employee view — pre-selects the employee
+  // whose column was clicked so the user doesn't have to choose again.
+  const handleEmployeeSlotClick = useCallback(
+    (date: string, time: string, employeeId: string) => {
+      setCreateDefaultDate(date);
+      setCreateDefaultTime(time);
+      setCreateDefaultEndTime(undefined);
+      setCreateDefaultEmployeeId(employeeId);
+      setCreateDialogOpen(true);
+    },
+    [],
+  );
+
+  const handleEmployeeSlotDragSelect = useCallback(
+    (date: string, startTime: string, endTime: string, employeeId: string) => {
+      setCreateDefaultDate(date);
+      setCreateDefaultTime(startTime);
+      setCreateDefaultEndTime(endTime);
+      setCreateDefaultEmployeeId(employeeId);
       setCreateDialogOpen(true);
     },
     [],
@@ -750,6 +813,16 @@ function GabinetCalendarPage() {
         const newEndM = newEndMinutes % 60;
         const newEndTime = `${String(newEndH).padStart(2, "0")}:${String(newEndM).padStart(2, "0")}`;
 
+        // The day-by-employee view tags each slot with the column owner so
+        // dropping into a different employee's column reassigns the visit.
+        const targetEmployeeId =
+          typeof dropData.employeeId === "string" && dropData.employeeId
+            ? (dropData.employeeId as string)
+            : undefined;
+        const reassign =
+          targetEmployeeId !== undefined &&
+          targetEmployeeId !== originalAppt.employeeId;
+
         try {
           await updateAppointment({
             organizationId,
@@ -757,6 +830,7 @@ function GabinetCalendarPage() {
             date: newDate,
             startTime: newStartTime,
             endTime: newEndTime,
+            ...(reassign ? { employeeId: targetEmployeeId } : {}),
           });
           toast.success(
             t("gabinet.appointments.rescheduled", "Appointment rescheduled"),
@@ -848,6 +922,47 @@ function GabinetCalendarPage() {
       .slice(0, 2)
       .toUpperCase();
   }
+
+  // Columns for the day-by-employee view. Each column carries the employee's
+  // working schedule for the visible day and any approved leave overlapping it
+  // so the grid can paint closed-hours and leave overlays per column.
+  const dayByEmployeeColumns: DayByEmployeeColumn[] = useMemo(() => {
+    if (!isDayByEmployeeView) return [];
+    const dayOfWeek = new Date(currentDate).getDay();
+    const dow = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const list = employees ?? [];
+    return list.map((emp) => {
+      const name = getEmployeeName(emp);
+      const initials = getEmployeeInitials(name);
+      const sched = (employeeSchedulesRaw ?? []).find(
+        (s) => s.userId === emp.userId && s.dayOfWeek === dow && s.isWorking,
+      );
+      return {
+        userId: emp.userId,
+        name,
+        initials,
+        schedule: sched
+          ? {
+              startTime: sched.startTime,
+              endTime: sched.endTime,
+              breakStart: sched.breakStart,
+              breakEnd: sched.breakEnd,
+            }
+          : null,
+        leave: dayLeaveByEmployee.get(emp.userId) ?? null,
+      };
+    });
+    // userMap is captured by getEmployeeName via closure; depend on it so
+    // names refresh once members load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isDayByEmployeeView,
+    currentDate,
+    employees,
+    employeeSchedulesRaw,
+    dayLeaveByEmployee,
+    userMap,
+  ]);
 
   return (
     <DndContext
@@ -957,6 +1072,7 @@ function GabinetCalendarPage() {
                   setCreateDefaultDate(formatDateStr(currentDate));
                   setCreateDefaultTime(undefined);
                   setCreateDefaultEndTime(undefined);
+                  setCreateDefaultEmployeeId(undefined);
                   setCreateDialogOpen(true);
                 }}
               >
@@ -1171,7 +1287,18 @@ function GabinetCalendarPage() {
 
         {/* Calendar content */}
         <div className="flex-1 overflow-hidden">
-          {viewMode === "day" && (
+          {viewMode === "day" && isDayByEmployeeView && (
+            <CalendarDayByEmployeeView
+              date={formatDateStr(currentDate)}
+              appointments={viewAppointments}
+              employees={dayByEmployeeColumns}
+              onSlotClick={handleEmployeeSlotClick}
+              onSlotDragSelect={handleEmployeeSlotDragSelect}
+              onAppointmentResize={handleAppointmentResize}
+              slotMinutes={slotMinutes}
+            />
+          )}
+          {viewMode === "day" && !isDayByEmployeeView && (
             <CalendarDayView
               date={formatDateStr(currentDate)}
               appointments={viewAppointments}
@@ -1220,6 +1347,7 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
+          defaultEmployeeId={createDefaultEmployeeId}
         />
       </div>
 

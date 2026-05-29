@@ -2643,6 +2643,10 @@
       "edit": "Edit",
       "close": "Close",
       "closeAndSettle": "Settle visit",
+      "settleDesc": "Record payment and optionally close the appointment as completed.",
+      "settleMarkCompleted": "Mark appointment as completed",
+      "settleNothingToDo": "Enter an amount or check the close option.",
+      "settleSuccess": "Appointment settled",
       "history": {
         "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
         "metadata": {

@@ -13,7 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus, Search, X } from "@/lib/ez-icons";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ChevronLeft, ChevronRight, Plus, Search, Users, X } from "@/lib/ez-icons";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -837,6 +839,16 @@ function GabinetCalendarPage() {
     return userMap.get(emp.userId) || emp.specialization || emp.role;
   }
 
+  function getEmployeeInitials(name: string): string {
+    return name
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -953,6 +965,65 @@ function GabinetCalendarPage() {
               </Button>
             </div>
           </div>
+
+          {/* Row 2: employee pills — click one to filter calendar to that employee */}
+          {(employees ?? []).length > 0 && (
+            <div
+              className="flex flex-wrap items-center gap-1.5"
+              data-testid="calendar-employee-filter-bar"
+            >
+              <button
+                type="button"
+                onClick={() => setEmployeeFilter("all")}
+                aria-pressed={employeeFilter === "all"}
+                data-testid="calendar-employee-pill-all"
+                className={cn(
+                  "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+                  employeeFilter === "all"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground hover:bg-muted",
+                )}
+              >
+                <Users className="h-3.5 w-3.5" variant="stroke" />
+                {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
+              </button>
+              {(employees ?? []).map((emp) => {
+                const name = getEmployeeName(emp);
+                const initials = getEmployeeInitials(name);
+                const selected = employeeFilter === emp.userId;
+                return (
+                  <button
+                    key={emp._id}
+                    type="button"
+                    onClick={() => setEmployeeFilter(emp.userId)}
+                    aria-pressed={selected}
+                    title={name}
+                    data-testid={`calendar-employee-pill-${emp.userId}`}
+                    className={cn(
+                      "inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-xs transition-colors",
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:bg-muted",
+                    )}
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarFallback
+                        className={cn(
+                          "text-[10px] font-medium",
+                          selected
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {initials || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="max-w-[10rem] truncate">{name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Filter dialog */}
           <Dialog open={filterOpen} onOpenChange={setFilterOpen}>

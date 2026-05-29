@@ -392,19 +392,21 @@ export function FlexibleScheduleEditor({
                   </div>
                   <div className="flex gap-1">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => openEditPeriod(period)}
                     >
-                      <Pencil className="h-3.5 w-3.5" variant="stroke" />
+                      <Pencil className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                      {t("common.edit")}
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="text-destructive"
+                      className="text-destructive hover:text-destructive"
                       onClick={() => handleDeletePeriod(period.effectiveFrom)}
                     >
-                      <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                      <Trash2 className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                      {t("common.delete")}
                     </Button>
                   </div>
                 </div>

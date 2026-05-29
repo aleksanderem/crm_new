@@ -615,12 +615,23 @@ export function AppointmentPreviewContent({
               </PopoverContent>
             </Popover>
           </div>
-          <Badge variant="outline" className="shrink-0 text-xs">
-            <span
-              className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
-            />
-            {t(`gabinet.appointments.statuses.${initialStatus}`)}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Badge variant="outline" className="text-xs">
+              <span
+                className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
+              />
+              {t(`gabinet.appointments.statuses.${initialStatus}`)}
+            </Badge>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              aria-label={t("gabinet.appointmentDetail.close", "Zamknij")}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
 
         {/* Quick contact links */}
@@ -882,15 +893,6 @@ export function AppointmentPreviewContent({
             <ExternalLink className="mr-1 size-3" />
             {t("gabinet.appointmentDetail.edit", "Edytuj")}
           </Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={onClose}
-          disabled={saving}
-        >
-          {t("gabinet.appointmentDetail.close", "Zamknij")}
         </Button>
         <Button
           size="sm"

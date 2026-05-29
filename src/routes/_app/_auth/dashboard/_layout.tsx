@@ -618,6 +618,8 @@ function DashboardLayout() {
                     organizationId: orgId,
                     email: data.email,
                     role: data.role,
+                    module: data.module,
+                    moduleData: data.moduleData,
                   });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
                   opts.onSuccess();

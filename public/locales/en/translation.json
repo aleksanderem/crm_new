@@ -2736,7 +2736,8 @@
       },
       "leaveBadge": "On leave",
       "leaveBadgePartial": "On leave {{start}}–{{end}}",
-      "leaveOverlayTitle": "Employee is on approved leave"
+      "leaveOverlayTitle": "Employee is on approved leave",
+      "dayOff": "day off"
     },
     "packages": {
       "title": "Treatment Packages",

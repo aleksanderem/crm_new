@@ -226,17 +226,30 @@ function EmployeeColumn({
 
   return (
     <div className="flex-1 min-w-[140px] border-r last:border-r-0">
-      {/* Header with avatar + name */}
+      {/* Header with avatar + name + working hours / day-off */}
       <div className="sticky top-0 z-30 bg-background">
-        <div className="flex items-center gap-2 border-b bg-muted/40 px-2 py-2 text-xs font-medium">
-          <Avatar className="h-6 w-6">
+        <div
+          className="flex h-[52px] items-start gap-2 border-b bg-muted/40 px-2 py-2 text-xs font-medium"
+        >
+          <Avatar className="mt-0.5 h-6 w-6">
             <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
               {employee.initials || "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="truncate" title={employee.name}>
-            {employee.name}
-          </span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate" title={employee.name}>
+              {employee.name}
+            </span>
+            {schedule ? (
+              <span className="truncate text-[10px] font-normal text-muted-foreground">
+                {schedule.startTime} – {schedule.endTime}
+              </span>
+            ) : (
+              <span className="truncate text-[10px] font-normal text-muted-foreground">
+                {t("gabinet.calendar.dayOff", { defaultValue: "dzień wolny" })}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -444,7 +457,7 @@ export function CalendarDayByEmployeeView({
   return (
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background pt-[42px] relative">
+      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background pt-[52px] relative">
         {slots.map((s) => {
           const showLabel = s.isHourMark || s.slotHeight >= 15;
           return (
@@ -467,7 +480,7 @@ export function CalendarDayByEmployeeView({
           <div
             className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
             style={{
-              top: `${42 + currentTimeTop}px`,
+              top: `${52 + currentTimeTop}px`,
               transform: "translateY(-50%)",
             }}
           >

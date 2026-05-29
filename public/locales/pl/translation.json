@@ -2761,7 +2761,8 @@
       },
       "leaveBadge": "Urlop",
       "leaveBadgePartial": "Urlop {{start}}–{{end}}",
-      "leaveOverlayTitle": "Pracownik ma zatwierdzony urlop"
+      "leaveOverlayTitle": "Pracownik ma zatwierdzony urlop",
+      "dayOff": "dzień wolny"
     },
     "packages": {
       "title": "Pakiety zabiegów",

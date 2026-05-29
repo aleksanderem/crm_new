@@ -380,6 +380,51 @@ export const _createFromInvitation = internalAction({
 });
 
 /**
+ * One-shot backfill: scan every gabinet_employees row in Supabase and ensure a
+ * matching `gabinetMemberships` row exists in Convex so the permission overlay
+ * works for users that were created before the mirror landed. Safe to re-run.
+ */
+export const _backfillMemberships = internalAction({
+  args: {},
+  returns: v.object({
+    scanned: v.number(),
+    upserted: v.number(),
+    skipped: v.number(),
+    errors: v.number(),
+  }),
+  handler: async (ctx): Promise<{ scanned: number; upserted: number; skipped: number; errors: number }> => {
+    const db = createSupabaseDb();
+    const employees = (await db.query("gabinetEmployees").collect()) as Array<{
+      _id: string;
+      organizationId: string;
+      userId: string;
+      role: string;
+      isActive: boolean;
+    }>;
+    let upserted = 0, skipped = 0, errors = 0;
+    for (const e of employees) {
+      if (!e.userId || !e.organizationId || !e.role) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+          organizationId: e.organizationId as Id<"organizations">,
+          userId: e.userId,
+          gabinetRole: e.role,
+          isActive: Boolean(e.isActive),
+        });
+        upserted += 1;
+      } catch (err) {
+        console.error("[_backfillMemberships]", e._id, err);
+        errors += 1;
+      }
+    }
+    return { scanned: employees.length, upserted, skipped, errors };
+  },
+});
+
+/**
  * Upsert the slim Convex mirror of (orgId, userId, gabinetRole, isActive).
  * Used by checkPermission to decide gabinet-role overlay without reaching
  * Supabase. Idempotent.

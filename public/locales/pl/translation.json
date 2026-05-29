@@ -2928,7 +2928,7 @@
       "splitMismatchError": "Suma rozdzielonych płatności musi być równa cenie pakietu",
       "splitMissingAmount": "Podaj kwotę co najmniej jednej metody płatności",
       "splitSameMethodError": "Wybierz dwie różne metody płatności",
-      "purchaseButton": "Sprzedaj",
+      "purchaseButton": "Dodaj sprzedaż",
       "usePackage": "Użyj pakietu",
       "remaining": "pozostało",
       "coveredByPackage": "Pokryte pakietem",

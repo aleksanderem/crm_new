@@ -59,7 +59,7 @@ export function AppointmentCard({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full h-full flex-col overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${fallbackCls}${strike}`}
+      className={`flex w-full h-full flex-col overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${employeeStyle ? "gabinet-tile-tint" : ""} ${fallbackCls}${strike}`}
       style={
         employeeStyle
           ? employeeStyle.containerStyle

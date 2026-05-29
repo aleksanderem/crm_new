@@ -103,6 +103,13 @@ export interface AppointmentEmployeeStyle {
  * Build inline styles that tint a calendar tile in shades of the employee's
  * chosen color, varying by status. Returns null if the color can't be parsed,
  * letting the caller fall back to the status-only Tailwind classes.
+ *
+ * Text color is exposed via two CSS custom properties — `--gabinet-tile-text`
+ * for light mode (darkened base) and `--gabinet-tile-text-dark` for dark mode
+ * (lightened base). The actual `color` is picked by the `.gabinet-tile-tint`
+ * rule in `src/index.css`, which switches on the `.dark` class. This fixes
+ * issue #1022: a darkened hex reads fine on a light-mode tint but disappears
+ * once the page background flips dark.
  */
 export function appointmentEmployeeStyle(
   status: string,
@@ -114,13 +121,22 @@ export function appointmentEmployeeStyle(
   const cfg = STATUS_ALPHA[status] ?? STATUS_ALPHA.scheduled;
   const { r, g, b } = rgb;
 
-  // Darken the base for text so it stays legible on the light tint. For very
-  // dark base colors we already have enough contrast — skip the extra darken.
+  // Light mode: darken the base for text so it stays legible on the light
+  // tint. For very dark base colors we already have enough contrast — skip the
+  // extra darken.
   const lum = rgbRelativeLuminance(rgb);
-  const textShift = lum > 0.35 ? 70 : 25;
-  const textR = Math.max(0, r - textShift);
-  const textG = Math.max(0, g - textShift);
-  const textB = Math.max(0, b - textShift);
+  const lightShift = lum > 0.35 ? 70 : 25;
+  const lightR = Math.max(0, r - lightShift);
+  const lightG = Math.max(0, g - lightShift);
+  const lightB = Math.max(0, b - lightShift);
+
+  // Dark mode: mix the base color toward white so it stands out against the
+  // dark page bleeding through the low-alpha tint. Very light bases (yellow,
+  // mint) only need a small lift; saturated mid-tones (blue, red) get more.
+  const darkMix = lum > 0.6 ? 0.25 : 0.6;
+  const darkR = Math.round(r + (255 - r) * darkMix);
+  const darkG = Math.round(g + (255 - g) * darkMix);
+  const darkB = Math.round(b + (255 - b) * darkMix);
 
   // The "in_progress" tile uses a near-solid background, so text needs to be
   // either white (for dark bases) or kept dark (for light bases).
@@ -130,9 +146,10 @@ export function appointmentEmployeeStyle(
     containerStyle: {
       backgroundColor: `rgba(${r}, ${g}, ${b}, ${cfg.bg})`,
       borderLeftColor: `rgba(${r}, ${g}, ${b}, ${cfg.border})`,
-      color: `rgb(${textR}, ${textG}, ${textB})`,
       opacity: cfg.opacity,
-    },
+      "--gabinet-tile-text": `rgb(${lightR}, ${lightG}, ${lightB})`,
+      "--gabinet-tile-text-dark": `rgb(${darkR}, ${darkG}, ${darkB})`,
+    } as CSSProperties,
     headerStyle: {
       backgroundColor: `rgba(${r}, ${g}, ${b}, ${Math.min(1, cfg.border + 0.05)})`,
       color: status === "in_progress" ? headerOnSolid : "#ffffff",

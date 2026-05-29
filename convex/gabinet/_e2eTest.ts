@@ -224,14 +224,21 @@ export const runAll = internalMutation({
     // ============================================================
     // TEST 7: Appointment STATUS WORKFLOW (scheduled → confirmed → in_progress → completed)
     // ============================================================
-    const VALID_TRANSITIONS: Record<string, string[]> = {
-      scheduled: ["confirmed", "cancelled", "no_show"],
-      confirmed: ["in_progress", "completed", "cancelled", "no_show"],
-      in_progress: ["completed", "cancelled"],
-      completed: [],
-      cancelled: [],
-      no_show: [],
-    };
+    // Manual transitions are unrestricted (issue #1027) — every status maps to
+    // every OTHER status so staff can correct mistakes. Only same→same is
+    // rejected.
+    const ALL_STATUSES = [
+      "pending_confirmation",
+      "scheduled",
+      "confirmed",
+      "in_progress",
+      "completed",
+      "cancelled",
+      "no_show",
+    ] as const;
+    const VALID_TRANSITIONS: Record<string, string[]> = Object.fromEntries(
+      ALL_STATUSES.map((s) => [s, ALL_STATUSES.filter((t) => t !== s)]),
+    );
 
     try {
       if (!testAppointmentId) throw new Error("No appointment for status test");
@@ -266,21 +273,23 @@ export const runAll = internalMutation({
     // ============================================================
     try {
       if (!testAppointmentId) throw new Error("No appointment for invalid transition test");
-      // completed → scheduled should be invalid per VALID_TRANSITIONS
+      // Same-state transition (completed → completed) should be invalid per
+      // VALID_TRANSITIONS — the permissive map allows any status → any OTHER
+      // status (issue #1027), so the only remaining guard is the self-loop.
       const appt = await ctx.db.get(testAppointmentId);
       if (!appt) throw new Error("Appointment not found");
       const allowed = VALID_TRANSITIONS[appt.status] ?? [];
-      if (allowed.includes("scheduled")) {
+      if (allowed.includes(appt.status)) {
         results.push({
           test: "appointment_invalid_transition_guard",
           pass: false,
-          detail: "completed→scheduled should be invalid but was found in VALID_TRANSITIONS",
+          detail: `${appt.status}→${appt.status} should be invalid but was found in VALID_TRANSITIONS`,
         });
       } else {
         results.push({
           test: "appointment_invalid_transition_guard",
           pass: true,
-          detail: `Guard OK: completed has allowed transitions=[${allowed.join(",")}], does not include scheduled`,
+          detail: `Guard OK: ${appt.status} has allowed transitions=[${allowed.join(",")}], does not include itself`,
           ids: { appointmentId: testAppointmentId },
         });
       }

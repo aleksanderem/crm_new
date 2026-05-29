@@ -426,6 +426,64 @@ export function useSupabaseGabinetAppointmentRecurringPositions(
 }
 
 // ---------------------------------------------------------------------------
+// Completed-payment Totals by Appointment
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the sum of completed payments per appointment for the given IDs.
+ * Used by the gabinet calendar to render a paid/partial/unpaid indicator on
+ * each tile (issue #1040). Only payments with status="completed" count —
+ * pending payments are auto-created at booking time and must not be treated
+ * as actual receipts (mirrors `appointment-preview-content.tsx` logic).
+ *
+ * Returned map keys are appointment IDs; values are the total in PLN.
+ */
+export function useSupabaseGabinetAppointmentPaymentTotals(
+  organizationId: string,
+  appointmentIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...appointmentIds].sort();
+
+  return useQuery<Map<string, number>, Error>({
+    queryKey: [
+      ...supabaseKeys.payments.list(organizationId),
+      "completedTotalsByAppointment",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const result = new Map<string, number>();
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return result;
+
+      const { data, error } = await client
+        .from("payments")
+        .select("appointment_id, amount")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .in("appointment_id", stableIds);
+
+      if (error) throw error;
+
+      for (const row of (data ?? []) as {
+        appointment_id: string | null;
+        amount: number;
+      }[]) {
+        if (!row.appointment_id) continue;
+        const current = result.get(row.appointment_id) ?? 0;
+        result.set(row.appointment_id, current + (Number(row.amount) || 0));
+      }
+      return result;
+    },
+    enabled:
+      enabled && isReady && !!organizationId && stableIds.length > 0,
+  } satisfies UseQueryOptions<Map<string, number>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

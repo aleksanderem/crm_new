@@ -8,7 +8,13 @@ export interface AppointmentTag {
   color: string;
 }
 
-export type AppointmentIndicatorKind = "firstVisit" | "payment" | "count";
+export type AppointmentIndicatorKind =
+  | "firstVisit"
+  | "payment"
+  | "count"
+  | "paid"
+  | "partial"
+  | "unpaid";
 
 export interface AppointmentIndicator {
   kind: AppointmentIndicatorKind;
@@ -32,6 +38,9 @@ const INDICATOR_CLASS: Record<AppointmentIndicatorKind, string> = {
   firstVisit: "bg-emerald-500 text-white",
   payment: "bg-amber-500 text-white",
   count: "bg-sky-500 text-white",
+  paid: "bg-emerald-600 text-white",
+  partial: "bg-amber-500 text-white",
+  unpaid: "bg-red-500 text-white",
 };
 
 export function AppointmentCard({

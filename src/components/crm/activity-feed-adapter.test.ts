@@ -77,4 +77,56 @@ describe("activitiesToFeedEntries", () => {
     expect(entries[1]?.type).toBe("activity");
     expect(entries[2]?.type).toBe("activity");
   });
+
+  it("translates entity-specific stored descriptions when t is provided", () => {
+    // Minimal i18next-like translator that echoes the default value with
+    // params interpolated, so we can assert template structure without
+    // depending on the real i18n setup.
+    const t = (
+      _key: string,
+      arg?: string | { defaultValue?: string; [k: string]: unknown },
+    ): string => {
+      if (typeof arg === "string") return arg;
+      const tpl = (arg?.defaultValue as string) ?? "";
+      return tpl.replace(/\{\{(\w+)\}\}/g, (_, name) => String(arg?.[name] ?? ""));
+    };
+
+    const entries = activitiesToFeedEntries(
+      [
+        {
+          _id: "x1",
+          action: "created",
+          description: 'Created contact "Jan Kowalski"',
+          createdAt: 1,
+        },
+        {
+          _id: "x2",
+          action: "created",
+          description: 'Created treatment "Botox"',
+          createdAt: 2,
+        },
+        {
+          _id: "x3",
+          action: "updated",
+          description: 'Updated pipeline "Sales"',
+          createdAt: 3,
+        },
+        {
+          _id: "x4",
+          action: "created",
+          description: 'Created task "Follow up"',
+          createdAt: 4,
+        },
+      ],
+      t,
+    );
+
+    // Entity-specific rules should win over the generic
+    // `Created {{type}} "{{title}}"` scheduled-activity fallback.
+    expect(entries[0]?.title).toBe('Created contact "Jan Kowalski"');
+    expect(entries[1]?.title).toBe('Created treatment "Botox"');
+    expect(entries[2]?.title).toBe('Updated pipeline "Sales"');
+    // No entity-specific rule for `task`, falls through to scheduled-activity.
+    expect(entries[3]?.title).toBe('Created task "Follow up"');
+  });
 });

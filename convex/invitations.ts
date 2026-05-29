@@ -450,6 +450,27 @@ export const _acceptInternal = internalMutation({
       await ctx.db.patch(user._id, { username: candidate });
     }
 
+    // Mirror the invitee's user row to Supabase. Without this, any
+    // downstream FK reference (gabinet_employees.user_id, team_memberships
+    // mirror that happens just above, etc.) hits `code=23503` on the first
+    // assignment after signup.
+    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+      userId: String(user._id),
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      image: user.image,
+      imageStorageId: user.imageId ? String(user.imageId) : undefined,
+      phone: user.phone,
+      isAnonymous: user.isAnonymous,
+      customerId: user.customerId,
+      language: user.language,
+      theme: user.theme,
+      timezone: user.timezone,
+      createdAt: Math.floor(user._creationTime),
+      updatedAt: Date.now(),
+    });
+
     const acceptedAt = Date.now();
     const updatedAt = acceptedAt;
     await ctx.db.patch(invitation._id, {

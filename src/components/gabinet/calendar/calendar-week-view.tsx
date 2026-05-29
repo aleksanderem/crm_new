@@ -415,7 +415,11 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
   return (
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background pt-8 relative">
+      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background relative">
+        {/* Sticky spacer matching the day-header height so the time labels
+            below scroll behind it instead of disappearing under the sticky
+            day headers — keeps row alignment when scrolling. */}
+        <div className="sticky top-0 z-30 h-8 border-b bg-background" />
         {slots.map((s) => {
           // For small slot heights, only render the hour label so text doesn't overlap.
           const showLabel = s.isHourMark || s.slotHeight >= 15;

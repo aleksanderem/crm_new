@@ -457,7 +457,11 @@ export function CalendarDayByEmployeeView({
   return (
     <div className="flex h-full overflow-auto">
       {/* Time labels */}
-      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background pt-[52px] relative">
+      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background relative">
+        {/* Sticky spacer matching the employee column headers so the time
+            labels below scroll behind it instead of disappearing under the
+            sticky column headers — keeps row alignment when scrolling. */}
+        <div className="sticky top-0 z-30 h-[52px] border-b bg-background" />
         {slots.map((s) => {
           const showLabel = s.isHourMark || s.slotHeight >= 15;
           return (

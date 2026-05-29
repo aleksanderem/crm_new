@@ -81,30 +81,57 @@ function parseIsoDate(iso: string): Date | null {
   return new Date(Number(y), Number(mo) - 1, Number(d));
 }
 
-function getDatesForDayOfWeek(
-  from: string,
-  to: string,
-  dayOfWeek: number,
-): Date[] {
+function formatShortDate(d: Date, lang: string): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return lang === "pl" ? `${day}.${month}` : `${month}/${day}`;
+}
+
+// Display order: Mon..Sun. Convex/Supabase stores dayOfWeek 0=Sun..6=Sat.
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function getMondayOfDate(d: Date): Date {
+  const result = new Date(d);
+  const dow = result.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  result.setDate(result.getDate() + offset);
+  return result;
+}
+
+interface PeriodWeek {
+  monday: Date;
+  sunday: Date;
+  days: Array<{ dayOfWeek: number; date: Date; inRange: boolean }>;
+}
+
+function getWeeksInPeriod(from: string, to: string): PeriodWeek[] {
   const start = parseIsoDate(from);
   const end = parseIsoDate(to);
   if (!start || !end || start > end) return [];
-  const result: Date[] = [];
-  const cursor = new Date(start);
-  while (cursor.getDay() !== dayOfWeek && cursor <= end) {
-    cursor.setDate(cursor.getDate() + 1);
-  }
+  const cursor = getMondayOfDate(start);
+  const result: PeriodWeek[] = [];
   while (cursor <= end) {
-    result.push(new Date(cursor));
+    const monday = new Date(cursor);
+    const sunday = new Date(cursor);
+    sunday.setDate(sunday.getDate() + 6);
+    const days = DISPLAY_ORDER.map((dayOfWeek) => {
+      const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + offset);
+      return {
+        dayOfWeek,
+        date,
+        inRange: date >= start && date <= end,
+      };
+    });
+    result.push({ monday, sunday, days });
     cursor.setDate(cursor.getDate() + 7);
   }
   return result;
 }
 
-function formatShortDate(d: Date, lang: string): string {
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return lang === "pl" ? `${day}.${month}` : `${month}/${day}`;
+function formatWeekRange(week: PeriodWeek, lang: string): string {
+  return `${formatShortDate(week.monday, lang)} – ${formatShortDate(week.sunday, lang)}`;
 }
 
 export function groupSchedulesIntoPeriods(
@@ -338,6 +365,103 @@ export function FlexibleScheduleEditor({
   const isEditing = editingPeriodKey !== null || addingNew;
   const today = new Date().toISOString().split("T")[0];
 
+  const renderWeekTable = (
+    period: SchedulePeriod,
+    week: PeriodWeek | null,
+    label: string,
+  ) => (
+    <div className="rounded-md border overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b bg-muted/50 text-[10px] font-medium text-muted-foreground">
+            <th className="px-2 py-1 text-left whitespace-nowrap">{label}</th>
+            {DISPLAY_ORDER.map((dayOfWeek) => {
+              const dayInfo = week?.days.find(
+                (d) => d.dayOfWeek === dayOfWeek,
+              );
+              return (
+                <th
+                  key={dayOfWeek}
+                  className="px-1.5 py-1 text-center min-w-[64px]"
+                >
+                  <div className="leading-tight">
+                    {dayNames[dayOfWeek].substring(0, 3)}
+                  </div>
+                  {dayInfo && (
+                    <div className="text-[9px] font-normal text-muted-foreground">
+                      {formatShortDate(dayInfo.date, i18n.language)}
+                    </div>
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="px-2 py-1.5 text-[10px] text-muted-foreground" />
+            {DISPLAY_ORDER.map((dayOfWeek) => {
+              const entry = period.entries.find(
+                (e) => e.dayOfWeek === dayOfWeek,
+              );
+              const dayInfo = week?.days.find(
+                (d) => d.dayOfWeek === dayOfWeek,
+              );
+              const inRange = !week || (dayInfo?.inRange ?? false);
+              const working = entry?.isWorking && inRange;
+              return (
+                <td
+                  key={dayOfWeek}
+                  className={`px-1.5 py-1.5 text-center align-middle ${
+                    working ? "bg-primary/10" : "text-muted-foreground"
+                  }`}
+                >
+                  {working ? (
+                    <div className="leading-tight">
+                      <div className="font-medium">
+                        {entry.startTime}–{entry.endTime}
+                      </div>
+                      {entry.breakStart && entry.breakEnd && (
+                        <div className="text-[9px] text-muted-foreground">
+                          {entry.breakStart}–{entry.breakEnd}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span>—</span>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderPeriodPreview = (period: SchedulePeriod) => {
+    const weeks =
+      period.effectiveFrom && period.effectiveTo
+        ? getWeeksInPeriod(period.effectiveFrom, period.effectiveTo)
+        : [];
+    if (weeks.length === 0) {
+      return renderWeekTable(
+        period,
+        null,
+        t("gabinet.employees.schedule.weeklyPattern"),
+      );
+    }
+    return (
+      <div className="flex flex-col gap-2">
+        {weeks.map((week) => (
+          <div key={week.monday.toISOString()}>
+            {renderWeekTable(period, week, formatWeekRange(week, i18n.language))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -410,51 +534,7 @@ export function FlexibleScheduleEditor({
                     </Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-xs">
-                  {Array.from({ length: 7 }, (_, i) => {
-                    const entry = period.entries.find(
-                      (e) => e.dayOfWeek === i,
-                    );
-                    const dayDates =
-                      entry?.isWorking &&
-                      period.effectiveFrom &&
-                      period.effectiveTo
-                        ? getDatesForDayOfWeek(
-                            period.effectiveFrom,
-                            period.effectiveTo,
-                            i,
-                          )
-                        : [];
-                    const dayDatesLabel = dayDates
-                      .map((d) => formatShortDate(d, i18n.language))
-                      .join(", ");
-                    return (
-                      <div
-                        key={i}
-                        className={`text-center p-1 rounded ${entry?.isWorking ? "bg-primary/10" : "bg-muted text-muted-foreground"}`}
-                      >
-                        <div className="font-medium">
-                          {dayNames[i].substring(0, 3)}
-                        </div>
-                        {dayDatesLabel && (
-                          <div
-                            className="text-[9px] leading-tight text-muted-foreground break-words"
-                            title={dayDatesLabel}
-                          >
-                            {dayDatesLabel}
-                          </div>
-                        )}
-                        {entry?.isWorking ? (
-                          <div>
-                            {entry.startTime}–{entry.endTime}
-                          </div>
-                        ) : (
-                          <div>—</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                {renderPeriodPreview(period)}
               </Card>
             );
           })}
@@ -525,10 +605,6 @@ export function FlexibleScheduleEditor({
 
               {periodHours.map((h) => {
                 const hasBreak = Boolean(h.breakStart || h.breakEnd);
-                const dayDates =
-                  h.isWorking && periodFrom && periodTo
-                    ? getDatesForDayOfWeek(periodFrom, periodTo, h.dayOfWeek)
-                    : [];
                 return (
                   <div
                     key={h.dayOfWeek}
@@ -538,18 +614,6 @@ export function FlexibleScheduleEditor({
                       <span className="text-sm font-medium">
                         {dayNames[h.dayOfWeek]}
                       </span>
-                      {dayDates.length > 0 && (
-                        <span
-                          className="text-[10px] leading-tight text-muted-foreground"
-                          title={dayDates
-                            .map((d) => formatShortDate(d, i18n.language))
-                            .join(", ")}
-                        >
-                          {dayDates
-                            .map((d) => formatShortDate(d, i18n.language))
-                            .join(", ")}
-                        </span>
-                      )}
                     </div>
                     <Checkbox
                       checked={h.isWorking}
@@ -663,6 +727,27 @@ export function FlexibleScheduleEditor({
                 );
               })}
             </div>
+
+            {periodFrom && periodTo && (
+              <div className="space-y-2">
+                <h5 className="text-xs font-medium text-muted-foreground">
+                  {t("gabinet.employees.schedule.calendarPreview")}
+                </h5>
+                {renderPeriodPreview({
+                  effectiveFrom: periodFrom,
+                  effectiveTo: periodTo,
+                  entries: periodHours.map((h) => ({
+                    dayOfWeek: h.dayOfWeek,
+                    startTime: h.startTime,
+                    endTime: h.endTime,
+                    isWorking: h.isWorking,
+                    breakStart: h.breakStart || undefined,
+                    breakEnd: h.breakEnd || undefined,
+                    locationId: h.locationId || undefined,
+                  })),
+                })}
+              </div>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={cancelEdit}>

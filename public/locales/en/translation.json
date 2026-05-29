@@ -2544,7 +2544,9 @@
         "effectiveFrom": "Start Date",
         "effectiveTo": "End Date",
         "effectiveFromHint": "Leave empty for default schedule",
-        "effectiveToHint": "Leave empty for ongoing schedule"
+        "effectiveToHint": "Leave empty for ongoing schedule",
+        "calendarPreview": "Week-by-week preview",
+        "weeklyPattern": "Weekly pattern"
       },
       "roles": {
         "doctor": "Doctor",

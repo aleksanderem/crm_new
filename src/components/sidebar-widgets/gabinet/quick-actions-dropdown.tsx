@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   UserPlus,
   Calendar,
+  Clock,
   Users,
   Package,
   FileText,
@@ -91,6 +92,13 @@ export function GabinetQuickActionsDropdown() {
         >
           <FileText className="text-foreground size-5" />
           {t("sidebar.gabinet.goToDocuments", "Dokumenty")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="px-3 py-2.5 text-sm"
+          onSelect={() => navigate({ to: "/dashboard/gabinet/settings/timetable" })}
+        >
+          <Clock className="text-foreground size-5" />
+          {t("sidebar.gabinet.goToSchedules", "Grafiki")}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"

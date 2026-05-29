@@ -2350,7 +2350,7 @@
       "upcomingLeaveBadge": "Leave: {{start}} — {{end}}",
       "onLeaveCell": "Leave",
       "leaveBadgeHint": "Approved leave covering this date range.",
-      "totalHours": "Total",
+      "totalHours": "Hours",
       "totalHoursHint": "Total working hours per week (excluding breaks and approved leaves)."
     },
     "scheduling": {

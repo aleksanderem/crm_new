@@ -454,3 +454,16 @@ img {
   --invert-foreground: var(--color-zinc-50);
   --highlight: oklch(0.852 0.199 91.936);
 }
+
+/*
+ * Gabinet calendar tile text color — picks between the darkened (light mode)
+ * and lightened (dark mode) shade of the employee color. Both shades are
+ * provided as inline CSS custom properties by `appointmentEmployeeStyle()` in
+ * `src/lib/gabinet-appointment-status.ts`. Issue #1022.
+ */
+.gabinet-tile-tint {
+  color: var(--gabinet-tile-text);
+}
+.dark .gabinet-tile-tint {
+  color: var(--gabinet-tile-text-dark);
+}

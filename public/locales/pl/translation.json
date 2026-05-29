@@ -2357,8 +2357,10 @@
     },
     "timetable": {
       "title": "Grafik pracowników",
-      "description": "Edytuj grafiki wszystkich pracowników w jednym miejscu. Każdy wiersz to pracownik, a kolumny pokazują tygodniowe godziny pracy.",
+      "description": "Edytuj grafiki wszystkich pracowników w jednym miejscu. Dla każdego pracownika pokazujemy bieżący tydzień i kolejne tygodnie pod spodem — godziny mogą się różnić, jeśli masz datowane okresy grafiku.",
       "employee": "Pracownik",
+      "week": "Tydzień",
+      "currentWeek": "Bieżący tydzień",
       "searchPlaceholder": "Szukaj pracownika...",
       "filterByRole": "Filtruj wg roli",
       "filterByLocation": "Filtruj wg lokalizacji",

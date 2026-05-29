@@ -2864,7 +2864,16 @@
       "leaveBadge": "Urlop",
       "leaveBadgePartial": "Urlop {{start}}–{{end}}",
       "leaveOverlayTitle": "Pracownik ma zatwierdzony urlop",
-      "dayOff": "dzień wolny"
+      "dayOff": "dzień wolny",
+      "weekdaysShort": {
+        "mon": "Pon",
+        "tue": "Wt",
+        "wed": "Śr",
+        "thu": "Czw",
+        "fri": "Pt",
+        "sat": "Sob",
+        "sun": "Nd"
+      }
     },
     "packages": {
       "title": "Pakiety zabiegów",

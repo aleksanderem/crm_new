@@ -48,7 +48,16 @@ function getMonthGrid(year: number, month: number): (string | null)[][] {
   return grid;
 }
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_LABEL_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const DAY_LABEL_DEFAULTS: Record<(typeof DAY_LABEL_KEYS)[number], string> = {
+  mon: "Pon",
+  tue: "Wt",
+  wed: "Śr",
+  thu: "Czw",
+  fri: "Pt",
+  sat: "Sob",
+  sun: "Nd",
+};
 
 export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates }: CalendarMonthViewProps) {
   const { t } = useTranslation();
@@ -70,9 +79,11 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="grid grid-cols-7 border-b">
-        {DAY_LABELS.map((d) => (
-          <div key={d} className="px-2 py-1 text-center text-xs font-medium text-muted-foreground">
-            {d}
+        {DAY_LABEL_KEYS.map((k) => (
+          <div key={k} className="px-2 py-1 text-center text-xs font-medium text-muted-foreground">
+            {t(`gabinet.calendar.weekdaysShort.${k}`, {
+              defaultValue: DAY_LABEL_DEFAULTS[k],
+            })}
           </div>
         ))}
       </div>

@@ -39,7 +39,16 @@ const LEAVE_STRIPE_BG =
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 const HOUR_HEIGHT = 90; // pixels per hour — taller rows so short appointments still fit patient + treatment lines
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_LABEL_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const DAY_LABEL_DEFAULTS: Record<(typeof DAY_LABEL_KEYS)[number], string> = {
+  mon: "Pon",
+  tue: "Wt",
+  wed: "Śr",
+  thu: "Czw",
+  fri: "Pt",
+  sat: "Sob",
+  sun: "Nd",
+};
 
 function buildSlots(slotMinutes: number) {
   const slotsPerHour = 60 / slotMinutes;
@@ -229,7 +238,11 @@ function WeekDayColumn({
             isSelected ? "bg-primary/20 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/10" : "bg-muted/50"
           } ${onDayHeaderClick ? "hover:bg-primary/15" : ""}`}
         >
-          <div>{DAY_LABELS[dayIndex]}</div>
+          <div>
+            {t(`gabinet.calendar.weekdaysShort.${DAY_LABEL_KEYS[dayIndex]}`, {
+              defaultValue: DAY_LABEL_DEFAULTS[DAY_LABEL_KEYS[dayIndex]],
+            })}
+          </div>
           <div className={isToday ? "font-bold text-primary" : isSelected ? "font-semibold text-primary" : "text-muted-foreground"}>
             {date.split("-")[2]}
           </div>

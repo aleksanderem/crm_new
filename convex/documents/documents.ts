@@ -11,29 +11,25 @@ import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for document writes
 
-export const listAll = query({
+export const listAll = action({
   args: {
     organizationId: v.id("organizations"),
     status: v.optional(formDocumentStatusValidator),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    if (args.status) {
-      return await ctx.db
-        .query("formDocuments")
-        .withIndex("by_orgAndStatus", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("status", args.status!),
-        )
-        .order("desc")
-        .collect();
-    }
-    return await ctx.db
+  handler: async (ctx, args): Promise<FormDocumentRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    let q = db
       .query("formDocuments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .collect();
+      .eq("organizationId", String(args.organizationId));
+    if (args.status) {
+      q = q.eq("status", args.status);
+    }
+    return (await q
+      .order("createdAt", false)
+      .collect()) as FormDocumentRow[];
   },
 });
 

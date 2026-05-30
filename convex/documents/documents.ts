@@ -1,8 +1,7 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
@@ -171,19 +170,21 @@ export const listByTemplate = action({
   },
 });
 
-export const listByStatus = query({
+export const listByStatus = action({
   args: {
     organizationId: v.id("organizations"),
     status: formDocumentStatusValidator,
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<FormDocumentRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("formDocuments")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", args.status),
-      )
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("status", args.status)
+      .collect()) as FormDocumentRow[];
   },
 });
 

@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Plus, FileText, Eye, Loader2 } from "@/lib/ez-icons";
+import { Plus, FileText, Eye, Loader2, Send, CircleCheck } from "@/lib/ez-icons";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -49,6 +50,7 @@ interface FormDocument {
   signedAt?: number;
   signatureData?: string;
   signedByName?: string;
+  signingToken?: string;
 }
 
 interface FormTemplate {
@@ -70,6 +72,33 @@ export function EntityDocumentsTab({
   const [generateOpen, setGenerateOpen] = useState(false);
   const [viewingDocId, setViewingDocId] =
     useState<Id<"formDocuments"> | null>(null);
+  const [sendingDocId, setSendingDocId] = useState<string | null>(null);
+  const [sendSuccessDocId, setSendSuccessDocId] = useState<string | null>(null);
+
+  const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
+
+  const handleSend = useCallback(
+    async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
+      e.stopPropagation();
+      setSendingDocId(docId);
+      setSendSuccessDocId(null);
+      try {
+        await resendSigningEmail({ organizationId, documentId: docId });
+        setSendSuccessDocId(docId);
+        toast.success(t("documents.emailSent", "Wysłano e-mail do klienta"));
+        setTimeout(() => setSendSuccessDocId(null), 3000);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t("documents.sendFailed", "Nie udało się wysłać e-maila"),
+        );
+      } finally {
+        setSendingDocId(null);
+      }
+    },
+    [resendSigningEmail, organizationId, t],
+  );
 
   // --- Document list ---
 
@@ -234,34 +263,62 @@ export function EntityDocumentsTab({
         </div>
 
         <div className="rounded-lg border divide-y">
-          {documents.map((doc) => (
-            <button
-              key={doc._id}
-              type="button"
-              onClick={() => setViewingDocId(doc._id)}
-              className={cn(
-                "w-full flex items-center justify-between gap-3 px-4 py-3",
-                "text-left transition-colors hover:bg-accent cursor-pointer",
-              )}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{doc.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(doc.createdAt).toLocaleDateString(
-                      i18n.language === "en" ? "en-US" : "pl-PL",
-                    )}
-                  </p>
+          {documents.map((doc) => {
+            const canSend =
+              doc.status !== "signed" &&
+              doc.status !== "completed" &&
+              doc.status !== "expired" &&
+              doc.status !== "voided" &&
+              !!doc.signingToken;
+            return (
+              <button
+                key={doc._id}
+                type="button"
+                onClick={() => setViewingDocId(doc._id)}
+                className={cn(
+                  "w-full flex items-center justify-between gap-3 px-4 py-3",
+                  "text-left transition-colors hover:bg-accent cursor-pointer",
+                )}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{doc.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(doc.createdAt).toLocaleDateString(
+                        i18n.language === "en" ? "en-US" : "pl-PL",
+                      )}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <DocumentStatusBadge status={doc.status} />
-                <Eye className="h-4 w-4 text-muted-foreground" variant="stroke" />
-              </div>
-            </button>
-          ))}
+                <div className="flex items-center gap-2 shrink-0">
+                  <DocumentStatusBadge status={doc.status} />
+                  {canSend && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      disabled={sendingDocId === doc._id}
+                      onClick={(e) => handleSend(e, doc._id)}
+                    >
+                      {sendingDocId === doc._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      ) : sendSuccessDocId === doc._id ? (
+                        <CircleCheck className="h-3.5 w-3.5 text-green-600 mr-1" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5 mr-1" variant="stroke" />
+                      )}
+                      {sendSuccessDocId === doc._id
+                        ? t("documents.emailSentShort", "Wysłano")
+                        : t("documents.send", "Wyślij")}
+                    </Button>
+                  )}
+                  <Eye className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

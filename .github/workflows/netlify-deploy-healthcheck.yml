@@ -1,0 +1,102 @@
+name: Netlify Deploy Health Check
+
+# Hourly cron that queries the latest Netlify deploy on `main` and opens a
+# GitHub issue if it is in the `error` state and the commit is newer than
+# MAX_AGE_HOURS. Redundant with Netlify's own notifications, but surfacing
+# failures as GitHub issues makes them visible to the @claude worker bots and
+# anyone watching the repo, not just whoever is subscribed to Netlify emails.
+# Tracking issue: #1162. Companion to the in-workflow polling added in #1182.
+
+on:
+  schedule:
+    # Every hour at :17 — offset from :00 to avoid GitHub's scheduling crush
+    # at the top of the hour (cron jobs on the hour are routinely delayed).
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Only alert on failed deploys newer than this many hours."
+        required: false
+        default: "24"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-deploy:
+    name: Check latest Netlify deploy on main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Query Netlify for latest main deploy
+        id: check
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          MAX_AGE_HOURS: ${{ github.event.inputs.max_age_hours || '24' }}
+        run: node scripts/netlify-deploy-healthcheck.mjs
+
+      - name: Open issue for failed deploy
+        if: steps.check.outputs.should_alert == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_ID: ${{ steps.check.outputs.deploy_id }}
+          COMMIT_SHA: ${{ steps.check.outputs.commit_sha }}
+          SHORT_SHA: ${{ steps.check.outputs.short_sha }}
+          CREATED_AT: ${{ steps.check.outputs.created_at }}
+          BRANCH: ${{ steps.check.outputs.branch }}
+          ADMIN_URL: ${{ steps.check.outputs.admin_url }}
+          COMMIT_URL: ${{ steps.check.outputs.commit_url }}
+          ERROR_MESSAGE: ${{ steps.check.outputs.error_message }}
+        run: |
+          set -euo pipefail
+          title="Netlify deploy failed on main (${SHORT_SHA})"
+
+          # Idempotency: a previous run of this workflow may have already
+          # opened an issue for the same SHA. Searching by SHA in the body
+          # avoids duplicates if the same broken commit keeps being the
+          # latest deploy across multiple hourly runs.
+          existing=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "in:body \"${COMMIT_SHA}\" \"netlify-deploy-healthcheck\"" \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Open issue #${existing} already tracks ${SHORT_SHA} — not creating a duplicate."
+            exit 0
+          fi
+
+          body=$(cat <<EOF
+          The scheduled Netlify deploy health check found that the latest deploy on \`${BRANCH}\` is in the \`error\` state.
+
+          - Deploy: [${DEPLOY_ID}](${ADMIN_URL})
+          - Commit: [\`${SHORT_SHA}\`](${COMMIT_URL})
+          - Created at: ${CREATED_AT}
+
+          Error message from Netlify:
+
+          \`\`\`
+          ${ERROR_MESSAGE}
+          \`\`\`
+
+          ---
+
+          This issue was opened automatically by \`.github/workflows/netlify-deploy-healthcheck.yml\` (netlify-deploy-healthcheck). Close it once the deploy has been fixed or the commit has been rolled past. Tracking: #1162.
+          EOF
+          )
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body" \
+            --label "bug"

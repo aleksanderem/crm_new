@@ -48,12 +48,58 @@ export const listByEntity = action({
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    return (await db
+    const docs = (await db
       .query("formDocuments")
       .eq("organizationId", String(args.organizationId))
       .eq("entityType", args.entityType)
       .eq("entityId", args.entityId)
       .collect()) as FormDocumentRow[];
+    // Stable order: sortOrder asc (rows without one sink to the bottom),
+    // then createdAt asc as a tiebreaker. The frontend renders this order
+    // 1:1 so drag-and-drop reordering persists across reloads.
+    return docs.sort((a, b) => {
+      const ao = a.sortOrder ?? Number.POSITIVE_INFINITY;
+      const bo = b.sortOrder ?? Number.POSITIVE_INFINITY;
+      if (ao !== bo) return ao - bo;
+      return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+    });
+  },
+});
+
+// Reorder documents within an (entityType, entityId) scope.
+// `documentIds` must contain the full set of documents for that scope, in the
+// desired display order. Writes are scoped to the caller's organization.
+export const reorderByEntity = action({
+  args: {
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    documentIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    for (let i = 0; i < args.documentIds.length; i++) {
+      const docId = args.documentIds[i];
+      const doc = await db.get("formDocuments", docId);
+      if (
+        !doc ||
+        String(doc.organizationId) !== String(args.organizationId) ||
+        doc.entityType !== args.entityType ||
+        doc.entityId !== args.entityId
+      ) {
+        throw new Error("Document not found");
+      }
+      await db.patch("formDocuments", docId, {
+        sortOrder: i,
+        updatedAt: now,
+      });
+    }
   },
 });
 

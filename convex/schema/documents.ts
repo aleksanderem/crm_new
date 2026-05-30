@@ -155,6 +155,9 @@ export const documentTables = {
     // PDF
     pdfStorageId: v.optional(v.id("_storage")),
     pdfGeneratedAt: v.optional(v.number()),
+    // Display order within an (entityType, entityId) scope — used for
+    // drag-and-drop reordering on entity detail "Documents" tabs.
+    sortOrder: v.optional(v.number()),
     // Metadata
     createdBy: v.id("users"),
     createdAt: v.number(),

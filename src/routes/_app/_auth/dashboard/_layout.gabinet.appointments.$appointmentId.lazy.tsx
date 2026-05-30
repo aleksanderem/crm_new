@@ -1359,8 +1359,7 @@ function AppointmentDetail() {
                     {t("common.price")}
                   </span>
                   <span className="font-medium">
-                    {treatment.price.toFixed(2)}{" "}
-                    {treatment.currency ?? "PLN"}
+                    {formatCurrencyPLN(treatment.price, treatment.currency ?? "PLN")}
                   </span>
                 </div>
               )}
@@ -1835,8 +1834,10 @@ function AppointmentDetail() {
                         >
                           <td className="p-3">
                             <p className="font-medium">
-                              {(payment.amount as number).toFixed(2)}{" "}
-                              {(payment.currency as string) ?? "PLN"}
+                              {formatCurrencyPLN(
+                                payment.amount as number,
+                                (payment.currency as string) ?? "PLN",
+                              )}
                             </p>
                           </td>
                           <td className="p-3">
@@ -2231,14 +2232,14 @@ function AppointmentDetail() {
                         {t("gabinet.payments.totalSpent")}
                       </p>
                       <p className="text-2xl font-bold text-green-600">
-                        {allPatientPayments
-                          .filter((p: Record<string, unknown>) => p.status === "completed")
-                          .reduce(
-                            (sum: number, p: Record<string, unknown>) => sum + (p.amount as number),
-                            0,
-                          )
-                          .toFixed(2)}{" "}
-                        PLN
+                        {formatCurrencyPLN(
+                          allPatientPayments
+                            .filter((p: Record<string, unknown>) => p.status === "completed")
+                            .reduce(
+                              (sum: number, p: Record<string, unknown>) => sum + (p.amount as number),
+                              0,
+                            ),
+                        )}
                       </p>
                     </div>
                     <div className="text-center p-4 bg-muted/50 rounded-lg">
@@ -2281,8 +2282,10 @@ function AppointmentDetail() {
                               className="border-b last:border-0 hover:bg-muted/30"
                             >
                               <td className="p-3 font-medium">
-                                {(payment.amount as number).toFixed(2)}{" "}
-                                {(payment.currency as string) ?? "PLN"}
+                                {formatCurrencyPLN(
+                                  payment.amount as number,
+                                  (payment.currency as string) ?? "PLN",
+                                )}
                               </td>
                               <td className="p-3">
                                 <Badge variant="outline">
@@ -2684,8 +2687,7 @@ function AppointmentDetail() {
               />
               {outstanding > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}: {outstanding.toFixed(2)}{" "}
-                  PLN
+                  {t("gabinet.payments.outstanding")}: {formatCurrencyPLN(outstanding)}
                 </p>
               )}
             </div>

@@ -311,7 +311,7 @@ export function TreatmentPurchaseDrawer({
                   {t("gabinet.treatments.unitPrice", "Cena za sesję")}
                 </span>
                 <span>
-                  {(selectedTreatment.price ?? 0).toFixed(2)} {currency}
+                  {formatCurrencyPLN(selectedTreatment.price ?? 0, currency)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
@@ -325,7 +325,7 @@ export function TreatmentPurchaseDrawer({
                   {t("gabinet.packages.totalPrice", "Cena całkowita")}
                 </span>
                 <span className="font-bold">
-                  {totalPrice.toFixed(2)} {currency}
+                  {formatCurrencyPLN(totalPrice, currency)}
                 </span>
               </div>
             </div>
@@ -438,7 +438,7 @@ export function TreatmentPurchaseDrawer({
                   {t("gabinet.packages.installmentAmount", "Kwota raty")}
                 </span>
                 <span className="font-medium">
-                  {installmentAmount.toFixed(2)} {currency}
+                  {formatCurrencyPLN(installmentAmount, currency)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -533,7 +533,7 @@ export function TreatmentPurchaseDrawer({
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Suma")}: {splitTotal.toFixed(2)} /{" "}
-                  {splitExpectedTotal.toFixed(2)} {currency}
+                  {formatCurrencyPLN(splitExpectedTotal, currency)}
                 </span>
                 {splitSameMethod ? (
                   <span>

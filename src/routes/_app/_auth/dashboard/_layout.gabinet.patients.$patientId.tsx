@@ -54,6 +54,7 @@ import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -264,11 +265,11 @@ function PatientDetail() {
               {t("gabinet.payments.totalSpent")}
             </span>
             <span className="text-xs font-semibold tabular-nums">
-              {(patientPayments ?? [])
-                .filter((p) => p.status === "completed")
-                .reduce((sum, p) => sum + (p.amount ?? 0), 0)
-                .toFixed(2)}{" "}
-              PLN
+              {formatCurrencyPLN(
+                (patientPayments ?? [])
+                  .filter((p) => p.status === "completed")
+                  .reduce((sum, p) => sum + (p.amount ?? 0), 0),
+              )}
             </span>
           </div>
         </div>
@@ -721,7 +722,7 @@ function PatientDetail() {
                         {t("gabinet.payments.totalSpent")}
                       </p>
                       <p className="text-2xl font-bold">
-                        {totalSpent.toFixed(2)} PLN
+                        {formatCurrencyPLN(totalSpent)}
                       </p>
                     </div>
                   </div>
@@ -739,7 +740,7 @@ function PatientDetail() {
                         {t("gabinet.payments.outstanding")}
                       </p>
                       <p className="text-2xl font-bold">
-                        {outstanding.toFixed(2)} PLN
+                        {formatCurrencyPLN(outstanding)}
                       </p>
                     </div>
                   </div>
@@ -828,8 +829,10 @@ function PatientDetail() {
                             }}
                           >
                             <td className="p-3 font-medium">
-                              {payment.amount.toFixed(2)}{" "}
-                              {payment.currency ?? "PLN"}
+                              {formatCurrencyPLN(
+                                payment.amount,
+                                payment.currency ?? "PLN",
+                              )}
                             </td>
                             <td className="p-3 text-sm">
                               <div

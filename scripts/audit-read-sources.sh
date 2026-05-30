@@ -21,7 +21,6 @@ ALLOWED_PATTERNS=(
   "api.permissions"
   "api.oauthConnections"
   "api.dev.emails"
-  "api.documents.documents.getBySigningToken"
   "api.signatureRequests"
   "api.automation.listEventCatalog"
   "api.automation.listActionCapabilities"

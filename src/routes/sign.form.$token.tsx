@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,9 +37,17 @@ export const Route = createFileRoute("/sign/form/$token")({
 function FormSigningPage() {
   const { t } = useTranslation();
   const { token } = Route.useParams();
-  const data = useQuery(api.documents.documents.getBySigningToken, { token });
+  const getBySigningToken = useAction(
+    api.documents.documents.getBySigningToken,
+  );
+  const { data, isLoading } = useQuery({
+    queryKey: ["documents.documents.getBySigningToken", token],
+    queryFn: () => getBySigningToken({ token }),
+    enabled: !!token,
+    retry: false,
+  });
 
-  if (data === undefined) {
+  if (isLoading) {
     return (
       <PageShell>
         <LoadingState />

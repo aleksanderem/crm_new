@@ -2222,8 +2222,17 @@
         "permissionDenied": "You don't have permission for this treatment action.",
         "invalidArguments": "Could not save the treatment — invalid data.",
         "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
-        "storage": "Could not save the treatment — storage error. Please try again."
-      }
+        "storage": "Could not save the treatment — storage error. Please try again.",
+        "purchaseFailed": "Could not sell the treatment."
+      },
+      "patientTreatments": "Treatments",
+      "noPatientTreatments": "No treatments purchased",
+      "purchaseTreatment": "Sell treatment",
+      "selectTreatment": "Treatment",
+      "selectTreatmentPlaceholder": "Select a treatment...",
+      "sessionCount": "Number of sessions",
+      "unitPrice": "Price per session",
+      "purchased": "Treatment sold successfully"
     },
     "treatmentDetail": {
       "info": "Treatment Info",

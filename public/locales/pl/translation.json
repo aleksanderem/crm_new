@@ -2252,6 +2252,7 @@
         "purchaseFailed": "Nie udało się sprzedać zabiegu."
       },
       "patientTreatments": "Zabiegi",
+      "addOrSell": "Dodaj/Sprzedaj",
       "noPatientTreatments": "Brak zakupionych zabiegów",
       "purchaseTreatment": "Sprzedaj zabieg",
       "selectTreatment": "Zabieg",

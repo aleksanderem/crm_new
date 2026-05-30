@@ -2226,6 +2226,7 @@
         "purchaseFailed": "Could not sell the treatment."
       },
       "patientTreatments": "Treatments",
+      "addOrSell": "Add / Sell",
       "noPatientTreatments": "No treatments purchased",
       "purchaseTreatment": "Sell treatment",
       "selectTreatment": "Treatment",

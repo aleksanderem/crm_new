@@ -80,7 +80,7 @@ export function PatientTreatmentsCard({ patientId, organizationId }: PatientTrea
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPurchaseOpen(true)}>
               <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
-              {t("common.add")}
+              {t("gabinet.treatments.addOrSell", "Dodaj/Sprzedaj")}
             </Button>
           </div>
         </CardHeader>

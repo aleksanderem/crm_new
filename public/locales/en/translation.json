@@ -3175,6 +3175,7 @@
       "amountRequired": "Amount is required",
       "create": "Create payment",
       "created": "Payment created",
+      "for": "For",
       "lastPayment": "Last payment",
       "linkedToAppointment": "Linked to appointment",
       "method": "Payment method",

@@ -16,6 +16,10 @@ import {
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import {
+  useSupabaseGabinetPackageUsageByPatient,
+  useSupabaseGabinetTreatmentPackagesList,
+} from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabasePaymentsByPatient } from "@/hooks/use-supabase-payments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -118,6 +122,38 @@ function PatientDetail() {
     organizationId,
     patientId,
   );
+
+  const { data: patientPackageUsage } = useSupabaseGabinetPackageUsageByPatient(
+    organizationId,
+    patientId,
+  );
+
+  const { data: treatmentPackages } = useSupabaseGabinetTreatmentPackagesList(
+    organizationId,
+  );
+
+  const getPaymentForLabel = (payment: {
+    appointmentId?: string;
+    packageUsageId?: string;
+    notes?: string;
+  }): string => {
+    if (payment.appointmentId) {
+      const apt = patientAppointments?.find((a) => a._id === payment.appointmentId);
+      const treatmentName = apt?.treatmentId
+        ? treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.name
+        : undefined;
+      if (treatmentName) return treatmentName;
+    }
+    if (payment.packageUsageId) {
+      const usage = patientPackageUsage?.find((u) => u._id === payment.packageUsageId);
+      const pkgName = usage
+        ? treatmentPackages?.find((p) => p._id === usage.packageId)?.name
+        : undefined;
+      if (pkgName) return pkgName;
+    }
+    if (payment.notes) return payment.notes;
+    return "—";
+  };
 
   // Treatment-number indicator IDs ("X/Y" like in the calendar — issue #1086).
   // Package usage takes precedence; recurring series is the fallback.
@@ -758,6 +794,9 @@ function PatientDetail() {
                             {t("gabinet.payments.amount")}
                           </th>
                           <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.for")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
                             {t("gabinet.payments.method")}
                           </th>
                           <th className="text-left p-3 text-sm font-medium">
@@ -766,7 +805,6 @@ function PatientDetail() {
                           <th className="text-left p-3 text-sm font-medium">
                             {t("common.status")}
                           </th>
-                          <th className="text-left p-3 text-sm font-medium" />
                         </tr>
                       </thead>
                       <tbody>
@@ -792,6 +830,14 @@ function PatientDetail() {
                             <td className="p-3 font-medium">
                               {payment.amount.toFixed(2)}{" "}
                               {payment.currency ?? "PLN"}
+                            </td>
+                            <td className="p-3 text-sm">
+                              <div
+                                className="max-w-[260px] truncate"
+                                title={getPaymentForLabel(payment)}
+                              >
+                                {getPaymentForLabel(payment)}
+                              </div>
                             </td>
                             <td className="p-3">
                               <Badge variant="outline">
@@ -819,11 +865,6 @@ function PatientDetail() {
                                   `gabinet.payments.status.${payment.status}`,
                                 )}
                               </Badge>
-                            </td>
-                            <td className="p-3 text-xs text-muted-foreground">
-                              {payment.appointmentId
-                                ? t("gabinet.payments.linkedToAppointment")
-                                : null}
                             </td>
                           </tr>
                         ))}

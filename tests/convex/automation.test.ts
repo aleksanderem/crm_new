@@ -568,7 +568,7 @@ describe("automation lifecycle", () => {
 
     const baseCapabilities = await t
       .withIdentity(identity)
-      .query(api.automation.listActionCapabilities, {
+      .action(api.automation.listActionCapabilities, {
         organizationId,
       });
     expect(baseCapabilities).toEqual(
@@ -597,7 +597,7 @@ describe("automation lifecycle", () => {
       ]),
     );
 
-    const baseActions = await t.withIdentity(identity).query(api.automation.listActionTypes, {
+    const baseActions = await t.withIdentity(identity).action(api.automation.listActionTypes, {
       organizationId,
     });
     expect(baseActions).toEqual([
@@ -606,21 +606,23 @@ describe("automation lifecycle", () => {
       "update_field",
     ]);
 
-    await t.run(async (ctx) => {
+    // emailAccounts is Supabase-primary — seed the in-memory Supabase mock
+    // so the listActionCapabilities action sees a default sender.
+    {
       const now = Date.now();
-      await ctx.db.insert("emailAccounts", {
-        organizationId,
+      await createSupabaseDb().insert("emailAccounts", {
+        organizationId: String(organizationId),
         fromName: "Clinic",
         fromEmail: "clinic@example.com",
         isDefault: true,
         createdAt: now,
         updatedAt: now,
       });
-    });
+    }
 
     const emailCapabilities = await t
       .withIdentity(identity)
-      .query(api.automation.listActionCapabilities, {
+      .action(api.automation.listActionCapabilities, {
         organizationId,
       });
     expect(
@@ -635,17 +637,18 @@ describe("automation lifecycle", () => {
       }),
     );
 
-    const emailActions = await t.withIdentity(identity).query(api.automation.listActionTypes, {
+    const emailActions = await t.withIdentity(identity).action(api.automation.listActionTypes, {
       organizationId,
     });
     expect(emailActions).toContain("send_email");
     expect(emailActions).not.toContain("send_sms");
     expect(emailActions).not.toContain("send_sms_request");
 
-    await t.run(async (ctx) => {
+    // orgSmsConfig is also Supabase-primary (see convex/sms.ts:saveConfig).
+    {
       const now = Date.now();
-      await ctx.db.insert("orgSmsConfig", {
-        organizationId,
+      await createSupabaseDb().insert("orgSmsConfig", {
+        organizationId: String(organizationId),
         provider: "twilio",
         apiToken: "test_sid",
         apiSecret: "test_secret",
@@ -655,11 +658,11 @@ describe("automation lifecycle", () => {
         createdAt: now,
         updatedAt: now,
       });
-    });
+    }
 
     const smsCapabilities = await t
       .withIdentity(identity)
-      .query(api.automation.listActionCapabilities, {
+      .action(api.automation.listActionCapabilities, {
         organizationId,
       });
     expect(
@@ -673,7 +676,7 @@ describe("automation lifecycle", () => {
       }),
     );
 
-    const smsActions = await t.withIdentity(identity).query(api.automation.listActionTypes, {
+    const smsActions = await t.withIdentity(identity).action(api.automation.listActionTypes, {
       organizationId,
     });
     expect(smsActions).toEqual(
@@ -780,17 +783,19 @@ describe("automation lifecycle", () => {
     );
 
     await setPatientEmail(t, patientId, "jan@example.com");
-    await t.run(async (ctx) => {
+    // emailAccounts is Supabase-primary — _sendAutomationEmail reads the
+    // default sender via createSupabaseDb(), so seed the in-memory mock.
+    {
       const now = Date.now();
-      await ctx.db.insert("emailAccounts", {
-        organizationId,
+      await createSupabaseDb().insert("emailAccounts", {
+        organizationId: String(organizationId),
         fromName: "Clinic",
         fromEmail: "clinic@example.com",
         isDefault: true,
         createdAt: now,
         updatedAt: now,
       });
-    });
+    }
 
     await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,
@@ -870,16 +875,21 @@ describe("automation lifecycle", () => {
     );
 
     await setPatientEmail(t, patientId, "jan@example.com");
-    const templateId = await t.run(async (ctx) => {
+    // emailAccounts is Supabase-primary — seed the in-memory mock so
+    // _sendAutomationEmail can resolve the default sender.
+    {
       const now = Date.now();
-      await ctx.db.insert("emailAccounts", {
-        organizationId,
+      await createSupabaseDb().insert("emailAccounts", {
+        organizationId: String(organizationId),
         fromName: "Clinic",
         fromEmail: "clinic@example.com",
         isDefault: true,
         createdAt: now,
         updatedAt: now,
       });
+    }
+    const templateId = await t.run(async (ctx) => {
+      const now = Date.now();
       return ctx.db.insert("emailTemplates", {
         organizationId,
         name: "Appointment follow-up",

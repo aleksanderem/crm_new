@@ -20,7 +20,6 @@ import {
 } from "./schema";
 import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
 import { renderTemplateString } from "./emailTemplates";
-import { escapeHtml } from "./_helpers/html";
 import { checkPermission } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
 import {
@@ -251,33 +250,6 @@ const AUTOMATION_UPDATE_FIELD_DESCRIPTORS: Record<
   },
 };
 
-async function sendAutomationEmail(args: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}) {
-  const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${AUTH_RESEND_KEY ?? ""}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: args.to,
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to send automation email (${response.status})`);
-  }
-}
-
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, "");
 }
@@ -431,76 +403,16 @@ async function getAutomationEditPermission(
   };
 }
 
-async function insertAutomationEmail(
-  ctx: MutationCtx,
-  args: {
-    organizationId: Id<"organizations">;
-    recipientEmail: string;
-    subject: string;
-    bodyHtml?: string;
-    bodyText?: string;
-    sentBy?: Id<"users">;
-  },
-) {
-  const emailAccounts = await ctx.db
-    .query("emailAccounts")
-    .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-    .collect();
-  const defaultAccount = emailAccounts.find((account) => account.isDefault);
-  if (!defaultAccount) {
-    throw new Error("No default email account configured");
-  }
-
-  const htmlBody = args.bodyHtml ?? escapeHtml(args.bodyText ?? "").replace(/\n/g, "<br />");
-  await sendAutomationEmail({
-    to: args.recipientEmail,
-    subject: args.subject,
-    html: htmlBody,
-    text: args.bodyText,
-  });
-
-  const now = Date.now();
-  const bodyText = args.bodyText ?? stripHtml(htmlBody);
-  const emailId = await ctx.db.insert("emails", {
-    organizationId: args.organizationId,
-    threadId: `<${crypto.randomUUID()}@crm.app>`,
-    messageId: `<${crypto.randomUUID()}@crm.app>`,
-    direction: "outbound",
-    from: defaultAccount.fromEmail,
-    to: [args.recipientEmail],
-    subject: args.subject,
-    bodyHtml: htmlBody,
-    bodyText,
-    snippet: bodyText.slice(0, 200),
-    isRead: true,
-    isStarred: false,
-    sentBy: args.sentBy,
-    sentAt: now,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  if (args.sentBy) {
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "email",
-      entityId: emailId,
-      action: "email_sent",
-      description: `Sent email \"${args.subject}\" to ${args.recipientEmail}`,
-      performedBy: args.sentBy,
-    });
-  }
-
-  return emailId;
-}
-
 // Resend send call extracted to an internalAction so processRun (mutation)
 // does not perform network I/O — Convex mutations cannot use fetch().
+// The default email account is looked up from Supabase (the email_accounts
+// source of truth, see convex/emailAccounts.ts header); reading via ctx.db
+// in production returns the empty Convex mirror and would always fail with
+// "No default email account configured".
 export const _sendAutomationEmail = internalAction({
   args: {
     organizationId: v.id("organizations"),
     stepId: v.id("automationRunSteps"),
-    fromEmail: v.string(),
     recipient: v.string(),
     recipientName: v.optional(v.string()),
     subject: v.string(),
@@ -513,6 +425,32 @@ export const _sendAutomationEmail = internalAction({
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const emailAccounts = await db
+      .query("emailAccounts")
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+    const defaultAccount = emailAccounts.find((account) => account.isDefault);
+    if (!defaultAccount) {
+      await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
+        organizationId: args.organizationId,
+        stepId: args.stepId,
+        success: false,
+        errorMessage: "No default email account configured",
+        fromEmail: "",
+        recipient: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        bodyHtml: args.bodyHtml,
+        bodyText: args.bodyText,
+        sentBy: args.sentBy,
+        appointmentId: args.appointmentId,
+        actionType: args.actionType,
+        idempotencyKey: args.idempotencyKey,
+      });
+      return;
+    }
+
     const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -536,7 +474,7 @@ export const _sendAutomationEmail = internalAction({
         organizationId: args.organizationId,
         stepId: args.stepId,
         success: true,
-        fromEmail: args.fromEmail,
+        fromEmail: defaultAccount.fromEmail,
         recipient: args.recipient,
         recipientName: args.recipientName,
         subject: args.subject,
@@ -553,7 +491,7 @@ export const _sendAutomationEmail = internalAction({
         stepId: args.stepId,
         success: false,
         errorMessage: error instanceof Error ? error.message : String(error),
-        fromEmail: args.fromEmail,
+        fromEmail: defaultAccount.fromEmail,
         recipient: args.recipient,
         recipientName: args.recipientName,
         subject: args.subject,
@@ -1253,21 +1191,29 @@ export const listEventCatalog = query({
   },
 });
 
-export const listActionCapabilities = query({
+// `emailAccounts` and `orgSmsConfig` are Supabase-primary (see
+// convex/emailAccounts.ts and convex/sms.ts:saveConfig), so the Convex
+// mirrors are empty in production. Reading them via ctx.db would always
+// report `send_email`/`send_sms` as unavailable, hiding configured
+// capabilities from the automation builder. Convex queries cannot read
+// from Supabase, so these are exposed as actions instead.
+export const listActionCapabilities = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const emailAccounts = await ctx.db
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const emailAccounts = await db
       .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const smsConfig = await ctx.db
+    const smsConfig = await db
       .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+      .eq("organizationId", String(args.organizationId))
+      .first();
 
     return buildActionCapabilities({
       hasEmail: emailAccounts.length > 0,
@@ -1276,21 +1222,23 @@ export const listActionCapabilities = query({
   },
 });
 
-export const listActionTypes = query({
+export const listActionTypes = action({
   args: {
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const emailAccounts = await ctx.db
+  handler: async (ctx, args): Promise<string[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const emailAccounts = await db
       .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const smsConfig = await ctx.db
+    const smsConfig = await db
       .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+      .eq("organizationId", String(args.organizationId))
+      .first();
 
     return buildActionCapabilities({
       hasEmail: emailAccounts.length > 0,
@@ -1539,8 +1487,6 @@ export const processRun = internalMutation({
 
             let renderedSubject = "";
             let renderedBody = "";
-            let linkedEntityType: string | undefined;
-            let linkedEntityId: string | undefined;
 
             if (action.mode === "template") {
               const template = await ctx.db.get(action.templateId);
@@ -1571,56 +1517,33 @@ export const processRun = internalMutation({
               renderedBody = applyTemplate(action.bodyTemplate, payload);
             }
 
-            const emailId = await insertAutomationEmail(ctx, {
-              organizationId: run.organizationId,
-              recipientEmail,
-              subject: renderedSubject,
-              bodyHtml: renderedBody,
-              bodyText: stripHtml(renderedBody),
-              sentBy: run.actorUserId,
-            });
-            linkedEntityType = "email";
-            linkedEntityId = String(emailId);
-
-            await ctx.db.patch(stepId, {
-              status: "processed",
-              recipient: recipientEmail,
-              recipientName,
-              linkedEntityType,
-              linkedEntityId,
-              renderedSubject,
-              renderedBody,
-              processedAt: now,
-              updatedAt: now,
-            });
-            await ctx.scheduler.runAfter(0, updateRunStepRef, {
-              stepId: stepId as string,
-              organizationId: run.organizationId as string,
-              status: "processed",
-              recipient: recipientEmail,
-              recipientName,
-              linkedEntityType,
-              linkedEntityId,
-              renderedSubject,
-              renderedBody,
-              processedAt: now,
-              updatedAt: now,
-            });
-            await patchLegacyAppointmentWorkflowHistory(ctx, {
-              organizationId: run.organizationId,
-              appointmentId:
-                run.entityType === "gabinetAppointment"
-                  ? run.entityId
-                  : undefined,
-              actionType: action.type,
-              recipient: recipientEmail,
-              recipientName,
-              renderedSubject,
-              renderedBody,
-              status: "sent",
-              idempotencyKey: stepIdempotencyKey,
-              processedAt: now,
-            });
+            // Default-account lookup + Resend call run inside the action —
+            // Convex mutations cannot perform fetch or read from Supabase,
+            // and `emailAccounts` is Supabase-primary (see convex/emailAccounts.ts).
+            // The action chains into `_recordAutomationEmailResult` which
+            // inserts the email row, patches the step to processed/failed,
+            // mirrors to the run-step dual-write, and writes the legacy
+            // appointment workflow history entry.
+            await ctx.scheduler.runAfter(
+              0,
+              internal.automation._sendAutomationEmail,
+              {
+                organizationId: run.organizationId,
+                stepId,
+                recipient: recipientEmail,
+                recipientName,
+                subject: renderedSubject,
+                bodyHtml: renderedBody,
+                bodyText: stripHtml(renderedBody),
+                sentBy: run.actorUserId,
+                appointmentId:
+                  run.entityType === "gabinetAppointment"
+                    ? run.entityId
+                    : undefined,
+                actionType: action.type,
+                idempotencyKey: stepIdempotencyKey,
+              },
+            );
             continue;
           }
 

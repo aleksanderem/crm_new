@@ -1,6 +1,8 @@
 import { query, internalMutation, action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { FormDocumentRow } from "../_helpers/supabaseRows";
 
 // ---------------------------------------------------------------------------
 // Internal mutation — store intercepted email (called from sending actions)
@@ -53,24 +55,38 @@ export const getById = query({
 });
 
 // ---------------------------------------------------------------------------
-// Public query — find a formDocument with signing token for testing
+// Public action — find a formDocument with signing token for testing.
+// Reads from Supabase since `formDocuments` is Supabase-primary now.
 // ---------------------------------------------------------------------------
 
-export const findSignableDocument = query({
+export const findSignableDocument = action({
   args: {},
-  handler: async (ctx) => {
-    // Find any document with a signing token
-    const docs = await ctx.db.query("formDocuments").order("desc").take(20);
+  handler: async (): Promise<Array<{
+    _id: string;
+    title: string;
+    status: string;
+    signingToken: string;
+    organizationId: string;
+    entityType: string;
+    entityId: string;
+    signingEmailSentAt: number | undefined;
+  }>> => {
+    const db = createSupabaseDb();
+    const docs = (await db
+      .query("formDocuments")
+      .order("createdAt", false)
+      .take(20)
+      .collect()) as FormDocumentRow[];
     const withToken = docs.filter((d) => d.signingToken);
     return withToken.map((d) => ({
-      _id: d._id,
+      _id: String(d._id),
       title: d.title,
       status: d.status,
-      signingToken: d.signingToken,
-      organizationId: d.organizationId,
+      signingToken: d.signingToken as string,
+      organizationId: String(d.organizationId),
       entityType: d.entityType,
       entityId: d.entityId,
-      signingEmailSentAt: d.signingEmailSentAt,
+      signingEmailSentAt: d.signingEmailSentAt ?? undefined,
     }));
   },
 });

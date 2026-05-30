@@ -173,6 +173,50 @@ npm run migrations:apply
 - [ ] Monitor performance (Lighthouse, WebPageTest)
 - [ ] Check analytics (Google Analytics, Plausible, etc.)
 
+### 5. Deploy-Failure Alerting (Netlify)
+
+Background: After commit `10773a1` (#1015), `npx convex deploy` inside the
+Netlify build started failing on a Convex TypeScript error. Every subsequent
+push to `main` produced a failed Netlify build for ~24h, but no one noticed
+until a user reported a missing Convex function (#1119). The frontend stayed
+on the last successful deploy; any backend functions added after `10773a1`
+were silently absent from production. Root cause was a type error (fixed in
+#1135) and missing convex typecheck in CI (tracked in #1136). This section
+addresses the third gap: nobody was watching Netlify build status.
+
+Verification checklist (one-time, then re-verify after any Netlify org / member
+change):
+
+- [ ] Open Netlify → Site settings → Build & deploy → Deploy notifications.
+- [ ] Confirm at least one notification exists for "Deploy failed" pointing at
+      a channel that is actively monitored by a human. Acceptable channels:
+      - Email to a real maintainer (NOT a shared inbox no one reads)
+      - Slack incoming webhook posted into a channel the team watches
+      - GitHub commit status (so failed deploys mark the commit red on the PR
+        / `main` history)
+      - Outgoing webhook into an existing alerting pipeline
+- [ ] Confirm at least one notification exists for "Deploy succeeded" OR rely
+      on the GitHub commit status above, so the absence of a green check on a
+      recent merge to `main` is itself a signal something is wrong.
+- [ ] Trigger a deliberately-failing deploy on a throwaway branch (e.g. push
+      a commit that introduces a TypeScript error in `convex/`) and confirm
+      the notification actually reaches the channel. Then revert.
+- [ ] Document the chosen channel(s) here in this file so the next person
+      to onboard knows where to look:
+      - Channel(s) in use: _TBD — fill in when configured_
+      - Owner / on-call: _TBD_
+
+In-repo safety nets (already in place or planned):
+
+- `.github/workflows/supabase-migrations.yml` POSTs to a Netlify build hook
+  after migrations succeed, but does NOT poll the resulting Netlify deploy
+  status. A failed build there will not surface as a failed GitHub Actions
+  run. The Netlify dashboard / notification config is currently the only
+  signal — see #1137.
+- Convex backend typecheck in CI (#1136) catches the most common class of
+  Netlify build failures (Convex push aborting on type errors) BEFORE the
+  push to `main` ever reaches Netlify.
+
 ---
 
 ## Environment Variables Required

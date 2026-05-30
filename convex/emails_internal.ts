@@ -1,22 +1,34 @@
-import { internalQuery, internalMutation } from "./_generated/server";
+import { internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { internal } from "./_generated/api";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
+import type { SupabaseRow } from "./_helpers/supabaseRows";
 
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;
 
-export const findEmailAccountByAddress = internalQuery({
+type EmailAccountRow = SupabaseRow<"emailAccounts">;
+
+// Source of truth: Supabase `email_accounts`. The Convex `emailAccounts`
+// table is no longer being written to (see convex/emailAccounts.ts header),
+// so reading via `ctx.db` returns empty in production and every inbound
+// Resend webhook gets dropped with "No matching account". Read from
+// Supabase via an action instead.
+export const findEmailAccountByAddress = internalAction({
   args: { addresses: v.array(v.string()) },
-  handler: async (ctx, args) => {
-    // Check each address against all email accounts
+  handler: async (_ctx, args): Promise<EmailAccountRow | null> => {
+    const db = createSupabaseDb();
+    // No `fromEmail` index in Supabase either, so scan all accounts once
+    // and match in memory. Pulled out of the address loop since each
+    // iteration would otherwise re-fetch the same set.
+    const allAccounts = (await db
+      .query("emailAccounts")
+      .collect()) as EmailAccountRow[];
     for (const address of args.addresses) {
       const normalizedAddress = address.toLowerCase().trim();
-      // We need to scan email accounts - no index on fromEmail, so scan by org is not possible
-      // Instead, collect all and match
-      const allAccounts = await ctx.db.query("emailAccounts").collect();
       const match = allAccounts.find(
-        (a) => a.fromEmail.toLowerCase() === normalizedAddress
+        (a) => a.fromEmail.toLowerCase() === normalizedAddress,
       );
       if (match) return match;
     }

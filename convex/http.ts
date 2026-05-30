@@ -394,8 +394,9 @@ http.route({
         ? from.match(/<(.+)>/)?.[1] ?? from
         : from;
 
-      // Match to address to an email account to find the org
-      const emailAccount = await ctx.runQuery(
+      // Match to address to an email account to find the org.
+      // emailAccounts is Supabase-primary, so this runs as an action.
+      const emailAccount = await ctx.runAction(
         internal.emails_internal.findEmailAccountByAddress,
         { addresses: toAddresses }
       );

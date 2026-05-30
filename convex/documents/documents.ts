@@ -1,4 +1,4 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { query, action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -380,69 +380,51 @@ export const submitEmployeeFormFields = action({
       updatedAt: Date.now(),
     });
 
-    // Send signing email to patient — delegate to side effects
+    // Send signing email to patient — resolve recipient via Supabase
+    // (entity IDs are Supabase UUIDs, not Convex IDs, so ctx.db.get won't work)
     if (doc.signingToken) {
-      try {
-        await ctx.runMutation(internal.documents.documents._submitEmployeeSideEffects, {
-          documentId: args.documentId,
-          entityType: doc.entityType as string,
-          entityId: doc.entityId as string,
-          signingToken: doc.signingToken as string,
-        });
-      } catch (e) {
-        console.error("[documents.submitEmployeeFormFields] Side effects FAILED:", e);
+      let recipientEmail: string | undefined;
+      let recipientName: string | undefined;
+      const entityType = doc.entityType as string | undefined;
+      const entityId = doc.entityId as string | undefined;
+
+      if (entityType === "appointment" && entityId) {
+        const appointment = await db.get("gabinetAppointments", entityId);
+        if (appointment && typeof appointment === "object") {
+          const appt = appointment as { patientId?: string };
+          if (appt.patientId) {
+            const patient = await db.get("gabinetPatients", String(appt.patientId));
+            if (patient && typeof patient === "object") {
+              const p = patient as { email?: string; firstName?: string; lastName?: string };
+              recipientEmail = p.email;
+              recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+            }
+          }
+        }
+      } else if (entityType === "patient" && entityId) {
+        const patient = await db.get("gabinetPatients", entityId);
+        if (patient && typeof patient === "object") {
+          const p = patient as { email?: string; firstName?: string; lastName?: string };
+          recipientEmail = p.email;
+          recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
+        }
+      }
+
+      if (recipientEmail) {
+        await ctx.scheduler.runAfter(
+          0,
+          // @ts-ignore — deep type instantiation under app tsconfig
+          internal.documents.signing.sendSigningEmailInternal,
+          {
+            documentId: args.documentId as Id<"formDocuments">,
+            recipientEmail,
+            recipientName,
+          },
+        );
       }
     }
 
     return args.documentId;
-  },
-});
-
-export const _submitEmployeeSideEffects = internalMutation({
-  args: {
-    documentId: v.string(),
-    entityType: v.string(),
-    entityId: v.string(),
-    signingToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    let recipientEmail: string | undefined;
-    let recipientName: string | undefined;
-
-    if (args.entityType === "appointment" && args.entityId) {
-      const appointment = await ctx.db.get(args.entityId as any);
-      if (appointment && typeof appointment === "object") {
-        const appt = appointment as { patientId?: any };
-        if (appt.patientId) {
-          const patient = await ctx.db.get(appt.patientId);
-          if (patient && typeof patient === "object") {
-            const p = patient as { email?: string; firstName?: string; lastName?: string };
-            recipientEmail = p.email;
-            recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
-          }
-        }
-      }
-    } else if (args.entityType === "patient" && args.entityId) {
-      const patient = await ctx.db.get(args.entityId as any);
-      if (patient && typeof patient === "object") {
-        const p = patient as { email?: string; firstName?: string; lastName?: string };
-        recipientEmail = p.email;
-        recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
-      }
-    }
-
-    if (recipientEmail) {
-      await ctx.scheduler.runAfter(
-        0,
-        // @ts-ignore — deep type instantiation under app tsconfig
-        internal.documents.signing.sendSigningEmailInternal,
-        {
-          documentId: args.documentId as Id<"formDocuments">,
-          recipientEmail,
-          recipientName,
-        },
-      );
-    }
   },
 });
 

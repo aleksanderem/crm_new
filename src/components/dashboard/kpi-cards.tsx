@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 interface KpiCardsProps {
   totalContacts: number;
@@ -10,15 +11,6 @@ interface KpiCardsProps {
   openDeals: number;
   pipelineValue: number;
   winRate: number;
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 export function KpiCards({
@@ -53,7 +45,7 @@ export function KpiCards({
       },
       {
         title: t("dashboard.pipelineValue"),
-        value: formatCurrency(pipelineValue),
+        value: formatCurrencyPLN(pipelineValue, "PLN", { fractionDigits: 0 }),
         icon: DollarSign,
         href: "/dashboard/pipelines" as const,
       },

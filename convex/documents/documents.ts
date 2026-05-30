@@ -6,7 +6,7 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
-import type { FormDocumentRow } from "../_helpers/supabaseRows";
+import type { FormDocumentRow, FormTemplateRow } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for document writes
@@ -120,13 +120,20 @@ export const getById = action({
   },
 });
 
-// Get document by signing token (no auth required -- public signing page)
-export const getBySigningToken = query({
+// Get document by signing token (no auth required -- public signing page).
+// Reads from Supabase since `formDocuments`, `formTemplates`, and
+// `documentComponents` are all Supabase-primary now.
+export const getBySigningToken = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const doc = await ctx.db
+  handler: async (_ctx, args): Promise<{
+    document: FormDocumentRow;
+    template: FormTemplateRow | null;
+  }> => {
+    const db = createSupabaseDb();
+
+    const doc = await db
       .query("formDocuments")
-      .withIndex("by_signingToken", (q) => q.eq("signingToken", args.token))
+      .eq("signingToken", args.token)
       .first();
     if (!doc) throw new Error("Document not found");
     if (doc.signingTokenExpiresAt && doc.signingTokenExpiresAt < Date.now())
@@ -135,10 +142,16 @@ export const getBySigningToken = query({
     // what to render based on status (fill form, sign, or show success).
 
     // Also fetch template for rendering, with components resolved
-    const template = await ctx.db.get(doc.templateId);
+    const template = await db.get("formTemplates", String(doc.templateId));
     if (template?.contentJson) {
-      const resolved = await resolveComponentsInContent(ctx, template.contentJson);
-      return { document: doc, template: { ...template, contentJson: resolved } };
+      const resolved = await resolveComponentsInContent(
+        db,
+        template.contentJson,
+      );
+      return {
+        document: doc,
+        template: { ...template, contentJson: resolved },
+      };
     }
     return { document: doc, template };
   },

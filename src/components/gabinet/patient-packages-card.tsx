@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Package, Plus, Loader2 } from "@/lib/ez-icons";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
 import { PlateText } from "@/components/plate-text";
 
@@ -277,7 +278,7 @@ function PackageInstallments({
               </span>
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {payment.amount.toFixed(2)} {payment.currency ?? currency}
+                  {formatCurrencyPLN(payment.amount, payment.currency ?? currency)}
                 </span>
                 {isPending ? (
                   <InstallmentPayButton
@@ -540,7 +541,7 @@ function InstallmentPayButton({
             >
               <span>
                 {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
-                {expectedTotal.toFixed(2)} {currency}
+                {formatCurrencyPLN(expectedTotal, currency)}
               </span>
               {splitSameMethod ? (
                 <span>
@@ -666,7 +667,7 @@ function PackageDetailDialog({
                 {t("gabinet.packages.totalPrice", "Total price")}
               </span>
               <span className="font-medium">
-                {totalPrice.toFixed(2)} {currency}
+                {formatCurrencyPLN(totalPrice, currency)}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
@@ -674,7 +675,7 @@ function PackageDetailDialog({
                 {t("gabinet.packages.paidAmount", "Paid")}
               </span>
               <span className="font-medium text-green-600">
-                {paidSoFar.toFixed(2)} {currency}
+                {formatCurrencyPLN(paidSoFar, currency)}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm border-t pt-1.5">
@@ -682,7 +683,7 @@ function PackageDetailDialog({
                 {t("gabinet.packages.outstanding", "Outstanding")}
               </span>
               <span className={`font-semibold ${outstanding > 0 ? "text-orange-600" : ""}`}>
-                {outstanding.toFixed(2)} {currency}
+                {formatCurrencyPLN(outstanding, currency)}
               </span>
             </div>
           </div>
@@ -750,7 +751,7 @@ function PackageDetailDialog({
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
-                          {p.amount.toFixed(2)} {p.currency ?? currency}
+                          {formatCurrencyPLN(p.amount, p.currency ?? currency)}
                         </span>
                         <Badge
                           variant={

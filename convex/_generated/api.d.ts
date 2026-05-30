@@ -100,7 +100,6 @@ import type * as gabinet_packages from "../gabinet/packages.js";
 import type * as gabinet_patientAuth from "../gabinet/patientAuth.js";
 import type * as gabinet_patientPortal from "../gabinet/patientPortal.js";
 import type * as gabinet_patients from "../gabinet/patients.js";
-import type * as gabinet_reminders from "../gabinet/reminders.js";
 import type * as gabinet_scheduling from "../gabinet/scheduling.js";
 import type * as gabinet_seed from "../gabinet/seed.js";
 import type * as gabinet_sidebarWidgets from "../gabinet/sidebarWidgets.js";
@@ -283,7 +282,6 @@ declare const fullApi: ApiFromModules<{
   "gabinet/patientAuth": typeof gabinet_patientAuth;
   "gabinet/patientPortal": typeof gabinet_patientPortal;
   "gabinet/patients": typeof gabinet_patients;
-  "gabinet/reminders": typeof gabinet_reminders;
   "gabinet/scheduling": typeof gabinet_scheduling;
   "gabinet/seed": typeof gabinet_seed;
   "gabinet/sidebarWidgets": typeof gabinet_sidebarWidgets;

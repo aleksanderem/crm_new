@@ -146,10 +146,25 @@ async function applyAppointmentStatusChange(
   }
 
   if (args.nextStatus === "cancelled" && args.sendCancellationNotifications !== false) {
-    const patient = await ctx.db.get(args.appointment.patientId);
-    const treatment = args.appointment.treatmentId ? await ctx.db.get(args.appointment.treatmentId) : null;
+    // Patient/treatment live in Supabase (UUIDs) — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1105/#1112 for documents.ts recipient lookups.
+    const supabaseDb = createSupabaseDb();
+    const patient = await supabaseDb.get(
+      "gabinetPatients",
+      String(args.appointment.patientId),
+    );
+    const treatment = args.appointment.treatmentId
+      ? await supabaseDb.get(
+          "gabinetTreatments",
+          String(args.appointment.treatmentId),
+        )
+      : null;
     if (patient?.email) {
-      const employee = await ctx.db.get(args.appointment.employeeId);
+      const employee = await supabaseDb.get<{ name?: string }>(
+        "users",
+        String(args.appointment.employeeId),
+      );
       const patientName = patient
         ? `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`
         : "Patient";

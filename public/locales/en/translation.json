@@ -681,7 +681,14 @@
     "completeMissingData": "Complete missing data",
     "completeMissingDataDesc": "The following data is required to generate the document. After filling in, it will be saved to the profile.",
     "missingDataWarning": "The template requires data that has not been filled in yet. Complete the fields below — they will be saved automatically.",
-    "saveAndContinue": "Save and continue"
+    "saveAndContinue": "Save and continue",
+    "dragToReorder": "Drag to reorder",
+    "send": "Send",
+    "selectTemplateDesc": "Choose a template to generate the document from.",
+    "stepOf": "Step {{current}} of {{total}}",
+    "searchTemplate": "Search template...",
+    "noTemplatesDesc": "Add document templates in settings to generate documents.",
+    "goToSettings": "Go to settings"
   },
   "products": {
     "title": "Products",

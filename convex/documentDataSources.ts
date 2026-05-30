@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import type { GenericQueryCtx } from "convex/server";
 import type { DataModel } from "./_generated/dataModel";
 import { auth } from "@cvx/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,8 +79,14 @@ const currentUserSource: DataSourceDefinition = {
     { key: "name", label: "Imię i nazwisko", type: "text" },
     { key: "email", label: "E-mail", type: "email" },
   ],
-  resolve: async (ctx, _id, rctx) => {
-    const user = await ctx.db.get(rctx.userId as any) as any;
+  resolve: async (_ctx, _id, rctx) => {
+    // users live in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1125.
+    const user = (await createSupabaseDb().get(
+      "users",
+      String(rctx.userId),
+    )) as any;
     return {
       name: user?.name ?? "",
       email: user?.email ?? "",
@@ -94,8 +101,14 @@ const orgSource: DataSourceDefinition = {
   fields: [
     { key: "name", label: "Nazwa firmy", type: "text" },
   ],
-  resolve: async (ctx, _id, rctx) => {
-    const org = await ctx.db.get(rctx.orgId as any) as any;
+  resolve: async (_ctx, _id, rctx) => {
+    // organizations live in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1125.
+    const org = (await createSupabaseDb().get(
+      "organizations",
+      String(rctx.orgId),
+    )) as any;
     return {
       name: org?.name ?? "",
     };

@@ -79,6 +79,90 @@ export const migrateFolderPaths = mutation({
   },
 });
 
+/**
+ * One-time migration: backfill `filledBy` on existing formField nodes in seeded
+ * templates. Treatment-specific fields (substance, area, volume, etc.) and all
+ * fields in the Karta zabiegu protocol template are marked "employee"; every
+ * other seeded field — consent checkboxes, RODO clauses, intake questions,
+ * health declarations, guardian data — is marked "client".
+ *
+ * Safe to run multiple times. Only touches the `filledBy` attribute on form
+ * fields. User-customised templates with unknown field IDs default to "client",
+ * matching the new seed helper default.
+ */
+const EMPLOYEE_FILLED_FIELD_IDS = new Set<string>([
+  "meso_substance",
+  "meso_area",
+  "filler_product",
+  "filler_area",
+  "filler_volume",
+  "botox_product",
+  "botox_areas",
+  "botox_units",
+  "peel_type",
+  "peel_acid",
+  "peel_area",
+  "hair_removal_area",
+  "hair_removal_session",
+  "pmu_area",
+  "pmu_technique",
+  "pmu_color",
+  "protocol_products",
+  "protocol_device_settings",
+  "protocol_area",
+  "protocol_procedure",
+  "protocol_observations",
+  "protocol_custom_aftercare",
+  "protocol_next_visit",
+]);
+
+export const migrateFormFieldFilledBy = mutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+    const all = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    let patched = 0;
+    for (const t of all) {
+      if (!t.contentJson) continue;
+      let json: unknown;
+      try {
+        json = JSON.parse(t.contentJson);
+      } catch {
+        continue;
+      }
+
+      let changed = false;
+      const walk = (node: unknown) => {
+        if (!node || typeof node !== "object") return;
+        const n = node as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] };
+        if (n.type === "formField" && n.attrs) {
+          const fieldId = typeof n.attrs.fieldId === "string" ? n.attrs.fieldId : "";
+          const expected = EMPLOYEE_FILLED_FIELD_IDS.has(fieldId) ? "employee" : "client";
+          if (n.attrs.filledBy !== expected) {
+            n.attrs.filledBy = expected;
+            changed = true;
+          }
+        }
+        if (Array.isArray(n.content)) n.content.forEach(walk);
+      };
+      walk(json);
+
+      if (changed) {
+        await ctx.db.patch(t._id, {
+          contentJson: JSON.stringify(json),
+          updatedAt: Date.now(),
+        });
+        patched++;
+      }
+    }
+    return { patched, total: all.length };
+  },
+});
+
 /** Authenticated version — callable from frontend (legacy, no-op) */
 export const seedFormTemplates = mutation({
   args: { organizationId: v.id("organizations") },
@@ -138,7 +222,12 @@ const formField = (
   fieldId: string,
   fieldType: string,
   label: string,
-  opts?: { options?: string; required?: boolean; placeholder?: string },
+  opts?: {
+    options?: string;
+    required?: boolean;
+    placeholder?: string;
+    filledBy?: "client" | "employee";
+  },
 ): any => ({
   type: "formField",
   attrs: {
@@ -148,6 +237,10 @@ const formField = (
     options: opts?.options ?? "",
     required: opts?.required ?? false,
     placeholder: opts?.placeholder ?? "",
+    // Seeded intake/consent fields are filled by the client by default; the
+    // employee only sets treatment specifics (substance, area, volume, etc.)
+    // and protocol/karta zabiegu fields, which pass filledBy: "employee".
+    filledBy: opts?.filledBy ?? "client",
   },
 });
 
@@ -528,8 +621,8 @@ function buildMesotherapyConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Stosowane preparaty"),
-      p(formField("meso_substance", "text", "Nazwa preparatu / substancji aktywnej", { required: true, placeholder: "Np. kwas hialuronowy nieusieciowany, koktajl witaminowy..." })),
-      p(formField("meso_area", "text", "Obszar zabiegowy", { required: true, placeholder: "Np. twarz, szyja, dekolt, skóra głowy..." })),
+      p(formField("meso_substance", "text", "Nazwa preparatu / substancji aktywnej", { required: true, placeholder: "Np. kwas hialuronowy nieusieciowany, koktajl witaminowy...", filledBy: "employee" })),
+      p(formField("meso_area", "text", "Obszar zabiegowy", { required: true, placeholder: "Np. twarz, szyja, dekolt, skóra głowy...", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane"),
       bulletList(
@@ -603,9 +696,9 @@ function buildFillerConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Dane zabiegu"),
-      p(formField("filler_product", "text", "Nazwa i producent preparatu", { required: true, placeholder: "Np. Juvederm Voluma, Restylane Lyft..." })),
-      p(formField("filler_area", "text", "Obszar iniekcji", { required: true, placeholder: "Np. usta, bruzdy nosowo-wargowe, linia żuchwy, policzki..." })),
-      p(formField("filler_volume", "text", "Planowana objętość preparatu (ml)", { required: true, placeholder: "Np. 1 ml" })),
+      p(formField("filler_product", "text", "Nazwa i producent preparatu", { required: true, placeholder: "Np. Juvederm Voluma, Restylane Lyft...", filledBy: "employee" })),
+      p(formField("filler_area", "text", "Obszar iniekcji", { required: true, placeholder: "Np. usta, bruzdy nosowo-wargowe, linia żuchwy, policzki...", filledBy: "employee" })),
+      p(formField("filler_volume", "text", "Planowana objętość preparatu (ml)", { required: true, placeholder: "Np. 1 ml", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane i powikłania"),
       bulletList(
@@ -683,9 +776,9 @@ function buildBotoxConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Dane zabiegu"),
-      p(formField("botox_product", "text", "Nazwa preparatu", { required: true, placeholder: "Np. Botox, Dysport, Xeomin, Bocouture..." })),
-      p(formField("botox_areas", "text", "Obszary iniekcji", { required: true, placeholder: "Np. czoło, zmarszczka lwia, kurze łapki..." })),
-      p(formField("botox_units", "text", "Planowana dawka (j.)", { required: true, placeholder: "Np. 50 j." })),
+      p(formField("botox_product", "text", "Nazwa preparatu", { required: true, placeholder: "Np. Botox, Dysport, Xeomin, Bocouture...", filledBy: "employee" })),
+      p(formField("botox_areas", "text", "Obszary iniekcji", { required: true, placeholder: "Np. czoło, zmarszczka lwia, kurze łapki...", filledBy: "employee" })),
+      p(formField("botox_units", "text", "Planowana dawka (j.)", { required: true, placeholder: "Np. 50 j.", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane"),
       bulletList(
@@ -767,9 +860,9 @@ function buildChemicalPeelConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Dane zabiegu"),
-      p(formField("peel_type", "select", "Rodzaj peelingu", { options: "powierzchowny (superficial),średniogłęboki (medium),głęboki (deep)", required: true })),
-      p(formField("peel_acid", "text", "Zastosowany kwas / preparat", { required: true, placeholder: "Np. kwas glikolowy 30%, kwas TCA 15%, kwas migdałowy 40%..." })),
-      p(formField("peel_area", "text", "Obszar zabiegowy", { required: true, placeholder: "Np. twarz, szyja, dekolt, dłonie..." })),
+      p(formField("peel_type", "select", "Rodzaj peelingu", { options: "powierzchowny (superficial),średniogłęboki (medium),głęboki (deep)", required: true, filledBy: "employee" })),
+      p(formField("peel_acid", "text", "Zastosowany kwas / preparat", { required: true, placeholder: "Np. kwas glikolowy 30%, kwas TCA 15%, kwas migdałowy 40%...", filledBy: "employee" })),
+      p(formField("peel_area", "text", "Obszar zabiegowy", { required: true, placeholder: "Np. twarz, szyja, dekolt, dłonie...", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane"),
       bulletList(
@@ -854,8 +947,8 @@ function buildLaserHairRemovalConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Dane zabiegu"),
-      p(formField("hair_removal_area", "text", "Obszar depilacji", { required: true, placeholder: "Np. pachy, bikini, nogi, twarz, klatka piersiowa..." })),
-      p(formField("hair_removal_session", "text", "Numer sesji", { placeholder: "Np. 1/8, 3/6..." })),
+      p(formField("hair_removal_area", "text", "Obszar depilacji", { required: true, placeholder: "Np. pachy, bikini, nogi, twarz, klatka piersiowa...", filledBy: "employee" })),
+      p(formField("hair_removal_session", "text", "Numer sesji", { placeholder: "Np. 1/8, 3/6...", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane"),
       bulletList(
@@ -939,9 +1032,9 @@ function buildPermanentMakeupConsentTemplate(c: ComponentMap): BeautyTemplate {
       ),
       p(),
       h3("Dane zabiegu"),
-      p(formField("pmu_area", "select", "Obszar zabiegu", { options: "brwi,usta,eyeliner górny,eyeliner dolny,eyeliner górny i dolny,areola (brodawki sutkowe)", required: true })),
-      p(formField("pmu_technique", "select", "Technika", { options: "microblading (włoskowa),powder brows (pudrowe),ombré brows,nano brows,aquarelle lips (akwarela ust),konturowanie ust,eyeliner klasyczny,eyeliner rozcieniowany", required: true })),
-      p(formField("pmu_color", "text", "Wybrany kolor barwnika", { required: true, placeholder: "Np. jasny brąz, ciemny blond, różowy nude..." })),
+      p(formField("pmu_area", "select", "Obszar zabiegu", { options: "brwi,usta,eyeliner górny,eyeliner dolny,eyeliner górny i dolny,areola (brodawki sutkowe)", required: true, filledBy: "employee" })),
+      p(formField("pmu_technique", "select", "Technika", { options: "microblading (włoskowa),powder brows (pudrowe),ombré brows,nano brows,aquarelle lips (akwarela ust),konturowanie ust,eyeliner klasyczny,eyeliner rozcieniowany", required: true, filledBy: "employee" })),
+      p(formField("pmu_color", "text", "Wybrany kolor barwnika", { required: true, placeholder: "Np. jasny brąz, ciemny blond, różowy nude...", filledBy: "employee" })),
       p(),
       h3("Możliwe działania niepożądane i powikłania"),
       bulletList(
@@ -1117,26 +1210,26 @@ function buildTreatmentProtocolTemplate(c: ComponentMap): BeautyTemplate {
       },
       p(),
       h3("Zastosowane produkty i preparaty"),
-      p(formField("protocol_products", "textarea", "Produkty, preparaty, substancje aktywne (nazwa, seria, data ważności)", { required: true, placeholder: "Np. Kwas hialuronowy Juvederm Ultra 3, seria: AB1234, ważność: 2027-06..." })),
+      p(formField("protocol_products", "textarea", "Produkty, preparaty, substancje aktywne (nazwa, seria, data ważności)", { required: true, placeholder: "Np. Kwas hialuronowy Juvederm Ultra 3, seria: AB1234, ważność: 2027-06...", filledBy: "employee" })),
       p(),
       h3("Parametry urządzenia"),
-      p(formField("protocol_device_settings", "textarea", "Urządzenie, ustawienia, parametry zabiegu", { placeholder: "Np. Laser Nd:YAG, długość fali: 1064 nm, fluencja: 40 J/cm², spot: 6 mm, częstotliwość: 2 Hz..." })),
+      p(formField("protocol_device_settings", "textarea", "Urządzenie, ustawienia, parametry zabiegu", { placeholder: "Np. Laser Nd:YAG, długość fali: 1064 nm, fluencja: 40 J/cm², spot: 6 mm, częstotliwość: 2 Hz...", filledBy: "employee" })),
       p(),
       h3("Obszar zabiegowy"),
-      p(formField("protocol_area", "text", "Obszar / strefy zabiegowe", { required: true, placeholder: "Np. twarz — czoło, policzki, broda; szyja..." })),
+      p(formField("protocol_area", "text", "Obszar / strefy zabiegowe", { required: true, placeholder: "Np. twarz — czoło, policzki, broda; szyja...", filledBy: "employee" })),
       p(),
       h3("Przebieg zabiegu"),
-      p(formField("protocol_procedure", "textarea", "Opis przebiegu zabiegu", { required: true, placeholder: "Opisz kolejne etapy zabiegu, reakcje skóry, tolerancję pacjenta..." })),
+      p(formField("protocol_procedure", "textarea", "Opis przebiegu zabiegu", { required: true, placeholder: "Opisz kolejne etapy zabiegu, reakcje skóry, tolerancję pacjenta...", filledBy: "employee" })),
       p(),
       h3("Obserwacje i reakcje skóry"),
-      p(formField("protocol_observations", "textarea", "Obserwacje — stan skóry, reakcje, ewentualne powikłania", { placeholder: "Np. lekki rumień, obrzęk perifolikularny, brak powikłań..." })),
+      p(formField("protocol_observations", "textarea", "Obserwacje — stan skóry, reakcje, ewentualne powikłania", { placeholder: "Np. lekki rumień, obrzęk perifolikularny, brak powikłań...", filledBy: "employee" })),
       p(),
       h3("Zalecenia pozabiegowe"),
       p(bold("Standardowe zalecenia: "), mention("treatment.aftercareInstructions")),
-      p(formField("protocol_custom_aftercare", "textarea", "Dodatkowe indywidualne zalecenia pozabiegowe", { placeholder: "Np. dodatkowe chłodzenie okładami, unikanie konkretnych preparatów..." })),
+      p(formField("protocol_custom_aftercare", "textarea", "Dodatkowe indywidualne zalecenia pozabiegowe", { placeholder: "Np. dodatkowe chłodzenie okładami, unikanie konkretnych preparatów...", filledBy: "employee" })),
       p(),
       h3("Następna wizyta"),
-      p(formField("protocol_next_visit", "text", "Zalecany termin następnej wizyty", { placeholder: "Np. za 4 tygodnie, po 14 dniach na kontrolę..." })),
+      p(formField("protocol_next_visit", "text", "Zalecany termin następnej wizyty", { placeholder: "Np. za 4 tygodnie, po 14 dniach na kontrolę...", filledBy: "employee" })),
       p(),
       hr(),
       p(bold("Specjalista wykonujący zabieg: "), mention("employee.firstName"), txt(" "), mention("employee.lastName")),

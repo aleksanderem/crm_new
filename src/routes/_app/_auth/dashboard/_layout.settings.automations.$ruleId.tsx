@@ -77,15 +77,16 @@ function EditAutomationRulePage() {
     }),
   );
 
+  const listActionCapabilities = useAction(api.automation.listActionCapabilities);
   const {
     data: actionCapabilities,
     isPending: isActionCapabilitiesPending,
     isError: isActionCapabilitiesError,
-  } = useQuery(
-    convexQuery(api.automation.listActionCapabilities, {
-      organizationId,
-    }),
-  );
+  } = useQuery({
+    queryKey: ["automation.listActionCapabilities", organizationId],
+    queryFn: () => listActionCapabilities({ organizationId }),
+    enabled: !!organizationId,
+  });
 
   const {
     data: emailTemplates,

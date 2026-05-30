@@ -2,7 +2,7 @@ import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { resolveScope, EntityType, ScopeData } from "./scopeResolver";
+import { EntityType, ScopeData } from "./scopeResolver";
 import { resolveScopeSupabase } from "./scopeResolver_supabase";
 import { Id } from "../_generated/dataModel";
 
@@ -179,9 +179,13 @@ export const _generateSideEffects = internalMutation({
     entityId: v.string(),
   },
   handler: async (ctx, args) => {
-    const scopeData = await resolveScope(
-      ctx,
-      args.organizationId,
+    // Scope entities (patient/appointment/etc.) live in Supabase with UUID
+    // IDs that the Convex ctx.db can't decode. Resolve via the Supabase
+    // wrapper instead — same pattern the parent action uses.
+    const db = createSupabaseDb();
+    const scopeData = await resolveScopeSupabase(
+      db,
+      String(args.organizationId),
       args.entityType as EntityType,
       args.entityId,
     );

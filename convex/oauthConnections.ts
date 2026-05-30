@@ -4,6 +4,16 @@ import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
 
+// Source of truth: Convex `oauthConnections`. Unlike most CRM tables, this
+// one was intentionally NOT migrated to Supabase — refresh/access tokens are
+// sensitive and the OAuth callback (convex/google/oauth.ts) writes them
+// straight into Convex via `createOrUpdate` below. `getValidAccessToken` in
+// convex/google/_helpers.ts reads from the same Convex row, so the
+// Gmail-OAuth signing branch in convex/documents/signing.ts reliably finds
+// a token even though the surrounding `emailAccounts` reads were migrated
+// to Supabase. Both fields hold the same Convex `Id<"organizations">`
+// string, so the cross-DB id lookup matches.
+
 /** Strip sensitive tokens from an OAuth connection before returning to the client. */
 function stripTokens(c: Doc<"oauthConnections">) {
   return {

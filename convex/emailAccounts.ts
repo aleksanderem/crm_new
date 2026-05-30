@@ -4,8 +4,18 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-// Dual-write refs removed — Supabase is now primary for email account writes
+// Source of truth: Supabase `email_accounts`. The Convex `emailAccounts`
+// table is the pre-migration schema and is no longer being written to —
+// `upsert`/`remove` below go straight to Supabase, and the frontend reads
+// via `useSupabaseEmailAccounts` (see src/hooks/use-supabase-email-config.ts).
+// The `oauthConnections` table, by contrast, is still Convex-owned (sensitive
+// tokens stay in Convex), which is why convex/documents/signing.ts reads the
+// default sender from Supabase but the Gmail access token from Convex.
 
+// NOTE: `list` below is the legacy public query and reads the orphan Convex
+// table. It currently has no callers in this repo (the frontend uses
+// `useSupabaseEmailAccounts`), but until it can be safely removed it will
+// return stale/empty data in production. Do not introduce new callers.
 export const list = query({
   args: {
     organizationId: v.id("organizations"),

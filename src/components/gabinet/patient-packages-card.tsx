@@ -107,7 +107,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPurchaseOpen(true)}>
               <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
-              {t("common.add")}
+              {t("gabinet.packages.addOrSell", "Dodaj/Sprzedaj")}
             </Button>
           </div>
         </CardHeader>

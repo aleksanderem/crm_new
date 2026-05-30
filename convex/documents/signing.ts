@@ -1,14 +1,19 @@
-import {
-  internalAction,
-  internalMutation,
-  internalQuery,
-} from "../_generated/server";
+import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import { createSupabaseDb, type SupabaseDb } from "../_helpers/supabaseDb";
 import { getValidAccessToken } from "../google/_helpers";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM, SITE_URL, DEV_INTERCEPT_EMAILS } from "@cvx/env";
+
+async function markSent(db: SupabaseDb, documentId: string): Promise<void> {
+  const now = Date.now();
+  await db.patch("formDocuments", documentId, {
+    signingEmailSentAt: now,
+    updatedAt: now,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -43,99 +48,85 @@ function formatDatePl(ts: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Internal query — fetch document + context for the email action
-// ---------------------------------------------------------------------------
-
-export const getDocumentForEmail = internalQuery({
-  args: { documentId: v.id("formDocuments") },
-  handler: async (ctx, args) => {
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc) return null;
-
-    const org = await ctx.db.get(doc.organizationId);
-    const template = await ctx.db.get(doc.templateId);
-
-    // Fetch appointment + treatment context if available
-    let appointmentDate: string | undefined;
-    let treatmentName: string | undefined;
-    if (doc.entityType === "appointment" && doc.entityId) {
-      const appointment = await ctx.db.get(
-        doc.entityId as Id<"gabinetAppointments">,
-      );
-      if (appointment) {
-        if (appointment.date) {
-          const ts = new Date(`${appointment.date}T${appointment.startTime ?? "00:00"}`).getTime();
-          appointmentDate = !isNaN(ts) ? formatDatePl(ts) : appointment.date;
-        }
-        if (appointment.treatmentId) {
-          const treatment = await ctx.db.get(appointment.treatmentId);
-          if (treatment) {
-            treatmentName = treatment.name;
-          }
-        }
-      }
-    }
-
-    // Determine if this is a document-type template with form fields (draft status)
-    const needsFormFill = doc.status === "draft" && template?.templateType === "document";
-
-    // Look up org's default email account for sender info
-    const emailAccounts = await ctx.db
-      .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", doc.organizationId))
-      .collect();
-    const defaultAccount = emailAccounts.find((a) => a.isDefault) ?? emailAccounts[0];
-
-    return {
-      organizationId: doc.organizationId,
-      title: doc.title,
-      signingToken: doc.signingToken,
-      organizationName: org?.name ?? "Organizacja",
-      appointmentDate,
-      treatmentName,
-      needsFormFill,
-      senderEmail: defaultAccount?.fromEmail,
-      senderName: defaultAccount?.fromName,
-    };
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Internal mutation — mark email sent timestamp on the document
-// ---------------------------------------------------------------------------
-
-export const markSigningEmailSent = internalMutation({
-  args: { documentId: v.id("formDocuments") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.documentId, {
-      signingEmailSentAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-// ---------------------------------------------------------------------------
 // Internal action — send signing email via Gmail (preferred) or Resend fallback
+//
+// All entity tables (formDocuments, organizations, formTemplates,
+// gabinetAppointments, gabinetTreatments, emailAccounts) live in Supabase
+// now; their IDs are UUIDs that Convex `ctx.db.get` can't decode, so we read
+// everything via the Supabase client.
 // ---------------------------------------------------------------------------
 
 export const sendSigningEmailInternal = internalAction({
   args: {
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const data = await ctx.runQuery(
-      internal.documents.signing.getDocumentForEmail as any,
-      { documentId: args.documentId },
-    );
+    const db = createSupabaseDb();
 
-    if (!data || !data.signingToken) {
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || !doc.signingToken) {
       console.warn(
         `[signing] Cannot send email — document ${args.documentId} not found or has no signing token`,
       );
       return;
     }
+
+    const organizationId = String(doc.organizationId);
+    const org = await db.get("organizations", organizationId);
+    const template = doc.templateId
+      ? await db.get("formTemplates", String(doc.templateId))
+      : null;
+
+    // Fetch appointment + treatment context if available
+    let appointmentDate: string | undefined;
+    let treatmentName: string | undefined;
+    if (doc.entityType === "appointment" && doc.entityId) {
+      const appointment = await db.get(
+        "gabinetAppointments",
+        String(doc.entityId),
+      );
+      if (appointment) {
+        if (appointment.date) {
+          const ts = new Date(
+            `${appointment.date}T${appointment.startTime ?? "00:00"}`,
+          ).getTime();
+          appointmentDate = !isNaN(ts) ? formatDatePl(ts) : String(appointment.date);
+        }
+        if (appointment.treatmentId) {
+          const treatment = await db.get(
+            "gabinetTreatments",
+            String(appointment.treatmentId),
+          );
+          if (treatment) {
+            treatmentName = treatment.name as string | undefined;
+          }
+        }
+      }
+    }
+
+    const needsFormFill =
+      doc.status === "draft" && template?.templateType === "document";
+
+    const emailAccounts = await db
+      .query("emailAccounts")
+      .eq("organizationId", organizationId)
+      .collect();
+    const defaultAccount =
+      emailAccounts.find((a) => a.isDefault) ?? emailAccounts[0];
+
+    const data = {
+      organizationId,
+      title: doc.title as string,
+      signingToken: doc.signingToken as string,
+      organizationName: (org?.name as string | undefined) ?? "Organizacja",
+      appointmentDate,
+      treatmentName,
+      needsFormFill,
+      senderEmail: defaultAccount?.fromEmail as string | undefined,
+      senderName: defaultAccount?.fromName as string | undefined,
+    };
 
     const signingUrl = `${getAppUrl()}/sign/form/${data.signingToken}`;
 
@@ -212,15 +203,16 @@ export const sendSigningEmailInternal = internalAction({
         }),
       });
       console.log("[signing] DEV_INTERCEPT: Email stored to devEmails instead of sending →", args.recipientEmail);
-      await ctx.runMutation(internal.documents.signing.markSigningEmailSent, {
-        documentId: args.documentId,
-      });
+      await markSent(db, args.documentId);
       return;
     }
 
     try {
       // Try sending via Gmail OAuth (tenant's configured connection)
-      const googleToken = await getValidAccessToken(ctx, data.organizationId);
+      const googleToken = await getValidAccessToken(
+        ctx,
+        data.organizationId as Id<"organizations">,
+      );
 
       if (googleToken && data.senderEmail) {
         const fromAddress = data.senderName
@@ -260,10 +252,7 @@ export const sendSigningEmailInternal = internalAction({
 
         console.log("[signing] Signing email sent via Gmail to", args.recipientEmail);
 
-        await ctx.runMutation(
-          internal.documents.signing.markSigningEmailSent,
-          { documentId: args.documentId },
-        );
+        await markSent(db, args.documentId);
         return;
       }
 
@@ -292,10 +281,7 @@ export const sendSigningEmailInternal = internalAction({
 
       console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
 
-      await ctx.runMutation(
-        internal.documents.signing.markSigningEmailSent,
-        { documentId: args.documentId },
-      );
+      await markSent(db, args.documentId);
     } catch (err) {
       console.error(
         "[signing] Failed to send signing email:",

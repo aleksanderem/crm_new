@@ -721,6 +721,22 @@ function FormTemplatesListPage() {
     [allTemplates],
   );
 
+  // Force TemplateTree to remount when the visible set changes.
+  // headless-tree's sync dataLoader keeps internal item IDs; the
+  // useEffect-based rebuildTree runs after render, so the first render
+  // after filtering would crash inside the loader (see fix #1102).
+  const templateTreeKey = useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    const visible = searchLower
+      ? allTemplates.filter(
+          (tpl) =>
+            tpl.name.toLowerCase().includes(searchLower) ||
+            (tpl.description ?? "").toLowerCase().includes(searchLower),
+        )
+      : allTemplates;
+    return visible.map((tpl) => tpl._id).join(",");
+  }, [allTemplates, search]);
+
   return (
     <div className="flex h-full w-full flex-col gap-6">
       <SectionHeader.Root className="pt-4">
@@ -823,6 +839,7 @@ function FormTemplatesListPage() {
         !isPending && (
           <div className="rounded-lg border bg-card p-4">
             <TemplateTree
+              key={templateTreeKey}
               templates={allTemplates}
               search={search}
               onEditTemplate={(id) => {

@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslation } from "react-i18next";
 import { Trophy } from "@/lib/ez-icons";
 import type { TimeRange } from "@/components/crm/types";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 interface Performer {
   name: string;
@@ -14,15 +15,6 @@ interface TopPerformersProps {
   performers: Performer[];
   timeRange: TimeRange;
   onTimeRangeChange?: (range: TimeRange) => void;
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 export function TopPerformers({
@@ -65,7 +57,7 @@ export function TopPerformers({
                   <p className="text-sm font-medium truncate">{p.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {p.deals} {t("dashboard.dealsCount")} &middot;{" "}
-                    {formatCurrency(p.value)}
+                    {formatCurrencyPLN(p.value, "PLN", { fractionDigits: 0 })}
                   </p>
                 </div>
               </div>

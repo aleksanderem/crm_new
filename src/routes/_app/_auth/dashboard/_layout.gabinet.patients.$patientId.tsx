@@ -45,6 +45,7 @@ import {
 
 import { useTranslation } from "react-i18next";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
+import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
@@ -253,6 +254,10 @@ function PatientDetail() {
         );
       })()}
       <PatientPackagesCard
+        patientId={patientId}
+        organizationId={organizationId}
+      />
+      <PatientTreatmentsCard
         patientId={patientId}
         organizationId={organizationId}
       />

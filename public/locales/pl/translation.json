@@ -2248,8 +2248,17 @@
         "permissionDenied": "Brak uprawnień do tej operacji na zabiegu.",
         "invalidArguments": "Nie udało się zapisać zabiegu — nieprawidłowe dane.",
         "schemaCache": "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
-        "storage": "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie."
-      }
+        "storage": "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie.",
+        "purchaseFailed": "Nie udało się sprzedać zabiegu."
+      },
+      "patientTreatments": "Zabiegi",
+      "noPatientTreatments": "Brak zakupionych zabiegów",
+      "purchaseTreatment": "Sprzedaj zabieg",
+      "selectTreatment": "Zabieg",
+      "selectTreatmentPlaceholder": "Wybierz zabieg...",
+      "sessionCount": "Liczba sesji",
+      "unitPrice": "Cena za sesję",
+      "purchased": "Zabieg sprzedany pomyślnie"
     },
     "treatmentDetail": {
       "info": "Informacje o zabiegu",

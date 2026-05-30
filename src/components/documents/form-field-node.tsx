@@ -148,18 +148,18 @@ function FormFieldConfig({
           {t("formEditor.filledBy.label", "Wypełnia")}
         </Label>
         <Select
-          value={attrs.filledBy ?? "employee"}
+          value={attrs.filledBy ?? "client"}
           onValueChange={(v) => onChange({ filledBy: v as FilledBy })}
         >
           <SelectTrigger className="h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="employee">
-              {t("formEditor.filledBy.employee", "Pracownik")}
-            </SelectItem>
             <SelectItem value="client">
               {t("formEditor.filledBy.client", "Klient")}
+            </SelectItem>
+            <SelectItem value="employee">
+              {t("formEditor.filledBy.employee", "Pracownik")}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -238,7 +238,7 @@ export const FormFieldNode = Node.create({
       options: { default: "" },
       required: { default: false },
       placeholder: { default: "" },
-      filledBy: { default: "employee" as FilledBy },
+      filledBy: { default: "client" as FilledBy },
     };
   },
 
@@ -291,7 +291,7 @@ export function insertFormField(
     .focus()
     .insertContent({
       type: "formField",
-      attrs: { fieldId, fieldType: "text", label: "New field", filledBy: "employee", ...attrs },
+      attrs: { fieldId, fieldType: "text", label: "New field", filledBy: "client", ...attrs },
     })
     .run();
 }

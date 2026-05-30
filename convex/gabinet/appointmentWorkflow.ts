@@ -2,6 +2,7 @@ import { internalMutation, internalQuery, MutationCtx } from "../_generated/serv
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const WORKFLOW_EVENT = "appointment_created" as const;
 
@@ -171,14 +172,16 @@ export const dispatchAppointmentCreated = internalMutation({
   },
   handler: async (ctx, args) => {
     const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
-    const patientId = args.patientId as Id<"gabinetPatients">;
-    const treatmentId = args.treatmentId as Id<"gabinetTreatments">;
-    const employeeId = args.employeeId as Id<"users">;
 
+    // Patient/treatment/employee live in Supabase (UUIDs) — ctx.db.get fails
+    // with "Unable to decode ID". Read from Supabase instead; same fix
+    // pattern as #1113 for the appointment cancellation path in
+    // convex/gabinet/appointments.ts.
+    const supabaseDb = createSupabaseDb();
     const [patient, treatment, employee, config] = await Promise.all([
-      ctx.db.get(patientId),
-      ctx.db.get(treatmentId),
-      ctx.db.get(employeeId),
+      supabaseDb.get("gabinetPatients", String(args.patientId)),
+      supabaseDb.get("gabinetTreatments", String(args.treatmentId)),
+      supabaseDb.get<{ name?: string }>("users", String(args.employeeId)),
       ctx.runQuery(internal.gabinet.appointmentWorkflow.getWorkflowConfigInternal, {
         organizationId: args.organizationId,
       }),

@@ -1,4 +1,5 @@
 import type { DataSourceDefinition } from "../documentDataSources";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const patientSource: DataSourceDefinition = {
   key: "patient",
@@ -17,9 +18,15 @@ const patientSource: DataSourceDefinition = {
     { key: "bloodType", label: "Grupa krwi", type: "text" },
     { key: "emergencyContact", label: "Kontakt awaryjny", type: "text" },
   ],
-  resolve: async (ctx, patientId): Promise<Record<string, string>> => {
+  resolve: async (_ctx, patientId): Promise<Record<string, string>> => {
     if (!patientId) return {};
-    const patient = (await ctx.db.get(patientId as any)) as any;
+    // gabinetPatients lives in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1113/#1123.
+    const patient = (await createSupabaseDb().get(
+      "gabinetPatients",
+      String(patientId),
+    )) as any;
     if (!patient) return {};
     return {
       firstName: patient.firstName ?? "",

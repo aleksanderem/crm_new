@@ -1,8 +1,7 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Source of truth: Supabase `email_accounts`. The Convex `emailAccounts`
 // table is the pre-migration schema and is no longer being written to —
@@ -11,24 +10,6 @@ import { verifyOrgAccess } from "./_helpers/auth";
 // The `oauthConnections` table, by contrast, is still Convex-owned (sensitive
 // tokens stay in Convex), which is why convex/documents/signing.ts reads the
 // default sender from Supabase but the Gmail access token from Convex.
-
-// NOTE: `list` below is the legacy public query and reads the orphan Convex
-// table. It currently has no callers in this repo (the frontend uses
-// `useSupabaseEmailAccounts`), but until it can be safely removed it will
-// return stale/empty data in production. Do not introduce new callers.
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    return await ctx.db
-      .query("emailAccounts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-  },
-});
 
 export const upsert = action({
   args: {

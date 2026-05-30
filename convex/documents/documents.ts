@@ -153,17 +153,21 @@ export const getBySigningToken = action({
   },
 });
 
-export const listByTemplate = query({
+export const listByTemplate = action({
   args: {
     organizationId: v.id("organizations"),
     templateId: v.id("formTemplates"),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+  handler: async (ctx, args): Promise<FormDocumentRow[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    return (await db
       .query("formDocuments")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
-      .collect();
+      .eq("organizationId", String(args.organizationId))
+      .eq("templateId", String(args.templateId))
+      .collect()) as FormDocumentRow[];
   },
 });
 

@@ -480,38 +480,17 @@ export const resendSigningEmail = action({
     if (!doc.signingToken)
       throw new Error("Document has no signing token");
 
-    // Delegate email sending to side effects (needs Convex db reads for patient lookup)
-    try {
-      await ctx.runMutation(internal.documents.documents._resendSigningSideEffects, {
-        documentId: args.documentId,
-        entityType: doc.entityType as string,
-        entityId: doc.entityId as string,
-      });
-    } catch (e) {
-      console.error("[documents.resendSigningEmail] Side effects FAILED:", e);
-      throw e;
-    }
-
-    return { sent: true };
-  },
-});
-
-export const _resendSigningSideEffects = internalMutation({
-  args: {
-    documentId: v.string(),
-    entityType: v.string(),
-    entityId: v.string(),
-  },
-  handler: async (ctx, args) => {
     let recipientEmail: string | undefined;
     let recipientName: string | undefined;
+    const entityType = doc.entityType as string | undefined;
+    const entityId = doc.entityId as string | undefined;
 
-    if (args.entityType === "appointment" && args.entityId) {
-      const appointment = await ctx.db.get(args.entityId as any);
+    if (entityType === "appointment" && entityId) {
+      const appointment = await db.get("gabinetAppointments", entityId);
       if (appointment && typeof appointment === "object") {
-        const appt = appointment as { patientId?: any };
+        const appt = appointment as { patientId?: string };
         if (appt.patientId) {
-          const patient = await ctx.db.get(appt.patientId);
+          const patient = await db.get("gabinetPatients", String(appt.patientId));
           if (patient && typeof patient === "object") {
             const p = patient as { email?: string; firstName?: string; lastName?: string };
             recipientEmail = p.email;
@@ -519,8 +498,8 @@ export const _resendSigningSideEffects = internalMutation({
           }
         }
       }
-    } else if (args.entityType === "patient" && args.entityId) {
-      const patient = await ctx.db.get(args.entityId as any);
+    } else if (entityType === "patient" && entityId) {
+      const patient = await db.get("gabinetPatients", entityId);
       if (patient && typeof patient === "object") {
         const p = patient as { email?: string; firstName?: string; lastName?: string };
         recipientEmail = p.email;
@@ -541,6 +520,8 @@ export const _resendSigningSideEffects = internalMutation({
         recipientName,
       },
     );
+
+    return { sent: true };
   },
 });
 

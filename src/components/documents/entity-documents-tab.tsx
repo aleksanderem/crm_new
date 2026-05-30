@@ -1,7 +1,24 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -13,7 +30,15 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Plus, FileText, Eye, Loader2, Send, CircleCheck } from "@/lib/ez-icons";
+import {
+  Plus,
+  FileText,
+  Eye,
+  Loader2,
+  Send,
+  CircleCheck,
+  GripVertical,
+} from "@/lib/ez-icons";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -76,6 +101,7 @@ export function EntityDocumentsTab({
   const [sendSuccessDocId, setSendSuccessDocId] = useState<string | null>(null);
 
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
+  const reorderByEntity = useAction(api.documents.documents.reorderByEntity);
 
   const handleSend = useCallback(
     async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
@@ -118,6 +144,61 @@ export function EntityDocumentsTab({
     enabled: !!organizationId && !!entityType && !!entityId,
   });
   const documents = documentsRaw as unknown as FormDocument[] | undefined;
+
+  // Local ordering so drag-and-drop is responsive while the server persists.
+  // Resynced whenever the server-side list changes (creation, deletion).
+  const [orderedIds, setOrderedIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (!documents) return;
+    setOrderedIds(documents.map((d) => String(d._id)));
+  }, [documents]);
+
+  const orderedDocuments = useMemo(() => {
+    if (!documents) return undefined;
+    const byId = new Map(documents.map((d) => [String(d._id), d]));
+    const list: FormDocument[] = [];
+    for (const id of orderedIds) {
+      const d = byId.get(id);
+      if (d) list.push(d);
+    }
+    // Append any docs not present in orderedIds yet (e.g. just-created).
+    for (const d of documents) {
+      if (!orderedIds.includes(String(d._id))) list.push(d);
+    }
+    return list;
+  }, [documents, orderedIds]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = orderedIds.indexOf(String(active.id));
+      const newIndex = orderedIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      const next = arrayMove(orderedIds, oldIndex, newIndex);
+      setOrderedIds(next);
+      reorderByEntity({
+        organizationId,
+        entityType,
+        entityId,
+        documentIds: next,
+      }).catch((err) => {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t("documents.reorderFailed", "Nie udało się zmienić kolejności"),
+        );
+        // Roll back on failure so UI matches server state.
+        setOrderedIds(orderedIds);
+      });
+    },
+    [orderedIds, reorderByEntity, organizationId, entityType, entityId, t],
+  );
 
   const handleDocumentCreated = useCallback(() => {
     refetch();
@@ -262,64 +343,30 @@ export function EntityDocumentsTab({
           </Button>
         </div>
 
-        <div className="rounded-lg border divide-y">
-          {documents.map((doc) => {
-            const canSend =
-              doc.status !== "signed" &&
-              doc.status !== "completed" &&
-              doc.status !== "expired" &&
-              doc.status !== "voided" &&
-              !!doc.signingToken;
-            return (
-              <button
-                key={doc._id}
-                type="button"
-                onClick={() => setViewingDocId(doc._id)}
-                className={cn(
-                  "w-full flex items-center justify-between gap-3 px-4 py-3",
-                  "text-left transition-colors hover:bg-accent cursor-pointer",
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(doc.createdAt).toLocaleDateString(
-                        i18n.language === "en" ? "en-US" : "pl-PL",
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <DocumentStatusBadge status={doc.status} />
-                  {canSend && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2"
-                      disabled={sendingDocId === doc._id}
-                      onClick={(e) => handleSend(e, doc._id)}
-                    >
-                      {sendingDocId === doc._id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      ) : sendSuccessDocId === doc._id ? (
-                        <CircleCheck className="h-3.5 w-3.5 text-green-600 mr-1" />
-                      ) : (
-                        <Send className="h-3.5 w-3.5 mr-1" variant="stroke" />
-                      )}
-                      {sendSuccessDocId === doc._id
-                        ? t("documents.emailSentShort", "Wysłano")
-                        : t("documents.send", "Wyślij")}
-                    </Button>
-                  )}
-                  <Eye className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={(orderedDocuments ?? []).map((d) => String(d._id))}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="rounded-lg border divide-y">
+              {(orderedDocuments ?? []).map((doc) => (
+                <SortableDocumentRow
+                  key={doc._id}
+                  doc={doc}
+                  locale={i18n.language === "en" ? "en-US" : "pl-PL"}
+                  sendingDocId={sendingDocId}
+                  sendSuccessDocId={sendSuccessDocId}
+                  onOpen={() => setViewingDocId(doc._id)}
+                  onSend={handleSend}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Generate dialog */}
@@ -436,6 +483,114 @@ export function EntityDocumentsTab({
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sortable row
+// ---------------------------------------------------------------------------
+
+interface SortableDocumentRowProps {
+  doc: FormDocument;
+  locale: string;
+  sendingDocId: string | null;
+  sendSuccessDocId: string | null;
+  onOpen: () => void;
+  onSend: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
+}
+
+function SortableDocumentRow({
+  doc,
+  locale,
+  sendingDocId,
+  sendSuccessDocId,
+  onOpen,
+  onSend,
+}: SortableDocumentRowProps) {
+  const { t } = useTranslation();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: String(doc._id) });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const canSend =
+    doc.status !== "signed" &&
+    doc.status !== "completed" &&
+    doc.status !== "expired" &&
+    doc.status !== "voided" &&
+    !!doc.signingToken;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 px-2 py-3 bg-card transition-colors hover:bg-accent",
+        isDragging && "opacity-50 z-10",
+      )}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        aria-label={t("documents.dragToReorder", "Przeciągnij, aby zmienić kolejność")}
+        className="flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground/60 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" variant="stroke" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex flex-1 items-center justify-between gap-3 min-w-0 text-left"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{doc.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(doc.createdAt).toLocaleDateString(locale)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <DocumentStatusBadge status={doc.status} />
+          {canSend && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2"
+              disabled={sendingDocId === doc._id}
+              onClick={(e) => onSend(e, doc._id)}
+            >
+              {sendingDocId === doc._id ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              ) : sendSuccessDocId === doc._id ? (
+                <CircleCheck className="h-3.5 w-3.5 text-green-600 mr-1" />
+              ) : (
+                <Send className="h-3.5 w-3.5 mr-1" variant="stroke" />
+              )}
+              {sendSuccessDocId === doc._id
+                ? t("documents.emailSentShort", "Wysłano")
+                : t("documents.send", "Wyślij")}
+            </Button>
+          )}
+          <Eye className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </button>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sparkles, Plus } from "@/lib/ez-icons";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 import { TreatmentPurchaseDrawer } from "./treatment-purchase-drawer";
 
 interface PatientTreatmentsCardProps {
@@ -128,7 +129,7 @@ export function PatientTreatmentsCard({ patientId, organizationId }: PatientTrea
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{t("gabinet.packages.paidAmount", "Zapłacono")}</span>
                       <span className="font-medium">
-                        {usage.paidAmount.toFixed(2)} {currency}
+                        {formatCurrencyPLN(usage.paidAmount, currency)}
                       </span>
                     </div>
 

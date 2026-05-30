@@ -71,14 +71,26 @@ jobs:
   # a production deploy. If the secret is missing, we exit 0 with a warning
   # so existing setups (Netlify auto-deploy still on) keep working — the
   # gating only activates once the Netlify-side migration is done.
+  #
+  # After triggering, we poll the Netlify API for the resulting deploy and
+  # fail the workflow if it errors out (#1161). The poll step needs separate
+  # NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID secrets and degrades to a warning
+  # when those are missing, so older setups still pass.
   deploy:
     name: Trigger Netlify deploy
     if: github.event_name == 'push'
     needs: apply
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Trigger Netlify build hook
+        id: trigger
         env:
           NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
         run: |
@@ -94,10 +106,22 @@ jobs:
             echo "::warning::  3. Add the hook URL as NETLIFY_BUILD_HOOK_URL repo secret."
             exit 0
           fi
+          # Capture trigger time BEFORE the POST so the poll step can identify
+          # the deploy we kicked off (build hooks don't return a deploy ID).
+          TRIGGER_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           curl -fsSL --retry 3 --retry-delay 5 \
             -X POST \
             -H "Content-Type: application/json" \
             -d '{}' \
             "${NETLIFY_BUILD_HOOK_URL}"
           echo
-          echo "Triggered Netlify production build."
+          echo "Triggered Netlify production build at ${TRIGGER_TIME}."
+          echo "trigger_time=${TRIGGER_TIME}" >> "$GITHUB_OUTPUT"
+
+      - name: Poll Netlify deploy status
+        if: steps.trigger.outputs.trigger_time != ''
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_TRIGGER_TIME: ${{ steps.trigger.outputs.trigger_time }}
+        run: node scripts/netlify-poll-deploy.mjs

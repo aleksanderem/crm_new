@@ -2128,59 +2128,81 @@ async function handleAppointmentCompletion(
   },
 ) {
   const now = Date.now();
-  const treatment = await ctx.db.get(args.treatmentId);
+  // Treatment, package usage, loyalty rows, and payments all live in
+  // Supabase (UUIDs that Convex ctx.db can't decode). Route every read
+  // and write through the Supabase wrapper. Same fix pattern as
+  // #1113/#1123.
+  const supabaseDb = createSupabaseDb();
+  const treatmentIdStr = String(args.treatmentId);
+  const organizationIdStr = String(args.organizationId);
+  const patientIdStr = String(args.patientId);
+  const userIdStr = String(args.userId);
+  const treatment = await supabaseDb.get(
+    "gabinetTreatments",
+    treatmentIdStr,
+  );
 
   // 1. Deduct from package if linked
   if (args.packageUsageId) {
-    const usage = await ctx.db.get(args.packageUsageId);
+    const packageUsageIdStr = String(args.packageUsageId);
+    const usage = await supabaseDb.get(
+      "gabinetPackageUsage",
+      packageUsageIdStr,
+    );
     if (usage && usage.status === "active") {
       const entry = usage.treatmentsUsed.find(
-        (t: any) => t.treatmentId === args.treatmentId,
+        (t: any) => t.treatmentId === treatmentIdStr,
       );
       if (entry && entry.usedCount < entry.totalCount) {
         const updatedTreatments = usage.treatmentsUsed.map((t: any) =>
-          t.treatmentId === args.treatmentId
+          t.treatmentId === treatmentIdStr
             ? { ...t, usedCount: t.usedCount + 1 }
             : t,
         );
         const allUsed = updatedTreatments.every(
           (t: any) => t.usedCount >= t.totalCount,
         );
-        await ctx.db.patch(args.packageUsageId, {
-          treatmentsUsed: updatedTreatments,
-          status: allUsed ? "completed" : "active",
-          updatedAt: now,
-        });
+        await supabaseDb.patch(
+          "gabinetPackageUsage",
+          packageUsageIdStr,
+          {
+            treatmentsUsed: updatedTreatments,
+            status: allUsed ? "completed" : "active",
+            updatedAt: now,
+          },
+        );
       }
     }
   }
 
   // 2. Award loyalty points (1 point per PLN of treatment price)
-  if (treatment && treatment.price > 0) {
-    const points = Math.floor(treatment.price);
+  if (treatment && (treatment.price ?? 0) > 0) {
+    const points = Math.floor(treatment.price as number);
     if (points > 0) {
-      const loyalty = await ctx.db
+      const loyalty = await supabaseDb
         .query("gabinetLoyaltyPoints")
-        .withIndex("by_orgAndPatient", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("patientId", args.patientId),
-        )
+        .eq("organizationId", organizationIdStr)
+        .eq("patientId", patientIdStr)
         .first();
 
-      const newBalance = (loyalty?.balance ?? 0) + points;
-      const newLifetimeEarned = (loyalty?.lifetimeEarned ?? 0) + points;
+      const newBalance = ((loyalty?.balance as number | undefined) ?? 0) + points;
+      const newLifetimeEarned =
+        ((loyalty?.lifetimeEarned as number | undefined) ?? 0) + points;
 
       if (loyalty) {
-        await ctx.db.patch(loyalty._id, {
-          balance: newBalance,
-          lifetimeEarned: newLifetimeEarned,
-          updatedAt: now,
-        });
+        await supabaseDb.patch(
+          "gabinetLoyaltyPoints",
+          String(loyalty._id),
+          {
+            balance: newBalance,
+            lifetimeEarned: newLifetimeEarned,
+            updatedAt: now,
+          },
+        );
       } else {
-        await ctx.db.insert("gabinetLoyaltyPoints", {
-          organizationId: args.organizationId,
-          patientId: args.patientId,
+        await supabaseDb.insert("gabinetLoyaltyPoints", {
+          organizationId: organizationIdStr,
+          patientId: patientIdStr,
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
           lifetimeSpent: 0,
@@ -2189,32 +2211,36 @@ async function handleAppointmentCompletion(
         });
       }
 
-      await ctx.db.insert("gabinetLoyaltyTransactions", {
-        organizationId: args.organizationId,
-        patientId: args.patientId,
+      await supabaseDb.insert("gabinetLoyaltyTransactions", {
+        organizationId: organizationIdStr,
+        patientId: patientIdStr,
         type: "earn",
         points,
-        reason: `Appointment completed: ${treatment.name}`,
+        reason: `Appointment completed: ${treatment.name ?? "Treatment"}`,
         referenceType: "appointment",
-        referenceId: args.appointmentId,
+        referenceId: String(args.appointmentId),
         balanceAfter: newBalance,
-        createdBy: args.userId,
+        createdBy: userIdStr,
         createdAt: now,
       });
     }
   }
 
   // 3. Create pending payment (if not covered by package)
-  if (!args.packageUsageId && treatment && treatment.price > 0) {
-    await ctx.db.insert("payments", {
-      organizationId: args.organizationId,
-      patientId: args.patientId,
-      appointmentId: args.appointmentId,
-      amount: treatment.price,
+  if (
+    !args.packageUsageId &&
+    treatment &&
+    (treatment.price ?? 0) > 0
+  ) {
+    await supabaseDb.insert("payments", {
+      organizationId: organizationIdStr,
+      patientId: patientIdStr,
+      appointmentId: String(args.appointmentId),
+      amount: treatment.price as number,
       currency: "PLN",
       paymentMethod: "cash",
       status: "pending",
-      createdBy: args.userId,
+      createdBy: userIdStr,
       createdAt: now,
       updatedAt: now,
     });

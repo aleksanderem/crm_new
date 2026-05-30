@@ -2928,6 +2928,7 @@
       "remaining": "remaining",
       "coveredByPackage": "Covered by package",
       "patientPackages": "Packages",
+      "addOrSell": "Add / Sell",
       "noPatientPackages": "No packages purchased",
       "expires": "Expires",
       "status": {

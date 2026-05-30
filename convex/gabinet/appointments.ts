@@ -2117,7 +2117,7 @@ async function resolveAutoPackageUsageSupabase(
  * treatment price and deduct from linked package if applicable.
  */
 async function handleAppointmentCompletion(
-  ctx: any,
+  _ctx: any,
   args: {
     organizationId: Id<"organizations">;
     appointmentId: Id<"gabinetAppointments">;

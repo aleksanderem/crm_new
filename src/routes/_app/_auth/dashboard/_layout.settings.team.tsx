@@ -16,8 +16,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   UserInvitationForm,
   type UserInvitationFormData,
@@ -27,7 +25,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -92,8 +89,6 @@ function TeamSettings() {
   const createInvitation = useAction(api.invitations.create);
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("member");
   const [isSending, setIsSending] = useState(false);
   const [resendingId, setResendingId] = useState<Id<"invitations"> | null>(null);
   const [cancellingId, setCancellingId] = useState<Id<"invitations"> | null>(null);
@@ -189,8 +184,6 @@ function TeamSettings() {
         module: data.module,
         moduleData: data.moduleData,
       });
-      setInviteEmail("");
-      setInviteRole("member");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
       setInvitationSentPopup(t("team.invitationSent"));

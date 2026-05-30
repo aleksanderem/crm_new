@@ -1,4 +1,5 @@
 import type { DataSourceDefinition } from "../documentDataSources";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const contactSource: DataSourceDefinition = {
   key: "contact",
@@ -12,9 +13,15 @@ const contactSource: DataSourceDefinition = {
     { key: "phone", label: "Telefon", type: "phone" },
     { key: "title", label: "Stanowisko", type: "text" },
   ],
-  resolve: async (ctx, contactId): Promise<Record<string, string>> => {
+  resolve: async (_ctx, contactId): Promise<Record<string, string>> => {
     if (!contactId) return {};
-    const contact = await ctx.db.get(contactId as any) as any;
+    // contacts live in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1125.
+    const contact = (await createSupabaseDb().get(
+      "contacts",
+      String(contactId),
+    )) as any;
     if (!contact) return {};
     return {
       firstName: contact.firstName ?? "",
@@ -39,9 +46,15 @@ const companySource: DataSourceDefinition = {
     { key: "website", label: "Strona www", type: "text" },
     { key: "address", label: "Adres", type: "text" },
   ],
-  resolve: async (ctx, companyId): Promise<Record<string, string>> => {
+  resolve: async (_ctx, companyId): Promise<Record<string, string>> => {
     if (!companyId) return {};
-    const company = await ctx.db.get(companyId as any) as any;
+    // companies live in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1125.
+    const company = (await createSupabaseDb().get(
+      "companies",
+      String(companyId),
+    )) as any;
     if (!company) return {};
     return {
       name: company.name ?? "",
@@ -67,9 +80,15 @@ const leadSource: DataSourceDefinition = {
     { key: "source", label: "Źródło", type: "text" },
     { key: "expectedCloseDate", label: "Oczekiwana data zamknięcia", type: "date" },
   ],
-  resolve: async (ctx, leadId): Promise<Record<string, string>> => {
+  resolve: async (_ctx, leadId): Promise<Record<string, string>> => {
     if (!leadId) return {};
-    const lead = await ctx.db.get(leadId as any) as any;
+    // leads live in Supabase as UUIDs — ctx.db.get fails with
+    // "Unable to decode ID". Read from Supabase instead; same fix pattern
+    // as #1125.
+    const lead = (await createSupabaseDb().get(
+      "leads",
+      String(leadId),
+    )) as any;
     if (!lead) return {};
     return {
       title: lead.title ?? "",

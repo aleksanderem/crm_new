@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "@/lib/ez-icons";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 export interface PackageFormData {
   name: string;
@@ -164,7 +165,7 @@ export function PackageForm({
           />
           {suggestedPrice > 0 && (
             <p className="text-xs text-muted-foreground">
-              {t("gabinet.packages.suggestedPrice")}: {suggestedPrice.toFixed(2)} zł
+              {t("gabinet.packages.suggestedPrice")}: {formatCurrencyPLN(suggestedPrice)}
             </p>
           )}
         </div>
@@ -243,7 +244,7 @@ export function PackageForm({
                   <SelectContent>
                     {treatments?.map((t) => (
                       <SelectItem key={t._id} value={t._id}>
-                        {t.name} ({t.duration} min · {t.price} zł)
+                        {t.name} ({t.duration} min · {formatCurrencyPLN(t.price)})
                       </SelectItem>
                     ))}
                   </SelectContent>

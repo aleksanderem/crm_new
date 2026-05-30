@@ -26,6 +26,7 @@ import {
 import { Loader2 } from "@/lib/ez-icons";
 import { PlateText } from "@/components/plate-text";
 import { formatActionError } from "@/lib/format-action-error";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -406,7 +407,7 @@ export function PackagePurchaseDrawer({
                   {t("gabinet.packages.installmentAmount", "Per installment")}
                 </span>
                 <span className="font-medium">
-                  {installmentAmount.toFixed(2)} {selectedPkg.currency ?? "PLN"}
+                  {formatCurrencyPLN(installmentAmount, selectedPkg.currency ?? "PLN")}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -491,7 +492,7 @@ export function PackagePurchaseDrawer({
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
-                  {splitExpectedTotal.toFixed(2)} {selectedPkg?.currency ?? "PLN"}
+                  {formatCurrencyPLN(splitExpectedTotal, selectedPkg?.currency ?? "PLN")}
                 </span>
                 {splitSameMethod ? (
                   <span>

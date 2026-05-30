@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 interface TreatmentPurchaseDrawerProps {
   patientId: string;
@@ -280,7 +281,7 @@ export function TreatmentPurchaseDrawer({
               <SelectContent>
                 {(treatments ?? []).map((tr) => (
                   <SelectItem key={tr._id} value={tr._id}>
-                    {tr.name} — {(tr.price ?? 0).toFixed(2)} {tr.currency ?? "PLN"}
+                    {tr.name} — {formatCurrencyPLN(tr.price ?? 0, tr.currency ?? "PLN")}
                   </SelectItem>
                 ))}
               </SelectContent>

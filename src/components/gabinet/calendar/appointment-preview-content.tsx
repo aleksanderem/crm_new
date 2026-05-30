@@ -9,6 +9,7 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 import {
   extractActionErrorMessage,
   formatAppointmentError,
@@ -577,7 +578,7 @@ export function AppointmentPreviewContent({
             }
       : null;
   const paymentBadgeTooltip = paymentBadge
-    ? `${t("gabinet.payments.totalPaid")}: ${completedPaid.toFixed(2)} PLN / ${treatmentPrice.toFixed(2)} PLN`
+    ? `${t("gabinet.payments.totalPaid")}: ${formatCurrencyPLN(completedPaid)} / ${formatCurrencyPLN(treatmentPrice)}`
     : null;
 
   const handleOpenSettleDialog = () => {
@@ -1197,7 +1198,7 @@ export function AppointmentPreviewContent({
                 {t("gabinet.payments.treatmentPrice")}
               </span>
               <span className="font-medium tabular-nums">
-                {treatmentPrice.toFixed(2)} PLN
+                {formatCurrencyPLN(treatmentPrice)}
               </span>
             </div>
             <div className="flex justify-between gap-3">
@@ -1205,7 +1206,7 @@ export function AppointmentPreviewContent({
                 {t("gabinet.payments.totalPaid")}
               </span>
               <span className="font-medium tabular-nums">
-                {totalPaid.toFixed(2)} PLN
+                {formatCurrencyPLN(totalPaid)}
               </span>
             </div>
             <div className="flex justify-between gap-3 border-t pt-1">
@@ -1213,7 +1214,7 @@ export function AppointmentPreviewContent({
                 {t("gabinet.payments.outstanding")}
               </span>
               <span className="font-semibold tabular-nums">
-                {outstanding.toFixed(2)} PLN
+                {formatCurrencyPLN(outstanding)}
               </span>
             </div>
           </div>

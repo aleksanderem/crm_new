@@ -7,6 +7,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { Button } from "@/components/ui/button";
 import {
@@ -574,7 +575,7 @@ function AppointmentDetail() {
       { label: t("common.time"), value: `${appt.startTime?.substring(0, 5) ?? ""} - ${appt.endTime?.substring(0, 5) ?? ""}`, fieldKey: "time" },
     ];
     if (treat?.price !== undefined) {
-      fields.push({ label: t("common.price"), value: `${treat.price.toFixed(2)} ${treat.currency ?? "PLN"}`, fieldKey: "price" });
+      fields.push({ label: t("common.price"), value: formatCurrencyPLN(treat.price, treat.currency ?? "PLN"), fieldKey: "price" });
     }
     if ((appt.status === "completed" || appt.status === "cancelled") && appt.updatedAt) {
       fields.push({
@@ -1333,7 +1334,7 @@ function AppointmentDetail() {
                                   <span className="text-sm">{tr.name}</span>
                                   <span className="text-xs text-muted-foreground">
                                     {tr.duration} min
-                                    {tr.price != null && ` · ${tr.price.toFixed(2)} ${tr.currency ?? "PLN"}`}
+                                    {tr.price != null && ` · ${formatCurrencyPLN(tr.price, tr.currency ?? "PLN")}`}
                                   </span>
                                 </div>
                               </CommandItem>
@@ -1660,7 +1661,7 @@ function AppointmentDetail() {
                     {t("gabinet.appointments.prepaymentAmount")}
                   </span>
                   <span className="font-medium">
-                    {(appointment.prepaymentAmount ?? 0).toFixed(2)} PLN
+                    {formatCurrencyPLN(appointment.prepaymentAmount ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1728,7 +1729,7 @@ function AppointmentDetail() {
                     {t("gabinet.payments.treatmentPrice")}
                   </p>
                   <p className="text-2xl font-bold">
-                    {treatmentPrice.toFixed(2)} PLN
+                    {formatCurrencyPLN(treatmentPrice)}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
@@ -1736,7 +1737,7 @@ function AppointmentDetail() {
                     {t("gabinet.payments.totalPaid")}
                   </p>
                   <p className="text-2xl font-bold text-green-600">
-                    {totalPaid.toFixed(2)} PLN
+                    {formatCurrencyPLN(totalPaid)}
                   </p>
                 </div>
                 <div
@@ -1748,7 +1749,7 @@ function AppointmentDetail() {
                   <p
                     className={`text-2xl font-bold ${outstanding > 0 ? "text-orange-600" : "text-green-600"}`}
                   >
-                    {outstanding.toFixed(2)} PLN
+                    {formatCurrencyPLN(outstanding)}
                   </p>
                 </div>
               </div>
@@ -1763,7 +1764,7 @@ function AppointmentDetail() {
                     </div>
                     <p className="text-sm mt-1">
                       {t("gabinet.appointments.prepaymentAmount")}:{" "}
-                      {appointment.prepaymentAmount.toFixed(2)} PLN
+                      {formatCurrencyPLN(appointment.prepaymentAmount)}
                     </p>
                   </div>
                 )}

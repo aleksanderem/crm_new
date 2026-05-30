@@ -899,6 +899,7 @@ export function GenerateDocumentDialog({
 
                 {!templatesLoading && filteredTemplates.length > 0 && (
                   <TemplateFolderTree
+                    key={filteredTemplates.map((tpl) => tpl._id).join(",")}
                     templates={filteredTemplates}
                     search={search}
                     onSelect={handleTemplateSelect}

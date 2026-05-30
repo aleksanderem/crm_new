@@ -11,7 +11,7 @@
  * "none" everywhere until overrides land).
  */
 
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -23,7 +23,7 @@ import {
   isSystemGabinetRole,
   type SystemGabinetRole,
 } from "./_helpers/gabinetRolePermissions";
-import type { Feature, Action, Scope, FeaturePermissions } from "./_helpers/permissionTypes";
+import type { FeaturePermissions } from "./_helpers/permissionTypes";
 
 // --- Definitions ---
 
@@ -50,6 +50,7 @@ export const listDefinitions = query({
       color: SYSTEM_GABINET_ROLE_LABELS[r].color,
       isSystem: true,
       isClinical: SYSTEM_GABINET_ROLE_LABELS[r].isClinical,
+      order: undefined as number | undefined,
       virtual: true as const,
     }));
 

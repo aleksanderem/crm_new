@@ -695,7 +695,14 @@
     "completeMissingData": "Uzupełnij brakujące dane",
     "completeMissingDataDesc": "Poniższe dane są wymagane do wygenerowania dokumentu. Po uzupełnieniu zostaną zapisane w profilu.",
     "missingDataWarning": "Szablon wymaga danych, które nie są jeszcze uzupełnione w profilu. Uzupełnij je poniżej — zostaną zapisane automatycznie.",
-    "saveAndContinue": "Zapisz i kontynuuj"
+    "saveAndContinue": "Zapisz i kontynuuj",
+    "dragToReorder": "Przeciągnij, aby zmienić kolejność",
+    "send": "Wyślij",
+    "selectTemplateDesc": "Wybierz szablon, na podstawie którego zostanie wygenerowany dokument.",
+    "stepOf": "Krok {{current}} z {{total}}",
+    "searchTemplate": "Szukaj szablonu...",
+    "noTemplatesDesc": "Dodaj szablony dokumentów w ustawieniach, aby móc generować dokumenty.",
+    "goToSettings": "Przejdź do ustawień"
   },
   "products": {
     "title": "Produkty",

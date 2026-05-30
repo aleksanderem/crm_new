@@ -6,6 +6,7 @@ import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-t
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useOrganization } from "@/components/org-context";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
@@ -108,14 +109,6 @@ function slugify(s: string): string {
   );
 }
 
-function formatCurrency(amount: number, currency = "PLN") {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function bucketizePairs(
   pairs: [string, number][],
 ): { index: number; count: number }[] {
@@ -197,7 +190,7 @@ function RevenueSummaryCard({
             {t("gabinet.reports.today")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrency(dailyRevenue, currency)}
+            {formatCurrencyPLN(dailyRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
         <div className="flex flex-col gap-1 border-r pr-4 last:border-r-0">
@@ -205,7 +198,7 @@ function RevenueSummaryCard({
             {t("gabinet.reports.thisWeek")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrency(weeklyRevenue, currency)}
+            {formatCurrencyPLN(weeklyRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
         <div className="flex flex-col gap-1">
@@ -213,7 +206,7 @@ function RevenueSummaryCard({
             {t("gabinet.reports.thisMonth")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrency(monthlyRevenue, currency)}
+            {formatCurrencyPLN(monthlyRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
       </CardContent>
@@ -770,7 +763,7 @@ function TopTreatmentsByRevenue({
                 <div className="flex items-center gap-2 text-muted-foreground shrink-0">
                   <span>{item.count}×</span>
                   <span className="font-semibold text-foreground">
-                    {formatCurrency(item.revenue)}
+                    {formatCurrencyPLN(item.revenue, "PLN", { fractionDigits: 0 })}
                   </span>
                 </div>
               </div>

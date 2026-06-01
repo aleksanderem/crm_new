@@ -14,6 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
@@ -34,6 +35,10 @@ export function AppSidebar() {
   const matchRoute = useMatchRoute();
   const { t } = useTranslation();
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
   const { content: sidebarSlotContent, wideContent, dayAgendaDate, shellSidebarMode } = useSidebarSlot();
@@ -92,7 +97,7 @@ export function AppSidebar() {
                 className="gap-2.5 !bg-transparent group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>svg]:size-5"
                 asChild
               >
-                <Link to="/dashboard">
+                <Link to="/dashboard" onClick={closeMobile}>
                   <Logo className="[&_rect]:fill-card [&_rect:first-child]:fill-primary" />
                   <span className="text-xl font-semibold">CRM</span>
                 </Link>
@@ -106,6 +111,7 @@ export function AppSidebar() {
               <WorkspaceSwitcher
                 activeWorkspace={activeWorkspace}
                 workspaces={visibleModules.map((module) => module.workspace)}
+                onSelect={closeMobile}
               />
             </div>
           )}
@@ -126,7 +132,7 @@ export function AppSidebar() {
                         isActive={isActive}
                         asChild
                       >
-                        <Link to={item.href}>
+                        <Link to={item.href} onClick={closeMobile}>
                           <item.icon variant="stroke" />
                           <span>{t(item.labelKey)}</span>
                         </Link>

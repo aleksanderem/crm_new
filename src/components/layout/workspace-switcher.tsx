@@ -13,9 +13,10 @@ import {
 interface WorkspaceSwitcherProps {
   activeWorkspace: ModuleId;
   workspaces: ModuleWorkspaceOption[];
+  onSelect?: () => void;
 }
 
-export function WorkspaceSwitcher({ activeWorkspace, workspaces }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({ activeWorkspace, workspaces, onSelect }: WorkspaceSwitcherProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -41,7 +42,10 @@ export function WorkspaceSwitcher({ activeWorkspace, workspaces }: WorkspaceSwit
         {workspaces.map((workspace) => (
           <DropdownMenuItem
             key={workspace.id}
-            onClick={() => navigate({ to: workspace.href })}
+            onClick={() => {
+              navigate({ to: workspace.href });
+              onSelect?.();
+            }}
           >
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">

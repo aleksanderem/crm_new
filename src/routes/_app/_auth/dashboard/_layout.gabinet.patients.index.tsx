@@ -288,7 +288,12 @@ function PatientsIndex() {
         id: "phone",
         label: t("common.phone"),
         sortable: true,
-        render: (item) => item.phone ? formatPhoneNumber(item.phone) : "—",
+        render: (item) =>
+          item.phone ? (
+            <span className="whitespace-nowrap">{formatPhoneNumber(item.phone)}</span>
+          ) : (
+            "—"
+          ),
         getSortValue: (item) => item.phone ?? "",
       },
       {

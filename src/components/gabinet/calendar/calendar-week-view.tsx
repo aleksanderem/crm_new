@@ -77,12 +77,6 @@ function timeToTop(time: string): number {
   return (((h - 7) * 60 + m) * HOUR_HEIGHT) / 60;
 }
 
-function getDayOfWeek(date: string): number {
-  const d = new Date(date + "T00:00:00");
-  const day = d.getDay();
-  return day === 0 ? 6 : day - 1; // Monday = 0, Sunday = 6
-}
-
 // Google Calendar-style cascading layout: each overlapping appointment
 // offsets further right but still extends to the column edge.
 interface LayoutedAppointment {

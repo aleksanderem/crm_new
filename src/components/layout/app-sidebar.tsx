@@ -101,6 +101,14 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
+          {visibleModules.length > 1 && (
+            <div className="px-2 lg:hidden group-data-[collapsible=icon]:hidden">
+              <WorkspaceSwitcher
+                activeWorkspace={activeWorkspace}
+                workspaces={visibleModules.map((module) => module.workspace)}
+              />
+            </div>
+          )}
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>

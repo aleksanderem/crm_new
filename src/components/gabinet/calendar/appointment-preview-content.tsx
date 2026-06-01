@@ -592,7 +592,7 @@ export function AppointmentPreviewContent({
 
   const handleConfirmSettle = async () => {
     if (settleSubmitting) return;
-    const parsedAmount = parseFloat(settleAmount);
+    const parsedAmount = parseFloat(settleAmount.replace(",", "."));
     const hasAmount = settleAmount.trim().length > 0 && !isNaN(parsedAmount);
     if (hasAmount && parsedAmount < 0) {
       toast.error(t("gabinet.payments.amountRequired"));
@@ -1224,11 +1224,15 @@ export function AppointmentPreviewContent({
               {t("gabinet.payments.amount")}
             </Label>
             <Input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               value={settleAmount}
-              onChange={(e) => setSettleAmount(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                  setSettleAmount(v);
+                }
+              }}
               placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
               disabled={!patient?._id}
             />

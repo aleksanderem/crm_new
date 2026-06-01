@@ -224,7 +224,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed hours background — entire day when clinic is closed */}
         {workStartTop === null && (
           <div
-            className="pointer-events-none absolute inset-0 bg-primary/5"
+            className="pointer-events-none absolute inset-0 bg-zinc-200/60 dark:bg-zinc-950/50"
             style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
@@ -232,7 +232,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed: before clinic opens */}
         {workStartTop !== null && workStartTop > 0 && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-b border-primary/10"
+            className="pointer-events-none absolute left-0 right-0 bg-zinc-200/60 dark:bg-zinc-950/50 border-b border-border/40"
             style={{
               top: 0,
               height: `${workStartTop}px`,
@@ -243,7 +243,7 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
         {/* Closed: after clinic closes */}
         {workEndTop !== null && workEndTop < HOURS.length * HOUR_HEIGHT && (
           <div
-            className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10"
+            className="pointer-events-none absolute left-0 right-0 bg-zinc-200/60 dark:bg-zinc-950/50 border-t border-border/40"
             style={{
               top: `${workEndTop}px`,
               height: `${HOURS.length * HOUR_HEIGHT - workEndTop}px`,

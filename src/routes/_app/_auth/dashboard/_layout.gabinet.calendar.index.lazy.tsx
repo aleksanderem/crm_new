@@ -789,6 +789,16 @@ function GabinetCalendarPage() {
 
   const goToday = () => setCurrentDate(new Date());
 
+  // Opens the create-appointment dialog with the current date pre-filled.
+  // Shared by the mobile and desktop "+" buttons so both spawn the same dialog.
+  const openCreateDialog = useCallback(() => {
+    setCreateDefaultDate(formatDateStr(currentDate));
+    setCreateDefaultTime(undefined);
+    setCreateDefaultEndTime(undefined);
+    setCreateDefaultEmployeeId(undefined);
+    setCreateDialogOpen(true);
+  }, [currentDate]);
+
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
   useSidebarDispatch("openFilter", () => setFilterOpen(true));
@@ -1135,31 +1145,44 @@ function GabinetCalendarPage() {
 
         {/* Toolbar */}
         <div className="flex shrink-0 flex-col gap-2 border-b bg-background px-4 py-3">
-          {/* Row 1: nav arrows + date title + view switcher + actions */}
+          {/* Row 1: nav arrows + date title + view switcher + actions.
+              On mobile the "+" button is hoisted up to share this row with the
+              nav arrows (justify-between) — it otherwise wraps onto its own
+              row in the actions group below and steals vertical space. */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 md:justify-start">
+              <div className="flex min-w-0 items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => navigateDate(-1)}
+                  aria-label={t("gabinet.calendar.previousPeriod")}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" variant="stroke" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={goToday}>
+                  {t("gabinet.calendar.today", "Dzis")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => navigateDate(1)}
+                  aria-label={t("gabinet.calendar.nextPeriod")}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" variant="stroke" />
+                </Button>
+                <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
+              </div>
               <Button
-                variant="outline"
                 size="sm"
-                className="h-7 text-xs"
-                onClick={() => navigateDate(-1)}
-                aria-label={t("gabinet.calendar.previousPeriod")}
+                className="h-7 shrink-0 text-xs md:hidden"
+                aria-label={t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+                onClick={openCreateDialog}
               >
-                <ChevronLeft className="h-3.5 w-3.5" variant="stroke" />
+                <Plus className="h-3.5 w-3.5" variant="stroke" />
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={goToday}>
-                {t("gabinet.calendar.today", "Dzis")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => navigateDate(1)}
-                aria-label={t("gabinet.calendar.nextPeriod")}
-              >
-                <ChevronRight className="h-3.5 w-3.5" variant="stroke" />
-              </Button>
-              <h2 className="ml-2 text-xs font-semibold">{title}</h2>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1222,18 +1245,13 @@ function GabinetCalendarPage() {
                 </>
               )}
 
-              {/* Create button */}
+              {/* Create button — hidden on mobile where it lives next to the
+                  date nav (above) to avoid wrapping onto its own row. */}
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="hidden h-7 text-xs md:inline-flex"
                 data-testid="calendar-create-appointment-button"
-                onClick={() => {
-                  setCreateDefaultDate(formatDateStr(currentDate));
-                  setCreateDefaultTime(undefined);
-                  setCreateDefaultEndTime(undefined);
-                  setCreateDefaultEmployeeId(undefined);
-                  setCreateDialogOpen(true);
-                }}
+                onClick={openCreateDialog}
               >
                 <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
                 <span className="hidden sm:inline">

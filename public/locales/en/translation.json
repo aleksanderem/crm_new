@@ -2870,7 +2870,7 @@
     },
     "packages": {
       "title": "Treatment Packages",
-      "description": "Description",
+      "description": "Manage packages",
       "addPackage": "Add Package",
       "name": "Name",
       "namePlaceholder": "e.g. Relaxation Package",

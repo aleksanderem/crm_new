@@ -2899,7 +2899,7 @@
     },
     "packages": {
       "title": "Pakiety zabiegów",
-      "description": "Opis",
+      "description": "Zarządzaj pakietami",
       "addPackage": "Dodaj pakiet",
       "name": "Nazwa",
       "namePlaceholder": "np. Pakiet Relaksacyjny",

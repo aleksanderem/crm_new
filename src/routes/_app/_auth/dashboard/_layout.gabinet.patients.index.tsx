@@ -21,6 +21,7 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetPatient } from "@/lib/supabase/mappers/gabinet/patients";
 import { useState, useMemo, useCallback } from "react";
+import type { SortDescriptor } from "react-aria-components";
 import { useTranslation } from "react-i18next";
 import type { SavedView, TimeRange, FieldDef, FilterCondition } from "@/components/crm/types";
 import type { MiniChartData } from "@/components/crm/mini-charts";
@@ -75,6 +76,10 @@ function PatientsIndex() {
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>({
+    column: "firstName",
+    direction: "ascending",
+  });
 
   const { handleExport } = useCsvExport(organizationId, "patients", "pacjenci");
 
@@ -282,42 +287,58 @@ function PatientsIndex() {
       {
         id: "phone",
         label: t("common.phone"),
+        sortable: true,
         render: (item) => item.phone ? formatPhoneNumber(item.phone) : "—",
+        getSortValue: (item) => item.phone ?? "",
       },
       {
         id: "pesel",
         label: t("gabinet.patients.pesel"),
+        sortable: true,
         render: (item) => item.pesel ?? "—",
+        getSortValue: (item) => item.pesel ?? "",
       },
       {
         id: "dateOfBirth",
         label: t("gabinet.patients.dateOfBirth"),
+        sortable: true,
         render: (item) => item.dateOfBirth ?? "—",
+        getSortValue: (item) => item.dateOfBirth ?? "",
       },
       {
         id: "gender",
         label: t("gabinet.patients.gender"),
+        sortable: true,
         render: (item) => item.gender ?? "—",
+        getSortValue: (item) => item.gender ?? "",
       },
       {
         id: "referralSource",
         label: t("gabinet.patients.referralSource"),
+        sortable: true,
         render: (item) => (item.referralSource ? displayReferralSource(item.referralSource, t) : "—"),
+        getSortValue: (item) => (item.referralSource ? displayReferralSource(item.referralSource, t) : ""),
       },
       {
         id: "allergies",
         label: t("gabinet.patients.allergies"),
+        sortable: true,
         render: (item) => item.allergies ?? "—",
+        getSortValue: (item) => item.allergies ?? "",
       },
       {
         id: "bloodType",
         label: t("gabinet.patients.bloodType"),
+        sortable: true,
         render: (item) => item.bloodType ?? "—",
+        getSortValue: (item) => item.bloodType ?? "",
       },
       {
         id: "medicalNotes",
         label: t("gabinet.patients.medicalNotes"),
+        sortable: true,
         render: (item) => plateJsonToText(item.medicalNotes ?? undefined).trim() || "—",
+        getSortValue: (item) => plateJsonToText(item.medicalNotes ?? undefined).trim(),
       },
       {
         id: "createdAt",
@@ -498,6 +519,8 @@ function PatientsIndex() {
         data={filteredPatients}
         isLoading={isLoading}
         hiddenColumnIds={hiddenColumnIds}
+        sortDescriptor={sortDescriptor}
+        onSortChange={setSortDescriptor}
         enableBulkSelect
         bulkActions={[
           {

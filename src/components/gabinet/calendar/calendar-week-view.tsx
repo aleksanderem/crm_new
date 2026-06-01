@@ -467,7 +467,10 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
         const layouts = layoutsByDate.get(date) ?? [];
         const isToday = date === today;
         const isSelected = date === selectedDate;
-        const schedule = employeeSchedules?.get(`${di}`);
+        // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()) — see
+        // convex/gabinet/_availability_supabase.ts. Issue #1205.
+        const dow = new Date(date + "T00:00:00").getDay();
+        const schedule = employeeSchedules?.get(`${dow}`);
 
         return (
           <WeekDayColumn

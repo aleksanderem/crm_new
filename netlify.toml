@@ -10,3 +10,16 @@
   # script exits 0 (fail-open) and the parallel GitHub Actions workflow
   # (.github/workflows/supabase-migrations.yml) remains the only gate.
   command = "npm run migrations:apply && npx convex deploy --cmd 'npm run build'"
+
+# Branch builds (non-production, non-PR-preview) — e.g. long-lived dev branches.
+# Mirrors the production command so new Convex functions land on the dev
+# deployment (quera-dev) automatically. Requires CONVEX_DEPLOY_KEY in Netlify
+# env to be scoped to this context with the dev deploy key (not the prod one).
+# Without this, every new Convex function appears missing on quera-dev until
+# someone manually runs `convex deploy`. See #1250.
+[context.branch-deploy]
+  command = "npm run migrations:apply && npx convex deploy --cmd 'npm run build'"
+
+# PR deploy previews — same treatment so previews exercise the latest backend.
+[context.deploy-preview]
+  command = "npm run migrations:apply && npx convex deploy --cmd 'npm run build'"

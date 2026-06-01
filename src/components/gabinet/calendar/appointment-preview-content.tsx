@@ -266,6 +266,15 @@ export function AppointmentPreviewContent({
   const [settleNotes, setSettleNotes] = useState("");
   const [settleMarkCompleted, setSettleMarkCompleted] = useState(true);
   const [settleSubmitting, setSettleSubmitting] = useState(false);
+  const [settleSplitPayment, setSettleSplitPayment] = useState(false);
+  const [settleFirstSplitMethod, setSettleFirstSplitMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("cash");
+  const [settleSecondSplitMethod, setSettleSecondSplitMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("card");
+  const [settleFirstSplitAmount, setSettleFirstSplitAmount] = useState("");
+  const [settleSecondSplitAmount, setSettleSecondSplitAmount] = useState("");
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
   const { dispatch } = useSidebarActions();
@@ -587,31 +596,101 @@ export function AppointmentPreviewContent({
     setSettleMethod("cash");
     setSettleNotes("");
     setSettleMarkCompleted(canMarkCompleted);
+    setSettleSplitPayment(false);
+    setSettleFirstSplitMethod("cash");
+    setSettleSecondSplitMethod("card");
+    setSettleFirstSplitAmount("");
+    setSettleSecondSplitAmount("");
     setSettleDialogOpen(true);
   };
+
+  const parsedFirstSplitAmount =
+    parseFloat(settleFirstSplitAmount.replace(",", ".")) || 0;
+  const parsedSecondSplitAmount =
+    parseFloat(settleSecondSplitAmount.replace(",", ".")) || 0;
+  const splitTotal =
+    Math.round((parsedFirstSplitAmount + parsedSecondSplitAmount) * 100) / 100;
+  const splitMissingAmount =
+    settleSplitPayment &&
+    parsedFirstSplitAmount <= 0 &&
+    parsedSecondSplitAmount <= 0;
+  const splitSameMethod =
+    settleSplitPayment && settleFirstSplitMethod === settleSecondSplitMethod;
 
   const handleConfirmSettle = async () => {
     if (settleSubmitting) return;
     const parsedAmount = parseFloat(settleAmount.replace(",", "."));
     const hasAmount = settleAmount.trim().length > 0 && !isNaN(parsedAmount);
-    if (hasAmount && parsedAmount < 0) {
-      toast.error(t("gabinet.payments.amountRequired"));
-      return;
-    }
-    if (!hasAmount && !settleMarkCompleted) {
-      toast.error(
-        t("gabinet.appointmentDetail.settleNothingToDo", {
-          defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
-        }),
-      );
-      return;
+    if (settleSplitPayment) {
+      if (splitMissingAmount) {
+        toast.error(
+          t(
+            "gabinet.packages.splitMissingAmount",
+            "Podaj kwotę co najmniej jednej metody płatności",
+          ),
+        );
+        return;
+      }
+      if (splitSameMethod) {
+        toast.error(
+          t(
+            "gabinet.packages.splitSameMethodError",
+            "Wybierz dwie różne metody płatności",
+          ),
+        );
+        return;
+      }
+    } else {
+      if (hasAmount && parsedAmount < 0) {
+        toast.error(t("gabinet.payments.amountRequired"));
+        return;
+      }
+      if (!hasAmount && !settleMarkCompleted) {
+        toast.error(
+          t("gabinet.appointmentDetail.settleNothingToDo", {
+            defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
+          }),
+        );
+        return;
+      }
     }
     setSettleSubmitting(true);
     try {
       if (dirty) {
         await handleSave();
       }
-      if (hasAmount && parsedAmount > 0 && patient?._id) {
+      if (settleSplitPayment && patient?._id) {
+        const parts: Array<{
+          method: "cash" | "card" | "transfer" | "other";
+          amount: number;
+        }> = [];
+        if (parsedFirstSplitAmount > 0)
+          parts.push({
+            method: settleFirstSplitMethod,
+            amount: parsedFirstSplitAmount,
+          });
+        if (parsedSecondSplitAmount > 0)
+          parts.push({
+            method: settleSecondSplitMethod,
+            amount: parsedSecondSplitAmount,
+          });
+        for (const part of parts) {
+          const baseNote = settleNotes.trim();
+          const splitNote = `split: ${part.method}`;
+          const combinedNote = baseNote
+            ? `${baseNote} (${splitNote})`
+            : splitNote;
+          await createPaymentAction({
+            organizationId,
+            patientId: patient._id,
+            appointmentId: appointment._id,
+            amount: part.amount,
+            currency: "PLN",
+            paymentMethod: part.method,
+            notes: combinedNote,
+          });
+        }
+      } else if (hasAmount && parsedAmount > 0 && patient?._id) {
         await createPaymentAction({
           organizationId,
           patientId: patient._id,
@@ -1219,59 +1298,191 @@ export function AppointmentPreviewContent({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("gabinet.payments.amount")}
-            </Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={settleAmount}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                  setSettleAmount(v);
-                }
-              }}
-              placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-              disabled={!patient?._id}
-            />
-            {!patient?._id && (
-              <p className="text-[11px] text-muted-foreground">
-                {t("gabinet.payments.noPaymentsDesc")}
-              </p>
-            )}
-          </div>
+          {!settleSplitPayment && (
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("gabinet.payments.amount")}
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={settleAmount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setSettleAmount(v);
+                  }
+                }}
+                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
+                disabled={!patient?._id}
+              />
+              {!patient?._id && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t("gabinet.payments.noPaymentsDesc")}
+                </p>
+              )}
+            </div>
+          )}
 
-          <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("gabinet.payments.method")}
-            </Label>
-            <Select
-              value={settleMethod}
-              onValueChange={(v) =>
-                setSettleMethod(v as typeof settleMethod)
-              }
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">
-                  {t("gabinet.payments.methods.cash")}
-                </SelectItem>
-                <SelectItem value="card">
-                  {t("gabinet.payments.methods.card")}
-                </SelectItem>
-                <SelectItem value="transfer">
-                  {t("gabinet.payments.methods.transfer")}
-                </SelectItem>
-                <SelectItem value="other">
-                  {t("gabinet.payments.methods.other")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {!settleSplitPayment && (
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("gabinet.payments.method")}
+              </Label>
+              <Select
+                value={settleMethod}
+                onValueChange={(v) =>
+                  setSettleMethod(v as typeof settleMethod)
+                }
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">
+                    {t("gabinet.payments.methods.cash")}
+                  </SelectItem>
+                  <SelectItem value="card">
+                    {t("gabinet.payments.methods.card")}
+                  </SelectItem>
+                  <SelectItem value="transfer">
+                    {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="other">
+                    {t("gabinet.payments.methods.other")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {patient?._id && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="settle-split-payment"
+                checked={settleSplitPayment}
+                onCheckedChange={(v) => setSettleSplitPayment(v === true)}
+              />
+              <Label
+                htmlFor="settle-split-payment"
+                className="cursor-pointer text-sm font-normal"
+              >
+                {t("gabinet.packages.splitPayment", "Podziel płatność")}
+              </Label>
+            </div>
+          )}
+
+          {settleSplitPayment && (
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border p-2 space-y-2">
+                  <Label className="text-xs font-medium">
+                    {t("gabinet.packages.firstMethod", "Pierwsza metoda")}
+                  </Label>
+                  <Select
+                    value={settleFirstSplitMethod}
+                    onValueChange={(v) =>
+                      setSettleFirstSplitMethod(
+                        v as typeof settleFirstSplitMethod,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">
+                        {t("gabinet.payments.methods.cash")}
+                      </SelectItem>
+                      <SelectItem value="card">
+                        {t("gabinet.payments.methods.card")}
+                      </SelectItem>
+                      <SelectItem value="transfer">
+                        {t("gabinet.payments.methods.transfer")}
+                      </SelectItem>
+                      <SelectItem value="other">
+                        {t("gabinet.payments.methods.other")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={settleFirstSplitAmount}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setSettleFirstSplitAmount(v);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="rounded-md border p-2 space-y-2">
+                  <Label className="text-xs font-medium">
+                    {t("gabinet.packages.secondMethod", "Druga metoda")}
+                  </Label>
+                  <Select
+                    value={settleSecondSplitMethod}
+                    onValueChange={(v) =>
+                      setSettleSecondSplitMethod(
+                        v as typeof settleSecondSplitMethod,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">
+                        {t("gabinet.payments.methods.cash")}
+                      </SelectItem>
+                      <SelectItem value="card">
+                        {t("gabinet.payments.methods.card")}
+                      </SelectItem>
+                      <SelectItem value="transfer">
+                        {t("gabinet.payments.methods.transfer")}
+                      </SelectItem>
+                      <SelectItem value="other">
+                        {t("gabinet.payments.methods.other")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={settleSecondSplitAmount}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setSettleSecondSplitAmount(v);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "flex items-center justify-between text-xs",
+                  splitSameMethod ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                <span>
+                  {t("gabinet.packages.splitSum", "Suma")}:{" "}
+                  {formatCurrencyPLN(splitTotal)}
+                </span>
+                {splitSameMethod && (
+                  <span>
+                    {t(
+                      "gabinet.packages.splitSameMethod",
+                      "Metody muszą się różnić",
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1326,7 +1537,11 @@ export function AppointmentPreviewContent({
             <Button
               type="button"
               onClick={handleConfirmSettle}
-              disabled={settleSubmitting}
+              disabled={
+                settleSubmitting ||
+                (settleSplitPayment &&
+                  (splitMissingAmount || splitSameMethod))
+              }
             >
               {settleSubmitting
                 ? t("common.processing")

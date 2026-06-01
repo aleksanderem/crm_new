@@ -69,7 +69,13 @@ function getMonday(date: Date): Date {
 }
 
 function formatDateStr(d: Date): string {
-  return d.toISOString().split("T")[0];
+  // Use local date parts, not toISOString — for users east of UTC, a Date at
+  // local midnight has a UTC date one day earlier, which would shift the
+  // calendar's "today" highlight and event placement to the next column.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function dateToHourMin(ts: number): { hour: number; min: number } {

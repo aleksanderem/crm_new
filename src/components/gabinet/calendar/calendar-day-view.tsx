@@ -289,22 +289,22 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
             id={`${date}-${s.time}`}
             date={date}
             time={s.time}
-            className={`border-b border-dashed ${s.isHourMark ? "border-muted" : "border-muted/40"}`}
+            className={`border-b ${s.isHourMark ? "border-border" : "border-border/40"}`}
             style={{ height: `${s.slotHeight}px` }}
           >
             <div className="relative h-full w-full cursor-pointer hover:bg-muted/30">
               {showSubdivisions && (
                 <>
                   <div
-                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    className="pointer-events-none absolute left-0 right-0 border-t border-border/30"
                     style={{ top: `${HOUR_HEIGHT / 4}px` }}
                   />
                   <div
-                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/60"
+                    className="pointer-events-none absolute left-0 right-0 border-t border-border/60"
                     style={{ top: `${HOUR_HEIGHT / 2}px` }}
                   />
                   <div
-                    className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-muted/40"
+                    className="pointer-events-none absolute left-0 right-0 border-t border-border/30"
                     style={{ top: `${(HOUR_HEIGHT * 3) / 4}px` }}
                   />
                 </>

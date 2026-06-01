@@ -227,7 +227,7 @@ function WeekDayColumn({
         {/* Closed hours background — entire day when clinic is closed */}
         {!schedule && (
           <div
-            className="pointer-events-none absolute inset-0 bg-primary/5 z-0"
+            className="pointer-events-none absolute inset-0 bg-zinc-200/60 dark:bg-zinc-950/50 z-0"
             style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
           />
         )}
@@ -238,7 +238,7 @@ function WeekDayColumn({
             {/* Closed: before clinic opens */}
             {timeToTop(schedule.startTime) > 0 && (
               <div
-                className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-b border-primary/10 z-0"
+                className="pointer-events-none absolute left-0 right-0 bg-zinc-200/60 dark:bg-zinc-950/50 border-b border-border/40 z-0"
                 style={{
                   top: 0,
                   height: `${timeToTop(schedule.startTime)}px`,
@@ -248,7 +248,7 @@ function WeekDayColumn({
             {/* Closed: after clinic closes */}
             {timeToTop(schedule.endTime) < HOURS.length * HOUR_HEIGHT && (
               <div
-                className="pointer-events-none absolute left-0 right-0 bg-primary/5 border-t border-primary/10 z-0"
+                className="pointer-events-none absolute left-0 right-0 bg-zinc-200/60 dark:bg-zinc-950/50 border-t border-border/40 z-0"
                 style={{
                   top: `${timeToTop(schedule.endTime)}px`,
                   height: `${HOURS.length * HOUR_HEIGHT - timeToTop(schedule.endTime)}px`,
